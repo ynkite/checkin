@@ -60,4 +60,19 @@ public class User {
         this.role = (role != null) ? role : "USER"; // 기본값 설정
         this.status = (status != null) ? status : "ACTIVE"; // 기본값 설정
     }
+
+    // User.java 클래스 내부에 추가할 메서드들 (맨 밑에 붙여넣기)
+
+    // 1. 닉네임(name) 변경 비즈니스 로직
+    public void updateNickname(String newName) {
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException("올바른 닉네임을 입력해주세요.");
+        }
+        this.name = newName;
+    }
+
+    // 2. 회원 탈퇴 로직 (status를 INACTIVE로 변경)
+    public void withdraw() {
+        this.status = "INACTIVE";
+    }
 }
