@@ -1,0 +1,5 @@
+### 1. 이메일 인증번호 발송 요청
+POST http://localhost:8080/api/auth/send-email?email=eokeon314@gmail.com
+
+### 2. 이메일 인증번호 확인(채점) 요청
+POST http://localhost:8080/api/auth/verify-email?email=eokeon314@gmail.com&code=881755
