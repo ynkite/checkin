@@ -2,7 +2,7 @@ package idusw.sbb.triplinker.domain.auth.controller;
 
 import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
 import idusw.sbb.triplinker.domain.auth.service.AuthService;
-import idusw.sbb.triplinker.domain.auth.service.EmailAuthService; // 👈 이메일 주방장 import 추가
+import idusw.sbb.triplinker.domain.auth.service.EmailAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,12 +14,13 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final EmailAuthService emailAuthService; // 👈 이메일 발송 주방장 의존성 추가
+    private final EmailAuthService emailAuthService; // 👈 이메일 발송 의존성 추가
 
     // 아이디 중복 체크 API (GET /api/auth/check-username?username=test1234)
     @GetMapping("/check-username")
     public ResponseEntity<Boolean> checkUsername(@RequestParam String username) {
         return ResponseEntity.ok(authService.checkUsername(username));
+
     }
 
     // 이메일 중복 체크 API (GET /api/auth/check-email?email=test@test.com)
@@ -37,7 +38,7 @@ public class AuthController {
 
     // ================= [새로 추가된 이메일 인증 기능] =================
 
-    // ✉️ 1. 인증번호 발송 요청 창구 (POST /api/auth/send-email)
+    // ✉️ 1. 인증번호 발송 요청 (POST /api/auth/send-email)
     @PostMapping("/send-email")
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
         // 이메일 주방장에게 발송을 지시합니다.
@@ -45,11 +46,11 @@ public class AuthController {
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요!");
     }
 
-    // ✉️ 2. 인증번호 채점(확인) 요청 창구 (POST /api/auth/verify-email)
+    // ✉️ 2. 인증번호 채점(확인) 요청 (POST /api/auth/verify-email)
     @PostMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam String email, @RequestParam String code) {
         try {
-            // 주방장에게 사용자가 입력한 코드가 맞는지 채점을 맡깁니다.
+            // 사용자가 입력한 코드가 맞는지 채점을 맡깁니다.
             boolean isVerified = emailAuthService.verifyEmailCode(email, code);
             return ResponseEntity.ok("이메일 인증이 완벽하게 완료되었습니다!");
 
@@ -58,4 +59,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+
 }

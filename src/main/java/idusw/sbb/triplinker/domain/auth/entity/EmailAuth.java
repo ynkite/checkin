@@ -25,7 +25,7 @@ public class EmailAuth {
     @Column(nullable = false, length = 100)
     private String email;
 
-    // 서버가 생성해서 이메일로 발송한 6자리 난수 (예: "749201")
+    // 서버가 생성해서 이메일로 발송한 6자리 난수
     @Column(nullable = false, length = 6)
     private String authCode;
 
