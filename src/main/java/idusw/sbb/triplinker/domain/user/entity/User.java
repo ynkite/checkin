@@ -122,4 +122,16 @@ public class User {
     public void recordPwChangeNotified() {
         this.pwChangeNotiAt = LocalDateTime.now();
     }
+    // 닉네임 변경
+    public void updateNickname(String newName) {
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException("올바른 닉네임을 입력해주세요.");
+        }
+        this.name = newName;
+    }
+    // 회원 탈퇴 시 상태 변경
+    public void withdraw() {
+        this.status = "DELETED";
+        this.deletedAt = LocalDateTime.now();
+    }
 }
