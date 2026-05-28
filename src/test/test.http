@@ -1,0 +1,10 @@
+### 1. 닉네임 변경 다시 테스트하기
+PATCH http://localhost:8080/api/users/1/nickname
+Content-Type: application/json
+
+{
+  "name": "흑인42호"
+}
+
+### 2. 회원 탈퇴 테스트 (DELETE)
+DELETE http://localhost:8080/api/users/1
