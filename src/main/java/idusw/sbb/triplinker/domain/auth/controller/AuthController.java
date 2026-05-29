@@ -1,5 +1,6 @@
 package idusw.sbb.triplinker.domain.auth.controller;
 
+import idusw.sbb.triplinker.domain.auth.dto.PasswordResetDTO;
 import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
 import idusw.sbb.triplinker.domain.auth.service.AuthService;
 import idusw.sbb.triplinker.domain.auth.service.EmailAuthService;
@@ -39,7 +40,7 @@ public class AuthController {
     // 인증번호 발송 요청
     @PostMapping("/send-email")
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
-        emailAuthService.sendEmailAuthCode(email);
+        emailAuthService.sendEmailAuthCode(email, "signup");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
     }
 
@@ -70,32 +71,27 @@ public class AuthController {
             return ResponseEntity.badRequest().body("TripLinker에 가입되지 않은 이메일입니다.");
         }
 
-        emailAuthService.sendEmailAuthCode(email);
+        emailAuthService.sendEmailAuthCode(email, "reset");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
     }
 
     // 인증번호 검증 후 비밀번호 최종 변경
     @PatchMapping("/password/reset")
-    public ResponseEntity<String> resetPassword(@RequestBody java.util.Map<String, String> request) {
-        String email = request.get("email");
-        String code = request.get("code");
-        String newPassword = request.get("newPassword");
-
+    public ResponseEntity<String> resetPassword(@RequestBody @Valid PasswordResetDTO dto) {
         try {
-            // 인증번호 확인
-            boolean isVerified = emailAuthService.verifyEmailCode(email, code);
+            // 인증번호 맞는지 확인
+            boolean isVerified = emailAuthService.verifyEmailCode(dto.getEmail(), dto.getCode());
 
             if (isVerified) {
-                // 인증 성공 시 실제 비밀번호 변경
-                authService.updatePassword(email, newPassword);
-                return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다. 변경된 비밀번호로 로그인해주세요!");
+                // 정규식 검사를 통과시킨 안전한 비밀번호만 이쪽으로 넘어옵니다.
+                authService.updatePassword(dto.getEmail(), dto.getNewPassword());
+                return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
             }
-            return ResponseEntity.badRequest().body("인증에 실패했습니다.");
+            return ResponseEntity.badRequest().body("인증번호가 틀렸거나 만료되었습니다.");
 
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+
     }
-
-
 }

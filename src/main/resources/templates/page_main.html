@@ -1,0 +1,682 @@
+<div th:fragment="main" xmlns:th="http://www.thymeleaf.org">
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터]
+   * 나중에 백엔드 API 통신이 연결되면 이 블록을 통째로 지워주세요!
+   * 지우는 순간, 아래의 api.get() 호출 로직으로 자동 전환됩니다.
+   * ============================================================ */
+  const MOCK_CURATIONS = [
+    {
+      isMock: true,
+      curationId: "'jeju'",
+      gradient: 'linear-gradient(135deg,#1E7A69,#4DB8A4)',
+      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">📅 ~2026.06.30</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 관리자 큐레이션</span>',
+      title: '🌊 제주 에메랄드 해안',
+      subTitle: '3박4일 · 2인 · 자차 추천',
+      chipsHtml: '<span class="slide-chip">초여름</span><span class="slide-chip">힐링</span><span class="slide-chip">오션뷰</span>',
+      spots: '협재해변 · 성산일출봉',
+      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩425,000~</span>',
+      planData: "{dest:'제주',prov:'제주',nights:3,people:2,transport:'자차',companion:'커플',styles:['힐링','오션뷰'],budget:500000}"
+    },
+    {
+      isMock: true,
+      curationId: "'seorak'",
+      gradient: 'linear-gradient(135deg,#8c4a10,#d4854a)',
+      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">🍂 가을 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#8c4a10;border:1px solid var(--sage-l)">🔥 10월 단풍</span>',
+      title: '🍁 설악산 단풍 트레킹',
+      subTitle: '2박3일 · 2인 · 대중교통',
+      chipsHtml: '<span class="slide-chip">가을</span><span class="slide-chip">액티비티</span><span class="slide-chip">트레킹</span>',
+      spots: '설악동 · 속초',
+      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩380,000~</span>',
+      planData: "{dest:'속초',prov:'강원',nights:2,people:2,transport:'대중교통',companion:'커플',styles:['액티비티','자연'],budget:400000}"
+    },
+    {
+      isMock: true,
+      curationId: "'gyeongju'",
+      gradient: 'linear-gradient(135deg,#6a2880,#b070b0)',
+      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">🌸 봄 기획</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#6a2880;border:1px solid var(--sage-l)">봄 시즌 한정</span>',
+      title: '🌸 경주 벚꽃 역사 기행',
+      subTitle: '1박2일 · 커플 · 자차',
+      chipsHtml: '<span class="slide-chip">봄</span><span class="slide-chip">역사</span><span class="slide-chip">문화</span>',
+      spots: '불국사 · 첨성대',
+      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩290,000~</span>',
+      planData: "{dest:'경주',prov:'경북',nights:1,people:2,transport:'자차',companion:'커플',styles:['역사','문화'],budget:300000}"
+    },
+    {
+      isMock: true,
+      curationId: "'busan'",
+      gradient: 'linear-gradient(135deg,#1060a8,#4090d8)',
+      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">☀️ 여름 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1060a8;border:1px solid var(--sage-l)">🏄 서핑 시즌</span>',
+      title: '🏄 부산 해운대 서핑 투어',
+      subTitle: '2박3일 · 친구 4인',
+      chipsHtml: '<span class="slide-chip">여름</span><span class="slide-chip">서핑</span><span class="slide-chip">액티비티</span>',
+      spots: '해운대 · 광안리',
+      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩620,000~</span>',
+      planData: "{dest:'부산',prov:'부산',nights:2,people:4,transport:'대중교통',companion:'친구',styles:['서핑','액티비티','여름'],budget:700000}"
+    }
+  ];
+
+  const MOCK_TOP3 = [
+    { isMock: true, url: "'r-jeju-gaseongbi'", title: '제주도 3박4일 가성비 코스 총정리', sub: '3박4일 · 2인 · 자차 · ₩404,000', pvbKey: "'gangneung'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩480,000 · 커피숍 6곳<br>해변 드라이브 · 안목해변 숙소', likeCount: '2,341', viewCount: '18,203', scrapCount: '892' },
+    { isMock: true, url: "'r-gangneung'", title: '강릉 바다+커피 힐링 완벽 루트', sub: '2박3일 · 2인 · 힐링 · ₩480,000', pvbKey: "'jeonju'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩320,000 · 맛집 8곳<br>전통 한옥 숙소 · 대중교통', likeCount: '1,892', viewCount: '14,501', scrapCount: '641' },
+    { isMock: true, url: "'r-jeju-east-west'", title: '제주 동쪽 코스 vs 서쪽 코스 비교', sub: '3박4일 · 2인 · 자차 · ₩450,000', pvbKey: "'namhae'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩620,000 · 자차 · 오션뷰 펜션<br>해양 액티비티 포함', likeCount: '1,654', viewCount: '12,789', scrapCount: '508' }
+  ];
+
+  const MOCK_FOOD = [
+    { isMock: true, url: "'place-f-olleisunjae'", icon: '🍽️', name: '제주 현지인 맛집 TOP10', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','힐링'], saveCount: '2,941', scrapCount: '318' },
+    { isMock: true, url: "'place-f-teraroasa-g'", icon: '☕', name: '강릉 테라로사 & 맛집 루트', address: '제주도 · 고깃집', stars: '★★★★☆', rating: '4.7', tags: ['흑돼지','제주'], saveCount: '2,512', scrapCount: '241' },
+    { isMock: true, url: "'place-f-jagalchi'", icon: '🐟', name: '부산 자갈치시장 회 맛집', address: '전주 · 한식', stars: '★★★★☆', rating: '4.6', tags: ['한식','가성비'], saveCount: '1,987', scrapCount: '198' }
+  ];
+
+  const MOCK_STAY = [
+    { isMock: true, url: "'s-hyeopjae'", icon: '🏖️', name: '협재 오션뷰 풀빌라', address: '제주도 · 펜션', stars: '★★★★★', rating: '4.9', tags: ['오션뷰','풀빌라'], saveCount: '3,241', scrapCount: '412' },
+    { isMock: true, url: "'s-anmok'", icon: '🌊', name: '안목해변 오션뷰 펜션', address: '강릉 · 펜션', stars: '★★★★★', rating: '4.8', tags: ['해변','힐링'], saveCount: '2,718', scrapCount: '287' },
+    { isMock: true, url: "'s-haeundae'", icon: '🏨', name: '해운대 씨뷰 호텔', address: '부산 · 호텔', stars: '★★★★☆', rating: '4.6', tags: ['도시','럭셔리'], saveCount: '2,104', scrapCount: '219' }
+  ];
+
+  const MOCK_TOUR = [
+    { isMock: true, url: "'place-t-seongsanilchulbong'", icon: '🌅', name: '성산일출봉', address: '제주도 · 세계자연유산', stars: '★★★★★', rating: '4.9', tags: ['일출','트레킹'], saveCount: '4,182', scrapCount: '528' },
+    { isMock: true, url: "'place-t-udo'", icon: '🏝️', name: '우도', address: '제주도 · 섬 여행', stars: '★★★★★', rating: '4.7', tags: ['자전거','힐링'], saveCount: '3,641', scrapCount: '412' },
+    { isMock: true, url: "'place-t-yongduram'", icon: '🪨', name: '용두암', address: '제주도 · 자연명소', stars: '★★★★☆', rating: '4.5', tags: ['바다뷰','사진명소'], saveCount: '2,840', scrapCount: '310' }
+  ];
+
+  const MOCK_CAFE = [
+    { isMock: true, url: "'place-c-handam'", icon: '☕', name: '한담해안산책로 카페', address: '제주도 · 오션뷰 카페', stars: '★★★★★', rating: '4.7', tags: ['오션뷰','힐링'], saveCount: '3,012', scrapCount: '378' },
+    { isMock: true, url: "'place-teraroasa'", icon: '☕', name: '테라로사 강릉본점', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','로스터리'], saveCount: '2,941', scrapCount: '318' },
+    { isMock: true, url: "'place-c-monsant'", icon: '☕', name: '몬상블레', address: '제주도 · 감성 카페', stars: '★★★★☆', rating: '4.6', tags: ['감성','뷰맛집'], saveCount: '2,108', scrapCount: '241' }
+  ];
+  /* ============================================================ */
+
+  // ── UI 고정 텍스트 및 레이아웃 설정 ──
+  const HERO_TEXT = {
+    eyebrow:     '✦ AI 기반 여행 플래닝',
+    title:       '어디로 떠날까요?',
+    subtitle:    '목적지를 입력하면 AI가 완성형 일정을 만들어드립니다',
+    inputPlaceholder: '여행지 입력 (예: 제주도, 강릉, 부산...)',
+    btnLabel:    'AI 플랜 →',
+    quickLabel:  '빠른 선택',
+  };
+
+  const HERO_FEATURE_CARDS = [
+    { icon: '💰', title: '정밀 예산 산출',   desc: '숙박·식비·교통 전체 자동 계산' },
+    { icon: '🗺️', title: '지도 동선 시각화', desc: '최적 경로 자동 생성·드래그 수정' },
+    { icon: '✨', title: '취향 연속성',       desc: '이전 취향이 다음 여행에 자동 반영' },
+  ];
+
+  const QUICK_DESTS = [
+    { emoji: '🌊', label: '제주도' },
+    { emoji: '☕', label: '강릉' },
+    { emoji: '🏖',  label: '부산' },
+    { emoji: '🍚', label: '전주' },
+    { emoji: '🌸', label: '경주' },
+  ];
+
+  const SECTION_META = {
+    top3:      { rankColor: 'var(--warm)' },
+    food:      { rankColor: 'var(--sage)' },
+    stay:      { rankColor: 'var(--coral)' },
+    tour:      { rankColor: 'var(--sky)' },
+    cafe:      { rankColor: '#7C3AED' },
+  };
+
+  // ── 렌더링 헬퍼 ──
+  function _popCard(item, index, rankColor) {
+    const rank = String(index + 1).padStart(2, '0');
+    const stars = item.stars || ('★'.repeat(Math.round(item.rating || 5)) + '☆'.repeat(5 - Math.round(item.rating || 5)));
+    const tags = Array.isArray(item.tags) ? item.tags : (item.tags || '').split(',').filter(Boolean);
+    const onClickAction = item.isMock ? `go(${item.url})` : `go('/place/${item.placeId || item.id}')`;
+    const onClickScrap = item.isMock ? `toast('스크랩!')` : `doLikePlace('${item.placeId}')`;
+
+    return `
+    <div class="pop-card" onclick="${onClickAction}">
+      <div class="pop-rank" style="background:${rankColor}">${rank}</div>
+      <div class="pop-icon-row"><span class="pop-icon">${item.icon || '📍'}</span>
+        <div>
+          <div class="pop-name">${_esc(item.name)}</div>
+          <div class="pop-meta">${_esc(item.address || item.roadAddress)}</div>
+        </div>
+      </div>
+      <div class="pop-rating">
+        <span style="color:#F5A623">${stars}</span>
+        <span style="font-size:12px;font-weight:700;margin-left:3px">${item.rating || '0.0'}</span>
+      </div>
+      <div class="pop-tags">${tags.map(t => `<span class="pop-tag">${t}</span>`).join('')}</div>
+      <div class="pop-foot">
+        <span class="pop-saves">📌 ${item.saveCount || 0}번 담김</span>
+        <span class="pop-scrap-n">★ ${item.scrapCount || 0}</span>
+        <button class="pop-scrap-btn" onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
+      </div>
+    </div>`;
+  }
+
+  function _esc(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── 메인 페이지 초기화 (하드코딩 Fallback 자동 지원) ──
+  async function initMainPage() {
+    // 1. 고정 정적 텍스트 주입
+    const eyEl = document.querySelector('.hsc-ey'), ttlEl = document.querySelector('.hsc-ttl'), subEl = document.querySelector('.hsc-sub');
+    const inpEl = document.getElementById('heroInp'), btnEl = document.querySelector('.hsc-go');
+    if (eyEl) eyEl.textContent = HERO_TEXT.eyebrow;
+    if (ttlEl) ttlEl.textContent = HERO_TEXT.title;
+    if (subEl) subEl.textContent = HERO_TEXT.subtitle;
+    if (inpEl) inpEl.placeholder = HERO_TEXT.inputPlaceholder;
+    if (btnEl) btnEl.textContent = HERO_TEXT.btnLabel;
+
+    const cardsEl = document.querySelector('.hsc-cards');
+    if (cardsEl) cardsEl.innerHTML = HERO_FEATURE_CARDS.map(c => `<div class="hsc-card"><div class="hsc-ci">${c.icon}</div><div class="hsc-ct">${c.title}</div><div class="hsc-cd">${c.desc}</div></div>`).join('');
+
+    const destRowEl = document.querySelector('.hsc-dest-row');
+    if (destRowEl) destRowEl.innerHTML = `<span class="hsc-lbl">${HERO_TEXT.quickLabel}</span>` + QUICK_DESTS.map(d => `<button class="hsc-dest" onclick="setDest('${d.label}')">${d.emoji} ${d.label}</button>`).join('');
+
+    // 2. 큐레이션 데이터 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
+    let curations = typeof MOCK_CURATIONS !== 'undefined' ? MOCK_CURATIONS : null;
+    if (!curations && typeof api !== 'undefined') {
+      const res = await api.get('/api/curations');
+      curations = res.success && Array.isArray(res.data) ? res.data : [];
+    }
+
+    const panelEl = document.querySelector('.curation-panel');
+    if (panelEl && curations && curations.length) {
+      const existingArrow = panelEl.querySelector('.slide-arr-wrap'), existingDots = panelEl.querySelector('.slide-dots');
+      panelEl.querySelectorAll('.slide').forEach(s => s.remove());
+
+      const frag = document.createDocumentFragment();
+      const gradients = ['linear-gradient(135deg,#1E7A69,#4DB8A4)', 'linear-gradient(135deg,#8c4a10,#d4854a)', 'linear-gradient(135deg,#6a2880,#b070b0)'];
+
+      curations.forEach((s, i) => {
+        const grad = s.gradient || gradients[i % gradients.length];
+        const badges = s.badgesHtml || `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 추천 큐레이션</span>`;
+        const title = s.isMock ? s.title : _esc(s.title);
+        const subTitle = s.isMock ? s.subTitle : _esc(s.subTitle || s.meta || '');
+        const chips = s.chipsHtml ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">${s.chipsHtml}</div>` : '';
+        const spots = s.isMock ? s.spots : _esc(s.spots);
+        const budget = s.budgetHtml || '';
+
+        const onClickPrev = s.isMock ? `openPreview(${s.curationId})` : `openPreview('${s.curationId}')`;
+        const onClickPlan = s.isMock ? `startPlanFromCard(${s.planData})` : `startPlanFromCuration(${s.curationId})`;
+
+        const div = document.createElement('div');
+        div.className = 'slide' + (i === 0 ? ' on' : ''); div.id = 'sl-' + i;
+        div.innerHTML = `
+        <div style="height:10px;background:${grad};flex-shrink:0"></div>
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:16px 48px 16px 20px;min-height:0">
+          <div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${badges}</div>
+            <div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.15;margin-bottom:3px">${title}</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:9px">${subTitle}</div>
+            ${chips}
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--text2);background:var(--cream);padding:4px 9px;border-radius:7px;border:1px solid var(--border2)">📍 ${spots}</span>
+              ${budget}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn-slide-prev" onclick="${onClickPrev}">🔍 미리보기</button>
+            <button class="btn-slide-plan" onclick="${onClickPlan}">계획하기 →</button>
+          </div>
+        </div>`;
+        frag.appendChild(div);
+      });
+
+      if (existingArrow) panelEl.insertBefore(frag, existingArrow); else panelEl.appendChild(frag);
+      if (existingDots) existingDots.innerHTML = curations.map((_, i) => `<div class="dot${i===0?' on':''}" onclick="goSlide(${i})"></div>`).join('');
+    }
+
+    // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
+    let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
+    if (!top3Routes && typeof api !== 'undefined') {
+      const res = await api.get('/api/posts?sort=scrap&size=3');
+      top3Routes = res.success ? (res.data.content || res.data || []) : [];
+    }
+
+    const top3Grid = document.querySelector('.top3-grid');
+    if (top3Grid && top3Routes) {
+      top3Grid.innerHTML = top3Routes.length ? top3Routes.map((r, i) => {
+        const rank = String(i + 1).padStart(2, '0');
+        const onClickCard = r.isMock ? `go(${r.url})` : `openPostDetail(${r.postId})`;
+        const title = r.isMock ? r.title : _esc(r.title);
+        const sub = r.isMock ? r.sub : `${_esc(r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
+        const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
+        const pvbLabel = r.isMock ? r.pvbLabel : '🔍 후기 상세보기 (클릭)';
+        const pvbText = r.isMock ? r.pvbText : `${_esc(r.content?.substring(0, 45))}...`;
+        const onClickScrap = r.isMock ? `toast('스크랩 완료!')` : `scrapPost(event, ${r.postId})`;
+
+        return `
+        <div class="top3-card" onclick="${onClickCard}">
+          <div class="card-num" style="background:${SECTION_META.top3.rankColor}">${rank}</div>
+          <div class="card-ttl">${title}</div>
+          <div class="card-sub">${sub}</div>
+          <div class="preview-box" onclick="event.stopPropagation(); ${onClickPreview}">
+            <div class="pvb-label">${pvbLabel}</div>
+            <div class="pvb-text">${pvbText}</div>
+          </div>
+          <div class="card-foot">
+            <div class="card-stats">
+              <span class="card-stat">❤️ ${r.likeCount || 0}</span>
+              <span class="card-stat">👁 ${r.viewCount || 0}</span>
+              <span class="card-scrap-n">★ ${r.scrapCount || 0}</span>
+            </div>
+            <button class="btn-scrap" onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
+          </div>
+        </div>`;
+      }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';
+    }
+
+    // 4. 인기 명소 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
+    const categories = [
+      { id: 'popular-food-grid', code: 'FOOD', color: SECTION_META.food.rankColor },
+      { id: 'popular-stay-grid', code: 'STAY', color: SECTION_META.stay.rankColor },
+      { id: 'popular-tour-grid', code: 'TOUR', color: SECTION_META.tour.rankColor },
+      { id: 'popular-cafe-grid', code: 'CAFE', color: SECTION_META.cafe.rankColor }
+    ];
+
+    for (const cat of categories) {
+      const gridEl = document.getElementById(cat.id);
+      if (!gridEl) continue;
+
+      let places = null;
+      if (typeof MOCK_FOOD !== 'undefined') {
+        if (cat.code === 'FOOD') places = MOCK_FOOD;
+        if (cat.code === 'STAY') places = MOCK_STAY;
+        if (cat.code === 'TOUR') places = MOCK_TOUR;
+        if (cat.code === 'CAFE') places = MOCK_CAFE;
+      }
+
+      if (!places && typeof api !== 'undefined') {
+        const resPlace = await api.get(`/api/places/popular?category=${cat.code}&size=3`);
+        places = resPlace.success ? (resPlace.data || []) : [];
+      }
+
+      if (places) {
+        gridEl.innerHTML = places.length
+                ? places.map((p, idx) => _popCard(p, idx, cat.color)).join('')
+                : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">인기 명소가 없습니다.</div>';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initMainPage);
+</script>
+
+<div class="page active" id="page-main">
+  <div class="hero">
+    <div>
+      <div class="hsc">
+        <div class="hsc-ey"></div>
+        <div class="hsc-ttl"></div>
+        <div class="hsc-sub"></div>
+        <div class="hsc-search">
+          <span style="font-size:17px;margin-right:8px;flex-shrink:0">📍</span>
+          <input class="hsc-inp" id="heroInp" type="text" onkeydown="if(event.key==='Enter')heroSearch()">
+          <button class="hsc-go" onclick="heroSearch()"></button>
+        </div>
+        <div class="hsc-dest-row"></div>
+        <div class="hsc-cards"></div>
+      </div>
+    </div>
+    <div class="curation-panel">
+      <div class="slide-arr-wrap">
+        <button class="slide-arr" onclick="changeSlide(-1)">&#8249;</button>
+        <button class="slide-arr" onclick="changeSlide(1)">&#8250;</button>
+      </div>
+      <div class="slide-dots"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;padding:0 56px 28px;padding-right:calc(56px + 120px)">
+    <div style="display:inline-flex;align-items:center;gap:7px;background:var(--warm-pale);border:1px solid #F0CBA8;color:#8A5A2A;padding:9px 20px;border-radius:10px;font-size:12px;font-weight:500">
+      ⚠️ 비회원도 큐레이션·인기 경로 열람 가능 &nbsp;/&nbsp; 스크랩·좋아요·AI 추천은 로그인 후 이용 가능
+    </div>
+  </div>
+
+  <div class="sec" id="top3-sec">
+    <div class="sec-row">
+      <div>
+        <div class="sec-ey">커뮤니티 인기</div>
+        <h2 class="sec-hd">인기 경로 TOP 3</h2>
+      </div>
+      <div class="sec-meta">↻ 10분 주기 업데이트 · 실시간 스크랩순 랭킹</div>
+    </div>
+    <div class="top3-grid"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-row">
+      <div>
+        <div class="sec-ey" style="color:var(--sage)">실제 저장 수 기반</div>
+        <h2 class="sec-hd">인기 맛집 TOP 3</h2>
+      </div>
+      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+    </div>
+    <div class="popular-grid" id="popular-food-grid"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-row">
+      <div>
+        <div class="sec-ey" style="color:var(--coral)">실제 저장 수 기반</div>
+        <h2 class="sec-hd">인기 숙소 TOP 3</h2>
+      </div>
+      <div class="sec-meta">PLAN_PLACES 저장 횟수 · 평점 데이터 반영</div>
+    </div>
+    <div class="popular-grid" id="popular-stay-grid"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-row">
+      <div>
+        <div class="sec-ey" style="color:var(--sky)">실제 저장 수 기반</div>
+        <h2 class="sec-hd">인기 관광지 TOP 3</h2>
+      </div>
+      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+    </div>
+    <div class="popular-grid" id="popular-tour-grid"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-row">
+      <div>
+        <div class="sec-ey" style="color:#7C3AED">실제 저장 수 기반</div>
+        <h2 class="sec-hd">인기 카페 TOP 3</h2>
+      </div>
+      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+    </div>
+    <div class="popular-grid" id="popular-cafe-grid"></div>
+  </div>
+</div>
+<!--// 하드 코딩을 삭제하면 아래 부분을 사용-->
+<!--<script>-->
+<!--  /* ============================================================-->
+<!--   * [page_main.html] 하드코딩 데이터 제거 및 API 연동 버전-->
+<!--   * ============================================================ */-->
+
+<!--  // ── UI 고정 텍스트 및 레이아웃 설정 (정적 설정만 유지) ──-->
+<!--  const HERO_TEXT = {-->
+<!--    eyebrow:     '✦ AI 기반 여행 플래닝',-->
+<!--    title:       '어디로 떠날까요?',-->
+<!--    subtitle:    '목적지를 입력하면 AI가 완성형 일정을 만들어드립니다',-->
+<!--    inputPlaceholder: '여행지 입력 (예: 제주도, 강릉, 부산...)',-->
+<!--    btnLabel:    'AI 플랜 →',-->
+<!--    quickLabel:  '빠른 선택',-->
+<!--  };-->
+
+<!--  const HERO_FEATURE_CARDS = [-->
+<!--    { icon: '💰', title: '정밀 예산 산출',   desc: '숙박·식비·교통 전체 자동 계산' },-->
+<!--    { icon: '🗺️', title: '지도 동선 시각화', desc: '최적 경로 자동 생성·드래그 수정' },-->
+<!--    { icon: '✨', title: '취향 연속성',       desc: '이전 취향이 다음 여행에 자동 반영' },-->
+<!--  ];-->
+
+<!--  const QUICK_DESTS = [-->
+<!--    { emoji: '🌊', label: '제주도' },-->
+<!--    { emoji: '☕', label: '강릉' },-->
+<!--    { emoji: '🏖',  label: '부산' },-->
+<!--    { emoji: '🍚', label: '전주' },-->
+<!--    { emoji: '🌸', label: '경주' },-->
+<!--  ];-->
+
+<!--  const SECTION_META = {-->
+<!--    top3:      { rankColor: 'var(&#45;&#45;warm)' },-->
+<!--    food:      { rankColor: 'var(&#45;&#45;sage)' },-->
+<!--    stay:      { rankColor: 'var(&#45;&#45;coral)' },-->
+<!--    tour:      { rankColor: 'var(&#45;&#45;sky)' },-->
+<!--    cafe:      { rankColor: '#7C3AED' },-->
+<!--  };-->
+
+<!--  // ── 인기 장소 카드 렌더링 헬퍼 ──-->
+<!--  function _popCard(item, index, rankColor) {-->
+<!--    const rank = String(index + 1).padStart(2, '0');-->
+<!--    const stars = '★'.repeat(Math.round(item.rating || 5)) + '☆'.repeat(5 - Math.round(item.rating || 5));-->
+<!--    const tags = Array.isArray(item.tags) ? item.tags : (item.tags || '').split(',').filter(Boolean);-->
+
+<!--    return `-->
+<!--    <div class="pop-card" onclick="go('/place/${item.placeId || item.id}')">-->
+<!--      <div class="pop-rank" style="background:${rankColor}">${rank}</div>-->
+<!--      <div class="pop-icon-row"><span class="pop-icon">${item.icon || '📍'}</span>-->
+<!--        <div>-->
+<!--          <div class="pop-name">${_esc(item.name)}</div>-->
+<!--          <div class="pop-meta">${_esc(item.address || item.roadAddress)}</div>-->
+<!--        </div>-->
+<!--      </div>-->
+<!--      <div class="pop-rating">-->
+<!--        <span style="color:#F5A623">${stars}</span>-->
+<!--        <span style="font-size:12px;font-weight:700;margin-left:3px">${item.rating || '0.0'}</span>-->
+<!--      </div>-->
+<!--      <div class="pop-tags">${tags.map(t => `<span class="pop-tag">${t}</span>`).join('')}</div>-->
+<!--      <div class="pop-foot">-->
+<!--        <span class="pop-saves">📌 ${item.saveCount || 0}번 담김</span>-->
+<!--        <span class="pop-scrap-n">★ ${item.scrapCount || 0}</span>-->
+<!--        <button class="pop-scrap-btn" onclick="event.stopPropagation(); doLikePlace('${item.placeId}')">★ 스크랩</button>-->
+<!--      </div>-->
+<!--    </div>`;-->
+<!--  }-->
+
+<!--  function _esc(str) {-->
+<!--    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');-->
+<!--  }-->
+
+<!--  // ── 메인 페이지 비동기 초기화 ──-->
+<!--  async function initMainPage() {-->
+<!--    // 1. 고정 정적 텍스트 주입-->
+<!--    const eyEl  = document.querySelector('.hsc-ey');-->
+<!--    const ttlEl = document.querySelector('.hsc-ttl');-->
+<!--    const subEl = document.querySelector('.hsc-sub');-->
+<!--    const inpEl = document.getElementById('heroInp');-->
+<!--    const btnEl = document.querySelector('.hsc-go');-->
+<!--    if (eyEl)  eyEl.textContent  = HERO_TEXT.eyebrow;-->
+<!--    if (ttlEl) ttlEl.textContent = HERO_TEXT.title;-->
+<!--    if (subEl) subEl.textContent = HERO_TEXT.subtitle;-->
+<!--    if (inpEl) inpEl.placeholder = HERO_TEXT.inputPlaceholder;-->
+<!--    if (btnEl) btnEl.textContent = HERO_TEXT.btnLabel;-->
+
+<!--    const cardsEl = document.querySelector('.hsc-cards');-->
+<!--    if (cardsEl) {-->
+<!--      cardsEl.innerHTML = HERO_FEATURE_CARDS.map(c => `-->
+<!--      <div class="hsc-card">-->
+<!--        <div class="hsc-ci">${c.icon}</div>-->
+<!--        <div class="hsc-ct">${c.title}</div>-->
+<!--        <div class="hsc-cd">${c.desc}</div>-->
+<!--      </div>`).join('');-->
+<!--    }-->
+
+<!--    const destRowEl = document.querySelector('.hsc-dest-row');-->
+<!--    if (destRowEl) {-->
+<!--      destRowEl.innerHTML = `<span class="hsc-lbl">${HERO_TEXT.quickLabel}</span>` +-->
+<!--              QUICK_DESTS.map(d =>-->
+<!--                      `<button class="hsc-dest" onclick="setDest('${d.label}')">${d.emoji} ${d.label}</button>`-->
+<!--              ).join('');-->
+<!--    }-->
+
+<!--    // 2. [API 전송] 관리자 큐레이션 데이터 로드-->
+<!--    const resCuration = await api.get('/api/curations');-->
+<!--    const curations = resCuration.success && Array.isArray(resCuration.data) ? resCuration.data : [];-->
+
+<!--    const panelEl = document.querySelector('.curation-panel');-->
+<!--    if (panelEl && curations.length) {-->
+<!--      const existingArrow = panelEl.querySelector('.slide-arr-wrap');-->
+<!--      const existingDots  = panelEl.querySelector('.slide-dots');-->
+<!--      panelEl.querySelectorAll('.slide').forEach(s => s.remove());-->
+
+<!--      const frag = document.createDocumentFragment();-->
+<!--      // 기본 그라데이션 풀 선언-->
+<!--      const gradients = [-->
+<!--        'linear-gradient(135deg,#1E7A69,#4DB8A4)',-->
+<!--        'linear-gradient(135deg,#8c4a10,#d4854a)',-->
+<!--        'linear-gradient(135deg,#6a2880,#b070b0)'-->
+<!--      ];-->
+
+<!--      curations.forEach((s, i) => {-->
+<!--        const grad = s.gradient || gradients[i % gradients.length];-->
+<!--        const div = document.createElement('div');-->
+<!--        div.className = 'slide' + (i === 0 ? ' on' : '');-->
+<!--        div.id = 'sl-' + i;-->
+<!--        div.innerHTML = `-->
+<!--        <div style="height:10px;background:${grad};flex-shrink:0"></div>-->
+<!--        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:16px 48px 16px 20px;min-height:0">-->
+<!--          <div>-->
+<!--            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">-->
+<!--              <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;sage-pale);color:#1E7A69;border:1px solid var(&#45;&#45;sage-l)">⭐ 추천 큐레이션</span>-->
+<!--            </div>-->
+<!--            <div style="font-size:22px;font-weight:900;color:var(&#45;&#45;text);line-height:1.15;margin-bottom:3px">${_esc(s.title)}</div>-->
+<!--            <div style="font-size:12px;color:var(&#45;&#45;text3);margin-bottom:9px">${_esc(s.subTitle || s.meta || '')}</div>-->
+<!--            <div style="display:flex;gap:6px;flex-wrap:wrap">-->
+<!--              <span style="font-size:11px;color:var(&#45;&#45;text2);background:var(&#45;&#45;cream);padding:4px 9px;border-radius:7px;border:1px solid var(&#45;&#45;border2)">📍 ${_esc(s.spots)}</span>-->
+<!--            </div>-->
+<!--          </div>-->
+<!--          <div style="display:flex;gap:8px;margin-top:12px">-->
+<!--            <button class="btn-slide-prev" onclick="openPreview('${s.curationId}')">🔍 미리보기</button>-->
+<!--            <button class="btn-slide-plan" onclick="startPlanFromCuration(${s.curationId})">계획하기 →</button>-->
+<!--          </div>-->
+<!--        </div>`;-->
+<!--        frag.appendChild(div);-->
+<!--      });-->
+
+<!--      if (existingArrow) panelEl.insertBefore(frag, existingArrow);-->
+<!--      else panelEl.appendChild(frag);-->
+
+<!--      if (existingDots) {-->
+<!--        existingDots.innerHTML = curations.map((_, i) => `<div class="dot${i===0?' on':''}" onclick="goSlide(${i})"></div>`).join('');-->
+<!--      }-->
+<!--    }-->
+
+<!--    // 3. [API 전송] 커뮤니티 인기 고평가 상위 루트 TOP 3 로드-->
+<!--    const resTop3 = await api.get('/api/posts?sort=scrap&size=3');-->
+<!--    const top3Routes = resTop3.success ? (resTop3.data.content || resTop3.data || []) : [];-->
+
+<!--    const top3Grid = document.querySelector('.top3-grid');-->
+<!--    if (top3Grid) {-->
+<!--      top3Grid.innerHTML = top3Routes.length ? top3Routes.map((r, i) => {-->
+<!--        const rank = String(i + 1).padStart(2, '0');-->
+<!--        return `-->
+<!--        <div class="top3-card" onclick="openPostDetail(${r.postId})">-->
+<!--          <div class="card-num" style="background:${SECTION_META.top3.rankColor}">${rank}</div>-->
+<!--          <div class="card-ttl">${_esc(r.title)}</div>-->
+<!--          <div class="card-sub">${_esc(r.author?.name || '익명')} · 조회 ${r.viewCount || 0}</div>-->
+<!--          <div class="preview-box" onclick="event.stopPropagation(); openPostDetail(${r.postId})">-->
+<!--            <div class="pvb-label">🔍 후기 상세보기 (클릭)</div>-->
+<!--            <div class="pvb-text">${_esc(r.content?.substring(0, 45))}...</div>-->
+<!--          </div>-->
+<!--          <div class="card-foot">-->
+<!--            <div class="card-stats">-->
+<!--              <span class="card-stat">❤️ ${r.likeCount || 0}</span>-->
+<!--              <span class="card-stat">👁 ${r.viewCount || 0}</span>-->
+<!--              <span class="card-scrap-n">★ ${r.scrapCount || 0}</span>-->
+<!--            </div>-->
+<!--            <button class="btn-scrap" onclick="event.stopPropagation(); scrapPost(event, ${r.postId})">★ 스크랩</button>-->
+<!--          </div>-->
+<!--        </div>`;-->
+<!--      }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';-->
+<!--    }-->
+
+<!--    // 4. [API 전송] 카테고리별 실시간 인기 장소 TOP 3 로드-->
+<!--    const categories = [-->
+<!--      { id: 'popular-food-grid', code: 'FOOD', color: SECTION_META.food.rankColor },-->
+<!--      { id: 'popular-stay-grid', code: 'STAY', color: SECTION_META.stay.rankColor },-->
+<!--      { id: 'popular-tour-grid', code: 'TOUR', color: SECTION_META.tour.rankColor },-->
+<!--      { id: 'popular-cafe-grid', code: 'CAFE', color: SECTION_META.cafe.rankColor }-->
+<!--    ];-->
+
+<!--    for (const cat of categories) {-->
+<!--      const gridEl = document.getElementById(cat.id);-->
+<!--      if (gridEl) {-->
+<!--        const resPlace = await api.get(`/api/places/popular?category=${cat.code}&size=3`);-->
+<!--        const places = resPlace.success ? (resPlace.data || []) : [];-->
+
+<!--        gridEl.innerHTML = places.length-->
+<!--                ? places.map((p, idx) => _popCard(p, idx, cat.color)).join('')-->
+<!--                : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(&#45;&#45;text3)">인기 명소가 없습니다.</div>';-->
+<!--      }-->
+<!--    }-->
+<!--  }-->
+
+<!--  document.addEventListener('DOMContentLoaded', initMainPage);-->
+<!--</script>-->
+
+<!--<div class="page active" id="page-main">-->
+<!--  <div class="hero">-->
+<!--    <div>-->
+<!--      <div class="hsc">-->
+<!--        <div class="hsc-ey"></div>-->
+<!--        <div class="hsc-ttl"></div>-->
+<!--        <div class="hsc-sub"></div>-->
+<!--        <div class="hsc-search">-->
+<!--          <span style="font-size:17px;margin-right:8px;flex-shrink:0">📍</span>-->
+<!--          <input class="hsc-inp" id="heroInp" type="text" onkeydown="if(event.key==='Enter')heroSearch()">-->
+<!--          <button class="hsc-go" onclick="heroSearch()"></button>-->
+<!--        </div>-->
+<!--        <div class="hsc-dest-row"></div>-->
+<!--        <div class="hsc-cards"></div>-->
+<!--      </div>-->
+<!--    </div>-->
+<!--    <div class="curation-panel">-->
+<!--      <div class="slide-arr-wrap">-->
+<!--        <button class="slide-arr" onclick="changeSlide(-1)">&#8249;</button>-->
+<!--        <button class="slide-arr" onclick="changeSlide(1)">&#8250;</button>-->
+<!--      </div>-->
+<!--      <div class="slide-dots"></div>-->
+<!--    </div>-->
+<!--  </div>-->
+
+<!--  <div style="display:flex;justify-content:center;padding:0 56px 28px;padding-right:calc(56px + 120px)">-->
+<!--    <div style="display:inline-flex;align-items:center;gap:7px;background:var(&#45;&#45;warm-pale);border:1px solid #F0CBA8;color:#8A5A2A;padding:9px 20px;border-radius:10px;font-size:12px;font-weight:500">-->
+<!--      ⚠️ 비회원도 큐레이션·인기 경로 열람 가능 &nbsp;/&nbsp; 스크랩·좋아요·AI 추천은 로그인 후 이용 가능-->
+<!--    </div>-->
+<!--  </div>-->
+
+<!--  <div class="sec" id="top3-sec">-->
+<!--    <div class="sec-row">-->
+<!--      <div>-->
+<!--        <div class="sec-ey">커뮤니티 인기</div>-->
+<!--        <h2 class="sec-hd">인기 경로 TOP 3</h2>-->
+<!--      </div>-->
+<!--      <div class="sec-meta">↻ 실시간 스크랩순 랭킹</div>-->
+<!--    </div>-->
+<!--    <div class="top3-grid"></div>-->
+<!--  </div>-->
+
+<!--  <div class="sec">-->
+<!--    <div class="sec-row">-->
+<!--      <div>-->
+<!--        <div class="sec-ey" style="color:var(&#45;&#45;sage)">실제 저장 수 기반</div>-->
+<!--        <h2 class="sec-hd">인기 맛집 TOP 3</h2>-->
+<!--      </div>-->
+<!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+<!--    </div>-->
+<!--    <div class="popular-grid" id="popular-food-grid"></div>-->
+<!--  </div>-->
+
+<!--  <div class="sec">-->
+<!--    <div class="sec-row">-->
+<!--      <div>-->
+<!--        <div class="sec-ey" style="color:var(&#45;&#45;coral)">실제 저장 수 기반</div>-->
+<!--        <h2 class="sec-hd">인기 숙소 TOP 3</h2>-->
+<!--      </div>-->
+<!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 · 평점 데이터 반영</div>-->
+<!--    </div>-->
+<!--    <div class="popular-grid" id="popular-stay-grid"></div>-->
+<!--  </div>-->
+
+<!--  <div class="sec">-->
+<!--    <div class="sec-row">-->
+<!--      <div>-->
+<!--        <div class="sec-ey" style="color:var(&#45;&#45;sky)">실제 저장 수 기반</div>-->
+<!--        <h2 class="sec-hd">인기 관광지 TOP 3</h2>-->
+<!--      </div>-->
+<!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+<!--    </div>-->
+<!--    <div class="popular-grid" id="popular-tour-grid"></div>-->
+<!--  </div>-->
+
+<!--  <div class="sec">-->
+<!--    <div class="sec-row">-->
+<!--      <div>-->
+<!--        <div class="sec-ey" style="color:#7C3AED">실제 저장 수 기반</div>-->
+<!--        <h2 class="sec-hd">인기 카페 TOP 3</h2>-->
+<!--      </div>-->
+<!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+<!--    </div>-->
+<!--    <div class="popular-grid" id="popular-cafe-grid"></div>-->
+<!--  </div>-->
+<!--</div>-->
+</div>

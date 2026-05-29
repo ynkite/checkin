@@ -185,53 +185,6 @@
       background: var(--sage-d)
     }
 
-    /* SIDEBAR */
-    .wf-sidebar {
-      position: fixed;
-      right: 0;
-      top: 60px;
-      bottom: 0;
-      width: 120px;
-      background: var(--surface);
-      border-left: 1px solid var(--border2);
-      padding: 12px 8px;
-      z-index: 900;
-      overflow-y: auto;
-      font-size: 10px
-    }
-
-    .wf-label {
-      font-size: 9px;
-      font-weight: 700;
-      color: var(--text3);
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin-bottom: 8px
-    }
-
-    .wf-item {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 4px 7px;
-      border-radius: 5px;
-      font-size: 10px;
-      color: var(--text2);
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: all .15s;
-      margin-bottom: 1px;
-      line-height: 1.4
-    }
-
-    .wf-item:hover,
-    .wf-item.on {
-      background: var(--sage-pale);
-      color: var(--sage);
-      font-weight: 600
-    }
-
     /* PAGES */
     .page {
       display: none;
@@ -572,11 +525,57 @@
       color: var(--coral)
     }
 
+    .cat-tour {
+      background: #EBF4FC;
+      color: var(--sky)
+    }
+
+    .cat-cafe {
+      background: #F3F0FF;
+      color: #7C3AED
+    }
+
+    /* 커뮤니티 페이지네이션 */
+    .comm-pagination {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      margin-top: 20px;
+      padding-bottom: 12px
+    }
+
+    .page-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border2);
+      background: var(--surface);
+      color: var(--text2);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .page-btn:hover {
+      border-color: var(--sage-l);
+      color: var(--sage)
+    }
+
+    .page-btn.on {
+      background: var(--sage);
+      border-color: var(--sage);
+      color: #fff
+    }
+
     .sec {
       padding: 0 56px 52px;
       max-width: 1140px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+      padding-right: 56px;
     }
 
     .sec-ey {
@@ -644,7 +643,7 @@
       padding: 44px 56px 36px;
       max-width: 1140px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px);
+      padding-right: 56px;
       display: grid;
       grid-template-columns: 1fr 380px;
       gap: 36px;
@@ -1429,7 +1428,6 @@
       margin: 8px 0;
       display: block
     }
-
     /* AUTH */
     .auth-wrap {
       min-height: calc(100vh - 60px);
@@ -1482,7 +1480,7 @@
       padding: 28px 56px;
       max-width: 1140px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+      padding-right: 56px
     }
 
     .my-sidebar {
@@ -1764,7 +1762,7 @@
       padding: 0 56px 60px;
       max-width: 1140px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
     }
 
     .planner-hd {
@@ -2441,7 +2439,7 @@
       display: grid;
       grid-template-columns: 310px 1fr;
       height: calc(100vh - 60px);
-      padding-right: 120px
+      padding-right: 0
     }
 
     .map-left {
@@ -3180,7 +3178,7 @@
       padding: 28px 56px;
       max-width: 1200px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
     }
 
     .budget-layout {
@@ -3469,7 +3467,25 @@
       padding: 28px 56px;
       max-width: 1140px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
+    }
+
+    .comm-side {
+      min-width: 0
+    }
+
+    .comm-side-sec {
+      background: var(--surface);
+      border-radius: var(--r);
+      border: 1px solid var(--border2);
+      padding: 15px;
+      margin-bottom: 15px
+    }
+
+    .comm-side-ttl {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 10px
     }
 
     .comm-tabs {
@@ -3673,7 +3689,7 @@
       display: grid;
       grid-template-columns: 190px 1fr;
       min-height: calc(100vh - 60px);
-      padding-right: 120px
+      padding-right: 0
     }
 
     .admin-nav {
@@ -3916,7 +3932,7 @@
       padding: 28px 56px;
       max-width: 880px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
     }
 
     .review-back {
@@ -4061,7 +4077,7 @@
       padding: 28px 56px;
       max-width: 900px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
     }
 
     /* WEATHER */
@@ -4069,7 +4085,7 @@
       padding: 28px 56px;
       max-width: 960px;
       margin: 0 auto;
-      padding-right: calc(56px + 120px)
+        padding-right: 56px
     }
 
     .info-card {
@@ -4527,7 +4543,6 @@
     }
 
     .btn-prev-scrap:hover {
-      background: var(--sage);
-      color: #fff
+        background: var(--sage);
+        color: #fff
     }
-

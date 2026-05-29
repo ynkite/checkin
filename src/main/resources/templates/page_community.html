@@ -1,0 +1,1362 @@
+<div th:fragment="community" xmlns:th="http://www.thymeleaf.org">
+<!-- ===================================================
+ * 파일명: page_community.html
+ * 도메인: 게시판(Post) + 시스템(System)
+ * 클래스: PostController → PostServiceImpl → PostRepository
+ *          SystemController → SystemServiceImpl → SystemRepository
+ * Entity: Post, PostImage, PostLike, PostScrap, PostComment, Notification
+ * DTO:    PostWriteDto, PostDetailResponseDto, NotificationResponseDto
+ * 기능:   커뮤니티 게시판, 후기 작성, 알림팝업
+ =================================================== -->
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터]
+   * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
+   * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
+   * ============================================================ */
+
+  // 1. 🔥 이번 주 인기 태그 원본 데이터
+  const MOCK_POPULAR_TAGS = [
+    { name: "힐링" },
+    { name: "제주도" },
+    { name: "가성비" },
+    { name: "커플" },
+    { name: "바다" },
+    { name: "맛집" },
+    { name: "강릉" },
+    { name: "부산" },
+    { name: "카페" }
+  ];
+
+  // 2. ✦ AI 취향 추천 원본 데이터
+  const MOCK_AI_RECOMMENDATIONS = {
+    title: "지난 제주 힐링 여행 기반 추천",
+    items: [
+      {
+        category: "여행 경로",
+        title: "거제도 오션뷰 힐링 코스",
+        matchCount: 6,
+        url: "'r-geoje'"
+      }
+    ]
+  };
+
+  // 3. 커뮤니티 카테고리별 게시글 원본 데이터 (숙소/맛집/관광지/카페 전수 추가)
+  const MOCK_COMMUNITY_POSTS = {
+    route: [
+      { url: "'r-gangneung'", tags: "강릉,바다,카페,힐링", likes: "89", scrap: "56", views: "3120", dateStr: "2025.02.14", dateVal: "20250214", author: "여행러버", title: "강릉 바다+커피 힐링 완벽 루트 2박3일", tagList: ["강릉", "바다", "카페"] },
+      { url: "'r-jeju-gaseongbi'", tags: "제주,가성비,힐링,오션뷰", likes: "142", scrap: "98", views: "5204", dateStr: "2025.06.14", dateVal: "20250614", author: "여행고수김씨", title: "제주도 3박4일 가성비 코스 총정리", tagList: ["제주", "가성비", "힐링"] },
+      { url: "'r-gyeongju'", tags: "경주,역사,문화,당일치기", likes: "67", scrap: "41", views: "2408", dateStr: "2025.04.05", dateVal: "20250405", author: "힐링여행박씨", title: "경주 당일치기 역사 완전정복", tagList: ["경주", "역사", "문화"] },
+      { url: "'r-busan'", tags: "부산,맛집,바다,가성비", likes: "95", scrap: "62", views: "3870", dateStr: "2025.04.22", dateVal: "20250422", author: "여행좋아", title: "부산 2박3일 핵심 스팟 14곳 완벽정리", tagList: ["부산", "맛집", "바다"] },
+      { url: "'r-jeonju'", tags: "전주,한식,한옥,미식", likes: "44", scrap: "28", views: "1680", dateStr: "2025.03.22", dateVal: "20250322", author: "kakaotest", title: "전주 한옥마을 골목골목 미식 기행", tagList: ["전주", "한식", "한옥"] },
+      { url: "'r-namhae'", tags: "남해,힐링,바다,액티비티", likes: "71", scrap: "45", views: "2640", dateStr: "2025.05.01", dateVal: "20250501", author: "여행러버", title: "남해 다랭이마을 + 독일마을 2박3일", tagList: ["남해", "힐링", "바다"] },
+      { url: "'r-seorak'", tags: "설악산,트레킹,가을,자연", likes: "58", scrap: "36", views: "2100", dateStr: "2025.05.10", dateVal: "20250510", author: "여행고수김씨", title: "설악산 단풍 트레킹 완벽 가이드", tagList: ["설악산", "트레킹", "가을"] },
+      { url: "'r-jeju-east-west'", tags: "제주,힐링,오션뷰,자연", likes: "83", scrap: "54", views: "3010", dateStr: "2025.05.20", dateVal: "20250520", author: "힐링여행박씨", title: "제주 동쪽 코스 vs 서쪽 코스 비교", tagList: ["제주", "힐링", "오션뷰"] }
+    ],
+    stay: [
+      { url: "'s-hyeopjae'", tags: "제주,오션뷰,풀빌라,힐링", likes: "128", scrap: "87", views: "4892", dateStr: "2025.06.15", dateVal: "20250615", author: "여행러버", title: "협재 오션뷰 풀빌라", tagList: ["제주", "오션뷰", "풀빌라"] },
+      { url: "'s-haeundae'", tags: "부산,해운대,바다,가성비", likes: "76", scrap: "52", views: "2830", dateStr: "2025.04.23", dateVal: "20250423", author: "여행좋아", title: "해운대 씨뷰 호텔", tagList: ["부산", "해운대", "바다"] },
+      { url: "'s-gyeongju'", tags: "경주,한옥,문화,역사", likes: "55", scrap: "34", views: "1920", dateStr: "2025.04.06", dateVal: "20250406", author: "힐링여행박씨", title: "경주 한옥 펜션", tagList: ["경주", "한옥", "문화"] },
+      { url: "'s-anmok'", tags: "강릉,오션뷰,바다,감성", likes: "91", scrap: "61", views: "3340", dateStr: "2025.02.16", dateVal: "20250216", author: "여행고수김씨", title: "안목해변 오션뷰 펜션", tagList: ["강릉", "바다", "펜션"] },
+      { url: "'s-jeonju'", tags: "전주,한옥,문화,한식", likes: "38", scrap: "22", views: "1240", dateStr: "2025.03.23", dateVal: "20250323", author: "kakaotest", title: "전주 한옥 스테이", tagList: ["전주", "한옥", "문화"] },
+      { url: "'s-jeju-compare'", tags: "제주,풀빌라,오션뷰,힐링", likes: "67", scrap: "43", views: "2450", dateStr: "2025.05.20", dateVal: "20250520", author: "여행러버", title: "제주신라호텔", tagList: ["제주", "풀빌라", "오션뷰"] },
+      { url: "'s-namhae'", tags: "남해,바다,펜션,힐링", likes: "49", scrap: "31", views: "1840", dateStr: "2025.05.02", dateVal: "20250502", author: "힐링여행박씨", title: "남해 다랭이마을 펜션", tagList: ["남해", "바다", "펜션"] },
+      { url: "'s-sokcho'", tags: "속초,바다,호텔,가성비", likes: "53", scrap: "29", views: "1950", dateStr: "2025.05.12", dateVal: "20250512", author: "여행좋아", title: "속초 씨뷰 호텔", tagList: ["속초", "바다", "호텔"] }
+    ],
+    food: [
+      { url: "'place-f-bibimbap'", tags: "전주,비빔밥,한식", likes: "52", scrap: "33", views: "1890", dateStr: "2025.03.24", dateVal: "20250324", author: "kakaotest", title: "전주 비빔밥 맛집 투어", tagList: ["전주", "비빔밥", "한식"] },
+      { url: "'place-f-heukdwaeji'", tags: "제주,흑돼지,맛집,현지인", likes: "78", scrap: "51", views: "2870", dateStr: "2025.05.21", dateVal: "20250521", author: "여행고수김씨", title: "흑돼지 거리 맛집", tagList: ["제주", "흑돼지", "맛집"] },
+      { url: "'place-f-haundaesea'", tags: "부산,해산물,가성비,맛집", likes: "64", scrap: "40", views: "2140", dateStr: "2025.04.25", dateVal: "20250425", author: "여행러버", title: "해운대 씨푸드 레스토랑", tagList: ["부산", "해산물", "맛집"] },
+      { url: "'place-f-sokcho'", tags: "속초,해산물,물회,맛집", likes: "48", scrap: "31", views: "1650", dateStr: "2025.05.13", dateVal: "20250513", author: "힐링여행박씨", title: "속초 물회 맛집", tagList: ["속초", "물회", "맛집"] }
+    ],
+    tour: [
+      { url: "'place-t-seongsan'", tags: "제주,일출,트레킹,자연", likes: "112", scrap: "76", views: "4610", dateStr: "2025.05.22", dateVal: "20250522", author: "힐링여행박씨", title: "성산일출봉 완벽 가이드", tagList: ["제주", "일출", "트레킹"] }
+    ],
+    cafe: [
+      { url: "'place-c-handam'", tags: "제주,카페,해안,힐링", likes: "167", scrap: "112", views: "6870", dateStr: "2025.06.13", dateVal: "20250613", author: "여행고수김씨", title: "한담해안산책로 카페", tagList: ["제주", "오션뷰", "힐링"] },
+      { url: "'place-c-arario'", tags: "제주,카페,커피,로스터리", likes: "134", scrap: "89", views: "5240", dateStr: "2025.06.11", dateVal: "20250611", author: "여행러버", title: "제주 로스터리 카페", tagList: ["제주", "커피", "로스터리"] },
+      { url: "'place-c-monsant'", tags: "제주,카페,감성,노을", likes: "152", scrap: "96", views: "5890", dateStr: "2025.06.12", dateVal: "20250612", author: "힐링여행박씨", title: "애월 감성 카페", tagList: ["제주", "감성", "노을"] }
+    ]
+  };
+
+  // 4. 알림 팝업(notifPopup) 원본 데이터
+  const MOCK_NOTIFICATIONS = [
+    { text: "<b>✈️ 트리플래너</b>님이 회원님의 여행 경로를 스크랩했습니다.", time: "방금 전" },
+    { text: "<b>맛지비</b>님이 회원님의 맛집 후기에 댓글을 남겼습니다: \"여기 진짜 인정입니다!\"", time: "10분 전" },
+    { text: "<b>제주러버</b>님이 회원님의 숙소 후기를 좋아합니다.", time: "30분 전" },
+    { text: "<b>관리자</b>님이 새로운 여행 큐레이션을 등록했습니다.", time: "1시간 전" }
+  ];
+
+  // 5. 모달 내부에 바인딩되던 하드코딩 텍스트 전량 분리
+  const MOCK_MODAL_CONTENTS = {
+    mapPlace: {
+      title: "장소명",
+      type: "관광지 · 제주 서귀포시",
+      reviews: [
+        { author: "길동이", rating: "⭐️⭐️⭐️⭐️⭐️", text: "정상까지 올라가는데 숨은 차지만 풍경이 다 보상해 줍니다. 꼭 가보세요." },
+        { author: "트래블러", rating: "⭐️⭐️⭐️⭐️", text: "주차가 조금 힘들었지만 낙조가 정말 예술이었습니다. 운동화 필수!" }
+      ],
+      links: ["카카오맵", "네이버 지도"]
+    },
+    reviewDetail: {
+      title: "오션뷰 펜션 솔직 후기",
+      type: "숙소 · ⭐️⭐️⭐️⭐️⭐️",
+      meta: "작성자: 제주조아 · 2025.06.15",
+      body: "침대에 누워서 일출을 볼 수 있다는 게 가장 큰 장점입니다. 바비큐장 시설도 개별로 잘 되어 있어서 프라이빗하게 즐기기 좋았어요. 다만 수건이 조금 부족해서 추가 요청해야 했습니다. 전반적으로 대만족!",
+      comments: [
+        { author: "댓글러1", text: "여기 정보 좀 주실 수 있나요? 너무 예쁘네요!" },
+        { author: "답변", text: "ㄴ 쪽지 보내드렸습니다~ 확인해 보세요!" }
+      ]
+    }
+  };
+
+  // 6. 후기 작성 모달 플랜연동 옵션 데이터
+  const MOCK_PLAN_OPTIONS = [
+    { value: "1", label: "제주도 3박4일 힐링 여행 (2025.06.14 ~)" },
+    { value: "2", label: "강릉 바다+커피 완벽 루트 (2025.02.14 ~)" }
+  ];
+  /* ============================================================ */
+
+
+  /* ─── 커뮤니티 UI 동적 데이터 주입 헬퍼 함수 ─── */
+  function initCommunityPageData() {
+    // 1. 이번 주 인기 태그 렌더링
+    const tagContainer = document.getElementById("popular-tags-list");
+    if (tagContainer && typeof MOCK_POPULAR_TAGS !== 'undefined') {
+      tagContainer.innerHTML = MOCK_POPULAR_TAGS.map(t =>
+              `<span class="comm-side-tag" onclick="filterByTag('${t.name}', this)">#${t.name}</span>`
+      ).join('');
+    }
+
+    // 2. AI 취향 추천 렌더링
+    const aiTitle = document.getElementById("ai-reco-title");
+    const aiContainer = document.getElementById("ai-reco-list");
+    if (typeof MOCK_AI_RECOMMENDATIONS !== 'undefined') {
+      if (aiTitle) aiTitle.textContent = MOCK_AI_RECOMMENDATIONS.title;
+      if (aiContainer && MOCK_AI_RECOMMENDATIONS.items) {
+        aiContainer.innerHTML = MOCK_AI_RECOMMENDATIONS.items.map(item => `
+        <div class="ai-reco-card" onclick="go(${item.url})">
+          <div style="font-size:11px;color:var(--sage-d);font-weight:700;margin-bottom:2px">${item.category}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${item.title}</div>
+          <div style="font-size:11px;color:var(--text3)">취향 일치 ${item.matchCount}개</div>
+        </div>
+      `).join('');
+      }
+    }
+
+    // 3. 카테고리 탭 게시글 목록 주입
+    const posts = typeof MOCK_COMMUNITY_POSTS !== 'undefined' ? MOCK_COMMUNITY_POSTS : null;
+    if (posts) {
+      const tabsData = [
+        { id: 'tab-route', key: 'route', label: '여행 경로', color: 'var(--warm)', catClass: 'cat-route', catStyle: '' },
+        { id: 'tab-stay', key: 'stay', label: '숙소', color: 'var(--sage)', catClass: 'cat-stay', catStyle: '' },
+        { id: 'tab-food', key: 'food', label: '맛집', color: 'var(--coral)', catClass: 'cat-food', catStyle: '' },
+        { id: 'tab-tour', key: 'tour', label: '관광지', color: 'var(--sky)', catClass: 'cat-tour', catStyle: '' },
+        { id: 'tab-cafe', key: 'cafe', label: '카페', color: '#A78BFA', catClass: '', catStyle: 'background:#F3F0FF;color:#7C3AED' }
+      ];
+
+      tabsData.forEach(tab => {
+        const container = document.getElementById(tab.id);
+        const items = posts[tab.key] || [];
+        if (container) {
+          if (items.length > 0) {
+            container.innerHTML = items.map(p => `
+            <div class="post-card comm-post-item" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
+              data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}" style="border-left:3px solid ${tab.color}">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
+                <span class="post-cat ${tab.catClass}" style="${tab.catStyle}">${tab.label}</span>
+                <span style="font-size:10px;color:var(--text3)">${p.author} · ${p.dateStr}</span>
+              </div>
+              <div class="post-ttl">${p.title}</div>
+              <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+                ${p.tagList.map(tag => `<span style="font-size:10px;color:var(--sage-d);background:var(--sage-pale);padding:2px 6px;border-radius:10px">#${tag}</span>`).join('')}
+              </div>
+              <div class="post-foot">
+                <div class="post-stats">
+                  <span class="post-stat">❤️ ${p.likes}</span>
+                  <span class="post-stat">🔖 ${p.scrap}</span>
+                  <span class="post-stat">👁 ${p.views}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+          } else {
+            container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">등록된 게시글이 없습니다.</div>`;
+          }
+        }
+      });
+    }
+
+    // 4. 시스템 알림 데이터 주입
+    const notis = typeof MOCK_NOTIFICATIONS !== 'undefined' ? MOCK_NOTIFICATIONS : null;
+    const notiListContainer = document.getElementById('notifList');
+    if (notiListContainer && notis) {
+      notiListContainer.innerHTML = notis.map(n => `
+      <div style="padding:14px;border-bottom:1px solid var(--border2);font-size:12px;cursor:pointer" onclick="toast('알림 이동')">
+        <div style="color:var(--text2);margin-bottom:6px;line-height:1.4">${n.text}</div>
+        <div style="font-size:10px;color:var(--text3)">${n.time}</div>
+      </div>
+    `).join('') + `<div style="padding:12px;text-align:center;font-size:12px;color:var(--text3);cursor:pointer;background:var(--surface);border-radius:0 0 var(--r) var(--r)" onclick="toast('모든 알림 보기')">모든 알림 보기</div>`;
+    }
+
+    // 5. 장소리뷰 & 후기상세 기본 데이터 매핑
+    const mc = typeof MOCK_MODAL_CONTENTS !== 'undefined' ? MOCK_MODAL_CONTENTS : null;
+    if (mc) {
+      // 장소 팝업 데이터 바인딩
+      const mpPlace = document.getElementById('mpPlace'), mpType = document.getElementById('mpType'), mpReviews = document.getElementById('mpReviews'), mpLinks = document.getElementById('mpLinks');
+      if (mpPlace) mpPlace.textContent = mc.mapPlace.title;
+      if (mpType) mpType.textContent = mc.mapPlace.type;
+      if (mpReviews) mpReviews.innerHTML = mc.mapPlace.reviews.map(r => `<div class="p-rev-item" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--border2)"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:700">${r.author}</span><span>${r.rating}</span></div><div style="font-size:12px;color:var(--text2)">${r.text}</div></div>`).join('');
+      if (mpLinks) mpLinks.innerHTML = mc.mapPlace.links.map(l => `<button class="btn-o" style="flex:1;padding:8px;font-size:12px" onclick="toast('${l}로 이동')">${l}</button>`).join('');
+
+      // 리뷰상세 팝업 데이터 바인딩
+      const rdPlace = document.getElementById('rdPlace'), rdType = document.getElementById('rdType'), rdMeta = document.getElementById('rdMeta'), rdBody = document.getElementById('rdBody'), rdComments = document.getElementById('rdComments');
+      if (rdPlace) rdPlace.textContent = mc.reviewDetail.title;
+      if (rdType) rdType.textContent = mc.reviewDetail.type;
+      if (rdMeta) rdMeta.textContent = mc.reviewDetail.meta;
+      if (rdBody) rdBody.textContent = mc.reviewDetail.body;
+      if (rdComments) rdComments.innerHTML = mc.reviewDetail.comments.map(c => `<div style="font-size:12px;margin-bottom:6px;padding:6px;background:var(--surface);border-radius:4px"><strong style="color:var(--text)">${c.author}:</strong> <span style="color:var(--text2)">${c.text}</span></div>`).join('');
+    }
+
+    // 6. 후기 작성 '플랜 연동' 셀렉트 박스 바인딩
+    const planSelect = document.getElementById('writePlanSelect');
+    const planOptions = typeof MOCK_PLAN_OPTIONS !== 'undefined' ? MOCK_PLAN_OPTIONS : null;
+    if (planSelect && planOptions) {
+      planSelect.innerHTML = '<option value="">여행 플랜을 선택하세요...</option>' +
+              planOptions.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+    }
+  }
+
+  // 초기화 호출 등록
+  document.addEventListener('DOMContentLoaded', initCommunityPageData);
+
+  // ── setCommTab 오버라이드 (app_community.js의 API 호출 방지) ──
+  // app_community.js의 setCommTab은 loadCommunityPosts()로 API를 호출해
+  // 하드코딩 데이터를 지워버림 → 하드코딩 기반으로 교체
+  document.addEventListener('DOMContentLoaded', function() {
+    window.setCommTab = function(btn, cat) {
+      document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      ['route','stay','food','tour','cafe'].forEach(c => {
+        const el = document.getElementById('tab-'+c);
+        if (el) el.style.display = (c===cat) ? 'block' : 'none';
+      });
+      const s = document.getElementById('sortSelect');
+      if (s) {
+        if (cat==='route') {
+          s.innerHTML = '<option value="likes">좋아요순</option><option value="scrap" selected>스크랩순</option><option value="latest">최신순</option>';
+        } else {
+          s.innerHTML = '<option value="saved" selected>담긴 순</option><option value="scrap">스크랩순</option><option value="latest">최신순</option>';
+        }
+      }
+    };
+
+    // ── sortPosts 오버라이드 (하드코딩 DOM 기반 정렬) ──
+    window.sortPosts = function(val) {
+      ['tab-route','tab-stay','tab-food','tab-tour','tab-cafe'].forEach(function(tabId) {
+        var tab = document.getElementById(tabId); if (!tab) return;
+        var items = Array.from(tab.querySelectorAll('.comm-post-item')); if (!items.length) return;
+        items.sort(function(a, b) {
+          if (val==='likes')  return parseInt(b.getAttribute('data-likes')||0) - parseInt(a.getAttribute('data-likes')||0);
+          if (val==='scrap' || val==='saved') return parseInt(b.getAttribute('data-scrap')||0) - parseInt(a.getAttribute('data-scrap')||0);
+          if (val==='latest') return parseInt(b.getAttribute('data-date')||0) - parseInt(a.getAttribute('data-date')||0);
+          return 0;
+        });
+        items.forEach(function(item) { tab.appendChild(item); });
+      });
+    };
+
+    // ── doSearch 오버라이드 (하드코딩 DOM 기반 검색) ──
+    window.doSearch = function() {
+      var type = document.getElementById('searchType').value;
+      var q = document.getElementById('searchInp').value.trim().toLowerCase();
+      if (!q) { toast('검색어를 입력해주세요'); return; }
+      var found = 0;
+      document.querySelectorAll('.comm-post-item').forEach(function(item) {
+        var title = item.querySelector('.post-ttl') ? item.querySelector('.post-ttl').textContent.toLowerCase() : '';
+        var tags = (item.getAttribute('data-tags')||'').toLowerCase();
+        var author = (item.getAttribute('data-author')||'').toLowerCase();
+        var match = false;
+        if (type==='title') match = title.includes(q);
+        else if (type==='content') match = title.includes(q) || tags.includes(q);
+        else if (type==='author') match = author.includes(q);
+        else match = tags.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) found++;
+      });
+      toast('"'+q+'" 검색 결과: '+found+'건');
+    };
+
+    // ── go() 래핑: review/place 페이지 이동시 데이터 주입 ──
+    function _hookGo() {
+      if (typeof window.go !== 'function') { setTimeout(_hookGo, 50); return; }
+      var _origGo = window.go;
+      window.go = function(id, addToHistory) {
+        _origGo(id, addToHistory);
+        if (typeof MOCK_ROUTE_REVIEWS !== 'undefined' && (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id])) {
+          setTimeout(function() { renderReviewDetailPage(id); }, 30);
+        }
+        if (typeof MOCK_TOUR_PLACES !== 'undefined' && (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id])) {
+          setTimeout(function() { renderPlaceDetailPage(id); }, 30);
+        }
+      };
+    }
+    _hookGo();
+  });
+</script>
+
+<style>
+  .active-tag { background: var(--sage) !important; color: #fff !important; border-color: var(--sage-d) !important }
+  #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
+  #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
+</style>
+<div class="page" id="page-community">
+  <div class="comm-layout">
+    <div class="comm-main">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="font-size:22px;font-weight:800">커뮤니티</h2>
+        <button class="btn-f" style="padding:7px 14px;font-size:12px" onclick="checkAndOpenWrite()">+ 후기 작성</button>
+      </div>
+
+      <div class="comm-tabs" id="commTabs">
+        <button class="comm-tab on" onclick="setCommTab(this,'route')">여행 경로</button>
+        <button class="comm-tab" onclick="setCommTab(this,'stay')">숙소</button>
+        <button class="comm-tab" onclick="setCommTab(this,'food')">맛집</button>
+        <button class="comm-tab" onclick="setCommTab(this,'tour')">관광지</button>
+        <button class="comm-tab" onclick="setCommTab(this,'cafe')">카페</button>
+      </div>
+
+      <div class="search-bar">
+        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="searchType">
+          <option value="title">제목</option>
+          <option value="content">내용</option>
+          <option value="author">작성자</option>
+          <option value="tag">태그</option>
+        </select>
+        <input class="search-inp" type="text" placeholder="키워드 검색..." id="searchInp">
+        <button class="btn-search" onclick="doSearch()">검색</button>
+        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="sortSelect" onchange="sortPosts(this.value)">
+          <option value="likes">좋아요순</option>
+          <option value="scrap" selected>스크랩순</option>
+          <option value="latest">최신순</option>
+        </select>
+      </div>
+
+      <div id="tab-route"></div>
+      <div id="tab-stay" style="display:none"></div>
+      <div id="tab-food" style="display:none"></div>
+      <div id="tab-tour" style="display:none"></div>
+      <div id="tab-cafe" style="display:none"></div>
+
+      <div class="comm-pagination" id="commPagination">
+        <button class="page-btn on">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">4</button>
+        <button class="page-btn">5</button>
+      </div>
+    </div>
+
+    <div class="comm-side">
+      <div class="comm-side-sec">
+        <div class="comm-side-ttl">🔥 이번 주 인기 태그</div>
+        <div class="comm-side-tags" id="popular-tags-list">
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
+      </div>
+
+      <div class="comm-side-sec">
+        <div class="comm-side-ttl">✦ AI 취향 추천</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" id="ai-reco-title"></div>
+        <div id="ai-reco-list">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notifPopup" style="display:none;position:fixed;top:58px;right:190px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:14px;font-weight:700">🔔 알림</div>
+    <button style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3)" onclick="document.getElementById('notifPopup').style.display='none'">✕</button>
+  </div>
+  <div id="notifList" style="max-height:400px;overflow-y:auto;padding:8px"></div>
+</div>
+
+<div class="overlay" id="commWriteModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-hd">
+      <div class="modal-ttl">후기 작성</div>
+      <button class="modal-x" onclick="document.getElementById('commWriteModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd" style="overflow-y:auto;flex:1;padding:20px">
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">제목</label>
+        <input class="form-input" placeholder="제목을 입력해주세요" id="writeTitle">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">플랜 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(선택)</span></label>
+        <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value">
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">해시태그 <span style="font-size:11px;font-weight:400;color:var(--text3)">(쉼표로 구분)</span></label>
+        <input class="form-input" placeholder="예: 제주,가성비,오션뷰" id="writeTags">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">내용</label>
+        <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
+          <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--surface)">
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('bold')"><b>B</b></button>
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('italic')"><i>I</i></button>
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드 모의 동작')">📷 사진 첨부</button>
+          </div>
+          <div class="form-input" style="border:none;flex:1;outline:none;padding:12px;font-size:13px;line-height:1.6;overflow-y:auto" contenteditable="true" id="blogEditor" data-placeholder="후기를 상세히 공유해주세요..."></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="writePublic" checked> 공개 게시판 등록
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="document.getElementById('commWriteModal').classList.remove('open')">취소</button>
+          <button class="btn-f" style="padding:10px 24px;font-size:13px" onclick="submitReview()">등록하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:360px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="mpPlace"></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="mpReviews"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+        <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
+        <div style="display:flex;gap:8px" id="mpLinks"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:460px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="rdPlace"></div>
+        <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
+      <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:16px"></p>
+      <div id="rdMeta" style="font-size:11px;color:var(--text3);margin-bottom:10px"></div>
+      <div id="rdBody" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;margin-bottom:16px"></div>
+      <div style="border-top:1px dashed var(--border2);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">댓글</div>
+        <div id="rdComments"></div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input class="form-input" style="flex:1;padding:6px;font-size:12px" placeholder="댓글을 입력하세요...">
+          <button class="btn-f" style="padding:6px 12px;font-size:12px" onclick="toast('댓글 등록')">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터 - 후기/장소 상세 페이지]
+   * 나중에 백엔드 API 연동이 완료되면 이 블록을 통째로 지워주세요!
+   * ============================================================ */
+
+  // 경로 후기 상세 데이터 (r-*)
+  const MOCK_ROUTE_REVIEWS = {
+    'r-gangneung': {
+      cat: '여행 경로', region: '강원', title: '강릉 바다+커피 힐링 완벽 루트 2박3일',
+      author: '여행러버', date: '2025.02.14', likes: 89, scraps: 56, views: 3120,
+      tags: ['강릉', '바다', '카페', '힐링'],
+      body: `<p>강릉은 국내 여행지 중 바다와 커피를 동시에 즐길 수 있는 최고의 장소입니다.</p>
+<p><strong>Day 1:</strong> 안목해변 카페거리 → 경포호수 산책 → 강문해변 일몰 감상</p>
+<p><strong>Day 2:</strong> 정동진 일출 → 오죽헌 → 강릉 중앙시장 먹방 투어</p>
+<p><strong>Day 3:</strong> 솔향기공원 → 보헤미안 로스터리 → 귀가</p>
+<p>총 예산: 2인 기준 약 ₩320,000 (숙박 포함)</p>`,
+      places: [
+        { name: '안목해변', type: '해변 · 강릉시', rating: 4.8 },
+        { name: '경포호수', type: '호수 공원 · 강릉시', rating: 4.6 },
+        { name: '보헤미안 로스터리', type: '카페 · 강릉시', rating: 4.9 }
+      ]
+    },
+    'r-jeju-gaseongbi': {
+      cat: '여행 경로', region: '제주', title: '제주도 3박4일 가성비 코스 총정리',
+      author: '여행고수김씨', date: '2025.06.14', likes: 142, scraps: 98, views: 5204,
+      tags: ['제주', '가성비', '힐링', '오션뷰'],
+      body: `<p>제주도를 저렴하게 즐길 수 있는 알짜 코스를 공유합니다!</p>
+<p><strong>Day 1:</strong> 성산일출봉(무료 시간대 공략) → 섭지코지 → 우도 당일치기</p>
+<p><strong>Day 2:</strong> 한라산 영실 코스 → 중문 해수욕장 → 천지연폭포</p>
+<p><strong>Day 3:</strong> 협재해수욕장 → 한림공원 → 애월 카페거리</p>
+<p><strong>Day 4:</strong> 제주 동문시장 → 귀가</p>
+<p>총 예산: 2인 기준 약 ₩580,000 (항공+숙박+식비 포함)</p>`,
+      places: [
+        { name: '성산일출봉', type: '관광지 · 서귀포시', rating: 4.9 },
+        { name: '협재해수욕장', type: '해변 · 제주시', rating: 4.8 },
+        { name: '한라산', type: '국립공원 · 제주시', rating: 4.9 }
+      ]
+    },
+    'r-gyeongju': {
+      cat: '여행 경로', region: '경북', title: '경주 당일치기 역사 완전정복',
+      author: '힐링여행박씨', date: '2025.04.05', likes: 67, scraps: 41, views: 2408,
+      tags: ['경주', '역사', '문화', '당일치기'],
+      body: `<p>서울에서 KTX 타고 당일치기로도 충분한 경주 역사 투어!</p>
+<p><strong>오전:</strong> 불국사 → 석굴암 (셔틀버스 이용)</p>
+<p><strong>점심:</strong> 황남빵 + 교리김밥으로 가성비 식사</p>
+<p><strong>오후:</strong> 첨성대 → 동궁과 월지(야경 필수) → 대릉원</p>
+<p>팁: 동궁과 월지는 저녁 시간대에 가야 야경이 최고!</p>`,
+      places: [
+        { name: '불국사', type: '유네스코 세계유산 · 경주시', rating: 4.9 },
+        { name: '첨성대', type: '역사유적 · 경주시', rating: 4.7 },
+        { name: '동궁과 월지', type: '역사유적 · 경주시', rating: 4.8 }
+      ]
+    },
+    'r-busan': {
+      cat: '여행 경로', region: '부산', title: '부산 2박3일 핵심 스팟 14곳 완벽정리',
+      author: '여행좋아', date: '2025.04.22', likes: 95, scraps: 62, views: 3870,
+      tags: ['부산', '맛집', '바다', '가성비'],
+      body: `<p>부산 여행의 모든 것! 2박3일로 14곳을 다 돌아봤습니다.</p>
+<p><strong>Day 1:</strong> 해운대 → 광안리 야경 → 남포동 돼지국밥</p>
+<p><strong>Day 2:</strong> 감천문화마을 → 국제시장 → 자갈치시장 회 한 판</p>
+<p><strong>Day 3:</strong> 흰여울문화마을 → 태종대 → 부산역</p>`,
+      places: [
+        { name: '해운대해수욕장', type: '해변 · 부산 해운대구', rating: 4.7 },
+        { name: '감천문화마을', type: '관광지 · 부산 사하구', rating: 4.6 },
+        { name: '자갈치시장', type: '전통시장 · 부산 중구', rating: 4.5 }
+      ]
+    },
+    'r-jeonju': {
+      cat: '여행 경로', region: '전북', title: '전주 한옥마을 골목골목 미식 기행',
+      author: 'kakaotest', date: '2025.03.22', likes: 44, scraps: 28, views: 1680,
+      tags: ['전주', '한식', '한옥', '미식'],
+      body: `<p>전주는 음식과 문화가 어우러진 국내 최고의 미식 여행지입니다.</p>
+<p><strong>아침:</strong> 전동성당 포토스팟 → 한옥마을 골목 산책</p>
+<p><strong>점심:</strong> 전주비빔밥 + 콩나물국밥 (두 끼 도전!)</p>
+<p><strong>오후:</strong> 경기전 → 전주공예품전시관 → 남부시장 야시장</p>`,
+      places: [
+        { name: '전주한옥마을', type: '관광지 · 전주시', rating: 4.7 },
+        { name: '경기전', type: '역사유적 · 전주시', rating: 4.6 },
+        { name: '전동성당', type: '종교/문화 · 전주시', rating: 4.5 }
+      ]
+    },
+    'r-namhae': {
+      cat: '여행 경로', region: '경남', title: '남해 다랭이마을 + 독일마을 2박3일',
+      author: '여행러버', date: '2025.05.01', likes: 71, scraps: 45, views: 2640,
+      tags: ['남해', '힐링', '바다', '액티비티'],
+      body: `<p>국내에서 이렇게 아름다운 풍경이 있다니! 남해 강추합니다.</p>
+<p><strong>Day 1:</strong> 다랭이마을 계단식 논 산책 → 남해 앵강만 일몰</p>
+<p><strong>Day 2:</strong> 독일마을 → 보리암(탁 트인 바다 전망) → 상주은모래비치</p>
+<p><strong>Day 3:</strong> 창선·삼천포대교 드라이브 → 귀가</p>`,
+      places: [
+        { name: '다랭이마을', type: '관광지 · 남해군', rating: 4.8 },
+        { name: '독일마을', type: '관광지 · 남해군', rating: 4.6 },
+        { name: '보리암', type: '사찰/전망 · 남해군', rating: 4.9 }
+      ]
+    },
+    'r-seorak': {
+      cat: '여행 경로', region: '강원', title: '설악산 단풍 트레킹 완벽 가이드',
+      author: '여행고수김씨', date: '2025.05.10', likes: 58, scraps: 36, views: 2100,
+      tags: ['설악산', '트레킹', '가을', '자연'],
+      body: `<p>설악산 단풍은 국내 최고! 트레킹 초보자도 즐길 수 있는 코스 추천.</p>
+<p><strong>추천 코스:</strong> 소공원 → 비룡폭포 → 토왕성폭포 (왕복 4시간)</p>
+<p><strong>중급 코스:</strong> 천불동계곡 → 대청봉 (왕복 8~10시간, 이른 출발 필수)</p>
+<p>팁: 단풍 피크는 10월 초~중순, 케이블카는 예약 필수!</p>`,
+      places: [
+        { name: '설악산국립공원', type: '국립공원 · 속초시', rating: 4.9 },
+        { name: '비룡폭포', type: '폭포 · 속초시', rating: 4.7 },
+        { name: '권금성', type: '케이블카/전망 · 속초시', rating: 4.6 }
+      ]
+    },
+    'r-jeju-east-west': {
+      cat: '여행 경로', region: '제주', title: '제주 동쪽 코스 vs 서쪽 코스 비교',
+      author: '힐링여행박씨', date: '2025.05.20', likes: 83, scraps: 54, views: 3010,
+      tags: ['제주', '힐링', '오션뷰', '자연'],
+      body: `<p>제주를 여러 번 다녀온 여행자로서 동쪽 vs 서쪽을 완벽 비교해드립니다!</p>
+<p><strong>동쪽 코스:</strong> 성산일출봉 - 우도 - 세화해변 - 비자림 → 자연경관 강세</p>
+<p><strong>서쪽 코스:</strong> 협재 - 한림공원 - 애월 - 이호테우해변 → 카페/힐링 강세</p>
+<p>결론: 첫 방문이면 동쪽, 재방문이면 서쪽 추천!</p>`,
+      places: [
+        { name: '성산일출봉', type: '관광지 · 서귀포시', rating: 4.9 },
+        { name: '협재해수욕장', type: '해변 · 제주시', rating: 4.8 },
+        { name: '우도', type: '섬 · 제주시', rating: 4.8 }
+      ]
+    }
+  };
+
+  // 숙소 후기 데이터 (s-*)
+  const MOCK_STAY_REVIEWS = {
+    's-hyeopjae': {
+      cat: '숙소', title: '협재 오션뷰 풀빌라',
+      author: '여행러버', date: '2025.06.15', likes: 128, scraps: 87, views: 4892,
+      tags: ['제주', '오션뷰', '풀빌라', '힐링'], rating: 5,
+      body: `<p>제주 협재에서 오션뷰 풀빌라 경험! 완전 추천합니다.</p>
+<p>침실에서 바로 협재 바다가 보이고, 개인 풀이 있어 프라이빗하게 즐길 수 있습니다. 조식 서비스도 제공되는데 신선한 로컬 재료로 만든 메뉴가 인상적이었어요.</p>
+<p><strong>👍 장점:</strong> 오션뷰, 프라이빗 풀, 친절한 호스트</p>
+<p><strong>👎 단점:</strong> 가격이 비쌈, 주변 편의시설 부족</p>`,
+      info: { price: '₩350,000~/박', location: '제주시 한림읍 협재리', amenity: '풀빌라, 바베큐, 조식' }
+    },
+    's-anmok': {
+      cat: '숙소', title: '안목해변 오션뷰 펜션',
+      author: '여행고수김씨', date: '2025.02.16', likes: 91, scraps: 61, views: 3340,
+      tags: ['강릉', '오션뷰', '바다', '감성'], rating: 4,
+      body: `<p>강릉 안목해변 바로 앞 펜션, 커피 한 잔 들고 바라보는 일출이 최고!</p>
+<p>카페거리까지 도보 5분, 위치가 너무 좋습니다. 방에서 바로 바다가 보여요.</p>
+<p><strong>👍 장점:</strong> 위치, 뷰, 가성비</p>
+<p><strong>👎 단점:</strong> 주차 공간 협소</p>`,
+      info: { price: '₩120,000~/박', location: '강릉시 견소동 안목해변', amenity: '오션뷰, 바베큐, 주차' }
+    },
+    's-haeundae': {
+      cat: '숙소', title: '해운대 씨뷰 호텔',
+      author: '여행좋아', date: '2025.04.23', likes: 76, scraps: 52, views: 2830,
+      tags: ['부산', '해운대', '바다', '가성비'], rating: 4,
+      body: `<p>부산 해운대 중심가 씨뷰 호텔, 위치와 뷰 모두 합격!</p>
+<p>해운대 해수욕장까지 도보 3분. 고층 룸에서 보이는 광안대교 야경이 압권입니다.</p>
+<p><strong>👍 장점:</strong> 위치, 야경, 조식 퀄리티</p>
+<p><strong>👎 단점:</strong> 성수기 가격 상승</p>`,
+      info: { price: '₩180,000~/박', location: '부산 해운대구 해운대해변로', amenity: '씨뷰, 조식, 피트니스' }
+    },
+    's-jeju-compare': {
+      cat: '숙소', title: '제주신라호텔 솔직 후기',
+      author: '여행러버', date: '2025.05.20', likes: 67, scraps: 43, views: 2450,
+      tags: ['제주', '풀빌라', '오션뷰', '힐링'], rating: 5,
+      body: `<p>제주신라호텔 방문 후기입니다. 역시 명품 호텔은 다르네요.</p>
+<p>야외 수영장에서 바라보는 중문 해변 뷰가 최고입니다. 럭셔리한 서비스와 다양한 레스토랑이 인상적이었어요.</p>
+<p><strong>👍 장점:</strong> 서비스, 뷰, 편의시설</p>
+<p><strong>👎 단점:</strong> 높은 가격</p>`,
+      info: { price: '₩500,000~/박', location: '제주 서귀포시 중문관광로', amenity: '오션풀, 레스토랑, 스파' }
+    },
+    's-sokcho': {
+      cat: '숙소', title: '속초 씨뷰 호텔',
+      author: '여행좋아', date: '2025.05.12', likes: 53, scraps: 29, views: 1950,
+      tags: ['속초', '바다', '호텔', '가성비'], rating: 4,
+      body: `<p>설악산 트레킹 후 속초에서 하룻밤! 동해 일출이 압권이었습니다.</p>
+<p>속초해수욕장 근처라 아바이마을, 중앙시장 모두 접근성이 좋습니다.</p>
+<p><strong>👍 장점:</strong> 동해 뷰, 접근성, 합리적 가격</p>
+<p><strong>👎 단점:</strong> 룸이 다소 협소</p>`,
+      info: { price: '₩100,000~/박', location: '속초시 동해로', amenity: '씨뷰, 주차, 피트니스' }
+    },
+    's-gyeongju': {
+      cat: '숙소', title: '경주 한옥 펜션',
+      author: '힐링여행박씨', date: '2025.04.06', likes: 55, scraps: 34, views: 1920,
+      tags: ['경주', '한옥', '문화', '역사'], rating: 4,
+      body: `<p>경주에서의 한옥 스테이, 고즈넉한 분위기가 최고입니다!</p>
+<p>한옥마을 내 위치해 걸어서 황리단길, 첨성대 모두 갈 수 있어요. 한옥의 대청마루에서 마시는 아침 커피가 힐링 그 자체입니다.</p>
+<p><strong>👍 장점:</strong> 분위기, 위치, 조용함</p>
+<p><strong>👎 단점:</strong> 화장실이 외부에 있음</p>`,
+      info: { price: '₩130,000~/박', location: '경주시 교동 황리단길', amenity: '한옥, 조식, 주차' }
+    },
+    's-namhae': {
+      cat: '숙소', title: '남해 다랭이마을 펜션',
+      author: '힐링여행박씨', date: '2025.05.02', likes: 49, scraps: 31, views: 1840,
+      tags: ['남해', '바다', '펜션', '힐링'], rating: 4,
+      body: `<p>다랭이마을 바로 옆 언덕 위 펜션, 뷰가 정말 장관입니다!</p>
+<p>계단식 논과 바다가 동시에 보이는 희귀한 뷰. 밤에는 별 보기도 좋아요.</p>
+<p><strong>👍 장점:</strong> 독보적인 뷰, 조용한 환경</p>
+<p><strong>👎 단점:</strong> 경사진 길, 대중교통 없음</p>`,
+      info: { price: '₩110,000~/박', location: '남해군 남면 홍현리', amenity: '오션뷰, 바베큐, 주차' }
+    },
+    's-jeonju': {
+      cat: '숙소', title: '전주 한옥 스테이',
+      author: 'kakaotest', date: '2025.03.23', likes: 38, scraps: 22, views: 1240,
+      tags: ['전주', '한옥', '문화', '한식'], rating: 4,
+      body: `<p>전주한옥마을 안에 있는 정통 한옥 숙소 후기입니다.</p>
+<p>경기전까지 도보 2분. 한복 대여 서비스가 있어 한복 입고 한옥마을 산책하기 좋아요.</p>
+<p><strong>👍 장점:</strong> 위치 최고, 전통 분위기</p>
+<p><strong>👎 단점:</strong> 방음 다소 부족</p>`,
+      info: { price: '₩90,000~/박', location: '전주시 완산구 한옥마을', amenity: '한옥, 한복대여, 조식' }
+    }
+  };
+
+  // 맛집 후기 데이터 (f-* / place-f-*)
+  const MOCK_FOOD_REVIEWS = {
+    'f-jeju-top10': {
+      cat: '맛집', title: '제주도 맛집 TOP 10 완벽 정리',
+      author: '여행고수김씨', date: '2025.06.10', likes: 198, scraps: 134, views: 7820,
+      tags: ['제주', '맛집', '흑돼지', '해산물'], rating: 5,
+      body: `<p>제주도 여러 번 다니면서 검증한 진짜 맛집만 모았습니다!</p>
+<p><strong>1위 신선도원</strong> - 해산물 코스, 1인 ₩45,000~</p>
+<p><strong>2위 흑돼지거리 을식당</strong> - 흑돼지구이 1인 ₩28,000~</p>
+<p><strong>3위 올레국수</strong> - 고기국수 ₩9,000</p>
+<p><strong>4위 한림수산</strong> - 갈치조림 ₩35,000~</p>
+<p>나머지 6곳은 본문에서 확인하세요!</p>`,
+      address: '제주도 각지'
+    },
+    'f-gangneung-cafe': {
+      cat: '맛집/카페', title: '강릉 안목해변 커피거리 완벽 가이드',
+      author: '여행러버', date: '2025.02.15', likes: 87, scraps: 58, views: 3240,
+      tags: ['강릉', '카페', '커피', '안목'], rating: 5,
+      body: `<p>강릉 하면 역시 안목해변 커피! 커피 거리 탐방 후기입니다.</p>
+<p><strong>테라로사 커피공장</strong> - 스페셜티 커피, 로스팅 투어 가능</p>
+<p><strong>보헤미안 박이추커피</strong> - 원조 강릉 커피집</p>
+<p><strong>커피커퍼</strong> - 커피 박물관 併設, 포토스팟</p>
+<p>팁: 오전 일찍 가면 줄이 적습니다!</p>`,
+      address: '강릉시 견소동 안목해변'
+    },
+    'f-busan-jagalchi': {
+      cat: '맛집', title: '자갈치시장 회 + 해산물 완벽 공략',
+      author: '여행좋아', date: '2025.04.24', likes: 76, scraps: 49, views: 2890,
+      tags: ['부산', '자갈치', '회', '해산물'], rating: 4,
+      body: `<p>자갈치시장에서 제대로 된 회 먹는 법을 알려드립니다!</p>
+<p>1층 노점에서 활어를 고르고 2층 식당에서 조리비를 내고 먹는 방식이 가장 저렴합니다.</p>
+<p>2인 기준 광어+우럭 모듬회 ₩50,000 정도면 푸짐하게 즐길 수 있어요.</p>`,
+      address: '부산 중구 자갈치해안로'
+    },
+    'f-jeju-blackpig': {
+      cat: '맛집', title: '제주 흑돼지 거리 맛집 솔직 리뷰',
+      author: '여행고수김씨', date: '2025.05.21', likes: 78, scraps: 51, views: 2870,
+      tags: ['제주', '흑돼지', '맛집', '현지인'], rating: 5,
+      body: `<p>제주 현지인도 인정하는 흑돼지 거리 맛집!</p>
+<p>흑돼지는 제주 여행에서 빼놓을 수 없는 필수 코스. 삼겹살+목살 조합이 최고입니다.</p>
+<p>현지인 추천 맛집은 대기가 기본이니 오픈런 추천!</p>`,
+      address: '제주시 연동 흑돼지거리'
+    },
+    'f-gyeongju': {
+      cat: '맛집', title: '경주 황리단길 맛집 투어',
+      author: '힐링여행박씨', date: '2025.04.07', likes: 54, scraps: 33, views: 1760,
+      tags: ['경주', '황리단길', '맛집', '디저트'], rating: 4,
+      body: `<p>경주 황리단길은 맛집과 카페의 집합소!</p>
+<p><strong>황남빵</strong> - 경주 대표 간식, 꼭 먹어야 함</p>
+<p><strong>교리김밥</strong> - 줄 서서 먹는 맛집, 1줄 ₩4,000</p>
+<p><strong>쌈지길 디저트</strong> - 한옥 카페, 인스타 감성</p>`,
+      address: '경주시 황남동 황리단길'
+    },
+    'f-busan-seafood': {
+      cat: '맛집', title: '부산 해운대 씨푸드 레스토랑 후기',
+      author: '여행러버', date: '2025.04.25', likes: 64, scraps: 40, views: 2140,
+      tags: ['부산', '해산물', '가성비', '맛집'], rating: 4,
+      body: `<p>해운대에서 신선한 해산물을 합리적인 가격에!</p>
+<p>런치 세트 메뉴가 가성비 최고. 랍스터+킹크랩 세트 2인 기준 ₩120,000 정도.</p>
+<p>저녁보다 점심 타임이 훨씬 저렴하니 점심 추천!</p>`,
+      address: '부산 해운대구 해운대해변로'
+    },
+    'f-sokcho': {
+      cat: '맛집', title: '속초 물회 + 닭강정 맛집 투어',
+      author: '힐링여행박씨', date: '2025.05.13', likes: 48, scraps: 31, views: 1650,
+      tags: ['속초', '해산물', '물회', '맛집'], rating: 4,
+      body: `<p>속초에 왔으면 꼭 먹어야 하는 2가지, 물회와 닭강정!</p>
+<p><strong>속초중앙시장</strong>: 물회 ₩15,000~, 아바이순대 ₩5,000~</p>
+<p><strong>만석닭강정</strong>: 속초 원조 닭강정, 달콤매콤 최고!</p>`,
+      address: '속초시 중앙동'
+    },
+    'f-jeonju': {
+      cat: '맛집', title: '전주 비빔밥 맛집 투어 완벽 가이드',
+      author: 'kakaotest', date: '2025.03.24', likes: 52, scraps: 33, views: 1890,
+      tags: ['전주', '비빔밥', '한식', '맛집'], rating: 5,
+      body: `<p>전주 비빔밥, 어디서 먹어야 진짜인지 알려드립니다!</p>
+<p><strong>한국관</strong> - 전주 비빔밥 원조, 1인 ₩15,000~</p>
+<p><strong>가족회관</strong> - 현지인 맛집, 전주비빔밥 ₩13,000</p>
+<p>팁: 점심 피크타임(12~13시)은 대기 필수, 11시에 가세요!</p>`,
+      address: '전주시 완산구 한옥마을'
+    },
+    // place-f-* 계열
+    'place-f-bibimbap': {
+      cat: '맛집', title: '전주 비빔밥 맛집 투어',
+      author: 'kakaotest', date: '2025.03.24', likes: 52, scraps: 33, views: 1890,
+      tags: ['전주', '비빔밥', '한식'], rating: 5,
+      body: '<p>전주 비빔밥의 진수를 맛볼 수 있는 곳. 전통 방식 그대로 만든 비빔밥이 일품입니다.</p>',
+      address: '전주시 완산구 한옥마을'
+    },
+    'place-f-heukdwaeji': {
+      cat: '맛집', title: '흑돼지 거리 맛집',
+      author: '여행고수김씨', date: '2025.05.21', likes: 78, scraps: 51, views: 2870,
+      tags: ['제주', '흑돼지', '맛집'], rating: 5,
+      body: '<p>제주 흑돼지의 참맛을 느낄 수 있는 곳. 현지인도 즐겨 찾는 검증된 맛집입니다.</p>',
+      address: '제주시 연동 흑돼지거리'
+    },
+    'place-f-haundaesea': {
+      cat: '맛집', title: '해운대 씨푸드 레스토랑',
+      author: '여행러버', date: '2025.04.25', likes: 64, scraps: 40, views: 2140,
+      tags: ['부산', '해산물', '맛집'], rating: 4,
+      body: '<p>신선한 해산물 요리를 즐길 수 있는 곳. 런치 세트가 특히 가성비 좋습니다.</p>',
+      address: '부산 해운대구 해운대해변로'
+    },
+    'place-f-sokcho': {
+      cat: '맛집', title: '속초 물회 맛집',
+      author: '힐링여행박씨', date: '2025.05.13', likes: 48, scraps: 31, views: 1650,
+      tags: ['속초', '물회', '맛집'], rating: 4,
+      body: '<p>속초 중앙시장 내 물회 전문점. 신선한 활어로 만든 물회가 여름 별미입니다.</p>',
+      address: '속초시 중앙동'
+    },
+    'place-f-olleisunjae': {
+      cat: '맛집', title: '올레 이순재 국수집',
+      author: '힐링여행박씨', date: '2025.06.01', likes: 67, scraps: 42, views: 2300,
+      tags: ['제주', '국수', '고기국수'], rating: 5,
+      body: '<p>제주 고기국수 맛집. 고기 육수가 진하고 면발이 쫄깃합니다. 웨이팅 있으니 일찍 가세요!</p>',
+      address: '제주시 이도이동'
+    },
+    'place-f-jagalchi': {
+      cat: '맛집', title: '자갈치시장 회타운',
+      author: '여행좋아', date: '2025.04.24', likes: 76, scraps: 49, views: 2890,
+      tags: ['부산', '자갈치', '회'], rating: 4,
+      body: '<p>부산 자갈치시장 2층 회타운. 활어를 1층에서 직접 골라 2층에서 먹는 방식이 가장 신선합니다.</p>',
+      address: '부산 중구 자갈치해안로'
+    },
+    'place-f-teraroasa-g': {
+      cat: '카페', title: '테라로사 강릉 커피공장',
+      author: '여행러버', date: '2025.02.15', likes: 112, scraps: 76, views: 4210,
+      tags: ['강릉', '카페', '스페셜티커피'], rating: 5,
+      body: '<p>강릉 커피의 성지, 테라로사 커피공장. 공간도 멋지고 커피 품질도 국내 최정상급입니다.</p>',
+      address: '강릉시 구정면 현천길'
+    },
+    'place-f-hwangnam': {
+      cat: '맛집', title: '황남빵 본점',
+      author: '힐링여행박씨', date: '2025.04.08', likes: 89, scraps: 58, views: 3120,
+      tags: ['경주', '황남빵', '간식'], rating: 5,
+      body: '<p>경주의 대표 간식 황남빵 본점. 팥소가 꽉 찬 전통의 맛. 따뜻할 때 먹는 게 진리!</p>',
+      address: '경주시 황남동 황남빵 본점'
+    },
+    'place-f-jeonjubibim': {
+      cat: '맛집', title: '전주 한국관 비빔밥',
+      author: 'kakaotest', date: '2025.03.25', likes: 95, scraps: 67, views: 3540,
+      tags: ['전주', '비빔밥', '한식'], rating: 5,
+      body: '<p>전주비빔밥 원조집. 돌솥에 담겨 나오는 비빔밥이 맛있고 반찬 가짓수도 많습니다.</p>',
+      address: '전주시 완산구 전동'
+    },
+    'place-f-heukdwaeji': {
+      cat: '맛집', title: '흑돼지 전문점',
+      author: '여행고수김씨', date: '2025.05.22', likes: 78, scraps: 51, views: 2870,
+      tags: ['제주', '흑돼지', '구이'], rating: 5,
+      body: '<p>제주 흑돼지 전문점 현지 맛집. 두껍게 썬 삼겹살과 목살, 소금에 찍어 먹으면 최고!</p>',
+      address: '제주시 연동'
+    },
+    'place-f-haundaesea': {
+      cat: '맛집', title: '해운대 씨푸드',
+      author: '여행러버', date: '2025.04.26', likes: 64, scraps: 40, views: 2140,
+      tags: ['부산', '해산물', '랍스터'], rating: 4,
+      body: '<p>해운대에서 신선한 해산물 요리를 즐길 수 있는 레스토랑. 창가 자리에서 바다 보며 식사가 가능합니다.</p>',
+      address: '부산 해운대구 해운대해변로'
+    }
+  };
+
+  // 관광지 상세 데이터 (place-t-*)
+  const MOCK_TOUR_PLACES = {
+    'place-t-seongsan': {
+      name: '성산일출봉', region: '제주 서귀포시', type: '유네스코 세계자연유산',
+      rating: 4.9, reviews: 12840,
+      desc: '제주도 동쪽 끝에 위치한 거대한 수성화산체. 정상에서 바라보는 일출과 바다 풍경이 압권입니다.',
+      info: { hours: '07:00~20:00 (입장 마감 1시간 전)', price: '어른 ₩5,000 / 어린이 ₩2,500', tip: '일출 명소이므로 새벽 방문 추천. 정상까지 약 30분 소요.' },
+      tags: ['일출', '트레킹', '제주', '유네스코']
+    },
+    'place-t-udo': {
+      name: '우도', region: '제주 제주시', type: '섬 관광지',
+      rating: 4.8, reviews: 8920,
+      desc: '제주도 동쪽 성산항에서 배로 15분 거리의 작은 섬. 에메랄드 빛 바다와 우도 땅콩 아이스크림이 유명합니다.',
+      info: { hours: '배편 07:00~18:00 (계절마다 다름)', price: '왕복 페리 ₩10,900', tip: '자전거 대여해서 한 바퀴 도는 게 최고! 1~2시간 소요.' },
+      tags: ['섬', '자전거', '스노클링', '제주']
+    },
+    'place-t-ollesigang': {
+      name: '올레시장 (제주 동문시장)', region: '제주 제주시', type: '전통시장',
+      rating: 4.6, reviews: 5670,
+      desc: '제주도 최대 전통시장. 신선한 해산물, 제주 특산물, 로컬 먹거리를 한 자리에서 즐길 수 있습니다.',
+      info: { hours: '08:00~21:00 (점포마다 다름)', price: '무료 입장', tip: '아침 일찍 가면 신선한 해산물을 저렴하게 구입 가능.' },
+      tags: ['시장', '먹거리', '쇼핑', '제주']
+    },
+    'place-t-yongduram': {
+      name: '용두암', region: '제주 제주시', type: '자연 명소',
+      rating: 4.4, reviews: 7230,
+      desc: '제주 해안에 우뚝 솟은 용 모양의 현무암. 제주 공항 근처에 위치해 출입국 전후로 방문하기 좋습니다.',
+      info: { hours: '24시간 (야경도 아름다움)', price: '무료', tip: '일몰 무렵 방문하면 붉게 물드는 용두암을 볼 수 있습니다.' },
+      tags: ['자연', '현무암', '야경', '제주']
+    },
+    'place-t-hyeopjaebeach': {
+      name: '협재해수욕장', region: '제주 제주시', type: '해수욕장',
+      rating: 4.8, reviews: 9540,
+      desc: '제주 서부 대표 해수욕장. 에메랄드 빛 맑은 바다와 하얀 모래사장, 바다 건너 비양도 뷰가 압권입니다.',
+      info: { hours: '해수욕 가능 시간: 오전 9시~오후 7시 (여름 성수기 기준)', price: '무료 (주차비 별도)', tip: '썰물 때 바다 색이 가장 예쁩니다. 오전 방문 추천!' },
+      tags: ['해수욕', '스노클링', '바다', '제주']
+    }
+  };
+
+  // 카페 상세 데이터 (place-c-*)
+  const MOCK_CAFE_PLACES = {
+    'place-c-handam': {
+      name: '한담해안산책로 카페', region: '제주 제주시 애월', type: '오션뷰 카페',
+      rating: 4.9, reviews: 11230,
+      desc: '한담해안산책로 바로 옆 오션뷰 카페. 바다를 바라보며 즐기는 제주 감성 카페입니다.',
+      info: { hours: '09:00~21:00', price: '아메리카노 ₩7,000~', tip: '노을 질 때 가장 아름답습니다. 일몰 1시간 전 방문 추천!' },
+      tags: ['오션뷰', '힐링', '노을', '제주']
+    },
+    'place-c-arario': {
+      name: '아라리오 제주 로스터리', region: '제주 제주시', type: '스페셜티 카페',
+      rating: 4.8, reviews: 6780,
+      desc: '제주에서 만나는 스페셜티 커피 로스터리. 직접 로스팅한 원두로 내린 커피를 즐길 수 있습니다.',
+      info: { hours: '09:00~20:00', price: '스페셜티 커피 ₩8,000~', tip: '로스팅 투어 프로그램도 운영합니다 (사전 예약 필요).' },
+      tags: ['스페셜티', '커피', '로스터리', '제주']
+    },
+    'place-c-monsant': {
+      name: '애월 감성 카페 (몽상)', region: '제주 제주시 애월', type: '감성 카페',
+      rating: 4.9, reviews: 13450,
+      desc: '제주 애월 해안도로 변의 인스타 감성 카페. 노을을 배경으로 한 사진이 SNS에서 화제입니다.',
+      info: { hours: '10:00~22:00', price: '시그니처 음료 ₩9,000~', tip: '오후 늦게 가면 웨이팅이 길 수 있으니 오픈 시간에 맞춰 방문 추천.' },
+      tags: ['감성', '노을', '인스타', '제주']
+    },
+    'place-c-daraon': {
+      name: '다라온 카페', region: '경주 황리단길', type: '한옥 카페',
+      rating: 4.7, reviews: 4320,
+      desc: '경주 황리단길의 전통 한옥을 리모델링한 감성 카페. 한옥 마당에서 즐기는 커피가 특별합니다.',
+      info: { hours: '10:00~21:00', price: '음료 ₩6,500~', tip: '한복 입고 방문하면 할인 혜택 있어요!' },
+      tags: ['한옥', '경주', '감성', '커피']
+    },
+    'place-c-seohyang': {
+      name: '서향 카페', region: '전주 한옥마을', type: '전통 찻집',
+      rating: 4.6, reviews: 3210,
+      desc: '전주 한옥마을의 전통 찻집. 다양한 전통차와 한과를 즐길 수 있는 고즈넉한 공간입니다.',
+      info: { hours: '10:00~20:00', price: '전통차 ₩8,000~', tip: '대추차, 유자차 등 전통차와 함께 한과 세트를 추천합니다.' },
+      tags: ['전통차', '한옥', '전주', '한과']
+    }
+  };
+  /* ============================================================ */
+
+  /**
+   * 커뮤니티 후기/장소 상세 페이지 공통 렌더러
+   * @param {string} pageId - go()에 전달되는 페이지 ID
+   */
+  function renderReviewDetailPage(pageId) {
+    // 모든 데이터 소스에서 해당 항목 찾기
+    const allData = {
+      ...MOCK_ROUTE_REVIEWS,
+      ...MOCK_STAY_REVIEWS,
+      ...MOCK_FOOD_REVIEWS
+    };
+    const data = allData[pageId];
+    if (!data) return; // 데이터 없으면 기본 HTML 유지
+
+    const container = document.getElementById('page-' + pageId);
+    if (!container) return;
+
+    const starsHtml = '⭐'.repeat(data.rating || 4);
+    const placesHtml = data.places ? `
+      <div class="bcard" style="margin-bottom:18px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">📍 방문한 장소</div>
+        ${data.places.map(p => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border2)">
+            <div>
+              <div style="font-size:13px;font-weight:700">${p.name}</div>
+              <div style="font-size:11px;color:var(--text3)">${p.type}</div>
+            </div>
+            <div style="font-size:12px;color:var(--warm)">⭐ ${p.rating}</div>
+          </div>
+        `).join('')}
+      </div>
+    ` : (data.info ? `
+      <div class="bcard" style="margin-bottom:18px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏨 숙소 정보</div>
+        ${Object.entries(data.info).map(([k,v]) => `
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--border2)">
+            <span style="color:var(--text3)">${k === 'price' ? '가격' : k === 'location' ? '위치' : '편의시설'}</span>
+            <span style="font-weight:600">${v}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : '');
+
+    container.querySelector('.review-wrap').innerHTML = `
+      <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+      <div style="margin-bottom:10px">
+        <span class="post-cat cat-route" style="font-size:11px">${data.cat}</span>
+      </div>
+      <h1 class="review-h1">${data.title}</h1>
+      <div class="review-meta-row" style="margin-bottom:12px">
+        <span style="font-size:12px;color:var(--text3)">
+          ${data.author} · ${data.date} · ❤️ ${data.likes} · 🔖 ${data.scraps} · 👁 ${data.views}
+        </span>
+      </div>
+      ${data.rating ? `<div style="margin-bottom:14px;font-size:14px">${starsHtml} <span style="font-size:12px;color:var(--text3)">(${data.rating}.0)</span></div>` : ''}
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px">
+        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
+      </div>
+      ${placesHtml}
+      <div class="review-body">${data.body}</div>
+      <div class="comment-box" style="margin-top:24px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px">댓글</div>
+        <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;background:var(--cream2);border-radius:8px">
+          댓글 기능은 백엔드 연동 후 활성화됩니다.
+        </div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input class="form-input" style="flex:1;padding:8px;font-size:12px" placeholder="댓글을 입력하세요...">
+          <button class="btn-f" style="padding:8px 14px;font-size:12px" onclick="toast('로그인 후 이용 가능합니다.')">등록</button>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
+   * 장소 상세 페이지 렌더러 (place-t-*, place-c-*)
+   */
+  function renderPlaceDetailPage(pageId) {
+    const allPlaces = { ...MOCK_TOUR_PLACES, ...MOCK_CAFE_PLACES };
+    const data = allPlaces[pageId];
+    if (!data) return;
+
+    const container = document.getElementById('page-' + pageId);
+    if (!container) return;
+
+    container.querySelector('.place-review-wrap').innerHTML = `
+      <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div style="font-size:36px">📍</div>
+        <div>
+          <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">${data.name}</h2>
+          <div style="font-size:12px;color:var(--text3)">${data.region} · ${data.type}</div>
+          <div style="font-size:13px;margin-top:4px">⭐ <strong>${data.rating}</strong> <span style="color:var(--text3)">(리뷰 ${data.reviews.toLocaleString()}개)</span></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px">
+        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
+      </div>
+      <div class="bcard" style="margin-bottom:18px;padding:18px">
+        <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">${data.desc}</p>
+        <div style="border-top:1px dashed var(--border2);padding-top:12px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">📋 방문 정보</div>
+          ${Object.entries(data.info).map(([k,v]) => `
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--border2)">
+              <span style="color:var(--text3)">${k === 'hours' ? '운영시간' : k === 'price' ? '입장료/가격' : '팁'}</span>
+              <span style="font-weight:500;text-align:right;max-width:60%">${v}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;background:var(--cream2);border-radius:8px">
+        상세 리뷰 목록은 백엔드 연동 후 표시됩니다.
+      </div>
+    `;
+  }
+
+  // go() 함수가 review/place 페이지로 이동할 때 데이터를 주입하기 위한 훅
+  // app_main.js의 go() 함수 실행 후 처리
+  document.addEventListener('DOMContentLoaded', function() {
+    // 페이지 전환 감지를 위해 go() 래핑
+    const _origGo = window.go;
+    if (_origGo) {
+      window.go = function(id, addToHistory) {
+        _origGo(id, addToHistory);
+        // 후기 상세 페이지
+        if (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id]) {
+          setTimeout(() => renderReviewDetailPage(id), 10);
+        }
+        // 장소 상세 페이지
+        if (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id]) {
+          setTimeout(() => renderPlaceDetailPage(id), 10);
+        }
+      };
+    }
+  });
+</script>
+
+<div class="page" id="page-r-gangneung">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-jeju-gaseongbi">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-gyeongju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-busan">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-jeonju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-namhae">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-seorak">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-r-jeju-east-west">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-hyeopjae">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-anmok">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-haeundae">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-jeju-compare">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-sokcho">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-gyeongju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-namhae">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-s-jeonju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-jeju-top10">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-gangneung-cafe">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-busan-jagalchi">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-jeju-blackpig">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-gyeongju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-busan-seafood">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-sokcho">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-f-jeonju">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-bibimbap">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-heukdwaeji">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-haundaesea">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-sokcho">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-olleisunjae">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-jagalchi">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-teraroasa-g">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-hwangnam">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-f-jeonjubibim">
+  <div class="review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-t-seongsan">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-t-udo">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-t-ollesigang">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-t-yongduram">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-t-hyeopjaebeach">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-c-handam">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-c-arario">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-c-monsant">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-c-daraon">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+<div class="page" id="page-place-c-seohyang">
+  <div class="place-review-wrap">
+    <button class="review-back" onclick="go('community')">← 커뮤니티</button>
+    <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
+  </div>
+</div>
+
+</div>

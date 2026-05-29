@@ -30,9 +30,20 @@ public class EmailAuthService {
      * @param email 사용자가 입력한 이메일 주소
      */
     @Transactional
-    public void sendEmailAuthCode(String email) {
+    public void sendEmailAuthCode(String email, String type) {
         // 1. 6자리 랜덤 숫자(인증번호) 생성
         String authCode = generateRandomCode();
+
+        String subject;
+        String text;
+
+        if ("reset".equals(type)) {
+            subject = "[TripLinker] 비밀번호 재설정 인증번호입니다.";
+            text = "비밀번호 재설정을 위한 인증번호입니다.\n\n인증번호: " + authCode;
+        } else {
+            subject = "[TripLinker] 회원가입 이메일 인증번호입니다.";
+            text = "TripLinker 회원가입을 환영합니다!\n\n인증번호: " + authCode;
+        }
 
         // 2. DB 임시 창고에 저장하기 위한 엔티티 조립
         // 인증 만료 시간은 현재 시간(LocalDateTime.now())에 3분을 더해서 설정합니다.

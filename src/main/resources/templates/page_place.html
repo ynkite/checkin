@@ -1,0 +1,743 @@
+<div th:fragment="place" xmlns:th="http://www.thymeleaf.org">
+<!-- ===================================================
+ * 파일명: page_place.html
+ * 도메인: 장소(Place)
+ * 클래스: PlaceController → PlaceServiceImpl → PlaceRepository
+ * Entity: Place, PlaceReview, PlaceTag
+ * DTO:    PlaceSearchDto, PlaceResponseDto, ReviewWriteDto, ReviewResponseDto
+ * 기능:   후기 상세, 후기 수정, 장소 리뷰 목록, 날씨, 장소 상세
+ *          경로후기(8), 숙소후기(8), 맛집후기(8)
+ *          맛집상세(7), 관광지상세(5), 카페상세(5+)
+ =================================================== -->
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 1/5번째 블록]
+     * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
+     * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
+     * ============================================================ */
+
+    // 1. 후기 상세 페이지 (page-review) 데이터 완벽 추출
+    const MOCK_REVIEW_DETAIL = {
+        // 1-1. 상단 메타 정보 (카테고리, 태그, 제목, 작성자)
+        header: {
+            backBtnText: "← 커뮤니티로 돌아가기",
+            category: { text: "여행 경로", class: "cat-route" },
+            tag: { text: "힐링", style: "background:var(--sage-pale);color:var(--sage-d)" },
+            title: "강릉 바다+커피 힐링 루트 완전 정복 가이드",
+            author: {
+                avatar: "김",
+                name: "여행고수김씨",
+                date: "2025.05.22",
+                views: "👁 18,203",
+                likes: "❤️ 2,341"
+            },
+            actionButtons: [
+                { text: "❤️ 좋아요", onclick: "toast('좋아요!')", style: "padding:4px 10px;font-size:11px" },
+                { text: "★ 스크랩", onclick: "toast('스크랩!')", style: "padding:4px 10px;font-size:11px" },
+                { text: "🚨 신고", onclick: "if(confirm('신고?'))toast('신고 접수')", style: "padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)" },
+                { text: "✏️ 수정", onclick: "go('edit-review')", style: "padding:4px 10px;font-size:11px;margin-left:auto" }
+            ]
+        },
+
+        // 1-2. 연결된 플랜 배지
+        connectedPlan: {
+            label: "📋 연결된 플랜",
+            info: "강릉 2박3일 · 2인 · 힐링 · 자차 · ₩480,000",
+            btnText: "미리보기",
+            onclick: "openPreview('gangneung')"
+        },
+
+        // 1-3. 방문 장소별 별점 & 한줄평 (bcard)
+        placeReviewsTitle: "📍 방문 장소별 별점 & 한줄평",
+        placeReviews: [
+            {
+                onclick: "showReviewDetail('안목해변 오션뷰 펜션','숙소','★★★★★ 4.9','뷰가 정말 끝내줬어요! 아침 바다와 커피 최고입니다. 창문 너머로 펼쳐지는 안목해변의 풍경이 환상적이었고, 조식으로 제공된 샌드위치와 커피도 훌륭했습니다. 다음에도 꼭 다시 방문하고 싶은 숙소입니다.')",
+                icon: "🏨",
+                iconBg: "#E8F5F2",
+                name: "안목해변 오션뷰 펜션",
+                type: "숙소",
+                typeLinkHtml: '<span style="font-size:9px;color:var(--sage)">▶ 전체보기</span>',
+                stars: "★★★★★",
+                rating: "4.9",
+                comment: '"뷰가 정말 끝내줬어요! 아침 바다와 커피 최고"'
+            },
+            {
+                onclick: "showReviewDetail('테라로사 강릉본점','카페','★★★★☆ 4.5','커피 맛 정말 최고입니다. 강릉 여행 중 꼭 방문해야 할 곳이에요. 싱글오리진 원두가 다양하고 바리스타분들도 친절하게 설명해주십니다. 주말에는 웨이팅이 있지만 기다릴 충분한 가치가 있어요. 매장도 넓고 분위기도 너무 좋습니다.')",
+                icon: "☕",
+                iconBg: "#FEF3F2",
+                name: "테라로사 강릉본점",
+                type: "카페",
+                typeLinkHtml: '<span style="font-size:9px;color:var(--sage)">▶ 전체보기</span>',
+                stars: "★★★★☆",
+                rating: "4.5",
+                comment: '"커피 맛 최고. 주말 웨이팅 감안해야 해요"'
+            }
+        ],
+
+        // 1-4. 후기 본문 내용 (review-body)
+        bodyHtml: `
+    <p>강릉은 두 번 다녀온 곳이지만 이번에도 새로웠습니다. 안목해변에서 커피거리까지 걸어서 15분, 그 길이 이렇게 예쁠 줄이야...</p><br>
+    <p>숙소는 안목해변 바로 앞 오션뷰 펜션을 잡았는데, 아침에 눈 뜨자마자 바다가 펼쳐지는 경험은 잊을 수가 없어요. 강릉 여행의 핵심은 역시 <strong>느슨한 일정</strong>입니다.</p>
+  `,
+
+        // 1-5. 댓글 영역 (comment-box)
+        comments: {
+            titleHtml: '댓글 <span style="color:var(--sage)">2</span> <small style="font-size:10px;color:var(--text3);font-weight:400">(1단계 댓글만 · 대댓글 미지원)</small>',
+            input: {
+                myAvatar: "나",
+                placeholder: "댓글을 작성하세요",
+                btnText: "등록",
+                onclick: "toast('댓글 등록')",
+                onkeydown: "if(event.key==='Enter')submitComment()"
+            },
+            list: [
+                {
+                    avatar: "이",
+                    avatarStyle: "",
+                    author: "이커피러버",
+                    date: "2025.05.23",
+                    text: "테라로사 웨이팅 진짜 길더라구요 😅 다른 로스터리도 추천해주세요!"
+                },
+                {
+                    avatar: "탈",
+                    avatarStyle: "background:var(--border)",
+                    author: "탈퇴한 사용자",
+                    date: "2025.05.24",
+                    text: "저도 다음달 강릉 계획 중이에요!"
+                }
+            ]
+        },
+
+        // 1-6. 하단 액션 유도 (review-cta)
+        cta: {
+            title: "✈️ 이 경로가 마음에 드셨나요?",
+            sub: "강릉 바다+커피 힐링 루트를 내 일정으로 만들어보세요.",
+            btnText: "이 경로로 여행 계획하기 →",
+            onclick: "go('map')"
+        }
+    };
+</script>
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 2/5번째 블록]
+     * ============================================================ */
+
+    // 2. 후기 수정 페이지 (page-edit-review) 원본 데이터 추출
+    const MOCK_EDIT_REVIEW = {
+        backBtn: "← 후기로 돌아가기",
+        pageTitle: "✏️ 후기 수정",
+        form: {
+            titleLabel: "제목",
+            titleValue: "강릉 바다+커피 힐링 루트 완전 정복 가이드",
+            contentLabel: "내용",
+            contentHint: "(이미지 Ctrl+V 붙여넣기 · 드래그&드롭 지원)",
+            editorPlaceholder: "여행 후기를 수정하세요...",
+            editorContent: "강릉은 두 번 다녀온 곳이지만 이번에도 새로웠습니다. 안목해변에서 커피거리까지 걸어서 15분...",
+            toolbar: [
+                { text: "B", onclick: "document.getElementById('editBlogEditor').focus();document.execCommand('bold')", style: "padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700" },
+                { text: "I", onclick: "document.getElementById('editBlogEditor').focus();document.execCommand('italic')", style: "padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic" },
+                { text: "U", onclick: "document.getElementById('editBlogEditor').focus();document.execCommand('underline')", style: "padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline" },
+                { text: "🖼️ 이미지", onclick: "document.getElementById('editImgInput').click()", style: "padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px" }
+            ],
+            placeRatingLabel: "방문 장소별 별점 & 한줄평 수정",
+            places: [
+                {
+                    icon: "🏨",
+                    iconClass: "pr-stay",
+                    name: "안목해변 오션뷰 펜션",
+                    starsHtml: `<button class="star-btn lit" onclick="setStars(this,1)">★</button><button class="star-btn lit" onclick="setStars(this,2)">★</button><button class="star-btn lit" onclick="setStars(this,3)">★</button><button class="star-btn lit" onclick="setStars(this,4)">★</button><button class="star-btn lit" onclick="setStars(this,5)">★</button>`,
+                    commentValue: "뷰가 정말 끝내줬어요! 아침 바다와 커피 최고"
+                },
+                {
+                    icon: "☕",
+                    iconClass: "pr-food",
+                    name: "테라로사 강릉본점",
+                    starsHtml: `<button class="star-btn lit" onclick="setStars(this,1)">★</button><button class="star-btn lit" onclick="setStars(this,2)">★</button><button class="star-btn lit" onclick="setStars(this,3)">★</button><button class="star-btn lit" onclick="setStars(this,4)">★</button><button class="star-btn" onclick="setStars(this,5)">★</button>`,
+                    commentValue: "커피 맛 최고. 주말 웨이팅 감안해야 해요"
+                }
+            ],
+            visibilityLabel: "공개 여부",
+            visibilities: [
+                { text: "🌐 공개", class: "vis-chip on", onclick: "pickVis(this)" },
+                { text: "🔒 비공개", class: "vis-chip", onclick: "pickVis(this)" }
+            ],
+            actions: [
+                { text: "수정 저장", class: "btn-next", onclick: "toast('수정 완료! (status=ACTIVE 회원만 가능)');go('review')" },
+                { text: "취소", class: "btn-prev-step", onclick: "go('review')" }
+            ]
+        }
+    };
+
+    // 3. 장소 리뷰 목록 (page-place-reviews) 원본 데이터 추출
+    const MOCK_PLACE_REVIEWS_LIST = {
+        backBtn: "← 커뮤니티로 돌아가기",
+        placeHeader: {
+            icon: "🏨",
+            iconBg: "#E8F5F2",
+            name: "안목해변 오션뷰 펜션",
+            metaHtml: `강릉 · 펜션 &nbsp;·&nbsp; 📌 2,718번 플랜에 담김 &nbsp;·&nbsp; <span style="color:var(--warm);font-weight:700">★ 스크랩 287</span>`,
+            scrapBtn: "★ 스크랩",
+            scrapOnclick: "toast('스크랩!')"
+        },
+        stats: [
+            { value: "4.8", stars: "★★★★★", label: "평균 평점" },
+            { value: "248", stars: null, label: "총 리뷰 수" },
+            { value: "287", stars: null, label: "스크랩 수" }
+        ],
+        tags: ["오션뷰", "힐링", "커플 추천", "청결함"],
+        filter: {
+            title: "리뷰 목록",
+            options: ["최신순", "별점 높은순", "별점 낮은순"]
+        },
+        reviews: [
+            {
+                avatar: "김",
+                avatarStyle: "",
+                author: "여행고수김씨",
+                date: "2025.05.22",
+                stars: "★★★★★",
+                ratingNum: "4.9",
+                text: `"뷰가 정말 끝내줬어요! 아침에 창문 열면 바로 바다가 보이는 경험은 잊을 수 없습니다. 조식도 맛있고 청결도 완벽했어요."`
+            },
+            {
+                avatar: "박",
+                avatarStyle: "background:linear-gradient(135deg,var(--sky),#89C9E8)",
+                author: "강릉여행박씨",
+                date: "2025.05.18",
+                stars: "★★★★★",
+                ratingNum: "4.8",
+                text: `"커플 여행으로 방문했는데 분위기가 너무 좋았어요. 주차도 편리하고 침구도 깨끗했습니다. 꼭 다시 오고 싶어요!"`
+            },
+            {
+                avatar: "최",
+                avatarStyle: "background:linear-gradient(135deg,var(--warm),#F5A623)",
+                author: "힐링마스터최씨",
+                date: "2025.05.10",
+                stars: "★★★★☆",
+                ratingNum: "4.6",
+                text: `"전반적으로 만족스러웠어요. 오션뷰는 최고였는데 체크인이 조금 늦어진 점이 아쉬웠습니다."`
+            }
+        ]
+    };
+</script>
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 3/5번째 블록]
+     * ============================================================ */
+
+    // 4. 날씨 연동 & 보안 정책 페이지 (page-weather) 원본 데이터 추출
+    const MOCK_WEATHER_INFO = {
+        pageTitle: "날씨 연동 & 보안 정책",
+        weatherHeader: {
+            title: "🌤️ 제주도 여행 날씨 예보 (06.14~06.20)",
+            linkText: "날씨 자세히 →",
+            linkUrl: "https://weather.naver.com"
+        },
+        forecasts: [
+            { icon: "☀️", day: "06/14 (토)", temp: "24°C", desc: "맑음", isWarn: false },
+            { icon: "🌧️", day: "06/15 (일)", temp: "19°C", desc: "강수 80%", isWarn: true, warnText: "실내 추천" },
+            { icon: "⛅", day: "06/16 (월)", temp: "22°C", desc: "구름 조금", isWarn: false },
+            { icon: "🌤️", day: "06/17 (화)", temp: "25°C", desc: "맑음", isWarn: false },
+            { icon: "☀️", day: "06/18 (수)", temp: "26°C", desc: "맑음", isWarn: false },
+            { icon: "🌩️", day: "06/19 (목)", temp: "21°C", desc: "천둥번개", isWarn: true, warnText: "실내 추천" },
+            { icon: "⛅", day: "06/20 (금)", temp: "23°C", desc: "흐림", isWarn: false }
+        ],
+        weatherAlert: "⚠️ 06/15, 06/19 악천후 감지 — PLACES.is_indoor=1 기준 실내 장소 우선 배치",
+        securityPolicy: {
+            title: "🔐 보안 정책 요약",
+            items: [
+                {
+                    label: "🔑 JWT 인증",
+                    desc: "Access 30분 · Refresh 7일 · 로그아웃 시 Redis 블랙리스트"
+                },
+                {
+                    label: "🔒 로그인 보안",
+                    desc: "5회 실패 시 5분 잠금 · 90일 경과 변경 권장 · BCrypt 해시"
+                }
+            ]
+        }
+    };
+
+    // 5. 플랜 미리보기 공통 모달 (prevModal) 기본 텍스트 및 초기 검증액 데이터 추출
+    const MOCK_PREVIEW_MODAL_BASE = {
+        closeBtn: "✕",
+        stats: [
+            { id: "prevBudget", value: "₩425,000~", label: "예산 합산 검증액" },
+            { id: "prevPlaces", value: "8곳", label: "방문 장소" },
+            { id: "prevDur", value: "2박 3일", label: "일정" }
+        ]
+    };
+
+    // 날씨 페이지 초기화 함수
+    function initWeatherPage() {
+        const d = typeof MOCK_WEATHER_INFO !== 'undefined' ? MOCK_WEATHER_INFO : null;
+        if (!d) return;
+
+        const header = document.getElementById('weather-header');
+        if (header) {
+            header.innerHTML = `
+              <div style="font-size:14px;font-weight:700">${d.weatherHeader.title}</div>
+              <a href="${d.weatherHeader.linkUrl}" target="_blank"
+                style="font-size:12px;color:var(--sage);font-weight:700;text-decoration:none;padding:4px 10px;border:1.5px solid var(--sage-l);border-radius:7px;background:var(--sage-pale)">${d.weatherHeader.linkText}</a>
+            `;
+        }
+
+        const grid = document.getElementById('weather-forecast-grid');
+        if (grid) {
+            grid.innerHTML = d.forecasts.map(f => `
+              <div class="w-item${f.isWarn ? ' w-warn' : ''}">
+                <div class="w-icon">${f.icon}</div>
+                <div class="w-day">${f.day}</div>
+                <div class="w-temp">${f.temp}</div>
+                <div class="w-desc">${f.desc}</div>
+                ${f.isWarn ? `<div style="font-size:9px;color:var(--coral);margin-top:2px">${f.warnText}</div>` : ''}
+              </div>
+            `).join('');
+        }
+
+        const alertBox = document.getElementById('weather-alert-box');
+        if (alertBox) alertBox.textContent = d.weatherAlert;
+
+        const secBox = document.getElementById('security-policy-box');
+        if (secBox && d.securityPolicy && d.securityPolicy.items) {
+            secBox.innerHTML = d.securityPolicy.items.map(item => `
+              <div style="background:var(--cream);border-radius:9px;padding:12px">
+                <div style="font-weight:700;color:var(--sage);margin-bottom:4px">${item.label}</div>${item.desc}
+              </div>
+            `).join('');
+        }
+    }
+    document.addEventListener('DOMContentLoaded', initWeatherPage);
+</script>
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 4/5번째 블록]
+     * ============================================================ */
+
+    // 6. 플랜 미리보기 모달 (prevModal) 내 지도 마커 및 일자별 일정표 상세 데이터 추출
+    const MOCK_PREVIEW_MODAL_DETAILS = {
+        // 6-1. 미리보기 모달 내 지도 위 동선 마커(Dots)
+        mapDots: [
+            { top: "30%", left: "40%", num: "1", name: "안목해변" },
+            { top: "45%", left: "60%", num: "2", name: "테라로사 본점" },
+            { top: "60%", left: "30%", num: "3", name: "중앙시장" },
+            { top: "20%", left: "50%", num: "4", name: "경포대" }
+        ],
+
+        // 6-2. 미리보기 모달 내 Day 1 ~ Day 3 상세 일정 리스트
+        schedule: [
+            {
+                dayLabel: "Day 1",
+                date: "06.14 (토)",
+                places: [
+                    { time: "10:00", name: "강릉역 도착", memo: "KTX 오전 기차" },
+                    { time: "11:30", name: "안목해변 & 커피거리", memo: "바다 산책 및 사진 촬영" },
+                    { time: "13:00", name: "테라로사 강릉본점", memo: "커피와 디저트 휴식" },
+                    { time: "16:00", name: "안목해변 오션뷰 펜션", memo: "체크인 및 휴식" },
+                    { time: "18:30", name: "중앙시장", memo: "배니닭강정, 수제어묵고로케 포장" }
+                ]
+            },
+            {
+                dayLabel: "Day 2",
+                date: "06.15 (일)",
+                places: [
+                    { time: "09:30", name: "경포대 & 경포호수", memo: "자전거 대여해서 호수 돌기" },
+                    { time: "12:00", name: "초당순두부마을", memo: "짬뽕순두부 점심" },
+                    { time: "14:30", name: "오죽헌", memo: "역사 탐방" },
+                    { time: "18:00", name: "강릉항 회센터", memo: "신선한 해산물 저녁" }
+                ]
+            },
+            {
+                dayLabel: "Day 3",
+                date: "06.16 (월)",
+                places: [
+                    { time: "05:30", name: "정동진 해변", memo: "해돋이 감상" },
+                    { time: "08:00", name: "정동진역 근처 식당", memo: "아침 식사" },
+                    { time: "11:00", name: "펜션 체크아웃", memo: "짐 정리" },
+                    { time: "12:30", name: "강릉역", memo: "KTX 탑승 및 귀가" }
+                ]
+            }
+        ],
+
+        // 6-3. 모달 하단 액션 버튼
+        actions: {
+            copyBtn: "내 일정으로 가져오기",
+            copyOnclick: "toast('내 일정으로 복사되었습니다!');go('map')"
+        }
+    };
+</script>
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 5/5번째 블록]
+     * ============================================================ */
+
+    // 7. 기타 장소 상세(맛집, 관광지, 카페 등) 및 하단 렌더링을 위한 통합 데이터
+    const MOCK_EXTRA_PLACES = {
+        food: [
+            { name: "초당순두부마을", rating: "4.7", reviewCnt: 154, type: "맛집", tags: ["한식", "두부요리"] },
+            { name: "강릉항 회센터", rating: "4.5", reviewCnt: 89, type: "맛집", tags: ["해산물", "오션뷰"] }
+        ],
+        tour: [
+            { name: "오죽헌", rating: "4.8", reviewCnt: 320, type: "관광지", tags: ["역사", "가족여행"] },
+            { name: "정동진 해변", rating: "4.9", reviewCnt: 501, type: "관광지", tags: ["일출", "바다"] }
+        ],
+        cafe: [
+            { name: "테라로사 본점", rating: "4.6", reviewCnt: 412, type: "카페", tags: ["커피", "로스터리"] },
+            { name: "안목해변 카페거리", rating: "4.8", reviewCnt: 680, type: "카페", tags: ["오션뷰", "디저트"] }
+        ]
+    };
+    /* ============================================================ */
+
+
+    /* ─── 페이지 동적 데이터 주입 헬퍼 함수 ─── */
+    function initPlacePageData() {
+        // 1. 후기 상세 페이지 (page-review) 데이터 바인딩
+        if (typeof MOCK_REVIEW_DETAIL !== 'undefined') {
+            const rev = MOCK_REVIEW_DETAIL;
+            document.getElementById("pr-cat").textContent = rev.header.category.text;
+            document.getElementById("pr-tag").textContent = rev.header.tag.text;
+            document.getElementById("pr-title").textContent = rev.header.title;
+            document.getElementById("pr-author-name").textContent = rev.header.author.name;
+            document.getElementById("pr-meta").innerHTML = `<span>${rev.header.author.date}</span><span>${rev.header.author.views}</span><span>${rev.header.author.likes}</span>`;
+
+            const planBadge = document.getElementById("pr-plan-badge");
+            if (planBadge) {
+                planBadge.innerHTML = `<div style="font-size:12px;font-weight:700;color:var(--sage-d)">${rev.connectedPlan.label}</div>
+                             <div style="font-size:13px;color:var(--text2);flex:1">${rev.connectedPlan.info}</div>
+                             <button class="btn-f" style="padding:6px 12px;font-size:11px" onclick="${rev.connectedPlan.onclick}">${rev.connectedPlan.btnText}</button>`;
+            }
+
+            const placeList = document.getElementById("pr-place-list");
+            if (placeList) {
+                placeList.innerHTML = `<div class="bcard-ttl">${rev.placeReviewsTitle}</div>` +
+                    rev.placeReviews.map(p => `
+          <div class="place-review-card" onclick="${p.onclick}" style="cursor:pointer">
+            <div class="prc-icon" style="background:${p.iconBg}">${p.icon}</div>
+            <div style="flex:1">
+              <div class="prc-name">${p.name}</div>
+              <div class="prc-type">${p.type} ${p.typeLinkHtml}</div>
+            </div>
+            <div style="display:flex;align-items:center"><span class="prc-stars">${p.stars}</span><span class="prc-rating">${p.rating}</span></div>
+            <div class="prc-comment">${p.comment}</div>
+          </div>
+        `).join('');
+            }
+
+            document.getElementById("pr-body").innerHTML = rev.bodyHtml;
+
+            const commentsArea = document.getElementById("pr-comments");
+            if (commentsArea) {
+                commentsArea.innerHTML = `<div class="comment-ttl">${rev.comments.titleHtml}</div>` +
+                    `<div style="display:flex;gap:8px;margin-bottom:14px">
+          <div class="comm-av" style="flex-shrink:0">${rev.comments.input.myAvatar}</div>
+          <div style="flex:1"><input class="search-inp" type="text" placeholder="${rev.comments.input.placeholder}" onkeydown="${rev.comments.input.onkeydown}" style="margin-bottom:6px;width:100%"><br><button class="btn-f" style="padding:6px 13px;font-size:11px" onclick="${rev.comments.input.onclick}">${rev.comments.input.btnText}</button></div>
+        </div>` +
+                    rev.comments.list.map(c => `
+          <div style="display:flex;gap:8px;margin-bottom:11px">
+            <div class="comm-av" style="${c.avatarStyle}">${c.avatar}</div>
+            <div class="comm-bubble">
+              <div class="comm-hd"><span class="comm-author">${c.author}</span><span class="comm-date">${c.date}</span></div>
+              <div class="comm-text">${c.text}</div>
+            </div>
+          </div>
+        `).join('');
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initPlacePageData);
+</script>
+
+<div class="page" id="page-review">
+    <div class="review-wrap">
+        <div class="review-back" onclick="go('community')">← 커뮤니티로 돌아가기</div>
+        <div style="margin-bottom:10px">
+            <span class="post-cat cat-route" id="pr-cat"></span>&nbsp;
+            <span class="post-cat" style="background:var(--sage-pale);color:var(--sage-d)" id="pr-tag"></span>
+        </div>
+        <h1 class="review-h1" id="pr-title"></h1>
+        <div class="review-meta-row">
+            <div class="au-av">김</div><strong id="pr-author-name"></strong>
+            <div id="pr-meta" style="display:inline-flex;gap:8px"></div>
+            <button class="btn-o" style="padding:4px 10px;font-size:11px" onclick="toast('좋아요!')">❤️ 좋아요</button>
+            <button class="btn-o" style="padding:4px 10px;font-size:11px" onclick="toast('스크랩!')">★ 스크랩</button>
+            <button class="btn-o" style="padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="if(confirm('신고?'))toast('신고 접수')">🚨 신고</button>
+            <button class="btn-o" style="padding:4px 10px;font-size:11px;margin-left:auto" onclick="go('edit-review')">✏️ 수정</button>
+        </div>
+
+        <div class="review-plan-badge" id="pr-plan-badge"></div>
+        <div class="bcard" style="margin-bottom:18px" id="pr-place-list"></div>
+        <div class="review-body" id="pr-body"></div>
+        <div class="comment-box" id="pr-comments"></div>
+
+        <div class="review-cta">
+            <div class="rcta-ttl" id="pr-cta-ttl">✈️ 이 경로가 마음에 드셨나요?</div>
+            <div class="rcta-sub" id="pr-cta-sub">강릉 바다+커피 힐링 루트를 내 일정으로 만들어보세요.</div>
+            <button class="btn-rcta" onclick="go('map')">이 경로로 여행 계획하기 →</button>
+        </div>
+    </div>
+</div>
+
+<div class="page" id="page-edit-review">
+    <div class="review-wrap">
+        <div class="review-back" onclick="go('review')">← 후기로 돌아가기</div>
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:18px">✏️ 후기 수정</h2>
+        <div class="bcard write-form">
+            <div class="form-group">
+                <label class="form-label">제목</label>
+                <input class="form-input" id="editReviewTitle" value="">
+            </div>
+            <div class="form-group">
+                <label class="form-label">내용 <small style="color:var(--text3);font-weight:400">(이미지 Ctrl+V 붙여넣기 · 드래그&드롭 지원)</small></label>
+                <div style="border:1.5px solid var(--border2);border-radius:var(--r-sm);overflow:hidden">
+                    <div style="display:flex;gap:4px;padding:7px 10px;background:var(--cream);border-bottom:1px solid var(--border2)">
+                    </div>
+                    <div id="editBlogEditor" contenteditable="true" data-placeholder="여행 후기를 수정하세요..." style="min-height:200px;padding:14px;font-size:14px;color:var(--text);line-height:1.8;outline:none;font-family:inherit"></div>
+                </div>
+            </div>
+            <div class="form-group" id="edit-places-container">
+            </div>
+            <div class="form-group">
+                <label class="form-label">공개 여부</label>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                    <button class="vis-chip on" onclick="pickVis(this)">🌐 공개</button>
+                    <button class="vis-chip" onclick="pickVis(this)">🔒 비공개</button>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px">
+                <button class="btn-next" onclick="toast('수정 완료!');go('review')">수정 저장</button>
+                <button class="btn-prev-step" onclick="go('review')">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="page" id="page-place-reviews">
+    <div class="place-review-wrap">
+        <div class="review-back" onclick="go('community')">← 커뮤니티로 돌아가기</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px" id="place-reviews-header">
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px" id="place-stats-grid"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px" id="place-tags-box"></div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div style="font-size:14px;font-weight:700">리뷰 목록</div>
+            <select class="form-input" style="width:auto;padding:6px 10px;font-size:12px;cursor:pointer">
+                <option>최신순</option><option>별점 높은순</option><option>별점 낮은순</option>
+            </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px" id="place-review-list"></div>
+    </div>
+</div>
+
+<div class="page" id="page-weather">
+    <div class="info-wrap">
+        <h2 style="font-size:22px;font-weight:800;margin-bottom:22px">날씨 연동 & 보안 정책</h2>
+        <div class="info-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px" id="weather-header"></div>
+            <div class="weather-grid" id="weather-forecast-grid"></div>
+            <div style="margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D" id="weather-alert-box"></div>
+        </div>
+        <div class="info-card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">🔐 보안 정책 요약</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;font-size:12px;line-height:2;color:var(--text2)" id="security-policy-box"></div>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="prevModal" onclick="if(event.target===this)closePrev()">
+    <div class="modal" style="width:580px">
+        <button class="modal-x" onclick="closePrev()">✕</button>
+        <div class="modal-hd">
+            <div style="flex:1">
+                <div class="prev-tags" id="prevTags"></div>
+                <div class="prev-plan-ttl" id="prevPlanTtl"></div>
+            </div>
+        </div>
+        <div class="modal-bd">
+            <div class="prev-stats-row" id="prev-stats-container"></div>
+            <div class="prev-map-box">
+                <div class="prev-map-grid"></div>
+                <svg viewBox="0 0 500 150" fill="none"><path d="M100 75 Q200 45 250 85" stroke="var(--sage)" stroke-width="2" fill="none" opacity=".75"/></svg>
+                <div id="prev-map-dots"></div>
+            </div>
+            <div class="prev-days" id="prev-days-container"></div>
+            <button style="width:100%;margin-top:20px;padding:14px;border-radius:var(--r);background:var(--sage);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:14px" onclick="toast('내 일정으로 복사되었습니다!');go('map')">내 일정으로 가져오기</button>
+        </div>
+    </div>
+</div>
+<script>
+    /* ============================================================
+     * 🚨 [임시 하드코딩 데이터 - 추가 보강 블록]
+     * 누락되었던 플랜 확정 모달 및 미리보기 하단 데이터를 추출했습니다.
+     * ============================================================ */
+
+    const MOCK_MODALS_EXTRA = {
+        // 1. 플랜 미리보기(prevModal) 하단 스냅샷 텍스트
+        previewExtra: {
+            stayLabel: "🏨 숙소 스냅샷",
+            stayList: "광안리 오션스테이 외 1건",
+            foodLabel: "🍽️ 맛집 리스트 핵심글",
+            foodListHtml: "<div style='font-size:13px;color:var(--text2);margin-top:6px;line-height:1.6'>해운대 씨푸드 레스토랑, 초당순두부마을 외 3곳 포함</div>"
+        },
+
+        // 2. 플랜 확정 모달 (confirmModal)
+        confirm: {
+            title: "✅ 플랜 확정",
+            desc: "확정 시 플랜이 DB에 저장됩니다. 공개 여부를 설정해주세요.",
+            btnText: "확정 저장 후 지도로 이동",
+            onConfirm: "this.closest('.overlay').classList.remove('open');go('map');toast('플랜 확정 완료!')"
+        },
+
+        // 3. 플랜 확정 완료 축하 모달 (confirmDoneModal)
+        confirmDone: {
+            bannerIcon: "🎉",
+            bannerTitle: "여행 플랜이 확정되었습니다!",
+            bannerSub: "제주도 3박4일 힐링 여행 · 2인 · ₩404,000",
+            stats: [
+                { label: "총 예산", value: "₩404,000" },
+                { label: "방문 장소", value: "12곳" },
+                { label: "여행 기간", value: "3박 4일" }
+            ],
+            message: "이제 지도 탭에서 상세 일정을 확인하고<br>가계부에 결제 내역을 기록해보세요!",
+            buttons: [
+                { text: "👤 마이페이지로 가기", class: "btn-f", onclick: "document.getElementById('confirmDoneModal').classList.remove('open');go('mypage');toast('마이페이지로 이동합니다.')" }
+            ]
+        }
+    };
+</script>
+
+<div class="overlay" id="confirmModal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal" style="width:400px">
+        <div class="modal-hd">
+            <div class="modal-ttl" id="conf-title"></div>
+            <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+        </div>
+        <div class="modal-bd">
+            <p style="font-size:13px;color:var(--text2);margin-bottom:14px" id="conf-desc"></p>
+            <div class="form-group">
+                <label class="form-label">공개 여부</label>
+                <div style="display:flex;gap:8px;margin-top:4px">
+                    <button class="vis-chip on" onclick="pickVis(this)">🌐 공개</button>
+                    <button class="vis-chip" onclick="pickVis(this)">🔒 비공개</button>
+                </div>
+            </div>
+            <button class="btn-next" style="width:100%;margin-top:14px" id="conf-btn"></button>
+        </div>
+    </div>
+</div>
+
+<div class="overlay" id="confirmDoneModal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal" style="width:460px;border-radius:22px;overflow:hidden">
+        <button class="modal-x" style="position:absolute;top:14px;right:14px;z-index:10;color:#fff" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+
+        <div style="background:linear-gradient(135deg,var(--sage) 0%,var(--sage-l) 100%);padding:32px 26px 26px;text-align:center;position:relative">
+            <div style="font-size:52px;margin-bottom:12px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.15))" id="cd-icon"></div>
+            <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px" id="cd-title"></div>
+            <div style="font-size:13px;color:rgba(255,255,255,.85)" id="cd-sub"></div>
+        </div>
+
+        <div style="padding:20px 22px 0">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px" id="cd-stats"></div>
+
+            <div style="text-align:center;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:22px" id="cd-msg"></div>
+
+            <div style="display:flex;gap:10px;margin-bottom:10px" id="cd-btns"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 위에서 선언한 MOCK_MODALS_EXTRA 데이터를 HTML 뼈대에 주입하는 초기화 함수입니다.
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof MOCK_MODALS_EXTRA !== 'undefined') {
+            const ext = MOCK_MODALS_EXTRA;
+
+            // 미리보기(prevModal) 하단 데이터 주입
+            const prevStay = document.getElementById('prevStay');
+            const prevFoodList = document.getElementById('prevFoodList');
+            if(prevStay) prevStay.textContent = ext.previewExtra.stayList;
+            if(prevFoodList) prevFoodList.innerHTML = ext.previewExtra.foodListHtml;
+
+            // 확정 모달 (confirmModal) 주입
+            const cTitle = document.getElementById('conf-title');
+            const cDesc = document.getElementById('conf-desc');
+            const cBtn = document.getElementById('conf-btn');
+            if(cTitle) cTitle.textContent = ext.confirm.title;
+            if(cDesc) cDesc.textContent = ext.confirm.desc;
+            if(cBtn) {
+                cBtn.textContent = ext.confirm.btnText;
+                cBtn.setAttribute("onclick", ext.confirm.onConfirm);
+            }
+
+            // 확정 완료 모달 (confirmDoneModal) 주입
+            const cdIcon = document.getElementById('cd-icon');
+            const cdTitle = document.getElementById('cd-title');
+            const cdSub = document.getElementById('cd-sub');
+            const cdStats = document.getElementById('cd-stats');
+            const cdMsg = document.getElementById('cd-msg');
+            const cdBtns = document.getElementById('cd-btns');
+
+            if(cdIcon) cdIcon.textContent = ext.confirmDone.bannerIcon;
+            if(cdTitle) cdTitle.textContent = ext.confirmDone.bannerTitle;
+            if(cdSub) cdSub.textContent = ext.confirmDone.bannerSub;
+            if(cdMsg) cdMsg.innerHTML = ext.confirmDone.message;
+
+            if(cdStats) {
+                cdStats.innerHTML = ext.confirmDone.stats.map(s => `
+        <div style="background:var(--surface);border-radius:12px;padding:12px;text-align:center">
+          <div style="font-size:15px;font-weight:800;color:var(--sage)">${s.value}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">${s.label}</div>
+        </div>
+      `).join('');
+            }
+            if(cdBtns) {
+                cdBtns.innerHTML = ext.confirmDone.buttons.map(b => `
+        <button class="${b.class}" style="flex:1;padding:12px;border-radius:var(--r);font-size:13px;font-weight:700" onclick="${b.onclick}">${b.text}</button>
+      `).join('');
+            }
+        }
+    });
+</script>
+
+<!-- 여행 플랜 공유 모달 -->
+<div class="overlay" id="shareModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:480px">
+    <div class="modal-hd">
+      <div class="modal-ttl">🔗 여행 플랜 공유</div>
+      <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div class="share-tabs">
+        <button class="share-tab on" onclick="setShareTab(this,'members')">공유</button>
+        <button class="share-tab" onclick="setShareTab(this,'post')">게시</button>
+      </div>
+      <div id="share-members">
+        <div class="share-search-row">
+          <input class="share-search" type="text" placeholder="쉼표로 구분한 이메일 또는 그룹">
+          <button class="btn-invite" onclick="toast('초대 이메일 발송 완료!')">초대</button>
+        </div>
+        <div class="member-row">
+          <div class="member-av" style="background:var(--sage)">나</div>
+          <div class="member-info">
+            <div class="member-name">나 (소유자)</div>
+            <div class="member-email">user@triplinker.com</div>
+          </div>
+          <div class="member-role">소유자</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin:12px 0 8px">링크 복사</div>
+        <div class="link-row">
+          <div class="link-url">https://triplinker.kr/plan/abc123?token=edit_xyz</div>
+          <button class="btn-copy" onclick="toast('링크 복사 완료!')">링크 복사</button>
+        </div>
+      </div>
+      <div id="share-post" style="display:none">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px">이 여행 플랜을 커뮤니티에 후기로 게시합니다.</p>
+        <button class="btn-next" style="width:100%" onclick="this.closest('.overlay').classList.remove('open');document.getElementById('commWriteModal')&&document.getElementById('commWriteModal').classList.add('open')">커뮤니티 후기 작성하기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</div>
