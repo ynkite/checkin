@@ -323,32 +323,6 @@ async function doLogout() {
   go('main');
 }
 
-/** ─── POST /api/auth/signup ─── */
-async function doSignup() {
-  const username = document.getElementById('signup-id')?.value.trim();
-  const password = document.getElementById('signup-pw')?.value;
-  const name     = document.getElementById('signup-name')?.value.trim();
-  const email    = document.getElementById('signup-email')?.value.trim();
-  const region   = (() => {
-    const big  = document.getElementById('signup-region-big')?.value  || '';
-    const city = document.getElementById('signup-region-city')?.value || '';
-    return big + (city && city !== '시/군/구 선택' ? ' · ' + city : '');
-  })();
-
-  if (!username || !password || !name || !email) {
-    toast('모든 필수 항목을 입력해주세요');
-    return;
-  }
-
-  const res = await api.post('/api/auth/signup', { username, password, name, email, region });
-  if (res.success) {
-    toast('회원가입이 완료되었습니다! 로그인해주세요 🎉');
-    setTimeout(() => go('login'), 1000);
-  } else {
-    toast('⚠️ ' + (res.message || '회원가입에 실패했습니다.'));
-  }
-}
-
 /** 카카오 회원가입 완료 */
 async function doKakaoSignup() {
   const nameEl = document.getElementById('kakao-name');

@@ -187,45 +187,51 @@
   }
 
   // ── 회원가입 제출 ──
+  // ── 회원가입 제출 ──
   function doSignup() {
-    const username       = document.getElementById('username').value.trim();
-    const password       = document.getElementById('password').value;
-    const passwordConfirm= document.getElementById('passwordConfirm').value;
-    const email          = document.getElementById('email').value.trim();
-    const name           = document.getElementById('name').value.trim();
-    const birthDate      = document.getElementById('birthDate').value;
-    const province       = document.querySelectorAll('.loc-big')[0].value;
-    const city           = document.getElementById('city-select').value;
-    const genderBtn      = document.querySelector('button[onclick*="gender"].on');
-    const selectedGender = genderBtn ? genderBtn.getAttribute('data-val') : '';
-    const selectedMbti   = document.getElementById('mbti-result').innerText;
+    const username        = document.getElementById('username').value.trim();
+    const password        = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('passwordConfirm').value;
+    const email           = document.getElementById('email').value.trim();
+    const name            = document.getElementById('name').value.trim();
+    const birthDate       = document.getElementById('birthDate').value;
+    const province        = document.querySelectorAll('.loc-big')[0].value;
+    const city            = document.getElementById('city-select').value;
+    const genderBtn       = document.querySelector('button[onclick*="gender"].on');
+    const selectedGender  = genderBtn ? genderBtn.getAttribute('data-val') : '';
+    const selectedMbti    = document.getElementById('mbti-result').innerText;
 
-    if (!username)       { alert(AUTH_VALID_MSG.idEmpty.replace('먼저 ', '')); return; }
-    if (!name)           { alert(AUTH_VALID_MSG.nameEmpty); return; }
-    if (!email)          { alert(AUTH_VALID_MSG.emailEmptyForm); return; }
-    if (!isEmailVerified){ alert(AUTH_VALID_MSG.emailNotVerify); return; }
-    if (!password)       { alert(AUTH_VALID_MSG.pwEmpty); return; }
-    if (!PW_PATTERN.test(password)) { alert(PW_PATTERN_MSG); return; }
-    if (password !== passwordConfirm) { alert('비밀번호 재입력이 일치하지 않습니다.'); return; }
-    if (!birthDate)      { alert(AUTH_VALID_MSG.birthEmpty); return; }
-    if (!province || province === '도/시 선택') { alert(AUTH_VALID_MSG.regionEmpty); return; }
-    if (!selectedGender) { alert(AUTH_VALID_MSG.genderEmpty); return; }
-    if (selectedMbti.length !== 4) { alert(AUTH_VALID_MSG.mbtiIncomplete); return; }
+    // ── 유효성 검사 ──
+    if (!username)                          { toast(AUTH_VALID_MSG.idEmpty.replace('먼저 ', '')); return; }
+    if (!name)                              { toast(AUTH_VALID_MSG.nameEmpty); return; }
+    if (!email)                             { toast(AUTH_VALID_MSG.emailEmptyForm); return; }
+    if (!isEmailVerified)                   { toast(AUTH_VALID_MSG.emailNotVerify); return; }
+    if (!password)                          { toast(AUTH_VALID_MSG.pwEmpty); return; }
+    if (!PW_PATTERN.test(password))         { toast(PW_PATTERN_MSG); return; }
+    if (password !== passwordConfirm)       { toast('비밀번호 재입력이 일치하지 않습니다.'); return; }
+    if (!birthDate)                         { toast(AUTH_VALID_MSG.birthEmpty); return; }
+    if (!province || province === '도/시 선택') { toast(AUTH_VALID_MSG.regionEmpty); return; }
+    if (!selectedGender)                    { toast(AUTH_VALID_MSG.genderEmpty); return; }
+    if (selectedMbti.length !== 4)          { toast(AUTH_VALID_MSG.mbtiIncomplete); return; }
 
-    const finalRegion = province + (city && city !== '시/군/구 선택' ? ' ' + city : '');
-    const requestData = { username, password, email, name, region: finalRegion, birthDate, gender: selectedGender, mbti: selectedMbti };
+    // ── 요청 데이터 구성 ──
+    const region = province + (city && city !== '시/군/구 선택' ? ' ' + city : '');
+    const requestData = { username, password, email, name, region, birthDate, gender: selectedGender, mbti: selectedMbti };
 
+    // ── API 호출 ──
     fetch(AUTH_API.signup, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestData),
     }).then(async response => {
       if (response.ok) {
-        alert(AUTH_VALID_MSG.signupSuccess);
+        toast(AUTH_VALID_MSG.signupSuccess);
+        setTimeout(() => go('login'), 1000);
       } else {
         const errData = await response.json().catch(() => null);
-        const msg = (errData?.errors?.[0]?.defaultMessage) || AUTH_VALID_MSG.signupFail.split(': ')[1];
-        alert('가입 실패: ' + msg);
+        const msg = errData?.errors?.[0]?.defaultMessage
+                || AUTH_VALID_MSG.signupFail.split(': ')[1];
+        toast('⚠️ 가입 실패: ' + msg);
       }
     });
   }
@@ -366,7 +372,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">비밀번호</label>
-        <input class="form-input" type="password" id="password" placeholder="영문+숫자+특수문자" oninput="checkPw(this)">
+        <input class="form-input" type="password" id="password" placeholder="영문 대·소문자+숫자+특수문자" oninput="checkPw(this)">
         <div class="pw-bar-wrap"><div class="pw-bar" id="pw-bar"></div></div>
         <div class="form-msg" id="pw-msg"></div>
       </div>
@@ -648,7 +654,7 @@
     <!-- Step 3: 새 비밀번호 -->
     <div class="pw-reset-step" id="pw-reset-step3">
       <label class="pr-label">새 비밀번호</label>
-      <input class="pr-input" type="password" id="pr-new" placeholder="영문+숫자+특수문자 8~16자">
+      <input class="pr-input" type="password" id="pr-new" placeholder="영문 대·소문자+숫자+특수문자 8~16자">
       <label class="pr-label" style="margin-top:12px">새 비밀번호 확인</label>
       <input class="pr-input" type="password" id="pr-confirm" placeholder="비밀번호 재입력"
              onkeydown="if(event.key==='Enter')prChangePassword()">
