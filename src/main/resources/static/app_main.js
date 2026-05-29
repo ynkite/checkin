@@ -120,7 +120,7 @@ let _loginLockedUntil = null;
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
-  if (addToHistory !== false && id !== 'main') history.pushState({ page: id }, '', location.href);
+  if (addToHistory !== false && id !== 'main') history.pushState({page: id}, '', location.href);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
@@ -149,21 +149,22 @@ function go(id, addToHistory) {
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   window.scrollTo(0, 0);
 
-  // 후기/장소 상세 페이지 이동 시 렌더러 호출
+  // 후기/장소 상세 페이지 이동 시 데이터 렌더러 호출
+// 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
   setTimeout(function() {
-    if (typeof renderReviewDetailPage === 'function') {
-      const allReviews = {};
-      if (typeof MOCK_ROUTE_REVIEWS !== 'undefined') Object.assign(allReviews, MOCK_ROUTE_REVIEWS);
-      if (typeof MOCK_STAY_REVIEWS !== 'undefined')  Object.assign(allReviews, MOCK_STAY_REVIEWS);
-      if (typeof MOCK_FOOD_REVIEWS !== 'undefined')  Object.assign(allReviews, MOCK_FOOD_REVIEWS);
-      if (allReviews[id]) renderReviewDetailPage(id);
-    }
-    if (typeof renderPlaceDetailPage === 'function') {
-      const allPlaces = {};
-      if (typeof MOCK_TOUR_PLACES !== 'undefined')  Object.assign(allPlaces, MOCK_TOUR_PLACES);
-      if (typeof MOCK_CAFE_PLACES !== 'undefined')  Object.assign(allPlaces, MOCK_CAFE_PLACES);
-      if (allPlaces[id]) renderPlaceDetailPage(id);
-    }
+    try {
+      var allR = Object.assign({},
+          typeof MOCK_ROUTE_REVIEWS!=='undefined' ? MOCK_ROUTE_REVIEWS : {},
+          typeof MOCK_STAY_REVIEWS !=='undefined' ? MOCK_STAY_REVIEWS  : {},
+          typeof MOCK_FOOD_REVIEWS !=='undefined' ? MOCK_FOOD_REVIEWS  : {}
+      );
+      if (allR[id] && typeof renderReviewDetailPage==='function') renderReviewDetailPage(id);
+      var allP = Object.assign({},
+          typeof MOCK_TOUR_PLACES!=='undefined' ? MOCK_TOUR_PLACES : {},
+          typeof MOCK_CAFE_PLACES!=='undefined' ? MOCK_CAFE_PLACES : {}
+      );
+      if (allP[id] && typeof renderPlaceDetailPage==='function') renderPlaceDetailPage(id);
+    } catch(e) {}
   }, 30);
 }
 
@@ -320,32 +321,6 @@ async function doLogout() {
   updateNav();
   toast('로그아웃 되었습니다.');
   go('main');
-}
-
-/** ─── POST /api/auth/signup ─── */
-async function doSignup() {
-  const username = document.getElementById('signup-id')?.value.trim();
-  const password = document.getElementById('signup-pw')?.value;
-  const name     = document.getElementById('signup-name')?.value.trim();
-  const email    = document.getElementById('signup-email')?.value.trim();
-  const region   = (() => {
-    const big  = document.getElementById('signup-region-big')?.value  || '';
-    const city = document.getElementById('signup-region-city')?.value || '';
-    return big + (city && city !== '시/군/구 선택' ? ' · ' + city : '');
-  })();
-
-  if (!username || !password || !name || !email) {
-    toast('모든 필수 항목을 입력해주세요');
-    return;
-  }
-
-  const res = await api.post('/api/auth/signup', { username, password, name, email, region });
-  if (res.success) {
-    toast('회원가입이 완료되었습니다! 로그인해주세요 🎉');
-    setTimeout(() => go('login'), 1000);
-  } else {
-    toast('⚠️ ' + (res.message || '회원가입에 실패했습니다.'));
-  }
 }
 
 /** 카카오 회원가입 완료 */
@@ -1295,26 +1270,20 @@ const _md = {
 };
 
 function openPreview(key) {
-  const d=_md[key]||_md.jeju;
+  const d = _md[key] || _md.jeju;
   const modal = document.getElementById('prevModal');
   if (!modal) { toast('미리보기를 불러올 수 없습니다.'); return; }
-  const prevTags = document.getElementById('prevTags');
-  const prevPlanTtl = document.getElementById('prevPlanTtl');
-  const prevBudget = document.getElementById('prevBudget');
-  const prevPlaces = document.getElementById('prevPlaces');
-  const prevDur = document.getElementById('prevDur');
-  const prevStay = document.getElementById('prevStay');
-  const prevFoodList = document.getElementById('prevFoodList');
-  if (prevTags) prevTags.innerHTML = d.tags.map(t=>`<span class="prev-tag">${t}</span>`).join('');
-  if (prevPlanTtl) prevPlanTtl.textContent = d.ttl;
-  if (prevBudget) prevBudget.textContent  = d.budget;
-  if (prevPlaces) prevPlaces.textContent  = d.places;
-  if (prevDur)    prevDur.textContent     = d.dur;
-  if (prevStay)   prevStay.textContent    = d.stay;
-  if (prevFoodList) prevFoodList.innerHTML = d.foods.map(f=>`<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">${f.icon}</span>${f.name}</div><span class="pfi-rating">★ ${f.r}</span></div>`).join('');
+  const el = function(id){ return document.getElementById(id); };
+  if (el('prevTags'))     el('prevTags').innerHTML     = d.tags.map(t=>`<span class="prev-tag">${t}</span>`).join('');
+  if (el('prevPlanTtl'))  el('prevPlanTtl').textContent = d.ttl;
+  if (el('prevBudget'))   el('prevBudget').textContent  = d.budget;
+  if (el('prevPlaces'))   el('prevPlaces').textContent  = d.places;
+  if (el('prevDur'))      el('prevDur').textContent     = d.dur;
+  if (el('prevStay'))     el('prevStay').textContent    = d.stay;
+  if (el('prevFoodList')) el('prevFoodList').innerHTML  = d.foods.map(f=>`<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">${f.icon}</span>${f.name}</div><span class="pfi-rating">★ ${f.r}</span></div>`).join('');
   modal.classList.add('open');
 }
-function closePrev() { const m=document.getElementById('prevModal'); if(m) m.classList.remove('open'); }
+function closePrev() { const m = document.getElementById('prevModal'); if(m) m.classList.remove('open'); }
 
 /* ───────────────────────────────────────────────
  * 22. Chips / MBTI / Location

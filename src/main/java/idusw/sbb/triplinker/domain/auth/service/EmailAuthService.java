@@ -18,7 +18,6 @@ import java.util.Random;
 @Service
 @RequiredArgsConstructor
 public class EmailAuthService {
-
     // application.properties에 설정한 구글 계정을 통해 실제로 메일을 발송해 주는 스프링 내장 도구입니다.
     private final JavaMailSender mailSender;
 

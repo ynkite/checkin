@@ -1,7 +1,10 @@
+// 로그인·로그아웃·비밀번호 재설정 API 엔드포인트
 package idusw.sbb.triplinker.domain.auth.controller;
 
 import idusw.sbb.triplinker.domain.auth.dto.PasswordResetDTO;
 import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
+import idusw.sbb.triplinker.domain.auth.dto.LoginRequestDto;
+import idusw.sbb.triplinker.domain.auth.dto.TokenResponseDto;
 import idusw.sbb.triplinker.domain.auth.service.AuthService;
 import idusw.sbb.triplinker.domain.auth.service.EmailAuthService;
 import jakarta.validation.Valid;
@@ -9,12 +12,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+
+
     private final EmailAuthService emailAuthService;
 
     // 아이디 중복 체크 API
@@ -29,6 +36,11 @@ public class AuthController {
     public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(authService.checkEmail(email));
     }
+    // POST /api/auth/login
+    @PostMapping("/login")
+    public ResponseEntity<TokenResponseDto> login(@RequestBody LoginRequestDto dto) {
+        return ResponseEntity.ok(authService.login(dto));
+    }
 
     // 회원가입 API
     @PostMapping("/signup")
@@ -37,11 +49,23 @@ public class AuthController {
         return ResponseEntity.ok("회원가입이 완료되었습니다.");
     }
 
+    // POST /api/auth/refresh
+    @PostMapping("/refresh")
+    public ResponseEntity<TokenResponseDto> refresh(@RequestBody Map<String, String> body) {
+        return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
+    }
+
     // 인증번호 발송 요청
     @PostMapping("/send-email")
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
         emailAuthService.sendEmailAuthCode(email, "signup");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
+    }
+    // POST /api/auth/logout  (userId는 나중에 JWT에서 꺼낼 예정)
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestParam Long userId) {
+        authService.logout(userId);
+        return ResponseEntity.ok().build();
     }
 
     //인증번호 확인 요청

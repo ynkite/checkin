@@ -6,11 +6,14 @@
 
   // ── API 엔드포인트 ──
   const AUTH_API = {
-    checkUsername: '/api/auth/check-username',
-    checkEmail:    '/api/auth/check-email',
-    sendEmail:     '/api/auth/send-email',
-    verifyEmail:   '/api/auth/verify-email',
-    signup:        '/api/auth/signup',
+    checkUsername:  '/api/auth/check-username',
+    checkEmail:     '/api/auth/check-email',
+    sendEmail:      '/api/auth/send-email',
+    verifyEmail:    '/api/auth/verify-email',
+    signup:         '/api/auth/signup',
+    pwResetRequest: '/api/auth/password/reset-request',
+    pwResetVerify:  '/api/auth/verify-email',
+    pwReset:        '/api/auth/password/reset',
   };
 
   // ── 페이지 텍스트 ──
@@ -91,14 +94,6 @@
                 REGION_PROVINCES.map(p => `<option>${p}</option>`).join('');
       }
     });
-
-    // 성별 칩 (기존 로직 유지)
-    const genderRow = document.querySelector('button[onclick*="gender"]')?.closest('.chip-row');
-    if (genderRow) {
-      genderRow.innerHTML = GENDER_OPTIONS.map(g =>
-              `<button class="chip" onclick="pick(this,'gender')" data-val="${g.val}">${g.label}</button>`
-      ).join('');
-    }
 
     // MBTI 선택기 (기존 로직 유지)
     const mbtiSel = document.getElementById('mbti-selector');
@@ -192,47 +187,151 @@
   }
 
   // ── 회원가입 제출 ──
+  // ── 회원가입 제출 ──
   function doSignup() {
-    const username       = document.getElementById('username').value.trim();
-    const password       = document.getElementById('password').value;
-    const passwordConfirm= document.getElementById('passwordConfirm').value;
-    const email          = document.getElementById('email').value.trim();
-    const name           = document.getElementById('name').value.trim();
-    const birthDate      = document.getElementById('birthDate').value;
-    const province       = document.querySelectorAll('.loc-big')[0].value;
-    const city           = document.getElementById('city-select').value;
-    const genderBtn      = document.querySelector('button[onclick*="gender"].on');
-    const selectedGender = genderBtn ? genderBtn.getAttribute('data-val') : '';
-    const selectedMbti   = document.getElementById('mbti-result').innerText;
+    const username        = document.getElementById('username').value.trim();
+    const password        = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('passwordConfirm').value;
+    const email           = document.getElementById('email').value.trim();
+    const name            = document.getElementById('name').value.trim();
+    const birthDate       = document.getElementById('birthDate').value;
+    const province        = document.querySelectorAll('.loc-big')[0].value;
+    const city            = document.getElementById('city-select').value;
+    const genderBtn       = document.querySelector('button[onclick*="gender"].on');
+    const selectedGender  = genderBtn ? genderBtn.getAttribute('data-val') : '';
+    const selectedMbti    = document.getElementById('mbti-result').innerText;
 
-    if (!username)       { alert(AUTH_VALID_MSG.idEmpty.replace('먼저 ', '')); return; }
-    if (!name)           { alert(AUTH_VALID_MSG.nameEmpty); return; }
-    if (!email)          { alert(AUTH_VALID_MSG.emailEmptyForm); return; }
-    if (!isEmailVerified){ alert(AUTH_VALID_MSG.emailNotVerify); return; }
-    if (!password)       { alert(AUTH_VALID_MSG.pwEmpty); return; }
-    if (!PW_PATTERN.test(password)) { alert(PW_PATTERN_MSG); return; }
-    if (password !== passwordConfirm) { alert('비밀번호 재입력이 일치하지 않습니다.'); return; }
-    if (!birthDate)      { alert(AUTH_VALID_MSG.birthEmpty); return; }
-    if (!province || province === '도/시 선택') { alert(AUTH_VALID_MSG.regionEmpty); return; }
-    if (!selectedGender) { alert(AUTH_VALID_MSG.genderEmpty); return; }
-    if (selectedMbti.length !== 4) { alert(AUTH_VALID_MSG.mbtiIncomplete); return; }
+    // ── 유효성 검사 ──
+    if (!username)                          { toast(AUTH_VALID_MSG.idEmpty.replace('먼저 ', '')); return; }
+    if (!name)                              { toast(AUTH_VALID_MSG.nameEmpty); return; }
+    if (!email)                             { toast(AUTH_VALID_MSG.emailEmptyForm); return; }
+    if (!isEmailVerified)                   { toast(AUTH_VALID_MSG.emailNotVerify); return; }
+    if (!password)                          { toast(AUTH_VALID_MSG.pwEmpty); return; }
+    if (!PW_PATTERN.test(password))         { toast(PW_PATTERN_MSG); return; }
+    if (password !== passwordConfirm)       { toast('비밀번호 재입력이 일치하지 않습니다.'); return; }
+    if (!birthDate)                         { toast(AUTH_VALID_MSG.birthEmpty); return; }
+    if (!province || province === '도/시 선택') { toast(AUTH_VALID_MSG.regionEmpty); return; }
+    if (!selectedGender)                    { toast(AUTH_VALID_MSG.genderEmpty); return; }
+    if (selectedMbti.length !== 4)          { toast(AUTH_VALID_MSG.mbtiIncomplete); return; }
 
-    const finalRegion = province + (city && city !== '시/군/구 선택' ? ' ' + city : '');
-    const requestData = { username, password, email, name, region: finalRegion, birthDate, gender: selectedGender, mbti: selectedMbti };
+    // ── 요청 데이터 구성 ──
+    const region = province + (city && city !== '시/군/구 선택' ? ' ' + city : '');
+    const requestData = { username, password, email, name, region, birthDate, gender: selectedGender, mbti: selectedMbti };
 
+    // ── API 호출 ──
     fetch(AUTH_API.signup, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestData),
     }).then(async response => {
       if (response.ok) {
-        alert(AUTH_VALID_MSG.signupSuccess);
+        toast(AUTH_VALID_MSG.signupSuccess);
+        setTimeout(() => go('login'), 1000);
       } else {
         const errData = await response.json().catch(() => null);
-        const msg = (errData?.errors?.[0]?.defaultMessage) || AUTH_VALID_MSG.signupFail.split(': ')[1];
-        alert('가입 실패: ' + msg);
+        const msg = errData?.errors?.[0]?.defaultMessage
+                || AUTH_VALID_MSG.signupFail.split(': ')[1];
+        toast('⚠️ 가입 실패: ' + msg);
       }
     });
+  }
+
+  // ── 비밀번호 재설정 모달 ──
+  let _pwResetEmail = '';
+  let _pwResetCode  = '';
+
+  function openPwResetModal() {
+    _pwResetEmail = '';
+    _pwResetCode  = '';
+    // 단계 초기화
+    document.querySelectorAll('.pw-reset-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('pw-reset-step1').classList.add('active');
+    // 입력 초기화
+    ['pr-email','pr-code','pr-new','pr-confirm'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('pr-email-msg').textContent = '';
+    document.getElementById('pr-code-msg').textContent  = '';
+    document.getElementById('pr-pw-msg').textContent    = '';
+    document.getElementById('pw-reset-modal').style.display = 'flex';
+  }
+
+  function closePwResetModal() {
+    document.getElementById('pw-reset-modal').style.display = 'none';
+  }
+
+  function prShowStep(n) {
+    document.querySelectorAll('.pw-reset-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('pw-reset-step' + n).classList.add('active');
+  }
+
+  function prSetMsg(id, msg, ok) {
+    const el = document.getElementById(id);
+    el.textContent  = msg;
+    el.style.color  = ok ? 'var(--sage-d, #4a7c59)' : 'var(--coral, #e05c5c)';
+  }
+
+  // 1단계: 이메일로 인증번호 발송
+  function prSendCode() {
+    const email = document.getElementById('pr-email').value.trim();
+    if (!email) { prSetMsg('pr-email-msg', '이메일을 입력해주세요.', false); return; }
+    prSetMsg('pr-email-msg', '발송 중입니다...', true);
+    fetch(AUTH_API.pwResetRequest, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    }).then(async res => {
+      if (res.ok) {
+        _pwResetEmail = email;
+        prSetMsg('pr-email-msg', '✅ 인증번호가 이메일로 발송되었습니다.', true);
+        setTimeout(() => prShowStep(2), 800);
+      } else {
+        const msg = await res.text().catch(() => '');
+        prSetMsg('pr-email-msg', '❌ ' + (msg || '등록되지 않은 이메일입니다.'), false);
+      }
+    }).catch(() => prSetMsg('pr-email-msg', '❌ 네트워크 오류가 발생했습니다.', false));
+  }
+
+  // 2단계: 인증번호 확인
+  function prVerifyCode() {
+    const code = document.getElementById('pr-code').value.trim();
+    if (!code) { prSetMsg('pr-code-msg', '인증번호를 입력해주세요.', false); return; }
+    prSetMsg('pr-code-msg', '확인 중...', true);
+    fetch(`${AUTH_API.pwResetVerify}?email=${encodeURIComponent(_pwResetEmail)}&code=${code}`, {
+      method: 'POST'
+    }).then(res => {
+      if (res.ok) {
+        _pwResetCode = code;
+        prSetMsg('pr-code-msg', '✅ 인증되었습니다.', true);
+        setTimeout(() => prShowStep(3), 800);
+      } else {
+        prSetMsg('pr-code-msg', '❌ 인증번호가 틀렸거나 만료되었습니다.', false);
+      }
+    }).catch(() => prSetMsg('pr-code-msg', '❌ 네트워크 오류가 발생했습니다.', false));
+  }
+
+  // 3단계: 새 비밀번호 변경
+  function prChangePassword() {
+    const newPw     = document.getElementById('pr-new').value;
+    const confirmPw = document.getElementById('pr-confirm').value;
+    if (!newPw) { prSetMsg('pr-pw-msg', '비밀번호를 입력해주세요.', false); return; }
+    if (!PW_PATTERN.test(newPw)) { prSetMsg('pr-pw-msg', PW_PATTERN_MSG, false); return; }
+    if (newPw !== confirmPw)  { prSetMsg('pr-pw-msg', '비밀번호가 일치하지 않습니다.', false); return; }
+    prSetMsg('pr-pw-msg', '변경 중...', true);
+    fetch(AUTH_API.pwReset, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: _pwResetEmail, code: _pwResetCode, newPassword: newPw })
+    }).then(async res => {
+      if (res.ok) {
+        prSetMsg('pr-pw-msg', '🎉 비밀번호가 변경되었습니다!', true);
+        setTimeout(() => { closePwResetModal(); }, 1500);
+      } else {
+        const msg = await res.text().catch(() => '');
+        prSetMsg('pr-pw-msg', '❌ ' + (msg || '변경에 실패했습니다. 다시 시도해주세요.'), false);
+      }
+    }).catch(() => prSetMsg('pr-pw-msg', '❌ 네트워크 오류가 발생했습니다.', false));
   }
 
   document.addEventListener('DOMContentLoaded', initAuthPage);
@@ -273,7 +372,7 @@
       </div>
       <div class="form-group">
         <label class="form-label">비밀번호</label>
-        <input class="form-input" type="password" id="password" placeholder="영문+숫자+특수문자" oninput="checkPw(this)">
+        <input class="form-input" type="password" id="password" placeholder="영문 대·소문자+숫자+특수문자" oninput="checkPw(this)">
         <div class="pw-bar-wrap"><div class="pw-bar" id="pw-bar"></div></div>
         <div class="form-msg" id="pw-msg"></div>
       </div>
@@ -302,8 +401,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">성별</label>
-        <!-- 성별 칩: JS initAuthPage() 로 동적 주입 -->
-        <div class="chip-row"></div>
+        <div class="chip-row" id="gender-chip-row">
+          <button class="chip" onclick="pick(this,'gender')" data-val="M">남성</button>
+          <button class="chip" onclick="pick(this,'gender')" data-val="F">여성</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">MBTI <small style="color:var(--text3);font-weight:400">(J/P → 일정 밀도 자동 설정)</small></label>
@@ -392,7 +493,7 @@
       </div>
       <button class="btn-f" style="width:100%;padding:12px;font-size:14px;border-radius:var(--r);margin-bottom:9px" onclick="tryLogin()">로그인</button>
       <div style="text-align:center;margin-bottom:12px">
-        <button class="auth-link" style="font-size:12px" onclick="openPwReset()">비밀번호 찾기</button>
+        <button class="auth-link" style="font-size:12px" onclick="openPwResetModal()">비밀번호 재설정</button>
       </div>
       <div class="social-sep">
         <div class="social-line"></div><span class="social-txt">소셜 로그인</span><div class="social-line"></div>
@@ -407,5 +508,175 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════════
+     비밀번호 재설정 모달
+══════════════════════════════════════════════════ -->
+<style>
+  #pw-reset-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0,0,0,0.45);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(3px);
+  }
+  .pr-card {
+    background: var(--card, #fff);
+    border-radius: 18px;
+    width: 400px;
+    max-width: calc(100vw - 32px);
+    padding: 32px 28px 28px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    position: relative;
+    animation: prSlideIn .22s ease;
+  }
+  @keyframes prSlideIn {
+    from { opacity:0; transform:translateY(12px) scale(.97); }
+    to   { opacity:1; transform:none; }
+  }
+  .pr-close-btn {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: none; border: none;
+    font-size: 20px; cursor: pointer;
+    color: var(--text3, #999);
+    line-height: 1;
+    padding: 4px;
+  }
+  .pr-close-btn:hover { color: var(--text1, #333); }
+  .pr-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text1, #222);
+    margin-bottom: 4px;
+  }
+  .pr-sub {
+    font-size: 13px;
+    color: var(--text3, #999);
+    margin-bottom: 22px;
+  }
+  .pr-steps-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .pr-step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    background: var(--bg2, #f0f0f0);
+    color: var(--text3, #aaa);
+    transition: background .2s, color .2s;
+    flex-shrink: 0;
+  }
+  .pr-step-dot.done  { background: var(--sage, #5a8a6a); color: #fff; }
+  .pr-step-dot.active{ background: var(--main, #5a8a6a); color: #fff; box-shadow: 0 0 0 3px rgba(90,138,106,.2); }
+  .pr-step-line      { flex: 1; height: 2px; background: var(--bg2, #e8e8e8); transition: background .2s; }
+  .pr-step-line.done { background: var(--sage, #5a8a6a); }
+  .pw-reset-step        { display: none; }
+  .pw-reset-step.active { display: block; }
+  .pr-label {
+    display: block;
+    font-size: 13px; font-weight: 600;
+    color: var(--text2, #555);
+    margin-bottom: 6px;
+  }
+  .pr-input {
+    width: 100%; padding: 10px 12px;
+    border: 1.5px solid var(--border, #ddd);
+    border-radius: 9px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: var(--bg1, #fafafa);
+    color: var(--text1, #222);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .pr-input:focus { border-color: var(--main, #5a8a6a); background: #fff; }
+  .pr-msg { font-size: 12px; min-height: 18px; margin-top: 5px; }
+  .pr-btn {
+    width: 100%; padding: 11px;
+    background: var(--main, #5a8a6a);
+    color: #fff;
+    border: none; border-radius: 9px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    margin-top: 12px;
+    transition: opacity .15s;
+  }
+  .pr-btn:hover { opacity: .88; }
+  .pr-back-btn {
+    background: none; border: none;
+    font-size: 12px; color: var(--text3, #999);
+    cursor: pointer; margin-top: 10px;
+    display: block; width: 100%; text-align: center;
+  }
+  .pr-back-btn:hover { color: var(--text1, #333); }
+</style>
+
+<div id="pw-reset-modal" onclick="if(event.target===this)closePwResetModal()">
+  <div class="pr-card">
+    <button class="pr-close-btn" onclick="closePwResetModal()">✕</button>
+    <div class="pr-title">🔐 비밀번호 재설정</div>
+    <p class="pr-sub">가입한 이메일로 인증 후 비밀번호를 변경할 수 있습니다</p>
+
+    <div class="pr-steps-bar">
+      <div class="pr-step-dot active" id="pr-dot1">1</div>
+      <div class="pr-step-line" id="pr-line1"></div>
+      <div class="pr-step-dot" id="pr-dot2">2</div>
+      <div class="pr-step-line" id="pr-line2"></div>
+      <div class="pr-step-dot" id="pr-dot3">3</div>
+    </div>
+
+    <!-- Step 1: 이메일 입력 -->
+    <div class="pw-reset-step active" id="pw-reset-step1">
+      <label class="pr-label">가입된 이메일 주소</label>
+      <input class="pr-input" type="email" id="pr-email" placeholder="email@example.com"
+             onkeydown="if(event.key==='Enter')prSendCode()">
+      <div class="pr-msg" id="pr-email-msg"></div>
+      <button class="pr-btn" onclick="prSendCode()">인증번호 발송</button>
+    </div>
+
+    <!-- Step 2: 인증번호 확인 -->
+    <div class="pw-reset-step" id="pw-reset-step2">
+      <label class="pr-label">이메일로 받은 6자리 인증번호</label>
+      <input class="pr-input" type="text" id="pr-code" placeholder="123456" maxlength="6"
+             onkeydown="if(event.key==='Enter')prVerifyCode()">
+      <div class="pr-msg" id="pr-code-msg"></div>
+      <button class="pr-btn" onclick="prVerifyCode()">인증번호 확인</button>
+      <button class="pr-back-btn" onclick="prShowStep(1)">← 이메일 다시 입력</button>
+    </div>
+
+    <!-- Step 3: 새 비밀번호 -->
+    <div class="pw-reset-step" id="pw-reset-step3">
+      <label class="pr-label">새 비밀번호</label>
+      <input class="pr-input" type="password" id="pr-new" placeholder="영문 대·소문자+숫자+특수문자 8~16자">
+      <label class="pr-label" style="margin-top:12px">새 비밀번호 확인</label>
+      <input class="pr-input" type="password" id="pr-confirm" placeholder="비밀번호 재입력"
+             onkeydown="if(event.key==='Enter')prChangePassword()">
+      <div class="pr-msg" id="pr-pw-msg"></div>
+      <button class="pr-btn" onclick="prChangePassword()">비밀번호 변경하기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // prShowStep 오버라이드 → 스텝 인디케이터 동기화
+  window.prShowStep = function(n) {
+    document.querySelectorAll('.pw-reset-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('pw-reset-step' + n).classList.add('active');
+    [1,2,3].forEach(i => {
+      const dot  = document.getElementById('pr-dot'  + i);
+      const line = document.getElementById('pr-line' + i);
+      dot.classList.toggle('active', i === n);
+      dot.classList.toggle('done',   i < n);
+      if (line) line.classList.toggle('done', i < n);
+    });
+  };
+</script>
 
 </div>

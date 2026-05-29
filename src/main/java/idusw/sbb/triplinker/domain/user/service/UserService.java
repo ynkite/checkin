@@ -1,7 +1,7 @@
 package idusw.sbb.triplinker.domain.user.service;
 
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
-import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto; // DTO 이름 변경 반영
+import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
 
 /**
  * 회원 관리 기능의 비즈니스 핵심 명세를 정의한 서비스 인터페이스입니다.
@@ -14,4 +14,7 @@ public interface UserService {
     void updateNickname(Long userId, UserNicknameUpdateRequest request);
     // 회원 논리 탈퇴 명세
     void withdraw(Long userId);
+
+    // 💡 로그인 실패 로직 추가
+    void loginFailed(String username, String ipAddress);
 }

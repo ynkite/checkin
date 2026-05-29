@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * 회원(users 테이블)의 정보와 도메인 핵심 비즈니스 로직을 담은 JPA 엔티티 클래스입니다.
@@ -51,6 +52,38 @@ public class User {
     @Column(nullable = false, length = 10)
     private String status; // ACTIVE, DELETED, SUSPENDED
 
+    @Column(name = "login_fail_count", nullable = false)
+    private int loginFailCount = 0;  // 연속 로그인 실패 횟수
+
+    @Column(name = "locked_until")
+    private LocalDateTime lockedUntil;  // 잠금 해제 시각
+
+    @Column(name = "last_pw_changed_at")
+    private LocalDateTime lastPwChangedAt;  // 마지막 비밀번호 변경 시각
+
+    @Column(name = "pw_change_noti_at")
+    private LocalDateTime pwChangeNotiAt;  // 90일 변경 권장 모달 노출 시각
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;  // 탈퇴 처리 시각
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @Builder
     public User(String username, String passwordHash, String name, String email, String region, LocalDate birthDate, String gender, String mbti, String role, String status) {
         this.username = username;
@@ -66,9 +99,30 @@ public class User {
         this.status = (status != null) ? status : "ACTIVE"; // 기본값 설정
     }
 
-    // User.java 클래스 내부에 추가할 메서드들 (맨 밑에 붙여넣기)
+    public boolean isLocked() {
+        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
+    }
+
+    // 로그인 실패 시 호출 → 5회 도달 시 5분 잠금
+    public void increaseLoginFailCount() {
+        this.loginFailCount++;
+        if (this.loginFailCount >= 5) {
+            this.lockedUntil = LocalDateTime.now().plusMinutes(5);
+        }
+    }
 
     // 1. 닉네임(name) 변경 도메인 로직 (공백 및 null 예외 검증 포함)
+    // 로그인 성공 시 호출 → 실패 횟수 및 잠금 초기화
+    public void resetLoginFail() {
+        this.loginFailCount = 0;
+        this.lockedUntil = null;
+    }
+
+    // 90일 권장 모달 노출 시각 기록
+    public void recordPwChangeNotified() {
+        this.pwChangeNotiAt = LocalDateTime.now();
+    }
+    // 닉네임 변경
     public void updateNickname(String newName) {
         if (newName == null || newName.trim().isEmpty()) {
             throw new IllegalArgumentException("올바른 닉네임을 입력해주세요.");
@@ -79,10 +133,13 @@ public class User {
     // 2. 회원 안전 논리 탈퇴 로직 (DELETED로 변경)
     public void withdraw() {
         this.status = "DELETED";
+        this.deletedAt = LocalDateTime.now();
     }
 
     // 비밀번호 수정
     public void updatePassword(String newPassword) {
         this.passwordHash = newPassword;
+        this.status = "DELETED";
+        this.deletedAt = LocalDateTime.now();
     }
 }

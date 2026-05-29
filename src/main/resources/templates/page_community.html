@@ -124,7 +124,7 @@
     const tagContainer = document.getElementById("popular-tags-list");
     if (tagContainer && typeof MOCK_POPULAR_TAGS !== 'undefined') {
       tagContainer.innerHTML = MOCK_POPULAR_TAGS.map(t =>
-              `<span class="comm-side-tag" onclick="filterByTag('${t.name}', this)">#${t.name}</span>`
+              `<button class="chip chip-sm" onclick="filterByTag('${t.name}', this)" style="justify-content:center">#${t.name}</button>`
       ).join('');
     }
 
@@ -230,74 +230,62 @@
   // 초기화 호출 등록
   document.addEventListener('DOMContentLoaded', initCommunityPageData);
 
-  // ── setCommTab 오버라이드 (app_community.js의 API 호출 방지) ──
-  // app_community.js의 setCommTab은 loadCommunityPosts()로 API를 호출해
-  // 하드코딩 데이터를 지워버림 → 하드코딩 기반으로 교체
+  // ── setCommTab 오버라이드: app_community.js의 API 호출 없이 DOM show/hide만 수행 ──
   document.addEventListener('DOMContentLoaded', function() {
     window.setCommTab = function(btn, cat) {
       document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
       btn.classList.add('on');
       ['route','stay','food','tour','cafe'].forEach(c => {
         const el = document.getElementById('tab-'+c);
-        if (el) el.style.display = (c===cat) ? 'block' : 'none';
+        if (el) el.style.display = (c === cat) ? 'block' : 'none';
       });
-      const s = document.getElementById('sortSelect');
-      if (s) {
-        if (cat==='route') {
-          s.innerHTML = '<option value="likes">좋아요순</option><option value="scrap" selected>스크랩순</option><option value="latest">최신순</option>';
-        } else {
-          s.innerHTML = '<option value="saved" selected>담긴 순</option><option value="scrap">스크랩순</option><option value="latest">최신순</option>';
-        }
-      }
     };
 
-    // ── sortPosts 오버라이드 (하드코딩 DOM 기반 정렬) ──
     window.sortPosts = function(val) {
-      ['tab-route','tab-stay','tab-food','tab-tour','tab-cafe'].forEach(function(tabId) {
-        var tab = document.getElementById(tabId); if (!tab) return;
+      ['route','stay','food','tour','cafe'].forEach(function(cat) {
+        var tab = document.getElementById('tab-'+cat); if (!tab) return;
         var items = Array.from(tab.querySelectorAll('.comm-post-item')); if (!items.length) return;
         items.sort(function(a, b) {
-          if (val==='likes')  return parseInt(b.getAttribute('data-likes')||0) - parseInt(a.getAttribute('data-likes')||0);
-          if (val==='scrap' || val==='saved') return parseInt(b.getAttribute('data-scrap')||0) - parseInt(a.getAttribute('data-scrap')||0);
-          if (val==='latest') return parseInt(b.getAttribute('data-date')||0) - parseInt(a.getAttribute('data-date')||0);
+          if (val==='likes')  return parseInt(b.getAttribute('data-likes')||0)  - parseInt(a.getAttribute('data-likes')||0);
+          if (val==='scrap')  return parseInt(b.getAttribute('data-scrap')||0)  - parseInt(a.getAttribute('data-scrap')||0);
+          if (val==='latest') return parseInt(b.getAttribute('data-date')||0)   - parseInt(a.getAttribute('data-date')||0);
           return 0;
         });
-        items.forEach(function(item) { tab.appendChild(item); });
+        items.forEach(function(item){ tab.appendChild(item); });
       });
     };
 
-    // ── doSearch 오버라이드 (하드코딩 DOM 기반 검색) ──
     window.doSearch = function() {
       var type = document.getElementById('searchType').value;
-      var q = document.getElementById('searchInp').value.trim().toLowerCase();
+      var q = (document.getElementById('searchInp').value||'').trim().toLowerCase();
       if (!q) { toast('검색어를 입력해주세요'); return; }
       var found = 0;
       document.querySelectorAll('.comm-post-item').forEach(function(item) {
-        var title = item.querySelector('.post-ttl') ? item.querySelector('.post-ttl').textContent.toLowerCase() : '';
-        var tags = (item.getAttribute('data-tags')||'').toLowerCase();
-        var author = (item.getAttribute('data-author')||'').toLowerCase();
-        var match = false;
-        if (type==='title') match = title.includes(q);
-        else if (type==='content') match = title.includes(q) || tags.includes(q);
-        else if (type==='author') match = author.includes(q);
-        else match = tags.includes(q);
+        var title  = (item.querySelector('.post-ttl')  ? item.querySelector('.post-ttl').textContent  : '').toLowerCase();
+        var tags   = (item.getAttribute('data-tags')   || '').toLowerCase();
+        var author = (item.getAttribute('data-author') || '').toLowerCase();
+        var match  = (type==='title') ? title.includes(q) :
+                     (type==='content') ? (title.includes(q)||tags.includes(q)) :
+                     (type==='author')  ? author.includes(q) : tags.includes(q);
         item.style.display = match ? '' : 'none';
         if (match) found++;
       });
       toast('"'+q+'" 검색 결과: '+found+'건');
     };
 
-    // ── go() 래핑: review/place 페이지 이동시 데이터 주입 ──
+    // go() 래핑: 후기/장소 상세 이동 시 데이터 주입
     function _hookGo() {
       if (typeof window.go !== 'function') { setTimeout(_hookGo, 50); return; }
-      var _origGo = window.go;
+      var _orig = window.go;
       window.go = function(id, addToHistory) {
-        _origGo(id, addToHistory);
-        if (typeof MOCK_ROUTE_REVIEWS !== 'undefined' && (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id])) {
-          setTimeout(function() { renderReviewDetailPage(id); }, 30);
+        _orig(id, addToHistory);
+        if (typeof MOCK_ROUTE_REVIEWS !== 'undefined' &&
+            (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id])) {
+          setTimeout(function(){ renderReviewDetailPage(id); }, 30);
         }
-        if (typeof MOCK_TOUR_PLACES !== 'undefined' && (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id])) {
-          setTimeout(function() { renderPlaceDetailPage(id); }, 30);
+        if (typeof MOCK_TOUR_PLACES !== 'undefined' &&
+            (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id])) {
+          setTimeout(function(){ renderPlaceDetailPage(id); }, 30);
         }
       };
     }
@@ -360,7 +348,7 @@
     <div class="comm-side">
       <div class="comm-side-sec">
         <div class="comm-side-ttl">🔥 이번 주 인기 태그</div>
-        <div class="comm-side-tags" id="popular-tags-list">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px" id="popular-tags-list">
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
       </div>
@@ -383,11 +371,11 @@
   <div id="notifList" style="max-height:400px;overflow-y:auto;padding:8px"></div>
 </div>
 
-<div class="overlay" id="commWriteModal" onclick="if(event.target===this)this.classList.remove('open')">
+<div class="overlay" id="writeModal" onclick="if(event.target===this)closeWrite()">
   <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
     <div class="modal-hd">
-      <div class="modal-ttl">후기 작성</div>
-      <button class="modal-x" onclick="document.getElementById('commWriteModal').classList.remove('open')">✕</button>
+      <div class="modal-ttl">✍️ 후기 작성</div>
+      <button class="modal-x" onclick="closeWrite()">✕</button>
     </div>
     <div class="modal-bd" style="overflow-y:auto;flex:1;padding:20px">
       <div class="form-group" style="margin-bottom:12px">
@@ -409,7 +397,7 @@
           <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--surface)">
             <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('bold')"><b>B</b></button>
             <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('italic')"><i>I</i></button>
-            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드 모의 동작')">📷 사진 첨부</button>
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드')">📷 사진 첨부</button>
           </div>
           <div class="form-input" style="border:none;flex:1;outline:none;padding:12px;font-size:13px;line-height:1.6;overflow-y:auto" contenteditable="true" id="blogEditor" data-placeholder="후기를 상세히 공유해주세요..."></div>
         </div>
@@ -419,7 +407,7 @@
           <input type="checkbox" id="writePublic" checked> 공개 게시판 등록
         </label>
         <div style="display:flex;gap:8px">
-          <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="document.getElementById('commWriteModal').classList.remove('open')">취소</button>
+          <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="closeWrite()">취소</button>
           <button class="btn-f" style="padding:10px 24px;font-size:13px" onclick="submitReview()">등록하기</button>
         </div>
       </div>
@@ -456,8 +444,6 @@
       <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
     </div>
     <div class="modal-bd">
-      <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
-      <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:16px"></p>
       <div id="rdMeta" style="font-size:11px;color:var(--text3);margin-bottom:10px"></div>
       <div id="rdBody" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;margin-bottom:16px"></div>
       <div style="border-top:1px dashed var(--border2);padding-top:12px">
@@ -1040,21 +1026,22 @@
   // go() 함수가 review/place 페이지로 이동할 때 데이터를 주입하기 위한 훅
   // app_main.js의 go() 함수 실행 후 처리
   document.addEventListener('DOMContentLoaded', function() {
-    // 페이지 전환 감지를 위해 go() 래핑
-    const _origGo = window.go;
-    if (_origGo) {
+    function _hookGo() {
+      if (typeof window.go !== 'function') { setTimeout(_hookGo, 50); return; }
+      var _orig = window.go;
       window.go = function(id, addToHistory) {
-        _origGo(id, addToHistory);
-        // 후기 상세 페이지
-        if (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id]) {
-          setTimeout(() => renderReviewDetailPage(id), 10);
+        _orig(id, addToHistory);
+        if (typeof MOCK_ROUTE_REVIEWS!=='undefined' &&
+                (MOCK_ROUTE_REVIEWS[id]||MOCK_STAY_REVIEWS[id]||MOCK_FOOD_REVIEWS[id])) {
+          setTimeout(function(){ renderReviewDetailPage(id); }, 30);
         }
-        // 장소 상세 페이지
-        if (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id]) {
-          setTimeout(() => renderPlaceDetailPage(id), 10);
+        if (typeof MOCK_TOUR_PLACES!=='undefined' &&
+                (MOCK_TOUR_PLACES[id]||MOCK_CAFE_PLACES[id])) {
+          setTimeout(function(){ renderPlaceDetailPage(id); }, 30);
         }
       };
     }
+    _hookGo();
   });
 </script>
 
