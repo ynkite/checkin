@@ -1,19 +1,3 @@
-/* ============================================================
- * 🚨 [임시 하드코딩 데이터 - 미리보기 데이터]
- * 백엔드 API 연동 시 이 블록을 삭제하세요.
- * 삭제 후: openPreview() → GET /api/curations/{id}/preview 로 전환
- * ============================================================ */
-const _md = {
-  jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}]},
-  seorak:   {tags:['가을 특선','10월 단풍'],ttl:'🍁 설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'🍜',name:'속초 닭강정 명가',r:'4.5'}]},
-  gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'🌸 경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'🍞',name:'황남빵 카페',r:'4.7'}]},
-  busan:    {tags:['여름 특선','서핑 시즌'],ttl:'🏄 부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'🐟',name:'자갈치시장 회',r:'4.6'}]},
-  gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'☕ 강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'☕',name:'테라로사 강릉본점',r:'4.9'}]},
-  jeonju:   {tags:['가성비 TOP','한식'],ttl:'🍚 전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'🍚',name:'비빔밥 명가',r:'4.8'}]},
-  namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'🏝 남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'🐙',name:'바다낙지 식당',r:'4.5'}]}
-};
-/* ============================================================ END MOCK */
-
 /* =============================================================================
  * TripLinker - 메인 애플리케이션 로직 (app_main.js) — API 연동 버전
  *
@@ -136,7 +120,7 @@ let _loginLockedUntil = null;
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
-  if (addToHistory !== false && id !== 'main') history.pushState({ page: id }, '', location.href);
+  if (addToHistory !== false && id !== 'main') history.pushState({page: id}, '', location.href);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
@@ -164,6 +148,24 @@ function go(id, addToHistory) {
   const wfi = document.querySelectorAll('.wf-item');
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   window.scrollTo(0, 0);
+
+  // 후기/장소 상세 페이지 이동 시 데이터 렌더러 호출
+// 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
+  setTimeout(function() {
+    try {
+      var allR = Object.assign({},
+          typeof MOCK_ROUTE_REVIEWS!=='undefined' ? MOCK_ROUTE_REVIEWS : {},
+          typeof MOCK_STAY_REVIEWS !=='undefined' ? MOCK_STAY_REVIEWS  : {},
+          typeof MOCK_FOOD_REVIEWS !=='undefined' ? MOCK_FOOD_REVIEWS  : {}
+      );
+      if (allR[id] && typeof renderReviewDetailPage==='function') renderReviewDetailPage(id);
+      var allP = Object.assign({},
+          typeof MOCK_TOUR_PLACES!=='undefined' ? MOCK_TOUR_PLACES : {},
+          typeof MOCK_CAFE_PLACES!=='undefined' ? MOCK_CAFE_PLACES : {}
+      );
+      if (allP[id] && typeof renderPlaceDetailPage==='function') renderPlaceDetailPage(id);
+    } catch(e) {}
+  }, 30);
 }
 
 function setNav(btn) {
@@ -1283,19 +1285,31 @@ function heroSearch() {
   startPlanFromCard({dest:val,people:2,transport:'자차',companion:'커플',styles:[],budget:500000});
 }
 
+const _md = {
+  jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}]},
+  seorak:   {tags:['가을 특선','10월 단풍'],ttl:'🍁 설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'🍜',name:'속초 닭강정 명가',r:'4.5'}]},
+  gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'🌸 경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'🍞',name:'황남빵 카페',r:'4.7'}]},
+  busan:    {tags:['여름 특선','서핑 시즌'],ttl:'🏄 부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'🐟',name:'자갈치시장 회',r:'4.6'}]},
+  gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'☕ 강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'☕',name:'테라로사 강릉본점',r:'4.9'}]},
+  jeonju:   {tags:['가성비 TOP','한식'],ttl:'🍚 전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'🍚',name:'비빔밥 명가',r:'4.8'}]},
+  namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'🏝 남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'🐙',name:'바다낙지 식당',r:'4.5'}]}
+};
 
 function openPreview(key) {
-  const d=_md[key]||_md.jeju;
-  document.getElementById('prevTags').innerHTML = d.tags.map(t=>`<span class="prev-tag">${t}</span>`).join('');
-  document.getElementById('prevPlanTtl').textContent = d.ttl;
-  document.getElementById('prevBudget').textContent  = d.budget;
-  document.getElementById('prevPlaces').textContent  = d.places;
-  document.getElementById('prevDur').textContent     = d.dur;
-  document.getElementById('prevStay').textContent    = d.stay;
-  document.getElementById('prevFoodList').innerHTML  = d.foods.map(f=>`<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">${f.icon}</span>${f.name}</div><span class="pfi-rating">★ ${f.r}</span></div>`).join('');
-  document.getElementById('prevModal').classList.add('open');
+  const d = _md[key] || _md.jeju;
+  const modal = document.getElementById('prevModal');
+  if (!modal) { toast('미리보기를 불러올 수 없습니다.'); return; }
+  const el = function(id){ return document.getElementById(id); };
+  if (el('prevTags'))     el('prevTags').innerHTML     = d.tags.map(t=>`<span class="prev-tag">${t}</span>`).join('');
+  if (el('prevPlanTtl'))  el('prevPlanTtl').textContent = d.ttl;
+  if (el('prevBudget'))   el('prevBudget').textContent  = d.budget;
+  if (el('prevPlaces'))   el('prevPlaces').textContent  = d.places;
+  if (el('prevDur'))      el('prevDur').textContent     = d.dur;
+  if (el('prevStay'))     el('prevStay').textContent    = d.stay;
+  if (el('prevFoodList')) el('prevFoodList').innerHTML  = d.foods.map(f=>`<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">${f.icon}</span>${f.name}</div><span class="pfi-rating">★ ${f.r}</span></div>`).join('');
+  modal.classList.add('open');
 }
-function closePrev() { document.getElementById('prevModal').classList.remove('open'); }
+function closePrev() { const m = document.getElementById('prevModal'); if(m) m.classList.remove('open'); }
 
 /* ───────────────────────────────────────────────
  * 22. Chips / MBTI / Location

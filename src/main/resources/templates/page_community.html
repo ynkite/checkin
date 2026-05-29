@@ -1,21 +1,4 @@
 <div th:fragment="community" xmlns:th="http://www.thymeleaf.org">
-<!-- ============================================================
-  🚨 [임시 하드코딩 데이터 블록] — 백엔드 연동 시 아래 <script> 태그 전체를 삭제하세요!
-  이 블록만 삭제하면 아래의 모든 로직이 API 호출로 자동 전환됩니다.
-  삭제 후 전환되는 API:
-    - 커뮤니티 탭 게시글  → GET /api/posts?category=&page=&sort=
-    - 인기 태그           → GET /api/tags/popular
-    - AI 취향 추천        → GET /api/users/me/recommendations
-    - 알림                → GET /api/notifications
-    - 후기 상세           → GET /api/posts/{postId}
-    - 장소 상세           → GET /api/places/{placeId}
-============================================================ -->
-<script>
-  /* ============================================================
-   * 🚨 [임시 하드코딩 데이터 - 전체 통합 블록]
-   * 백엔드 API 연동 시 이 <script> 블록 하나만 통째로 삭제하세요.
-   * ============================================================ */
-
 <!-- ===================================================
  * 파일명: page_community.html
  * 도메인: 게시판(Post) + 시스템(System)
@@ -141,7 +124,7 @@
     const tagContainer = document.getElementById("popular-tags-list");
     if (tagContainer && typeof MOCK_POPULAR_TAGS !== 'undefined') {
       tagContainer.innerHTML = MOCK_POPULAR_TAGS.map(t =>
-              `<span class="comm-side-tag" onclick="filterByTag('${t.name}', this)">#${t.name}</span>`
+              `<button class="chip chip-sm" onclick="filterByTag('${t.name}', this)" style="justify-content:center">#${t.name}</button>`
       ).join('');
     }
 
@@ -179,7 +162,7 @@
           if (items.length > 0) {
             container.innerHTML = items.map(p => `
             <div class="post-card comm-post-item" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
-              data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}" style="border-left:3px solid; ${tab.color}">
+              data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}" style="border-left:3px solid ${tab.color}">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
                 <span class="post-cat ${tab.catClass}" style="${tab.catStyle}">${tab.label}</span>
                 <span style="font-size:10px;color:var(--text3)">${p.author} · ${p.dateStr}</span>
@@ -245,9 +228,241 @@
   }
 
   // 초기화 호출 등록
+  document.addEventListener('DOMContentLoaded', initCommunityPageData);
 
+  // ── setCommTab 오버라이드: app_community.js의 API 호출 없이 DOM show/hide만 수행 ──
+  document.addEventListener('DOMContentLoaded', function() {
+    window.setCommTab = function(btn, cat) {
+      document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      ['route','stay','food','tour','cafe'].forEach(c => {
+        const el = document.getElementById('tab-'+c);
+        if (el) el.style.display = (c === cat) ? 'block' : 'none';
+      });
+    };
 
-  // ── 후기/장소 상세 페이지 하드코딩 데이터 (두 번째 블록 통합) ──
+    window.sortPosts = function(val) {
+      ['route','stay','food','tour','cafe'].forEach(function(cat) {
+        var tab = document.getElementById('tab-'+cat); if (!tab) return;
+        var items = Array.from(tab.querySelectorAll('.comm-post-item')); if (!items.length) return;
+        items.sort(function(a, b) {
+          if (val==='likes')  return parseInt(b.getAttribute('data-likes')||0)  - parseInt(a.getAttribute('data-likes')||0);
+          if (val==='scrap')  return parseInt(b.getAttribute('data-scrap')||0)  - parseInt(a.getAttribute('data-scrap')||0);
+          if (val==='latest') return parseInt(b.getAttribute('data-date')||0)   - parseInt(a.getAttribute('data-date')||0);
+          return 0;
+        });
+        items.forEach(function(item){ tab.appendChild(item); });
+      });
+    };
+
+    window.doSearch = function() {
+      var type = document.getElementById('searchType').value;
+      var q = (document.getElementById('searchInp').value||'').trim().toLowerCase();
+      if (!q) { toast('검색어를 입력해주세요'); return; }
+      var found = 0;
+      document.querySelectorAll('.comm-post-item').forEach(function(item) {
+        var title  = (item.querySelector('.post-ttl')  ? item.querySelector('.post-ttl').textContent  : '').toLowerCase();
+        var tags   = (item.getAttribute('data-tags')   || '').toLowerCase();
+        var author = (item.getAttribute('data-author') || '').toLowerCase();
+        var match  = (type==='title') ? title.includes(q) :
+                     (type==='content') ? (title.includes(q)||tags.includes(q)) :
+                     (type==='author')  ? author.includes(q) : tags.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) found++;
+      });
+      toast('"'+q+'" 검색 결과: '+found+'건');
+    };
+
+    // go() 래핑: 후기/장소 상세 이동 시 데이터 주입
+    function _hookGo() {
+      if (typeof window.go !== 'function') { setTimeout(_hookGo, 50); return; }
+      var _orig = window.go;
+      window.go = function(id, addToHistory) {
+        _orig(id, addToHistory);
+        if (typeof MOCK_ROUTE_REVIEWS !== 'undefined' &&
+            (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id])) {
+          setTimeout(function(){ renderReviewDetailPage(id); }, 30);
+        }
+        if (typeof MOCK_TOUR_PLACES !== 'undefined' &&
+            (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id])) {
+          setTimeout(function(){ renderPlaceDetailPage(id); }, 30);
+        }
+      };
+    }
+    _hookGo();
+  });
+</script>
+
+<style>
+  .active-tag { background: var(--sage) !important; color: #fff !important; border-color: var(--sage-d) !important }
+  #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
+  #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
+</style>
+<div class="page" id="page-community">
+  <div class="comm-layout">
+    <div class="comm-main">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <h2 style="font-size:22px;font-weight:800">커뮤니티</h2>
+        <button class="btn-f" style="padding:7px 14px;font-size:12px" onclick="checkAndOpenWrite()">+ 후기 작성</button>
+      </div>
+
+      <div class="comm-tabs" id="commTabs">
+        <button class="comm-tab on" onclick="setCommTab(this,'route')">여행 경로</button>
+        <button class="comm-tab" onclick="setCommTab(this,'stay')">숙소</button>
+        <button class="comm-tab" onclick="setCommTab(this,'food')">맛집</button>
+        <button class="comm-tab" onclick="setCommTab(this,'tour')">관광지</button>
+        <button class="comm-tab" onclick="setCommTab(this,'cafe')">카페</button>
+      </div>
+
+      <div class="search-bar">
+        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="searchType">
+          <option value="title">제목</option>
+          <option value="content">내용</option>
+          <option value="author">작성자</option>
+          <option value="tag">태그</option>
+        </select>
+        <input class="search-inp" type="text" placeholder="키워드 검색..." id="searchInp">
+        <button class="btn-search" onclick="doSearch()">검색</button>
+        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="sortSelect" onchange="sortPosts(this.value)">
+          <option value="likes">좋아요순</option>
+          <option value="scrap" selected>스크랩순</option>
+          <option value="latest">최신순</option>
+        </select>
+      </div>
+
+      <div id="tab-route"></div>
+      <div id="tab-stay" style="display:none"></div>
+      <div id="tab-food" style="display:none"></div>
+      <div id="tab-tour" style="display:none"></div>
+      <div id="tab-cafe" style="display:none"></div>
+
+      <div class="comm-pagination" id="commPagination">
+        <button class="page-btn on">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">4</button>
+        <button class="page-btn">5</button>
+      </div>
+    </div>
+
+    <div class="comm-side">
+      <div class="comm-side-sec">
+        <div class="comm-side-ttl">🔥 이번 주 인기 태그</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px" id="popular-tags-list">
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
+      </div>
+
+      <div class="comm-side-sec">
+        <div class="comm-side-ttl">✦ AI 취향 추천</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" id="ai-reco-title"></div>
+        <div id="ai-reco-list">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notifPopup" style="display:none;position:fixed;top:58px;right:190px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
+  <div style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:14px;font-weight:700">🔔 알림</div>
+    <button style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3)" onclick="document.getElementById('notifPopup').style.display='none'">✕</button>
+  </div>
+  <div id="notifList" style="max-height:400px;overflow-y:auto;padding:8px"></div>
+</div>
+
+<div class="overlay" id="writeModal" onclick="if(event.target===this)closeWrite()">
+  <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-hd">
+      <div class="modal-ttl">✍️ 후기 작성</div>
+      <button class="modal-x" onclick="closeWrite()">✕</button>
+    </div>
+    <div class="modal-bd" style="overflow-y:auto;flex:1;padding:20px">
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">제목</label>
+        <input class="form-input" placeholder="제목을 입력해주세요" id="writeTitle">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">플랜 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(선택)</span></label>
+        <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value">
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">해시태그 <span style="font-size:11px;font-weight:400;color:var(--text3)">(쉼표로 구분)</span></label>
+        <input class="form-input" placeholder="예: 제주,가성비,오션뷰" id="writeTags">
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">내용</label>
+        <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
+          <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--surface)">
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('bold')"><b>B</b></button>
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('italic')"><i>I</i></button>
+            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드')">📷 사진 첨부</button>
+          </div>
+          <div class="form-input" style="border:none;flex:1;outline:none;padding:12px;font-size:13px;line-height:1.6;overflow-y:auto" contenteditable="true" id="blogEditor" data-placeholder="후기를 상세히 공유해주세요..."></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="writePublic" checked> 공개 게시판 등록
+        </label>
+        <div style="display:flex;gap:8px">
+          <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="closeWrite()">취소</button>
+          <button class="btn-f" style="padding:10px 24px;font-size:13px" onclick="submitReview()">등록하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:360px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="mpPlace"></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="mpReviews"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+        <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
+        <div style="display:flex;gap:8px" id="mpLinks"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:460px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="rdPlace"></div>
+        <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="rdMeta" style="font-size:11px;color:var(--text3);margin-bottom:10px"></div>
+      <div id="rdBody" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;margin-bottom:16px"></div>
+      <div style="border-top:1px dashed var(--border2);padding-top:12px">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">댓글</div>
+        <div id="rdComments"></div>
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <input class="form-input" style="flex:1;padding:6px;font-size:12px" placeholder="댓글을 입력하세요...">
+          <button class="btn-f" style="padding:6px 12px;font-size:12px" onclick="toast('댓글 등록')">등록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터 - 후기/장소 상세 페이지]
+   * 나중에 백엔드 API 연동이 완료되면 이 블록을 통째로 지워주세요!
+   * ============================================================ */
 
   // 경로 후기 상세 데이터 (r-*)
   const MOCK_ROUTE_REVIEWS = {
@@ -811,196 +1026,24 @@
   // go() 함수가 review/place 페이지로 이동할 때 데이터를 주입하기 위한 훅
   // app_main.js의 go() 함수 실행 후 처리
   document.addEventListener('DOMContentLoaded', function() {
-    // 페이지 전환 감지를 위해 go() 래핑
-    const _origGo = window.go;
-    if (_origGo) {
+    function _hookGo() {
+      if (typeof window.go !== 'function') { setTimeout(_hookGo, 50); return; }
+      var _orig = window.go;
       window.go = function(id, addToHistory) {
-        _origGo(id, addToHistory);
-        // 후기 상세 페이지
-        if (MOCK_ROUTE_REVIEWS[id] || MOCK_STAY_REVIEWS[id] || MOCK_FOOD_REVIEWS[id]) {
-          setTimeout(() => renderReviewDetailPage(id), 10);
+        _orig(id, addToHistory);
+        if (typeof MOCK_ROUTE_REVIEWS!=='undefined' &&
+                (MOCK_ROUTE_REVIEWS[id]||MOCK_STAY_REVIEWS[id]||MOCK_FOOD_REVIEWS[id])) {
+          setTimeout(function(){ renderReviewDetailPage(id); }, 30);
         }
-        // 장소 상세 페이지
-        if (MOCK_TOUR_PLACES[id] || MOCK_CAFE_PLACES[id]) {
-          setTimeout(() => renderPlaceDetailPage(id), 10);
+        if (typeof MOCK_TOUR_PLACES!=='undefined' &&
+                (MOCK_TOUR_PLACES[id]||MOCK_CAFE_PLACES[id])) {
+          setTimeout(function(){ renderPlaceDetailPage(id); }, 30);
         }
       };
     }
+    _hookGo();
   });
-
 </script>
-
-<!-- ============================================================
-     이하 HTML/로직: 하드코딩 데이터 블록 삭제 후에도 그대로 유지됩니다.
-     API 연동 후 app_community.js의 loadCommunityPosts() 등이 자동으로 동작합니다.
-============================================================ -->
-
-
-<style>
-  .active-tag { background: var(--sage) !important; color: #fff !important; border-color: var(--sage-d) !important }
-  #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
-  #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
-</style>
-<div class="page" id="page-community">
-  <div class="comm-layout">
-    <div class="comm-main">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <h2 style="font-size:22px;font-weight:800">커뮤니티</h2>
-        <button class="btn-f" style="padding:7px 14px;font-size:12px" onclick="checkAndOpenWrite()">+ 후기 작성</button>
-      </div>
-
-      <div class="comm-tabs" id="commTabs">
-        <button class="comm-tab on" onclick="setCommTab(this,'route')">여행 경로</button>
-        <button class="comm-tab" onclick="setCommTab(this,'stay')">숙소</button>
-        <button class="comm-tab" onclick="setCommTab(this,'food')">맛집</button>
-        <button class="comm-tab" onclick="setCommTab(this,'tour')">관광지</button>
-        <button class="comm-tab" onclick="setCommTab(this,'cafe')">카페</button>
-      </div>
-
-      <div class="search-bar">
-        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="searchType">
-          <option value="title">제목</option>
-          <option value="content">내용</option>
-          <option value="author">작성자</option>
-          <option value="tag">태그</option>
-        </select>
-        <input class="search-inp" type="text" placeholder="키워드 검색..." id="searchInp">
-        <button class="btn-search" onclick="doSearch()">검색</button>
-        <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="sortSelect" onchange="sortPosts(this.value)">
-          <option value="likes">좋아요순</option>
-          <option value="scrap" selected>스크랩순</option>
-          <option value="latest">최신순</option>
-        </select>
-      </div>
-
-      <div id="tab-route"></div>
-      <div id="tab-stay" style="display:none"></div>
-      <div id="tab-food" style="display:none"></div>
-      <div id="tab-tour" style="display:none"></div>
-      <div id="tab-cafe" style="display:none"></div>
-
-      <div class="comm-pagination" id="commPagination">
-        <button class="page-btn on">1</button>
-        <button class="page-btn">2</button>
-        <button class="page-btn">3</button>
-        <button class="page-btn">4</button>
-        <button class="page-btn">5</button>
-      </div>
-    </div>
-
-    <div class="comm-side">
-      <div class="comm-side-sec">
-        <div class="comm-side-ttl">🔥 이번 주 인기 태그</div>
-        <div class="comm-side-tags" id="popular-tags-list">
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
-      </div>
-
-      <div class="comm-side-sec">
-        <div class="comm-side-ttl">✦ AI 취향 추천</div>
-        <div style="font-size:12px;color:var(--text2);margin-bottom:12px" id="ai-reco-title"></div>
-        <div id="ai-reco-list">
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="notifPopup" style="display:none;position:fixed;top:58px;right:190px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
-  <div style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
-    <div style="font-size:14px;font-weight:700">🔔 알림</div>
-    <button style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3)" onclick="document.getElementById('notifPopup').style.display='none'">✕</button>
-  </div>
-  <div id="notifList" style="max-height:400px;overflow-y:auto;padding:8px"></div>
-</div>
-
-<div class="overlay" id="commWriteModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
-    <div class="modal-hd">
-      <div class="modal-ttl">후기 작성</div>
-      <button class="modal-x" onclick="document.getElementById('commWriteModal').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-bd" style="overflow-y:auto;flex:1;padding:20px">
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">제목</label>
-        <input class="form-input" placeholder="제목을 입력해주세요" id="writeTitle">
-      </div>
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">플랜 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(선택)</span></label>
-        <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value">
-        </select>
-      </div>
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">해시태그 <span style="font-size:11px;font-weight:400;color:var(--text3)">(쉼표로 구분)</span></label>
-        <input class="form-input" placeholder="예: 제주,가성비,오션뷰" id="writeTags">
-      </div>
-      <div class="form-group" style="margin-bottom:12px">
-        <label class="form-label">내용</label>
-        <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
-          <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--surface)">
-            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('bold')"><b>B</b></button>
-            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('italic')"><i>I</i></button>
-            <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드 모의 동작')">📷 사진 첨부</button>
-          </div>
-          <div class="form-input" style="border:none;flex:1;outline:none;padding:12px;font-size:13px;line-height:1.6;overflow-y:auto" contenteditable="true" id="blogEditor" data-placeholder="후기를 상세히 공유해주세요..."></div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-          <input type="checkbox" id="writePublic" checked> 공개 게시판 등록
-        </label>
-        <div style="display:flex;gap:8px">
-          <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="document.getElementById('commWriteModal').classList.remove('open')">취소</button>
-          <button class="btn-f" style="padding:10px 24px;font-size:13px" onclick="submitReview()">등록하기</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:360px">
-    <div class="modal-hd">
-      <div>
-        <div class="modal-ttl" id="mpPlace"></div>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
-      </div>
-      <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-bd">
-      <div id="mpReviews"></div>
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
-        <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
-        <div style="display:flex;gap:8px" id="mpLinks"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:460px">
-    <div class="modal-hd">
-      <div>
-        <div class="modal-ttl" id="rdPlace"></div>
-        <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
-      </div>
-      <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-bd">
-      <div id="rdMeta" style="font-size:11px;color:var(--text3);margin-bottom:10px"></div>
-      <div id="rdBody" style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap;margin-bottom:16px"></div>
-      <div style="border-top:1px dashed var(--border2);padding-top:12px">
-        <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">댓글</div>
-        <div id="rdComments"></div>
-        <div style="display:flex;gap:6px;margin-top:10px">
-          <input class="form-input" style="flex:1;padding:6px;font-size:12px" placeholder="댓글을 입력하세요...">
-          <button class="btn-f" style="padding:6px 12px;font-size:12px" onclick="toast('댓글 등록')">등록</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-</div>
 
 <div class="page" id="page-r-gangneung">
   <div class="review-wrap">

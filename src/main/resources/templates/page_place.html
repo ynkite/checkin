@@ -555,14 +555,24 @@
             </div>
         </div>
         <div class="modal-bd">
-            <div class="prev-stats-row" id="prev-stats-container"></div>
+            <div class="prev-stats-row">
+                <div class="prev-stat-card"><div class="psc-val" id="prevBudget"></div><div class="psc-label">예산 합산 검증액</div></div>
+                <div class="prev-stat-card"><div class="psc-val" id="prevPlaces"></div><div class="psc-label">방문 장소</div></div>
+                <div class="prev-stat-card"><div class="psc-val" id="prevDur"></div><div class="psc-label">일정</div></div>
+            </div>
             <div class="prev-map-box">
                 <div class="prev-map-grid"></div>
                 <svg viewBox="0 0 500 150" fill="none"><path d="M100 75 Q200 45 250 85" stroke="var(--sage)" stroke-width="2" fill="none" opacity=".75"/></svg>
                 <div id="prev-map-dots"></div>
             </div>
-            <div class="prev-days" id="prev-days-container"></div>
-            <button style="width:100%;margin-top:20px;padding:14px;border-radius:var(--r);background:var(--sage);color:#fff;font-weight:700;border:none;cursor:pointer;font-size:14px" onclick="toast('내 일정으로 복사되었습니다!');go('map')">내 일정으로 가져오기</button>
+            <div class="prev-section-ttl">🏨 숙소 스냅샷</div>
+            <div class="prev-stay-list" id="prevStay"></div>
+            <div class="prev-section-ttl">🍽️ 맛집 리스트 핵심글</div>
+            <div id="prevFoodList"></div>
+            <div class="prev-acts">
+                <button class="btn-prev-plan" onclick="closePrev();go('planner')">→ 해당 경로로 여행 계획하기</button>
+                <button class="btn-prev-scrap" onclick="toast('스크랩 완료!');closePrev()">🔖 스크랩</button>
+            </div>
         </div>
     </div>
 </div>
