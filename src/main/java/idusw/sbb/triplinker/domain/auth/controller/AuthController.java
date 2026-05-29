@@ -35,6 +35,7 @@ public class AuthController {
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(authService.checkEmail(email));
+    }
     // POST /api/auth/login
     @PostMapping("/login")
     public ResponseEntity<TokenResponseDto> login(@RequestBody LoginRequestDto dto) {
@@ -46,6 +47,8 @@ public class AuthController {
     public ResponseEntity<String> signUp(@Valid @RequestBody SignUpRequestDTO dto) {
         authService.signUp(dto);
         return ResponseEntity.ok("회원가입이 완료되었습니다.");
+    }
+
     // POST /api/auth/refresh
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponseDto> refresh(@RequestBody Map<String, String> body) {
@@ -57,6 +60,7 @@ public class AuthController {
     public ResponseEntity<String> sendEmail(@RequestParam String email) {
         emailAuthService.sendEmailAuthCode(email, "signup");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
+    }
     // POST /api/auth/logout  (userId는 나중에 JWT에서 꺼낼 예정)
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestParam Long userId) {

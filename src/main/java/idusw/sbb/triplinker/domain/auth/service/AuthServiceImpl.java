@@ -58,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new TokenResponseDto("access-token-placeholder", "refresh-token-placeholder", pwChangeRecommended);
+    }
     @Transactional(readOnly = true)
     public boolean checkUsername(String username) {
         return userRepository.existsByUsername(username);
@@ -74,6 +75,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new TokenResponseDto("new-access-token-placeholder", refreshToken, false);
+    }
     @Transactional(readOnly = true)
     public boolean checkEmail(String email) {
         return userRepository.existsByEmail(email);
@@ -82,6 +84,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
+    }
     @Transactional
     public void signUp(SignUpRequestDTO dto) {
         // 최종 중복 검증
@@ -125,10 +128,6 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다."));
-    @Transactional
-    public void updatePassword(String email, String newPassword) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         if (!resetToken.isValid()) {
             throw new IllegalStateException("만료되었거나 이미 사용된 토큰입니다.");
@@ -146,6 +145,11 @@ public class AuthServiceImpl implements AuthService {
                 UserSecurityHistory.of(user, SecurityEventType.PW_CHANGE, "비밀번호 재설정 완료")
         );
     }
+
+    @Transactional
+    public void updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         // User 엔티티의 비밀번호 변경 메서드 호출
         user.updatePassword(newPassword);
