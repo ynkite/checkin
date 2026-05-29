@@ -1,0 +1,507 @@
+<div th:fragment="budget" xmlns:th="http://www.thymeleaf.org">
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터]
+   * 나중에 백엔드 API 및 전역 데이터 연동이 완료되면 이 블록을 통째로 지워주세요!
+   * 지우는 순간, 아래의 실제 서비스 연동 로직으로 자동 전환됩니다.
+   * ============================================================ */
+
+  // 1. 헤더 및 기본 여행 정보
+  const MOCK_BUDGET_INFO = {
+    subTitle: 'BUDGET · EXPENSE REPORT',
+    mainTitle: '가계부',
+    metaDesc: '제주도 3박4일 · 2인 기준'
+  };
+
+  // 2. 예산 산출 구조 (왼쪽 섹션 리스트)
+  const MOCK_BUDGET_STRUCTURE = [
+    {
+      label: '숙박비',
+      sub: '기본 숙박비 + 인원 초과 요금 포함',
+      price: '₩450,000',
+      details: [
+        { key: '예상 단가', val: '₩150,000 / 박' },
+        { key: '숙박 일수', val: '3박' },
+        { key: '인원 추가', val: '0원 (2인 기준)' }
+      ]
+    },
+    {
+      label: '식비',
+      sub: '기본 식대 + 카페/디저트 예산',
+      price: '₩240,000',
+      details: [
+        { key: '예상 식대', val: '₩20,000 / 인·끼' },
+        { key: '목표 식수', val: '2인 × 6끼' },
+        { key: '카페/기타', val: '₩120,000 별도 배정' }
+      ]
+    }
+  ];
+
+  // 3. 예산 요약 데이터 (오른쪽 상단 통계)
+  const MOCK_BUDGET_SUMMARY = {
+    total: '₩1,200,000',
+    used: '₩890,000',
+    rest: '₩310,000',
+    progressWidth: '74%' // 게이지 바 너비
+  };
+
+  // 4. 파이 차트 및 범례 데이터
+  const MOCK_PIE_DATA = {
+    legends: [
+      { color: '#4A90E2', label: '숙박', pct: '48%' },
+      { color: '#F5A623', label: '식비', pct: '20%' },
+      { color: '#22B5C4', label: '교통', pct: '20%' },
+      { color: '#F5A623', label: '입장료', pct: '12%' } // 원본 데이터의 중복 색상 유지
+    ]
+  };
+
+  // 5. 예상 vs 실제 비교 막대 그래프 데이터
+  const MOCK_BUDGET_COMPARE = [
+    {
+      category: '숙박',
+      expected: '₩180K',
+      actual: '₩168K',
+      expectedWidth: '78%',
+      actualWidth: '70%',
+      color: 'var(--sage)',
+      isOver: false
+    },
+    {
+      category: '식비',
+      expected: '₩96K',
+      actual: '₩144K',
+      expectedWidth: '42%',
+      actualWidth: '60%',
+      color: 'var(--coral)',
+      isOver: true,
+      alertText: '식비 ₩48,000 초과'
+    }
+  ];
+  /* ============================================================ */
+
+
+  /* ─── 가계부 페이지 동적 데이터 주입 로직 ─── */
+  function initBudgetPage() {
+    // 1. 헤더 텍스트 주입
+    let info = typeof MOCK_BUDGET_INFO !== 'undefined' ? MOCK_BUDGET_INFO : null;
+    if (info) {
+      document.getElementById('bg-sub-title').textContent = info.subTitle;
+      document.getElementById('bg-main-title').textContent = info.mainTitle;
+      document.getElementById('bg-meta-desc').textContent = info.metaDesc;
+    }
+
+    // 2. 예산 산출 구조 (왼쪽 리스트) 동적 생성
+    let structure = typeof MOCK_BUDGET_STRUCTURE !== 'undefined' ? MOCK_BUDGET_STRUCTURE : [];
+    const structContainer = document.getElementById('bg-struct-container');
+    if (structContainer && structure.length > 0) {
+      structContainer.innerHTML = structure.map(item => `
+      <div style="margin-bottom:18px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:4px">
+          <div>
+            <div class="bi-label">${item.label}</div>
+            <div class="bi-sub">${item.sub}</div>
+          </div>
+          <div class="bi-price">${item.price}</div>
+        </div>
+        <div class="bi-detail">
+          ${item.details.map(d => `
+            <div class="bi-det-row"><span>${d.key}</span><span>${d.val}</span></div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+    }
+
+    // 3. 예산 요약 정보 및 게이지 바 주입
+    let summary = typeof MOCK_BUDGET_SUMMARY !== 'undefined' ? MOCK_BUDGET_SUMMARY : null;
+    if (summary) {
+      document.getElementById('bg-sum-total').textContent = summary.total;
+      document.getElementById('bg-sum-used').textContent = summary.used;
+      document.getElementById('bg-sum-rest').textContent = summary.rest;
+      document.getElementById('bg-progress-bar').style.width = summary.progressWidth;
+    }
+
+    // 4. 파이 차트 범례 주입
+    let pie = typeof MOCK_PIE_DATA !== 'undefined' ? MOCK_PIE_DATA : null;
+    const legendContainer = document.getElementById('bg-pie-legends');
+    if (legendContainer && pie && pie.legends) {
+      legendContainer.innerHTML = pie.legends.map(l => `
+      <div class="pie-leg-item">
+        <div class="pie-dot" style="background:${l.color}"></div>${l.label} ${l.pct}
+      </div>
+    `).join('');
+    }
+
+    // 5. 예상 vs 실제 비교 그래프 주입
+    let compareList = typeof MOCK_BUDGET_COMPARE !== 'undefined' ? MOCK_BUDGET_COMPARE : [];
+    const compareContainer = document.getElementById('bg-compare-container');
+    if (compareContainer && compareList.length > 0) {
+      compareContainer.innerHTML = compareList.map(c => `
+      <div class="cmp-row" style="${c.category === '식비' ? 'margin-top:10px' : ''}">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">${c.category}</div>
+        <div class="cmp-bar" style="width:${c.expectedWidth};background:${c.color};${c.isOver ? 'opacity:.5;' : ''}">예상 ${c.expected}</div>
+        <div class="cmp-bar" style="width:${c.actualWidth};background:${c.color};margin-top:2px;${c.isOver ? '' : 'opacity:.6;'}" >실제 ${c.actual}${c.isOver ? ' ⚠' : ''}</div>
+        ${c.isOver ? `<div class="over-alert">${c.alertText}</div>` : ''}
+      </div>
+    `).join('');
+    }
+  }
+
+  // DOM 생성이 완료되면 즉시 데이터 채우기 실행
+  document.addEventListener('DOMContentLoaded', initBudgetPage);
+</script>
+
+<div class="page" id="page-budget">
+  <div class="budget-wrap">
+
+    <div id="bg-sub-title" style="margin-bottom:5px;font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase"></div>
+    <h2 id="bg-main-title" style="font-size:28px;font-weight:800;margin-bottom:4px"></h2>
+    <p id="bg-meta-desc" style="color:var(--text3);margin-bottom:24px"></p>
+
+    <div class="budget-layout">
+      <div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">예산 산출 구조</div>
+        <div id="bg-struct-container"></div>
+      </div>
+
+      <div>
+        <div class="budget-card">
+          <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px">예산 요약 (Summary)</div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <span style="font-size:14px;color:var(--text2)">총 설정 예산</span>
+            <span id="bg-sum-total" style="font-size:20px;font-weight:900;color:var(--text)"></span>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:12px;color:var(--text3)">현재까지 지출</span>
+            <span id="bg-sum-used" style="font-size:14px;font-weight:700;color:var(--text2)"></span>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <span style="font-size:12px;color:var(--text3)">남은 잔액</span>
+            <span id="bg-sum-rest" style="font-size:14px;font-weight:700;color:var(--sage)"></span>
+          </div>
+
+          <div class="budget-progress">
+            <div id="bg-progress-bar" class="bp-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:16px;margin-top:16px">
+          <div class="chart-section">
+            <div class="chart-ttl">카테고리별 비중</div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:12px">
+              <div class="pie-chart"></div>
+              <div id="bg-pie-legends" class="pie-legends"></div>
+            </div>
+          </div>
+
+          <div class="compare-section">
+            <div class="compare-ttl">예상 vs 실제 비교</div>
+            <div id="bg-compare-container"></div>
+          </div>
+        </div>
+
+        <div class="budget-export-btns">
+          <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('PDF 다운로드 시작...')">📄 PDF 내보내기</button>
+          <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('엑셀 파일 생성 중...')">📊 Excel 저장</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터 - 가계부 상세 페이지]
+   * 나중에 백엔드 API 연동이 완료되면 이 블록을 통째로 지워주세요!
+   * ============================================================ */
+
+  // 1. 여행 선택 카드 목록
+  const MOCK_LEDGER_TRIPS = [
+    {
+      key: 'jeju',
+      thumb: '🗺️',
+      name: '제주도 3박4일 힐링 여행',
+      meta: '2025.06.14~06.17 · 2인 · 자차',
+      budget: '₩404,000',
+      isOn: true
+    },
+    {
+      key: 'busan',
+      thumb: '🏙️',
+      name: '부산 2박3일 가성비 투어',
+      meta: '2025.04.22~04.24 · 4인 · 대중교통',
+      budget: '₩280,000',
+      isOn: false
+    }
+  ];
+
+  // 2. 가계부 메인 데이터 (tripKey → 데이터 매핑)
+  const MOCK_LEDGER_DATA = {
+    jeju: {
+      meta: '제주도 3박4일 · 2인 기준',
+      items: [
+        {
+          label: '숙박비',
+          sub: '기본 숙박비 + 인원 초과금',
+          amount: '₩180,000',
+          barWidth: '78%',
+          barColor: 'var(--sage)',
+          details: [
+            { key: '예상 단가', val: '₩60,000 / 박' },
+            { key: '숙박 일수', val: '3박' },
+            { key: '인원 추가', val: '0원 (2인 기준)' }
+          ]
+        },
+        {
+          label: '식비',
+          sub: '맛집 평균 단가 × 인원수',
+          amount: '₩96,000',
+          barWidth: '42%',
+          barColor: 'var(--coral)',
+          details: [
+            { key: '평균 단가', val: '₩16,000 / 인·끼' },
+            { key: '식수', val: '2인 × 3끼' },
+            { key: '추가 식비', val: '₩0' }
+          ]
+        },
+        {
+          label: '교통비',
+          sub: '이동거리 ÷ 연비 × ₩2,000',
+          amount: '₩80,000',
+          barWidth: '35%',
+          barColor: '#22B5C4',
+          details: [
+            { key: '이동 거리', val: '약 200km' },
+            { key: '연료비', val: '₩40,000' },
+            { key: '렌터카', val: '₩40,000' }
+          ]
+        },
+        {
+          label: '입장료',
+          sub: '관광지 입장료 × 인원수',
+          amount: '₩48,000',
+          barWidth: '21%',
+          barColor: '#F5A623',
+          details: [
+            { key: '성산일출봉', val: '₩5,000 × 2인' },
+            { key: '한라산', val: '무료' },
+            { key: '기타', val: '₩38,000' }
+          ]
+        }
+      ],
+      total: '₩404,000',
+      statusText: '예산 범위 내 ✓ 잔여 ₩96,000',
+      expenseCategories: ['식비', '숙박', '교통', '입장료', '기타']
+    },
+    busan: {
+      meta: '부산 2박3일 · 4인 · 대중교통',
+      items: [
+        {
+          label: '숙박비',
+          sub: '게스트하우스 2박',
+          amount: '₩120,000',
+          barWidth: '43%',
+          barColor: 'var(--sage)',
+          details: [
+            { key: '예상 단가', val: '₩30,000 / 인·박' },
+            { key: '숙박 일수', val: '2박' },
+            { key: '인원', val: '4인' }
+          ]
+        },
+        {
+          label: '식비',
+          sub: '해산물/돼지국밥 등',
+          amount: '₩80,000',
+          barWidth: '29%',
+          barColor: 'var(--coral)',
+          details: [
+            { key: '평균 단가', val: '₩10,000 / 인·끼' },
+            { key: '식수', val: '4인 × 2끼' },
+            { key: '추가', val: '₩0' }
+          ]
+        },
+        {
+          label: '교통비',
+          sub: 'KTX + 지하철/버스',
+          amount: '₩80,000',
+          barWidth: '29%',
+          barColor: '#22B5C4',
+          details: [
+            { key: 'KTX 왕복', val: '₩50,000 / 인' },
+            { key: '현지 교통', val: '₩30,000' },
+            { key: '합계', val: '₩80,000' }
+          ]
+        }
+      ],
+      total: '₩280,000',
+      statusText: '예산 범위 내 ✓ 잔여 ₩20,000',
+      expenseCategories: ['식비', '숙박', '교통', '입장료', '기타']
+    }
+  };
+  /* ============================================================ */
+
+  // 현재 선택된 여행 key
+  let _selectedLedgerKey = 'jeju';
+
+  /** 가계부 trip 선택 카드 초기화 */
+  function initLedgerSelector() {
+    const container = document.getElementById('ledger-trip-cards');
+    if (!container || typeof MOCK_LEDGER_TRIPS === 'undefined') return;
+    container.innerHTML = MOCK_LEDGER_TRIPS.map(t => `
+      <div class="ts-card${t.isOn ? ' on' : ''}" onclick="selectLedgerTrip(this, '${t.key}')">
+        <div class="ts-thumb">${t.thumb}</div>
+        <div class="ts-info">
+          <div class="ts-name">${t.name}</div>
+          <div class="ts-meta">${t.meta}</div>
+        </div>
+        <div class="ts-budget">${t.budget}</div>
+      </div>
+    `).join('');
+  }
+
+  /** 가계부 trip 선택 */
+  function selectLedgerTrip(el, key) {
+    document.querySelectorAll('#ledger-trip-cards .ts-card').forEach(c => c.classList.remove('on'));
+    el.classList.add('on');
+    _selectedLedgerKey = key;
+  }
+
+  /** 선택 완료 → 가계부 메인으로 이동 */
+  function goLedgerMain() {
+    const data = MOCK_LEDGER_DATA[_selectedLedgerKey];
+    if (!data) { toast('데이터를 찾을 수 없습니다.'); return; }
+
+    // 헤더 메타
+    const metaEl = document.getElementById('ledger-trip-meta');
+    if (metaEl) metaEl.textContent = data.meta;
+
+    // 예산 항목 리스트
+    const listEl = document.getElementById('ledger-item-list');
+    if (listEl) {
+      listEl.innerHTML = data.items.map(item => `
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <div>
+              <div class="bi-label">${item.label}</div>
+              <div class="bi-sub">${item.sub}</div>
+            </div>
+            <div class="bi-amount" style="color:${item.barColor}">${item.amount}</div>
+          </div>
+          <div class="bi-bar-track">
+            <div class="bi-bar-fill" style="width:${item.barWidth};background:${item.barColor}"></div>
+          </div>
+          <div class="bi-detail" style="display:none" id="det-${item.label}">
+            ${item.details.map(d => `<div class="bi-det-row"><span>${d.key}</span><span>${d.val}</span></div>`).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // 총액 / 상태바
+    const totalEl = document.getElementById('ledger-total');
+    if (totalEl) totalEl.textContent = data.total;
+    const statusEl = document.getElementById('ledger-status');
+    if (statusEl) statusEl.textContent = data.statusText;
+
+    // 지출 입력 카테고리 select
+    const selEl = document.getElementById('ledger-exp-cat');
+    if (selEl && data.expenseCategories) {
+      selEl.innerHTML = data.expenseCategories.map(c => `<option>${c}</option>`).join('');
+    }
+
+    // 화면 전환
+    document.getElementById('ledger-selector').style.display = 'none';
+    document.getElementById('ledger-main').style.display = 'block';
+  }
+
+  /** 가계부 메인 → 여행 선택으로 돌아가기 */
+  function returnToLedgerSelector() {
+    document.getElementById('ledger-main').style.display = 'none';
+    document.getElementById('ledger-selector').style.display = 'block';
+  }
+
+  // DOM 로드 시 초기화
+  document.addEventListener('DOMContentLoaded', initLedgerSelector);
+</script>
+
+<style>
+  .bi-det-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text3); padding:2px 0 }
+  .bi-detail { margin-top:6px; padding:8px; background:var(--cream2); border-radius:6px }
+</style>
+
+<div class="page" id="page-ledger">
+  <div style="padding:40px 56px;max-width:1100px;margin:0 auto;padding-right:calc(56px + 120px)">
+
+    <!-- Step 1: 여행 선택 -->
+    <div id="ledger-selector">
+      <div class="ts-wrap">
+        <div class="ts-ttl">가계부 확인</div>
+        <div class="ts-sub">어떤 여행의 가계부를 확인하시겠습니까?</div>
+        <div id="ledger-trip-cards"></div>
+        <button class="btn-next" style="width:100%;margin-top:14px" onclick="goLedgerMain()">
+          선택한 여행 가계부 보기 →
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: 가계부 상세 -->
+    <div id="ledger-main" style="display:none">
+      <button onclick="returnToLedgerSelector()"
+        style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--sage);font-weight:700;background:none;border:none;cursor:pointer;margin-bottom:16px">
+        ← 다른 여행 선택
+      </button>
+
+      <div style="margin-bottom:5px;font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase">
+        BUDGET · EXPENSE REPORT
+      </div>
+      <h2 style="font-size:26px;font-weight:800;margin-bottom:4px">가계부</h2>
+      <p style="color:var(--text3);margin-bottom:22px" id="ledger-trip-meta"></p>
+
+      <div class="budget-layout">
+        <!-- 왼쪽: 예산 항목 -->
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:14px">예산 산출 구조</div>
+          <div id="ledger-item-list"></div>
+          <div class="total-row" style="margin-top:16px;padding-top:14px;border-top:1.5px solid var(--border2)">
+            <div style="font-size:15px;font-weight:700">예상 총액</div>
+            <div class="total-amount" id="ledger-total"></div>
+          </div>
+          <div class="budget-status-bar" id="ledger-status"></div>
+
+          <!-- 실제 지출 입력 -->
+          <div style="margin-top:14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:9px">실제 지출 추가 입력</div>
+            <div class="ledger-add">
+              <select id="ledger-exp-cat"></select>
+              <input type="number" placeholder="금액 (원)" id="ledger-exp-amount">
+              <button class="btn-add-exp" onclick="toast('지출 저장 완료')">추가</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 차트/내보내기 -->
+        <div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:14px">카테고리별 지출 비중</div>
+          <div class="pie-wrap">
+            <div class="pie-ring"></div>
+            <div class="pie-legend">
+              <div class="pie-leg-item"><div class="pie-dot" style="background:var(--sage)"></div>숙박 44%</div>
+              <div class="pie-leg-item"><div class="pie-dot" style="background:var(--coral)"></div>식비 24%</div>
+              <div class="pie-leg-item"><div class="pie-dot" style="background:#22B5C4"></div>교통 20%</div>
+              <div class="pie-leg-item"><div class="pie-dot" style="background:#F5A623"></div>입장료 12%</div>
+            </div>
+          </div>
+          <div class="budget-export-btns" style="margin-top:20px">
+            <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('PDF 다운로드 시작...')">📄 PDF 내보내기</button>
+            <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('엑셀 파일 생성 중...')">📊 Excel 저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

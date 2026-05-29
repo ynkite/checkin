@@ -1,0 +1,155 @@
+/* =============================================================================
+ * TripLinker - 장소 상세 페이지 추가 스타일 (styles_place.css)
+ *
+ * 【파일 설명】
+ * - 클래스 다이어그램 기준: Place(장소) 도메인 전용 스타일
+ * - 포함 도메인: 장소(Place) - PlaceController, PlaceService, PlaceRepository
+ *   관련 Entity: Place, PlaceReview, PlaceTag
+ *   관련 DTO: PlaceSearchDto, PlaceDetailResponseDto
+ * - 적용 페이지: page_place.html (장소 상세, 리뷰, 날씨)
+ * - 장소 카드, 리뷰 폼, 날씨 박스 전용 스타일 정의
+ *
+ * 【연관 파일】
+ * - styles_main.css : 공통 전역 스타일 (먼저 로드 필요)
+ * - page_place.html : 장소 상세, 리뷰, 날씨 페이지 마크업
+ * - app_main.js : 장소 검색, 날씨 API 연동 로직
+ * ============================================================================= */
+    .active-tag {
+      background: var(--sage) !important;
+      color: #fff !important;
+      border-color: var(--sage-d) !important
+    }
+
+    #blogEditor:empty:before {
+      content: attr(data-placeholder);
+      color: var(--text3);
+      pointer-events: none
+    }
+
+    #blogEditor img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 8px 0;
+      display: block
+    }
+
+    .active-tag {
+      background: var(--sage) !important;
+      color: #fff !important;
+      border-color: var(--sage-d) !important
+    }
+
+    #blogEditor:empty:before {
+      content: attr(data-placeholder);
+      color: var(--text3);
+      pointer-events: none
+    }
+
+    #blogEditor img {
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 8px 0;
+      display: block
+    }
+
+    /* slide-arr-wrap: 화살표 좌우 중앙 오버레이 */
+    .slide-arr-wrap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0
+    }
+
+    .slide-arr {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, .95);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .13);
+      transition: all .18s;
+      pointer-events: all
+    }
+
+  .active-tag {
+    background: var(--sage) !important;
+    color: #fff !important;
+    border-color: var(--sage-d) !important
+  }
+
+  #blogEditor:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text3);
+    pointer-events: none
+  }
+
+  #blogEditor img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0;
+    display: block
+  }
+
+  .active-tag {
+    background: var(--sage) !important;
+    color: #fff !important;
+    border-color: var(--sage-d) !important
+  }
+
+  #blogEditor:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text3);
+    pointer-events: none
+  }
+
+  #blogEditor img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 8px 0;
+    display: block
+  }
+
+  /* slide-arr-wrap: 화살표 좌우 중앙 오버레이 */
+  .slide-arr-wrap {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0
+  }
+
+  .slide-arr {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .95);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, .13);
+    transition: all .18s;
+    pointer-events: all
+  }

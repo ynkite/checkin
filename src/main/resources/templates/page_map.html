@@ -1,0 +1,460 @@
+<div th:fragment="map" xmlns:th="http://www.thymeleaf.org">
+<!-- ===================================================
+ * 파일명: page_map.html
+ * 도메인: 동선(Route)
+ * 기능:   여행 동선 지도, 장소 추가/삭제/정렬
+ =================================================== -->
+
+<script>
+/* ============================================================
+ * [page_map.html] 하드코딩 데이터 → 변수 분리
+ * ============================================================ */
+
+// ── 플랜 헤더 정보 ──
+const MAP_PLAN_INFO = {
+  title:     '제주도 3박4일 힐링 여행',
+  meta:      '2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차',
+  statusTag: '✏️ 수정 중',
+};
+
+// ── 지도 필터 칩 ──
+const MAP_FILTERS = [
+  { id: 'filter-stay', cls: 'mf-stay', type: 'stay', icon: '🏨', label: '숙소' },
+  { id: 'filter-food', cls: 'mf-food', type: 'food', icon: '🍽️', label: '맛집' },
+  { id: 'filter-tour', cls: 'mf-tour', type: 'tour', icon: '📍', label: '관광지' },
+  { id: 'filter-cafe', cls: 'mf-cafe', type: 'cafe', icon: '☕', label: '카페' },
+];
+
+// ── Day 탭 정보 ──
+const MAP_DAYS = [
+  { key: 'all', label: '전체', default: true },
+  { key: 1, label: 'Day 1' },
+  { key: 2, label: 'Day 2' },
+  { key: 3, label: 'Day 3' },
+  { key: 4, label: 'Day 4' },
+];
+
+// ── 일별 일정 데이터 ──
+const MAP_ITINERARY = [
+  {
+    day: 1, label: '📅 Day 1 · 06/14 (토)', budget: '₩182,000',
+    places: [
+      { type: 'stay',  icon: '🏨', name: '제주신라호텔 체크인', sub: '숙소 · ₩180,000',    stars: '★★★★★ 4.8 · 네이버맵', time: '13:00', key: '신라호텔',   replacePh: '예: 더 저렴한 펜션으로 교체해줘' },
+      { transit: '🚗 자차 · 12km · 약 20분 · ₩2,000' },
+      { type: 'tour',  icon: '📍', name: '성산일출봉',           sub: '관광지 · 1h · ₩2,000×2', stars: '★★★★★ 4.9',           time: '15:00', key: '성산일출봉', replacePh: '예: 실내 관광지로' },
+      { transit: '🚗 자차 · 7km · 약 15분' },
+      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 저녁 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '17:30', key: '순대국',   replacePh: '예: 해산물 식당으로' },
+    ],
+  },
+  {
+    day: 2, label: '📅 Day 2 · 06/15 (일)', budget: '₩94,000',
+    places: [
+      { type: 'tour',  icon: '📍', name: '우도',               sub: '관광지 · 3h',          stars: '★★★★★ 4.7',           time: '09:00', key: '우도',     replacePh: '예: 시내 카페 투어로' },
+      { transit: '⛵ 배편 · 2.8km · 15분 · ₩8,000' },
+      { type: 'cafe',  icon: '☕', name: '한담해안산책로 카페',  sub: '카페 · ₩10,000×2',    stars: '★★★★☆ 4.5',           time: '14:00', key: '한담카페', replacePh: '교체 요구사항 입력' },
+    ],
+  },
+  {
+    day: 3, label: '📅 Day 3 · 06/16 (월)', budget: '₩76,000',
+    places: [
+      { type: 'tour',  icon: '📍', name: '천지연폭포',           sub: '관광지 · 1h · ₩2,000×2', stars: '★★★★☆ 4.6',           time: '10:00', key: '천지연',   replacePh: '교체 요구사항 입력' },
+      { transit: '🚗 자차 · 5km · 약 10분' },
+      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 점심 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '12:00', key: '순대국2',  replacePh: '교체 요구사항 입력' },
+    ],
+  },
+  {
+    day: 4, label: '📅 Day 4 · 06/17 (화)', budget: '₩52,000',
+    places: [
+      { type: 'tour',  icon: '📍', name: '용두암',               sub: '관광지 · 1h · 무료',   stars: '★★★★☆ 4.3',           time: '09:00', key: '용두암',   replacePh: '교체 요구사항 입력' },
+    ],
+  },
+];
+
+// ── 지도 핀 데이터 ──
+const MAP_PINS = [
+  { key: '신라호텔',   type: 'stay', icon: '🏨', color: 'var(--sage)', label: '신라호텔',    left: 175, top: 125 },
+  { key: '성산일출봉', type: 'tour', icon: '📍', color: 'var(--sky)',  label: '성산일출봉',   left: 356, top: 225 },
+  { key: '올레시장순대국', type: 'food', icon: '🍽️', color: 'var(--coral)', label: '올레시장', left: 930, top: 310 },
+  { key: '우도',       type: 'tour', icon: '📍', color: 'var(--sky)',  label: '우도',        left: 810, top: 600 },
+  { key: '한담카페',   type: 'cafe', icon: '☕', color: '#7C3AED',    label: '한담카페',     left: 500, top: 550 },
+  { key: '천지연폭포', type: 'tour', icon: '📍', color: 'var(--sky)',  label: '천지연폭포',   left: 700, top: 500 },
+  { key: '용두암',     type: 'tour', icon: '📍', color: 'var(--sky)',  label: '용두암',       left: 650, top: 400 },
+];
+
+// ── 예산 뷰 항목 (지도 내 미니 가계부) ──
+const MAP_BUDGET_ITEMS = [
+  { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000', color: 'var(--sage)',  barPct: 78 },
+  { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '₩96,000',  color: 'var(--coral)', barPct: 42 },
+  { label: '교통비', sub: '이동거리 ÷ 연비 × ₩2,000', amount: '₩80,000',  color: '#22B5C4',       barPct: 35 },
+  { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '₩48,000',  color: '#F5A623',       barPct: 21 },
+];
+const MAP_BUDGET_TOTAL     = '₩404,000';
+const MAP_BUDGET_REMAINING = '₩96,000';
+
+// ── 날씨 알림 ──
+const MAP_WEATHER_ALERT = {
+  title: '🌧️ 06/16 오후 날씨 악화 예보',
+  body:  '태그 유사도 분석 기반 실내 대체 장소 제안',
+  cta:   'AI 대체 일정 제안 보기 →',
+  toastMsg: "AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)",
+};
+
+// ── 맵 하단 액션 버튼 ──
+const MAP_ACTION_BTNS = [
+  { id: 'mapTabMap',    tab: 'map',    icon: '🗺', label: '지도', default: true },
+  { id: 'mapTabBudget', tab: 'budget', icon: '💰', label: '예산', default: false },
+];
+
+// ── 총 예산 표시 초기값 ──
+const MAP_TOTAL_BUDGET_DISPLAY = '₩ 404,000';
+
+// ── DOM 렌더링 ──
+function initMapPage() {
+  // 플랜 헤더
+  const planTtlEl  = document.querySelector('.ml-plan-ttl');
+  const planMetaEl = document.querySelector('.ml-plan-meta');
+  const statusEl   = document.querySelector('.ml-hd div[style*="sage-pale"]');
+  if (planTtlEl)  planTtlEl.textContent  = MAP_PLAN_INFO.title;
+  if (planMetaEl) planMetaEl.textContent = MAP_PLAN_INFO.meta;
+  if (statusEl)   statusEl.textContent   = MAP_PLAN_INFO.statusTag;
+
+  // 필터 칩
+  const filtersEl = document.querySelector('.map-filters');
+  if (filtersEl) {
+    filtersEl.innerHTML = MAP_FILTERS.map(f =>
+      `<button class="mf-chip ${f.cls} on" id="${f.id}" onclick="toggleMarker(this,'${f.type}')">${f.icon} ${f.label}</button>`
+    ).join('');
+  }
+
+  // Day 탭
+  const dayTabsEl = document.querySelector('.day-tabs');
+  if (dayTabsEl) {
+    dayTabsEl.innerHTML = MAP_DAYS.map(d =>
+      `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay(${typeof d.key==='string'?`'${d.key}'`:d.key},this)">${d.label}</button>`
+    ).join('');
+  }
+
+  // 일정 목록
+  const listEl = document.getElementById('mapDayList');
+  if (listEl) {
+    listEl.innerHTML = MAP_ITINERARY.map(day => `
+      <div class="day-section" data-day="${day.day}">
+        <div class="ds-hd">
+          <span class="ds-label">${day.label}</span>
+          <div class="ds-budget"><span>${day.budget}</span></div>
+        </div>
+        ${day.places.map(p => p.transit
+          ? `<div class="transit-map-row">${p.transit}</div>`
+          : `
+          <div class="place-row">
+            <div class="pr-drag">⋮⋮</div>
+            <div class="pr-icon pr-${p.type}">${p.icon}</div>
+            <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${p.key}','${p.type}')">
+              <div class="pr-name">${p.name}</div>
+              <div class="pr-sub">${p.sub}</div>
+              <div class="pr-stars">${p.stars}</div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time}</div>
+            <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
+          </div>
+          <div class="replace-area" id="ri-${p.key}">
+            <div class="replace-label">AI에게 교체 요구사항 입력</div>
+            <div class="replace-row">
+              <input class="replace-inp" id="rt-${p.key}" type="text" placeholder="${p.replacePh}">
+              <button class="btn-queue-add" onclick="addQueue('${p.key}')">등록</button>
+            </div>
+          </div>`
+        ).join('')}
+      </div>`).join('') +
+      `<div class="recalc-bar" id="recalcBar" style="display:none">🔄 경로 재계산 중... (route_recalc_needed = 1)</div>`;
+  }
+
+  // 총 예산
+  const totalEl = document.getElementById('totalBudget');
+  if (totalEl) totalEl.textContent = MAP_TOTAL_BUDGET_DISPLAY;
+
+  // 하단 액션 버튼
+  const actsEl = document.querySelector('.map-acts');
+  if (actsEl) {
+    const existingShare = actsEl.querySelector('button[onclick*="openShareModal"]');
+    const existingCfm   = actsEl.querySelector('button[onclick*="openConfirmDone"]');
+    // tab 버튼만 재생성, 공유·확정 버튼 유지
+    const tabBtns = MAP_ACTION_BTNS.map(b =>
+      `<button class="btn-map-act${b.default?' on':''}" id="${b.id}" onclick="switchMapTab('${b.tab}',this)" style="font-size:11px">${b.icon} ${b.label}</button>`
+    ).join('');
+    actsEl.innerHTML = tabBtns +
+      `<button class="btn-map-act" onclick="openShareModal()" style="font-size:11px">🔗 공유</button>` +
+      `<button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>`;
+  }
+
+  // 지도 핀
+  const mapViewEl = document.getElementById('mapView');
+  if (mapViewEl) {
+    // 기존 핀 제거 후 재생성
+    mapViewEl.querySelectorAll('.map-pin').forEach(p => p.remove());
+    MAP_PINS.forEach(pin => {
+      const div = document.createElement('div');
+      div.className = 'map-pin';
+      div.dataset.type = pin.type;
+      div.style.cssText = `left:${pin.left}px;top:${pin.top}px`;
+      div.setAttribute('onclick', `showMapPlacePopup('${pin.key}','${pin.type}')`);
+      div.innerHTML = `
+        <div class="pin-body" style="background:${pin.color}">
+          <div class="pin-inner">${pin.icon}</div>
+        </div>
+        <div class="pin-label">${pin.label}</div>`;
+      mapViewEl.appendChild(div);
+    });
+  }
+
+  // 날씨 알림
+  const waEl = document.querySelector('.weather-alert');
+  if (waEl) {
+    waEl.setAttribute('onclick', `toast('${MAP_WEATHER_ALERT.toastMsg}')`);
+    waEl.querySelector('.wa-ttl').textContent  = MAP_WEATHER_ALERT.title;
+    waEl.querySelector('.wa-body').textContent = MAP_WEATHER_ALERT.body;
+    waEl.querySelector('.wa-cta').textContent  = MAP_WEATHER_ALERT.cta;
+  }
+
+  // 예산 뷰 미니 가계부
+  const budgetItemsEl = document.getElementById('map-budget-items');
+  if (budgetItemsEl) {
+    budgetItemsEl.innerHTML = MAP_BUDGET_ITEMS.map(item => `
+      <div style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <div>
+            <div style="font-size:12px;font-weight:600">${item.label}</div>
+            <div style="font-size:10px;color:var(--text3)">${item.sub}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:${item.color}">${item.amount}</div>
+        </div>
+        <div class="bi-bar-track">
+          <div class="bi-bar-fill" style="width:${item.barPct}%;background:${item.color}"></div>
+        </div>
+      </div>`).join('');
+  }
+  const mapBudgetTotalEl     = document.getElementById('map-budget-total');
+  const mapBudgetRemainingEl = document.getElementById('map-budget-remaining');
+  if (mapBudgetTotalEl)     mapBudgetTotalEl.textContent     = MAP_BUDGET_TOTAL;
+  if (mapBudgetRemainingEl) mapBudgetRemainingEl.textContent = `예산 범위 내 ✓ 잔여 ${MAP_BUDGET_REMAINING}`;
+}
+
+document.addEventListener('DOMContentLoaded', initMapPage);
+
+// ── 지도 장소 후기 데이터 ──
+const PLACE_REVIEWS = {
+  '신라호텔': { name:'제주신라호텔', type:'🏨 숙소', mapSearch:'제주신라호텔', reviews:[
+    {user:'여행고수김씨',stars:'★★★★★',rating:'4.8',text:'역시 신라호텔입니다. 뷰가 최고였고 직원분들도 너무 친절했어요. 조식도 매우 훌륭했습니다.'},
+    {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.6',text:'위치가 좋고 시설이 깔끔해요. 가격대가 높지만 그만한 가치는 있어요.'}]},
+  '성산일출봉': { name:'성산일출봉', type:'📍 관광지', mapSearch:'성산일출봉', reviews:[
+    {user:'여행러버',stars:'★★★★★',rating:'4.9',text:'제주 여행의 필수코스! 일출 보러 새벽에 올라갔는데 정말 장관이었어요.'},
+    {user:'이커피러버',stars:'★★★★☆',rating:'4.7',text:'계단이 많아서 힘들 수 있지만 올라가면 보상받아요. 이른 아침 방문 추천.'}]},
+  '올레시장순대국': { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
+    {user:'여행좋아',stars:'★★★★☆',rating:'4.4',text:'가성비 최고인 순대국밥! 양도 많고 국물이 진해요.'},
+    {user:'힐링여행박씨',stars:'★★★★★',rating:'4.5',text:'제주 현지인들이 자주 찾는 곳이에요. 국물이 너무 맛있어요.'}]},
+  '우도': { name:'우도', type:'📍 관광지', mapSearch:'우도', reviews:[
+    {user:'kakaotest',stars:'★★★★★',rating:'4.7',text:'섬 안에 섬! 자전거 타고 한 바퀴 돌면 정말 힐링됩니다. 땅콩 아이스크림도 꼭.'},
+    {user:'여행고수김씨',stars:'★★★★☆',rating:'4.5',text:'배 타고 들어가는 것부터 설레요. 평일에 가면 여유롭게 즐길 수 있어요.'}]},
+  '한담카페': { name:'한담해안산책로 카페', type:'☕ 카페', mapSearch:'한담+카페+제주', reviews:[
+    {user:'여행고수김씨',stars:'★★★★★',rating:'4.7',text:'제주의 파도가 바로 눈앞에서 부서지는 카페. 에스프레소 한 잔과 함께 멍 때리기 최고.'},
+    {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.5',text:'한담해안산책로 걸으면서 중간에 들리기 딱 좋아요.'}]},
+  '천지연폭포': { name:'천지연폭포', type:'📍 관광지', mapSearch:'천지연폭포+서귀포', reviews:[
+    {user:'여행러버',stars:'★★★★★',rating:'4.8',text:'밤에 조명과 함께 보는 천지연폭포는 정말 환상적이에요! 낮보다 밤이 훨씬 더 아름답습니다.'},
+    {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.6',text:'서귀포 여행 중 들른 천지연폭포, 웅장한 물소리와 시원한 물보라가 여름 더위를 확 날려줬어요.'}]},
+  '용두암': { name:'용두암', type:'📍 관광지', mapSearch:'용두암+제주', reviews:[
+    {user:'여행러버',stars:'★★★★☆',rating:'4.3',text:'제주 공항 근처라 도착하자마자 들르기 좋아요. 파도가 치는 날이면 더욱 웅장합니다.'},
+    {user:'여행고수김씨',stars:'★★★★☆',rating:'4.2',text:'무료 관광지이고 주변에 카페가 많아서 가볍게 들르기 좋습니다.'}]}
+};
+
+function showMapPlacePopup(key, type) {
+  var data = PLACE_REVIEWS[key];
+  var modal = document.getElementById('mapPlaceModal');
+  if (!modal) return;
+  var tl = type==='stay'?'🏨 숙소':type==='food'?'🍽️ 맛집':type==='cafe'?'☕ 카페':'📍 관광지';
+  document.getElementById('mpPlace').textContent = data ? data.name : key;
+  document.getElementById('mpType').textContent  = data ? data.type : tl;
+  if (!data) {
+    document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
+    document.getElementById('mpLinks').innerHTML = getMapLinks(key);
+    modal.classList.add('open'); return;
+  }
+  var h = '<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--sage-d)">💬 방문 후기 ('+data.reviews.length+'개)</div>';
+  data.reviews.forEach(function(r) {
+    h += '<div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer" onclick="showReviewDetail(\''+data.name+'\',\''+data.type+'\',\''+r.stars+' '+r.rating+'\',\''+r.text.replace(/'/g,"\\'")+'\')">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+      + '<div style="width:26px;height:26px;border-radius:50%;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+r.user[0]+'</div>'
+      + '<span style="font-size:12px;font-weight:700">'+r.user+'</span>'
+      + '<span style="color:#F5A623;font-size:12px">'+r.stars+'</span>'
+      + '<span style="font-size:11px;font-weight:700">'+r.rating+'</span></div>'
+      + '<p style="font-size:12px;color:var(--text2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+r.text+'</p>'
+      + '<div style="font-size:10px;color:var(--sage);margin-top:4px">클릭하여 전체 보기 →</div></div>';
+  });
+  document.getElementById('mpReviews').innerHTML = h;
+  document.getElementById('mpLinks').innerHTML = getMapLinks(data.mapSearch);
+  modal.classList.add('open');
+}
+function getMapLinks(q) {
+  var e = encodeURIComponent(q);
+  return '<a href="https://map.naver.com/v5/search/'+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>'
+    + '<a href="https://map.kakao.com/?q='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>'
+    + '<a href="https://www.google.com/maps/search/'+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>';
+}
+function showReviewDetail(place, type, stars, text) {
+  var m = document.getElementById('reviewDetailModal'); if (!m) return;
+  document.getElementById('rdPlace').textContent = place;
+  document.getElementById('rdType').textContent  = type;
+  document.getElementById('rdStars').textContent = stars;
+  document.getElementById('rdText').textContent  = text;
+  m.classList.add('open');
+}
+</script>
+
+  <div class="page" id="page-map">
+    <div class="map-wrap">
+      <div class="map-left">
+        <div class="ml-hd">
+          <div class="ml-plan-ttl">제주도 3박4일 힐링 여행</div>
+          <div class="ml-plan-meta">2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차</div>
+          <div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--sage-pale);color:var(--sage-d);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">
+            ✏️ 수정 중</div>
+        </div>
+        <!-- 필터 칩: JS initMapPage() 로 동적 주입 -->
+        <div class="map-filters"></div>
+        <!-- Day 탭: JS initMapPage() 로 동적 주입 -->
+        <div class="day-tabs"></div>
+        <!-- Queue -->
+        <div class="queue-box" id="queueBox">
+          <div class="q-hd"><span>📋 교체 요청 <span class="q-badge" id="qCnt">0</span></span><button onclick="closeQueue()" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3)">접기</button></div>
+          <div id="qItems"></div>
+          <button class="btn-all" id="btnAll" onclick="execAllReplace()" disabled>✅ 전체 교체하기</button>
+        </div>
+        <div id="queueToggle" style="margin:5px 10px;display:none">
+          <button style="width:100%;padding:7px;border-radius:7px;font-size:11px;font-weight:700;background:var(--sage-pale);border:1.5px solid var(--sage-l);color:var(--sage-d);cursor:pointer" onclick="openQueue()">📋 교체 요청 목록 보기</button>
+        </div>
+        <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
+        <div class="map-list" id="mapDayList"></div>
+        <div class="map-budget-bar">
+          <div class="mbb-label">전체 여행 예산</div>
+          <div class="mbb-amount" id="totalBudget">₩ 404,000</div>
+        </div>
+        <!-- 액션 버튼: JS initMapPage() 로 동적 주입 -->
+        <div class="map-acts">
+          <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)" style="font-size:11px">🗺 지도</button>
+          <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)" style="font-size:11px">💰 예산</button>
+          <button class="btn-map-act" onclick="openShareModal()" style="font-size:11px">🔗 공유</button>
+          <button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>
+        </div>
+      </div>
+      <!-- MAP RIGHT -->
+      <div class="map-right" id="mapRightArea">
+        <!-- Map view -->
+        <div id="mapView" style="position:absolute;inset:0">
+          <div style="position:absolute;inset:0;background:linear-gradient(135deg,#C5EADF 0%,#B8E0D4 50%,#A8D4C8 100%)"></div>
+          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(45,158,138,.03) 0,rgba(45,158,138,.03) 1px,transparent 1px,transparent 36px),repeating-linear-gradient(90deg,rgba(45,158,138,.03) 0,rgba(45,158,138,.03) 1px,transparent 1px,transparent 36px)"></div>
+          <svg class="map-route-svg" viewBox="0 0 700 500">
+            <defs>
+              <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3z" fill="var(--sage)" opacity=".8" />
+              </marker>
+            </defs>
+            <path d="M175 125 Q260 160 356 225" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
+            <path d="M356 225 Q440 195 525 178" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
+            <path d="M525 178 Q495 260 448 348" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
+            <path d="M448 348 Q360 340 260 310" stroke="#A78BFA" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
+          </svg>
+          <!-- 지도 핀: JS initMapPage() 로 동적 주입 -->
+          <div class="map-zoom">
+            <button class="zoom-btn" onclick="toast('확대')">+</button>
+            <button class="zoom-btn" onclick="toast('축소')">−</button>
+          </div>
+          <div class="weather-alert" onclick="toast('AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)')">
+            <div class="wa-ttl">🌧️ 06/16 오후 날씨 악화 예보</div>
+            <div class="wa-body">태그 유사도 분석 기반 실내 대체 장소 제안</div>
+            <div class="wa-cta">AI 대체 일정 제안 보기 →</div>
+          </div>
+        </div>
+        <!-- Budget view -->
+        <div id="budgetView" style="display:none;position:absolute;inset:0;background:var(--cream);overflow-y:auto;padding:20px 24px;z-index:8">
+          <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">BUDGET · EXPENSE REPORT</div>
+          <h3 style="font-size:16px;font-weight:800;margin-bottom:14px">가계부</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+            <div>
+              <!-- 예산 항목: JS initMapPage() 로 동적 주입 -->
+              <div id="map-budget-items"></div>
+              <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
+                <div style="font-size:13px;font-weight:700">예상 총액</div>
+                <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩404,000</div>
+              </div>
+              <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
+                예산 범위 내 ✓ 잔여 ₩96,000</div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">카테고리별 지출 비중</div>
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+                <div class="pie-ring" style="width:90px;height:90px"></div>
+                <div class="pie-legend">
+                  <div class="pie-leg-item"><div class="pie-dot" style="background:var(--sage)"></div>숙박 44%</div>
+                  <div class="pie-leg-item"><div class="pie-dot" style="background:var(--coral)"></div>식비 24%</div>
+                  <div class="pie-leg-item"><div class="pie-dot" style="background:#22B5C4"></div>교통 20%</div>
+                  <div class="pie-leg-item"><div class="pie-dot" style="background:#F5A623"></div>입장료 12%</div>
+                </div>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">예상 vs 실제 비교</div>
+              <div style="font-size:10px;color:var(--text2);margin-bottom:3px">숙박</div>
+              <div class="cmp-bar" style="width:88%;background:var(--sage);font-size:9px;margin-bottom:2px">예상 ₩180K</div>
+              <div class="cmp-bar" style="width:75%;background:var(--sage);opacity:.6;font-size:9px;margin-bottom:8px">실제 ₩168K</div>
+              <div style="font-size:10px;color:var(--text2);margin-bottom:3px">식비</div>
+              <div class="cmp-bar" style="width:48%;background:var(--coral);opacity:.5;font-size:9px;margin-bottom:2px">예상 ₩96K</div>
+              <div class="cmp-bar" style="width:68%;background:var(--coral);font-size:9px;margin-bottom:4px">실제 ₩144K ⚠</div>
+              <div style="background:#FEF3F2;border-left:2px solid var(--coral);padding:4px 7px;font-size:10px;color:var(--coral);border-radius:0 5px 5px 0">식비 ₩48,000 초과 — 빨간색 강조</div>
+              <div style="display:flex;gap:6px;margin-top:10px">
+                <button class="btn-export" onclick="toast('PNG 저장!')" style="flex:1;font-size:10px;padding:6px">PNG 저장</button>
+                <button class="btn-export" onclick="toast('PDF 저장!')" style="flex:1;font-size:10px;padding:6px">PDF 저장</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== PAGE 07 BUDGET ===================== -->
+
+<!-- 지도 장소 후기 팝업 -->
+<div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:500px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="mpPlace">장소명</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="mpReviews"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+        <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
+        <div style="display:flex;gap:8px" id="mpLinks"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 후기 전체보기 팝업 -->
+<div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="width:460px">
+    <div class="modal-hd">
+      <div>
+        <div class="modal-ttl" id="rdPlace"></div>
+        <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-bd">
+      <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
+      <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8"></p>
+    </div>
+  </div>
+</div>
+
+</div>
