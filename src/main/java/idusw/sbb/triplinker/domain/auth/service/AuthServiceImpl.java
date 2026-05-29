@@ -8,6 +8,7 @@ import idusw.sbb.triplinker.domain.auth.entity.RefreshToken;
 import idusw.sbb.triplinker.domain.auth.repository.PasswordResetTokenRepository;
 import idusw.sbb.triplinker.domain.auth.repository.RefreshTokenRepository;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;
+import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
 import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.entity.UserSecurityHistory;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
@@ -57,6 +58,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new TokenResponseDto("access-token-placeholder", "refresh-token-placeholder", pwChangeRecommended);
+    @Transactional(readOnly = true)
+    public boolean checkUsername(String username) {
+        return userRepository.existsByUsername(username);
     }
 
     @Override
@@ -70,11 +74,38 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return new TokenResponseDto("new-access-token-placeholder", refreshToken, false);
+    @Transactional(readOnly = true)
+    public boolean checkEmail(String email) {
+        return userRepository.existsByEmail(email);
     }
 
     @Override
     public void logout(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
+    @Transactional
+    public void signUp(SignUpRequestDTO dto) {
+        // 최종 중복 검증
+        if (checkUsername(dto.getUsername())) {
+            throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
+        }
+        if (checkEmail(dto.getEmail())) {
+            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+        }
+
+        // DTO -> Entity 변환
+        User user = User.builder()
+                .username(dto.getUsername())
+                .passwordHash(dto.getPassword())
+                .name(dto.getName())
+                .email(dto.getEmail())
+                .region(dto.getRegion())
+                .birthDate(dto.getBirthDate())
+                .gender(dto.getGender())
+                .mbti(dto.getMbti())
+                .build();
+
+        // DB 저장
+        userRepository.save(user);
     }
 
     @Override
@@ -94,6 +125,10 @@ public class AuthServiceImpl implements AuthService {
     public void resetPassword(String token, String newPassword) {
         PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다."));
+    @Transactional
+    public void updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
         if (!resetToken.isValid()) {
             throw new IllegalStateException("만료되었거나 이미 사용된 토큰입니다.");
@@ -112,4 +147,7 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+        // User 엔티티의 비밀번호 변경 메서드 호출
+        user.updatePassword(newPassword);
+    }
 }

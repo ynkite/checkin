@@ -8,6 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * 회원(users 테이블)의 정보와 도메인 핵심 비즈니스 로직을 담은 JPA 엔티티 클래스입니다.
+ * 유저의 상태 정보 관리 및 닉네임 변경, 논리 탈퇴 로직을 내부에 포함합니다.
+ */
 @Entity
 @Table(name = "users")
 @Getter
@@ -90,6 +94,7 @@ public class User {
         this.birthDate = birthDate;
         this.gender = gender;
         this.mbti = mbti;
+        // 값이 없을 경우 기본값으로 USER 권한과 ACTIVE(활성화) 상태를 부여합니다.
         this.role = (role != null) ? role : "USER"; // 기본값 설정
         this.status = (status != null) ? status : "ACTIVE"; // 기본값 설정
     }
@@ -106,16 +111,11 @@ public class User {
         }
     }
 
+    // 1. 닉네임(name) 변경 도메인 로직 (공백 및 null 예외 검증 포함)
     // 로그인 성공 시 호출 → 실패 횟수 및 잠금 초기화
     public void resetLoginFail() {
         this.loginFailCount = 0;
         this.lockedUntil = null;
-    }
-
-    // 비밀번호 변경 시 호출
-    public void updatePassword(String newPasswordHash) {
-        this.passwordHash = newPasswordHash;
-        this.lastPwChangedAt = LocalDateTime.now();
     }
 
     // 90일 권장 모달 노출 시각 기록
@@ -129,8 +129,16 @@ public class User {
         }
         this.name = newName;
     }
-    // 회원 탈퇴 시 상태 변경
+
+    // 2. 회원 안전 논리 탈퇴 로직 (DELETED로 변경)
     public void withdraw() {
+        this.status = "DELETED";
+        this.deletedAt = LocalDateTime.now();
+    }
+
+    // 비밀번호 수정
+    public void updatePassword(String newPassword) {
+        this.passwordHash = newPassword;
         this.status = "DELETED";
         this.deletedAt = LocalDateTime.now();
     }
