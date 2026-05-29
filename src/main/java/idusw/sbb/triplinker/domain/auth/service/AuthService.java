@@ -27,7 +27,7 @@ public class AuthService {
     // 회원가입
     @Transactional
     public void signUp(SignUpRequestDTO dto) {
-        // 1. 최종 중복 검증
+        // 최종 중복 검증
         if (checkUsername(dto.getUsername())) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
@@ -35,7 +35,7 @@ public class AuthService {
             throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
         }
 
-        // 2. DTO -> Entity 변환
+        // DTO -> Entity 변환
         User user = User.builder()
                 .username(dto.getUsername())
                 .passwordHash(dto.getPassword())

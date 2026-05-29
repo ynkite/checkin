@@ -53,7 +53,7 @@ public class EmailAuthService {
                 + "인증번호는 [" + authCode + "] 입니다.\n"
                 + "해당 인증번호를 3분 안에 화면에 입력해 주세요."); // 이메일 본문 내용
 
-        // 메일 최종 발송 슝!
+        // 메일 최종 발송
         mailSender.send(message);
     }
 

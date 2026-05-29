@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
 /**
- * EmailAuth(이메일 인증) 테이블에 접근하여 데이터를 저장하고 찾는 역할을 합니다.
+ * EmailAuth(이메일 인증) 테이블에 접근하여 데이터를 저장하고 찾는 역할
  */
 public interface EmailAuthRepository extends JpaRepository<EmailAuth, Long> {
 

@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 이메일 인증번호를 임시로 저장하는 엔티티(테이블)입니다.
- * 사용자가 인증번호를 요청하면 이 테이블에 발송된 번호와 만료 시간을 기록합니다.
+ * 이메일 인증번호를 임시로 저장하는 테이블
+ * 사용자가 인증번호를 요청하면 이 테이블에 발송된 번호와 만료 시간을 기록
  */
 @Entity
 @Table(name = "email_auth")
@@ -25,11 +25,11 @@ public class EmailAuth {
     @Column(nullable = false, length = 100)
     private String email;
 
-    // 서버가 생성해서 이메일로 발송한 6자리 난수
+    // 이메일로 발송한 6자리 난수
     @Column(nullable = false, length = 6)
     private String authCode;
 
-    // 인증번호 만료 시간 (발송 시점으로부터 3분 뒤로 설정할 예정)
+    // 인증번호 만료 시간 (발송 시점으로부터 3분 뒤)
     @Column(nullable = false)
     private LocalDateTime expiryDate;
 
