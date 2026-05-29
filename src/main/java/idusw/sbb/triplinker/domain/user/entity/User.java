@@ -75,4 +75,9 @@ public class User {
     public void withdraw() {
         this.status = "INACTIVE";
     }
+
+    // 비밀번호 수정
+    public void updatePassword(String newPassword) {
+        this.passwordHash = newPassword;
+    }
 }

@@ -50,4 +50,14 @@ public class AuthService {
         // 3. DB 저장
         userRepository.save(user);
     }
+
+    // 비밀번호 변경
+    @Transactional
+    public void updatePassword(String email, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        // User 엔티티의 비밀번호 변경 메서드 호출
+        user.updatePassword(newPassword);
+    }
 }

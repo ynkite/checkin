@@ -355,5 +355,98 @@
             });
 
   }
+
+
+
+  // 변수 추가 (인증에 성공한 이메일과 코드를 임시 기억)
+  let resetEmail = "";
+  let resetCode = "";
+
+  // [단계 1] 이메일 입력 후 인증메일 발송 버튼 클릭 시
+  function sendPwEmail() {
+    const email = document.getElementById('pr-email').value.trim();
+    if (!email) { alert('이메일을 입력해주세요.'); return; }
+
+    fetch('/api/auth/password/reset-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    })
+            .then(async res => {
+              const msg = await res.text();
+              if (res.ok) {
+                alert('✅ ' + msg);
+                resetEmail = email; // 이메일 저장
+
+                // 3분 타이머 및 화면 전환 (재민 님이 기존에 짜두신 UI 로직 그대로 활용)
+                document.getElementById('pr-step1').style.display = 'none';
+                document.getElementById('pr-step2').style.display = 'block';
+                startPwTimer(); // 기존 타이머 함수 호출
+              } else {
+                alert('❌ ' + msg);
+              }
+            });
+  }
+
+  // [단계 2] 인증코드 6자리 입력 후 '확인' 버튼 클릭 시 (수정된 깐깐한 버전)
+  function verifyCode() {
+    const email = document.getElementById('pr-email').value.trim();
+    const code = document.getElementById('pr-code').value.trim();
+
+    if (!code) { alert('인증코드를 입력해주세요.'); return; }
+
+    // ⭐️ 회원가입 때 쓰던 인증 검사 API를 그대로 재활용해서 서버에 먼저 물어봅니다!
+    fetch(`/api/auth/verify-email?email=${email}&code=${code}`, { method: "POST" })
+            .then(response => {
+              if(response.ok) {
+                // ⭕️ 인증 성공! 이제 당당하게 Step 3(비번 변경) 창을 띄워줍니다.
+                alert("✅ 인증이 완료되었습니다. 새 비밀번호를 입력해주세요.");
+                resetCode = code; // 나중을 위해 코드 기억해두기
+
+                document.getElementById('pr-step2').style.display = 'none';
+                document.getElementById('pr-step3').style.display = 'block';
+                if(window._pwTimer) clearInterval(window._pwTimer); // 타이머 멈추기
+              } else {
+                // ❌ 인증 실패! 다음 창으로 안 넘겨주고 여기서 막습니다.
+                alert("❌ 인증번호가 틀렸거나 만료되었습니다. 다시 확인해주세요.");
+              }
+            });
+  }
+
+  // [단계 3] 새 비밀번호 입력 후 최종 변경 버튼 클릭 시
+  function setPwNew() {
+    const np = document.getElementById('pr-new-pw').value;
+    const cp = document.getElementById('pr-confirm-pw').value;
+
+    if (!np) { alert('새 비밀번호를 입력해주세요.'); return; }
+    if (np !== cp) { alert('비밀번호가 일치하지 않습니다.'); return; }
+
+    const pwPattern = /^(?=.*[0-9])(?=.*[a-zA-Z])(?=.*\W)(?=\S+$).{8,16}$/;
+    if (!pwPattern.test(np)) {
+      alert("비밀번호는 8~16자 영문, 숫자, 특수문자를 조합해야 합니다.");
+      return;
+    }
+
+    // 백엔드로 최종 변경 요청 날리기!
+    fetch('/api/auth/password/reset', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: resetEmail,
+        code: resetCode,
+        newPassword: np
+      })
+    })
+            .then(async res => {
+              const msg = await res.text();
+              if (res.ok) {
+                alert('🎉 ' + msg);
+                closePwReset(); // 모달 닫기
+                go('login');    // 로그인 화면으로 보내기
+              } else {
+                alert('❌ 변경 실패: ' + msg);
+              }
+            });
+  }
 </script>
 </html>
