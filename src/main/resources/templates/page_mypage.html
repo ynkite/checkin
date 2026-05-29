@@ -1,0 +1,357 @@
+<div th:fragment="mypage" xmlns:th="http://www.thymeleaf.org">
+<!-- ===================================================
+ * 파일명: page_mypage.html
+ * 도메인: 회원(User)
+ * 클래스: UserController → UserServiceImpl → UserRepository
+ * Entity: User, UserSecurityHistory
+ * DTO:    UserInfoResponseDto, UserUpdateDto
+ * 기능:   마이페이지 (프로필 조회/수정, 보안이력)
+ =================================================== -->
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터]
+   * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
+   * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
+   * ============================================================ */
+
+  // 1. 프로필 정보
+  const MOCK_MYPAGE_PROFILE = {
+    avatar: "김",
+    name: "김여행",
+    email: "travel***@gmail.com"
+  };
+
+  // 2. 내 여행 기록 데이터
+  const MOCK_MYPAGE_TRIPS = [
+    { action: "go('map')", icon: "🗺️", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 2인 · 자차 · 비공개", budget: "₩404,000" },
+    { action: "go('map')", icon: "🏙️", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 4인 · 대중교통 · 공개", budget: "₩280,000" }
+  ];
+
+  // 3. 작성한 후기 데이터
+  const MOCK_MYPAGE_REVIEWS = [
+    { action: "go('review')", catLabel: "여행 경로", catClass: "cat-route", title: "제주 해안선 드라이브 완벽 코스", likes: "142", views: "2,804" }
+  ];
+
+  // 4. 좋아요한 후기 데이터
+  const MOCK_MYPAGE_LIKES = [
+    { action: "go('review')", catLabel: "맛집", catClass: "cat-food", title: "강릉 현지인 추천 커피 로드 TOP 10", likes: "891", views: "12,301" },
+    { action: "go('review')", catLabel: "여행 경로", catClass: "cat-route", title: "남해 다랭이마을 2박 3일 완벽 가이드", likes: "654", views: null }
+  ];
+
+  // 5. 스크랩한 숙소 데이터
+  const MOCK_MYPAGE_SCRAP_STAY = [
+    { action: "go('place-hyeopjae')", icon: "🏖️", iconBg: "#E8F5F2", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "📌 3,241번 담김", stats2: "★ 스크랩 412" },
+    { action: "go('place-reviews')", icon: "🌊", iconBg: "#E8F5F2", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "📌 2,718번 담김", stats2: "★ 스크랩 287" }
+  ];
+
+  // 6. 스크랩한 맛집 데이터
+  const MOCK_MYPAGE_SCRAP_FOOD = [
+    { action: "go('place-teraroasa')", icon: "☕", iconBg: "#FEF3F2", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "📌 2,941번 담김", stats2: "★ 스크랩 318" },
+    { action: "go('place-reviews')", icon: "🍖", iconBg: "#FEF3F2", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "#F5A623", ratingStar: "★★★★☆", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "📌 2,512번 담김", stats2: "★ 스크랩 241" }
+  ];
+
+  // 7. 스크랩한 관광지 데이터
+  const MOCK_MYPAGE_SCRAP_TOUR = [
+    { action: "go('place-t-seongsan')", icon: "🌅", iconBg: "#EEF6FF", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "📌 4,102번 담김", stats2: "★ 스크랩 521" },
+    { action: "go('place-t-udo')", icon: "🏝️", iconBg: "#EEF6FF", name: "우도", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "📌 3,560번 담김", stats2: "★ 스크랩 448" }
+  ];
+
+  // 8. 스크랩한 카페 데이터
+  const MOCK_MYPAGE_SCRAP_CAFE = [
+    { action: "go('place-c-handam')", icon: "☕", iconBg: "#F5F0FF", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "📌 2,341번 담김", stats2: "★ 스크랩 312" },
+    { action: "go('place-c-arario')", icon: "☕", iconBg: "#F5F0FF", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "📌 1,980번 담김", stats2: "★ 스크랩 267" }
+  ];
+
+  // 8. 가계부 데이터
+  const MOCK_MYPAGE_LEDGER = [
+    { id: "my-ledger-jeju", action: "selectMyLedger(this,'jeju')", class: "ts-card on", border: "var(--sage)", bg: "var(--sage-pale)", icon: "🗺️", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 제주 기준", budget: "₩404,000", budgetColor: "var(--sage)", mb: "10px" },
+    { id: "my-ledger-busan", action: "selectMyLedger(this,'busan')", class: "ts-card", border: "var(--border)", bg: "var(--surface)", icon: "🏙️", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 부산 기준", budget: "₩280,000", budgetColor: "var(--text2)", mb: "18px" }
+  ];
+
+  // 9. 설정 및 안내 문구 텍스트
+  const MOCK_MYPAGE_TEXTS = {
+    infoPwWarn: "🔒 보안을 위해 현재 비밀번호를 먼저 확인합니다.",
+    withdrawWarn: "⚠️ 탈퇴 즉시 username·email 마스킹 / status → DELETED<br>REFRESH_TOKENS 즉시 삭제 · 작성 후기는 '탈퇴한 사용자'로 표시"
+  };
+  /* ============================================================ */
+
+
+  /* ─── 마이페이지 데이터 렌더링 헬퍼 ─── */
+  function initMyPageData() {
+    // 1. 프로필 정보 렌더링
+    let profile = typeof MOCK_MYPAGE_PROFILE !== 'undefined' ? MOCK_MYPAGE_PROFILE : null;
+    if (profile) {
+      const avatar = document.getElementById("myAvatar");
+      const name = document.getElementById("myName");
+      const email = document.getElementById("myEmail");
+      if (avatar) avatar.textContent = profile.avatar;
+      if (name) name.textContent = profile.name;
+      if (email) email.textContent = profile.email;
+    }
+
+    // 2. 내 여행 기록 렌더링
+    let trips = typeof MOCK_MYPAGE_TRIPS !== 'undefined' ? MOCK_MYPAGE_TRIPS : [];
+    const tripsContainer = document.getElementById("my-trips-list");
+    if (tripsContainer && trips.length > 0) {
+      tripsContainer.innerHTML = trips.map(t => `
+      <div class="trip-card" onclick="${t.action}">
+        <div class="trip-thumb">${t.icon}</div>
+        <div class="trip-info">
+          <div class="trip-ttl">${t.title}</div>
+          <div class="trip-meta">${t.meta}</div>
+        </div>
+        <div class="trip-budget">${t.budget}</div>
+      </div>
+    `).join('');
+    }
+
+    // 3. 작성한 후기 렌더링
+    let reviews = typeof MOCK_MYPAGE_REVIEWS !== 'undefined' ? MOCK_MYPAGE_REVIEWS : [];
+    const reviewsContainer = document.getElementById("my-reviews-list");
+    if (reviewsContainer && reviews.length > 0) {
+      reviewsContainer.innerHTML = reviews.map(r => `
+      <div class="post-card" onclick="${r.action}"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+        <div class="post-foot">
+          <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-scrap" onclick="event.stopPropagation();go('edit-review')">✏️ 수정</button>
+            <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    }
+
+    // 4. 좋아요한 후기 렌더링
+    let likes = typeof MOCK_MYPAGE_LIKES !== 'undefined' ? MOCK_MYPAGE_LIKES : [];
+    const likesContainer = document.getElementById("my-likes-list");
+    if (likesContainer && likes.length > 0) {
+      likesContainer.innerHTML = likes.map(r => `
+      <div class="post-card" onclick="${r.action}"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+      </div>
+    `).join('');
+    }
+
+    // 5. 스크랩한 숙소 렌더링
+    let scrapStay = typeof MOCK_MYPAGE_SCRAP_STAY !== 'undefined' ? MOCK_MYPAGE_SCRAP_STAY : [];
+    const scrapStayContainer = document.getElementById("my-scrap-stay-list");
+    if (scrapStayContainer && scrapStay.length > 0) {
+      scrapStayContainer.innerHTML = scrapStay.map(s => `
+      <div class="place-card" onclick="${s.action}">
+        <div class="pc-hd">
+          <div class="pc-icon" style="background:${s.iconBg}">${s.icon}</div>
+          <div>
+            <div class="pc-name">${s.name}</div>
+            <div class="pc-meta">${s.meta}</div>
+            <div class="pc-rating"><span style="color:${s.ratingColor}">${s.ratingStar}</span><span style="font-size:12px;font-weight:700;margin-left:3px">${s.ratingNum}</span></div>
+          </div>
+        </div>
+        <div class="pc-tags">${s.tags.map(tag => `<span class="pc-tag">${tag}</span>`).join('')}</div>
+        <div class="pc-foot">
+          <div class="pc-stats"><span>${s.stats1}</span><span class="pc-scrap-n">${s.stats2}</span></div>
+        </div>
+      </div>
+    `).join('');
+    }
+
+    // 6. 스크랩한 맛집 렌더링
+    let scrapFood = typeof MOCK_MYPAGE_SCRAP_FOOD !== 'undefined' ? MOCK_MYPAGE_SCRAP_FOOD : [];
+    const scrapFoodContainer = document.getElementById("my-scrap-food-list");
+    if (scrapFoodContainer && scrapFood.length > 0) {
+      scrapFoodContainer.innerHTML = scrapFood.map(s => `
+      <div class="place-card" onclick="${s.action}">
+        <div class="pc-hd">
+          <div class="pc-icon" style="background:${s.iconBg}">${s.icon}</div>
+          <div>
+            <div class="pc-name">${s.name}</div>
+            <div class="pc-meta">${s.meta}</div>
+            <div class="pc-rating"><span style="color:${s.ratingColor}">${s.ratingStar}</span><span style="font-size:12px;font-weight:700;margin-left:3px">${s.ratingNum}</span></div>
+          </div>
+        </div>
+        <div class="pc-tags">${s.tags.map(tag => `<span class="pc-tag">${tag}</span>`).join('')}</div>
+        <div class="pc-foot">
+          <div class="pc-stats"><span>${s.stats1}</span><span class="pc-scrap-n">${s.stats2}</span></div>
+        </div>
+      </div>
+    `).join('');
+    }
+// 7. 스크랩한 관광지 렌더링
+    let scrapTour = typeof MOCK_MYPAGE_SCRAP_TOUR !== 'undefined' ? MOCK_MYPAGE_SCRAP_TOUR : [];
+    const scrapTourContainer = document.getElementById("my-scrap-tour-list");
+    if (scrapTourContainer && scrapTour.length > 0) {
+      scrapTourContainer.innerHTML = scrapTour.map(s => `
+      <div class="place-card" onclick="${s.action}">
+        <div class="pc-hd">
+          <div class="pc-icon" style="background:${s.iconBg}">${s.icon}</div>
+          <div>
+            <div class="pc-name">${s.name}</div>
+            <div class="pc-meta">${s.meta}</div>
+            <div class="pc-rating"><span style="color:${s.ratingColor}">${s.ratingStar}</span><span style="font-size:12px;font-weight:700;margin-left:3px">${s.ratingNum}</span></div>
+          </div>
+        </div>
+        <div class="pc-tags">${s.tags.map(tag => `<span class="pc-tag">${tag}</span>`).join('')}</div>
+        <div class="pc-foot"><div class="pc-stats"><span>${s.stats1}</span><span class="pc-scrap-n">${s.stats2}</span></div></div>
+      </div>
+    `).join('');
+    }
+
+    // 8. 스크랩한 카페 렌더링
+    let scrapCafe = typeof MOCK_MYPAGE_SCRAP_CAFE !== 'undefined' ? MOCK_MYPAGE_SCRAP_CAFE : [];
+    const scrapCafeContainer = document.getElementById("my-scrap-cafe-list");
+    if (scrapCafeContainer && scrapCafe.length > 0) {
+      scrapCafeContainer.innerHTML = scrapCafe.map(s => `
+      <div class="place-card" onclick="${s.action}">
+        <div class="pc-hd">
+          <div class="pc-icon" style="background:${s.iconBg}">${s.icon}</div>
+          <div>
+            <div class="pc-name">${s.name}</div>
+            <div class="pc-meta">${s.meta}</div>
+            <div class="pc-rating"><span style="color:${s.ratingColor}">${s.ratingStar}</span><span style="font-size:12px;font-weight:700;margin-left:3px">${s.ratingNum}</span></div>
+          </div>
+        </div>
+        <div class="pc-tags">${s.tags.map(tag => `<span class="pc-tag">${tag}</span>`).join('')}</div>
+        <div class="pc-foot"><div class="pc-stats"><span>${s.stats1}</span><span class="pc-scrap-n">${s.stats2}</span></div></div>
+      </div>
+    `).join('');
+    }
+    // 9. 가계부 목록 렌더링
+    let ledgers = typeof MOCK_MYPAGE_LEDGER !== 'undefined' ? MOCK_MYPAGE_LEDGER : [];
+    const ledgerContainer = document.getElementById("my-ledger-list");
+    if (ledgerContainer && ledgers.length > 0) {
+      ledgerContainer.innerHTML = ledgers.map(l => `
+      <div class="${l.class}" id="${l.id}" onclick="${l.action}"
+        style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:2px solid ${l.border};background:${l.bg};cursor:pointer;margin-bottom:${l.mb}">
+        <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:20px">${l.icon}</div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${l.title}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${l.meta}</div>
+        </div>
+        <div style="font-size:15px;font-weight:800;color:${l.budgetColor}">${l.budget}</div>
+      </div>
+    `).join('');
+    }
+
+    // 10. 설정 텍스트 렌더링
+    let texts = typeof MOCK_MYPAGE_TEXTS !== 'undefined' ? MOCK_MYPAGE_TEXTS : null;
+    if (texts) {
+      const infoPwWarn = document.getElementById("info-pw-warn-txt");
+      const withdrawWarn = document.getElementById("withdraw-warn-txt");
+      if (infoPwWarn) infoPwWarn.innerHTML = texts.infoPwWarn;
+      if (withdrawWarn) withdrawWarn.innerHTML = texts.withdrawWarn;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initMyPageData);
+</script>
+
+<div class="page" id="page-mypage">
+  <div class="my-layout">
+    <div class="my-sidebar">
+      <div class="my-avatar" id="myAvatar"></div>
+      <div class="my-name" id="myName"></div>
+      <div class="my-email" id="myEmail"></div>
+
+      <div class="my-menu-sep">내 활동</div>
+      <button class="my-menu on" onclick="showMySection('trips',this)">📋 내 여행 기록</button>
+      <button class="my-menu" onclick="showMySection('reviews',this)">✍️ 작성한 후기</button>
+      <button class="my-menu" onclick="showMySection('likes',this)">❤️ 좋아요한 후기</button>
+      <button class="my-menu" onclick="showMySection('scrap-stay',this)">🏨 스크랩한 숙소</button>
+      <button class="my-menu" onclick="showMySection('scrap-food',this)">🍽️ 스크랩한 맛집</button>
+      <button class="my-menu" onclick="showMySection('scrap-tour',this)">🗺️ 스크랩한 관광지</button>
+      <button class="my-menu" onclick="showMySection('scrap-cafe',this)">☕ 스크랩한 카페</button>
+      <button class="my-menu" onclick="showMySection('ledger',this)">💰 가계부</button>
+      <div class="my-menu-sep">설정</div>
+      <button class="my-menu" onclick="showMySection('info',this)">👤 회원정보 수정</button>
+      <button class="my-menu" onclick="showMySection('withdraw',this)">🗑️ 회원 탈퇴</button>
+    </div>
+
+    <div class="my-content">
+      <div id="my-trips">
+        <h3 class="my-sec-ttl">내 여행 기록</h3>
+        <div id="my-trips-list"></div>
+      </div>
+
+      <div id="my-reviews" style="display:none">
+        <h3 class="my-sec-ttl">작성한 후기</h3>
+        <div id="my-reviews-list"></div>
+      </div>
+
+      <div id="my-likes" style="display:none">
+        <h3 class="my-sec-ttl">좋아요한 후기</h3>
+        <div id="my-likes-list"></div>
+      </div>
+
+      <div id="my-scrap-stay" style="display:none">
+        <h3 class="my-sec-ttl">스크랩한 숙소</h3>
+        <div id="my-scrap-stay-list"></div>
+      </div>
+
+      <div id="my-scrap-food" style="display:none">
+        <h3 class="my-sec-ttl">스크랩한 맛집</h3>
+        <div id="my-scrap-food-list"></div>
+      </div>
+      <div id="my-scrap-tour" style="display:none">
+        <h3 class="my-sec-ttl">스크랩한 관광지</h3>
+        <div id="my-scrap-tour-list"></div>
+      </div>
+
+      <div id="my-scrap-cafe" style="display:none">
+        <h3 class="my-sec-ttl">스크랩한 카페</h3>
+        <div id="my-scrap-cafe-list"></div>
+      </div>
+      <div id="my-ledger" style="display:none">
+        <div id="my-ledger-inner">
+          <h3 class="my-sec-ttl">💰 가계부</h3>
+          <p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>
+          <div id="my-ledger-list"></div>
+          <button class="btn-f" style="padding:12px 22px;border-radius:var(--r);font-size:14px"
+                  onclick="goLedger2()">가계부 상세 보기 →</button>
+        </div>
+      </div>
+
+      <div id="my-info" style="display:none">
+        <h3 class="my-sec-ttl">👤 회원정보 수정</h3>
+        <div id="info-pw-step">
+          <div id="info-pw-warn-txt" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--sage-d)"></div>
+          <div id="info-social-notice"
+               style="display:none;background:var(--cream2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);text-align:center">
+          </div>
+          <div id="info-pw-form">
+            <div class="form-group">
+              <label class="form-label">현재 비밀번호</label>
+              <input class="form-input" type="password" id="infoPwInput" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')verifyInfoPw()">
+            </div>
+            <div id="info-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">⚠️ 비밀번호가 올바르지 않습니다.</div>
+            <button class="btn-f" style="padding:10px 20px;border-radius:var(--r)" onclick="verifyInfoPw()">확인</button>
+          </div>
+        </div>
+        <div id="info-edit-form" style="display:none">
+          <div id="info-edit-fields"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-f" style="padding:10px 20px;border-radius:var(--r)" onclick="saveInfoEdit()">저장</button>
+            <button class="btn-prev-step" style="padding:10px 14px;border-radius:var(--r)" onclick="resetInfoStep()">취소</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="my-withdraw" style="display:none">
+        <h3 class="my-sec-ttl">회원 탈퇴</h3>
+        <div id="withdraw-warn-txt" style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8"></div>
+        <div id="withdraw-social-box" style="display:none" class="form-group">
+          <label class="form-label">이메일 재확인</label>
+          <input class="form-input" type="email" id="withdrawEmailInput" placeholder="가입한 이메일 주소 입력">
+        </div>
+        <div id="withdraw-pw-box" class="form-group">
+          <label class="form-label">비밀번호 재확인</label>
+          <input class="form-input" type="password" placeholder="비밀번호 입력">
+        </div>
+        <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700"
+                onclick="if(confirm('정말 탈퇴하시겠습니까?'))toast('탈퇴 완료')">회원 탈퇴</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>

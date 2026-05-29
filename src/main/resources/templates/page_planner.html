@@ -1,0 +1,408 @@
+<div th:fragment="planner" xmlns:th="http://www.thymeleaf.org">
+<!-- ===================================================
+ * 파일명: page_planner.html
+ * 도메인: 플랜(Plan) + 챗봇(Chat)
+ * 클래스: TravelPlanController → TravelPlanServiceImpl → TravelPlanRepository
+ *          ChatbotController → ChatbotServiceImpl → ChatbotRepository
+ * Entity: TravelPlan, PlanInputForm, PlanMember, PlanShareLink, ChatSession, ChatMessage
+ * DTO:    PlanCreateDto, PlanResponseDto, ChatRequestDto, ChatResponseDto
+ * 기능:   AI 여행 플래너 생성, 챗봇 대화
+ =================================================== -->
+<script>
+  /* ============================================================
+   * 🚨 [임시 하드코딩 데이터]
+   * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
+   * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
+   * ============================================================ */
+  const MOCK_PLANNER_DATA = {
+    header: {
+      eyebrow: "AI TRAVEL PLANNER",
+      title: "여행 플랜 생성"
+    },
+    steps: ["기본 정보", "취향 설정", "AI 챗봇"],
+
+    // STEP 1: 기본 정보
+    s1: {
+      notice: "✦ 이전 여행 플랜 이력이 있으면 <strong style='margin:0 3px'>이전 취향 불러오기</strong> 버튼이 표시됩니다 (AUTO_LOADED)",
+      titles: ["📍 여행지 & 날짜", "🚗 이동 수단", "🏨 숙소 형태", "👥 동행자 유형"],
+      labels: ["출발지", "여행지 (국내 전용)", "출발일", "귀환일", "인원", "총 예산 (최대 1,000만원)"],
+      selects: {
+        depProv: [
+          { v: "", l: "도/시 선택" }, { v: "서울", l: "서울", sel: true }, { v: "경기", l: "경기" },
+          { v: "인천", l: "인천" }, { v: "강원", l: "강원" }, { v: "충남", l: "충남" },
+          { v: "대전", l: "대전" }, { v: "부산", l: "부산" }, { v: "제주", l: "제주" }
+        ],
+        depCity: [{ v: "전체", l: "전체" }],
+        destProv: [
+          { v: "", l: "도/시 선택" }, { v: "서울", l: "서울" }, { v: "경기", l: "경기" },
+          { v: "인천", l: "인천" }, { v: "강원", l: "강원" }, { v: "충북", l: "충북" },
+          { v: "충남", l: "충남" }, { v: "대전", l: "대전" }, { v: "세종", l: "세종" },
+          { v: "전북", l: "전북" }, { v: "전남", l: "전남" }, { v: "광주", l: "광주" },
+          { v: "경북", l: "경북" }, { v: "경남", l: "경남" }, { v: "대구", l: "대구" },
+          { v: "울산", l: "울산" }, { v: "부산", l: "부산" }, { v: "제주", l: "제주" }
+        ],
+        destCity: [{ v: "", l: "시/군/구 선택" }]
+      },
+      inputs: { start: "2025-06-14", end: "2025-06-17", pax: "2", budget: "500000" },
+      transChips: [
+        { text: "🚗 자차", class: "chip on", onclick: "pick(this,'trans')" },
+        { text: "🚌 대중교통", class: "chip", onclick: "pick(this,'trans')" },
+        { text: "기타", class: "chip", onclick: "pick(this,'trans');showOtherInput('other-trans',this)" }
+      ],
+      transPH: "이동 수단을 직접 입력해주세요",
+      accChips: [
+        { text: "호텔", class: "chip on", onclick: "pick(this,'acc')" },
+        { text: "펜션", class: "chip", onclick: "pick(this,'acc')" },
+        { text: "게스트하우스", class: "chip", onclick: "pick(this,'acc')" },
+        { text: "리조트", class: "chip", onclick: "pick(this,'acc')" },
+        { text: "기타", class: "chip", onclick: "pick(this,'acc');showOtherInput('other-acc',this)" }
+      ],
+      accPH: "숙소 형태를 직접 입력해주세요",
+      compChips: [
+        { text: "혼자", class: "chip", onclick: "pick(this,'comp')" },
+        { text: "커플", class: "chip on", onclick: "pick(this,'comp')" },
+        { text: "가족", class: "chip", onclick: "pick(this,'comp')" },
+        { text: "친구", class: "chip", onclick: "pick(this,'comp')" },
+        { text: "기타", class: "chip", onclick: "pick(this,'comp');showOtherInput('other-comp',this)" }
+      ],
+      compPH: "동행자 유형을 직접 입력해주세요",
+      btns: { next: "다음 단계 →", load: "이전 취향 불러오기", loadAction: "toast('최근 여행 취향을 불러왔습니다.')" }
+    },
+
+    // STEP 2: 취향 설정
+    s2: {
+      titles: [
+        { t: "✨ 여행 스타일", sub: "(다중 선택 가능)" },
+        { t: "🍽️ 식이 정보", sub: "" },
+        { t: "⚙️ 특수 조건", sub: "" },
+        { t: "📅 일정 밀도", sub: "MBTI 기반 자동 선택 (변경 가능)" },
+        { t: "🏠 숙소 세부 옵션", sub: "" }
+      ],
+      styleChips: [
+        { text: "가성비", class: "chip on", onclick: "tog(this)" },
+        { text: "럭셔리", class: "chip", onclick: "tog(this)" },
+        { text: "액티비티", class: "chip", onclick: "tog(this)" },
+        { text: "힐링", class: "chip", onclick: "tog(this)" },
+        { text: "문화·역사", class: "chip", onclick: "tog(this)" },
+        { text: "음식 탐방", class: "chip", onclick: "tog(this)" },
+        { text: "기타", class: "chip", onclick: "tog(this);showOtherInput('other-style',this)" }
+      ],
+      stylePH: "여행 스타일을 직접 입력해주세요",
+      foodChips: [
+        { text: "비건", class: "chip", onclick: "tog(this)" },
+        { text: "해산물 선호", class: "chip on", onclick: "tog(this)" },
+        { text: "알러지 있음", class: "chip", onclick: "tog(this)" },
+        { text: "무관", class: "chip", onclick: "tog(this)" },
+        { text: "기타", class: "chip", onclick: "tog(this);showOtherInput('other-food',this)" }
+      ],
+      foodPH: "식이 정보를 직접 입력해주세요",
+      specChips: [
+        { text: "유아 동반", class: "chip", onclick: "tog(this)" },
+        { text: "반려동물 동반", class: "chip", onclick: "tog(this)" },
+        { text: "노인 동반", class: "chip", onclick: "tog(this)" },
+        { text: "기타", class: "chip", onclick: "tog(this);showOtherInput('other-special',this)" }
+      ],
+      specPH: "특수 조건을 직접 입력해주세요",
+      densChips: [
+        { text: "빼곡하게", class: "chip", onclick: "pick(this,'density')" },
+        { text: "여유롭게", class: "chip on", onclick: "pick(this,'density')" }
+      ],
+      densNote: "MBTI ENFP → P 성향 → '여유롭게' 자동 선택됨",
+      accOptChips: [
+        { text: "오션뷰", class: "chip", onclick: "tog(this)" },
+        { text: "취사 가능", class: "chip", onclick: "tog(this)" },
+        { text: "조식 포함", class: "chip", onclick: "tog(this)" },
+        { text: "수영장", class: "chip", onclick: "tog(this)" },
+        { text: "기타", class: "chip", onclick: "tog(this);showOtherInput('other-accopts',this)" }
+      ],
+      accOptPH: "숙소 세부 옵션을 직접 입력해주세요",
+      btns: { prev: "← 이전", next: "AI 챗봇으로 →" }
+    },
+
+    // STEP 3: AI 챗봇
+    s3: {
+      chat: {
+        av: "🤖", name: "TripLinker AI", stat: "● 온라인", meta: "국내 전용 · 예산 0~1,000만원",
+        info: "입력 폼 데이터가 LLM 초기 컨텍스트로 자동 주입됩니다.",
+        ph: "메시지 입력...", send: "↑",
+        note: "해외 지역 → 국내 전용 안내 · 예산 범위 초과 → 재입력 요청"
+      },
+      sum: {
+        ttl: "입력 정보 요약", sub: "클릭하여 수정 · AI 대화로 실시간 변경",
+        rows: [
+          { act: "toast('여행지 수동 변경')", lbl: "여행지", id: "sum-dest", val: "부산", class: "asc-val" },
+          { act: "toast('날짜 수동 변경')", lbl: "날짜", id: "sum-date", val: "6/14 – 6/17", class: "asc-val" },
+          { act: "toast('인원 수동 변경')", lbl: "인원", id: "sum-people", val: "2인 커플", class: "asc-val" },
+          { act: "toast('예산 수동 변경')", lbl: "예산", id: "sum-budget", val: "₩500,000", class: "asc-val" },
+          { act: "toast('이동 수단 수정')", lbl: "이동", id: "sum-trans", val: "자차", class: "asc-val" },
+          { act: "toast('숙소 수정')", lbl: "숙소", id: "sum-acc", val: "게스트하우스", class: "asc-val" },
+          { act: null, lbl: "여행 스타일", id: "sum-style", val: "가성비", class: "asc-val" },
+          { act: null, lbl: "일정 밀도", id: "sum-density", val: "여유롭게", class: "asc-val" },
+          { act: null, lbl: "반려동물", id: "sum-pet", val: "— 미입력", class: "asc-val missing" }
+        ],
+        note: "수동 수정 시 LLM 숨은 컨텍스트 자동 주입 + PLAN_INPUT_FORM 업데이트",
+        genBtn: "✈ 일정 생성하기 → 경로 상세 수정",
+        genAction: "go('map'); toast(`✅ 일정이 생성되었습니다!경로 수정 페이지로 이동합니다.`)"
+      },
+      btns: { prev: "← 이전" }
+    }
+  };
+  /* ============================================================ */
+
+  /* ─── 페이지 동적 데이터 주입 헬퍼 함수 ─── */
+  function initPlannerData() {
+    if (typeof MOCK_PLANNER_DATA === 'undefined') return;
+    const d = MOCK_PLANNER_DATA;
+
+    // Header & Steps
+    document.getElementById('inj-ey').textContent = d.header.eyebrow;
+    document.getElementById('inj-ttl').textContent = d.header.title;
+    document.getElementById('inj-step-1').textContent = d.steps[0];
+    document.getElementById('inj-step-2').textContent = d.steps[1];
+    document.getElementById('inj-step-3').textContent = d.steps[2];
+
+    // STEP 1 Data Inject
+    document.getElementById('inj-s1-notice').innerHTML = d.s1.notice;
+    document.getElementById('inj-s1-t1').textContent = d.s1.titles[0];
+    document.getElementById('inj-s1-l1').textContent = d.s1.labels[0];
+    document.getElementById('inj-s1-l2').textContent = d.s1.labels[1];
+    document.getElementById('inj-s1-l3').textContent = d.s1.labels[2];
+    document.getElementById('inj-s1-l4').textContent = d.s1.labels[3];
+    document.getElementById('inj-s1-l5').textContent = d.s1.labels[4];
+    document.getElementById('inj-s1-l6').textContent = d.s1.labels[5];
+
+    document.getElementById('dep-prov').innerHTML = d.s1.selects.depProv.map(o => `<option value="${o.v}"${o.sel ? ' selected' : ''}>${o.l}</option>`).join('');
+    document.getElementById('dep-city').innerHTML = d.s1.selects.depCity.map(o => `<option value="${o.v}">${o.l}</option>`).join('');
+    document.getElementById('dest-prov').innerHTML = d.s1.selects.destProv.map(o => `<option value="${o.v}">${o.l}</option>`).join('');
+    document.getElementById('dest-city').innerHTML = d.s1.selects.destCity.map(o => `<option value="${o.v}">${o.l}</option>`).join('');
+
+    document.getElementById('s1-date-start').value = d.s1.inputs.start;
+    document.getElementById('s1-date-end').value = d.s1.inputs.end;
+    document.getElementById('s1-pax').value = d.s1.inputs.pax;
+    document.getElementById('s1-budget').value = d.s1.inputs.budget;
+
+    document.getElementById('inj-s1-t2').textContent = d.s1.titles[1];
+    document.getElementById('chip-trans').innerHTML = d.s1.transChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-trans').placeholder = d.s1.transPH;
+
+    document.getElementById('inj-s1-t3').textContent = d.s1.titles[2];
+    document.getElementById('chip-acc').innerHTML = d.s1.accChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-acc').placeholder = d.s1.accPH;
+
+    document.getElementById('inj-s1-t4').textContent = d.s1.titles[3];
+    document.getElementById('chip-comp').innerHTML = d.s1.compChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-comp').placeholder = d.s1.compPH;
+
+    document.getElementById('inj-s1-b1').textContent = d.s1.btns.next;
+    const loadBtn = document.getElementById('inj-s1-b2');
+    loadBtn.textContent = d.s1.btns.load;
+    loadBtn.setAttribute('onclick', d.s1.btns.loadAction);
+
+    // STEP 2 Data Inject
+    document.getElementById('inj-s2-t1').innerHTML = `${d.s2.titles[0].t} <small style="font-size:11px;color:var(--text3);font-weight:400">${d.s2.titles[0].sub}</small>`;
+    document.getElementById('chip-style').innerHTML = d.s2.styleChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-style').placeholder = d.s2.stylePH;
+
+    document.getElementById('inj-s2-t2').textContent = d.s2.titles[1].t;
+    document.getElementById('chip-food').innerHTML = d.s2.foodChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-food').placeholder = d.s2.foodPH;
+
+    document.getElementById('inj-s2-t3').textContent = d.s2.titles[2].t;
+    document.getElementById('chip-special').innerHTML = d.s2.specChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-special').placeholder = d.s2.specPH;
+
+    document.getElementById('inj-s2-t4').innerHTML = `${d.s2.titles[3].t} <small style="font-size:11px;color:var(--text3);font-weight:400">${d.s2.titles[3].sub}</small>`;
+    document.getElementById('chip-density').innerHTML = d.s2.densChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('inj-s2-note').textContent = d.s2.densNote;
+
+    document.getElementById('inj-s2-t5').textContent = d.s2.titles[4].t;
+    document.getElementById('chip-accopts').innerHTML = d.s2.accOptChips.map(c => `<button class="${c.class}" onclick="${c.onclick}">${c.text}</button>`).join('');
+    document.getElementById('other-accopts').placeholder = d.s2.accOptPH;
+
+    document.getElementById('inj-s2-b1').textContent = d.s2.btns.prev;
+    document.getElementById('inj-s2-b2').textContent = d.s2.btns.next;
+
+    // STEP 3 Data Inject
+    document.getElementById('inj-c-av').textContent = d.s3.chat.av;
+    document.getElementById('inj-c-name').textContent = d.s3.chat.name;
+    document.getElementById('inj-c-stat').textContent = d.s3.chat.stat;
+    document.getElementById('inj-c-meta').textContent = d.s3.chat.meta;
+    document.getElementById('inj-c-info').textContent = d.s3.chat.info;
+    document.getElementById('chatInp').placeholder = d.s3.chat.ph;
+    document.getElementById('inj-c-send').textContent = d.s3.chat.send;
+    document.getElementById('inj-c-note').textContent = d.s3.chat.note;
+
+    document.getElementById('inj-sum-ttl').textContent = d.s3.sum.ttl;
+    document.getElementById('inj-sum-sub').textContent = d.s3.sum.sub;
+
+    document.getElementById('sum-rows-container').innerHTML = d.s3.sum.rows.map(r => `
+    <div class="asc-row"${r.act ? ` onclick="${r.act}"` : ''}>
+      <div class="asc-label">${r.lbl}</div>
+      <div class="${r.class}" id="${r.id}">${r.val}</div>
+    </div>
+  `).join('');
+
+    document.getElementById('inj-sum-note').textContent = d.s3.sum.note;
+    const genBtn = document.getElementById('inj-sum-gen');
+    genBtn.textContent = d.s3.sum.genBtn;
+    genBtn.setAttribute('onclick', d.s3.sum.genAction);
+
+    document.getElementById('inj-s3-b1').textContent = d.s3.btns.prev;
+  }
+
+  document.addEventListener('DOMContentLoaded', initPlannerData);
+</script>
+
+<div class="page" id="page-planner">
+  <div class="planner-wrap">
+    <div class="planner-hd">
+      <div class="planner-ey" id="inj-ey"></div>
+      <div class="planner-ttl" id="inj-ttl"></div>
+    </div>
+
+    <div class="step-bar">
+      <div class="step-item active" id="sb-1" onclick="goPlanStep(1)">
+        <div class="step-num">1</div>
+        <div class="step-lbl" id="inj-step-1"></div>
+      </div>
+      <div class="step-item" id="sb-2" onclick="goPlanStep(2)">
+        <div class="step-num">2</div>
+        <div class="step-lbl" id="inj-step-2"></div>
+      </div>
+      <div class="step-item" id="sb-3" onclick="goPlanStep(3)">
+        <div class="step-num">3</div>
+        <div class="step-lbl" id="inj-step-3"></div>
+      </div>
+    </div>
+
+    <div class="step-panel active" id="sp-1">
+      <div class="prev-pref" id="inj-s1-notice"></div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s1-t1"></div>
+        <div class="form-group">
+          <label class="form-label" id="inj-s1-l1"></label>
+          <div class="loc-selector">
+            <select class="loc-big" id="dep-prov" onchange="updateCityDep(this)"></select>
+            <select class="loc-big" id="dep-city"></select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" id="inj-s1-l2"></label>
+          <div class="loc-selector">
+            <select class="loc-big" id="dest-prov" onchange="updateCityDest(this)"></select>
+            <select class="loc-big" id="dest-city"></select>
+          </div>
+        </div>
+        <div class="pl-2col">
+          <div class="form-group"><label class="form-label" id="inj-s1-l3"></label><input class="form-input" type="date" id="s1-date-start"></div>
+          <div class="form-group"><label class="form-label" id="inj-s1-l4"></label><input class="form-input" type="date" id="s1-date-end"></div>
+        </div>
+        <div class="pl-2col">
+          <div class="form-group"><label class="form-label" id="inj-s1-l5"></label><input class="form-input" type="number" id="s1-pax" min="1" max="20"></div>
+          <div class="form-group"><label class="form-label" id="inj-s1-l6"></label><input class="form-input" type="number" id="s1-budget"></div>
+        </div>
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s1-t2"></div>
+        <div class="chip-row" id="chip-trans"></div>
+        <input class="other-input" id="other-trans">
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s1-t3"></div>
+        <div class="chip-row" id="chip-acc"></div>
+        <input class="other-input" id="other-acc">
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s1-t4"></div>
+        <div class="chip-row" id="chip-comp"></div>
+        <input class="other-input" id="other-comp">
+      </div>
+
+      <div class="pl-btns">
+        <button class="btn-next" onclick="goPlanStep(2)" id="inj-s1-b1"></button>
+        <button class="btn-load-pref" id="inj-s1-b2"></button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="sp-2">
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s2-t1"></div>
+        <div class="chip-row" id="chip-style"></div>
+        <input class="other-input" id="other-style">
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s2-t2"></div>
+        <div class="chip-row" id="chip-food"></div>
+        <input class="other-input" id="other-food">
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s2-t3"></div>
+        <div class="chip-row" id="chip-special"></div>
+        <input class="other-input" id="other-special">
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s2-t4"></div>
+        <div class="chip-row" id="chip-density"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px" id="inj-s2-note"></div>
+      </div>
+
+      <div class="pl-card">
+        <div class="pl-card-ttl" id="inj-s2-t5"></div>
+        <div class="chip-row" id="chip-accopts"></div>
+        <input class="other-input" id="other-accopts">
+      </div>
+
+      <div class="pl-btns">
+        <button class="btn-prev-step" onclick="goPlanStep(1)" id="inj-s2-b1"></button>
+        <button class="btn-next" onclick="goPlanStep(3);startChat()" id="inj-s2-b2"></button>
+      </div>
+    </div>
+
+    <div class="step-panel" id="sp-3">
+      <div class="chat-layout">
+        <div class="chat-box">
+          <div class="chat-hd">
+            <div class="chat-bot-av" id="inj-c-av"></div>
+            <div>
+              <div style="font-size:13px;font-weight:700" id="inj-c-name"></div>
+              <div style="font-size:10px;color:var(--sage)" id="inj-c-stat"></div>
+            </div>
+            <div style="margin-left:auto;font-size:10px;color:var(--text3)" id="inj-c-meta"></div>
+          </div>
+
+          <div class="chat-info-bar" id="inj-c-info"></div>
+          <div class="chat-msgs" id="chatMsgs"></div>
+
+          <div class="chat-inp-area">
+            <div class="chat-inp-row">
+              <textarea class="chat-inp" id="chatInp" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+              <button class="btn-send" onclick="sendMsg()" id="inj-c-send"></button>
+            </div>
+            <div class="chat-note" id="inj-c-note"></div>
+          </div>
+        </div>
+
+        <div class="asc">
+          <div class="asc-hd">
+            <div class="asc-ttl" id="inj-sum-ttl"></div>
+            <div class="asc-sub" id="inj-sum-sub"></div>
+          </div>
+
+          <div id="sum-rows-container"></div>
+
+          <div class="asc-note" id="inj-sum-note"></div>
+          <button class="btn-gen" id="inj-sum-gen"></button>
+        </div>
+      </div>
+      <div style="margin-top:10px"><button class="btn-prev-step" onclick="goPlanStep(2)" id="inj-s3-b1"></button></div>
+    </div>
+  </div>
+</div>
+</div>

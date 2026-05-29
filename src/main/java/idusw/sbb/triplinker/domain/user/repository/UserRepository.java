@@ -9,7 +9,11 @@ import java.util.Optional;
  * 테이블 접근에 필요한 공통 메서드를 자동으로 제공합니다.
  */
 public interface UserRepository extends JpaRepository<User, Long> {
-
-    // 유저의 로그인 ID(username)를 기반으로 회원 정보를 조회하는 메서드
     Optional<User> findByUsername(String username);
+
+    //아이디, 이메일 중복 검사를 위한 메서드
+    boolean existsByUsername(String username);
+    boolean existsByEmail(String email);
+    // 이메일 검색
+    Optional<User> findByEmail(String email);
 }
