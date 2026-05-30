@@ -151,19 +151,40 @@
             });
   }
 
-  // ── 이메일 인증 발송 ──
+  // ── 이메일 인증 발송
   function sendAuthCode() {
-    const email = document.getElementById('email').value;
+    const email = document.getElementById('email').value.trim();
     if (!email) { alert(AUTH_VALID_MSG.emailEmpty); return; }
+
+    // 1. 버튼 요소를 찾습니다.
+    const btn = document.querySelector('button[onclick="sendAuthCode()"]');
+
     fetch(`${AUTH_API.checkEmail}?email=${email}`)
             .then(res => res.text())
             .then(isDuplicate => {
               if (isDuplicate === 'true') {
                 alert(AUTH_VALID_MSG.emailDuplicate);
               } else {
-                alert(AUTH_VALID_MSG.emailSending);
+                // 2. 알림창 대신 버튼의 글자와 색상을 바꿉니다.
+                if (btn) {
+                  btn.innerText = "발송 중...";
+                  btn.disabled = true;
+                  btn.style.background = "#999";
+                  btn.style.cursor = "not-allowed";
+                }
+
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
-                        .then(() => alert(AUTH_VALID_MSG.emailSent));
+                        .then(() => alert(AUTH_VALID_MSG.emailSent))
+                        .catch(() => alert("⚠️ 메일 발송에 실패했습니다. 다시 시도해주세요."))
+                        .finally(() => {
+                          // 3. 발송 완료 후 버튼을 원래대로 복구합니다.
+                          if (btn) {
+                            btn.innerText = "인증 받기";
+                            btn.disabled = false;
+                            btn.style.background = "";
+                            btn.style.cursor = "pointer";
+                          }
+                        });
               }
             });
   }
