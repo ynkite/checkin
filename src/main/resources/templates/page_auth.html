@@ -169,8 +169,8 @@
                 if (btn) {
                   btn.innerText = "발송 중...";
                   btn.disabled = true;
-                  btn.style.background = "#999";
-                  btn.style.cursor = "not-allowed";
+                  btn.style.background = "var(--text3)";
+                  btn.style.cursor = "wait";
                 }
 
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
