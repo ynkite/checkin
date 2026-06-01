@@ -31,12 +31,23 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
 
+    //JWT 토큰 발급 및 검증을 위한 jjwt 라이브러리
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    //스프링 시큐리티
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    //소셜 로그인
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
     //@Valid 기능
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+
     // 이메일 발송 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-mail'
-
 }
 
 tasks.named('test') {

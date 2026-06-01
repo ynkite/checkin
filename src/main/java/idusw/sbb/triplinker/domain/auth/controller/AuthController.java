@@ -6,6 +6,7 @@ import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
 import idusw.sbb.triplinker.domain.auth.dto.LoginRequestDto;
 import idusw.sbb.triplinker.domain.auth.dto.TokenResponseDto;
 import idusw.sbb.triplinker.domain.auth.service.AuthService;
+import idusw.sbb.triplinker.global.common.ApiResponse;
 import idusw.sbb.triplinker.domain.auth.service.EmailAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,17 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-
-
     private final EmailAuthService emailAuthService;
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponse<TokenResponseDto>> login(@RequestBody LoginRequestDto request) {
+
+        TokenResponseDto tokenData = authService.login(request);
+
+        return ResponseEntity.ok(
+                ApiResponse.success("로그인 성공", tokenData)
+        );
+    }
 
     // 아이디 중복 체크 API
     @GetMapping("/check-username")
@@ -35,11 +44,6 @@ public class AuthController {
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmail(@RequestParam String email) {
         return ResponseEntity.ok(authService.checkEmail(email));
-    }
-    // POST /api/auth/login
-    @PostMapping("/login")
-    public ResponseEntity<TokenResponseDto> login(@RequestBody LoginRequestDto dto) {
-        return ResponseEntity.ok(authService.login(dto));
     }
 
     // 회원가입 API
@@ -118,4 +122,6 @@ public class AuthController {
         }
 
     }
+
+
 }

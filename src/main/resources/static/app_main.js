@@ -209,7 +209,7 @@ function forceLogout() {
 function updateNav() {
   const li = document.getElementById('navLoginBtn');
   const si = document.getElementById('navSignupBtn');
-  const mi = document.getElementById('navMypageBtn');
+  const un = document.getElementById('navUserNameBtn');
   const lo = document.getElementById('navLogoutBtn');
   const al = document.getElementById('navAdminLink');
   const nb = document.getElementById('navBellBtn');
@@ -217,14 +217,14 @@ function updateNav() {
   if (_loggedIn && _currentUser) {
     if (li) li.style.display = 'none';
     if (si) si.style.display = 'none';
-    if (mi) mi.style.display = '';
+    if (un) { un.style.display = ''; un.textContent = (_currentUser.name || _currentUser.username) + '님'; }
     if (lo) lo.style.display = '';
     if (nb) nb.style.display = '';
     if (al) al.style.display = (_currentUser.role === 'ADMIN') ? '' : 'none';
   } else {
     if (li) li.style.display = '';
     if (si) si.style.display = '';
-    if (mi) mi.style.display = 'none';
+    if (un) { un.style.display = 'none'; un.textContent = ''; }
     if (lo) lo.style.display = 'none';
     if (nb) nb.style.display = 'none';
     if (al) al.style.display = 'none';
@@ -294,8 +294,13 @@ async function tryLogin() {
 /** ─── GET /oauth2/authorization/kakao ─── */
 function tryKakaoLogin() {
   toast('카카오 계정으로 로그인 중...');
-  // Spring Security OAuth2 리다이렉트
   window.location.href = API_BASE + '/oauth2/authorization/kakao';
+}
+
+/** ─── GET /oauth2/authorization/google ─── */
+function tryGoogleLogin() {
+  toast('구글 계정으로 로그인 중...');
+  window.location.href = API_BASE + '/oauth2/authorization/google';
 }
 
 /** OAuth2 콜백 후 토큰을 URL 파라미터로 수신하는 경우를 처리 */
@@ -511,7 +516,8 @@ function resetInfoStep() {
 }
 
 function buildEditHTML(u, isSocial) {
-  const mbtiStr = u.mbti || 'ESTP';
+  // MBTI: 저장된 값 없으면 아무것도 선택 안 된 상태로
+  const mbtiStr = u.mbti || '';
   const dims = [
     {k:'ei', pairs:[['E','E(외향)'],['I','I(내향)']]},
     {k:'sn', pairs:[['S','S(감각)'],['N','N(직관)']]},
@@ -519,13 +525,27 @@ function buildEditHTML(u, isSocial) {
     {k:'jp', pairs:[['J','J(계획)'],['P','P(즉흥)']]}
   ];
   let mbtiHtml = '<div class="form-group"><label class="form-label">MBTI</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">';
-  dims.forEach(d => {
-    mbtiHtml += `<div style="display:flex;gap:6px;align-items:center"><span style="font-size:11px;color:var(--text3);width:38px">${d.k.toUpperCase()}</span>`;
-    d.pairs.forEach(p => { const on = mbtiStr.indexOf(p[0]) >= 0 ? ' on' : ''; mbtiHtml += `<button class="chip chip-sm${on}" onclick="pick(this,'em-${d.k}')">${p[1]}</button>`; });
+  dims.forEach((d, i) => {
+    // chip-row 클래스를 붙여야 pick()이 동작함
+    mbtiHtml += `<div class="chip-row" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap"><span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">${d.k.toUpperCase()}</span>`;
+    d.pairs.forEach(p => {
+      const on = mbtiStr[i] === p[0] ? ' on' : '';
+      mbtiHtml += `<button class="chip chip-sm${on}" onclick="pick(this)">${p[1]}</button>`;
+    });
     mbtiHtml += '</div>';
   });
   mbtiHtml += '</div></div>';
-  const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option><option>서울</option><option>경기</option><option>인천</option><option>강원</option><option>충북</option><option>충남</option><option>대전</option><option>세종</option><option>전북</option><option>전남</option><option>광주</option><option>경북</option><option>경남</option><option>대구</option><option>울산</option><option>부산</option><option>제주</option></select><select class="form-input" id="edit-region-city" style="flex:1"><option>시/군/구 선택</option></select></div></div>`;
+
+  // 지역: 저장된 값 "서울 노원구" → province="서울", city="노원구"
+  const regionParts = (u.region || '').split(' ');
+  const savedProvince = regionParts[0] || '';
+  const savedCity     = regionParts.slice(1).join(' ') || '';
+  const provinces = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
+  const cityData = typeof CITY_DATA !== 'undefined' ? CITY_DATA : {};
+  const provinceOpts = provinces.map(p => `<option${p===savedProvince?' selected':''}>${p}</option>`).join('');
+  const cities = cityData[savedProvince] || [];
+  const cityOpts = '<option value="">시/군/구 선택</option>' + cities.map(c => `<option${c===savedCity?' selected':''}>${c}</option>`).join('');
+  const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option>${provinceOpts}</select><select class="form-input" id="edit-region-city" style="flex:1">${cityOpts}</select></div></div>`;
   const pwHtml = isSocial ? '' : `<hr style="border:none;border-top:1px solid var(--border2);margin:14px 0"><div class="form-group"><label class="form-label">새 비밀번호</label><input class="form-input" type="password" id="edit-newpw" placeholder="새 비밀번호 8자 이상"></div><div class="form-group"><label class="form-label">새 비밀번호 확인</label><input class="form-input" type="password" id="edit-newpw2" placeholder="새 비밀번호 재입력"></div>`;
   const ds = 'style="background:var(--cream2);color:var(--text3);cursor:not-allowed"';
   const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">🟡 카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
@@ -542,39 +562,80 @@ function showSocialInfoEdit() {
   document.getElementById('info-edit-fields').innerHTML = buildEditHTML(_currentUser, true);
 }
 
-/** PATCH /api/users/password → 현재 비밀번호 서버 검증 */
+/** POST /api/users/me/verify-password → 현재 비밀번호 서버 검증 */
 async function verifyInfoPw() {
   if (!_currentUser) { toast('로그인이 필요합니다'); return; }
   const pw = document.getElementById('infoPwInput').value;
-  // 현재 비밀번호 확인: PATCH /api/users/password (currentPassword만 전달해 검증)
-  const res = await api.patch('/api/users/password', { currentPassword: pw, newPassword: pw });
+  const res = await api.post('/api/users/me/verify-password', { password: pw });
   if (!res.success) { document.getElementById('info-pw-err').style.display = 'block'; return; }
   document.getElementById('info-pw-step').style.display = 'none';
   document.getElementById('info-edit-form').style.display = 'block';
   document.getElementById('info-edit-fields').innerHTML = buildEditHTML(_currentUser, false);
 }
 
-/** PATCH /api/users/me + (선택) PATCH /api/users/password */
+/** PATCH /api/users/me + (선택) PATCH /api/users/me/password */
 async function saveInfoEdit() {
   const n = document.getElementById('edit-name');
   if (!n || !n.value.trim()) { toast('이름을 입력해주세요'); return; }
 
+  // 지역: 도/시 + 시/군/구 합치기
+  const bigEl  = document.getElementById('edit-region-big');
+  const cityEl = document.getElementById('edit-region-city');
+  const province = bigEl?.value || '';
+  const city     = (cityEl?.value && cityEl.value !== '시/군/구 선택') ? cityEl.value : '';
+  const region   = province ? (city ? province + ' ' + city : province) : '';
+
+  // 성별: .on 칩의 텍스트로 M/F 결정
+  const genderChips = document.querySelectorAll('#info-edit-fields .chip-row');
+  let gender = '';
+  genderChips.forEach(row => {
+    const onBtn = row.querySelector('.chip.on:not(.chip-sm)');
+    if (onBtn) {
+      const t = onBtn.textContent.trim();
+      if (t === '남성') gender = 'M';
+      else if (t === '여성') gender = 'F';
+    }
+  });
+
+  // 생년월일
+  const birthDate = document.getElementById('edit-birth')?.value || '';
+
+  // MBTI: 각 chip-row에서 chip-sm.on 버튼 첫 글자 수집
+  let mbti = '';
+  const mbtiDimOrder = ['EI','SN','TF','JP'];
+  document.querySelectorAll('#info-edit-fields .chip-row').forEach(row => {
+    const onBtn = row.querySelector('.chip-sm.on');
+    if (onBtn) mbti += onBtn.textContent.trim()[0];
+  });
+
   const body = { name: n.value.trim() };
+  if (region)              body.region    = region;
+  if (gender)              body.gender    = gender;
+  if (birthDate)           body.birthDate = birthDate;
+  if (mbti.length === 4)   body.mbti      = mbti;
+
   const res = await api.patch('/api/users/me', body);
   if (!res.success) { toast('⚠️ 정보 수정에 실패했습니다.'); return; }
 
+  // 비밀번호 변경 (선택)
   const np = document.getElementById('edit-newpw');
   if (np && np.value) {
     if (np.value.length < 8) { toast('비밀번호는 8자 이상이어야 합니다'); return; }
     const np2 = document.getElementById('edit-newpw2');
     if (np2 && np.value !== np2.value) { toast('새 비밀번호가 일치하지 않습니다'); return; }
     const currentPw = document.getElementById('infoPwInput')?.value || '';
-    const pwRes = await api.patch('/api/users/password', { currentPassword: currentPw, newPassword: np.value });
+    const pwRes = await api.patch('/api/users/me/password', { currentPassword: currentPw, newPassword: np.value });
     if (!pwRes.success) { toast('⚠️ 비밀번호 변경에 실패했습니다.'); return; }
   }
 
-  // 화면에 반영
-  if (_currentUser) _currentUser.name = n.value.trim();
+  // 화면 상태 반영
+  if (_currentUser) {
+    _currentUser.name = n.value.trim();
+    if (region)    _currentUser.region    = region;
+    if (gender)    _currentUser.gender    = gender;
+    if (birthDate) _currentUser.birthDate = birthDate;
+    if (mbti.length === 4) _currentUser.mbti = mbti;
+  }
   const av = document.getElementById('myAvatar'); if (av) av.textContent = n.value.trim()[0];
   const nm = document.getElementById('myName');   if (nm) nm.textContent = n.value.trim();
 
