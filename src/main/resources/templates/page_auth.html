@@ -1,4 +1,4 @@
-<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
+﻿<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
 <script>
   /* ============================================================
    * [page_auth.html] 하드코딩 데이터 → 변수 분리
@@ -421,8 +421,8 @@
         <div class="social-line"></div><span class="social-txt">소셜 계정으로 가입</span><div class="social-line"></div>
       </div>
       <div style="display:flex;gap:9px">
-        <button class="btn-social" onclick="toast('구글 OAuth 2.0')">🔵 구글로 가입</button>
-        <button class="btn-social" onclick="startKakaoSignup()">🟡 카카오로 가입</button>
+        <button class="btn-social" onclick="tryGoogleLogin()">🔵 구글로 가입</button>
+        <button class="btn-social" onclick="tryKakaoLogin()">🟡 카카오로 가입</button>
       </div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">
         계정 있으신가요? <button class="auth-link" onclick="go('login')">로그인</button>
@@ -499,7 +499,7 @@
         <div class="social-line"></div><span class="social-txt">소셜 로그인</span><div class="social-line"></div>
       </div>
       <div style="display:flex;gap:9px">
-        <button class="btn-social" onclick="toast('구글 로그인')">🔵 구글</button>
+        <button class="btn-social" onclick="tryGoogleLogin()">🔵 구글</button>
         <button class="btn-social" onclick="tryKakaoLogin()">🟡 카카오</button>
       </div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">

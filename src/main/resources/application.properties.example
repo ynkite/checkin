@@ -2,7 +2,47 @@ spring.application.name=trip-linker
 
 spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
 spring.datasource.url=jdbc:mariadb://localhost:3306/triplinker
-spring.datasource.username=???_DB_????_?????
-spring.datasource.password=???_DB_?????_?????
+spring.datasource.username=DB_USERNAME
+spring.datasource.password=DB_PASSWORD
 
 spring.jpa.hibernate.ddl-auto=update
+
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+
+#JWT Secret Key
+jwt.secret=
+#Access Token expire time (30 minutes)
+jwt.access-token-validity-in-milliseconds=1800000
+#Refresh Token expire time (7 days)
+jwt.refresh-token-validity-in-milliseconds=604800000
+
+
+#===Social Login Setting (OAuth2)===
+#Google Login Settings
+spring.security.oauth2.client.registration.google.client-id=
+spring.security.oauth2.client.registration.google.client-secret=
+spring.security.oauth2.client.registration.google.scope=profile,email
+
+#Kakao Login Settings (Registration)
+spring.security.oauth2.client.registration.kakao.client-id=
+spring.security.oauth2.client.registration.kakao.client-secret=
+spring.security.oauth2.client.registration.kakao.redirect-uri={baseUrl}/{action}/oauth2/code/{registrationId}
+spring.security.oauth2.client.registration.kakao.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.kakao.client-authentication-method=client_secret_post
+spring.security.oauth2.client.registration.kakao.client-name=Kakao
+spring.security.oauth2.client.registration.kakao.scope=profile_nickname,account_email
+
+#Kakao Provider Settings
+spring.security.oauth2.client.provider.kakao.authorization-uri=https://kauth.kakao.com/oauth/authorize
+spring.security.oauth2.client.provider.kakao.token-uri=https://kauth.kakao.com/oauth/token
+spring.security.oauth2.client.provider.kakao.user-info-uri=https://kapi.kakao.com/v2/user/me
+spring.security.oauth2.client.provider.kakao.user-name-attribute=id
+
+#Email Settings
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=your_email@gmail.com
+spring.mail.password=your_email_app_password
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
