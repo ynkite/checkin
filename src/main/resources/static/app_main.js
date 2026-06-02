@@ -817,17 +817,28 @@ async function sendMsg() {
   inp.value = '';
 
   const sessionId = _chatSessionId;
-  if (!sessionId) {
-    // 세션 없으면 임시 생성
-    const sesRes = await api.post('/api/chat/sessions', { planId: null });
-    if (sesRes.success && sesRes.data) _chatSessionId = sesRes.data.sessionId;
-  }
 
-  const res = await api.post('/api/chat/message', { sessionId: _chatSessionId, message: txt });
-  if (res.success && res.data && res.data.response) {
-    addBubble(res.data.response, 'bot');
-  } else {
-    addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+  // 1. api 객체(api.post)를 사용하면 Authorization 헤더가 자동으로 포함됩니다.
+  try {
+    const payload = {
+      sessionId: sessionId,
+      userMessage: txt
+    };
+
+    // api.post는 내부적으로 apiCall을 호출하여 토큰 관리 및 JSON 처리를 수행합니다.
+    const res = await api.post('/api/chat/send', payload);
+
+    // 2. 서버 응답 확인
+    if (res && res.success !== false && res.reply) {
+      if (res.sessionId) _chatSessionId = res.sessionId; // 세션ID 업데이트
+      addBubble(res.reply, 'bot');
+    } else {
+      console.error('[Chat] 응답 오류:', res);
+      addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+    }
+  } catch (e) {
+    console.error('[Chat] 통신 예외:', e);
+    addBubble('서버와 통신 중 문제가 발생했습니다.', 'bot');
   }
 }
 

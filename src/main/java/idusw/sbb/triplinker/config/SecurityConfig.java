@@ -55,6 +55,7 @@ public class SecurityConfig {
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
+                                "/api/chat/**",
                                 "/",
                                 "/error",
                                 "/api/auth/signup",                 //회원가입
@@ -67,6 +68,7 @@ public class SecurityConfig {
                                 "/api/auth/password/reset",         //비밀번호 재설정 처리
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
+
                         ).permitAll()
 
                         //게시판은 보는 것(GET)만 비로그인 허용

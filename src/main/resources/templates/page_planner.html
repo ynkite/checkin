@@ -147,6 +147,66 @@
       if (el('sum-density')) el('sum-density').textContent = density;
       if (el('sum-pet'))     el('sum-pet').textContent     = hasPet ? '동반' : '— 미입력';
     }
+
+    /* ─────────────────────────────────────────────────────────
+ * AI 챗봇 메시지 전송
+ * POST /api/chat/send
+ * ───────────────────────────────────────────────────────── */
+    let currentSessionId = null; // 대화방 번호 유지용 변수
+
+    async function sendMsg() {
+      const inp = document.getElementById('chatInp');
+      const msgsContainer = document.getElementById('chatMsgs');
+      const msg = inp.value.trim();
+
+      if (!msg) return;
+
+      // 1. 내가 보낸 메시지를 화면에 그리기
+      const myMsgDiv = document.createElement('div');
+      myMsgDiv.style.margin = "10px 0";
+      myMsgDiv.style.textAlign = "right";
+      myMsgDiv.innerHTML = `<span style="background-color:#E0F7FA; padding:8px 12px; border-radius:10px;">${msg}</span>`;
+      msgsContainer.appendChild(myMsgDiv);
+
+      // 입력창 비우기
+      inp.value = '';
+
+      // 2. 방금 만든 백엔드 주소로 데이터 전송
+      try {
+        const res = await fetch('/api/chat/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId: currentSessionId,
+            userMessage: msg
+          })
+        });
+        const textRes = await res.text();
+        console.log("백엔드 응답 내용:", textRes);
+        const json = await res.json();
+
+        // 백엔드에서 준 세션 ID 저장 (대화 이어가기용)
+        if (json.sessionId) {
+          currentSessionId = json.sessionId;
+        }
+
+        // 3. AI가 보낸 답변을 화면에 그리기
+        const aiMsgDiv = document.createElement('div');
+        aiMsgDiv.style.margin = "10px 0";
+        aiMsgDiv.style.textAlign = "left";
+        aiMsgDiv.innerHTML = `<span style="background-color:#F1F3F5; padding:8px 12px; border-radius:10px; display:inline-block; max-width:80%; line-height:1.5;">🤖 ${json.reply.replace(/\n/g, '<br>')}</span>`;
+        msgsContainer.appendChild(aiMsgDiv);
+
+        // 스크롤 맨 아래로 내리기
+        msgsContainer.scrollTop = msgsContainer.scrollHeight;
+
+      } catch (e) {
+        alert('챗봇 통신 중 오류가 발생했습니다.');
+        console.error(e);
+      }
+    }
   </script>
 
   <div class="page" id="page-planner">
