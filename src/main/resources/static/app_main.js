@@ -372,8 +372,8 @@ function _renderMyTrips(trips) {
   const te = document.getElementById('my-trips');
   if (!te) return;
   te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
-    trips.length
-      ? trips.map(x => `
+      trips.length
+          ? trips.map(x => `
           <div class="trip-card" onclick="go('map')">
             <div class="trip-thumb">🗺️</div>
             <div class="trip-info">
@@ -382,7 +382,7 @@ function _renderMyTrips(trips) {
             </div>
             <div class="trip-budget">${x.status === 'CONFIRMED' ? '✅ 확정' : '📝 초안'}</div>
           </div>`).join('')
-      : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
+          : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
   );
 }
 
@@ -392,7 +392,7 @@ function _renderMyReviews() {
   const re = document.getElementById('my-reviews');
   if (!re) return;
   re.innerHTML = '<h3 class="my-sec-ttl">작성한 후기</h3>'
-    + '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
+      + '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
 }
 
 /* ───────────────────────────────────────────────
@@ -410,7 +410,7 @@ async function updateLedgerList() {
   }
 
   let html = '<h3 class="my-sec-ttl">💰 가계부</h3>'
-    + '<p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>';
+      + '<p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>';
 
   if (!_myTrips.length) {
     html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">가계부 기록이 없습니다.</div>';
@@ -550,10 +550,10 @@ function buildEditHTML(u, isSocial) {
   const ds = 'style="background:var(--cream2);color:var(--text3);cursor:not-allowed"';
   const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">🟡 카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
   return socialNotice
-    + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
-    + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.email||''}" disabled ${ds}></div>`
-    + `<div class="form-row"><div class="form-group"><label class="form-label">생년월일</label><input class="form-input" type="date" id="edit-birth" value="${u.birthDate||''}"></div><div class="form-group"><label class="form-label">성별</label><div class="chip-row" style="margin-top:4px"><button class="chip${u.gender==='M'?' on':''}" onclick="pick(this,'edit-gender')">남성</button><button class="chip${u.gender==='F'?' on':''}" onclick="pick(this,'edit-gender')">여성</button><button class="chip" onclick="pick(this,'edit-gender')">기타</button></div></div></div>`
-    + regionHtml + mbtiHtml + pwHtml;
+      + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
+      + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.email||''}" disabled ${ds}></div>`
+      + `<div class="form-row"><div class="form-group"><label class="form-label">생년월일</label><input class="form-input" type="date" id="edit-birth" value="${u.birthDate||''}"></div><div class="form-group"><label class="form-label">성별</label><div class="chip-row" style="margin-top:4px"><button class="chip${u.gender==='M'?' on':''}" onclick="pick(this,'edit-gender')">남성</button><button class="chip${u.gender==='F'?' on':''}" onclick="pick(this,'edit-gender')">여성</button><button class="chip" onclick="pick(this,'edit-gender')">기타</button></div></div></div>`
+      + regionHtml + mbtiHtml + pwHtml;
 }
 
 function showSocialInfoEdit() {
@@ -760,8 +760,8 @@ async function showMapPlacePopup(key, type) {
 function getMapLinks(q) {
   const e = encodeURIComponent(q);
   return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>`
-    + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>`
-    + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>`;
+      + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>`
+      + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>`;
 }
 
 function showReviewDetail(place, type, stars, text) {
@@ -795,9 +795,9 @@ async function startChatWithSummary() {
   }
 
   addBubble(
-    `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
-    'bot',
-    ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요']
+      `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
+      'bot',
+      ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요']
   );
 }
 
@@ -837,8 +837,8 @@ function addBubble(txt, role, qrs) {
   d.className = 'cmsg' + (role === 'user' ? ' user' : '');
   if (role === 'bot') {
     d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${txt}</div>`
-      + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
-      + '</div>';
+        + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
+        + '</div>';
   } else {
     d.innerHTML = `<div class="cav user">나</div><div><div class="cbubble user">${txt}</div></div>`;
   }
@@ -1045,6 +1045,11 @@ function goSlide(i) {
  * POST /api/ai/schedule/generate
  * ─────────────────────────────────────────────── */
 function startPlanFromCard(data) {
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
   go('planner'); goPlanStep(1);
   const pr = document.getElementById('dest-prov');
   if (pr && data.prov) { for(let i=0;i<pr.options.length;i++){if(pr.options[i].text===data.prov){pr.value=pr.options[i].value||pr.options[i].text;break;}} updateCityDest(pr); }
@@ -1054,7 +1059,69 @@ function startPlanFromCard(data) {
   toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
 }
 
+/* ── 플래너 스텝 이동 전 유효성 검사 ── */
+function _validatePlanStep1() {
+  const destProv  = document.getElementById('dest-prov');
+  const dateStart = document.getElementById('s1-date-start');
+  const dateEnd   = document.getElementById('s1-date-end');
+  const pax       = document.getElementById('s1-pax');
+  const budget    = document.getElementById('s1-budget');
+
+  if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
+  if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
+  if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
+  if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
+  if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
+  if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
+
+  // 이동수단 chip 선택 여부
+  const transChips = document.querySelectorAll('#chip-trans .chip.on');
+  if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
+
+  return true;
+}
+
+function _validatePlanStep2() {
+  // 취향 설정: 여행 스타일 최소 1개 선택
+  const styleChips = document.querySelectorAll('#chip-style .chip.on');
+  if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
+  return true;
+}
+
+/* 현재 활성 스텝 번호 반환 */
+function _currentPlanStep() {
+  for (let i = 1; i <= 3; i++) {
+    const sb = document.getElementById('sb-' + i);
+    if (sb && sb.classList.contains('active')) return i;
+  }
+  return 1;
+}
+
 function goPlanStep(n) {
+  // ── 1. 로그인 체크 (모든 이동에 적용) ──
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
+
+  const current = _currentPlanStep();
+
+  // ── 2. 앞으로 이동할 때만 유효성 검사 (뒤로는 자유) ──
+  if (n > current) {
+    if (current === 1 && n >= 2) {
+      if (!_validatePlanStep1()) return;
+    }
+    if (current === 2 && n >= 3) {
+      if (!_validatePlanStep2()) return;
+    }
+    // Step-bar 직접 클릭으로 여러 스텝 건너뛰는 경우도 순차 검증
+    if (current === 1 && n === 3) {
+      if (!_validatePlanStep1() || !_validatePlanStep2()) return;
+    }
+  }
+
+  // ── 3. 스텝 전환 ──
   for(let i=1;i<=3;i++) {
     const sb2=document.getElementById('sb-'+i), sp2=document.getElementById('sp-'+i);
     if(!sb2||!sp2) continue;
@@ -1237,8 +1304,8 @@ async function confirmReportAction() {
   else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r});
   closeReportAction();
   toast(res.success
-    ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
-    : '⚠️ 처리에 실패했습니다.');
+      ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
+      : '⚠️ 처리에 실패했습니다.');
 }
 
 /* ───────────────────────────────────────────────

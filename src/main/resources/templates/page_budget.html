@@ -372,7 +372,7 @@
 
   /** 선택 완료 → 가계부 메인으로 이동 */
   function goLedgerMain() {
-    const data = MOCK_LEDGER_DATA[_selectedLedgerKey];
+    const data = typeof MOCK_LEDGER_DATA !== 'undefined' ? MOCK_LEDGER_DATA[_selectedLedgerKey] : null;
     if (!data) { toast('데이터를 찾을 수 없습니다.'); return; }
 
     // 헤더 메타
