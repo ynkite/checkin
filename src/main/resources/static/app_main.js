@@ -113,8 +113,8 @@ let _myTrips       = [];     // GET /api/trips 응답의 data[]
 let _chatSessionId = null;   // POST /api/chat/sessions 응답의 data.sessionId
 let _budgetSelectedTripId = null;
 let _activeTags    = new Set();
-let _loginFailCount = 0;
-let _loginLockedUntil = null;
+// let _loginFailCount = 0;
+// let _loginLockedUntil = null;
 
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
@@ -232,19 +232,18 @@ function updateNav() {
 }
 
 /** ─── POST /api/auth/login ─── */
-// let _loginFailCount = 0, _loginLockedUntil = null;
 async function tryLogin() {
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value;
   const w  = document.getElementById('login-warn');
 
-  // 클라이언트 잠금 체크 (5회 실패 5분)
-  if (_loginLockedUntil && Date.now() < _loginLockedUntil) {
-    const s = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
-    w.innerHTML = '🔒 계정 잠김. ' + s + '초 후 재시도.';
-    w.style.display = 'flex';
-    return;
-  }
+  // // 클라이언트 잠금 체크 (5회 실패 5분)
+  // if (_loginLockedUntil && Date.now() < _loginLockedUntil) {
+  //   const s = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
+  //   w.innerHTML = '🔒 계정 잠김. ' + s + '초 후 재시도.';
+  //   w.style.display = 'flex';
+  //   return;
+  // }
   if (!id || !pw) {
     w.innerHTML = '⚠️ 아이디와 비밀번호를 입력하세요';
     w.style.display = 'flex';
