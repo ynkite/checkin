@@ -96,6 +96,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+
     //전역 CORS(교차 출처 리소스 공유) 세부 정책 설정
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

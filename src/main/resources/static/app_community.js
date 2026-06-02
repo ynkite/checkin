@@ -67,7 +67,6 @@ const _commState = {
 
 let _openedPostId     = null;   // 현재 열려 있는 게시글 ID
 let _reportPostId     = null;   // 신고 대상 게시글 ID
-let _reportAction     = 'delete'; // 관리자 신고 처리 타입
 let _editCurationId   = null;   // 수정 중인 큐레이션 ID
 
 /* ═══════════════════════════════════════════════════════════════════
