@@ -55,7 +55,6 @@ public class SecurityConfig {
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
-                                "/api/chat/**",
                                 "/",
                                 "/error",
                                 "/api/auth/signup",                 //회원가입

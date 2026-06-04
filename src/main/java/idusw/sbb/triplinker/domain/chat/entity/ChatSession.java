@@ -15,5 +15,7 @@ public class ChatSession {
 
     private String title;
 
+    private Long planId;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

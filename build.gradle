@@ -61,7 +61,7 @@ dependencies {
     // Claude
     implementation 'org.springframework.ai:spring-ai-starter-model-anthropic'
     // Gemini
-    implementation 'org.springframework.ai:spring-ai-starter-model-vertex-ai-gemini'
+    implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
 
 }
 

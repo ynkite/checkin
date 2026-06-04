@@ -7,5 +7,5 @@ import lombok.Setter;
 @Setter
 public class ChatMessageDto {
     private Long sessionId;   // 대화방 번호 (처음엔 null)
-    private String userMessage; // 유저가 보낸 질문
+    private String message; // 유저가 보낸 질문
 }

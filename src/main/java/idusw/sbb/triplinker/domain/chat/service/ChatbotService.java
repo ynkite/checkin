@@ -1,7 +1,6 @@
 package idusw.sbb.triplinker.domain.chat.service;
 
-import idusw.sbb.triplinker.domain.chat.dto.ChatSessionResponseDto;
-
 public interface ChatbotService {
-    ChatSessionResponseDto processMessage(Long sessionId, String userMessage);
+    Long createSession(Long planId); // 세션 생성
+    String processMessage(Long sessionId, String message); // 메시지 전송 및 답변 반환
 }
