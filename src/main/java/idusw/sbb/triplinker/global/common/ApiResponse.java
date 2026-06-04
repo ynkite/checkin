@@ -21,8 +21,13 @@ public class ApiResponse<T> {
         return new ApiResponse<>(true, "OK", data);
     }
 
-    // 실패
+    // 실패 (메시지만)
     public static <T> ApiResponse<T> error(String message) {
         return new ApiResponse<>(false, message, null);
+    }
+
+    // 실패 (메시지 + 추가 데이터)
+    public static <T> ApiResponse<T> error(String message, T data) {
+        return new ApiResponse<>(false, message, data);
     }
 }

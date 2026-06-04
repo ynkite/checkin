@@ -1,5 +1,7 @@
 package idusw.sbb.triplinker.domain.user.service;
 
+import idusw.sbb.triplinker.domain.auth.repository.OAuthAccountRepository;
+import idusw.sbb.triplinker.domain.auth.repository.RefreshTokenRepository;
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;
@@ -25,13 +27,18 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
     private final UserRepository userRepository;
     private final UserSecurityHistoryRepository historyRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final OAuthAccountRepository oAuthAccountRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     // 1. 회원 프로필 조회 로직
     @Override
     public UserInfoResponseDto getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
-        return new UserInfoResponseDto(user);
+
+        boolean isSocial = oAuthAccountRepository.findByUserId(userId).isPresent();
+
+        return new UserInfoResponseDto(user, isSocial);
     }
 
     // 2. 회원 닉네임 변경 비즈니스 로직 (쓰기 작업이므로 @Transactional 명시)
@@ -43,13 +50,15 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         user.updateNickname(request.getName()); // 엔티티 내부 변경 감지(Dirty Checking) 발동
     }
 
-    // 3. 회원 논리 탈퇴 비즈니스 로직 (쓰기 작업이므로 @Transactional 명시)
+    // 3. 회원 탈퇴 - 개인정보 마스킹 + 토큰/소셜 레코드 즉시 삭제
     @Override
     @Transactional
     public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
-        user.withdraw(); // 내부에서 DELETED로 변경됨
+        user.withdrawMasked(userId);
+        refreshTokenRepository.deleteByUserId(userId);
+        oAuthAccountRepository.deleteByUserId(userId);
     }
     @Override
     public boolean verifyPassword(Long userId, String rawPassword) {
