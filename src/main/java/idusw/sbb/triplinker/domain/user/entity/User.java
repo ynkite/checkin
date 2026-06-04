@@ -22,7 +22,7 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 기본키
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(nullable = false, unique = true, length = 60)
     private String username;
 
     @Column(length = 255)
@@ -85,7 +85,7 @@ public class User {
     }
 
     @Builder
-    public User(String username, String passwordHash, String name, String email, String region, LocalDate birthDate, String gender, String mbti, String role, String status) {
+    public User(String username, String passwordHash, String name, String email, String region, LocalDate birthDate, String gender, String mbti, String role, String status, LocalDateTime lastPwChangedAt) {
         this.username = username;
         this.passwordHash = passwordHash;
         this.name = name;
@@ -94,35 +94,12 @@ public class User {
         this.birthDate = birthDate;
         this.gender = gender;
         this.mbti = mbti;
-        // 값이 없을 경우 기본값으로 USER 권한과 ACTIVE(활성화) 상태를 부여합니다.
         this.role = (role != null) ? role : "USER"; // 기본값 설정
         this.status = (status != null) ? status : "ACTIVE"; // 기본값 설정
+        this.lastPwChangedAt = lastPwChangedAt;
     }
 
-    public boolean isLocked() {
-        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
-    }
-
-    // 로그인 실패 시 호출 → 5회 도달 시 5분 잠금
-    public void increaseLoginFailCount() {
-        this.loginFailCount++;
-        if (this.loginFailCount >= 5) {
-            this.lockedUntil = LocalDateTime.now().plusMinutes(5);
-        }
-    }
-
-    // 1. 닉네임(name) 변경 도메인 로직 (공백 및 null 예외 검증 포함)
-    // 로그인 성공 시 호출 → 실패 횟수 및 잠금 초기화
-    public void resetLoginFail() {
-        this.loginFailCount = 0;
-        this.lockedUntil = null;
-    }
-
-    // 90일 권장 모달 노출 시각 기록
-    public void recordPwChangeNotified() {
-        this.pwChangeNotiAt = LocalDateTime.now();
-    }
-    // 닉네임 변경
+    //닉네임 변경
     public void updateNickname(String newName) {
         if (newName == null || newName.trim().isEmpty()) {
             throw new IllegalArgumentException("올바른 닉네임을 입력해주세요.");
@@ -130,16 +107,47 @@ public class User {
         this.name = newName;
     }
 
-    // 2. 회원 안전 논리 탈퇴 로직 (DELETED로 변경)
+    //프로필 전체 수정 (null이면 해당 필드 유지)
+    public void updateProfile(String name, String region, String gender, LocalDate birthDate, String mbti) {
+        if (name     != null && !name.isBlank())          this.name      = name;
+        if (region   != null && !region.isBlank())        this.region    = region;
+        if (gender   != null && !gender.isBlank())        this.gender    = gender;
+        if (birthDate != null)                             this.birthDate = birthDate;
+        if (mbti     != null && mbti.length() == 4)       this.mbti      = mbti;
+    }
+
+    //회원 탈퇴
     public void withdraw() {
         this.status = "DELETED";
         this.deletedAt = LocalDateTime.now();
     }
 
-    // 비밀번호 수정
-    public void updatePassword(String newPassword) {
-        this.passwordHash = newPassword;
-        this.status = "DELETED";
-        this.deletedAt = LocalDateTime.now();
+    //비밀번호 수정
+    public void updatePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+        this.lastPwChangedAt = LocalDateTime.now();
+    }
+
+    public boolean isLocked() {
+        return lockedUntil != null && LocalDateTime.now().isBefore(lockedUntil);
+    }
+
+    //로그인 실패 시 호출 → 5회 도달 시 5분 잠금
+    public void increaseLoginFailCount() {
+        this.loginFailCount++;
+        if (this.loginFailCount >= 5) {
+            this.lockedUntil = LocalDateTime.now().plusMinutes(5);
+        }
+    }
+
+    //로그인 성공 시 호출 → 실패 횟수 및 잠금 초기화
+    public void resetLoginFail() {
+        this.loginFailCount = 0;
+        this.lockedUntil = null;
+    }
+
+    //90일 권장 모달 노출 시각 기록
+    public void recordPwChangeNotified() {
+        this.pwChangeNotiAt = LocalDateTime.now();
     }
 }

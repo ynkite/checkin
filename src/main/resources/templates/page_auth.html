@@ -1,4 +1,4 @@
-<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
+﻿<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
 <script>
   /* ============================================================
    * [page_auth.html] 하드코딩 데이터 → 변수 분리
@@ -151,13 +151,13 @@
             });
   }
 
-  // ── 이메일 인증 발송
-  function sendAuthCode() {
+  // ── 이메일 인증 발송 ──
+  function sendAuthCode(btnElement) {
     const email = document.getElementById('email').value.trim();
     if (!email) { alert(AUTH_VALID_MSG.emailEmpty); return; }
 
-    // 1. 버튼 요소를 찾습니다.
-    const btn = document.querySelector('button[onclick="sendAuthCode()"]');
+    // 1. HTML에서 넘겨준 버튼(this)이 있으면 쓰고, 없으면 쿼리로 찾습니다.
+    const btn = btnElement || document.querySelector('button[onclick*="sendAuthCode"]');
 
     fetch(`${AUTH_API.checkEmail}?email=${email}`)
             .then(res => res.text())
@@ -165,23 +165,23 @@
               if (isDuplicate === 'true') {
                 alert(AUTH_VALID_MSG.emailDuplicate);
               } else {
-                // 2. 알림창 대신 버튼의 글자와 색상을 바꿉니다.
+                // 2. 알림창 대신 버튼의 글자, 색상, 커서를 바꿉니다.
                 if (btn) {
                   btn.innerText = "발송 중...";
                   btn.disabled = true;
-                  btn.style.background = "var(--text3)";
-                  btn.style.cursor = "wait";
+                  btn.style.background = "var(--text3)"; // TripLinker 테마 회록색
+                  btn.style.cursor = "wait";             // 로딩 커서
                 }
 
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
                         .then(() => alert(AUTH_VALID_MSG.emailSent))
                         .catch(() => alert("⚠️ 메일 발송에 실패했습니다. 다시 시도해주세요."))
                         .finally(() => {
-                          // 3. 발송 완료 후 버튼을 원래대로 복구합니다.
+                          // 3. 발송 완료 후(성공/실패 무관) 버튼을 원래대로 복구합니다.
                           if (btn) {
                             btn.innerText = "인증 받기";
                             btn.disabled = false;
-                            btn.style.background = "";
+                            btn.style.background = ""; // 원래 CSS 색상(var(--sage))으로 복구
                             btn.style.cursor = "pointer";
                           }
                         });
@@ -381,7 +381,7 @@
         <label class="form-label">이메일</label>
         <div style="display:flex; gap:8px;">
           <input class="form-input" type="email" id="email" placeholder="email@example.com" style="flex:1;">
-          <button class="btn-f" style="width:auto; padding:0 12px; font-size:12px;" onclick="sendAuthCode()">인증 받기</button>
+          <button class="btn-f" style="width:auto; padding:0 12px; font-size:12px;" onclick="sendAuthCode(this)">인증 받기</button>
         </div>
         <div class="form-msg" id="email-msg"></div>
       </div>
@@ -442,8 +442,8 @@
         <div class="social-line"></div><span class="social-txt">소셜 계정으로 가입</span><div class="social-line"></div>
       </div>
       <div style="display:flex;gap:9px">
-        <button class="btn-social" onclick="toast('구글 OAuth 2.0')">🔵 구글로 가입</button>
-        <button class="btn-social" onclick="startKakaoSignup()">🟡 카카오로 가입</button>
+        <button class="btn-social" onclick="tryGoogleLogin()">🔵 구글로 가입</button>
+        <button class="btn-social" onclick="tryKakaoLogin()">🟡 카카오로 가입</button>
       </div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">
         계정 있으신가요? <button class="auth-link" onclick="go('login')">로그인</button>
@@ -520,7 +520,7 @@
         <div class="social-line"></div><span class="social-txt">소셜 로그인</span><div class="social-line"></div>
       </div>
       <div style="display:flex;gap:9px">
-        <button class="btn-social" onclick="toast('구글 로그인')">🔵 구글</button>
+        <button class="btn-social" onclick="tryGoogleLogin()">🔵 구글</button>
         <button class="btn-social" onclick="tryKakaoLogin()">🟡 카카오</button>
       </div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">

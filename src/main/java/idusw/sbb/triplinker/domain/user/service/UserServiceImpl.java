@@ -1,4 +1,4 @@
-package idusw.sbb.triplinker.domain.user.service.impl;
+package idusw.sbb.triplinker.domain.user.service;
 
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
@@ -7,10 +7,11 @@ import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.entity.UserSecurityHistory;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
 import idusw.sbb.triplinker.domain.user.repository.UserSecurityHistoryRepository;
-import idusw.sbb.triplinker.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDate;
 
 /**
  * UserService 인터페이스를 구현하여 회원 도메인의 실제 서비스 로직을 처리하는 구현체입니다.
@@ -22,7 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserServiceImpl implements UserService { // 인터페이스 구현
 
     private final UserRepository userRepository;
-    private final UserSecurityHistoryRepository historyRepository; // 💡 이력 저장을 위해 의존성 추가 필요 (생성자 주입됨)
+    private final UserSecurityHistoryRepository historyRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     // 1. 회원 프로필 조회 로직
     @Override
@@ -49,6 +51,32 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
         user.withdraw(); // 내부에서 DELETED로 변경됨
     }
+    @Override
+    public boolean verifyPassword(Long userId, String rawPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+        return passwordEncoder.matches(rawPassword, user.getPasswordHash());
+    }
+
+    @Override
+    @Transactional
+    public void updateProfile(Long userId, String name, String region, String gender, LocalDate birthDate, String mbti) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+        user.updateProfile(name, region, gender, birthDate, mbti);
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(Long userId, String currentRaw, String newRaw) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+        if (!passwordEncoder.matches(currentRaw, user.getPasswordHash())) {
+            throw new IllegalArgumentException("현재 비밀번호가 올바르지 않습니다.");
+        }
+        user.updatePassword(passwordEncoder.encode(newRaw));
+    }
+
     @Override
     @Transactional
     public void loginFailed(String username, String ipAddress) {

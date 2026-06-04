@@ -209,7 +209,7 @@ function forceLogout() {
 function updateNav() {
   const li = document.getElementById('navLoginBtn');
   const si = document.getElementById('navSignupBtn');
-  const mi = document.getElementById('navMypageBtn');
+  const un = document.getElementById('navUserNameBtn');
   const lo = document.getElementById('navLogoutBtn');
   const al = document.getElementById('navAdminLink');
   const nb = document.getElementById('navBellBtn');
@@ -217,14 +217,14 @@ function updateNav() {
   if (_loggedIn && _currentUser) {
     if (li) li.style.display = 'none';
     if (si) si.style.display = 'none';
-    if (mi) mi.style.display = '';
+    if (un) { un.style.display = ''; un.textContent = (_currentUser.name || _currentUser.username) + '님'; }
     if (lo) lo.style.display = '';
     if (nb) nb.style.display = '';
     if (al) al.style.display = (_currentUser.role === 'ADMIN') ? '' : 'none';
   } else {
     if (li) li.style.display = '';
     if (si) si.style.display = '';
-    if (mi) mi.style.display = 'none';
+    if (un) { un.style.display = 'none'; un.textContent = ''; }
     if (lo) lo.style.display = 'none';
     if (nb) nb.style.display = 'none';
     if (al) al.style.display = 'none';
@@ -294,8 +294,13 @@ async function tryLogin() {
 /** ─── GET /oauth2/authorization/kakao ─── */
 function tryKakaoLogin() {
   toast('카카오 계정으로 로그인 중...');
-  // Spring Security OAuth2 리다이렉트
   window.location.href = API_BASE + '/oauth2/authorization/kakao';
+}
+
+/** ─── GET /oauth2/authorization/google ─── */
+function tryGoogleLogin() {
+  toast('구글 계정으로 로그인 중...');
+  window.location.href = API_BASE + '/oauth2/authorization/google';
 }
 
 /** OAuth2 콜백 후 토큰을 URL 파라미터로 수신하는 경우를 처리 */
@@ -367,8 +372,8 @@ function _renderMyTrips(trips) {
   const te = document.getElementById('my-trips');
   if (!te) return;
   te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
-    trips.length
-      ? trips.map(x => `
+      trips.length
+          ? trips.map(x => `
           <div class="trip-card" onclick="go('map')">
             <div class="trip-thumb">🗺️</div>
             <div class="trip-info">
@@ -377,7 +382,7 @@ function _renderMyTrips(trips) {
             </div>
             <div class="trip-budget">${x.status === 'CONFIRMED' ? '✅ 확정' : '📝 초안'}</div>
           </div>`).join('')
-      : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
+          : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
   );
 }
 
@@ -387,7 +392,7 @@ function _renderMyReviews() {
   const re = document.getElementById('my-reviews');
   if (!re) return;
   re.innerHTML = '<h3 class="my-sec-ttl">작성한 후기</h3>'
-    + '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
+      + '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
 }
 
 /* ───────────────────────────────────────────────
@@ -405,7 +410,7 @@ async function updateLedgerList() {
   }
 
   let html = '<h3 class="my-sec-ttl">💰 가계부</h3>'
-    + '<p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>';
+      + '<p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>';
 
   if (!_myTrips.length) {
     html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">가계부 기록이 없습니다.</div>';
@@ -511,7 +516,8 @@ function resetInfoStep() {
 }
 
 function buildEditHTML(u, isSocial) {
-  const mbtiStr = u.mbti || 'ESTP';
+  // MBTI: 저장된 값 없으면 아무것도 선택 안 된 상태로
+  const mbtiStr = u.mbti || '';
   const dims = [
     {k:'ei', pairs:[['E','E(외향)'],['I','I(내향)']]},
     {k:'sn', pairs:[['S','S(감각)'],['N','N(직관)']]},
@@ -519,21 +525,35 @@ function buildEditHTML(u, isSocial) {
     {k:'jp', pairs:[['J','J(계획)'],['P','P(즉흥)']]}
   ];
   let mbtiHtml = '<div class="form-group"><label class="form-label">MBTI</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">';
-  dims.forEach(d => {
-    mbtiHtml += `<div style="display:flex;gap:6px;align-items:center"><span style="font-size:11px;color:var(--text3);width:38px">${d.k.toUpperCase()}</span>`;
-    d.pairs.forEach(p => { const on = mbtiStr.indexOf(p[0]) >= 0 ? ' on' : ''; mbtiHtml += `<button class="chip chip-sm${on}" onclick="pick(this,'em-${d.k}')">${p[1]}</button>`; });
+  dims.forEach((d, i) => {
+    // chip-row 클래스를 붙여야 pick()이 동작함
+    mbtiHtml += `<div class="chip-row" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap"><span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">${d.k.toUpperCase()}</span>`;
+    d.pairs.forEach(p => {
+      const on = mbtiStr[i] === p[0] ? ' on' : '';
+      mbtiHtml += `<button class="chip chip-sm${on}" onclick="pick(this)">${p[1]}</button>`;
+    });
     mbtiHtml += '</div>';
   });
   mbtiHtml += '</div></div>';
-  const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option><option>서울</option><option>경기</option><option>인천</option><option>강원</option><option>충북</option><option>충남</option><option>대전</option><option>세종</option><option>전북</option><option>전남</option><option>광주</option><option>경북</option><option>경남</option><option>대구</option><option>울산</option><option>부산</option><option>제주</option></select><select class="form-input" id="edit-region-city" style="flex:1"><option>시/군/구 선택</option></select></div></div>`;
+
+  // 지역: 저장된 값 "서울 노원구" → province="서울", city="노원구"
+  const regionParts = (u.region || '').split(' ');
+  const savedProvince = regionParts[0] || '';
+  const savedCity     = regionParts.slice(1).join(' ') || '';
+  const provinces = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
+  const cityData = typeof CITY_DATA !== 'undefined' ? CITY_DATA : {};
+  const provinceOpts = provinces.map(p => `<option${p===savedProvince?' selected':''}>${p}</option>`).join('');
+  const cities = cityData[savedProvince] || [];
+  const cityOpts = '<option value="">시/군/구 선택</option>' + cities.map(c => `<option${c===savedCity?' selected':''}>${c}</option>`).join('');
+  const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option>${provinceOpts}</select><select class="form-input" id="edit-region-city" style="flex:1">${cityOpts}</select></div></div>`;
   const pwHtml = isSocial ? '' : `<hr style="border:none;border-top:1px solid var(--border2);margin:14px 0"><div class="form-group"><label class="form-label">새 비밀번호</label><input class="form-input" type="password" id="edit-newpw" placeholder="새 비밀번호 8자 이상"></div><div class="form-group"><label class="form-label">새 비밀번호 확인</label><input class="form-input" type="password" id="edit-newpw2" placeholder="새 비밀번호 재입력"></div>`;
   const ds = 'style="background:var(--cream2);color:var(--text3);cursor:not-allowed"';
   const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">🟡 카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
   return socialNotice
-    + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
-    + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.email||''}" disabled ${ds}></div>`
-    + `<div class="form-row"><div class="form-group"><label class="form-label">생년월일</label><input class="form-input" type="date" id="edit-birth" value="${u.birthDate||''}"></div><div class="form-group"><label class="form-label">성별</label><div class="chip-row" style="margin-top:4px"><button class="chip${u.gender==='M'?' on':''}" onclick="pick(this,'edit-gender')">남성</button><button class="chip${u.gender==='F'?' on':''}" onclick="pick(this,'edit-gender')">여성</button><button class="chip" onclick="pick(this,'edit-gender')">기타</button></div></div></div>`
-    + regionHtml + mbtiHtml + pwHtml;
+      + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
+      + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.email||''}" disabled ${ds}></div>`
+      + `<div class="form-row"><div class="form-group"><label class="form-label">생년월일</label><input class="form-input" type="date" id="edit-birth" value="${u.birthDate||''}"></div><div class="form-group"><label class="form-label">성별</label><div class="chip-row" style="margin-top:4px"><button class="chip${u.gender==='M'?' on':''}" onclick="pick(this,'edit-gender')">남성</button><button class="chip${u.gender==='F'?' on':''}" onclick="pick(this,'edit-gender')">여성</button><button class="chip" onclick="pick(this,'edit-gender')">기타</button></div></div></div>`
+      + regionHtml + mbtiHtml + pwHtml;
 }
 
 function showSocialInfoEdit() {
@@ -542,39 +562,80 @@ function showSocialInfoEdit() {
   document.getElementById('info-edit-fields').innerHTML = buildEditHTML(_currentUser, true);
 }
 
-/** PATCH /api/users/password → 현재 비밀번호 서버 검증 */
+/** POST /api/users/me/verify-password → 현재 비밀번호 서버 검증 */
 async function verifyInfoPw() {
   if (!_currentUser) { toast('로그인이 필요합니다'); return; }
   const pw = document.getElementById('infoPwInput').value;
-  // 현재 비밀번호 확인: PATCH /api/users/password (currentPassword만 전달해 검증)
-  const res = await api.patch('/api/users/password', { currentPassword: pw, newPassword: pw });
+  const res = await api.post('/api/users/me/verify-password', { password: pw });
   if (!res.success) { document.getElementById('info-pw-err').style.display = 'block'; return; }
   document.getElementById('info-pw-step').style.display = 'none';
   document.getElementById('info-edit-form').style.display = 'block';
   document.getElementById('info-edit-fields').innerHTML = buildEditHTML(_currentUser, false);
 }
 
-/** PATCH /api/users/me + (선택) PATCH /api/users/password */
+/** PATCH /api/users/me + (선택) PATCH /api/users/me/password */
 async function saveInfoEdit() {
   const n = document.getElementById('edit-name');
   if (!n || !n.value.trim()) { toast('이름을 입력해주세요'); return; }
 
+  // 지역: 도/시 + 시/군/구 합치기
+  const bigEl  = document.getElementById('edit-region-big');
+  const cityEl = document.getElementById('edit-region-city');
+  const province = bigEl?.value || '';
+  const city     = (cityEl?.value && cityEl.value !== '시/군/구 선택') ? cityEl.value : '';
+  const region   = province ? (city ? province + ' ' + city : province) : '';
+
+  // 성별: .on 칩의 텍스트로 M/F 결정
+  const genderChips = document.querySelectorAll('#info-edit-fields .chip-row');
+  let gender = '';
+  genderChips.forEach(row => {
+    const onBtn = row.querySelector('.chip.on:not(.chip-sm)');
+    if (onBtn) {
+      const t = onBtn.textContent.trim();
+      if (t === '남성') gender = 'M';
+      else if (t === '여성') gender = 'F';
+    }
+  });
+
+  // 생년월일
+  const birthDate = document.getElementById('edit-birth')?.value || '';
+
+  // MBTI: 각 chip-row에서 chip-sm.on 버튼 첫 글자 수집
+  let mbti = '';
+  const mbtiDimOrder = ['EI','SN','TF','JP'];
+  document.querySelectorAll('#info-edit-fields .chip-row').forEach(row => {
+    const onBtn = row.querySelector('.chip-sm.on');
+    if (onBtn) mbti += onBtn.textContent.trim()[0];
+  });
+
   const body = { name: n.value.trim() };
+  if (region)              body.region    = region;
+  if (gender)              body.gender    = gender;
+  if (birthDate)           body.birthDate = birthDate;
+  if (mbti.length === 4)   body.mbti      = mbti;
+
   const res = await api.patch('/api/users/me', body);
   if (!res.success) { toast('⚠️ 정보 수정에 실패했습니다.'); return; }
 
+  // 비밀번호 변경 (선택)
   const np = document.getElementById('edit-newpw');
   if (np && np.value) {
     if (np.value.length < 8) { toast('비밀번호는 8자 이상이어야 합니다'); return; }
     const np2 = document.getElementById('edit-newpw2');
     if (np2 && np.value !== np2.value) { toast('새 비밀번호가 일치하지 않습니다'); return; }
     const currentPw = document.getElementById('infoPwInput')?.value || '';
-    const pwRes = await api.patch('/api/users/password', { currentPassword: currentPw, newPassword: np.value });
+    const pwRes = await api.patch('/api/users/me/password', { currentPassword: currentPw, newPassword: np.value });
     if (!pwRes.success) { toast('⚠️ 비밀번호 변경에 실패했습니다.'); return; }
   }
 
-  // 화면에 반영
-  if (_currentUser) _currentUser.name = n.value.trim();
+  // 화면 상태 반영
+  if (_currentUser) {
+    _currentUser.name = n.value.trim();
+    if (region)    _currentUser.region    = region;
+    if (gender)    _currentUser.gender    = gender;
+    if (birthDate) _currentUser.birthDate = birthDate;
+    if (mbti.length === 4) _currentUser.mbti = mbti;
+  }
   const av = document.getElementById('myAvatar'); if (av) av.textContent = n.value.trim()[0];
   const nm = document.getElementById('myName');   if (nm) nm.textContent = n.value.trim();
 
@@ -699,8 +760,8 @@ async function showMapPlacePopup(key, type) {
 function getMapLinks(q) {
   const e = encodeURIComponent(q);
   return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>`
-    + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>`
-    + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>`;
+      + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>`
+      + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>`;
 }
 
 function showReviewDetail(place, type, stars, text) {
@@ -734,9 +795,9 @@ async function startChatWithSummary() {
   }
 
   addBubble(
-    `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
-    'bot',
-    ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요']
+      `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
+      'bot',
+      ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요']
   );
 }
 
@@ -747,44 +808,62 @@ function startChat() {
   addBubble('안녕하세요! AI 여행 플래너입니다 ✈<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','🐕 강아지','일정 생성']);
 }
 
+/* ───────────────────────────────────────────────
+ * 10. AI 챗봇 (Chat Domain)
+ * POST /api/chat/message   → AI 응답
+ * ─────────────────────────────────────────────── */
+
 /** POST /api/chat/message : 메시지 전송 + AI 응답 수신 */
 async function sendMsg() {
   const inp = document.getElementById('chatInp');
   const txt = inp.value.trim();
   if (!txt) return;
+
+  // 1. 내가 보낸 메시지 화면에 그리기
   addBubble(txt, 'user');
   inp.value = '';
 
+  // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
   const sessionId = _chatSessionId;
-  if (!sessionId) {
-    // 세션 없으면 임시 생성
-    const sesRes = await api.post('/api/chat/sessions', { planId: null });
-    if (sesRes.success && sesRes.data) _chatSessionId = sesRes.data.sessionId;
-  }
 
-  const res = await api.post('/api/chat/message', { sessionId: _chatSessionId, message: txt });
-  if (res.success && res.data && res.data.response) {
-    addBubble(res.data.response, 'bot');
-  } else {
-    addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+  try {
+    const payload = {
+      sessionId: sessionId,
+      message: txt // API 명세서 규격 일치
+    };
+
+    // 공통 api.post 래퍼를 사용하므로 토큰(Authorization)이 자동으로 포함되고 401 에러 방어가 됩니다.
+    const res = await api.post('/api/chat/message', payload);
+
+    // 백엔드 응답 규격 {"success":true, "data":{"response":"..."}} 파싱
+    if (res && res.success && res.data && res.data.response) {
+      addBubble(res.data.response, 'bot');
+    } else {
+      console.error('[Chat] 응답 오류:', res);
+      addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+    }
+  } catch (e) {
+    console.error('[Chat] 통신 예외:', e);
+    addBubble('서버와 통신 중 문제가 발생했습니다.', 'bot');
   }
 }
 
 function addBubble(txt, role, qrs) {
   const msgs = document.getElementById('chatMsgs');
   const d = document.createElement('div');
+
   d.className = 'cmsg' + (role === 'user' ? ' user' : '');
+
   if (role === 'bot') {
     d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${txt}</div>`
-      + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
-      + '</div>';
+        + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
+        + '</div>';
   } else {
     d.innerHTML = `<div class="cav user">나</div><div><div class="cbubble user">${txt}</div></div>`;
   }
   msgs.appendChild(d);
   msgs.scrollTop = msgs.scrollHeight;
 }
-
 /* ───────────────────────────────────────────────
  * 11. 회원가입 유효성 검사 (실시간 API 중복확인)
  * GET /api/auth/check-username?username=
@@ -984,6 +1063,11 @@ function goSlide(i) {
  * POST /api/ai/schedule/generate
  * ─────────────────────────────────────────────── */
 function startPlanFromCard(data) {
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
   go('planner'); goPlanStep(1);
   const pr = document.getElementById('dest-prov');
   if (pr && data.prov) { for(let i=0;i<pr.options.length;i++){if(pr.options[i].text===data.prov){pr.value=pr.options[i].value||pr.options[i].text;break;}} updateCityDest(pr); }
@@ -993,7 +1077,69 @@ function startPlanFromCard(data) {
   toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
 }
 
+/* ── 플래너 스텝 이동 전 유효성 검사 ── */
+function _validatePlanStep1() {
+  const destProv  = document.getElementById('dest-prov');
+  const dateStart = document.getElementById('s1-date-start');
+  const dateEnd   = document.getElementById('s1-date-end');
+  const pax       = document.getElementById('s1-pax');
+  const budget    = document.getElementById('s1-budget');
+
+  if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
+  if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
+  if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
+  if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
+  if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
+  if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
+
+  // 이동수단 chip 선택 여부
+  const transChips = document.querySelectorAll('#chip-trans .chip.on');
+  if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
+
+  return true;
+}
+
+function _validatePlanStep2() {
+  // 취향 설정: 여행 스타일 최소 1개 선택
+  const styleChips = document.querySelectorAll('#chip-style .chip.on');
+  if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
+  return true;
+}
+
+/* 현재 활성 스텝 번호 반환 */
+function _currentPlanStep() {
+  for (let i = 1; i <= 3; i++) {
+    const sb = document.getElementById('sb-' + i);
+    if (sb && sb.classList.contains('active')) return i;
+  }
+  return 1;
+}
+
 function goPlanStep(n) {
+  // ── 1. 로그인 체크 (모든 이동에 적용) ──
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
+
+  const current = _currentPlanStep();
+
+  // ── 2. 앞으로 이동할 때만 유효성 검사 (뒤로는 자유) ──
+  if (n > current) {
+    if (current === 1 && n >= 2) {
+      if (!_validatePlanStep1()) return;
+    }
+    if (current === 2 && n >= 3) {
+      if (!_validatePlanStep2()) return;
+    }
+    // Step-bar 직접 클릭으로 여러 스텝 건너뛰는 경우도 순차 검증
+    if (current === 1 && n === 3) {
+      if (!_validatePlanStep1() || !_validatePlanStep2()) return;
+    }
+  }
+
+  // ── 3. 스텝 전환 ──
   for(let i=1;i<=3;i++) {
     const sb2=document.getElementById('sb-'+i), sp2=document.getElementById('sp-'+i);
     if(!sb2||!sp2) continue;
@@ -1176,8 +1322,8 @@ async function confirmReportAction() {
   else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r});
   closeReportAction();
   toast(res.success
-    ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
-    : '⚠️ 처리에 실패했습니다.');
+      ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
+      : '⚠️ 처리에 실패했습니다.');
 }
 
 /* ───────────────────────────────────────────────

@@ -1,8 +1,0 @@
-spring.application.name=trip-linker
-
-spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
-spring.datasource.url=jdbc:mariadb://localhost:3306/triplinker
-spring.datasource.username=???_DB_????_?????
-spring.datasource.password=???_DB_?????_?????
-
-spring.jpa.hibernate.ddl-auto=update
