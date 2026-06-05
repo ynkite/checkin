@@ -30,7 +30,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                               ChatMessageRepository messageRepository,
 
                               // ollama
-                              @Qualifier("ollamaChatModel") ChatModel chatModel)
+//                              @Qualifier("ollamaChatModel") ChatModel chatModel)
 
                               // chatgpt
 //                              @Qualifier("openAiChatModel") ChatModel chatModel)
@@ -39,7 +39,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 //                              @Qualifier("anthropicChatModel") ChatModel chatModel)
 
                               // gemini
-//                              @Qualifier("googleGenAiChatModel") ChatModel chatModel)
+                              @Qualifier("googleGenAiChatModel") ChatModel chatModel)
 
     {
         this.sessionRepository = sessionRepository;
@@ -81,7 +81,8 @@ public class ChatbotServiceImpl implements ChatbotService {
         List<Message> promptMessages = new ArrayList<>();
 
         // 시스템 프롬프트 (여행 조건 주입 안 함! 그냥 기본 역할만 부여)
-        promptMessages.add(new SystemMessage("너는 친절하고 전문적인 대한민국 여행 플래너 챗봇이야. 반드시 '한국어(Korean)'로 대답해!"));
+        promptMessages.add(new SystemMessage("너는 친절하고 전문적인 대한민국 여행 플래너 챗봇이야. " +
+                "반드시 '한국어(Korean)'로 대답해!"));
 
         // 최근 20개의 대화 기록 얹어주기
         for (ChatMessage chat : recentHistory) {
