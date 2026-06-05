@@ -116,9 +116,21 @@ public class User {
         if (mbti     != null && mbti.length() == 4)       this.mbti      = mbti;
     }
 
-    //회원 탈퇴
-    public void withdraw() {
-        this.status = "DELETED";
+    //회원 탈퇴 - 개인정보 마스킹 처리
+    public void withdrawMasked(Long id) {
+        this.username     = "deleted_user_username" + id;
+        this.email        = "deleted_user_" + id + "@del.com";
+        this.name         = "탈퇴한 사용자";
+        this.region       = "";
+        this.passwordHash = null;
+        this.birthDate    = LocalDate.of(1900, 1, 1);
+        this.gender       = null;
+        this.mbti         = null;
+        this.loginFailCount  = 0;
+        this.lockedUntil     = null;
+        this.lastPwChangedAt = null;
+        this.pwChangeNotiAt  = null;
+        this.status    = "DELETED";
         this.deletedAt = LocalDateTime.now();
     }
 

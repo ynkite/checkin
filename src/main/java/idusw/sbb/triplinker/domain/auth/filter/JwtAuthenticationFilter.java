@@ -1,6 +1,6 @@
 package idusw.sbb.triplinker.domain.auth.filter;
 
-import idusw.sbb.triplinker.domain.auth.security.CustomUserDetailsService;
+import idusw.sbb.triplinker.domain.auth.security.CustomUserDetails;
 import idusw.sbb.triplinker.domain.auth.service.JwtProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -9,7 +9,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -25,7 +24,6 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
-    private final CustomUserDetailsService customUserDetailsService;
 
     //모든 API 요청이 들어올 때마다 가로채서 실행되는 핵심 검증 로직
     @Override
@@ -37,11 +35,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         //2. 유효한 토큰인지 확인
         if (token != null && jwtProvider.validateToken(token)) {
 
-            //3. 유효한 토큰에서 유저의 고유 ID를 꺼냄
+            //3. 토큰 클레임에서 userId, role 추출 (DB 조회 없음)
             Long userId = jwtProvider.getUserIdFromToken(token);
+            String role = jwtProvider.getRoleFromToken(token);
 
-            //4. DB에서 해당 ID를 가진 유저의 정보(UserDetails)를 조회
-            UserDetails userDetails = customUserDetailsService.loadUserById(userId);
+            //4. 클레임 기반으로 인증 객체 생성 (DB 조회 생략)
+            CustomUserDetails userDetails = new CustomUserDetails(userId, role);
 
             //5. Spring Security가 알아볼 수 있는 형태의 '인증 통행증(Token)' 객체 생성
             UsernamePasswordAuthenticationToken authentication =

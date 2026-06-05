@@ -116,9 +116,6 @@ let _activeTags    = new Set();
 let _loginFailCount = 0;
 let _loginLockedUntil = null;
 
-function openModal(id) {
-  if (id === 'modal-auth') go('login');
-}
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
@@ -147,12 +144,12 @@ function go(id, addToHistory) {
     'place-t-yongduram': 12, 'place-t-hyeopjaebeach': 12,
     'place-c-handam': 12, 'place-c-arario': 12, 'place-c-monsant': 12,
     'place-c-daraon': 12, 'place-c-seohyang': 12
-
   };
   const wfi = document.querySelectorAll('.wf-item');
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   window.scrollTo(0, 0);
 
+  // 후기/장소 상세 페이지 이동 시 데이터 렌더러 호출
 // 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
   setTimeout(function() {
     try {
@@ -166,16 +163,9 @@ function go(id, addToHistory) {
           typeof MOCK_TOUR_PLACES!=='undefined' ? MOCK_TOUR_PLACES : {},
           typeof MOCK_CAFE_PLACES!=='undefined' ? MOCK_CAFE_PLACES : {}
       );
-  if (allP[id] && typeof renderPlaceDetailPage==='function') renderPlaceDetailPage(id);
-  } catch(e) {}
+      if (allP[id] && typeof renderPlaceDetailPage==='function') renderPlaceDetailPage(id);
+    } catch(e) {}
   }, 30);
-  // ↓ 이 두 줄 추가
-  if (id === 'weather' && typeof window.renderWeatherTab === 'function') {
-    setTimeout(window.renderWeatherTab, 30);
-  }
-  if (id === 'planner' && typeof initPlannerDateConstraints === 'function') {
-    setTimeout(initPlannerDateConstraints, 100);
-  }
 }
 
 function setNav(btn) {
