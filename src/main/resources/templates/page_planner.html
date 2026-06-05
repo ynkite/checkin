@@ -156,6 +156,17 @@
       if (el('sum-density')) el('sum-density').textContent = density;
       if (el('sum-pet'))     el('sum-pet').textContent     = hasPet ? '동반' : '— 미입력';
     }
+
+    /* ─────────────────────────────────────────────────────────
+ * AI 챗봇 메시지 전송
+ * app_main.js의 공통 sendMsg() 함수를 호출하도록 연동
+ * ───────────────────────────────────────────────────────── */
+    function sendMsg() {
+      // app_main.js에 만들어둔 공통 챗봇 전송 로직(아래 코드)을 실행합니다.
+      if (typeof window.sendMsg === 'function') {
+        window.sendMsg();
+      }
+    }
   </script>
 
   <div class="page" id="page-planner">

@@ -68,6 +68,7 @@ public class SecurityConfig {
                                 "/api/maps/weather",
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
+
                         ).permitAll()
 
                         //게시판은 보는 것(GET)만 비로그인 허용

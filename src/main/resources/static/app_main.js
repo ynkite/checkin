@@ -884,31 +884,52 @@ function startChat() {
   addBubble('안녕하세요! AI 여행 플래너입니다 ✈<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','🐕 강아지','일정 생성']);
 }
 
+/* ───────────────────────────────────────────────
+ * 10. AI 챗봇 (Chat Domain)
+ * POST /api/chat/message   → AI 응답
+ * ─────────────────────────────────────────────── */
+
 /** POST /api/chat/message : 메시지 전송 + AI 응답 수신 */
 async function sendMsg() {
   const inp = document.getElementById('chatInp');
   const txt = inp.value.trim();
   if (!txt) return;
+
+  // 1. 내가 보낸 메시지 화면에 그리기
   addBubble(txt, 'user');
   inp.value = '';
 
-  if (!_chatSessionId) {
-    const sesRes = await api.post('/api/chat/sessions', { planId: null });
-    if (sesRes.success && sesRes.data) _chatSessionId = sesRes.data.sessionId;
-  }
+  // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
+  const sessionId = _chatSessionId;
 
-  const res = await api.post('/api/chat/message', { sessionId: _chatSessionId, message: txt });
-  if (res.success && res.data && res.data.response) {
-    addBubble(res.data.response, 'bot');
-  } else {
-    addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+  try {
+    const payload = {
+      sessionId: sessionId,
+      message: txt // API 명세서 규격 일치
+    };
+
+    // 공통 api.post 래퍼를 사용하므로 토큰(Authorization)이 자동으로 포함되고 401 에러 방어가 됩니다.
+    const res = await api.post('/api/chat/message', payload);
+
+    // 백엔드 응답 규격 {"success":true, "data":{"response":"..."}} 파싱
+    if (res && res.success && res.data && res.data.response) {
+      addBubble(res.data.response, 'bot');
+    } else {
+      console.error('[Chat] 응답 오류:', res);
+      addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+    }
+  } catch (e) {
+    console.error('[Chat] 통신 예외:', e);
+    addBubble('서버와 통신 중 문제가 발생했습니다.', 'bot');
   }
 }
 
 function addBubble(txt, role, qrs) {
   const msgs = document.getElementById('chatMsgs');
   const d = document.createElement('div');
+
   d.className = 'cmsg' + (role === 'user' ? ' user' : '');
+
   if (role === 'bot') {
     d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${txt}</div>`
         + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
@@ -919,7 +940,6 @@ function addBubble(txt, role, qrs) {
   msgs.appendChild(d);
   msgs.scrollTop = msgs.scrollHeight;
 }
-
 /* ───────────────────────────────────────────────
  * 12. 회원가입 유효성 검사 (실시간 API 중복확인)
  * GET /api/auth/check-username?username=
