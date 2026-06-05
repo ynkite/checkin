@@ -29,20 +29,6 @@
     <a id="navAdminLink" onclick="go('admin')" style="display:none;cursor:pointer;color:var(--sage);font-weight:700;margin-left:8px">관리자</a>
   </div>
 </nav>
-<!--&lt;!&ndash; ===== SIDEBAR ===== &ndash;&gt;-->
-<!--<div class="wf-sidebar" id="sidebar">-->
-<!--  <div class="wf-label">PAGES</div>-->
-<!--  <button class="wf-item on" onclick="go('main')">01 메인</button>-->
-<!--  <button class="wf-item" onclick="go('signup')">02 회원가입</button>-->
-<!--  <button class="wf-item" onclick="go('login')">03 로그인</button>-->
-<!--  <button class="wf-item" onclick="go('mypage')">04 마이페이지</button>-->
-<!--  <button class="wf-item" onclick="go('planner')">05 AI 플래너</button>-->
-<!--  <button class="wf-item" onclick="go('map')">06 지도</button>-->
-<!--  <button class="wf-item" onclick="go('budget')">07 예산</button>-->
-<!--  <button class="wf-item" onclick="go('ledger')">08 가계부</button>-->
-<!--  <button class="wf-item" onclick="go('community')">09 커뮤니티</button>-->
-<!--  <button class="wf-item" onclick="go('admin')">10 관리자</button>-->
-<!--</div>-->
 
 <!-- ===== TOAST ===== -->
 <div class="toast" id="toast"></div>
@@ -57,6 +43,7 @@
 <th:block th:insert="~{page_community :: community}"></th:block>
 <th:block th:insert="~{page_admin :: admin}"></th:block>
 <th:block th:insert="~{page_place :: place}"></th:block>
+<th:block th:insert="~{page_weather :: weather}"></th:block>
 
 <!-- ===== JS ===== -->
 <script th:src="@{/app_main.js}"></script>
