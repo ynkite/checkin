@@ -105,23 +105,28 @@ const api = {
 /* ───────────────────────────────────────────────
  * 2. 앱 상태 (서버 응답 기반으로만 갱신)
  * ─────────────────────────────────────────────── */
-let _currentUser   = null;   // GET /api/users/me 응답의 data
-let _isSuspended   = false;  // role === 'SUSPENDED'
-let _loggedIn      = false;
-let _userNotifs    = [];     // GET /api/notifications 응답의 data[]
-let _myTrips       = [];     // GET /api/trips 응답의 data[]
-let _chatSessionId = null;   // POST /api/chat/sessions 응답의 data.sessionId
+let _currentUser          = null;   // GET /api/users/me 응답의 data
+let _isSuspended          = false;  // role === 'SUSPENDED'
+let _loggedIn             = false;
+let _userNotifs           = [];     // GET /api/notifications 응답의 data[]
+let _myTrips              = [];     // GET /api/trips 응답의 data[]
+let _chatSessionId        = null;   // POST /api/chat/sessions 응답의 data.sessionId
 let _budgetSelectedTripId = null;
-let _activeTags    = new Set();
-let _loginFailCount = 0;
-let _loginLockedUntil = null;
-let _loginLockTimer = null;
+let _activeTags           = new Set();
+let _loginFailCount       = 0;
+let _loginLockedUntil     = null;
+let _loginLockTimer       = null;   // [v2] 잠금 카운트다운 인터벌 ID
+
+/** 모달 열기 헬퍼 (플래너/로그인 체크에서 사용) */
+function openModal(id) {
+  if (id === 'modal-auth') go('login');
+}
 
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
-  sessionStorage.setItem('currentPage', id);
+  sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
   if (addToHistory !== false && id !== 'main') history.pushState({page: id}, '', location.href);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
@@ -151,23 +156,30 @@ function go(id, addToHistory) {
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   window.scrollTo(0, 0);
 
-  // 후기/장소 상세 페이지 이동 시 데이터 렌더러 호출
-// 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
+  // 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
   setTimeout(function() {
     try {
       var allR = Object.assign({},
-          typeof MOCK_ROUTE_REVIEWS!=='undefined' ? MOCK_ROUTE_REVIEWS : {},
-          typeof MOCK_STAY_REVIEWS !=='undefined' ? MOCK_STAY_REVIEWS  : {},
-          typeof MOCK_FOOD_REVIEWS !=='undefined' ? MOCK_FOOD_REVIEWS  : {}
+          typeof MOCK_ROUTE_REVIEWS !== 'undefined' ? MOCK_ROUTE_REVIEWS : {},
+          typeof MOCK_STAY_REVIEWS  !== 'undefined' ? MOCK_STAY_REVIEWS  : {},
+          typeof MOCK_FOOD_REVIEWS  !== 'undefined' ? MOCK_FOOD_REVIEWS  : {}
       );
-      if (allR[id] && typeof renderReviewDetailPage==='function') renderReviewDetailPage(id);
+      if (allR[id] && typeof renderReviewDetailPage === 'function') renderReviewDetailPage(id);
       var allP = Object.assign({},
-          typeof MOCK_TOUR_PLACES!=='undefined' ? MOCK_TOUR_PLACES : {},
-          typeof MOCK_CAFE_PLACES!=='undefined' ? MOCK_CAFE_PLACES : {}
+          typeof MOCK_TOUR_PLACES !== 'undefined' ? MOCK_TOUR_PLACES : {},
+          typeof MOCK_CAFE_PLACES !== 'undefined' ? MOCK_CAFE_PLACES : {}
       );
-      if (allP[id] && typeof renderPlaceDetailPage==='function') renderPlaceDetailPage(id);
+      if (allP[id] && typeof renderPlaceDetailPage === 'function') renderPlaceDetailPage(id);
     } catch(e) {}
   }, 30);
+
+  // [v1] 날씨 탭 / 플래너 날짜 제약 자동 초기화
+  if (id === 'weather' && typeof window.renderWeatherTab === 'function') {
+    setTimeout(window.renderWeatherTab, 30);
+  }
+  if (id === 'planner' && typeof initPlannerDateConstraints === 'function') {
+    setTimeout(initPlannerDateConstraints, 100);
+  }
 }
 
 function setNav(btn) {
@@ -233,7 +245,7 @@ function updateNav() {
   }
 }
 
-/** ─── POST /api/auth/login ─── */
+/** [v2] 로그인 잠금 카운트다운 (UI 실시간 업데이트) */
 function _startLockCountdown(totalSeconds, warnEl) {
   if (_loginLockTimer) clearInterval(_loginLockTimer);
   let secs = Math.ceil(totalSeconds);
@@ -260,6 +272,7 @@ function _startLockCountdown(totalSeconds, warnEl) {
   }, 1000);
 }
 
+/** ─── POST /api/auth/login ─── */
 async function tryLogin() {
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value;
@@ -280,14 +293,15 @@ async function tryLogin() {
 
   if (!res.success) {
     if (res.data && res.data.locked) {
+      // [v2] 서버 잠금 응답 → 카운트다운 시작
       _startLockCountdown(res.data.remainSeconds || 300, w);
     } else {
       const failCount = res.data?.failCount;
       w.innerHTML = failCount
-        ? `⚠️ 비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
-        : '⚠️ 아이디 또는 비밀번호를 확인해주세요.';
+          ? `⚠️ 비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
+          : '⚠️ 아이디 또는 비밀번호를 확인해주세요.';
+      w.style.display = 'flex';
     }
-    w.style.display = 'flex';
     return;
   }
   w.style.display = 'none';
@@ -353,7 +367,6 @@ async function doLogout() {
 async function doKakaoSignup() {
   const nameEl = document.getElementById('kakao-name');
   if (!nameEl || !nameEl.value.trim()) { toast('이름을 입력해주세요'); return; }
-  // 소셜 가입은 OAuth 콜백에서 처리됨 — 추가 정보 저장
   const res = await api.patch('/api/users/me', { name: nameEl.value.trim() });
   if (res.success) {
     toast('카카오 계정으로 회원가입 완료! 로그인해주세요 🟡');
@@ -385,8 +398,8 @@ async function updateMyPageUI() {
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
 
   _renderMyTrips(_myTrips);
-  _renderMyReviews();
-  _renderMyLikedPosts();
+  _renderMyReviews();       // [v2] 수정/삭제 버튼 포함
+  _renderMyLikedPosts();    // [v2] 좋아요한 포스트 렌더링
   updateLedgerList();
 }
 
@@ -408,25 +421,7 @@ function _renderMyTrips(trips) {
   );
 }
 
-function _renderMyLikedPosts() {
-  const listEl = document.getElementById('my-likes-list');
-  if (!listEl) return;
-  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
-  apiCall('/api/users/me/liked-posts').then(res => {
-    const liked = res.data ?? [];
-    if (liked.length === 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
-      return;
-    }
-    listEl.innerHTML = liked.map(r => `
-      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
-        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
-      </div>
-    `).join('');
-  });
-}
-
+/** [v2] GET /api/users/me/posts → 작성한 후기 */
 function _renderMyReviews() {
   const listEl = document.getElementById('my-reviews-list');
   if (!listEl) return;
@@ -447,6 +442,26 @@ function _renderMyReviews() {
             <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
           </div>
         </div>
+      </div>
+    `).join('');
+  });
+}
+
+/** [v2] GET /api/users/me/liked-posts → 좋아요한 후기 */
+function _renderMyLikedPosts() {
+  const listEl = document.getElementById('my-likes-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+  apiCall('/api/users/me/liked-posts').then(res => {
+    const liked = res.data ?? [];
+    if (liked.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
+      return;
+    }
+    listEl.innerHTML = liked.map(r => `
+      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
       </div>
     `).join('');
   });
@@ -524,7 +539,6 @@ async function goLedger2() {
 async function _loadExpenses(tripId) {
   const res = await api.get('/api/trips/' + tripId + '/expenses');
   if (!res.success) return;
-  // 지출 내역을 ledger-main 영역에 렌더링 (기존 HTML 구조 유지)
   console.log('[Expense] 지출 내역 로드 완료:', res.data);
 }
 
@@ -550,14 +564,13 @@ function returnToMyLedger() {
  * 7. 회원정보 수정 (PATCH /api/users/me)
  * ─────────────────────────────────────────────── */
 function resetInfoStep() {
-  const s1=document.getElementById('info-pw-step'), s2=document.getElementById('info-edit-form');
-  if(s1) s1.style.display='block'; if(s2) s2.style.display='none';
-  const i=document.getElementById('infoPwInput'); if(i) i.value='';
-  const e=document.getElementById('info-pw-err'); if(e) e.style.display='none';
+  const s1 = document.getElementById('info-pw-step'), s2 = document.getElementById('info-edit-form');
+  if (s1) s1.style.display = 'block'; if (s2) s2.style.display = 'none';
+  const i = document.getElementById('infoPwInput'); if (i) i.value = '';
+  const e = document.getElementById('info-pw-err'); if (e) e.style.display = 'none';
 }
 
 function buildEditHTML(u, isSocial) {
-  // MBTI: 저장된 값 없으면 아무것도 선택 안 된 상태로
   const mbtiStr = u.mbti || '';
   const dims = [
     {k:'ei', pairs:[['E','E(외향)'],['I','I(내향)']]},
@@ -567,7 +580,6 @@ function buildEditHTML(u, isSocial) {
   ];
   let mbtiHtml = '<div class="form-group"><label class="form-label">MBTI</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">';
   dims.forEach((d, i) => {
-    // chip-row 클래스를 붙여야 pick()이 동작함
     mbtiHtml += `<div class="chip-row" style="display:flex;gap:6px;align-items:center;flex-wrap:nowrap"><span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">${d.k.toUpperCase()}</span>`;
     d.pairs.forEach(p => {
       const on = mbtiStr[i] === p[0] ? ' on' : '';
@@ -577,7 +589,6 @@ function buildEditHTML(u, isSocial) {
   });
   mbtiHtml += '</div></div>';
 
-  // 지역: 저장된 값 "서울 노원구" → province="서울", city="노원구"
   const regionParts = (u.region || '').split(' ');
   const savedProvince = regionParts[0] || '';
   const savedCity     = regionParts.slice(1).join(' ') || '';
@@ -619,14 +630,12 @@ async function saveInfoEdit() {
   const n = document.getElementById('edit-name');
   if (!n || !n.value.trim()) { toast('이름을 입력해주세요'); return; }
 
-  // 지역: 도/시 + 시/군/구 합치기
-  const bigEl  = document.getElementById('edit-region-big');
-  const cityEl = document.getElementById('edit-region-city');
+  const bigEl    = document.getElementById('edit-region-big');
+  const cityEl   = document.getElementById('edit-region-city');
   const province = bigEl?.value || '';
   const city     = (cityEl?.value && cityEl.value !== '시/군/구 선택') ? cityEl.value : '';
   const region   = province ? (city ? province + ' ' + city : province) : '';
 
-  // 성별: .on 칩의 텍스트로 M/F 결정
   const genderChips = document.querySelectorAll('#info-edit-fields .chip-row');
   let gender = '';
   genderChips.forEach(row => {
@@ -638,22 +647,19 @@ async function saveInfoEdit() {
     }
   });
 
-  // 생년월일
   const birthDate = document.getElementById('edit-birth')?.value || '';
 
-  // MBTI: 각 chip-row에서 chip-sm.on 버튼 첫 글자 수집
   let mbti = '';
-  const mbtiDimOrder = ['EI','SN','TF','JP'];
   document.querySelectorAll('#info-edit-fields .chip-row').forEach(row => {
     const onBtn = row.querySelector('.chip-sm.on');
     if (onBtn) mbti += onBtn.textContent.trim()[0];
   });
 
   const body = { name: n.value.trim() };
-  if (region)              body.region    = region;
-  if (gender)              body.gender    = gender;
-  if (birthDate)           body.birthDate = birthDate;
-  if (mbti.length === 4)   body.mbti      = mbti;
+  if (region)            body.region    = region;
+  if (gender)            body.gender    = gender;
+  if (birthDate)         body.birthDate = birthDate;
+  if (mbti.length === 4) body.mbti      = mbti;
 
   const res = await api.patch('/api/users/me', body);
   if (!res.success) { toast('⚠️ 정보 수정에 실패했습니다.'); return; }
@@ -669,13 +675,12 @@ async function saveInfoEdit() {
     if (!pwRes.success) { toast('⚠️ 비밀번호 변경에 실패했습니다.'); return; }
   }
 
-  // 화면 상태 반영
   if (_currentUser) {
     _currentUser.name = n.value.trim();
-    if (region)    _currentUser.region    = region;
-    if (gender)    _currentUser.gender    = gender;
-    if (birthDate) _currentUser.birthDate = birthDate;
-    if (mbti.length === 4) _currentUser.mbti = mbti;
+    if (region)            _currentUser.region    = region;
+    if (gender)            _currentUser.gender    = gender;
+    if (birthDate)         _currentUser.birthDate = birthDate;
+    if (mbti.length === 4) _currentUser.mbti      = mbti;
   }
   const av = document.getElementById('myAvatar'); if (av) av.textContent = n.value.trim()[0];
   const nm = document.getElementById('myName');   if (nm) nm.textContent = n.value.trim();
@@ -685,7 +690,7 @@ async function saveInfoEdit() {
 }
 
 /* ───────────────────────────────────────────────
- * 8. 회원 탈퇴 (DELETE /api/users/me)
+ * 8. 회원 탈퇴 (DELETE /api/users/me)  [v2 신규]
  * ─────────────────────────────────────────────── */
 function doWithdraw() {
   if (!_currentUser) { toast('로그인이 필요합니다'); return; }
@@ -773,7 +778,7 @@ function renderNotifList() {
   api.patch('/api/notifications/read-all', {}).then(() => updateNotifBadge());
 }
 
-/** PATCH /api/notifications/{notificationId}/read (삭제는 UI에서만) */
+/** PATCH /api/notifications/{notificationId}/read */
 async function deleteNotif(notifId) {
   await api.patch('/api/notifications/' + notifId + '/read', {});
   _userNotifs = _userNotifs.filter(n => n.id !== notifId);
@@ -782,7 +787,7 @@ async function deleteNotif(notifId) {
 }
 
 /* ───────────────────────────────────────────────
- * 9. 지도 장소 팝업 (GET /api/maps/places)
+ * 10. 지도 장소 팝업 (GET /api/maps/places)
  * ─────────────────────────────────────────────── */
 
 /** GET /api/maps/places?keyword={key} */
@@ -804,7 +809,6 @@ async function showMapPlacePopup(key, type) {
   const place = res.data[0];
   document.getElementById('mpPlace').textContent = place.name || key;
 
-  // 장소별 리뷰 렌더링 (PlaceReview 엔티티)
   const reviews = place.reviews || [];
   if (!reviews.length) {
     document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
@@ -846,7 +850,7 @@ function showReviewDetail(place, type, stars, text) {
 }
 
 /* ───────────────────────────────────────────────
- * 10. AI 챗봇 (Chat Domain)
+ * 11. AI 챗봇 (Chat Domain)
  * POST /api/chat/sessions  → sessionId 생성
  * POST /api/chat/message   → AI 응답
  * ─────────────────────────────────────────────── */
@@ -860,7 +864,6 @@ async function startChatWithSummary() {
   if (!msgs) return;
   msgs.innerHTML = '';
 
-  // 현재 활성 플랜의 tripId (플랜 생성 후 세션 연결)
   const tripId = _budgetSelectedTripId || null;
   const sesRes = await api.post('/api/chat/sessions', { planId: tripId });
   if (sesRes.success && sesRes.data) {
@@ -938,7 +941,7 @@ function addBubble(txt, role, qrs) {
   msgs.scrollTop = msgs.scrollHeight;
 }
 /* ───────────────────────────────────────────────
- * 11. 회원가입 유효성 검사 (실시간 API 중복확인)
+ * 12. 회원가입 유효성 검사 (실시간 API 중복확인)
  * GET /api/auth/check-username?username=
  * GET /api/auth/check-email?email=
  * ─────────────────────────────────────────────── */
@@ -987,7 +990,7 @@ function checkPw2(inp) {
 function sv(inp, m, type, txt) { inp.className='form-input '+type; m.className='form-msg '+type; m.textContent=txt; }
 
 /* ───────────────────────────────────────────────
- * 12. 비밀번호 재설정
+ * 13. 비밀번호 재설정
  * POST /api/auth/password/reset-request
  * PATCH /api/auth/password/reset
  * ─────────────────────────────────────────────── */
@@ -1042,7 +1045,7 @@ async function setPwNew() {
 }
 
 /* ───────────────────────────────────────────────
- * 13. 커뮤니티 (Post Domain — 공통 함수)
+ * 14. 커뮤니티 (Post Domain — 공통 함수)
  * ─────────────────────────────────────────────── */
 function checkAndOpenWrite() {
   if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
@@ -1121,7 +1124,7 @@ function setCommTab(btn, cat) {
 }
 
 /* ───────────────────────────────────────────────
- * 14. 슬라이더
+ * 15. 슬라이더
  * ─────────────────────────────────────────────── */
 let _si = 0, _sn = 4;
 function changeSlide(d) { goSlide((_si + d + _sn) % _sn); }
@@ -1132,15 +1135,15 @@ function goSlide(i) {
 }
 
 /* ───────────────────────────────────────────────
- * 15. AI 플래너 입력폼 + 일정 생성
+ * 16. AI 플래너 입력폼 + 일정 생성
  * POST /api/ai/schedule/generate
  * ─────────────────────────────────────────────── */
 function startPlanFromCard(data) {
-    if (!_loggedIn) {
-        toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
-        openModal('modal-auth');
-        return;
-    }
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
   go('planner'); goPlanStep(1);
   const pr = document.getElementById('dest-prov');
   if (pr && data.prov) { for(let i=0;i<pr.options.length;i++){if(pr.options[i].text===data.prov){pr.value=pr.options[i].value||pr.options[i].text;break;}} updateCityDest(pr); }
@@ -1149,69 +1152,55 @@ function startPlanFromCard(data) {
   const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?('₩'+data.budget.toLocaleString()):'';
   toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
 }
-/* ── 플래너 스텝 이동 전 유효성 검사 ── */
+
 function _validatePlanStep1() {
-    const destProv  = document.getElementById('dest-prov');
-    const dateStart = document.getElementById('s1-date-start');
-    const dateEnd   = document.getElementById('s1-date-end');
-    const pax       = document.getElementById('s1-pax');
-    const budget    = document.getElementById('s1-budget');
+  const destProv  = document.getElementById('dest-prov');
+  const dateStart = document.getElementById('s1-date-start');
+  const dateEnd   = document.getElementById('s1-date-end');
+  const pax       = document.getElementById('s1-pax');
+  const budget    = document.getElementById('s1-budget');
 
-    if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
-    if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
-    if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
-    if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
-    if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
-    if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
+  if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
+  if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
+  if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
+  if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
+  if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
+  if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
 
-    // 이동수단 chip 선택 여부
-    const transChips = document.querySelectorAll('#chip-trans .chip.on');
-    if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
-
-    return true;
+  const transChips = document.querySelectorAll('#chip-trans .chip.on');
+  if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
+  return true;
 }
 
 function _validatePlanStep2() {
-    // 취향 설정: 여행 스타일 최소 1개 선택
-    const styleChips = document.querySelectorAll('#chip-style .chip.on');
-    if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
-    return true;
+  const styleChips = document.querySelectorAll('#chip-style .chip.on');
+  if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
+  return true;
 }
 
-/* 현재 활성 스텝 번호 반환 */
 function _currentPlanStep() {
-    for (let i = 1; i <= 3; i++) {
-        const sb = document.getElementById('sb-' + i);
-        if (sb && sb.classList.contains('active')) return i;
-    }
-    return 1;
+  for (let i = 1; i <= 3; i++) {
+    const sb = document.getElementById('sb-' + i);
+    if (sb && sb.classList.contains('active')) return i;
+  }
+  return 1;
 }
 
 function goPlanStep(n) {
-    // ── 1. 로그인 체크 (모든 이동에 적용) ──
-    if (!_loggedIn) {
-        toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
-        openModal('modal-auth');
-        return;
-    }
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
 
-    const current = _currentPlanStep();
+  const current = _currentPlanStep();
 
-    // ── 2. 앞으로 이동할 때만 유효성 검사 (뒤로는 자유) ──
-    if (n > current) {
-        if (current === 1 && n >= 2) {
-            if (!_validatePlanStep1()) return;
-        }
-        if (current === 2 && n >= 3) {
-            if (!_validatePlanStep2()) return;
-        }
-        // Step-bar 직접 클릭으로 여러 스텝 건너뛰는 경우도 순차 검증
-        if (current === 1 && n === 3) {
-            if (!_validatePlanStep1() || !_validatePlanStep2()) return;
-        }
-    }
+  if (n > current) {
+    if (current === 1 && n >= 2) { if (!_validatePlanStep1()) return; }
+    if (current === 2 && n >= 3) { if (!_validatePlanStep2()) return; }
+    if (current === 1 && n === 3) { if (!_validatePlanStep1() || !_validatePlanStep2()) return; }
+  }
 
-    // ── 3. 스텝 전환 ──
   for(let i=1;i<=3;i++) {
     const sb2=document.getElementById('sb-'+i), sp2=document.getElementById('sp-'+i);
     if(!sb2||!sp2) continue;
@@ -1223,7 +1212,7 @@ function goPlanStep(n) {
 }
 
 /* ───────────────────────────────────────────────
- * 16. 지도 UI
+ * 17. 지도 UI
  * ─────────────────────────────────────────────── */
 function showDay(day, btn) {
   btn.closest('.day-tabs').querySelectorAll('.day-tab').forEach(b => b.classList.remove('on'));
@@ -1248,7 +1237,7 @@ function toggleMarker(btn, type) {
 }
 
 /* ───────────────────────────────────────────────
- * 17. 교체 큐 (장소 교체 요청)
+ * 18. 교체 큐 (장소 교체 요청)
  * POST /api/ai/schedule/regenerate
  * ─────────────────────────────────────────────── */
 let _q = [];
@@ -1294,7 +1283,6 @@ async function execAllReplace() {
   if(res.success) {
     toast('🎉 '+cnt+'개 장소 교체 완료!');
     setTimeout(()=>toast('✅ route_recalc_needed → 0 초기화'),1000);
-    // 교통비 재계산
     if(_budgetSelectedTripId) {
       await api.post('/api/trips/'+_budgetSelectedTripId+'/routes/recalculate', {});
     }
@@ -1304,7 +1292,7 @@ async function execAllReplace() {
 }
 
 /* ───────────────────────────────────────────────
- * 18. 관리자 (Admin Domain)
+ * 19. 관리자 (Admin Domain)
  * ─────────────────────────────────────────────── */
 function showAdmin(sec, btn) {
   ['dashboard','users','reports','curation'].forEach(s => { const e=document.getElementById('ad-'+s); if(e) e.style.display='none'; });
@@ -1399,7 +1387,7 @@ async function confirmReportAction() {
 }
 
 /* ───────────────────────────────────────────────
- * 19. 블로그 에디터 이미지 (AWS S3 업로드 준비)
+ * 20. 블로그 에디터 이미지 (AWS S3 업로드 준비)
  * ─────────────────────────────────────────────── */
 function handleEditImg(input) {
   const file=input.files[0]; if(!file) return;
@@ -1448,7 +1436,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ───────────────────────────────────────────────
- * 20. 모달 / 기타 UI 헬퍼
+ * 21. 모달 / 기타 UI 헬퍼
  * ─────────────────────────────────────────────── */
 function showConfirmModal()  { document.getElementById('confirmModal').classList.add('open'); }
 function openConfirmDone()   { document.getElementById('confirmDoneModal').classList.add('open'); }
@@ -1462,7 +1450,7 @@ function setShareTab(btn, tab) {
 }
 
 /* ───────────────────────────────────────────────
- * 21. Hero & 큐레이션 미리보기
+ * 22. Hero & 큐레이션 미리보기
  * ─────────────────────────────────────────────── */
 function setDest(dest) {
   const inp=document.getElementById('heroInp'); if(inp){inp.value=dest;inp.focus();}
@@ -1504,7 +1492,7 @@ function openPreview(key) {
 function closePrev() { const m = document.getElementById('prevModal'); if(m) m.classList.remove('open'); }
 
 /* ───────────────────────────────────────────────
- * 22. Chips / MBTI / Location
+ * 23. Chips / MBTI / Location
  * ─────────────────────────────────────────────── */
 function pick(chip, grp) { const p=chip.closest('.chip-row,.chip-grid4'); if(!p) return; p.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); chip.classList.add('on'); }
 function tog(chip)    { chip.classList.toggle('on'); }
@@ -1519,7 +1507,6 @@ function selectMbti(btn, dim, val) {
   const result=_mbti.ei+_mbti.sn+_mbti.tf+_mbti.jp;
   const el=document.getElementById('mbti-result'); if(el) el.textContent=result;
   const den=document.getElementById('mbti-density'); if(den) den.textContent=_mbti.jp==='P'?'→ P: 여유롭게 자동 설정':'→ J: 빼곡하게 자동 설정';
-  // PATCH /api/users/mbti (로그인 상태일 때)
   if(_loggedIn) api.patch('/api/users/mbti', {mbti:result});
 }
 
@@ -1552,7 +1539,7 @@ function updateCityDep(sel)  { updateCity(sel,'dep-city');  }
 function updateCityDest(sel) { updateCity(sel,'dest-city'); }
 
 /* ───────────────────────────────────────────────
- * 23. TOAST
+ * 24. TOAST
  * ─────────────────────────────────────────────── */
 let _tt = null;
 function toast(msg, dur=2800) {
@@ -1563,7 +1550,7 @@ function toast(msg, dur=2800) {
 }
 
 /* ───────────────────────────────────────────────
- * 24. 전역 이벤트 리스너
+ * 25. 전역 이벤트 리스너
  * ─────────────────────────────────────────────── */
 document.addEventListener('keydown', e => {
   if(e.key==='Escape'){
@@ -1582,7 +1569,7 @@ window.addEventListener('popstate', e => {
 });
 
 /* ───────────────────────────────────────────────
- * 25. 초기화
+ * 26. 초기화
  * ─────────────────────────────────────────────── */
 (async () => {
   // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
@@ -1594,7 +1581,6 @@ window.addEventListener('popstate', e => {
     const meRes = await api.get('/api/users/me');
     if (meRes.success && meRes.data) {
       _currentUser = meRes.data;
-      // ✅ 수정
       _isSuspended = (_currentUser.status === 'SUSPENDED');
       _loggedIn    = true;
       await updateMyPageUI();
@@ -1607,15 +1593,19 @@ window.addEventListener('popstate', e => {
   }
   updateNav();
 
-  // 새로고침 시 이전 페이지 복원
+  // [v2] 새로고침 시 이전 페이지 복원
   const savedPage = sessionStorage.getItem('currentPage');
   if (savedPage && savedPage !== 'main') go(savedPage, false);
 
-  // 초기화 완료 후 화면 노출 (flash 방지)
+  // [v2] 초기화 완료 후 flash 방지
   document.body.style.visibility = 'visible';
 })();
 
+/* ───────────────────────────────────────────────
+ * 27. 마이페이지 섹션 전환 (통합 버전)
+ * ─────────────────────────────────────────────── */
 function showMySection(key, btn) {
+  // my-* 요소 중 내부 구성 요소(list, inner, avatar 등)를 제외하고 숨김
   document.querySelectorAll('[id^="my-"]').forEach(el => {
     if (el.id.startsWith('my-') && !el.id.includes('list') && !el.id.includes('inner')
         && !el.id.includes('ledger-inner') && !el.id.includes('avatar')
@@ -1628,24 +1618,27 @@ function showMySection(key, btn) {
   document.querySelectorAll('.my-menu').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
 
-    if (key === 'info') {
-        resetInfoStep();
-        if (_currentUser?.social) {
-            showSocialInfoEdit();
-        } else {
-            document.getElementById('info-social-notice').style.display = 'none';
-            document.getElementById('info-pw-form').style.display = 'block';
-        }
+  // 섹션별 초기화
+  if (key === 'info') {
+    resetInfoStep();
+    if (_currentUser?.social) {
+      showSocialInfoEdit();
+    } else {
+      const notice = document.getElementById('info-social-notice');
+      const pwForm = document.getElementById('info-pw-form');
+      if (notice) notice.style.display = 'none';
+      if (pwForm) pwForm.style.display = 'block';
     }
-    if (key === 'withdraw') {
-        const inp = document.getElementById('withdrawEmailInput');
-        if (inp) inp.value = '';
-        const err = document.getElementById('withdraw-email-err');
-        if (err) err.style.display = 'none';
-    }
-    if (key === 'ledger')      updateLedgerList();
-    if (key === 'scrap-stay')  loadMyScrap('stay');
-    if (key === 'scrap-food')  loadMyScrap('food');
-    if (key === 'scrap-tour')  loadMyScrap('tour');
-    if (key === 'scrap-cafe')  loadMyScrap('cafe');
+  }
+  if (key === 'withdraw') {
+    const inp = document.getElementById('withdrawEmailInput');
+    if (inp) inp.value = '';
+    const err = document.getElementById('withdraw-email-err');
+    if (err) err.style.display = 'none';
+  }
+  if (key === 'ledger')      updateLedgerList();
+  if (key === 'scrap-stay')  loadMyScrap('stay');
+  if (key === 'scrap-food')  loadMyScrap('food');
+  if (key === 'scrap-tour')  loadMyScrap('tour');
+  if (key === 'scrap-cafe')  loadMyScrap('cafe');
 }
