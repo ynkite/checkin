@@ -59,7 +59,9 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         // 추후 소셜 로그인 연동 기능 merge 시 재활성화 예정
         // boolean isSocial = oAuthAccountRepository.findByUserId(userId).isPresent();
         // return new UserInfoResponseDto(user, isSocial);
-        return new UserInfoResponseDto(user);
+
+        // 소셜 로그인 기능 merge 전까지 임시 false 처리
+        return new UserInfoResponseDto(user, false);
     }
 
     // 2. 회원 닉네임 변경 비즈니스 로직 (쓰기 작업이므로 @Transactional 명시)
@@ -81,12 +83,12 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
 
-        // 추후 소셜 로그인 연동 기능 merge 시 재활성화 예정
-        // user.withdrawMasked(userId);
+        // 소셜 연동 Repository 기능 merge 전까지 토큰/연동 계정 삭제는 비활성화
+         user.withdrawMasked(userId);
         // refreshTokenRepository.deleteByUserId(userId);
         // oAuthAccountRepository.deleteByUserId(userId);
 
-        user.withdraw();
+        // user.withdraw();
     }
 
     // 4. 비밀번호 확인
