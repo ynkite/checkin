@@ -152,18 +152,39 @@
   }
 
   // ── 이메일 인증 발송 ──
-  function sendAuthCode() {
-    const email = document.getElementById('email').value;
+  function sendAuthCode(btnElement) {
+    const email = document.getElementById('email').value.trim();
     if (!email) { alert(AUTH_VALID_MSG.emailEmpty); return; }
+
+    // 1. HTML에서 넘겨준 버튼(this)이 있으면 쓰고, 없으면 쿼리로 찾습니다.
+    const btn = btnElement || document.querySelector('button[onclick*="sendAuthCode"]');
+
     fetch(`${AUTH_API.checkEmail}?email=${email}`)
             .then(res => res.text())
             .then(isDuplicate => {
               if (isDuplicate === 'true') {
                 alert(AUTH_VALID_MSG.emailDuplicate);
               } else {
-                alert(AUTH_VALID_MSG.emailSending);
+                // 2. 알림창 대신 버튼의 글자, 색상, 커서를 바꿉니다.
+                if (btn) {
+                  btn.innerText = "발송 중...";
+                  btn.disabled = true;
+                  btn.style.background = "var(--text3)"; // TripLinker 테마 회록색
+                  btn.style.cursor = "wait";             // 로딩 커서
+                }
+
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
-                        .then(() => alert(AUTH_VALID_MSG.emailSent));
+                        .then(() => alert(AUTH_VALID_MSG.emailSent))
+                        .catch(() => alert("⚠️ 메일 발송에 실패했습니다. 다시 시도해주세요."))
+                        .finally(() => {
+                          // 3. 발송 완료 후(성공/실패 무관) 버튼을 원래대로 복구합니다.
+                          if (btn) {
+                            btn.innerText = "인증 받기";
+                            btn.disabled = false;
+                            btn.style.background = ""; // 원래 CSS 색상(var(--sage))으로 복구
+                            btn.style.cursor = "pointer";
+                          }
+                        });
               }
             });
   }
@@ -360,7 +381,7 @@
         <label class="form-label">이메일</label>
         <div style="display:flex; gap:8px;">
           <input class="form-input" type="email" id="email" placeholder="email@example.com" style="flex:1;">
-          <button class="btn-f" style="width:auto; padding:0 12px; font-size:12px;" onclick="sendAuthCode()">인증 받기</button>
+          <button class="btn-f" style="width:auto; padding:0 12px; font-size:12px;" onclick="sendAuthCode(this)">인증 받기</button>
         </div>
         <div class="form-msg" id="email-msg"></div>
       </div>
@@ -618,7 +639,7 @@
   .pr-back-btn:hover { color: var(--text1, #333); }
 </style>
 
-<div id="pw-reset-modal" onclick="if(event.target===this)closePwResetModal()">
+<div id="pw-reset-modal">
   <div class="pr-card">
     <button class="pr-close-btn" onclick="closePwResetModal()">✕</button>
     <div class="pr-title">🔐 비밀번호 재설정</div>

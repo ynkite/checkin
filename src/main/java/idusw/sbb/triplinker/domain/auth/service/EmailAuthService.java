@@ -55,13 +55,13 @@ public class EmailAuthService {
         // DB에 방금 만든 인증 정보 저장
         emailAuthRepository.save(emailAuth);
 
-        // 3. 구글 우체부를 통해 실제 메일 발송 설정
+        // 3. 구글을 통해 실제 메일 발송 설정
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(email); // 수신자 이메일
-        message.setSubject("[TripLinker] 회원가입 이메일 인증번호입니다."); // 이메일 제목
-        message.setText("안녕하세요! TripLinker 가입을 환영합니다.\n\n"
-                + "인증번호는 [" + authCode + "] 입니다.\n"
-                + "해당 인증번호를 3분 안에 화면에 입력해 주세요."); // 이메일 본문 내용
+        message.setTo(email);
+
+        // 3. 구글을 통해 실제 메일 발송 설정
+        message.setSubject(subject);
+        message.setText(text);
 
         // 메일 최종 발송
         mailSender.send(message);

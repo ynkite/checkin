@@ -65,8 +65,10 @@ public class SecurityConfig {
                                 "/api/auth/verify-email",           //이메일 인증 확인
                                 "/api/auth/password/reset-request", //비밀번호 재설정 요청
                                 "/api/auth/password/reset",         //비밀번호 재설정 처리
+                                "/api/maps/weather",
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
+
                         ).permitAll()
 
                         //게시판은 보는 것(GET)만 비로그인 허용
@@ -95,6 +97,7 @@ public class SecurityConfig {
 
         return http.build();
     }
+
 
     //전역 CORS(교차 출처 리소스 공유) 세부 정책 설정
     @Bean

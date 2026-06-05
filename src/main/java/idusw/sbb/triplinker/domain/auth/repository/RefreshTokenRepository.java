@@ -2,8 +2,8 @@
 package idusw.sbb.triplinker.domain.auth.repository;
 
 import idusw.sbb.triplinker.domain.auth.entity.RefreshToken;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
