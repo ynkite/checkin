@@ -5,12 +5,14 @@ import idusw.sbb.triplinker.domain.auth.dto.PasswordResetDTO;
 import idusw.sbb.triplinker.domain.auth.dto.SignUpRequestDTO;
 import idusw.sbb.triplinker.domain.auth.dto.LoginRequestDto;
 import idusw.sbb.triplinker.domain.auth.dto.TokenResponseDto;
+import idusw.sbb.triplinker.domain.auth.security.CustomUserDetails;
 import idusw.sbb.triplinker.domain.auth.service.AuthService;
 import idusw.sbb.triplinker.global.common.ApiResponse;
 import idusw.sbb.triplinker.domain.auth.service.EmailAuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -65,10 +67,11 @@ public class AuthController {
         emailAuthService.sendEmailAuthCode(email, "signup");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
     }
-    // POST /api/auth/logout  (userId는 나중에 JWT에서 꺼낼 예정)
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@RequestParam Long userId) {
-        authService.logout(userId);
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails != null) {
+            authService.logout(userDetails.getUserId());
+        }
         return ResponseEntity.ok().build();
     }
 

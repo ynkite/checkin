@@ -5,6 +5,7 @@ import idusw.sbb.triplinker.domain.auth.dto.LoginRequestDto;
 import idusw.sbb.triplinker.domain.auth.dto.TokenResponseDto;
 import idusw.sbb.triplinker.domain.auth.entity.PasswordResetToken;
 import idusw.sbb.triplinker.domain.auth.entity.RefreshToken;
+import idusw.sbb.triplinker.domain.auth.repository.OAuthAccountRepository;
 import idusw.sbb.triplinker.domain.auth.repository.PasswordResetTokenRepository;
 import idusw.sbb.triplinker.domain.auth.repository.RefreshTokenRepository;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;
@@ -13,6 +14,8 @@ import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.entity.UserSecurityHistory;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
 import idusw.sbb.triplinker.domain.user.repository.UserSecurityHistoryRepository;
+import idusw.sbb.triplinker.global.exception.LoginFailException;
+import idusw.sbb.triplinker.global.exception.SocialAccountExistException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -36,8 +39,10 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final OAuthAccountRepository oAuthAccountRepository;
 
     @Override
+    @Transactional(noRollbackFor = LoginFailException.class)
     public TokenResponseDto login(LoginRequestDto request) {
 
         //1. 유저 조회
@@ -46,15 +51,20 @@ public class AuthServiceImpl implements AuthService {
 
         //2. 계정 잠금 상태 확인
         if (user.isLocked()) {
-            throw new IllegalStateException("로그인 5회 실패로 계정이 잠겼습니다. 5분 후 다시 시도해주세요.");
+            long remainSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), user.getLockedUntil());
+            throw new LoginFailException(true, user.getLoginFailCount(), Math.max(remainSeconds, 0));
         }
 
         //3. 비밀번호 검증(로그인 실패 시 카운트 증가)
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-             user.increaseLoginFailCount();
-             userRepository.save(user);
-             throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
-         }
+            user.increaseLoginFailCount();
+            userRepository.save(user);
+            if (user.isLocked()) {
+                long remainSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), user.getLockedUntil());
+                throw new LoginFailException(true, user.getLoginFailCount(), Math.max(remainSeconds, 0));
+            }
+            throw new LoginFailException(false, user.getLoginFailCount(), 0);
+        }
 
         //4. 로그인 성공 시 실패 카운트 초기화
         user.resetLoginFail();
@@ -122,8 +132,24 @@ public class AuthServiceImpl implements AuthService {
         if (checkUsername(dto.getUsername())) {
             throw new IllegalArgumentException("이미 사용 중인 아이디입니다.");
         }
+
+        //이메일 중복 검증
         if (checkEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+            User existingUser = userRepository.findByEmail(dto.getEmail())
+                    .orElseThrow(() -> new IllegalArgumentException("사용자 조회 실패"));
+
+            oAuthAccountRepository.findByUserId(existingUser.getId())
+                    .ifPresentOrElse(
+                            oAuthAccount -> {
+                                //소셜 계정 전용 예외(이메일 중복)
+                                throw new SocialAccountExistException(oAuthAccount.getProvider());
+                            },
+                            () -> {
+                                //일반 중복 에러
+                                throw new IllegalArgumentException("이미 사용 중인 이메일입니다.");
+                            }
+                    );
+            return;
         }
 
         //DTO -> Entity 변환

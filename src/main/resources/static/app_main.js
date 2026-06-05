@@ -115,11 +115,13 @@ let _budgetSelectedTripId = null;
 let _activeTags    = new Set();
 let _loginFailCount = 0;
 let _loginLockedUntil = null;
+let _loginLockTimer = null;
 
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
+  sessionStorage.setItem('currentPage', id);
   if (addToHistory !== false && id !== 'main') history.pushState({page: id}, '', location.href);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
@@ -232,16 +234,39 @@ function updateNav() {
 }
 
 /** ─── POST /api/auth/login ─── */
-// let _loginFailCount = 0, _loginLockedUntil = null;
+function _startLockCountdown(totalSeconds, warnEl) {
+  if (_loginLockTimer) clearInterval(_loginLockTimer);
+  let secs = Math.ceil(totalSeconds);
+  _loginLockedUntil = Date.now() + secs * 1000;
+
+  function _fmt(s) {
+    const m = Math.floor(s / 60), r = s % 60;
+    return m > 0 ? `${m}분 ${r}초` : `${s}초`;
+  }
+
+  warnEl.innerHTML = `🔒 5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
+  warnEl.style.display = 'flex';
+
+  _loginLockTimer = setInterval(() => {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(_loginLockTimer);
+      _loginLockTimer = null;
+      _loginLockedUntil = null;
+      warnEl.innerHTML = '✅ 잠금이 해제되었습니다. 다시 로그인해주세요.';
+      return;
+    }
+    warnEl.innerHTML = `🔒 5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
+  }, 1000);
+}
+
 async function tryLogin() {
   const id = document.getElementById('lid').value.trim();
   const pw = document.getElementById('lpw').value;
   const w  = document.getElementById('login-warn');
 
-  // 클라이언트 잠금 체크 (5회 실패 5분)
+  // 클라이언트 잠금 체크 — 카운트다운 중이면 API 호출 차단
   if (_loginLockedUntil && Date.now() < _loginLockedUntil) {
-    const s = Math.ceil((_loginLockedUntil - Date.now()) / 1000);
-    w.innerHTML = '🔒 계정 잠김. ' + s + '초 후 재시도.';
     w.style.display = 'flex';
     return;
   }
@@ -253,18 +278,14 @@ async function tryLogin() {
 
   const res = await api.post('/api/auth/login', { username: id, password: pw });
 
-// ✅ 교체
   if (!res.success) {
     if (res.data && res.data.locked) {
-      // 서버에서 잠금 상태 수신 (locked_until 기반)
-      const remain = res.data.remainSeconds
-          ? Math.ceil(res.data.remainSeconds) + '초 후 재시도 가능합니다.'
-          : '잠시 후 다시 시도해주세요.';
-      w.innerHTML = '🔒 로그인 5회 실패로 잠겼습니다. ' + remain;
+      _startLockCountdown(res.data.remainSeconds || 300, w);
     } else {
-      const failCount = res.data && res.data.failCount;
-      w.innerHTML = '⚠️ 아이디 또는 비밀번호 오류'
-          + (failCount ? ' (' + failCount + '/5회)' : '');
+      const failCount = res.data?.failCount;
+      w.innerHTML = failCount
+        ? `⚠️ 비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
+        : '⚠️ 아이디 또는 비밀번호를 확인해주세요.';
     }
     w.style.display = 'flex';
     return;
@@ -364,7 +385,8 @@ async function updateMyPageUI() {
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
 
   _renderMyTrips(_myTrips);
-  _renderMyReviews();   // 후기는 커뮤니티 API로 처리
+  _renderMyReviews();
+  _renderMyLikedPosts();
   updateLedgerList();
 }
 
@@ -386,13 +408,48 @@ function _renderMyTrips(trips) {
   );
 }
 
+function _renderMyLikedPosts() {
+  const listEl = document.getElementById('my-likes-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+  apiCall('/api/users/me/liked-posts').then(res => {
+    const liked = res.data ?? [];
+    if (liked.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
+      return;
+    }
+    listEl.innerHTML = liked.map(r => `
+      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+      </div>
+    `).join('');
+  });
+}
+
 function _renderMyReviews() {
-  // 작성한 후기: GET /api/posts?author=me 형태가 없으면 커뮤니티 탭에서 관리
-  // 여기서는 빈 상태 렌더링 후 커뮤니티 도메인에서 채움
-  const re = document.getElementById('my-reviews');
-  if (!re) return;
-  re.innerHTML = '<h3 class="my-sec-ttl">작성한 후기</h3>'
-      + '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
+  const listEl = document.getElementById('my-reviews-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
+  apiCall('/api/users/me/posts').then(res => {
+    const posts = res.data ?? [];
+    if (posts.length === 0) {
+      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기가 없습니다.</p>';
+      return;
+    }
+    listEl.innerHTML = posts.map(r => `
+      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+        <div class="post-foot">
+          <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+          <div style="display:flex;gap:6px">
+            <button class="btn-scrap" onclick="event.stopPropagation();go('edit-review')">✏️ 수정</button>
+            <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  });
 }
 
 /* ───────────────────────────────────────────────
@@ -492,22 +549,6 @@ function returnToMyLedger() {
 /* ───────────────────────────────────────────────
  * 7. 회원정보 수정 (PATCH /api/users/me)
  * ─────────────────────────────────────────────── */
-function showMySection(sec, btn) {
-  ['trips','reviews','likes','scrap-stay','scrap-food','ledger','info','withdraw'].forEach(s => {
-    const e = document.getElementById('my-' + s);
-    if (e) e.style.display = 'none';
-  });
-  const t = document.getElementById('my-' + sec);
-  if (t) t.style.display = 'block';
-  btn.closest('.my-sidebar').querySelectorAll('.my-menu').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  if (sec === 'info')     { resetInfoStep(); _currentUser?.social ? showSocialInfoEdit() : (() => { document.getElementById('info-social-notice').style.display='none'; document.getElementById('info-pw-form').style.display='block'; })(); }
-  if (sec === 'withdraw') { const pwb=document.getElementById('withdraw-pw-box'), sob=document.getElementById('withdraw-social-box'); if(_currentUser?.social){ if(pwb) pwb.style.display='none'; if(sob) sob.style.display='block'; } else { if(pwb) pwb.style.display='block'; if(sob) sob.style.display='none'; } }
-  if (sec === 'ledger')      updateLedgerList();
-  if (sec === 'scrap-stay')  loadMyScrap('stay');
-  if (sec === 'scrap-food')  loadMyScrap('food');
-}
-
 function resetInfoStep() {
   const s1=document.getElementById('info-pw-step'), s2=document.getElementById('info-edit-form');
   if(s1) s1.style.display='block'; if(s2) s2.style.display='none';
@@ -644,7 +685,39 @@ async function saveInfoEdit() {
 }
 
 /* ───────────────────────────────────────────────
- * 8. 알림 (GET /api/notifications)
+ * 8. 회원 탈퇴 (DELETE /api/users/me)
+ * ─────────────────────────────────────────────── */
+function doWithdraw() {
+  if (!_currentUser) { toast('로그인이 필요합니다'); return; }
+  const input = document.getElementById('withdrawEmailInput');
+  const email = input?.value.trim();
+  if (!email) { toast('이메일을 입력해주세요'); return; }
+  const errEl = document.getElementById('withdraw-email-err');
+  if (email.toLowerCase() !== (_currentUser.email || '').toLowerCase()) {
+    if (errEl) errEl.style.display = 'block';
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  document.getElementById('withdraw-confirm-modal').style.display = 'flex';
+}
+
+async function confirmWithdraw() {
+  closeWithdrawModal();
+  const res = await api.del('/api/users/me');
+  if (!res.success) {
+    toast('⚠️ ' + (res.message || '탈퇴 처리 중 오류가 발생했습니다.'));
+    return;
+  }
+  toast('탈퇴가 완료되었습니다.');
+  doLogout();
+}
+
+function closeWithdrawModal() {
+  document.getElementById('withdraw-confirm-modal').style.display = 'none';
+}
+
+/* ───────────────────────────────────────────────
+ * 9. 알림 (GET /api/notifications)
  * ─────────────────────────────────────────────── */
 
 async function _loadNotifications() {
@@ -1063,11 +1136,11 @@ function goSlide(i) {
  * POST /api/ai/schedule/generate
  * ─────────────────────────────────────────────── */
 function startPlanFromCard(data) {
-  if (!_loggedIn) {
-    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
-    openModal('modal-auth');
-    return;
-  }
+    if (!_loggedIn) {
+        toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+        openModal('modal-auth');
+        return;
+    }
   go('planner'); goPlanStep(1);
   const pr = document.getElementById('dest-prov');
   if (pr && data.prov) { for(let i=0;i<pr.options.length;i++){if(pr.options[i].text===data.prov){pr.value=pr.options[i].value||pr.options[i].text;break;}} updateCityDest(pr); }
@@ -1076,70 +1149,69 @@ function startPlanFromCard(data) {
   const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?('₩'+data.budget.toLocaleString()):'';
   toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
 }
-
 /* ── 플래너 스텝 이동 전 유효성 검사 ── */
 function _validatePlanStep1() {
-  const destProv  = document.getElementById('dest-prov');
-  const dateStart = document.getElementById('s1-date-start');
-  const dateEnd   = document.getElementById('s1-date-end');
-  const pax       = document.getElementById('s1-pax');
-  const budget    = document.getElementById('s1-budget');
+    const destProv  = document.getElementById('dest-prov');
+    const dateStart = document.getElementById('s1-date-start');
+    const dateEnd   = document.getElementById('s1-date-end');
+    const pax       = document.getElementById('s1-pax');
+    const budget    = document.getElementById('s1-budget');
 
-  if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
-  if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
-  if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
-  if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
-  if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
-  if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
+    if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
+    if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
+    if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
+    if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
+    if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
+    if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
 
-  // 이동수단 chip 선택 여부
-  const transChips = document.querySelectorAll('#chip-trans .chip.on');
-  if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
+    // 이동수단 chip 선택 여부
+    const transChips = document.querySelectorAll('#chip-trans .chip.on');
+    if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
 
-  return true;
+    return true;
 }
 
 function _validatePlanStep2() {
-  // 취향 설정: 여행 스타일 최소 1개 선택
-  const styleChips = document.querySelectorAll('#chip-style .chip.on');
-  if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
-  return true;
+    // 취향 설정: 여행 스타일 최소 1개 선택
+    const styleChips = document.querySelectorAll('#chip-style .chip.on');
+    if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
+    return true;
 }
 
 /* 현재 활성 스텝 번호 반환 */
 function _currentPlanStep() {
-  for (let i = 1; i <= 3; i++) {
-    const sb = document.getElementById('sb-' + i);
-    if (sb && sb.classList.contains('active')) return i;
-  }
-  return 1;
+    for (let i = 1; i <= 3; i++) {
+        const sb = document.getElementById('sb-' + i);
+        if (sb && sb.classList.contains('active')) return i;
+    }
+    return 1;
 }
 
 function goPlanStep(n) {
-  // ── 1. 로그인 체크 (모든 이동에 적용) ──
-  if (!_loggedIn) {
-    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
-    openModal('modal-auth');
-    return;
-  }
-
-  const current = _currentPlanStep();
-
-  // ── 2. 앞으로 이동할 때만 유효성 검사 (뒤로는 자유) ──
-  if (n > current) {
-    if (current === 1 && n >= 2) {
-      if (!_validatePlanStep1()) return;
+    // ── 1. 로그인 체크 (모든 이동에 적용) ──
+    if (!_loggedIn) {
+        toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+        openModal('modal-auth');
+        return;
     }
-    if (current === 2 && n >= 3) {
-      if (!_validatePlanStep2()) return;
-    }
-    // Step-bar 직접 클릭으로 여러 스텝 건너뛰는 경우도 순차 검증
-    if (current === 1 && n === 3) {
-      if (!_validatePlanStep1() || !_validatePlanStep2()) return;
-    }
-  }
 
-  // ── 3. 스텝 전환 ──
+    const current = _currentPlanStep();
+
+    // ── 2. 앞으로 이동할 때만 유효성 검사 (뒤로는 자유) ──
+    if (n > current) {
+        if (current === 1 && n >= 2) {
+            if (!_validatePlanStep1()) return;
+        }
+        if (current === 2 && n >= 3) {
+            if (!_validatePlanStep2()) return;
+        }
+        // Step-bar 직접 클릭으로 여러 스텝 건너뛰는 경우도 순차 검증
+        if (current === 1 && n === 3) {
+            if (!_validatePlanStep1() || !_validatePlanStep2()) return;
+        }
+    }
+
+    // ── 3. 스텝 전환 ──
   for(let i=1;i<=3;i++) {
     const sb2=document.getElementById('sb-'+i), sp2=document.getElementById('sp-'+i);
     if(!sb2||!sp2) continue;
@@ -1534,6 +1606,13 @@ window.addEventListener('popstate', e => {
     }
   }
   updateNav();
+
+  // 새로고침 시 이전 페이지 복원
+  const savedPage = sessionStorage.getItem('currentPage');
+  if (savedPage && savedPage !== 'main') go(savedPage, false);
+
+  // 초기화 완료 후 화면 노출 (flash 방지)
+  document.body.style.visibility = 'visible';
 })();
 
 function showMySection(key, btn) {
@@ -1548,4 +1627,25 @@ function showMySection(key, btn) {
   if (target) target.style.display = '';
   document.querySelectorAll('.my-menu').forEach(b => b.classList.remove('on'));
   if (btn) btn.classList.add('on');
+
+    if (key === 'info') {
+        resetInfoStep();
+        if (_currentUser?.social) {
+            showSocialInfoEdit();
+        } else {
+            document.getElementById('info-social-notice').style.display = 'none';
+            document.getElementById('info-pw-form').style.display = 'block';
+        }
+    }
+    if (key === 'withdraw') {
+        const inp = document.getElementById('withdrawEmailInput');
+        if (inp) inp.value = '';
+        const err = document.getElementById('withdraw-email-err');
+        if (err) err.style.display = 'none';
+    }
+    if (key === 'ledger')      updateLedgerList();
+    if (key === 'scrap-stay')  loadMyScrap('stay');
+    if (key === 'scrap-food')  loadMyScrap('food');
+    if (key === 'scrap-tour')  loadMyScrap('tour');
+    if (key === 'scrap-cafe')  loadMyScrap('cafe');
 }
