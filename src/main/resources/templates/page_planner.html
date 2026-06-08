@@ -161,12 +161,57 @@
  * AI 챗봇 메시지 전송
  * app_main.js의 공통 sendMsg() 함수를 호출하도록 연동
  * ───────────────────────────────────────────────────────── */
-    function sendMsg() {
-      // app_main.js에 만들어둔 공통 챗봇 전송 로직(아래 코드)을 실행합니다.
-      if (typeof window.sendMsg === 'function') {
-        window.sendMsg();
+
+    /* STEP 2 데이터를 백엔드에 저장하고 STEP 3로 넘어가는 함수 */
+    async function saveFormAndGoChat() {
+      const tripId = window._currentTripId;
+      if (!tripId) { toast('플랜이 생성되지 않았습니다.'); return; }
+
+      // 1. 단일 선택값 수집
+      const trans = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '미입력';
+      const acc = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '미입력';
+      const comp = document.querySelector('#chip-comp .chip.on')?.textContent.trim() || '미입력';
+      const pax = parseInt(document.getElementById('s1-pax').value) || 1;
+      const budget = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
+      const density = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '여유롭게';
+
+      // 2. 다중 선택값 (JSON 문자열로 변환)
+      const styles = JSON.stringify([...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()));
+      const food = JSON.stringify([...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim()));
+      const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => c.textContent.trim()));
+
+      // 3. 특수 조건 처리 (유아, 반려동물)
+      const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => c.textContent.trim());
+      const hasInfant = special.some(s => s.includes('유아')) ? 1 : 0;
+      const hasPet = special.some(s => s.includes('반려동물')) ? 1 : 0;
+
+      // 4. 백엔드로 보낼 Payload 생성
+      const payload = {
+        transportType: trans,
+        accommodationType: acc,
+        companionType: comp,
+        companionCount: pax,
+        budget: budget,
+        travelStyles: styles,
+        dietaryInfo: food,
+        accommodationOptions: accOpts,
+        scheduleDensity: density,
+        hasInfant: hasInfant,
+        hasPet: hasPet
+      };
+
+      // 5. 백엔드 취향 저장 API 호출 (POST /api/trips/{tripId}/input-form)
+      const res = await api.post(`/api/trips/${tripId}/input-form`, payload);
+
+      if (res.success) {
+        updateSummaryCard();
+        goPlanStep(3); // 저장 성공 시 챗봇 화면으로 이동
+      } else {
+        toast('취향 정보 저장에 실패했습니다.');
       }
     }
+
+
   </script>
 
   <div class="page" id="page-planner">
@@ -404,7 +449,7 @@
 
         <div class="pl-btns">
           <button class="btn-prev-step" onclick="goPlanStep(1)">← 이전</button>
-          <button class="btn-next" onclick="updateSummaryCard();goPlanStep(3)">AI 챗봇으로 →</button>
+          <button class="btn-next" onclick="saveFormAndGoChat()">AI 챗봇으로 →</button>
         </div>
       </div>
 
