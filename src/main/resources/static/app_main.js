@@ -930,24 +930,36 @@ async function sendMsg() {
   addBubble(txt, 'user');
   inp.value = '';
 
-  // 2. AI 로딩 애니메이션 띄우기 및 입력창 잠금
-  const msgs = document.getElementById('chatMsgs');
-  const loadingId = 'loading-' + Date.now();
-  const loadingDiv = document.createElement('div');
-  loadingDiv.id = loadingId;
-  loadingDiv.className = 'cmsg';
-  loadingDiv.innerHTML = `
-    <div class="cav bot">🤖</div>
-    <div>
-      <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-        <div class="typing-dot"></div>
-      </div>
-    </div>`;
-  msgs.appendChild(loadingDiv);
-  msgs.scrollTop = msgs.scrollHeight;
-  inp.disabled = true; // 전송 중복 방지
+// 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
+    const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
+    if (overseasKeywords.some(k => txt.includes(k))) {
+        addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+        inp.disabled = false;
+        inp.focus();
+        return;
+    }
+
+// 2_2. AI 로딩 애니메이션 띄우기 및 입력창 잠금
+    const msgs = document.getElementById('chatMsgs');
+    const loadingId = 'loading-' + Date.now();
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = loadingId;
+    loadingDiv.className = 'cmsg';
+    loadingDiv.innerHTML = `
+  <div class="cav bot">🤖</div>
+  <div>
+    <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>`;
+    msgs.appendChild(loadingDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+    inp.disabled = true;
+
+  // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
+  const sessionId = _chatSessionId;
 
   try {
     const payload = {
