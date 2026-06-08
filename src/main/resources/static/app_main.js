@@ -899,6 +899,15 @@ async function sendMsg() {
   addBubble(txt, 'user');
   inp.value = '';
 
+  // 해외 여행지 1차 차단 (프론트)
+  const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
+  if (overseasKeywords.some(k => txt.includes(k))) {
+    addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+    inp.disabled = false;
+    inp.focus();
+    return;
+  }
+
   // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
   const sessionId = _chatSessionId;
 

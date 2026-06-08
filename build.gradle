@@ -63,6 +63,7 @@ dependencies {
     // Gemini
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
 
+
 }
 
 dependencyManagement {
