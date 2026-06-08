@@ -4569,3 +4569,20 @@
         from { opacity:0; transform:translateY(4px); }
         to   { opacity:1; transform:translateY(0); }
     }
+
+    /* AI 챗봇 타이핑 로딩 애니메이션 */
+    .typing-dot {
+        width: 6px;
+        height: 6px;
+        background-color: var(--sage, #9ca3af);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    .typing-dot:nth-child(3) { animation-delay: 0s; }
+
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }

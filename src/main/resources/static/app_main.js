@@ -864,7 +864,7 @@ async function startChatWithSummary() {
   if (!msgs) return;
   msgs.innerHTML = '';
 
-  const tripId = _budgetSelectedTripId || null;
+  const tripId = window._currentTripId || null;
   const sesRes = await api.post('/api/chat/sessions', { planId: tripId });
   if (sesRes.success && sesRes.data) {
     _chatSessionId = sesRes.data.sessionId;
@@ -899,37 +899,104 @@ async function sendMsg() {
   addBubble(txt, 'user');
   inp.value = '';
 
-  // 해외 여행지 1차 차단 (프론트)
-  const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
-  if (overseasKeywords.some(k => txt.includes(k))) {
-    addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
-    inp.disabled = false;
-    inp.focus();
-    return;
-  }
+// 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
+    const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
+    if (overseasKeywords.some(k => txt.includes(k))) {
+        addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+        inp.disabled = false;
+        inp.focus();
+        return;
+    }
+
+// 2_2. AI 로딩 애니메이션 띄우기 및 입력창 잠금
+    const msgs = document.getElementById('chatMsgs');
+    const loadingId = 'loading-' + Date.now();
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = loadingId;
+    loadingDiv.className = 'cmsg';
+    loadingDiv.innerHTML = `
+  <div class="cav bot">🤖</div>
+  <div>
+    <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  </div>`;
+    msgs.appendChild(loadingDiv);
+    msgs.scrollTop = msgs.scrollHeight;
+    inp.disabled = true;
 
   // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
   const sessionId = _chatSessionId;
 
   try {
     const payload = {
-      sessionId: sessionId,
-      message: txt // API 명세서 규격 일치
+      sessionId: _chatSessionId,
+      message: txt
     };
 
-    // 공통 api.post 래퍼를 사용하므로 토큰(Authorization)이 자동으로 포함되고 401 에러 방어가 됩니다.
+    // 공통 api.post 래퍼 사용
     const res = await api.post('/api/chat/message', payload);
 
-    // 백엔드 응답 규격 {"success":true, "data":{"response":"..."}} 파싱
+    // 3. 서버 응답이 오면 로딩 말풍선 삭제
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    // =================================================================
+    // 4. 진짜 AI 답변 띄우기 및 UI 자동 업데이트
+    // =================================================================
     if (res && res.success && res.data && res.data.response) {
-      addBubble(res.data.response, 'bot');
+      let replyText = res.data.response;
+
+      // (1) 정규식으로 AI가 몰래 보낸 [UPDATE:항목코드:새로운값] 태그 찾기
+      const updateRegex = /\[UPDATE:([A-Z]+):(.+?)\]/g;
+      let match;
+      while ((match = updateRegex.exec(replyText)) !== null) {
+        const field = match[1];
+        const newVal = match[2].trim();
+
+        // (2) 코드를 요약 패널의 HTML ID와 매핑
+        const domMap = {
+          'DEST': 'sum-dest', 'DATE': 'sum-date', 'PEOPLE': 'sum-people',
+          'BUDGET': 'sum-budget', 'TRANS': 'sum-trans', 'ACC': 'sum-acc',
+          'STYLE': 'sum-style', 'DENSITY': 'sum-density', 'PET': 'sum-pet'
+        };
+
+        const domId = domMap[field];
+        if (domId) {
+          const el = document.getElementById(domId);
+          if (el) {
+            // UI 숫자/글자 변경
+            el.textContent = newVal;
+            el.classList.remove('missing');
+
+            // 시각적 효과 (글씨가 잠시 초록색으로 굵어짐)
+            el.style.color = 'var(--sage)';
+            el.style.fontWeight = '800';
+            setTimeout(() => { el.style.color = ''; el.style.fontWeight = ''; }, 2000);
+          }
+        }
+      }
+
+      // (3) 유저 화면에는 비밀 태그가 보이지 않도록 텍스트에서 싹 지우기
+      replyText = replyText.replace(/\[UPDATE:[A-Z]+:.+?\]/g, '').trim();
+
+      // 최종 텍스트만 말풍선에 띄움
+      addBubble(replyText, 'bot');
     } else {
       console.error('[Chat] 응답 오류:', res);
       addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
     }
   } catch (e) {
     console.error('[Chat] 통신 예외:', e);
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
     addBubble('서버와 통신 중 문제가 발생했습니다.', 'bot');
+  } finally {
+    // 5. 처리가 끝나면 다시 입력창 열기
+    inp.disabled = false;
+    inp.focus();
   }
 }
 
