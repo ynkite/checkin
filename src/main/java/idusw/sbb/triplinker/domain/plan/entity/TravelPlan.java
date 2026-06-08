@@ -6,7 +6,6 @@
 
 package idusw.sbb.triplinker.domain.plan.entity;
 
-
 import idusw.sbb.triplinker.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,7 +1,18 @@
+/**
+ * 사용자 서비스 인터페이스
+ * - 회원 정보 관리와 마이페이지 활동 조회 기능의 명세를 정의한다.
+ * - 구현체는 프로필, 여행 기록, 가계부, 장소 스크랩 조회 로직을 처리한다.
+ */
 package idusw.sbb.triplinker.domain.user.service;
 
+import idusw.sbb.triplinker.domain.expense.dto.BudgetReportResponseDto;
+import idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto;
+import idusw.sbb.triplinker.domain.user.dto.ScrapResponseDto;
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.LocalDate;
 
 /**
@@ -17,4 +28,8 @@ public interface UserService {
     boolean verifyPassword(Long userId, String rawPassword);
     void updateProfile(Long userId, String name, String region, String gender, LocalDate birthDate, String mbti);
     void updatePassword(Long userId, String currentRaw, String newRaw);
+
+    Page<TripListResponseDto> getMyTrips(Long userId, String status, Pageable pageable);
+    BudgetReportResponseDto getMyExpenseReport(Long userId, String category);
+    Page<ScrapResponseDto> getMyScraps(Long userId, String category, Pageable pageable);
 }
