@@ -29,6 +29,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+@Setter
 public class TravelPlan {
 
     @Id
@@ -88,6 +89,10 @@ public class TravelPlan {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+
+    @Column(columnDefinition = "TEXT")
+    private String routeJson; // 여기에 AI가 생성한 JSON 문자열을 통째로 저장합니다.
+
     // ── 비즈니스 메서드 ────────────────────────────
 
     /** ③ 지연 업데이트: PlanInputForm 저장 후 form_id 연결 */
@@ -106,4 +111,5 @@ public class TravelPlan {
     public void clearRouteRecalcFlag() {
         this.routeRecalcNeeded = 0;
     }
+
 }
