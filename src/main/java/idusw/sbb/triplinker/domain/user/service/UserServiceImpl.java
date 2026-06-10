@@ -1,4 +1,5 @@
 package idusw.sbb.triplinker.domain.user.service;
+
 import idusw.sbb.triplinker.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.triplinker.domain.expense.entity.Expense;
 import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
@@ -6,6 +7,8 @@ import idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.triplinker.domain.user.dto.ScrapResponseDto;
+import idusw.sbb.triplinker.domain.auth.repository.OAuthAccountRepository;
+import idusw.sbb.triplinker.domain.auth.repository.RefreshTokenRepository;
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;
@@ -39,7 +42,8 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
     private final UserRepository userRepository;
     private final UserSecurityHistoryRepository historyRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-
+    private final OAuthAccountRepository oAuthAccountRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     // 추후 소셜 로그인 연동 기능 merge 시 재활성화 예정
     // private final OAuthAccountRepository oAuthAccountRepository;
     // private final RefreshTokenRepository refreshTokenRepository;
@@ -50,22 +54,17 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
     private final ScrapRepository scrapRepository;
 
     // 1. 회원 프로필 조회 로직
-    // - 일반 회원/소셜 회원 여부를 함께 판단하여 UserInfoResponseDto로 반환한다.
     @Override
     public UserInfoResponseDto getProfile(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
 
-        // 추후 소셜 로그인 연동 기능 merge 시 재활성화 예정
-        // boolean isSocial = oAuthAccountRepository.findByUserId(userId).isPresent();
-        // return new UserInfoResponseDto(user, isSocial);
+        boolean isSocial = oAuthAccountRepository.findByUserId(userId).isPresent();
 
-        // 소셜 로그인 기능 merge 전까지 임시 false 처리
-        return new UserInfoResponseDto(user, false);
+        return new UserInfoResponseDto(user, isSocial);
     }
 
     // 2. 회원 닉네임 변경 비즈니스 로직 (쓰기 작업이므로 @Transactional 명시)
-    // - Dirty Checking으로 User 엔티티의 이름 정보를 수정한다.
     @Override
     @Transactional
     public void updateNickname(Long userId, UserNicknameUpdateRequest request) {
@@ -74,25 +73,18 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         user.updateNickname(request.getName()); // 엔티티 내부 변경 감지(Dirty Checking) 발동
     }
 
-    // 3. 회원 논리 탈퇴 비즈니스 로직 (쓰기 작업이므로 @Transactional 명시)
-    // - 개인정보를 마스킹 처리한다.
-    // - RefreshToken 및 OAuth 계정 연결 정보는 즉시 삭제한다.
+    // 3. 회원 탈퇴 - 개인정보 마스킹 + 토큰/소셜 레코드 즉시 삭제
     @Override
     @Transactional
     public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
-
-        // 소셜 연동 Repository 기능 merge 전까지 토큰/연동 계정 삭제는 비활성화
-         user.withdrawMasked(userId);
-        // refreshTokenRepository.deleteByUserId(userId);
-        // oAuthAccountRepository.deleteByUserId(userId);
-
-        // user.withdraw();
+        user.withdrawMasked(userId);
+        refreshTokenRepository.deleteByUserId(userId);
+        oAuthAccountRepository.deleteByUserId(userId);
     }
 
-    // 4. 비밀번호 확인
-    // - 입력한 비밀번호와 DB에 저장된 BCrypt 해시값을 비교한다.
+    //4. 비밀번호 확인
     @Override
     public boolean verifyPassword(Long userId, String rawPassword) {
         User user = userRepository.findById(userId)
@@ -100,8 +92,7 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         return passwordEncoder.matches(rawPassword, user.getPasswordHash());
     }
 
-    // 5. 회원 프로필 수정
-    // - 이름, 지역, 성별, 생년월일, MBTI 정보를 수정한다.
+    //5. 회원 프로필 수정
     @Override
     @Transactional
     public void updateProfile(Long userId, String name, String region, String gender, LocalDate birthDate, String mbti) {
@@ -110,8 +101,7 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         user.updateProfile(name, region, gender, birthDate, mbti);
     }
 
-    // 6. 비밀번호 변경
-    // - 현재 비밀번호 검증 후 새 비밀번호를 BCrypt로 암호화하여 저장한다.
+    //6. 비밀번호 변경
     @Override
     @Transactional
     public void updatePassword(Long userId, String currentRaw, String newRaw) {
@@ -123,8 +113,7 @@ public class UserServiceImpl implements UserService { // 인터페이스 구현
         user.updatePassword(passwordEncoder.encode(newRaw));
     }
 
-    // 7. 로그인 실패 기록
-    // - 실패 횟수를 증가시키고 보안 이력을 저장한다.
+    //7. 로그인 실패 기록
     @Override
     @Transactional
     public void loginFailed(String username, String ipAddress) {

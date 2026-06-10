@@ -131,6 +131,15 @@ function go(id, addToHistory) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
+
+  if (id === 'map') {
+    setTimeout(function() {
+      if (window._kakaoMap) {
+        window._kakaoMap.relayout();
+        if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
+      }
+    }, 100);
+  }
   document.querySelectorAll('.wf-item').forEach(b => b.classList.remove('on'));
   const map = {
     main: 0, signup: 1, 'signup-kakao': 1, login: 2, mypage: 3, planner: 4,
@@ -189,11 +198,22 @@ function go(id, addToHistory) {
   if (id === 'planner') {
     if (typeof initPlannerDateConstraints === 'function') setTimeout(initPlannerDateConstraints, 100);
     if (typeof initPlannerMBTI === 'function') setTimeout(initPlannerMBTI, 100);
+
     if (window._pendingDestText) {
       const val = window._pendingDestText;
       window._pendingDestText = null;
       setTimeout(() => _applyDestText(val), 150);
     }
+
+  }
+  if (id === 'map') {
+    setTimeout(function() {
+      if (window._kakaoMap) {
+        window._kakaoMap.relayout();
+      } else if (typeof initKakaoMap === 'function') {
+        initKakaoMap();
+      }
+    }, 100);
   }
   if (id === 'map') {
     setTimeout(function() {
@@ -413,7 +433,7 @@ function startKakaoSignup() {
  * 5. 마이페이지 (User Domain + Plan Domain)
  * ─────────────────────────────────────────────── */
 
-/** GET /api/users/me + GET /api/trips */
+/** GET /api/trips + GET /api/users/me/posts + GET /api/users/me/liked-posts 병렬 호출 */
 async function updateMyPageUI() {
   if (!_currentUser) return;
 
@@ -424,13 +444,14 @@ async function updateMyPageUI() {
   if (nm) nm.textContent = _currentUser.name  || '';
   if (em) em.textContent = _currentUser.email || '';
 
-  // 여행 기록
-  const tripsRes = await api.get('/api/trips');
+  const [tripsRes] = await Promise.all([
+    api.get('/api/trips'),
+    _renderMyReviews(),
+    _renderMyLikedPosts(),
+  ]);
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
 
   _renderMyTrips(_myTrips);
-  _renderMyReviews();       // [v2] 수정/삭제 버튼 포함
-  _renderMyLikedPosts();    // [v2] 좋아요한 포스트 렌더링
   updateLedgerList();
 }
 
@@ -453,49 +474,47 @@ function _renderMyTrips(trips) {
 }
 
 /** [v2] GET /api/users/me/posts → 작성한 후기 */
-function _renderMyReviews() {
+async function _renderMyReviews() {
   const listEl = document.getElementById('my-reviews-list');
   if (!listEl) return;
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
-  apiCall('/api/users/me/posts').then(res => {
-    const posts = res.data ?? [];
-    if (posts.length === 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기가 없습니다.</p>';
-      return;
-    }
-    listEl.innerHTML = posts.map(r => `
-      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
-        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-        <div class="post-foot">
-          <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
-          <div style="display:flex;gap:6px">
-            <button class="btn-scrap" onclick="event.stopPropagation();go('edit-review')">✏️ 수정</button>
-            <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
-          </div>
+  const res = await apiCall('/api/users/me/posts');
+  const posts = res.data ?? [];
+  if (posts.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기가 없습니다.</p>';
+    return;
+  }
+  listEl.innerHTML = posts.map(r => `
+    <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+      <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+      <div class="post-foot">
+        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-scrap" onclick="event.stopPropagation();go('edit-review')">✏️ 수정</button>
+          <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
         </div>
       </div>
-    `).join('');
-  });
+    </div>
+  `).join('');
 }
 
 /** [v2] GET /api/users/me/liked-posts → 좋아요한 후기 */
-function _renderMyLikedPosts() {
+async function _renderMyLikedPosts() {
   const listEl = document.getElementById('my-likes-list');
   if (!listEl) return;
   listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
-  apiCall('/api/users/me/liked-posts').then(res => {
-    const liked = res.data ?? [];
-    if (liked.length === 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
-      return;
-    }
-    listEl.innerHTML = liked.map(r => `
-      <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
-        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
-      </div>
-    `).join('');
-  });
+  const res = await apiCall('/api/users/me/liked-posts');
+  const liked = res.data ?? [];
+  if (liked.length === 0) {
+    listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
+    return;
+  }
+  listEl.innerHTML = liked.map(r => `
+    <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
+      <div class="post-ttl" style="margin-top:5px">${r.title}</div>
+      <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+    </div>
+  `).join('');
 }
 
 /* ───────────────────────────────────────────────
@@ -830,6 +849,19 @@ async function showMapPlacePopup(key, type) {
   document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">불러오는 중...</div>';
   document.getElementById('mpLinks').innerHTML = getMapLinks(key);
   modal.classList.add('open');
+
+  // 길찾기 버튼 (MAP_PINS 좌표 기반)
+  const naviEl = document.getElementById('mpNavi');
+  if (naviEl) {
+    const pin = (typeof MAP_PINS !== 'undefined') ? MAP_PINS.find(p => p.key === key) : null;
+    const displayName = (typeof PLACE_REVIEWS !== 'undefined' && PLACE_REVIEWS[key])
+      ? PLACE_REVIEWS[key].name : key;
+    naviEl.innerHTML = pin
+      ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
+           style="display:block;width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;
+           text-decoration:none;text-align:center;font-size:13px;font-weight:700;margin-bottom:12px;box-sizing:border-box">🚗 카카오맵으로 길찾기</a>`
+      : '';
+  }
 
   const res = await api.get('/api/maps/places?keyword=' + encodeURIComponent(key));
   if (!res.success || !res.data || !res.data.length) {
@@ -1436,6 +1468,17 @@ function showDay(day, btn) {
     if(day==='all') s.style.display='block';
     else s.style.display = (s.dataset.day==day)?'block':'none';
   });
+  if (window._kakaoOverlays && window._kakaoMap) {
+    window._kakaoOverlays.forEach(o => {
+      o.overlay.setMap((day === 'all' || o.day == day) ? window._kakaoMap : null);
+    });
+  }
+  if (window._kakaoPolylines) {
+    window._kakaoPolylines.forEach(p => {
+      p.line.setMap((day === 'all' || p.day == day) ? window._kakaoMap : null);
+    });
+  }
+  if (typeof updateBoundsForDay === 'function') updateBoundsForDay(day);
 }
 function switchMapTab(tab, btn) {
   document.querySelectorAll('.btn-map-act').forEach(b => b.classList.remove('on'));
@@ -1447,8 +1490,14 @@ function switchMapTab(tab, btn) {
 function toggleMarker(btn, type) {
   btn.classList.toggle('on');
   const isOn = btn.classList.contains('on');
-  document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
-  toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍]/g,'').trim());
+  if (window._kakaoOverlays && window._kakaoMap) {
+    window._kakaoOverlays.filter(o => o.type === type).forEach(o => {
+      o.overlay.setMap(isOn ? window._kakaoMap : null);
+    });
+  } else {
+    document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
+  }
+  toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,''));
 }
 
 /* ───────────────────────────────────────────────

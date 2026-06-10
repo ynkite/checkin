@@ -43,7 +43,7 @@ const MAP_ITINERARY = [
       { transit: '🚗 자차 · 12km · 약 20분 · ₩2,000' },
       { type: 'tour',  icon: '📍', name: '성산일출봉',           sub: '관광지 · 1h · ₩2,000×2', stars: '★★★★★ 4.9',           time: '15:00', key: '성산일출봉', replacePh: '예: 실내 관광지로' },
       { transit: '🚗 자차 · 7km · 약 15분' },
-      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 저녁 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '17:30', key: '순대국',   replacePh: '예: 해산물 식당으로' },
+      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 저녁 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '17:30', key: '올레시장순대국',   replacePh: '예: 해산물 식당으로' },
     ],
   },
   {
@@ -57,9 +57,9 @@ const MAP_ITINERARY = [
   {
     day: 3, label: '📅 Day 3 · 06/16 (월)', budget: '₩76,000',
     places: [
-      { type: 'tour',  icon: '📍', name: '천지연폭포',           sub: '관광지 · 1h · ₩2,000×2', stars: '★★★★☆ 4.6',           time: '10:00', key: '천지연',   replacePh: '교체 요구사항 입력' },
+      { type: 'tour',  icon: '📍', name: '천지연폭포',           sub: '관광지 · 1h · ₩2,000×2', stars: '★★★★☆ 4.6',           time: '10:00', key: '천지연폭포',   replacePh: '교체 요구사항 입력' },
       { transit: '🚗 자차 · 5km · 약 10분' },
-      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 점심 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '12:00', key: '순대국2',  replacePh: '교체 요구사항 입력' },
+      { type: 'food',  icon: '🍽️', name: '올레시장 순대국',       sub: '맛집 · 점심 · ₩8,000×2', stars: '★★★★☆ 4.4',           time: '12:00', key: '올레시장순대국-3',  replacePh: '교체 요구사항 입력' },
     ],
   },
   {
@@ -70,15 +70,24 @@ const MAP_ITINERARY = [
   },
 ];
 
-// ── 지도 핀 데이터 ──
+// ── 지도 핀 데이터 (Kakao Maps 실좌표) ──
 const MAP_PINS = [
-  { key: '신라호텔',   type: 'stay', icon: '🏨', color: 'var(--sage)', label: '신라호텔',    left: 175, top: 125 },
-  { key: '성산일출봉', type: 'tour', icon: '📍', color: 'var(--sky)',  label: '성산일출봉',   left: 356, top: 225 },
-  { key: '올레시장순대국', type: 'food', icon: '🍽️', color: 'var(--coral)', label: '올레시장', left: 930, top: 310 },
-  { key: '우도',       type: 'tour', icon: '📍', color: 'var(--sky)',  label: '우도',        left: 810, top: 600 },
-  { key: '한담카페',   type: 'cafe', icon: '☕', color: '#7C3AED',    label: '한담카페',     left: 500, top: 550 },
-  { key: '천지연폭포', type: 'tour', icon: '📍', color: 'var(--sky)',  label: '천지연폭포',   left: 700, top: 500 },
-  { key: '용두암',     type: 'tour', icon: '📍', color: 'var(--sky)',  label: '용두암',       left: 650, top: 400 },
+  { key: '신라호텔',       type: 'stay', icon: '🏨', color: '#2D9E8A', label: '신라호텔',    lat: 33.2481, lng: 126.4116, day: 1 },
+  { key: '성산일출봉',     type: 'tour', icon: '📍', color: '#22B5C4', label: '성산일출봉',   lat: 33.4582, lng: 126.9426, day: 1 },
+  { key: '올레시장순대국', type: 'food', icon: '🍽️', color: '#F87171', label: '올레시장',    lat: 33.4893, lng: 126.4983, day: 1 },
+  { key: '우도',           type: 'tour', icon: '📍', color: '#22B5C4', label: '우도',         lat: 33.5038, lng: 126.9527, day: 2 },
+  { key: '한담카페',       type: 'cafe', icon: '☕', color: '#7C3AED', label: '한담카페',     lat: 33.4640, lng: 126.3028, day: 2 },
+  { key: '천지연폭포',     type: 'tour', icon: '📍', color: '#22B5C4', label: '천지연폭포',   lat: 33.2503, lng: 126.5601, day: 3 },
+  { key: '올레시장순대국-3', type: 'food', icon: '🍽️', color: '#F87171', label: '올레시장',    lat: 33.4893, lng: 126.4983, day: 3 },
+  { key: '용두암',         type: 'tour', icon: '📍', color: '#22B5C4', label: '용두암',       lat: 33.5166, lng: 126.5062, day: 4 },
+];
+
+// ── Day별 이동 동선 ──
+const DAY_ROUTES = [
+  { day: 1, color: '#2D9E8A', keys: ['신라호텔', '성산일출봉', '올레시장순대국'] },
+  { day: 2, color: '#A78BFA', keys: ['우도', '한담카페'] },
+  { day: 3, color: '#22B5C4', keys: ['천지연폭포', '올레시장순대국-3'] },
+  { day: 4, color: '#F5A623', keys: ['용두암'] },
 ];
 
 // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
@@ -146,7 +155,7 @@ function initMapPage() {
         ${day.places.map(p => p.transit
           ? `<div class="transit-map-row">${p.transit}</div>`
           : `
-          <div class="place-row">
+          <div class="place-row" data-key="${p.key}">
             <div class="pr-drag">⋮⋮</div>
             <div class="pr-icon pr-${p.type}">${p.icon}</div>
             <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${p.key}','${p.type}')">
@@ -167,6 +176,7 @@ function initMapPage() {
         ).join('')}
       </div>`).join('') +
       `<div class="recalc-bar" id="recalcBar" style="display:none">🔄 경로 재계산 중... (route_recalc_needed = 1)</div>`;
+    initDragAndDrop();
   }
 
   // 총 예산
@@ -187,25 +197,8 @@ function initMapPage() {
       `<button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>`;
   }
 
-  // 지도 핀
-  const mapViewEl = document.getElementById('mapView');
-  if (mapViewEl) {
-    // 기존 핀 제거 후 재생성
-    mapViewEl.querySelectorAll('.map-pin').forEach(p => p.remove());
-    MAP_PINS.forEach(pin => {
-      const div = document.createElement('div');
-      div.className = 'map-pin';
-      div.dataset.type = pin.type;
-      div.style.cssText = `left:${pin.left}px;top:${pin.top}px`;
-      div.setAttribute('onclick', `showMapPlacePopup('${pin.key}','${pin.type}')`);
-      div.innerHTML = `
-        <div class="pin-body" style="background:${pin.color}">
-          <div class="pin-inner">${pin.icon}</div>
-        </div>
-        <div class="pin-label">${pin.label}</div>`;
-      mapViewEl.appendChild(div);
-    });
-  }
+  // 카카오맵 초기화
+  initKakaoMap();
 
   // 날씨 알림
   const waEl = document.querySelector('.weather-alert');
@@ -241,6 +234,154 @@ function initMapPage() {
 
 document.addEventListener('DOMContentLoaded', initMapPage);
 
+// ── 카카오맵 초기화 ──
+function initKakaoMap() {
+  if (typeof kakao === 'undefined') return;
+
+  kakao.maps.load(function() {
+    var container = document.getElementById('kakaoMap');
+    if (!container) return;
+
+    window._kakaoMap = new kakao.maps.Map(container, {
+      center: new kakao.maps.LatLng(33.3846, 126.5535),
+      level: 10
+    });
+
+    window._kakaoMap.addControl(
+      new kakao.maps.ZoomControl(),
+      kakao.maps.ControlPosition.RIGHT
+    );
+
+    // 커스텀 마커(CustomOverlay) 생성
+    window._kakaoOverlays = [];
+    MAP_PINS.forEach(function(pin) {
+      var content = '<div onclick="showMapPlacePopup(\'' + pin.key + '\',\'' + pin.type + '\')" '
+        + 'style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;'
+        + 'transform:translate(-50%,-100%)">'
+        + '<div style="width:36px;height:36px;border-radius:50%;background:' + pin.color + ';'
+        + 'display:flex;align-items:center;justify-content:center;font-size:16px;'
+        + 'box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff">' + pin.icon + '</div>'
+        + '<div style="background:rgba(255,255,255,.95);border-radius:8px;padding:2px 7px;'
+        + 'font-size:10px;font-weight:700;color:#333;box-shadow:0 1px 4px rgba(0,0,0,.2);'
+        + 'white-space:nowrap;margin-top:2px">' + pin.label + '</div>'
+        + '</div>';
+
+      var overlay = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(pin.lat, pin.lng),
+        content: content,
+        xAnchor: 0,
+        yAnchor: 0
+      });
+      overlay.setMap(window._kakaoMap);
+      window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: pin.type, day: pin.day });
+    });
+
+    // 이동 동선(Polyline) 그리기
+    window._kakaoPolylines = [];
+    var pinByKey = {};
+    MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
+
+    DAY_ROUTES.forEach(function(route) {
+      var path = route.keys.map(function(k) {
+        var p = pinByKey[k];
+        return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+      }).filter(Boolean);
+      if (path.length < 2) return;
+
+      var polyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 3,
+        strokeColor: route.color,
+        strokeOpacity: 0.8,
+        strokeStyle: 'dashed'
+      });
+      polyline.setMap(window._kakaoMap);
+      window._kakaoPolylines.push({ day: route.day, line: polyline });
+    });
+  });
+}
+
+// ── Day 필터 변경 시 해당 마커만 보이도록 setBounds ──
+function updateBoundsForDay(day) {
+  if (!window._kakaoMap) return;
+  var pins = (day === 'all') ? MAP_PINS : MAP_PINS.filter(function(p) { return p.day == day; });
+  if (!pins.length) return;
+  var bounds = new kakao.maps.LatLngBounds();
+  pins.forEach(function(p) { bounds.extend(new kakao.maps.LatLng(p.lat, p.lng)); });
+  window._kakaoMap.setBounds(bounds);
+}
+
+// ── 드래그 후 해당 Day 동선 다시 그리기 ──
+function redrawDayRoute(dayNum) {
+  if (!window._kakaoMap || !window._kakaoPolylines) return;
+  window._kakaoPolylines.forEach(function(p) { if (p.day == dayNum) p.line.setMap(null); });
+  window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
+
+  var pinByKey = {};
+  MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
+
+  var section = document.querySelector('.day-section[data-day="' + dayNum + '"]');
+  if (!section) return;
+  var keys = Array.from(section.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+  var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
+
+  var path = keys.map(function(k) {
+    var p = pinByKey[k]; return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+  }).filter(Boolean);
+  if (path.length < 2) return;
+
+  var polyline = new kakao.maps.Polyline({
+    path: path, strokeWeight: 3,
+    strokeColor: route ? route.color : '#2D9E8A',
+    strokeOpacity: 0.8, strokeStyle: 'dashed'
+  });
+  polyline.setMap(window._kakaoMap);
+  window._kakaoPolylines.push({ day: dayNum, line: polyline });
+}
+
+// ── 드래그 재정렬 초기화 ──
+function initDragAndDrop() {
+  var dragSrc = null;
+  document.querySelectorAll('.place-row[data-key]').forEach(function(row) {
+    row.setAttribute('draggable', 'true');
+
+    row.addEventListener('dragstart', function() {
+      dragSrc = this;
+      setTimeout(function() { row.style.opacity = '0.4'; }, 0);
+    });
+    row.addEventListener('dragend', function() {
+      this.style.opacity = '1';
+      document.querySelectorAll('.place-row[data-key]').forEach(function(r) { r.style.outline = ''; });
+    });
+    row.addEventListener('dragover', function(e) { e.preventDefault(); });
+    row.addEventListener('dragenter', function() {
+      if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
+    });
+    row.addEventListener('dragleave', function() { this.style.outline = ''; });
+    row.addEventListener('drop', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      this.style.outline = '';
+      if (!dragSrc || dragSrc === this) return;
+
+      var srcSection = dragSrc.closest('.day-section');
+      var tgtSection = this.closest('.day-section');
+      if (srcSection !== tgtSection) { toast('같은 날 안에서만 순서를 바꿀 수 있어요.'); return; }
+
+      // 내용과 key를 맞교환 (replace-area는 그대로 유지)
+      var tmpHtml = dragSrc.innerHTML; dragSrc.innerHTML = this.innerHTML; this.innerHTML = tmpHtml;
+      var tmpKey  = dragSrc.dataset.key; dragSrc.dataset.key = this.dataset.key; this.dataset.key = tmpKey;
+
+      redrawDayRoute(parseInt(tgtSection.dataset.day));
+      toast('순서가 변경됐습니다.');
+    });
+  });
+}
+
+// ── 카카오맵 길찾기 ──
+function openKakaoNavi(name, lat, lng) {
+  window.open('https://map.kakao.com/link/to/' + encodeURIComponent(name) + ',' + lat + ',' + lng, '_blank');
+}
+
 // ── 지도 장소 후기 데이터 ──
 const PLACE_REVIEWS = {
   '신라호텔': { name:'제주신라호텔', type:'🏨 숙소', mapSearch:'제주신라호텔', reviews:[
@@ -249,7 +390,10 @@ const PLACE_REVIEWS = {
   '성산일출봉': { name:'성산일출봉', type:'📍 관광지', mapSearch:'성산일출봉', reviews:[
     {user:'여행러버',stars:'★★★★★',rating:'4.9',text:'제주 여행의 필수코스! 일출 보러 새벽에 올라갔는데 정말 장관이었어요.'},
     {user:'이커피러버',stars:'★★★★☆',rating:'4.7',text:'계단이 많아서 힘들 수 있지만 올라가면 보상받아요. 이른 아침 방문 추천.'}]},
-  '올레시장순대국': { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
+  '올레시장순대국':   { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
+    {user:'여행좋아',stars:'★★★★☆',rating:'4.4',text:'가성비 최고인 순대국밥! 양도 많고 국물이 진해요.'},
+    {user:'힐링여행박씨',stars:'★★★★★',rating:'4.5',text:'제주 현지인들이 자주 찾는 곳이에요. 국물이 너무 맛있어요.'}]},
+  '올레시장순대국-3': { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
     {user:'여행좋아',stars:'★★★★☆',rating:'4.4',text:'가성비 최고인 순대국밥! 양도 많고 국물이 진해요.'},
     {user:'힐링여행박씨',stars:'★★★★★',rating:'4.5',text:'제주 현지인들이 자주 찾는 곳이에요. 국물이 너무 맛있어요.'}]},
   '우도': { name:'우도', type:'📍 관광지', mapSearch:'우도', reviews:[
@@ -268,11 +412,23 @@ const PLACE_REVIEWS = {
 
 function showMapPlacePopup(key, type) {
   var data = PLACE_REVIEWS[key];
+  var pin  = MAP_PINS.find(function(p) { return p.key === key; });
   var modal = document.getElementById('mapPlaceModal');
   if (!modal) return;
   var tl = type==='stay'?'🏨 숙소':type==='food'?'🍽️ 맛집':type==='cafe'?'☕ 카페':'📍 관광지';
   document.getElementById('mpPlace').textContent = data ? data.name : key;
   document.getElementById('mpType').textContent  = data ? data.type : tl;
+
+  // 길찾기 버튼
+  var naviEl = document.getElementById('mpNavi');
+  if (naviEl) {
+    naviEl.innerHTML = pin
+      ? '<button onclick="openKakaoNavi(\'' + (data ? data.name : key) + '\',' + pin.lat + ',' + pin.lng + ')" '
+        + 'style="width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;border:none;'
+        + 'cursor:pointer;font-size:13px;font-weight:700;margin-bottom:12px">🚗 카카오맵으로 길찾기</button>'
+      : '';
+  }
+
   if (!data) {
     document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
     document.getElementById('mpLinks').innerHTML = getMapLinks(key);
@@ -349,25 +505,8 @@ function showReviewDetail(place, type, stars, text) {
       <div class="map-right" id="mapRightArea">
         <!-- Map view -->
         <div id="mapView" style="position:absolute;inset:0">
-          <div style="position:absolute;inset:0;background:linear-gradient(135deg,#C5EADF 0%,#B8E0D4 50%,#A8D4C8 100%)"></div>
-          <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(45,158,138,.03) 0,rgba(45,158,138,.03) 1px,transparent 1px,transparent 36px),repeating-linear-gradient(90deg,rgba(45,158,138,.03) 0,rgba(45,158,138,.03) 1px,transparent 1px,transparent 36px)"></div>
-          <svg class="map-route-svg" viewBox="0 0 700 500">
-            <defs>
-              <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                <path d="M0,0 L0,6 L9,3z" fill="var(--sage)" opacity=".8" />
-              </marker>
-            </defs>
-            <path d="M175 125 Q260 160 356 225" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
-            <path d="M356 225 Q440 195 525 178" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
-            <path d="M525 178 Q495 260 448 348" stroke="var(--sage)" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
-            <path d="M448 348 Q360 340 260 310" stroke="#A78BFA" stroke-width="2" stroke-dasharray="6,4" fill="none" opacity=".8" marker-end="url(#arr)" />
-          </svg>
-          <!-- 지도 핀: JS initMapPage() 로 동적 주입 -->
-          <div class="map-zoom">
-            <button class="zoom-btn" onclick="toast('확대')">+</button>
-            <button class="zoom-btn" onclick="toast('축소')">−</button>
-          </div>
-          <div class="weather-alert" onclick="toast('AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)')">
+          <div id="kakaoMap" style="width:100%;height:100%"></div>
+          <div class="weather-alert" style="z-index:20" onclick="toast('AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)')">
             <div class="wa-ttl">🌧️ 06/16 오후 날씨 악화 예보</div>
             <div class="wa-body">태그 유사도 분석 기반 실내 대체 장소 제안</div>
             <div class="wa-cta">AI 대체 일정 제안 보기 →</div>
@@ -431,6 +570,7 @@ function showReviewDetail(place, type, stars, text) {
       <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
     </div>
     <div class="modal-bd">
+      <div id="mpNavi"></div>
       <div id="mpReviews"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
         <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
