@@ -82,7 +82,12 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         // [절대 규칙] - PlanInputForm 유무와 관계없이 항상 적용
         sysPrompt.append("""
-                당신은 친절하고 전문적인 대한민국 여행 플래너 챗봇 'TripLinker'입니다. 반드시 '한국어'로 대답하세요.
+                "You are a Korean travel planner chatbot named 'TripLinker'. " +
+                "ABSOLUTE RULE 1: Respond ONLY in Korean Hangul. NEVER use Chinese/Japanese characters or English words. " +
+                "ABSOLUTE RULE 2: When the user says a budget amount, always compare it to the CURRENT budget value stored in the system. " +
+                "If the new amount is LARGER than the current budget, say '예산을 늘리겠습니다.' " +
+                "If the new amount is SMALLER than the current budget, say '예산을 줄이겠습니다.' " +
+                "Current budget is explicitly shown in the travel info below — always use that as the reference.\\n"
                 
                 [절대 규칙 - 하드코딩, 예외 없음]
                 1. 해외 여행지(일본, 도쿄, 오사카, 미국, 뉴욕, 파리, 유럽, 방콕, 베트남, 싱가포르, 홍콩, 대만, 중국 등)가 언급되면
@@ -90,7 +95,23 @@ public class ChatbotServiceImpl implements ChatbotService {
                 2. 예산이 0원 미만이거나 10,000,000원 초과인 경우
                    다른 설명 없이 반드시 이 문장만 답하세요: "예산을 다시 입력해 주세요"
                 3. 여행과 무관한 대화(날씨, 요리, 정치 등)는 자연스럽게 여행 계획으로 유도하세요.
-                
+                4. 사용자가 대화 중 구체적인 요청을 하면 반드시 [EXTRA:라벨:값] 태그를 답변 끝에 추가하세요.
+                  "- 추가 기준: 반드시 사용자가 보낸 메시지에 명확한 의도 표현이 있을 때만 추가합니다. " +
+                  "AI의 추천/제안/답변 내용은 절대 EXTRA 태그로 추가하지 마세요. " +
+                  "예를 들어 AI가 '흑돼지를 추천드려요'라고 했더라도 사용자가 '먹고 싶어'라고 직접 말하지 않으면 추가 금지입니다. " +
+                  "사용자 메시지 원문에 '~하고 싶어', '~해줘', '~포함해줘', '~먹고 싶어', '~가고 싶어', '~원해', '~넣어줘' 등이 없으면 EXTRA 태그 사용 금지.",
+                   - 라벨은 요청의 핵심을 2~6글자로 압축하세요.
+                   - 예시: '2일차 점심에 흑돼지 먹고 싶어' → [EXTRA:2일차점심:흑돼지]
+                           '카페는 꼭 넣어줘' → [EXTRA:필수포함:카페]
+                           '마지막 날 바다 보고 싶어' → [EXTRA:마지막날:바다]
+                           '아이 동반이라 실내 위주로 해줘' → [EXTRA:장소조건:실내 위주]
+                           '숙소는 조용한 곳으로' → [EXTRA:숙소조건:조용한 곳]
+                           '반려동물 동반 가능한 식당 위주로' → [EXTRA:식당조건:반려동물 동반 가능]
+                   - 반드시 지켜야 할 금지 규칙:
+                     ① 사용자가 직접 말하지 않은 내용은 절대 EXTRA 태그로 추가하지 마세요.
+                     ② AI가 스스로 추천하거나 제안하는 내용에는 EXTRA 태그 금지.
+                     ③ 이미 기존 항목(여행지/날짜/인원/예산/이동수단/숙소/스타일/밀도/반려동물)에 해당하면 UPDATE 태그를 사용하고 EXTRA는 쓰지 마세요.
+                     ④ 값은 최대 15글자로 간결하게.
                 """);
 
         // [여행 정보 주입] - PlanInputForm 데이터가 있을 때만 추가
@@ -174,5 +195,19 @@ public class ChatbotServiceImpl implements ChatbotService {
         messageRepository.save(aiChat);
 
         return aiReply;
+
     }
+    @Override
+    @Transactional
+    public void saveSystemMessage(Long sessionId, String message) {
+        ChatSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
+
+        ChatMessage systemChat = new ChatMessage();
+        systemChat.setChatSession(session);
+        systemChat.setRole("SYSTEM");
+        systemChat.setContent(message);
+        messageRepository.save(systemChat);
+    }
+
 }

@@ -139,4 +139,32 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
         return saved.getId();
     }
+
+    @Override
+    @Transactional
+    public void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields) {
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
+
+        // destination은 TRAVEL_PLANS에, 나머지는 PLAN_INPUT_FORM에 저장
+        String destination = fields.get("destination");
+        if (destination != null) {
+            // TravelPlan에 destination setter가 없으므로 JPQL로 직접 업데이트
+            travelPlanRepository.updateDestination(tripId, destination);
+        }
+
+        PlanInputForm form = plan.getForm();
+        if (form == null) return;
+
+        if (fields.containsKey("budget")) {
+            form.updateByChat("budget", fields.get("budget").replaceAll("[^0-9]", ""));
+        }
+        if (fields.containsKey("transportType"))
+            form.updateByChat("transportType", fields.get("transportType"));
+        if (fields.containsKey("accommodationType"))
+            form.updateByChat("accommodationType", fields.get("accommodationType"));
+        if (fields.containsKey("scheduleDensity"))
+            form.updateByChat("scheduleDensity", fields.get("scheduleDensity"));
+        planInputFormRepository.save(form);
+    }
 }

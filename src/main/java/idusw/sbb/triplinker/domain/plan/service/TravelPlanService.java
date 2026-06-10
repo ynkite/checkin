@@ -38,4 +38,6 @@ public interface TravelPlanService {
      * @return formId (없으면 null)
      */
     Long loadPreviousPreference(Long userId, Long tripId);
+
+    void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);
 }
