@@ -1928,10 +1928,10 @@
       border-radius: var(--r);
       font-size: 13px;
       font-weight: 600;
-      background: var(--cream);
-      border: 1.5px solid var(--border2);
-      color: var(--text2);
-      cursor: pointer
+        background: var(--sage-pale);
+        border: 1.5px solid var(--sage-l);
+        color: var(--sage-d);
+        cursor: pointer
     }
 
     .step-panel {

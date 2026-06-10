@@ -12,13 +12,12 @@ import java.util.Optional;
 
 public interface PlanInputFormRepository extends JpaRepository<PlanInputForm, Long> {
 
+
+
     /** planId로 취향 폼 조회 (1:1) */
     Optional<PlanInputForm> findByPlanId(Long planId);
 
-    /**
-     * 이전 취향 불러오기 — 해당 유저의 가장 최근 폼 조회
-     * preferenceSource 가 UI_CLICK 또는 CHATBOT 인 것만 (AUTO_LOADED 제외)
-     */
-    Optional<PlanInputForm> findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(
-            Long userId, String excludeSource);
+//    이전 취향 불러오기 — 해당 유저의 가장 최근 폼 조회
+     Optional<PlanInputForm> findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(
+     Long userId, String preferenceSource);
 }

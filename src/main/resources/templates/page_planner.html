@@ -19,8 +19,16 @@
       // 출발지/여행지 도/시 초기값 기준 구 목록 세팅
       const depEl  = document.getElementById('dep-prov');
       const destEl = document.getElementById('dest-prov');
-      if (depEl)  updateCityDep(depEl);
-      if (destEl) updateCityDest(destEl);
+      if (depEl) {
+                const _savedDep = document.getElementById('dep-city')?.value;
+                updateCityDep(depEl);
+                if (_savedDep) { const dc = document.getElementById('dep-city'); if (dc) dc.value = _savedDep; }
+              }
+              if (destEl) {
+                const _savedDest = document.getElementById('dest-city')?.value;
+                updateCityDest(destEl);
+              if (_savedDest) { const dc = document.getElementById('dest-city'); if (dc) dc.value = _savedDest; }
+              }
 
       // GET /api/users/me → MBTI 기반 일정 밀도 자동선택
       try {
@@ -47,6 +55,26 @@
       } catch (e) {
         // 비로그인 or 오류 → 기본값 유지
       }
+    }
+    function _initStep1AutoSave() {
+      if (window._step1AutoSaveInitialized) return;
+      window._step1AutoSaveInitialized = true;
+      const _autoSave = () => {
+        if (typeof _loggedIn === 'undefined' || !_loggedIn) return;
+        const hasInput = ['dest-prov','s1-date-start','s1-date-end','s1-pax','s1-budget']
+                .some(id => { const el = document.getElementById(id); return el && el.value && el.value.trim() !== ''; });
+        if (!hasInput) return;
+        if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+        if (typeof updateNav === 'function') updateNav();
+      };
+      ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+              .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                  el.addEventListener('change', _autoSave);
+                  el.addEventListener('input', _autoSave);
+                }
+              });
     }
     /* SPA fragment: DOMContentLoaded 이미 발화됐으면 즉시 실행 */
     if (document.readyState === 'loading') {
@@ -118,7 +146,10 @@
         const json = await res.json();
         if (json.success) {
           window._currentTripId = json.data.tripId;
+                    sessionStorage.setItem('plannerDraftId', json.data.tripId);
           goPlanStep(2);
+                    if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+                    if (typeof updateNav === 'function') updateNav();  // ✏️ 작성중인 플랜 버튼 즉시 표시
         } else {
           toast(json.message || '플랜 생성에 실패했습니다.');
         }
@@ -181,6 +212,33 @@
         el('sum-pet').textContent = hasPet ? '동반' : '미동반';
         el('sum-pet').classList.remove('missing');
       }
+      // 출발지
+      const depProv2 = document.getElementById('dep-prov')?.value || '';
+      const depCity2 = document.getElementById('dep-city')?.value || '';
+      const depText = depProv2 + (depCity2 && depCity2 !== '전체' && depCity2 !== '시/군/구 선택' ? ' ' + depCity2 : '');
+      if (el('sum-dep')) el('sum-dep').textContent = depText || '—';
+
+      // 동행자 유형
+      const compChip2 = document.querySelector('#chip-comp .chip.on');
+      let compType2 = compChip2?.textContent.trim() || '';
+      if (compType2 === '기타') compType2 = document.getElementById('other-comp')?.value.trim() || '기타';
+      if (el('sum-comp')) el('sum-comp').textContent = compType2 || '—';
+
+      // 숙소 세부 옵션
+      const accOptsText2 = [...document.querySelectorAll('#chip-accopts .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') { const v = document.getElementById('other-accopts')?.value.trim(); return v ? `기타(${v})` : '기타'; }
+        return t;
+      }).join(', ');
+      if (el('sum-accopts')) el('sum-accopts').textContent = accOptsText2 || '—';
+
+      // 특수 조건 (반려동물 제외 — 반려동물은 sum-pet에서 별도 표시)
+      const specialText2 = [...document.querySelectorAll('#chip-special .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') { const v = document.getElementById('other-special')?.value.trim(); return v ? `기타(${v})` : '기타'; }
+        return t;
+      }).filter(t => !t.includes('반려동물')).join(', ');
+      if (el('sum-special')) el('sum-special').textContent = specialText2 || '—';
     }
 
     /* ─────────────────────────────────────────────────────────
@@ -216,9 +274,13 @@
       const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => c.textContent.trim());
       const hasInfant = special.some(s => s.includes('유아')) ? 1 : 0;
       const hasPet = special.some(s => s.includes('반려동물')) ? 1 : 0;
-
+      const depProv = document.getElementById('dep-prov')?.value || '';
+      const depCity  = document.getElementById('dep-city')?.value  || '';
+      const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
       // 4. 백엔드로 보낼 Payload 생성
+
       const payload = {
+        departure: departure,
         transportType: trans,
         accommodationType: acc,
         companionType: comp,
@@ -238,11 +300,27 @@
       if (res.success) {
         updateSummaryCard();
         goPlanStep(3); // 저장 성공 시 챗봇 화면으로 이동
+        if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
       } else {
         toast('취향 정보 저장에 실패했습니다.');
       }
     }
-
+    function resetAndBackToStep1() {
+      if (typeof resetPlannerForm === 'function') resetPlannerForm();
+      window._currentTripId = null;
+      sessionStorage.removeItem('plannerDraftId');
+      sessionStorage.removeItem('plannerDraftStep');
+      sessionStorage.removeItem('plannerDraftState');
+      if (typeof updateNav === 'function') updateNav();   // 버튼 → '✈ 플랜' 으로 복귀
+      for (let i = 1; i <= 3; i++) {
+        const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+        if (!sb || !sp) continue;
+        sb.classList.remove('active', 'done'); sp.classList.remove('active');
+        if (i === 1) { sb.classList.add('active'); sp.classList.add('active'); }
+      }
+      history.pushState({ page: 'planner', step: 1 }, '', location.href);
+      toast('플랜이 초기화되었습니다.');
+    }
 
   </script>
 
@@ -280,10 +358,13 @@
         <div class="pl-card">
           <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
             <span>📍 여행지 &amp; 날짜</span>
-            <div id="weather-btn-wrap" style="display:none">
-              <button class="weather-date-btn" onclick="openWeatherPopup()">
-                🌤️ <span id="weather-btn-label">날씨 미리보기</span>
-              </button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="weather-btn-wrap" style="display:none">
+                <button class="weather-date-btn" onclick="openWeatherPopup()">
+                  🌤️ <span id="weather-btn-label">날씨 미리보기</span>
+                </button>
+              </div>
+              <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>
             </div>
           </div>
 
@@ -409,7 +490,8 @@
 
         <div class="pl-btns">
           <button class="btn-next" onclick="createPlan()">다음 단계 →</button>
-          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>
+<!--          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>-->
+          <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
@@ -483,6 +565,7 @@
         <div class="pl-btns">
           <button class="btn-prev-step" onclick="goPlanStep(1)">← 이전</button>
           <button class="btn-next" onclick="saveFormAndGoChat()">AI 챗봇으로 →</button>
+          <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
@@ -518,6 +601,10 @@
             </div>
 
             <div id="sum-rows-container">
+              <div class="asc-row">
+                <div class="asc-label">출발지</div>
+                <div class="asc-val" id="sum-dep">—</div>
+              </div>
               <div class="asc-row" onclick="toast('여행지 수동 변경')">
                 <div class="asc-label">여행지</div>
                 <div class="asc-val" id="sum-dest">—</div>
@@ -530,6 +617,10 @@
                 <div class="asc-label">인원</div>
                 <div class="asc-val" id="sum-people">—</div>
               </div>
+              <div class="asc-row">
+                <div class="asc-label">동행자</div>
+                <div class="asc-val" id="sum-comp">—</div>
+              </div>
               <div class="asc-row" onclick="openSummaryEdit('budget', 'sum-budget', '예산')">
                 <div class="asc-label">예산</div>
                 <div class="asc-val" id="sum-budget">—</div>
@@ -541,6 +632,10 @@
               <div class="asc-row" onclick="toast('숙소 수정')">
                 <div class="asc-label">숙소</div>
                 <div class="asc-val" id="sum-acc">—</div>
+              </div>
+              <div class="asc-row">
+                <div class="asc-label">숙소 옵션</div>
+                <div class="asc-val" id="sum-accopts">—</div>
               </div>
               <div class="asc-row">
                 <div class="asc-label">여행 스타일</div>
@@ -557,7 +652,10 @@
               <div class="asc-row">
                 <div class="asc-label">반려동물</div>
                 <div class="asc-val missing" id="sum-pet">— 미입력</div>
-
+              </div>
+              <div class="asc-row">
+                <div class="asc-label">특수 조건</div>
+                <div class="asc-val" id="sum-special">—</div>
               </div>
               <div id="sum-extra-rows"></div>
               <button class="btn-gen" onclick="go('map'); toast('✅ 일정이 생성되었습니다! 경로 수정 페이지로 이동합니다.')">
@@ -567,6 +665,7 @@
           </div>
           <div style="margin-top:10px">
             <button class="btn-prev-step" onclick="goPlanStep(2)">← 이전</button>
+            <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
@@ -796,8 +895,8 @@
     if (endEl.value && endEl.value < today) endEl.value = '';
 
     if (startEl.value) endEl.min = startEl.value;
-
     updateWeatherBtn();
+    _initStep1AutoSave();
   }
 
   if (document.readyState === 'loading') {
