@@ -177,8 +177,14 @@ function go(id, addToHistory) {
   if (id === 'weather' && typeof window.renderWeatherTab === 'function') {
     setTimeout(window.renderWeatherTab, 30);
   }
-  if (id === 'planner' && typeof initPlannerDateConstraints === 'function') {
-    setTimeout(initPlannerDateConstraints, 100);
+  if (id === 'planner') {
+    if (typeof initPlannerDateConstraints === 'function') setTimeout(initPlannerDateConstraints, 100);
+    if (typeof initPlannerMBTI === 'function') setTimeout(initPlannerMBTI, 100);
+    if (window._pendingDestText) {
+      const val = window._pendingDestText;
+      window._pendingDestText = null;
+      setTimeout(() => _applyDestText(val), 150);
+    }
   }
 }
 
@@ -227,7 +233,7 @@ function updateNav() {
   const lo = document.getElementById('navLogoutBtn');
   const al = document.getElementById('navAdminLink');
   const nb = document.getElementById('navBellBtn');
-
+  const resumeBtn = document.getElementById('navPlannerResumeBtn');
   if (_loggedIn && _currentUser) {
     if (li) li.style.display = 'none';
     if (si) si.style.display = 'none';
@@ -242,6 +248,9 @@ function updateNav() {
     if (lo) lo.style.display = 'none';
     if (nb) nb.style.display = 'none';
     if (al) al.style.display = 'none';
+  }
+  if (resumeBtn) {
+    resumeBtn.style.display = (_loggedIn && window._currentTripId) ? '' : 'none';
   }
 }
 
@@ -967,22 +976,44 @@ async function sendMsg() {
         if (domId) {
           const el = document.getElementById(domId);
           if (el) {
-            // UI 숫자/글자 변경
             el.textContent = newVal;
             el.classList.remove('missing');
-
-            // 시각적 효과 (글씨가 잠시 초록색으로 굵어짐)
             el.style.color = 'var(--sage)';
             el.style.fontWeight = '800';
             setTimeout(() => { el.style.color = ''; el.style.fontWeight = ''; }, 2000);
+            // BUDGET 변경 시 s1-budget 입력값도 동기화 → updateSummaryCard 재호출 시 덮어쓰기 방지
+            if (field === 'BUDGET') {
+              const s1b = document.getElementById('s1-budget');
+              if (s1b) s1b.value = newVal.replace(/[^0-9]/g, '');
+            }
           }
         }
       }
 
-      // (3) 유저 화면에는 비밀 태그가 보이지 않도록 텍스트에서 싹 지우기
-      replyText = replyText.replace(/\[UPDATE:[A-Z]+:.+?\]/g, '').trim();
+      const extraRegex = /\[EXTRA:([^:\]]+):([^\]]+)\]/g;
+      let extraMatch;
+      const extraContainer = document.getElementById('sum-extra-rows');
+      while ((extraMatch = extraRegex.exec(replyText)) !== null) {
+        const label = extraMatch[1].trim();
+        const value = extraMatch[2].trim();
+        if (!extraContainer || !label || !value) continue;
 
-      // 최종 텍스트만 말풍선에 띄움
+        const rowId = 'sum-extra-' + label;
+        let row = document.getElementById(rowId);
+        if (!row) {
+          row = document.createElement('div');
+          row.id = rowId;
+          row.className = 'asc-row';
+          row.innerHTML = `<div class="asc-label">${label}</div><div class="asc-val">${value}</div>`;
+          extraContainer.appendChild(row);
+        } else {
+          row.querySelector('.asc-val').textContent = value;
+        }
+      }
+
+// (4) 모든 태그 제거 후 말풍선에 표시
+      replyText = replyText.replace(/\[UPDATE:[A-Z]+:[^\]]+\]/g, '').trim();
+      replyText = replyText.replace(/\[EXTRA:[^:\]]+:[^\]]+\]/g, '').trim();
       addBubble(replyText, 'bot');
     } else {
       console.error('[Chat] 응답 오류:', res);
@@ -999,15 +1030,57 @@ async function sendMsg() {
     inp.focus();
   }
 }
+async function openSummaryEdit(field, domId, label) {
+  const el = document.getElementById(domId);
+  if (!el) return;
+
+  const current = el.textContent.trim() === '—' ? '' : el.textContent.trim();
+  const newVal = prompt(`${label} 수정:`, current);
+  if (newVal === null || newVal.trim() === '' || newVal.trim() === current) return;
+
+  const trimmed = newVal.trim();
+
+  // 1. UI 즉시 반영
+  el.textContent = trimmed;
+  el.classList.remove('missing');
+  el.style.color = 'var(--sage)';
+  el.style.fontWeight = '800';
+  setTimeout(() => { el.style.color = ''; el.style.fontWeight = ''; }, 2000);
+
+  // 2. DB PATCH — PLAN_INPUT_FORM 업데이트
+  const tripId = window._currentTripId;
+  if (tripId) {
+    const patchBody = {};
+    if (field === 'budget') {
+      patchBody[field] = String(trimmed.replace(/[^0-9]/g, ''));
+    } else {
+      patchBody[field] = trimmed;
+    }
+    await api.patch(`/api/trips/${tripId}/input-form`, patchBody);
+  }
+
+  // 3. 숨은 컨텍스트 LLM 주입 — SYSTEM 메시지로 DB 저장
+  if (_chatSessionId) {
+    await api.post('/api/chat/message', {
+      sessionId: _chatSessionId,
+      message: `[시스템 메시지: 사용자가 ${label}을(를) "${trimmed}"(으)로 수동 변경했습니다]`,
+      isSystem: true
+    });
+  }
+
+  toast(`✅ ${label} 수정 완료`);
+}
 
 function addBubble(txt, role, qrs) {
   const msgs = document.getElementById('chatMsgs');
   const d = document.createElement('div');
-
   d.className = 'cmsg' + (role === 'user' ? ' user' : '');
-
   if (role === 'bot') {
-    d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${txt}</div>`
+    // 마침표/물음표 뒤 줄바꿈 처리
+    const formatted = txt
+        .replace(/\. ([가-힣A-Za-z0-9])/g, '.<br>$1')
+        .replace(/\? ([가-힣A-Za-z0-9])/g, '?<br>$1');
+    d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${formatted}</div>`
         + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
         + '</div>';
   } else {
@@ -1245,12 +1318,40 @@ function _validatePlanStep1() {
 
   const transChips = document.querySelectorAll('#chip-trans .chip.on');
   if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
+  if ([...transChips].some(c => c.textContent.includes('기타'))) {
+    if (!document.getElementById('other-trans')?.value.trim()) {
+      toast('⚠️ 이동 수단(기타)을 입력해주세요.'); return false;
+    }
+  }
+  // 동행자 기타 미입력 체크
+  const compChip = document.querySelector('#chip-comp .chip.on');
+  if (compChip && compChip.textContent.includes('기타')) {
+    if (!document.getElementById('other-comp')?.value.trim()) {
+      toast('⚠️ 동행자 유형(기타)을 입력해주세요.'); return false;
+    }
+  }
   return true;
 }
 
 function _validatePlanStep2() {
   const styleChips = document.querySelectorAll('#chip-style .chip.on');
   if (styleChips.length === 0) { toast('⚠️ 여행 스타일을 1개 이상 선택해주세요.'); return false; }
+  if ([...styleChips].some(c => c.textContent.includes('기타'))) {
+    if (!document.getElementById('other-style')?.value.trim()) {
+      toast('⚠️ 여행 스타일(기타)을 입력해주세요.'); return false;
+    }
+  }
+  const foodChips = document.querySelectorAll('#chip-food .chip.on');
+  if ([...foodChips].some(c => c.textContent.includes('알러지'))) {
+    if (!document.getElementById('other-allergy')?.value.trim()) {
+      toast('⚠️ 알러지 정보를 입력해주세요.'); return false;
+    }
+  }
+  if ([...foodChips].some(c => c.textContent.includes('기타'))) {
+    if (!document.getElementById('other-food')?.value.trim()) {
+      toast('⚠️ 식이 정보(기타)를 입력해주세요.'); return false;
+    }
+  }
   return true;
 }
 
@@ -1528,18 +1629,88 @@ function setShareTab(btn, tab) {
 /* ───────────────────────────────────────────────
  * 22. Hero & 큐레이션 미리보기
  * ─────────────────────────────────────────────── */
-function setDest(dest) {
-  const inp=document.getElementById('heroInp'); if(inp){inp.value=dest;inp.focus();}
-  const destMap={'제주도':'제주','강릉':'강원','부산':'부산','전주':'전북','경주':'경북'};
-  const prov=destMap[dest]; if(prov){const pr=document.getElementById('dest-prov'); if(pr){pr.value=prov;updateCityDest(pr);}}
-  const sd=document.getElementById('sum-dest'); if(sd) sd.textContent=dest;
+
+function goNewPlanner() {
+  if (!_loggedIn) { toast('⚠️ 로그인이 필요합니다.'); go('login'); return; }
+  resetPlannerForm();   // 초기화
+  window._currentTripId = null;
+  go('planner');
+  goPlanStep(1);
 }
-function heroSearch() {
-  const inp=document.getElementById('heroInp'); const val=inp?inp.value.trim():'';
-  if(!val){toast('여행지를 입력해주세요');return;}
-  if(['도쿄','파리','오사카','뉴욕'].some(c=>val.includes(c))){toast('⚠️ 본 서비스는 국내 전용입니다');return;}
-  startPlanFromCard({dest:val,people:2,transport:'자차',companion:'커플',styles:[],budget:500000});
+
+function goResumePlanner() {
+  if (!_loggedIn) { toast('⚠️ 로그인이 필요합니다.'); go('login'); return; }
+  go('planner');
+  goPlanStep(1);
 }
+
+function resetPlannerForm() {
+  // Step1 초기화
+  const fields = ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget'];
+  fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+  // 칩 초기화
+  document.querySelectorAll('#chip-trans .chip').forEach((c,i) => c.classList.toggle('on', i===0));
+  document.querySelectorAll('#chip-acc .chip').forEach((c,i) => c.classList.toggle('on', i===0));
+  document.querySelectorAll('#chip-comp .chip').forEach((c,i) => c.classList.toggle('on', i===1));
+  document.querySelectorAll('#chip-style .chip').forEach((c,i) => c.classList.toggle('on', i===0));
+  document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
+  document.querySelectorAll('#chip-density .chip').forEach((c,i) => c.classList.toggle('on', i===1));
+  document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+
+  // other-input 초기화
+  ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; el.classList.remove('show'); }
+  });
+
+  // 요약 카드 초기화
+  ['sum-dest','sum-date','sum-people','sum-budget','sum-trans','sum-acc','sum-style','sum-density','sum-pet'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.textContent = '—';
+  });
+  const extra = document.getElementById('sum-extra-rows');
+  if (extra) extra.innerHTML = '';
+}
+
+// 검색어를 도/시 셀렉트에 매핑해서 자동 선택
+  function _applyDestText(val) {
+    const cityToProvMap = {
+      '제주도': { prov: '제주', city: '' },
+      '강릉':   { prov: '강원', city: '강릉시' },
+      '부산':   { prov: '부산', city: '' },
+      '전주':   { prov: '전북', city: '전주시' },
+      '경주':   { prov: '경북', city: '경주시' },
+    };
+    const mapped = cityToProvMap[val.trim()];
+    if (!mapped) return;
+    const provSel = document.getElementById('dest-prov');
+    if (!provSel) return;
+    for (let i = 0; i < provSel.options.length; i++) {
+      if (provSel.options[i].text === mapped.prov) {
+        provSel.selectedIndex = i;
+        updateCityDest(provSel);
+        break;
+      }
+    }
+    if (mapped.city) {
+      setTimeout(() => {
+        const citySel = document.getElementById('dest-city');
+        if (!citySel) return;
+        for (let i = 0; i < citySel.options.length; i++) {
+          if (citySel.options[i].text === mapped.city) {
+            citySel.selectedIndex = i;
+            break;
+          }
+        }
+        if (typeof updateSummaryCard === 'function') updateSummaryCard();
+      }, 50);
+    } else {
+      setTimeout(() => {
+        if (typeof updateSummaryCard === 'function') updateSummaryCard();
+      }, 50);
+    }
+  }
 
 const _md = {
   jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}]},
@@ -1637,11 +1808,15 @@ document.addEventListener('keydown', e => {
 });
 
 window.addEventListener('popstate', e => {
-  if(e.state&&e.state.page){
-    const p=e.state.page;
-    document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
-    const pg=document.getElementById('page-'+p); if(pg) pg.classList.add('active');
-  }
+  const p = e.state?.page || sessionStorage.getItem('currentPage') || 'main';
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  const pg = document.getElementById('page-' + p);
+  if (pg) pg.classList.add('active');
+  // 네비 active 동기화
+  const navMap = { main:0, community:8, weather:13, planner:4 };
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+  const wfi = document.querySelectorAll('.wf-item');
+  if (navMap[p] !== undefined && wfi[navMap[p]]) wfi[navMap[p]].classList.add('on');
 });
 
 /* ───────────────────────────────────────────────

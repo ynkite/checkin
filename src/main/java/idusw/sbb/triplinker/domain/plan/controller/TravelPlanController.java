@@ -40,6 +40,15 @@ public class TravelPlanController {
         Long formId = travelPlanService.saveInputForm(userDetails.getUserId(), tripId, dto);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(Map.of("formId", formId)));
     }
+    @PatchMapping("/{tripId}/input-form")
+    public ResponseEntity<ApiResponse<Void>> updateInputForm(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId,
+            @RequestBody Map<String, String> fields) {
+
+        travelPlanService.updateInputForm(userDetails.getUserId(), tripId, fields);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlanDetailResponseDto>>> getMyPlans(

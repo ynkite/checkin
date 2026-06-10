@@ -141,9 +141,31 @@
       const budgetRaw = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
       const trans     = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '—';
       const acc       = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '—';
-      const styles    = [...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()).join(', ') || '—';
-      const density   = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '—';
-      const hasPet    = [...document.querySelectorAll('#chip-special .chip.on')].some(c => c.textContent.includes('반려동물'));
+
+      const styles = [...document.querySelectorAll('#chip-style .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') {
+          const v = document.getElementById('other-style')?.value.trim();
+          return v ? `기타(${v})` : '기타';
+        }
+        return t;
+      }).join(', ') || '—';
+
+      const foodText = [...document.querySelectorAll('#chip-food .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '알러지 있음') {
+          const v = document.getElementById('other-allergy')?.value.trim();
+          return v ? `알러지(${v})` : '알러지 있음';
+        }
+        if (t === '기타') {
+          const v = document.getElementById('other-food')?.value.trim();
+          return v ? `기타(${v})` : '기타';
+        }
+        return t;
+      }).join(', ') || '—';
+
+      const density = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '—';
+      const hasPet  = [...document.querySelectorAll('#chip-special .chip.on')].some(c => c.textContent.includes('반려동물'));
 
       const el = id => document.getElementById(id);
       if (el('sum-dest'))    el('sum-dest').textContent    = dest || '—';
@@ -153,8 +175,12 @@
       if (el('sum-trans'))   el('sum-trans').textContent   = trans;
       if (el('sum-acc'))     el('sum-acc').textContent     = acc;
       if (el('sum-style'))   el('sum-style').textContent   = styles;
+      if (el('sum-food'))    el('sum-food').textContent    = foodText;
       if (el('sum-density')) el('sum-density').textContent = density;
-      if (el('sum-pet'))     el('sum-pet').textContent     = hasPet ? '동반' : '— 미입력';
+      if (el('sum-pet')) {
+        el('sum-pet').textContent = hasPet ? '동반' : '미동반';
+        el('sum-pet').classList.remove('missing');
+      }
     }
 
     /* ─────────────────────────────────────────────────────────
@@ -177,7 +203,13 @@
 
       // 2. 다중 선택값 (JSON 문자열로 변환)
       const styles = JSON.stringify([...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()));
-      const food = JSON.stringify([...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim()));
+      const foodChips = [...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim());
+      const allergyText = document.getElementById('other-allergy')?.value.trim();
+      if (allergyText) {
+        const idx = foodChips.indexOf('알러지 있음');
+        if (idx !== -1) foodChips[idx] = `알러지(${allergyText})`;
+      }
+      const food = JSON.stringify(foodChips);
       const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => c.textContent.trim()));
 
       // 3. 특수 조건 처리 (유아, 반려동물)
@@ -318,7 +350,7 @@
             <div class="form-group">
               <label class="form-label">인원</label>
               <div style="display:flex; align-items:center; gap:8px">
-                <input class="form-input" type="number" id="s1-pax" min="1" max="20" placeholder="예: 3"
+                <input class="form-input" id="s1-pax" type="number" min="1" max="99" placeholder="예: 3" oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                        style="width:100px; flex-shrink:0">
                 <span style="font-size:14px; color:var(--text2); white-space:nowrap">명</span>
               </div>
@@ -405,10 +437,11 @@
           <div class="chip-row" id="chip-food">
             <button class="chip" onclick="tog(this)">비건</button>
             <button class="chip on" onclick="tog(this)">해산물 선호</button>
-            <button class="chip" onclick="tog(this)">알러지 있음</button>
+            <button class="chip" onclick="tog(this);showOtherInput('other-allergy',this)">알러지 있음</button>
             <button class="chip" onclick="tog(this)">무관</button>
             <button class="chip" onclick="tog(this);showOtherInput('other-food',this)">기타</button>
           </div>
+          <input class="other-input" id="other-allergy" placeholder="알러지를 정확하게 작성해주세요">
           <input class="other-input" id="other-food" placeholder="식이 정보를 직접 입력해주세요">
         </div>
 
@@ -475,7 +508,6 @@
                         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
                 <button class="btn-send" onclick="sendMsg()">↑</button>
               </div>
-              <div class="chat-note">해외 지역 → 국내 전용 안내 · 예산 범위 초과 → 재입력 요청</div>
             </div>
           </div>
 
@@ -498,7 +530,7 @@
                 <div class="asc-label">인원</div>
                 <div class="asc-val" id="sum-people">—</div>
               </div>
-              <div class="asc-row" onclick="toast('예산 수동 변경')">
+              <div class="asc-row" onclick="openSummaryEdit('budget', 'sum-budget', '예산')">
                 <div class="asc-label">예산</div>
                 <div class="asc-val" id="sum-budget">—</div>
               </div>
@@ -515,23 +547,26 @@
                 <div class="asc-val" id="sum-style">—</div>
               </div>
               <div class="asc-row">
+                <div class="asc-label">식이 정보</div>
+                <div class="asc-val" id="sum-food">—</div>
+              </div>
+              <div class="asc-row">
                 <div class="asc-label">일정 밀도</div>
                 <div class="asc-val" id="sum-density">—</div>
               </div>
               <div class="asc-row">
                 <div class="asc-label">반려동물</div>
                 <div class="asc-val missing" id="sum-pet">— 미입력</div>
-              </div>
-            </div>
 
-            <div class="asc-note">수동 수정 시 LLM 숨은 컨텍스트 자동 주입 + PLAN_INPUT_FORM 업데이트</div>
-            <button class="btn-gen" onclick="go('map'); toast('✅ 일정이 생성되었습니다! 경로 수정 페이지로 이동합니다.')">
-              ✈ 일정 생성하기 → 경로 상세 수정
-            </button>
+              </div>
+              <div id="sum-extra-rows"></div>
+              <button class="btn-gen" onclick="go('map'); toast('✅ 일정이 생성되었습니다! 경로 수정 페이지로 이동합니다.')">
+                ✈ 일정 생성하기 → 경로 상세 수정
+              </button>
+            </div>
           </div>
-        </div>
-        <div style="margin-top:10px">
-          <button class="btn-prev-step" onclick="goPlanStep(2)">← 이전</button>
+          <div style="margin-top:10px">
+            <button class="btn-prev-step" onclick="goPlanStep(2)">← 이전</button>
         </div>
       </div>
 
@@ -771,5 +806,6 @@
     initPlannerDateConstraints();
   }
 </script>
+</div>
 </div>
 </div>

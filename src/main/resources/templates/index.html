@@ -19,6 +19,8 @@
     <button class="nav-link on" onclick="go('main');setNav(this)">🏠 홈</button>
     <button class="nav-link" onclick="go('community');setNav(this)">👥 커뮤니티</button>
     <button class="nav-link" onclick="go('weather');setNav(this)">🌤️ 날씨</button>
+    <button class="nav-link" id="navPlannerBtn" onclick="goNewPlanner();setNav(this)">✈ 플랜</button>
+    <button class="nav-link" id="navPlannerResumeBtn" onclick="goResumePlanner();setNav(this)" style="display:none">✏️ 작성중인 플랜</button>
   </div>
   <div class="nav-btns" id="navBtns">
     <button class="btn-o" id="navLoginBtn" onclick="go('login')">로그인</button>
