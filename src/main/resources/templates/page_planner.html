@@ -22,37 +22,20 @@
       if (depEl)  updateCityDep(depEl);
       if (destEl) updateCityDest(destEl);
 
-      // GET /api/users/me → MBTI 기반 일정 밀도 자동선택
-      try {
-        const res = await fetch('/api/users/me', {
-          headers: { 'Authorization': 'Bearer ' + (Token.getAccess() || '') }
-        });
-        if (res.ok) {
-          const json = await res.json();
-          const mbti = (json.data?.mbti || '').toUpperCase();
-          // J 성향 → 빼곡하게, P 성향 → 여유롭게
-          const isJ = mbti.endsWith('J');
-          const chips = document.querySelectorAll('#chip-density .chip');
-          chips.forEach(c => c.classList.remove('on'));
-          if (isJ) {
-            document.querySelector('#chip-density .chip:first-child')?.classList.add('on'); // 빼곡하게
-            document.getElementById('planner-dens-note').textContent =
-                    `MBTI ${mbti} → J 성향 → '빼곡하게' 자동 선택됨`;
-          } else {
-            document.querySelector('#chip-density .chip:last-child')?.classList.add('on');  // 여유롭게
-            document.getElementById('planner-dens-note').textContent =
-                    mbti ? `MBTI ${mbti} → P 성향 → '여유롭게' 자동 선택됨` : '';
-          }
-        }
-      } catch (e) {
-        // 비로그인 or 오류 → 기본값 유지
+      // _currentUser(이미 로드된 전역 상태)에서 MBTI 읽기 — API 추가 호출 없음
+      const mbti = (typeof _currentUser !== 'undefined' && _currentUser?.mbti || '').toUpperCase();
+      const isJ = mbti.endsWith('J');
+      const chips = document.querySelectorAll('#chip-density .chip');
+      chips.forEach(c => c.classList.remove('on'));
+      if (isJ) {
+        document.querySelector('#chip-density .chip:first-child')?.classList.add('on');
+        document.getElementById('planner-dens-note').textContent =
+                `MBTI ${mbti} → J 성향 → '빼곡하게' 자동 선택됨`;
+      } else {
+        document.querySelector('#chip-density .chip:last-child')?.classList.add('on');
+        document.getElementById('planner-dens-note').textContent =
+                mbti ? `MBTI ${mbti} → P 성향 → '여유롭게' 자동 선택됨` : '';
       }
-    }
-    /* SPA fragment: DOMContentLoaded 이미 발화됐으면 즉시 실행 */
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initPlannerMBTI);
-    } else {
-      initPlannerMBTI();
     }
 
     /* ─────────────────────────────────────────────────────────
