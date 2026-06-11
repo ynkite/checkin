@@ -188,6 +188,9 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                     m.put("hasPet",               form.getHasPet());
                     m.put("scheduleDensity",      form.getScheduleDensity());
                     m.put("budget",               form.getBudget());
+                    m.put("destination",          form.getPlan().getDestination());
+                    m.put("startDate",            form.getPlan().getStartDate() != null ? form.getPlan().getStartDate().toString() : null);
+                    m.put("endDate",              form.getPlan().getEndDate()   != null ? form.getPlan().getEndDate().toString()   : null);
                     return m;
                 })
                 .orElse(null);
