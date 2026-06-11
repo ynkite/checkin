@@ -75,4 +75,11 @@ public class TravelPlanController {
         Long formId = travelPlanService.loadPreviousPreference(userDetails.getUserId(), tripId);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(formId != null ? Map.of("formId", formId) : null));
     }
+
+    @GetMapping("/latest-preference")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getLatestPreference(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        java.util.Map<String, Object> result = travelPlanService.getLatestPreference(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
 }

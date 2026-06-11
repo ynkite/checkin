@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 @Service
@@ -166,5 +168,28 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         if (fields.containsKey("scheduleDensity"))
             form.updateByChat("scheduleDensity", fields.get("scheduleDensity"));
         planInputFormRepository.save(form);
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getLatestPreference(Long userId) {
+        return planInputFormRepository
+                .findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
+                .map(form -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("departure",            form.getDeparture());
+                    m.put("transportType",        form.getTransportType());
+                    m.put("accommodationType",    form.getAccommodationType());
+                    m.put("accommodationOptions", form.getAccommodationOptions());
+                    m.put("companionType",        form.getCompanionType());
+                    m.put("companionCount",       form.getCompanionCount());
+                    m.put("travelStyles",         form.getTravelStyles());
+                    m.put("dietaryInfo",          form.getDietaryInfo());
+                    m.put("hasInfant",            form.getHasInfant());
+                    m.put("hasPet",               form.getHasPet());
+                    m.put("scheduleDensity",      form.getScheduleDensity());
+                    m.put("budget",               form.getBudget());
+                    return m;
+                })
+                .orElse(null);
     }
 }
