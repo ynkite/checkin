@@ -88,20 +88,220 @@
      * POST /api/trips/{tripId}/load-preference
      * ───────────────────────────────────────────────────────── */
     async function loadPreviousPreference() {
-      const tripId = window._currentTripId; // 플랜 생성 후 저장된 tripId
-      if (!tripId) { toast('먼저 플랜을 생성해주세요.'); return; }
       try {
-        const res = await fetch(`/api/trips/${tripId}/load-preference`, {
-          method: 'POST',
+        const res = await fetch('/api/trips/latest-preference', {
           headers: { 'Authorization': 'Bearer ' + (Token.getAccess() || '') }
         });
         const json = await res.json();
-        if (json.success && json.data?.formId) {
-          toast('최근 여행 취향을 불러왔습니다.');
-          // TODO: 불러온 formId 기준으로 폼 필드 값 채우기 (GET /api/trips/{tripId}/input-form 연동 시)
-        } else {
+        if (!json.success || !json.data) {
           toast('이전 취향 데이터가 없습니다.');
+          return;
         }
+        const d = json.data;
+
+        // ── 여행지 ──
+        if (d.destination) {
+          const destProv = document.getElementById('dest-prov');
+          if (destProv) {
+            const parts = d.destination.split(' ');
+            const provVal = parts[0];
+            for (let i = 0; i < destProv.options.length; i++) {
+              if (destProv.options[i].value === provVal || destProv.options[i].text === provVal) {
+                destProv.selectedIndex = i;
+                if (typeof updateCityDest === 'function') updateCityDest(destProv);
+                break;
+              }
+            }
+            if (parts[1]) {
+              setTimeout(() => {
+                const destCity = document.getElementById('dest-city');
+                if (!destCity) return;
+                for (let i = 0; i < destCity.options.length; i++) {
+                  if (destCity.options[i].value === parts[1] || destCity.options[i].text === parts[1]) {
+                    destCity.selectedIndex = i;
+                    break;
+                  }
+                }
+              }, 50);
+            }
+          }
+        }
+        // ── 출발일 / 귀환일 (오늘 이후인 경우만 채움) ──
+        const today = new Date().toISOString().split('T')[0];
+        if (d.startDate && d.startDate >= today) {
+          const startEl = document.getElementById('s1-date-start');
+          if (startEl) {
+            startEl.value = d.startDate;
+            startEl.dispatchEvent(new Event('change')); // onStartDateChange() 트리거 → endDate min 세팅
+          }
+        }
+        if (d.endDate && d.endDate >= today) {
+          const endEl = document.getElementById('s1-date-end');
+          if (endEl) {
+            endEl.value = d.endDate;
+            endEl.dispatchEvent(new Event('change')); // onEndDateChange() 트리거
+          }
+        }
+        // ── 출발지 ──
+        if (d.departure) {
+          const parts = d.departure.split(' ');
+          const depProv = document.getElementById('dep-prov');
+          if (depProv && parts[0]) {
+            for (let i = 0; i < depProv.options.length; i++) {
+              if (depProv.options[i].value === parts[0] || depProv.options[i].text === parts[0]) {
+                depProv.selectedIndex = i;
+                if (typeof updateCityDep === 'function') updateCityDep(depProv);
+                break;
+              }
+            }
+            if (parts[1]) {
+              setTimeout(() => {
+                const depCity = document.getElementById('dep-city');
+                if (!depCity) return;
+                for (let i = 0; i < depCity.options.length; i++) {
+                  if (depCity.options[i].value === parts[1] || depCity.options[i].text === parts[1]) {
+                    depCity.selectedIndex = i;
+                    break;
+                  }
+                }
+              }, 50);
+            }
+          }
+        }
+
+        // ── 이동 수단 chip (단일) ──
+        if (d.transportType) {
+          document.querySelectorAll('#chip-trans .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.transportType);
+          });
+        }
+
+        // ── 숙소 형태 chip (단일) ──
+        if (d.accommodationType) {
+          document.querySelectorAll('#chip-acc .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.accommodationType);
+          });
+        }
+
+        // ── 동행자 유형 chip (단일) ──
+        if (d.companionType) {
+          const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
+          const label = compMap[d.companionType] || d.companionType;
+          document.querySelectorAll('#chip-comp .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === label);
+          });
+        }
+
+        // ── 인원 수 ──
+        if (d.companionCount) {
+          const paxEl = document.getElementById('s1-pax');
+          if (paxEl) paxEl.value = d.companionCount;
+        }
+
+        // ── 예산 ──
+        if (d.budget) {
+          const budgetEl = document.getElementById('s1-budget');
+          if (budgetEl) budgetEl.value = Number(d.budget).toLocaleString();
+        }
+
+        // ── 여행 스타일 (다중, JSON 배열) ──
+        if (d.travelStyles) {
+          let styles = [];
+          try { styles = JSON.parse(d.travelStyles); } catch(e) {}
+          document.querySelectorAll('#chip-style .chip').forEach(c => c.classList.remove('on'));
+          styles.forEach(s => {
+            const chip = [...document.querySelectorAll('#chip-style .chip')]
+                    .find(c => c.textContent.trim() === s || (s.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-style');
+                if (otherEl && s.startsWith('기타(')) {
+                  otherEl.value = s.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        // ── 식이 정보 (다중, JSON 배열) ──
+        if (d.dietaryInfo) {
+          let foods = [];
+          try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
+          document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
+          foods.forEach(f => {
+            const isAllergy = f.startsWith('알러지(') || f === '알러지 있음';
+            if (isAllergy) {
+              const chip = [...document.querySelectorAll('#chip-food .chip')]
+                      .find(c => c.textContent.trim() === '알러지 있음');
+              if (chip) {
+                chip.classList.add('on');
+                const otherEl = document.getElementById('other-allergy');
+                if (otherEl && f.startsWith('알러지(')) {
+                  otherEl.value = f.slice(4, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+              return;
+            }
+            const chip = [...document.querySelectorAll('#chip-food .chip')]
+                    .find(c => c.textContent.trim() === f || (f.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-food');
+                if (otherEl && f.startsWith('기타(')) {
+                  otherEl.value = f.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        // ── 특수 조건 chip (다중) — hasInfant / hasPet ──
+        document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
+        if (d.hasInfant === 1) {
+          const chip = [...document.querySelectorAll('#chip-special .chip')]
+                  .find(c => c.textContent.trim() === '유아 동반');
+          if (chip) chip.classList.add('on');
+        }
+        if (d.hasPet === 1) {
+          const chip = [...document.querySelectorAll('#chip-special .chip')]
+                  .find(c => c.textContent.trim() === '반려동물 동반');
+          if (chip) chip.classList.add('on');
+        }
+
+        // ── 일정 밀도 chip (단일) ──
+        if (d.scheduleDensity) {
+          document.querySelectorAll('#chip-density .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.scheduleDensity);
+          });
+        }
+
+        // ── 숙소 세부 옵션 (다중, JSON 배열) ──
+        if (d.accommodationOptions) {
+          let opts = [];
+          try { opts = JSON.parse(d.accommodationOptions); } catch(e) {}
+          document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+          opts.forEach(o => {
+            const chip = [...document.querySelectorAll('#chip-accopts .chip')]
+                    .find(c => c.textContent.trim() === o || (o.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-accopts');
+                if (otherEl && o.startsWith('기타(')) {
+                  otherEl.value = o.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        toast('이전 여행 취향을 불러왔습니다 ✓');
       } catch (e) {
         toast('취향 불러오기 중 오류가 발생했습니다.');
       }
