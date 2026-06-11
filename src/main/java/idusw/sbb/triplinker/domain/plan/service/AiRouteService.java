@@ -60,7 +60,7 @@ public class AiRouteService {
                   { "type": "tour", "icon": "📍", "name": "성산일출봉", "sub": "관광지 · 1h · ₩2,000×2", "stars": "★★★★★ 4.9", "key": "uniq2", "lat": 33.4582, "lng": 126.9426, "time": "15:00", "replacePh": "예: 실내 관광지로" }
                 ]
               }
-            ]
+            ] 
             """,
                 plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
                 form.getBudget(), form.getCompanionType(), form.getCompanionCount(),
