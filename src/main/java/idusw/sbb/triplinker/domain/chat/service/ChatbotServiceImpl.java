@@ -30,7 +30,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                               ChatMessageRepository messageRepository,
 
                               // ollama
-                              @Qualifier("ollamaChatModel") ChatModel chatModel)
+//                              @Qualifier("ollamaChatModel") ChatModel chatModel)
 
                               // chatgpt
 //                              @Qualifier("openAiChatModel") ChatModel chatModel)
@@ -39,7 +39,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 //                              @Qualifier("anthropicChatModel") ChatModel chatModel)
 
                               // gemini
-//                              @Qualifier("googleGenAiChatModel") ChatModel chatModel)
+                              @Qualifier("googleGenAiChatModel") ChatModel chatModel)
 
     {
         this.sessionRepository = sessionRepository;
