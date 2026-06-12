@@ -68,8 +68,48 @@
 
     // ── DOM 렌더링 ──
     async function initMapPage() {
+
+      window._q = [];
+      if (typeof renderQ === 'function') renderQ();
+      var rb = document.getElementById('recalcBar');
+      if (rb) rb.style.display = 'none';
+
+      if (!window._currentTripId) {
+        window._currentTripId = sessionStorage.getItem('plannerDraftId');
+      }
+
       const tripId = window._currentTripId;
       let routeData = null;
+
+      if (tripId) {
+        api.get(`/api/trips/${tripId}`).then(r => {
+          if (!r.success || !r.data) return;
+          const t = r.data;
+          const titleEl = document.querySelector('.ml-plan-ttl');
+          const metaEl  = document.querySelector('.ml-plan-meta');
+          if (titleEl) titleEl.textContent = t.title || '여행 플랜';
+          if (metaEl) {
+            const fmt = d => d ? d.replace(/-/g,'.') : '';
+            const dow = ['일','월','화','수','목','금','토'];
+            const startDow = t.startDate ? `(${dow[new Date(t.startDate).getDay()]})` : '';
+            const endDow   = t.endDate   ? `(${dow[new Date(t.endDate).getDay()]})`   : '';
+            // inputForm에서 동행자/이동수단 가져오기
+            api.get(`/api/trips/${tripId}/input-form`).then(fr => {
+              const pax   = fr.data?.companionCount || t.pax || '';
+              const trans = fr.data?.transportType  || '';
+              metaEl.textContent =
+                      `${fmt(t.startDate)} ${startDow} – ${fmt(t.endDate)} ${endDow} · ${pax}인 · ${trans}`;
+            });
+          }
+        });
+      }
+
+      const listEl = document.getElementById('mapDayList');
+      if (!listEl) {
+        // 아직 돔 렌더링이 안 끝났다면 50ms 후에 재시도하도록 예약하고 함수 종료
+        setTimeout(initMapPage, 50);
+        return;
+      }
 
       // 1. DB에서 저장된 JSON 데이터 파싱해서 가져오기
       if (tripId) {
@@ -96,9 +136,10 @@
       }
 
       // 필터 칩 UI 작동
-      document.querySelector('.map-filters').innerHTML = MAP_FILTERS.map(f => `<button class="mf-chip ${f.cls} on" id="${f.id}">${f.icon} ${f.label}</button>`).join('');
+      document.querySelector('.map-filters').innerHTML = MAP_FILTERS.map(f =>
+              `<button class="mf-chip ${f.cls} on" id="${f.id}"
+    onclick="toggleMarker(this,'${f.type}')">${f.icon} ${f.label}</button>`).join('');
 
-      const listEl = document.getElementById('mapDayList');
 
       // 3. AI 데이터가 성공적으로 로드되었을 때 처리
       if (routeData && routeData.length > 0) {
@@ -125,6 +166,83 @@
         if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
         if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = '₩' + totalBudgetSum.toLocaleString();
 
+        // 카테고리별 금액 집계
+        const catSums = { stay: 0, food: 0, transit: 0, tour: 0 };
+        routeData.forEach(day => {
+          if (!day.places) return;
+          day.places.forEach(p => {
+            if (!p.sub) return;
+            // sub 형식: "숙소 · ₩180,000" / "맛집 · 점심 · ₩12,000×2" / "🚗 자차 · 12km · ₩2,000"
+            const amountMatch = p.sub.match(/₩([\d,]+)(?:×(\d+))?/);
+            if (!amountMatch) return;
+            const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
+            const qty  = parseInt(amountMatch[2] || '1');
+            const total = unit * qty;
+            if (p.transit)           catSums.transit += total;
+            else if (p.type === 'stay') catSums.stay += total;
+            else if (p.type === 'food' || p.type === 'cafe') catSums.food += total;
+            else                     catSums.tour += total;
+          });
+          // transit 행 별도 파싱
+          day.places.filter(p => p.transit).forEach(t => {
+            const m = t.transit.match(/₩([\d,]+)/);
+            if (m) catSums.transit += parseInt(m[1].replace(/,/g,'')) || 0;
+          });
+        });
+
+        const catTotal = Object.values(catSums).reduce((a,b)=>a+b,0) || totalBudgetSum;
+        const pct = v => catTotal ? Math.round(v / catTotal * 100) : 0;
+
+        const budgetItemsEl = document.getElementById('map-budget-items');
+        if (budgetItemsEl) {
+          const cats = [
+            { label:'숙박비', val: catSums.stay,    color:'var(--sage)'  },
+            { label:'식비',   val: catSums.food,    color:'var(--coral)' },
+            { label:'교통비', val: catSums.transit, color:'#22B5C4'      },
+            { label:'입장료', val: catSums.tour,    color:'#F5A623'      },
+          ];
+          budgetItemsEl.innerHTML = cats.map(c => `
+        <div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span style="font-weight:700">${c.label}</span>
+            <span style="font-weight:700;color:${c.color}">₩${c.val.toLocaleString()}</span>
+          </div>
+          <div style="background:var(--border2);border-radius:4px;height:6px">
+            <div style="width:${pct(c.val)}%;background:${c.color};height:6px;border-radius:4px;transition:width .4s"></div>
+          </div>
+        </div>`).join('');
+            }
+
+        // 파이차트 범례 업데이트
+        const pieLegend = document.querySelector('.pie-legend');
+        if (pieLegend && catTotal) {
+          const legs = [
+            { label:'숙박', val:catSums.stay,    color:'var(--sage)'  },
+            { label:'식비', val:catSums.food,    color:'var(--coral)' },
+            { label:'교통', val:catSums.transit, color:'#22B5C4'      },
+            { label:'입장', val:catSums.tour,    color:'#F5A623'      },
+          ];
+          pieLegend.innerHTML = legs.map(l =>
+                  `<div class="pie-leg-item"><div class="pie-dot" style="background:${l.color}"></div>${l.label} ${pct(l.val)}%</div>`
+          ).join('');
+        }
+
+        // 잔여 예산 업데이트
+        const remainEl = document.getElementById('map-budget-remaining');
+        const inputBudget = parseInt(sessionStorage.getItem('plannerDraftState')
+                ? JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}')['s1-budget']?.replace(/,/g,'') || '0'
+                : '0');
+        if (remainEl && inputBudget > 0) {
+          const remain = inputBudget - totalBudgetSum;
+          remainEl.textContent = remain >= 0
+                  ? `예산 범위 내 ✓ 잔여 ₩${remain.toLocaleString()}`
+                  : `⚠️ 예산 ₩${Math.abs(remain).toLocaleString()} 초과`;
+          remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : '#FEF3F2';
+          remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : '#FECACA';
+          remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
+        }
+
+
         // 원본 마크업 구조 100% 동일하게 동적 주입
         listEl.innerHTML = routeData.map(day => `
       <div class="day-section" data-day="${day.day}">
@@ -136,10 +254,10 @@
           <div class="place-row" data-key="${p.key}">
             <div class="pr-drag">⋮⋮</div>
             <div class="pr-icon pr-${p.type}">${p.icon || '📍'}</div>
-            <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${p.key}','${p.type}')">
-              <div class="pr-name">${p.name}</div>
-              <div class="pr-sub">${p.sub || ''}</div>
-              <div class="pr-stars">${p.stars || '★★★★☆ 4.5'}</div>
+            <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
+              <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
+              <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
+              <div class="pr-stars" style="color:#F5A623; font-size:11px; margin-top:4px; font-weight:600;">${p.stars || ''}</div>
             </div>
             <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time || ''}</div>
             <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
@@ -155,7 +273,6 @@
       </div>
     `).join('') +
                 `<div class="recalc-bar" id="recalcBar" style="display:none">🔄 경로 재계산 중... (route_recalc_needed = 1)</div>`;
-
         // 카카오맵 연동용 실좌표 변수 리인젝션
         MAP_PINS = [];
         DAY_ROUTES = [];
@@ -165,9 +282,21 @@
           let currentDayKeys = [];
           if(d.places) {
             d.places.forEach(p => {
-              if(!p.transit && p.lat && p.lng) {
+              if(!p.transit && p.name) { // 🔍 lat, lng 검증을 name 검증으로 변경!
                 let pinColor = p.type === 'stay' ? '#2D9E8A' : (p.type === 'food' ? '#F87171' : (p.type === 'cafe' ? '#7C3AED' : '#22B5C4'));
-                MAP_PINS.push({ key: p.key, type: p.type, icon: p.icon || '📍', color: pinColor, label: p.name, lat: p.lat, lng: p.lng, day: d.day });
+                const normalizedType = (['stay','food','cafe','tour'].includes(p.type)) ? p.type : 'tour';
+                MAP_PINS.push({
+                  key: p.key,
+                  type: p.type,
+                  icon: p.icon || '📍',
+                  color: pinColor,
+                  label: p.name,
+                  day: d.day,
+                  lat: null,     // 카카오 API 검색 결과로 채워질 예정
+                  lng: null,
+                  category: null, // 카카오 실제 세부 카테고리
+                  placeUrl: null  // 카카오 상세페이지 (메뉴, 실제평점용)
+                });
                 currentDayKeys.push(p.key);
               }
             });
@@ -185,7 +314,11 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', initMapPage);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMapPage);
+    } else {
+      initMapPage();
+    }
 
     // ── ✨ [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
     function showDay(day, btn) {
@@ -237,6 +370,7 @@
         var container = document.getElementById('kakaoMap');
         if (!container) return;
 
+        // 기본 지도 기동 (제주 중심점)
         window._kakaoMap = new kakao.maps.Map(container, {
           center: new kakao.maps.LatLng(33.3846, 126.5535),
           level: 10
@@ -247,54 +381,115 @@
                 kakao.maps.ControlPosition.RIGHT
         );
 
-        // 커스텀 마커(CustomOverlay) 생성
         window._kakaoOverlays = [];
-        MAP_PINS.forEach(function(pin) {
-          var content = '<div onclick="showMapPlacePopup(\'' + pin.key + '\',\'' + pin.type + '\')" '
-                  + 'style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;'
-                  + 'transform:translate(-50%,-100%)">'
-                  + '<div style="width:36px;height:36px;border-radius:50%;background:' + pin.color + ';'
-                  + 'display:flex;align-items:center;justify-content:center;font-size:16px;'
-                  + 'box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff">' + pin.icon + '</div>'
-                  + '<div style="background:rgba(255,255,255,.95);border-radius:8px;padding:2px 7px;'
-                  + 'font-size:10px;font-weight:700;color:#333;box-shadow:0 1px 4px rgba(0,0,0,.2);'
-                  + 'white-space:nowrap;margin-top:2px">' + pin.label + '</div>'
-                  + '</div>';
-
-          var overlay = new kakao.maps.CustomOverlay({
-            position: new kakao.maps.LatLng(pin.lat, pin.lng),
-            content: content,
-            xAnchor: 0,
-            yAnchor: 0
-          });
-          overlay.setMap(window._kakaoMap);
-          window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: pin.type, day: pin.day });
-        });
-
-        // 이동 동선(Polyline) 그리기
         window._kakaoPolylines = [];
-        var pinByKey = {};
-        MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
 
-        DAY_ROUTES.forEach(function(route) {
-          var path = route.keys.map(function(k) {
-            var p = pinByKey[k];
-            return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
-          }).filter(Boolean);
-          if (path.length < 2) return;
+        // 카카오 로컬 장소 검색 서비스 API 객체 생성
+        var ps = new kakao.maps.services.Places();
+        var bounds = new kakao.maps.LatLngBounds();
+        var searchCount = 0;
+        var totalPlaces = MAP_PINS.length;
 
-          var polyline = new kakao.maps.Polyline({
-            path: path,
-            strokeWeight: 3,
-            strokeColor: route.color,
-            strokeOpacity: 0.8,
-            strokeStyle: 'dashed'
+        if (totalPlaces === 0) return;
+
+        // 각 한글 장소명 명칭으로 실시간 위경도 데이터 따오기
+        MAP_PINS.forEach(function(pin) {
+          ps.keywordSearch(pin.label, function(data, status, pagination) {
+            if (status === kakao.maps.services.Status.OK) {
+              console.log("✅ 카카오 API 검색 성공: [" + pin.label + "] -> ", data[0]);
+              var place = data[0]; // 가장 정확도 높은 1순위 결과 추출
+
+              var realLat = parseFloat(place.y);
+              var realLng = parseFloat(place.x);
+
+              // 🔍 실시간으로 획득한 메타데이터 전역 바인딩
+              pin.lat = realLat;
+              pin.lng = realLng;
+              pin.placeUrl = place.place_url; // 카카오맵 오피셜 상세페이지 웹 주소
+              pin.category = place.category_name.split(' > ').pop(); // 상세 업종명 요약
+
+              // pin.key 대신 pin.label을 넘김 (문자열 따옴표 처리 주의)
+              var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
+                      + 'style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;'
+                      + 'transform:translate(-50%,-100%)">'
+                      + '<div style="width:36px;height:36px;border-radius:50%;background:' + pin.color + ';'
+                      + 'display:flex;align-items:center;justify-content:center;font-size:16px;'
+                      + 'box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff">' + pin.icon + '</div>'
+                      + '<div style="background:#ffffff;border-radius:8px;padding:3px 8px;'
+                      + 'font-size:10px;font-weight:800;color:#111111;box-shadow:0 2px 6px rgba(0,0,0,.35);'
+                      + 'white-space:nowrap;margin-top:2px;border:1px solid rgba(0,0,0,.08)">' + pin.label + '</div>'
+                      + '</div>';
+
+              var overlay = new kakao.maps.CustomOverlay({
+                position: new kakao.maps.LatLng(realLat, realLng),
+                content: content,
+                xAnchor: 0,
+                yAnchor: 0
+              });
+
+              overlay.setMap(window._kakaoMap);
+              window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: pin.type, day: pin.day });
+              bounds.extend(new kakao.maps.LatLng(realLat, realLng));
+            } else {
+              console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
+
+              // 화면에 "경로 재계산 필요" 바 표시하기
+              var rb = document.getElementById('recalcBar');
+              if (rb) rb.style.display = 'flex';
+
+              // ✨ [중복 체크 가드 추가] 이미 대기열(_q)에 똑같은 장소명이 있는지 검사
+              var isAlreadyInQueue = _q.some(function(item) {
+                return item.place === pin.label;
+              });
+
+              // 대기열에 없을 때만 딱 1번만 집어넣기
+              if (!isAlreadyInQueue) {
+                console.log(`📌 [큐 등록] ${pin.label} 장소는 대기열에 처음 등록됩니다.`);
+                _q.push({
+                  place: pin.label,
+                  req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
+                });
+              } else {
+                console.log(`⚠️ [큐 건너뛰기] ${pin.label} 장소는 이미 대기열에 존재하여 중복 등록을 차단합니다.`);
+              }
+
+              // 큐 화면 새로고침
+              if (typeof renderQ === 'function') renderQ();
+
+            }
+
+            // 모든 비동기 장소의 좌표 수집이 완전히 완료되는 순간 구도 재조정 및 라인 렌더링 시작
+            searchCount++;
+            if (searchCount === totalPlaces) {
+              drawLivePolylines();
+              window._kakaoMap.setBounds(bounds);
+            }
           });
-          polyline.setMap(window._kakaoMap);
-          window._kakaoPolylines.push({ day: route.day, line: polyline });
         });
+      });
+    }
 
-        updateBoundsForDay('all');
+    // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
+    function drawLivePolylines() {
+      var pinByKey = {};
+      MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
+
+      DAY_ROUTES.forEach(function(route) {
+        var path = route.keys.map(function(k) {
+          var p = pinByKey[k];
+          return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+        }).filter(Boolean);
+        if (path.length < 2) return;
+
+        var polyline = new kakao.maps.Polyline({
+          path: path,
+          strokeWeight: 3,
+          strokeColor: route.color,
+          strokeOpacity: 0.8,
+          strokeStyle: 'dashed'
+        });
+        polyline.setMap(window._kakaoMap);
+        window._kakaoPolylines.push({ day: route.day, line: polyline });
       });
     }
 
@@ -304,7 +499,9 @@
       var pins = (day === 'all') ? MAP_PINS : MAP_PINS.filter(function(p) { return p.day == day; });
       if (!pins.length) return;
       var bounds = new kakao.maps.LatLngBounds();
-      pins.forEach(function(p) { bounds.extend(new kakao.maps.LatLng(p.lat, p.lng)); });
+      pins.forEach(function(p) {
+        if (p.lat && p.lng) bounds.extend(new kakao.maps.LatLng(p.lat, p.lng));
+      });
       window._kakaoMap.setBounds(bounds);
     }
 
@@ -379,94 +576,53 @@
       window.open('https://map.kakao.com/link/to/' + encodeURIComponent(name) + ',' + lat + ',' + lng, '_blank');
     }
 
-    // ── 지도 장소 후기 데이터 사전 ──
-    const PLACE_REVIEWS = {
-      '신라호텔': { name:'제주신라호텔', type:'🏨 숙소', mapSearch:'제주신라호텔', reviews:[
-          {user:'여행고수김씨',stars:'★★★★★',rating:'4.8',text:'역시 신라호텔입니다. 뷰가 최고였고 직원분들도 너무친절했어요. 조식도 매우 훌륭했습니다.'},
-          {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.6',text:'위치가 좋고 시설이 깔끔해요. 가격대가 높지만 그만한 가치는 있어요.'}]},
-      '성산일출봉': { name:'성산일출봉', type:'📍 관광지', mapSearch:'성산일출봉', reviews:[
-          {user:'여행러버',stars:'★★★★★',rating:'4.9',text:'제주 여행의 필수코스! 일출 보러 새벽에 올라갔는데 정말 장관이었어요.'},
-          {user:'이커피러버',stars:'★★★★☆',rating:'4.7',text:'계단이 많아서 힘들 수 있지만 올라가면 보상받아요. 이른 아침 방문 추천.'}]},
-      '올레시장순대국':   { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
-          {user:'여행좋아',stars:'★★★★☆',rating:'4.4',text:'가성비 최고인 순대국밥! 양도 많고 국물이 진해요.'},
-          {user:'힐링여행박씨',stars:'★★★★★',rating:'4.5',text:'제주 현지인들이 자주 찾는 곳이에요. 국물이 너무 맛있어요.'}]},
-      '올레시장순대국-3': { name:'올레시장 순대국', type:'🍽️ 맛집', mapSearch:'올레시장+순대국', reviews:[
-          {user:'여행좋아',stars:'★★★★☆',rating:'4.4',text:'가성비 최고인 순대국밥! 양도 많고 국물이 진해요.'},
-          {user:'힐링여행박씨',stars:'★★★★★',rating:'4.5',text:'제주 현지인들이 자주 찾는 곳이에요. 국물이 너무 맛있어요.'}]},
-      '우도': { name:'우도', type:'📍 관광지', mapSearch:'우도', reviews:[
-          {user:'kakaotest',stars:'★★★★★',rating:'4.7',text:'섬 안에 섬! 자전거 타고 한 바퀴 돌면 정말 힐링됩니다. 땅콩 아이스크림도 꼭.'},
-          {user:'여행고수김씨',stars:'★★★★☆',rating:'4.5',text:'배 타고 들어가는 것부터 설레요. 평일에 가면 여유롭게 즐길 수 있어요.'}]},
-      '한담카페': { name:'한담해안산책로 카페', type:'☕ 카페', mapSearch:'한담+카페+제주', reviews:[
-          {user:'여행고수김씨',stars:'★★★★★',rating:'4.7',text:'제주의 파도가 바로 눈앞에서 부서지는 카페. 에스프레소 한 잔과 함께 멍 때리기 최고.'},
-          {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.5',text:'한담해안산책로 걸으면서 중간에 들리기 딱 좋아요.'}]},
-      '천지연폭포': { name:'천지연폭포', type:'📍 관광지', mapSearch:'천지연폭포+서귀포', reviews:[
-          {user:'여행러버',stars:'★★★★★',rating:'4.8',text:'밤에 조명과 함께 보는 천지연폭포는 정말 환상적이에요! 낮보다 밤이 훨씬 더 아름답습니다.'},
-          {user:'힐링여행박씨',stars:'★★★★☆',rating:'4.6',text:'서귀포 여행 중 들른 천지연폭포, 웅장한 물소리와 시원한 물보라가 여름 더위를 확 날려줬어요.'}]},
-      '용두암': { name:'용두암', type:'📍 관광지', mapSearch:'용두암+제주', reviews:[
-          {user:'여행러버',stars:'★★★★☆',rating:'4.3',text:'제주 공항 근처라 도착하자마자 들르기 좋아요. 파도가 치는 날이면 더욱 웅장합니다.'},
-          {user:'여행고수김씨',stars:'★★★★☆',rating:'4.2',text:'무료 관광지이고 주변에 카페가 많아서 가볍게 들르기 좋습니다.'}]}
-    };
 
     // ── 🔥 [기능 해결]: AI가 동적으로 뿌려준 유니크 키(uniq1, uniq2) 클릭 시 데이터 누락 방지 팝업 가드 ──
-    function showMapPlacePopup(key, type) {
-      var data = PLACE_REVIEWS[key];
-
-      // 가상 디폴트 바인딩값 선언
-      var realName = key;
+    function showMapPlacePopup(nameOrKey, type) {
+      var realName = nameOrKey;
       var realSub = "추천 장소";
 
-      // 사전 데이터에 없는 유니크 키일 경우, 전역 MAP_ITINERARY 탐색하여 매핑
-      if (!data && MAP_ITINERARY) {
+      // 1. 전역 MAP_ITINERARY 캐시를 탐색하여 AI가 넣어준 진짜 한글 장소명 매핑
+      if (MAP_ITINERARY && Array.isArray(MAP_ITINERARY)) {
         for (let day of MAP_ITINERARY) {
-          if (day.places) {
-            let found = day.places.find(p => p.key === key);
+          if (day.places && Array.isArray(day.places)) {
+            // name으로 먼저 찾고, 없으면 key로 fallback
+            let found = day.places.find(p => p.name === nameOrKey || p.key === nameOrKey);
             if (found) {
-              realName = found.name;
-              realSub = found.sub || realSub;
+              realName = found.name || realName;
+              realSub  = found.sub  || realSub;
               break;
             }
           }
         }
       }
 
-      var pin  = MAP_PINS.find(function(p) { return p.key === key; });
+      // 2. 주입된 데이터 핀 캐시 확보
+      var pin = MAP_PINS.find(function(p) { return p.label === realName || p.key === nameOrKey; });
       var modal = document.getElementById('mapPlaceModal');
       if (!modal) return;
-      var tl = type==='stay'?'🏨 숙소':type==='food'?'🍽️ 맛집':type==='cafe'?'☕ 카페':'📍 관광지';
 
-      document.getElementById('mpPlace').textContent = data ? data.name : realName;
-      document.getElementById('mpType').textContent  = data ? data.type : tl;
+      // 카테고리 텍스트 요약 규격화
+      var tl = type === 'stay' ? '🏨 숙소' : (type === 'food' ? '🍽️ 맛집' : (type === 'cafe' ? '☕ 카페' : '📍 관광지'));
 
-      // 길찾기 버튼 바인딩
+      // ✨ [수정] 정의되지 않았던 name 대신 realName으로 깨진 DOM 안전하게 바인딩
+      document.getElementById('mpPlace').textContent = realName;
+      document.getElementById('mpType').textContent  = tl;
+
+      // 3. 길찾기 버튼 바인딩 (안전하게 realName 기반 따옴표 처리 및 예외 가드 가동)
       var naviEl = document.getElementById('mpNavi');
       if (naviEl) {
-        naviEl.innerHTML = pin
-                ? '<button onclick="openKakaoNavi(\'' + (data ? data.name : realName) + '\',' + pin.lat + ',' + pin.lng + ')" '
-                + 'style="width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;border:none;'
-                + 'cursor:pointer;font-size:13px;font-weight:700;margin-bottom:12px">🚗 카카오맵으로 길찾기</button>'
-                : '';
+        if (pin && pin.lat && pin.lng) {
+          naviEl.innerHTML = '<button onclick="openKakaoNavi(\'' + realName.replace(/'/g, "\\'") + '\',' + pin.lat + ',' + pin.lng + ')" '
+                  + 'style="width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;border:none;'
+                  + 'cursor:pointer;font-size:13px;font-weight:700;margin-bottom:12px">🚗 카카오맵으로 길찾기</button>';
+        } else {
+          naviEl.innerHTML = '<div style="font-size:12px;color:var(--coral);text-align:center;padding:10px;background:#FEF3F2;border-radius:8px;margin-bottom:12px;">⚠️ 카카오 지도에서 정확한 좌표를 탐색하지 못했습니다.</div>';
+        }
       }
 
-      if (!data) {
-        document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
-        document.getElementById('mpLinks').innerHTML = getMapLinks(realName);
-        modal.classList.add('open');
-        return;
-      }
-
-      var h = '<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--sage-d)">💬 방문 후기 ('+data.reviews.length+'개)</div>';
-      data.reviews.forEach(function(r) {
-        h += '<div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer" onclick="showReviewDetail(\''+data.name+'\',\''+data.type+'\',\''+r.stars+' '+r.rating+'\',\''+r.text.replace(/'/g,"\\'")+'\')">'
-                + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
-                + '<div style="width:26px;height:26px;border-radius:50%;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+r.user[0]+'</div>'
-                + '<span style="font-size:12px;font-weight:700">'+r.user+'</span>'
-                + '<span style="color:#F5A623;font-size:12px">'+r.stars+'</span>'
-                + '<span style="font-size:11px;font-weight:700">'+r.rating+'</span></div>'
-                + '<p style="font-size:12px;color:var(--text2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+r.text+'</p>'
-                + '<div style="font-size:10px;color:var(--sage);margin-top:4px">클릭하여 전체 보기 →</div></div>';
-      });
-      document.getElementById('mpReviews').innerHTML = h;
-      document.getElementById('mpLinks').innerHTML = getMapLinks(data.mapSearch);
+      document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
+      document.getElementById('mpLinks').innerHTML = getMapLinks(realName);
       modal.classList.add('open');
     }
 
@@ -474,7 +630,7 @@
       var e = encodeURIComponent(q);
       return '<a href="https://map.naver.com/v5/search/'+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>'
               + '<a href="https://map.kakao.com/?q='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>'
-              + '<a href="http://maps.google.com/?q='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>';
+              + '<a href="https://www.google.com/maps/search/?api=1&query='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>';
     }
 
     function showReviewDetail(place, type, stars, text) {
@@ -485,6 +641,169 @@
       document.getElementById('rdText').textContent  = text;
       m.classList.add('open');
     }
+
+
+
+    // ── 💡 1. 큐(대기열) 전역 변수 및 렌더링 (사용자가 직접 텍스트 수정 가능) ──
+    window._q = window._q || [];
+
+    function showReplaceInput(btn, key) {
+      const area = document.getElementById('ri-' + key);
+      if (!area) return;
+      const isOpen = area.style.display !== 'none';
+      area.style.display = isOpen ? 'none' : 'block';
+    }
+
+    function addQueue(key) {
+      const txt = document.getElementById('rt-' + key)?.value.trim();
+      if (!txt) { toast('요구사항을 입력해주세요.'); return; }
+
+      // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
+      let placeName = key; // fallback
+      const pin = MAP_PINS.find(p => p.key === key);
+      if (pin && pin.label) {
+        placeName = pin.label;
+      } else if (MAP_ITINERARY && Array.isArray(MAP_ITINERARY)) {
+        outer: for (const day of MAP_ITINERARY) {
+          if (!day.places) continue;
+          for (const p of day.places) {
+            if (p.key === key && p.name) { placeName = p.name; break outer; }
+          }
+        }
+      }
+
+      // 중복 등록 방지
+      const alreadyExists = _q.some(q => q.place === placeName);
+      if (alreadyExists) { toast('이미 교체 요청 목록에 있습니다.'); return; }
+
+      _q.push({ place: placeName, req: txt });
+
+      // 입력창 초기화 및 닫기
+      const inp = document.getElementById('rt-' + key);
+      if (inp) inp.value = '';
+      const area = document.getElementById('ri-' + key);
+      if (area) area.style.display = 'none';
+
+      renderQ();
+      toast('교체 요청이 등록됐습니다 ✓');
+    }
+
+    function renderQ() {
+      const box = document.getElementById('queueBox');
+      const items = document.getElementById('qItems');
+      const cnt = document.getElementById('qCnt');
+      const btn = document.getElementById('btnAll');
+
+      if (!box || !items) return;
+
+      // 목록이 길어지면 스크롤 생성
+      items.style.maxHeight = '240px';
+      items.style.overflowY = 'auto';
+      items.style.paddingRight = '5px';
+
+      if (_q.length === 0) {
+        box.classList.remove('has');
+        cnt.textContent = '0';
+        if (btn) btn.disabled = true;
+        items.innerHTML = '';
+        return;
+      }
+
+      box.classList.add('has');
+      box.style.display = 'block';
+      cnt.textContent = _q.length;
+      if (btn) btn.disabled = false;
+
+      // ✨ [수정] 텍스트 박스가 아니라 타이핑 가능한 <input> 폼으로 교체!
+      items.innerHTML = _q.map((q, i) =>
+              `<div class="q-item" style="display:flex; flex-direction:column; gap:6px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="q-place" style="font-weight:700; font-size:12px; color:var(--coral);">🎯 타겟: ${q.place}</div>
+            <button class="q-rm" onclick="rmQ(${i})" style="background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; line-height:1;">✕</button>
+          </div>
+          <input type="text" value="${q.req}" oninput="updateQueueReq(${i}, this.value)"
+                 style="width:100%; border:1px solid var(--border2); border-radius:4px; padding:6px 8px; font-size:11px; outline:none; box-sizing:border-box; background:#F9FAFB;"
+                 placeholder="예: 바다가 보이는 조용한 카페로 바꿔주세요">
+        </div>`
+      ).join('');
+    }
+
+    // 항목 삭제
+    function rmQ(i) {
+      _q.splice(i, 1);
+      renderQ();
+      toast('요청 제거됨');
+      // 큐가 다 비워지면 재계산 바(recalcBar) 숨기기
+      if (_q.length === 0) {
+        const rb = document.getElementById('recalcBar');
+        if (rb) rb.style.display = 'none';
+      }
+    }
+
+    // ✨ 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
+    function updateQueueReq(idx, newVal) {
+      if (_q[idx]) _q[idx].req = newVal;
+    }
+
+    function removeQueue(idx) {
+      _q.splice(idx, 1);
+      renderQ();
+      if (_q.length === 0) {
+        var rb = document.getElementById('recalcBar');
+        if (rb) rb.style.display = 'none';
+      }
+    }
+
+    // 사용자가 input에 타이핑할 때마다 배열 데이터 실시간 업데이트
+    function updateQueueReq(idx, newVal) {
+      if (_q[idx]) _q[idx].req = newVal;
+    }
+
+    // ── 💡 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
+
+    async function execAllReplace() {
+      const tripId = window._currentTripId;
+      if (!tripId || _q.length === 0) return;
+
+      const btn = document.getElementById('btnAll');
+      const originalText = btn.innerHTML; // 원래 버튼 텍스트('✅ 전체 교체하기') 저장
+      const loadingOverlay = document.getElementById('replaceLoadingOverlay');
+
+      // 화면 잠그고 로딩창 띄우기 & 버튼 텍스트 변경
+      if (loadingOverlay) loadingOverlay.style.display = 'flex';
+      btn.innerHTML = '⏳ AI 부분 교체 중...';
+      btn.disabled = true;
+
+      try {
+        // ✨ 올바른 백엔드 주소로 연결!
+        const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
+
+        if (res.success && res.data) {
+          toast('✅ AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+
+          // 1.5초 뒤 완벽하게 새로고침
+          setTimeout(() => {
+            location.reload();
+          }, 1500);
+
+        } else {
+          toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+          if (loadingOverlay) loadingOverlay.style.display = 'none';
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }
+      } catch(e) {
+        toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+
+
+
+
   </script>
 
   <div class="page" id="page-map">

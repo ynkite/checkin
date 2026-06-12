@@ -71,7 +71,7 @@ public class ChatbotServiceImpl implements ChatbotService {
         messageRepository.save(userChat);
 
         // 2. [슬라이딩 윈도우] 최근 20개 대화 역순으로 가져와서 시간순으로 뒤집기
-        List<ChatMessage> recentHistory = messageRepository.findTop20ByChatSessionOrderByIdDesc(session);
+        List<ChatMessage> recentHistory = messageRepository.findTop10ByChatSessionOrderByIdDesc(session);
         Collections.reverse(recentHistory);
 
         // 3. Spring AI에게 넘겨줄 프롬프트 조립

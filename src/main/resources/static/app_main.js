@@ -1491,6 +1491,9 @@ function toggleMarker(btn, type) {
   btn.classList.toggle('on');
   const isOn = btn.classList.contains('on');
   if (window._kakaoOverlays && window._kakaoMap) {
+    // 디버깅용 — 콘솔에서 실제 저장된 타입 확인
+    console.log('[toggleMarker] 요청 타입:', type, '| 전체 오버레이 타입:', window._kakaoOverlays.map(o => o.type));
+
     window._kakaoOverlays.filter(o => o.type === type).forEach(o => {
       o.overlay.setMap(isOn ? window._kakaoMap : null);
     });
@@ -1511,13 +1514,38 @@ function showReplaceInput(btn, name) {
   document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
   if(!open) area.style.display='block';
 }
-function addQueue(name) {
-  const inp=document.getElementById('rt-'+name), req=inp?inp.value.trim():'';
-  if(!req){toast('교체 요구사항을 입력해주세요.');return;}
-  _q.push({place:name,req});
-  document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
-  if(inp) inp.value='';
-  renderQ(); toast('"'+name+'" 교체 요청이 대기열에 추가됐습니다.');
+function addQueue(key) {
+  const inp = document.getElementById('rt-' + key);
+  const req = inp ? inp.value.trim() : '';
+  if (!req) { toast('교체 요구사항을 입력해주세요.'); return; }
+
+  // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
+  let placeName = key; // fallback
+  if (typeof MAP_PINS !== 'undefined') {
+    const pin = MAP_PINS.find(p => p.key === key);
+    if (pin && pin.label) placeName = pin.label;
+  }
+  if (placeName === key && typeof MAP_ITINERARY !== 'undefined' && Array.isArray(MAP_ITINERARY)) {
+    outer: for (const day of MAP_ITINERARY) {
+      if (!day.places) continue;
+      for (const p of day.places) {
+        if (p.key === key && p.name) { placeName = p.name; break outer; }
+      }
+    }
+  }
+
+  // 중복 등록 방지
+  if (_q.some(q => q.place === placeName)) { toast('이미 교체 요청 목록에 있습니다.'); return; }
+
+  _q.push({ place: placeName, req });
+
+  // 입력창 초기화 및 닫기
+  if (inp) inp.value = '';
+  const area = document.getElementById('ri-' + key);
+  if (area) area.style.display = 'none';
+
+  renderQ();
+  toast('"' + placeName + '" 교체 요청이 대기열에 추가됐습니다.');
 }
 function renderQ() {
   const box=document.getElementById('queueBox'), items=document.getElementById('qItems'), cnt=document.getElementById('qCnt'), btn=document.getElementById('btnAll');
@@ -1531,27 +1559,50 @@ function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
 function openQueue()  { document.getElementById('queueBox').classList.add('has'); document.getElementById('queueBox').style.display='block'; document.getElementById('queueToggle').style.display='none'; }
 
-/** POST /api/ai/schedule/regenerate */
+/** POST /api/trips/{tripId}/routes/replace */
 async function execAllReplace() {
-  if(_q.length===0) return;
-  const btn=document.getElementById('btnAll'), rb=document.getElementById('recalcBar'), cnt=_q.length;
-  if(btn){btn.textContent='⏳ AI 처리 중...';btn.disabled=true;}
-  if(rb)  rb.style.display='flex';
+  const tripId = window._currentTripId;
+  if (!tripId || _q.length === 0) return;
 
-  const feedback = _q.map(q => q.place + ': ' + q.req).join(', ');
-  const res = await api.post('/api/ai/schedule/regenerate', { planId: _budgetSelectedTripId, feedback });
+  const btn = document.getElementById('btnAll');
+  const originalText = btn ? btn.innerHTML : '';
+  const loadingOverlay = document.getElementById('replaceLoadingOverlay');
 
-  if(rb) rb.style.display='none';
-  _q=[]; renderQ();
-  if(btn){btn.textContent='✅ 전체 교체하기';btn.disabled=true;}
-  if(res.success) {
-    toast('🎉 '+cnt+'개 장소 교체 완료!');
-    setTimeout(()=>toast('✅ route_recalc_needed → 0 초기화'),1000);
-    if(_budgetSelectedTripId) {
-      await api.post('/api/trips/'+_budgetSelectedTripId+'/routes/recalculate', {});
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  if (btn) {
+    btn.innerHTML = '⏳ AI 부분 교체 중...';
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
+
+    if (res.success && res.data) {
+      toast('✅ AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+
+      // ✨ 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
+      let cleanJson = res.data;
+      if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
+        cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+      } else if (typeof cleanJson === 'object') {
+        cleanJson = JSON.stringify(cleanJson);
+      }
+      sessionStorage.setItem('ai_generated_route', cleanJson); // 이 코드가 없어서 옛날 마커가 떴던 겁니다!
+
+      // 1.5초 뒤 완벽하게 새로고침
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+
+    } else {
+      toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
-  } else {
-    toast('⚠️ 교체 처리에 실패했습니다.');
+  } catch(e) {
+    toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
   }
 }
 
@@ -1978,7 +2029,12 @@ let _tt = null;
 function toast(msg, dur=2800) {
   const t=document.getElementById('toast'); if(!t) return;
   if(_tt) clearTimeout(_tt);
-  t.textContent=msg; t.classList.add('show');
+
+  t.innerHTML = msg;
+  t.style.color = '#111111';
+  t.style.fontWeight = '600';
+  t.classList.add('show');
+
   _tt=setTimeout(()=>t.classList.remove('show'), dur);
 }
 

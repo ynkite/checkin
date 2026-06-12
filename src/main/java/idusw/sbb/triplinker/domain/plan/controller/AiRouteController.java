@@ -32,4 +32,21 @@ public class AiRouteController {
         return ResponseEntity.ok(ApiResponse.success(aiRouteService.getRoutesByTripId(tripId)));
     }
 
+    @PostMapping("/replace")
+    public org.springframework.http.ResponseEntity<?> replaceRoutePlaces(
+            @PathVariable Long tripId,
+            @RequestBody java.util.Map<String, java.util.List<java.util.Map<String, String>>> payload) {
+
+        java.util.List<java.util.Map<String, String>> requests = payload.get("requests");
+
+        // 위에서 만든 서비스 메서드 호출
+        String updatedRouteJson = aiRouteService.replaceAiRoutePlaces(tripId, requests);
+
+        // 새로 받아온 JSON을 DB에 덮어쓰고 반환
+        aiRouteService.saveAiRouteToDb(tripId, updatedRouteJson);
+
+        return org.springframework.http.ResponseEntity.ok(
+                java.util.Map.of("success", true, "data", updatedRouteJson)
+        );
+    }
 }
