@@ -19,17 +19,20 @@ public class UserInfoResponseDto {
     private String mbti;
     private String region;
     private String status;
+    private boolean isSocial;
 
     // 엔티티 객체를 DTO 객체로 변환하는 생성자
-    public UserInfoResponseDto(User user) {
-        this.id = user.getId();
+    public UserInfoResponseDto(User user, boolean isSocial) {
+        boolean deleted = "DELETED".equals(user.getStatus());
+        this.id       = user.getId();
         this.username = user.getUsername();
-        this.name = user.getName();
-        this.email = user.getEmail();
-        this.birthDate = user.getBirthDate();
-        this.gender = user.getGender();
-        this.mbti = user.getMbti();
-        this.region = user.getRegion();
-        this.status = user.getStatus();
+        this.name     = deleted ? "탈퇴한 사용자" : user.getName();
+        this.email    = user.getEmail();
+        this.birthDate = deleted ? null : user.getBirthDate();
+        this.gender   = deleted ? null : user.getGender();
+        this.mbti     = deleted ? null : user.getMbti();
+        this.region   = deleted ? null : user.getRegion();
+        this.status   = user.getStatus();
+        this.isSocial = isSocial;
     }
 }

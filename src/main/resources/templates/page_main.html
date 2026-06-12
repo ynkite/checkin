@@ -182,15 +182,11 @@
     if (eyEl) eyEl.textContent = HERO_TEXT.eyebrow;
     if (ttlEl) ttlEl.textContent = HERO_TEXT.title;
     if (subEl) subEl.textContent = HERO_TEXT.subtitle;
-    if (inpEl) inpEl.placeholder = HERO_TEXT.inputPlaceholder;
-    if (btnEl) btnEl.textContent = HERO_TEXT.btnLabel;
-
     const cardsEl = document.querySelector('.hsc-cards');
     if (cardsEl) cardsEl.innerHTML = HERO_FEATURE_CARDS.map(c => `<div class="hsc-card"><div class="hsc-ci">${c.icon}</div><div class="hsc-ct">${c.title}</div><div class="hsc-cd">${c.desc}</div></div>`).join('');
 
     const destRowEl = document.querySelector('.hsc-dest-row');
-    if (destRowEl) destRowEl.innerHTML = `<span class="hsc-lbl">${HERO_TEXT.quickLabel}</span>` + QUICK_DESTS.map(d => `<button class="hsc-dest" onclick="setDest('${d.label}')">${d.emoji} ${d.label}</button>`).join('');
-
+    if (destRowEl) destRowEl.innerHTML = `<span class="hsc-lbl">${HERO_TEXT.quickLabel}</span>` + QUICK_DESTS.map(d => `<button class="hsc-dest" onclick="window._pendingDestText='${d.label}';goNewPlanner()">${d.emoji} ${d.label}</button>`).join('');
     // 2. 큐레이션 데이터 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
     let curations = typeof MOCK_CURATIONS !== 'undefined' ? MOCK_CURATIONS : null;
     if (!curations && typeof api !== 'undefined') {
@@ -328,13 +324,15 @@
         <div class="hsc-ey"></div>
         <div class="hsc-ttl"></div>
         <div class="hsc-sub"></div>
-        <div class="hsc-search">
-          <span style="font-size:17px;margin-right:8px;flex-shrink:0">📍</span>
-          <input class="hsc-inp" id="heroInp" type="text" onkeydown="if(event.key==='Enter')heroSearch()">
-          <button class="hsc-go" onclick="heroSearch()"></button>
-        </div>
         <div class="hsc-dest-row"></div>
         <div class="hsc-cards"></div>
+        <div style="margin-top:16px">
+          <button class="hsc-go"
+                  style="width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:var(--r)"
+                  onclick="goNewPlanner()">
+            ✏️ 여행지 직접 입력하러 가기 →
+          </button>
+        </div>
       </div>
     </div>
     <div class="curation-panel">

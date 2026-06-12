@@ -10,6 +10,7 @@ import idusw.sbb.triplinker.domain.plan.dto.PlanDetailResponseDto;
 import idusw.sbb.triplinker.domain.plan.dto.PlanInputFormSaveDto;
 
 import java.util.List;
+import java.util.Map;
 
 public interface TravelPlanService {
 
@@ -38,4 +39,8 @@ public interface TravelPlanService {
      * @return formId (없으면 null)
      */
     Long loadPreviousPreference(Long userId, Long tripId);
+
+    void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);
+
+    Map<String, Object> getLatestPreference(Long userId);
 }

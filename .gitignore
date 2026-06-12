@@ -38,3 +38,4 @@ out/
 
 ### Custom (팀 프로젝트 설정) ###
 src/main/resources/application.properties
+boot_*.txt

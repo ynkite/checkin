@@ -71,13 +71,19 @@ public class JwtProvider {
 
     //유효한 토큰에서 유저 아이디(PK) 꺼내기
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
+        return Long.parseLong(getClaims(token).getSubject());
+    }
+
+    //유효한 토큰에서 role 꺼내기
+    public String getRoleFromToken(String token) {
+        return getClaims(token).get("role", String.class);
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-
-        //setSubject에 넣었던 userId를 꺼내서 반환
-        return Long.parseLong(claims.getSubject());
     }
 }

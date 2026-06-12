@@ -51,7 +51,7 @@ public class SecurityConfig {
                 //2. API URL 주소별 접근 권한 나누기
                 .authorizeHttpRequests(auth -> auth
                         //정적 리소스 (CSS, JS, 이미지 등) 전체 허용
-                        .requestMatchers("/**.css", "/**.js", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf").permitAll()
+                        .requestMatchers("/**.css", "/**.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf").permitAll()
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
@@ -65,6 +65,7 @@ public class SecurityConfig {
                                 "/api/auth/verify-email",           //이메일 인증 확인
                                 "/api/auth/password/reset-request", //비밀번호 재설정 요청
                                 "/api/auth/password/reset",         //비밀번호 재설정 처리
+                                "/api/maps/weather",
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 

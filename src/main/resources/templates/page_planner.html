@@ -14,10 +14,21 @@
      * - GET /api/users/me  → MBTI 기반 일정 밀도 자동선택
      * - 이전 취향 불러오기 버튼 표시 여부는 서버 응답으로 결정
      * ───────────────────────────────────────────────────────── */
-    document.addEventListener('DOMContentLoaded', async () => {
+    /* ── SPA fragment 대응: DOMContentLoaded 이미 발화된 경우 즉시 실행 ── */
+    async function initPlannerMBTI() {
       // 출발지/여행지 도/시 초기값 기준 구 목록 세팅
-      updateCityDep(document.getElementById('dep-prov'));
-      updateCityDest(document.getElementById('dest-prov'));
+      const depEl  = document.getElementById('dep-prov');
+      const destEl = document.getElementById('dest-prov');
+      if (depEl) {
+                const _savedDep = document.getElementById('dep-city')?.value;
+                updateCityDep(depEl);
+                if (_savedDep) { const dc = document.getElementById('dep-city'); if (dc) dc.value = _savedDep; }
+              }
+              if (destEl) {
+                const _savedDest = document.getElementById('dest-city')?.value;
+                updateCityDest(destEl);
+              if (_savedDest) { const dc = document.getElementById('dest-city'); if (dc) dc.value = _savedDest; }
+              }
 
       // GET /api/users/me → MBTI 기반 일정 밀도 자동선택
       try {
@@ -44,27 +55,253 @@
       } catch (e) {
         // 비로그인 or 오류 → 기본값 유지
       }
-    });
+    }
+    function _initStep1AutoSave() {
+      if (window._step1AutoSaveInitialized) return;
+      window._step1AutoSaveInitialized = true;
+      const _autoSave = () => {
+        if (typeof _loggedIn === 'undefined' || !_loggedIn) return;
+        const hasInput = ['dest-prov','s1-date-start','s1-date-end','s1-pax','s1-budget']
+                .some(id => { const el = document.getElementById(id); return el && el.value && el.value.trim() !== ''; });
+        if (!hasInput) return;
+        if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+        if (typeof updateNav === 'function') updateNav();
+      };
+      ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+              .forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                  el.addEventListener('change', _autoSave);
+                  el.addEventListener('input', _autoSave);
+                }
+              });
+    }
+    /* SPA fragment: DOMContentLoaded 이미 발화됐으면 즉시 실행 */
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPlannerMBTI);
+    } else {
+      initPlannerMBTI();
+    }
 
     /* ─────────────────────────────────────────────────────────
      * 이전 취향 불러오기
      * POST /api/trips/{tripId}/load-preference
      * ───────────────────────────────────────────────────────── */
     async function loadPreviousPreference() {
-      const tripId = window._currentTripId; // 플랜 생성 후 저장된 tripId
-      if (!tripId) { toast('먼저 플랜을 생성해주세요.'); return; }
       try {
-        const res = await fetch(`/api/trips/${tripId}/load-preference`, {
-          method: 'POST',
+        const res = await fetch('/api/trips/latest-preference', {
           headers: { 'Authorization': 'Bearer ' + (Token.getAccess() || '') }
         });
         const json = await res.json();
-        if (json.success && json.data?.formId) {
-          toast('최근 여행 취향을 불러왔습니다.');
-          // TODO: 불러온 formId 기준으로 폼 필드 값 채우기 (GET /api/trips/{tripId}/input-form 연동 시)
-        } else {
+        if (!json.success || !json.data) {
           toast('이전 취향 데이터가 없습니다.');
+          return;
         }
+        const d = json.data;
+
+        // ── 여행지 ──
+        if (d.destination) {
+          const destProv = document.getElementById('dest-prov');
+          if (destProv) {
+            const parts = d.destination.split(' ');
+            const provVal = parts[0];
+            for (let i = 0; i < destProv.options.length; i++) {
+              if (destProv.options[i].value === provVal || destProv.options[i].text === provVal) {
+                destProv.selectedIndex = i;
+                if (typeof updateCityDest === 'function') updateCityDest(destProv);
+                break;
+              }
+            }
+            if (parts[1]) {
+              setTimeout(() => {
+                const destCity = document.getElementById('dest-city');
+                if (!destCity) return;
+                for (let i = 0; i < destCity.options.length; i++) {
+                  if (destCity.options[i].value === parts[1] || destCity.options[i].text === parts[1]) {
+                    destCity.selectedIndex = i;
+                    break;
+                  }
+                }
+              }, 50);
+            }
+          }
+        }
+        // ── 출발일 / 귀환일 (오늘 이후인 경우만 채움) ──
+        const today = new Date().toISOString().split('T')[0];
+        if (d.startDate && d.startDate >= today) {
+          const startEl = document.getElementById('s1-date-start');
+          if (startEl) {
+            startEl.value = d.startDate;
+            startEl.dispatchEvent(new Event('change')); // onStartDateChange() 트리거 → endDate min 세팅
+          }
+        }
+        if (d.endDate && d.endDate >= today) {
+          const endEl = document.getElementById('s1-date-end');
+          if (endEl) {
+            endEl.value = d.endDate;
+            endEl.dispatchEvent(new Event('change')); // onEndDateChange() 트리거
+          }
+        }
+        // ── 출발지 ──
+        if (d.departure) {
+          const parts = d.departure.split(' ');
+          const depProv = document.getElementById('dep-prov');
+          if (depProv && parts[0]) {
+            for (let i = 0; i < depProv.options.length; i++) {
+              if (depProv.options[i].value === parts[0] || depProv.options[i].text === parts[0]) {
+                depProv.selectedIndex = i;
+                if (typeof updateCityDep === 'function') updateCityDep(depProv);
+                break;
+              }
+            }
+            if (parts[1]) {
+              setTimeout(() => {
+                const depCity = document.getElementById('dep-city');
+                if (!depCity) return;
+                for (let i = 0; i < depCity.options.length; i++) {
+                  if (depCity.options[i].value === parts[1] || depCity.options[i].text === parts[1]) {
+                    depCity.selectedIndex = i;
+                    break;
+                  }
+                }
+              }, 50);
+            }
+          }
+        }
+
+        // ── 이동 수단 chip (단일) ──
+        if (d.transportType) {
+          document.querySelectorAll('#chip-trans .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.transportType);
+          });
+        }
+
+        // ── 숙소 형태 chip (단일) ──
+        if (d.accommodationType) {
+          document.querySelectorAll('#chip-acc .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.accommodationType);
+          });
+        }
+
+        // ── 동행자 유형 chip (단일) ──
+        if (d.companionType) {
+          const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
+          const label = compMap[d.companionType] || d.companionType;
+          document.querySelectorAll('#chip-comp .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === label);
+          });
+        }
+
+        // ── 인원 수 ──
+        if (d.companionCount) {
+          const paxEl = document.getElementById('s1-pax');
+          if (paxEl) paxEl.value = d.companionCount;
+        }
+
+        // ── 예산 ──
+        if (d.budget) {
+          const budgetEl = document.getElementById('s1-budget');
+          if (budgetEl) budgetEl.value = Number(d.budget).toLocaleString();
+        }
+
+        // ── 여행 스타일 (다중, JSON 배열) ──
+        if (d.travelStyles) {
+          let styles = [];
+          try { styles = JSON.parse(d.travelStyles); } catch(e) {}
+          document.querySelectorAll('#chip-style .chip').forEach(c => c.classList.remove('on'));
+          styles.forEach(s => {
+            const chip = [...document.querySelectorAll('#chip-style .chip')]
+                    .find(c => c.textContent.trim() === s || (s.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-style');
+                if (otherEl && s.startsWith('기타(')) {
+                  otherEl.value = s.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        // ── 식이 정보 (다중, JSON 배열) ──
+        if (d.dietaryInfo) {
+          let foods = [];
+          try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
+          document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
+          foods.forEach(f => {
+            const isAllergy = f.startsWith('알러지(') || f === '알러지 있음';
+            if (isAllergy) {
+              const chip = [...document.querySelectorAll('#chip-food .chip')]
+                      .find(c => c.textContent.trim() === '알러지 있음');
+              if (chip) {
+                chip.classList.add('on');
+                const otherEl = document.getElementById('other-allergy');
+                if (otherEl && f.startsWith('알러지(')) {
+                  otherEl.value = f.slice(4, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+              return;
+            }
+            const chip = [...document.querySelectorAll('#chip-food .chip')]
+                    .find(c => c.textContent.trim() === f || (f.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-food');
+                if (otherEl && f.startsWith('기타(')) {
+                  otherEl.value = f.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        // ── 특수 조건 chip (다중) — hasInfant / hasPet ──
+        document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
+        if (d.hasInfant === 1) {
+          const chip = [...document.querySelectorAll('#chip-special .chip')]
+                  .find(c => c.textContent.trim() === '유아 동반');
+          if (chip) chip.classList.add('on');
+        }
+        if (d.hasPet === 1) {
+          const chip = [...document.querySelectorAll('#chip-special .chip')]
+                  .find(c => c.textContent.trim() === '반려동물 동반');
+          if (chip) chip.classList.add('on');
+        }
+
+        // ── 일정 밀도 chip (단일) ──
+        if (d.scheduleDensity) {
+          document.querySelectorAll('#chip-density .chip').forEach(c => {
+            c.classList.toggle('on', c.textContent.trim() === d.scheduleDensity);
+          });
+        }
+
+        // ── 숙소 세부 옵션 (다중, JSON 배열) ──
+        if (d.accommodationOptions) {
+          let opts = [];
+          try { opts = JSON.parse(d.accommodationOptions); } catch(e) {}
+          document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+          opts.forEach(o => {
+            const chip = [...document.querySelectorAll('#chip-accopts .chip')]
+                    .find(c => c.textContent.trim() === o || (o.startsWith('기타') && c.textContent.trim() === '기타'));
+            if (chip) {
+              chip.classList.add('on');
+              if (chip.textContent.trim() === '기타') {
+                const otherEl = document.getElementById('other-accopts');
+                if (otherEl && o.startsWith('기타(')) {
+                  otherEl.value = o.slice(3, -1);
+                  otherEl.classList.add('show');
+                }
+              }
+            }
+          });
+        }
+
+        toast('이전 여행 취향을 불러왔습니다 ✓');
       } catch (e) {
         toast('취향 불러오기 중 오류가 발생했습니다.');
       }
@@ -109,7 +346,10 @@
         const json = await res.json();
         if (json.success) {
           window._currentTripId = json.data.tripId;
+                    sessionStorage.setItem('plannerDraftId', json.data.tripId);
           goPlanStep(2);
+                    if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+                    if (typeof updateNav === 'function') updateNav();  // ✏️ 작성중인 플랜 버튼 즉시 표시
         } else {
           toast(json.message || '플랜 생성에 실패했습니다.');
         }
@@ -132,9 +372,31 @@
       const budgetRaw = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
       const trans     = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '—';
       const acc       = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '—';
-      const styles    = [...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()).join(', ') || '—';
-      const density   = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '—';
-      const hasPet    = [...document.querySelectorAll('#chip-special .chip.on')].some(c => c.textContent.includes('반려동물'));
+
+      const styles = [...document.querySelectorAll('#chip-style .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') {
+          const v = document.getElementById('other-style')?.value.trim();
+          return v ? `기타(${v})` : '기타';
+        }
+        return t;
+      }).join(', ') || '—';
+
+      const foodText = [...document.querySelectorAll('#chip-food .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '알러지 있음') {
+          const v = document.getElementById('other-allergy')?.value.trim();
+          return v ? `알러지(${v})` : '알러지 있음';
+        }
+        if (t === '기타') {
+          const v = document.getElementById('other-food')?.value.trim();
+          return v ? `기타(${v})` : '기타';
+        }
+        return t;
+      }).join(', ') || '—';
+
+      const density = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '—';
+      const hasPet  = [...document.querySelectorAll('#chip-special .chip.on')].some(c => c.textContent.includes('반려동물'));
 
       const el = id => document.getElementById(id);
       if (el('sum-dest'))    el('sum-dest').textContent    = dest || '—';
@@ -144,20 +406,162 @@
       if (el('sum-trans'))   el('sum-trans').textContent   = trans;
       if (el('sum-acc'))     el('sum-acc').textContent     = acc;
       if (el('sum-style'))   el('sum-style').textContent   = styles;
+      if (el('sum-food'))    el('sum-food').textContent    = foodText;
       if (el('sum-density')) el('sum-density').textContent = density;
-      if (el('sum-pet'))     el('sum-pet').textContent     = hasPet ? '동반' : '— 미입력';
+      if (el('sum-pet')) {
+        el('sum-pet').textContent = hasPet ? '동반' : '미동반';
+        el('sum-pet').classList.remove('missing');
+      }
+      // 출발지
+      const depProv2 = document.getElementById('dep-prov')?.value || '';
+      const depCity2 = document.getElementById('dep-city')?.value || '';
+      const depText = depProv2 + (depCity2 && depCity2 !== '전체' && depCity2 !== '시/군/구 선택' ? ' ' + depCity2 : '');
+      if (el('sum-dep')) el('sum-dep').textContent = depText || '—';
+
+      // 동행자 유형
+      const compChip2 = document.querySelector('#chip-comp .chip.on');
+      let compType2 = compChip2?.textContent.trim() || '';
+      if (compType2 === '기타') compType2 = document.getElementById('other-comp')?.value.trim() || '기타';
+      if (el('sum-comp')) el('sum-comp').textContent = compType2 || '—';
+
+      // 숙소 세부 옵션
+      const accOptsText2 = [...document.querySelectorAll('#chip-accopts .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') { const v = document.getElementById('other-accopts')?.value.trim(); return v ? `기타(${v})` : '기타'; }
+        return t;
+      }).join(', ');
+      if (el('sum-accopts')) el('sum-accopts').textContent = accOptsText2 || '—';
+
+      // 특수 조건 (반려동물 제외 — 반려동물은 sum-pet에서 별도 표시)
+      const specialText2 = [...document.querySelectorAll('#chip-special .chip.on')].map(c => {
+        const t = c.textContent.trim();
+        if (t === '기타') { const v = document.getElementById('other-special')?.value.trim(); return v ? `기타(${v})` : '기타'; }
+        return t;
+      }).filter(t => !t.includes('반려동물')).join(', ');
+      if (el('sum-special')) el('sum-special').textContent = specialText2 || '—';
     }
 
     /* ─────────────────────────────────────────────────────────
  * AI 챗봇 메시지 전송
  * app_main.js의 공통 sendMsg() 함수를 호출하도록 연동
  * ───────────────────────────────────────────────────────── */
-    function sendMsg() {
-      // app_main.js에 만들어둔 공통 챗봇 전송 로직(아래 코드)을 실행합니다.
-      if (typeof window.sendMsg === 'function') {
-        window.sendMsg();
+
+    /* STEP 2 데이터를 백엔드에 저장하고 STEP 3로 넘어가는 함수 */
+    async function saveFormAndGoChat() {
+      const tripId = window._currentTripId;
+      if (!tripId) { toast('플랜이 생성되지 않았습니다.'); return; }
+
+      // 1. 단일 선택값 수집
+      const trans = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '미입력';
+      const acc = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '미입력';
+      const comp = document.querySelector('#chip-comp .chip.on')?.textContent.trim() || '미입력';
+      const pax = parseInt(document.getElementById('s1-pax').value) || 1;
+      const budget = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
+      const density = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '여유롭게';
+
+      // 2. 다중 선택값 (JSON 문자열로 변환)
+      const styles = JSON.stringify([...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()));
+      const foodChips = [...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim());
+      const allergyText = document.getElementById('other-allergy')?.value.trim();
+      if (allergyText) {
+        const idx = foodChips.indexOf('알러지 있음');
+        if (idx !== -1) foodChips[idx] = `알러지(${allergyText})`;
+      }
+      const food = JSON.stringify(foodChips);
+      const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => c.textContent.trim()));
+
+      // 3. 특수 조건 처리 (유아, 반려동물)
+      const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => c.textContent.trim());
+      const hasInfant = special.some(s => s.includes('유아')) ? 1 : 0;
+      const hasPet = special.some(s => s.includes('반려동물')) ? 1 : 0;
+      const depProv = document.getElementById('dep-prov')?.value || '';
+      const depCity  = document.getElementById('dep-city')?.value  || '';
+      const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+      // 4. 백엔드로 보낼 Payload 생성
+
+      const payload = {
+        departure: departure,
+        transportType: trans,
+        accommodationType: acc,
+        companionType: comp,
+        companionCount: pax,
+        budget: budget,
+        travelStyles: styles,
+        dietaryInfo: food,
+        accommodationOptions: accOpts,
+        scheduleDensity: density,
+        hasInfant: hasInfant,
+        hasPet: hasPet
+      };
+
+      // 5. 백엔드 취향 저장 API 호출 (POST /api/trips/{tripId}/input-form)
+      const res = await api.post(`/api/trips/${tripId}/input-form`, payload);
+
+      if (res.success) {
+        updateSummaryCard();
+        goPlanStep(3); // 저장 성공 시 챗봇 화면으로 이동
+        if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+      } else {
+        toast('취향 정보 저장에 실패했습니다.');
       }
     }
+    function resetAndBackToStep1() {
+      if (typeof resetPlannerForm === 'function') resetPlannerForm();
+      window._currentTripId = null;
+      sessionStorage.removeItem('plannerDraftId');
+      sessionStorage.removeItem('plannerDraftStep');
+      sessionStorage.removeItem('plannerDraftState');
+      if (typeof updateNav === 'function') updateNav();   // 버튼 → '✈ 플랜' 으로 복귀
+      for (let i = 1; i <= 3; i++) {
+        const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+        if (!sb || !sp) continue;
+        sb.classList.remove('active', 'done'); sp.classList.remove('active');
+        if (i === 1) { sb.classList.add('active'); sp.classList.add('active'); }
+      }
+      history.pushState({ page: 'planner', step: 1 }, '', location.href);
+      toast('플랜이 초기화되었습니다.');
+    }
+
+
+
+
+    /* ─────────────────────────────────────────────────────────
+     * AI 일정 생성 요청 (page_planner.html 에 추가)
+     * ───────────────────────────────────────────────────────── */
+    async function generateScheduleAndGoMap(btn) {
+      const tripId = window._currentTripId;
+      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ DB 정보를 바탕으로 코스를 생성 중입니다...';
+      btn.disabled = true;
+
+      try {
+        const res = await api.post(`/api/trips/${tripId}/routes/generate`);
+        if (res.success && res.data) {
+          // AI가 가끔 덧붙이는 마크다운 기호 제거 (에러 방지용)
+          let cleanJson = res.data;
+          if (cleanJson.includes('[')) {
+            cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+          }
+
+          sessionStorage.setItem('ai_generated_route', cleanJson);
+          toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
+          setTimeout(() => { go('map'); }, 500);
+        } else {
+          toast('⚠️ 일정 생성에 실패했습니다.');
+        }
+      } catch (e) {
+        toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+
+
+
   </script>
 
   <div class="page" id="page-planner">
@@ -192,7 +596,17 @@
 
         <!-- 여행지 & 날짜 -->
         <div class="pl-card">
-          <div class="pl-card-ttl">📍 여행지 &amp; 날짜</div>
+          <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <span>📍 여행지 &amp; 날짜</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div id="weather-btn-wrap" style="display:none">
+                <button class="weather-date-btn" onclick="openWeatherPopup()">
+                  🌤️ <span id="weather-btn-label">날씨 미리보기</span>
+                </button>
+              </div>
+              <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>
+            </div>
+          </div>
 
           <div class="form-group">
             <label class="form-label">출발지</label>
@@ -242,18 +656,22 @@
           <div class="pl-2col">
             <div class="form-group">
               <label class="form-label">출발일</label>
-              <input class="form-input" type="date" id="s1-date-start">
+              <input class="form-input" type="date" id="s1-date-start"
+                     onchange="onStartDateChange()">
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">📅 오늘 이후 날짜만 선택 가능합니다</div>
             </div>
             <div class="form-group">
               <label class="form-label">귀환일</label>
-              <input class="form-input" type="date" id="s1-date-end">
+              <input class="form-input" type="date" id="s1-date-end"
+                     onchange="onEndDateChange()">
+              <div style="font-size:11px;color:var(--text3);margin-top:4px">🏠 출발일 이후 날짜 선택 (당일 여행 가능)</div>
             </div>
           </div>
           <div class="pl-2col">
             <div class="form-group">
               <label class="form-label">인원</label>
               <div style="display:flex; align-items:center; gap:8px">
-                <input class="form-input" type="number" id="s1-pax" min="1" max="20" placeholder="예: 3"
+                <input class="form-input" id="s1-pax" type="number" min="1" max="99" placeholder="예: 3" oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                        style="width:100px; flex-shrink:0">
                 <span style="font-size:14px; color:var(--text2); white-space:nowrap">명</span>
               </div>
@@ -312,7 +730,8 @@
 
         <div class="pl-btns">
           <button class="btn-next" onclick="createPlan()">다음 단계 →</button>
-          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>
+<!--          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>-->
+          <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
@@ -340,10 +759,11 @@
           <div class="chip-row" id="chip-food">
             <button class="chip" onclick="tog(this)">비건</button>
             <button class="chip on" onclick="tog(this)">해산물 선호</button>
-            <button class="chip" onclick="tog(this)">알러지 있음</button>
+            <button class="chip" onclick="tog(this);showOtherInput('other-allergy',this)">알러지 있음</button>
             <button class="chip" onclick="tog(this)">무관</button>
             <button class="chip" onclick="tog(this);showOtherInput('other-food',this)">기타</button>
           </div>
+          <input class="other-input" id="other-allergy" placeholder="알러지를 정확하게 작성해주세요">
           <input class="other-input" id="other-food" placeholder="식이 정보를 직접 입력해주세요">
         </div>
 
@@ -384,7 +804,8 @@
 
         <div class="pl-btns">
           <button class="btn-prev-step" onclick="goPlanStep(1)">← 이전</button>
-          <button class="btn-next" onclick="updateSummaryCard();goPlanStep(3)">AI 챗봇으로 →</button>
+          <button class="btn-next" onclick="saveFormAndGoChat()">AI 챗봇으로 →</button>
+          <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
@@ -410,7 +831,6 @@
                         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
                 <button class="btn-send" onclick="sendMsg()">↑</button>
               </div>
-              <div class="chat-note">해외 지역 → 국내 전용 안내 · 예산 범위 초과 → 재입력 요청</div>
             </div>
           </div>
 
@@ -421,6 +841,10 @@
             </div>
 
             <div id="sum-rows-container">
+              <div class="asc-row">
+                <div class="asc-label">출발지</div>
+                <div class="asc-val" id="sum-dep">—</div>
+              </div>
               <div class="asc-row" onclick="toast('여행지 수동 변경')">
                 <div class="asc-label">여행지</div>
                 <div class="asc-val" id="sum-dest">—</div>
@@ -433,7 +857,11 @@
                 <div class="asc-label">인원</div>
                 <div class="asc-val" id="sum-people">—</div>
               </div>
-              <div class="asc-row" onclick="toast('예산 수동 변경')">
+              <div class="asc-row">
+                <div class="asc-label">동행자</div>
+                <div class="asc-val" id="sum-comp">—</div>
+              </div>
+              <div class="asc-row" onclick="openSummaryEdit('budget', 'sum-budget', '예산')">
                 <div class="asc-label">예산</div>
                 <div class="asc-val" id="sum-budget">—</div>
               </div>
@@ -446,8 +874,16 @@
                 <div class="asc-val" id="sum-acc">—</div>
               </div>
               <div class="asc-row">
+                <div class="asc-label">숙소 옵션</div>
+                <div class="asc-val" id="sum-accopts">—</div>
+              </div>
+              <div class="asc-row">
                 <div class="asc-label">여행 스타일</div>
                 <div class="asc-val" id="sum-style">—</div>
+              </div>
+              <div class="asc-row">
+                <div class="asc-label">식이 정보</div>
+                <div class="asc-val" id="sum-food">—</div>
               </div>
               <div class="asc-row">
                 <div class="asc-label">일정 밀도</div>
@@ -457,19 +893,258 @@
                 <div class="asc-label">반려동물</div>
                 <div class="asc-val missing" id="sum-pet">— 미입력</div>
               </div>
+              <div class="asc-row">
+                <div class="asc-label">특수 조건</div>
+                <div class="asc-val" id="sum-special">—</div>
+              </div>
+              <div id="sum-extra-rows"></div>
+              <button class="btn-gen" onclick="generateScheduleAndGoMap(this)">
+                ✈ 일정 생성하기 → 경로 상세 수정
+              </button>
             </div>
-
-            <div class="asc-note">수동 수정 시 LLM 숨은 컨텍스트 자동 주입 + PLAN_INPUT_FORM 업데이트</div>
-            <button class="btn-gen" onclick="go('map'); toast('✅ 일정이 생성되었습니다! 경로 수정 페이지로 이동합니다.')">
-              ✈ 일정 생성하기 → 경로 상세 수정
-            </button>
           </div>
-        </div>
-        <div style="margin-top:10px">
-          <button class="btn-prev-step" onclick="goPlanStep(2)">← 이전</button>
+          <div style="margin-top:10px">
+            <button class="btn-prev-step" onclick="goPlanStep(2)">← 이전</button>
+            <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>
 
     </div>
   </div>
+
+<!-- ===== 날씨 팝업 모달 ===== -->
+  <div class="overlay" id="weatherPopup"
+       onclick="if(event.target===this)closeWeatherPopup()">
+    <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
+    <button class="modal-x" onclick="closeWeatherPopup()">✕</button>
+    <div style="padding:4px 0 14px">
+      <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">AI TRAVEL PLANNER</div>
+      <div style="font-size:16px;font-weight:800" id="wp-title">🌤️ 여행 날씨 예보</div>
+    </div>
+
+    <!-- 날씨 데이터 없음 안내 (날짜가 현재 기준으로 너무 먼 경우) -->
+    <div id="wp-no-data" style="display:none;text-align:center;padding:30px 16px">
+      <div style="font-size:40px;margin-bottom:14px">🌐</div>
+      <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
+      <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
+        <div style="font-size:13px;color:var(--text2);line-height:1.8">
+          📌 날씨 예보 서비스는 <strong>오늘로부터 최대 14일 이내</strong> 기간만 제공합니다.<br>
+          📌 출발일이 14일을 초과하는 경우, 현재로서는 예보 데이터를 제공하기 어렵습니다.<br>
+          📌 여행 날짜가 가까워지면 다시 이 버튼을 눌러보세요.<br>
+          📌 지금 바로 확인하려면 아래 네이버·구글 날씨를 이용해 주세요.
+        </div>
+      </div>
+    </div>
+
+    <!-- 날씨 그리드 (데이터 있는 경우) -->
+    <div id="wp-data-wrap">
+      <div style="font-size:11px;color:var(--sage);background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 12px;margin-bottom:12px">
+        ℹ️ 출발일 기준 <strong>최대 7일</strong>까지의 날씨 예보만 표시됩니다. 그 이후 일정은 외부 날씨 서비스를 이용해 주세요.
+      </div>
+      <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
+      <div id="wp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text3)">※ 실 서비스 연동 전 모의 데이터입니다</div>
+    </div>
+
+    <!-- 네이버·구글 날씨 이동 버튼 (항상 표시) -->
+    <div style="display:flex;gap:10px;margin-top:18px">
+      <a href="https://weather.naver.com" target="_blank"
+         style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
+        <img src="https://ssl.pstatic.net/static/common/favicon/2023/0328/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
+        네이버 날씨
+      </a>
+      <a href="https://www.google.com/search?q=날씨" target="_blank"
+         style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#4285F4;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
+        <img src="https://www.google.com/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
+        구글 날씨
+      </a>
+    </div>
+  </div>
+  <script>
+
+  const DAYS_KO = ['일','월','화','수','목','금','토'];
+  const WEATHER_PREVIEW_DAYS = 7;
+  const WEATHER_MAX_FUTURE   = 14;
+
+  function onStartDateChange() {
+    const startEl  = document.getElementById('s1-date-start');
+    const endInput = document.getElementById('s1-date-end');
+    const today    = new Date().toISOString().split('T')[0];
+    const val      = startEl.value;
+    if (!val) { updateWeatherBtn(); return; }
+
+    if (val < today) {
+      toast('⚠️ 출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
+      startEl.value = '';
+      updateWeatherBtn();
+      return;
+    }
+    endInput.min = val;
+    if (endInput.value && endInput.value < val) {
+      endInput.value = '';
+      toast('⚠️ 귀환일이 출발일보다 이전이어서 초기화되었습니다.');
+    }
+    updateWeatherBtn();
+  }
+
+  function onEndDateChange() {
+    const startEl = document.getElementById('s1-date-start');
+    const endEl   = document.getElementById('s1-date-end');
+    const start   = startEl.value;
+    const end     = endEl.value;
+    if (!end) { updateWeatherBtn(); return; }
+
+    if (start && end < start) {
+      toast('⚠️ 귀환일은 출발일과 같거나 이후 날짜만 선택할 수 있습니다.');
+      endEl.value = '';
+      updateWeatherBtn();
+      return;
+    }
+    updateWeatherBtn();
+  }
+
+  /* ── 날씨 버튼 표시/숨김 ── */
+  function updateWeatherBtn() {
+    const s    = document.getElementById('s1-date-start').value;
+    const e    = document.getElementById('s1-date-end').value;
+    const wrap = document.getElementById('weather-btn-wrap');
+    const lbl  = document.getElementById('weather-btn-label');
+    if (!s || !e) { wrap.style.display = 'none'; return; }
+    const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+    lbl.textContent = `${fmt(new Date(s))} – ${fmt(new Date(e))} 여행 기간 날씨 보기`;
+    wrap.style.display = 'block';
+  }
+
+  /* ── 날씨 팝업 열기 ── */
+  async function openWeatherPopup() {
+    const s = document.getElementById('s1-date-start').value;
+    const e = document.getElementById('s1-date-end').value;
+    if (!s || !e) return;
+
+    const ds       = new Date(s);
+    const de       = new Date(e);
+    const today    = new Date(); today.setHours(0,0,0,0);
+    const diffDays = Math.floor((ds - today) / 86400000);
+
+    // 지역명 추출 — dest-city 우선, 없으면 dest-prov
+    const destProv = document.getElementById('dest-prov');
+    const destCity = document.getElementById('dest-city');
+    const loc = (destCity?.value && destCity.value !== '전체')
+            ? destCity.options[destCity.selectedIndex]?.text
+            : destProv?.options[destProv.selectedIndex]?.text || '';
+    const locStr = (loc && loc !== '도/시 선택') ? loc : '서울';
+
+    document.getElementById('wp-title').textContent = `🌤️ ${locStr} 여행 날씨 예보`;
+
+    const noData   = document.getElementById('wp-no-data');
+    const dataWrap = document.getElementById('wp-data-wrap');
+
+    // ── 케이스 A: 출발일이 너무 먼 미래 ──
+    if (diffDays > WEATHER_MAX_FUTURE) {
+      noData.style.display   = 'block';
+      dataWrap.style.display = 'none';
+      document.getElementById('weatherPopup').classList.add('open');
+      return;
+    }
+
+    // ── 케이스 B: 정상 표시 ──
+    noData.style.display   = 'none';
+    dataWrap.style.display = 'block';
+    document.getElementById('weatherPopup').classList.add('open');
+
+    const grid = document.getElementById('wp-grid');
+    grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
+
+    try {
+      const res  = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
+      const json = await res.json();
+
+      if (!json.success || !json.data || json.data.length === 0) throw new Error('데이터 없음');
+
+      // 여행 일수 계산 (최대 7일)
+      const allDays = [];
+      for (let d = new Date(ds); d <= de; d.setDate(d.getDate()+1)) allDays.push(new Date(d));
+      const previewDays = allDays.slice(0, WEATHER_PREVIEW_DAYS);
+      const clipped     = allDays.length > WEATHER_PREVIEW_DAYS;
+
+      grid.style.gridTemplateColumns = `repeat(${previewDays.length}, 1fr)`;
+
+      const skyIconMap = { 1:'☀️', 3:'⛅', 4:'☁️' };
+      const ptyIconMap = { 1:'🌧️', 2:'🌧️', 3:'🌨️', 4:'🌦️' };
+      const skyDescMap = { 1:'맑음', 3:'구름많음', 4:'흐림' };
+      const ptyDescMap = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
+
+      const fmt = d => `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} (${DAYS_KO[d.getDay()]})`;
+      const warnDays = [];
+
+      grid.innerHTML = previewDays.map((d, i) => {
+        const dto  = json.data[i] || json.data[json.data.length - 1];
+        const warn = dto.pop >= 60 || dto.pty > 0;
+        const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+        const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
+        if (warn) warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
+        return `<div class="w-item${warn ? ' w-warn' : ''}">
+          <div class="w-icon">${icon}</div>
+          <div class="w-day">${fmt(d)}</div>
+          <div class="w-temp">${dto.tmp}°C</div>
+          <div class="w-desc">${desc}</div>
+          ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
+          ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px">실내 추천</div>' : ''}
+        </div>`;
+      }).join('');
+
+      // 7일 초과 안내
+      if (clipped) {
+        grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--text3);text-align:center;padding:8px 0;border-top:1px dashed var(--border)">
+          📌 이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 예보 범위 초과로 표시되지 않습니다
+        </div>`;
+      }
+
+      const alertEl = document.getElementById('wp-alert');
+      if (warnDays.length) {
+        alertEl.style.display = 'block';
+        alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
+      } else {
+        alertEl.style.display = 'none';
+      }
+
+    } catch (err) {
+      grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
+      console.warn('[WeatherPopup] API 호출 실패:', err);
+    }
+  }
+
+  function closeWeatherPopup() {
+    document.getElementById('weatherPopup').classList.remove('open');
+  }
+
+  function initPlannerDateConstraints() {
+    const today   = new Date().toISOString().split('T')[0];
+    const startEl = document.getElementById('s1-date-start');
+    const endEl   = document.getElementById('s1-date-end');
+
+    if (!startEl || !endEl) {
+      setTimeout(initPlannerDateConstraints, 50);
+      return;
+    }
+
+    startEl.min = today;
+    if (startEl.value && startEl.value < today) startEl.value = '';
+
+    endEl.min = today;
+    if (endEl.value && endEl.value < today) endEl.value = '';
+
+    if (startEl.value) endEl.min = startEl.value;
+    updateWeatherBtn();
+    _initStep1AutoSave();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPlannerDateConstraints);
+  } else {
+    initPlannerDateConstraints();
+  }
+</script>
+</div>
+</div>
 </div>

@@ -27,7 +27,7 @@ public class TravelPlanController {
             @AuthenticationPrincipal CustomUserDetails userDetails,  // ← 수정
             @Valid @RequestBody PlanCreateDto dto) {
 
-        Long tripId = travelPlanService.createPlan(userDetails.getUser().getId(), dto);  // ← 수정
+        Long tripId = travelPlanService.createPlan(userDetails.getUserId(), dto);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(Map.of("tripId", tripId)));
     }
 
@@ -37,15 +37,24 @@ public class TravelPlanController {
             @PathVariable Long tripId,
             @RequestBody PlanInputFormSaveDto dto) {
 
-        Long formId = travelPlanService.saveInputForm(userDetails.getUser().getId(), tripId, dto);  // ← 수정
+        Long formId = travelPlanService.saveInputForm(userDetails.getUserId(), tripId, dto);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(Map.of("formId", formId)));
+    }
+    @PatchMapping("/{tripId}/input-form")
+    public ResponseEntity<ApiResponse<Void>> updateInputForm(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId,
+            @RequestBody Map<String, String> fields) {
+
+        travelPlanService.updateInputForm(userDetails.getUserId(), tripId, fields);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlanDetailResponseDto>>> getMyPlans(
             @AuthenticationPrincipal CustomUserDetails userDetails) {  // ← 수정
 
-        List<PlanDetailResponseDto> plans = travelPlanService.getMyPlans(userDetails.getUser().getId());  // ← 수정
+        List<PlanDetailResponseDto> plans = travelPlanService.getMyPlans(userDetails.getUserId());  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(plans));
     }
 
@@ -54,7 +63,7 @@ public class TravelPlanController {
             @AuthenticationPrincipal CustomUserDetails userDetails,  // ← 수정
             @PathVariable Long tripId) {
 
-        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userDetails.getUser().getId(), tripId);  // ← 수정
+        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userDetails.getUserId(), tripId);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
@@ -63,7 +72,14 @@ public class TravelPlanController {
             @AuthenticationPrincipal CustomUserDetails userDetails,  // ← 수정
             @PathVariable Long tripId) {
 
-        Long formId = travelPlanService.loadPreviousPreference(userDetails.getUser().getId(), tripId);  // ← 수정
+        Long formId = travelPlanService.loadPreviousPreference(userDetails.getUserId(), tripId);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(formId != null ? Map.of("formId", formId) : null));
+    }
+
+    @GetMapping("/latest-preference")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getLatestPreference(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        java.util.Map<String, Object> result = travelPlanService.getLatestPreference(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }

@@ -27,16 +27,8 @@
     { action: "go('map')", icon: "🏙️", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 4인 · 대중교통 · 공개", budget: "₩280,000" }
   ];
 
-  // 3. 작성한 후기 데이터
-  const MOCK_MYPAGE_REVIEWS = [
-    { action: "go('review')", catLabel: "여행 경로", catClass: "cat-route", title: "제주 해안선 드라이브 완벽 코스", likes: "142", views: "2,804" }
-  ];
-
-  // 4. 좋아요한 후기 데이터
-  const MOCK_MYPAGE_LIKES = [
-    { action: "go('review')", catLabel: "맛집", catClass: "cat-food", title: "강릉 현지인 추천 커피 로드 TOP 10", likes: "891", views: "12,301" },
-    { action: "go('review')", catLabel: "여행 경로", catClass: "cat-route", title: "남해 다랭이마을 2박 3일 완벽 가이드", likes: "654", views: null }
-  ];
+  // 3. 작성한 후기 데이터 → API 연동으로 대체
+  // 4. 좋아요한 후기 데이터 → API 연동으로 대체
 
   // 5. 스크랩한 숙소 데이터
   const MOCK_MYPAGE_SCRAP_STAY = [
@@ -105,35 +97,8 @@
     `).join('');
     }
 
-    // 3. 작성한 후기 렌더링
-    let reviews = typeof MOCK_MYPAGE_REVIEWS !== 'undefined' ? MOCK_MYPAGE_REVIEWS : [];
-    const reviewsContainer = document.getElementById("my-reviews-list");
-    if (reviewsContainer && reviews.length > 0) {
-      reviewsContainer.innerHTML = reviews.map(r => `
-      <div class="post-card" onclick="${r.action}"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
-        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-        <div class="post-foot">
-          <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
-          <div style="display:flex;gap:6px">
-            <button class="btn-scrap" onclick="event.stopPropagation();go('edit-review')">✏️ 수정</button>
-            <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
-          </div>
-        </div>
-      </div>
-    `).join('');
-    }
-
-    // 4. 좋아요한 후기 렌더링
-    let likes = typeof MOCK_MYPAGE_LIKES !== 'undefined' ? MOCK_MYPAGE_LIKES : [];
-    const likesContainer = document.getElementById("my-likes-list");
-    if (likesContainer && likes.length > 0) {
-      likesContainer.innerHTML = likes.map(r => `
-      <div class="post-card" onclick="${r.action}"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
-        <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
-      </div>
-    `).join('');
-    }
+    // 3. 작성한 후기 렌더링 → app_main.js의 _renderMyReviews()가 처리
+    // 4. 좋아요한 후기 렌더링 → app_main.js의 updateMyPageUI()가 처리
 
     // 5. 스크랩한 숙소 렌더링
     let scrapStay = typeof MOCK_MYPAGE_SCRAP_STAY !== 'undefined' ? MOCK_MYPAGE_SCRAP_STAY : [];
@@ -340,17 +305,35 @@
       <div id="my-withdraw" style="display:none">
         <h3 class="my-sec-ttl">회원 탈퇴</h3>
         <div id="withdraw-warn-txt" style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8"></div>
-        <div id="withdraw-social-box" style="display:none" class="form-group">
+        <div class="form-group">
           <label class="form-label">이메일 재확인</label>
-          <input class="form-input" type="email" id="withdrawEmailInput" placeholder="가입한 이메일 주소 입력">
+          <input class="form-input" type="email" id="withdrawEmailInput" placeholder="가입한 이메일 주소 입력"
+                 onkeydown="if(event.key==='Enter')doWithdraw()">
         </div>
-        <div id="withdraw-pw-box" class="form-group">
-          <label class="form-label">비밀번호 재확인</label>
-          <input class="form-input" type="password" placeholder="비밀번호 입력">
-        </div>
+        <div id="withdraw-email-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">⚠️ 이메일이 올바르지 않습니다.</div>
         <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700"
-                onclick="if(confirm('정말 탈퇴하시겠습니까?'))toast('탈퇴 완료')">회원 탈퇴</button>
+                onclick="doWithdraw()">회원 탈퇴</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- 회원 탈퇴 확인 모달 -->
+<div id="withdraw-confirm-modal"
+     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
+     onclick="if(event.target===this)closeWithdrawModal()">
+  <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
+    <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">⚠️ 정말 탈퇴하시겠습니까?</h3>
+    <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
+      • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
+      • 탈퇴 후 복구는 불가능합니다.<br>
+      • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmWithdraw()"
+              style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
+      <button onclick="closeWithdrawModal()"
+              style="flex:1;padding:11px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:700">취소</button>
     </div>
   </div>
 </div>
