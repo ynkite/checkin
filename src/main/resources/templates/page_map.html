@@ -154,44 +154,48 @@
                 `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">${d.label}</button>`
         ).join('');
 
-        // ✨ [기능 추가]: 각 일차별 budget을 합산하여 전체 여행 예산 금액 동적 표출 계산
-        let totalBudgetSum = 0;
-        routeData.forEach(day => {
-          if (day.budget) {
-            let priceNum = parseInt(day.budget.replace(/[^0-9]/g, '')) || 0;
-            totalBudgetSum += priceNum;
-          }
-        });
-        const finalBudgetStr = '₩ ' + totalBudgetSum.toLocaleString();
-        if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
-        if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = '₩' + totalBudgetSum.toLocaleString();
-
-        // 카테고리별 금액 집계
         const catSums = { stay: 0, food: 0, transit: 0, tour: 0 };
+        let realTotalBudget = 0;
+
         routeData.forEach(day => {
-          if (!day.places) return;
-          day.places.forEach(p => {
-            if (!p.sub) return;
-            // sub 형식: "숙소 · ₩180,000" / "맛집 · 점심 · ₩12,000×2" / "🚗 자차 · 12km · ₩2,000"
-            const amountMatch = p.sub.match(/₩([\d,]+)(?:×(\d+))?/);
-            if (!amountMatch) return;
-            const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
-            const qty  = parseInt(amountMatch[2] || '1');
-            const total = unit * qty;
-            if (p.transit)           catSums.transit += total;
-            else if (p.type === 'stay') catSums.stay += total;
-            else if (p.type === 'food' || p.type === 'cafe') catSums.food += total;
-            else                     catSums.tour += total;
-          });
-          // transit 행 별도 파싱
-          day.places.filter(p => p.transit).forEach(t => {
-            const m = t.transit.match(/₩([\d,]+)/);
-            if (m) catSums.transit += parseInt(m[1].replace(/,/g,'')) || 0;
-          });
+          let dailySum = 0;
+          if (day.places) {
+            day.places.forEach(p => {
+              // 1. 일반 장소 금액 계산 (x, X, ×, * 대소문자 특수문자 모두 허용)
+              if (p.sub) {
+                const amountMatch = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
+                if (amountMatch) {
+                  const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
+                  const qty  = parseInt(amountMatch[2] || '1');
+                  const total = unit * qty;
+                  if (p.type === 'stay') catSums.stay += total;
+                  else if (p.type === 'food' || p.type === 'cafe') catSums.food += total;
+                  else catSums.tour += total;
+                  dailySum += total;
+                }
+              }
+              // 2. 이동 수단(transit) 금액 계산
+              if (p.transit) {
+                const m = p.transit.match(/₩\s*([\d,]+)/);
+                if (m) {
+                  const cost = parseInt(m[1].replace(/,/g,'')) || 0;
+                  catSums.transit += cost;
+                  dailySum += cost;
+                }
+              }
+            });
+          }
+          // ✨ 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
+          day.budget = `₩${dailySum.toLocaleString()}`;
+          realTotalBudget += dailySum;
         });
 
-        const catTotal = Object.values(catSums).reduce((a,b)=>a+b,0) || totalBudgetSum;
-        const pct = v => catTotal ? Math.round(v / catTotal * 100) : 0;
+        const finalBudgetStr = '₩' + realTotalBudget.toLocaleString();
+        if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
+        if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = finalBudgetStr;
+
+        const catTotal = realTotalBudget || 1;
+        const pct = v => Math.round((v / catTotal) * 100);
 
         const budgetItemsEl = document.getElementById('map-budget-items');
         if (budgetItemsEl) {
@@ -211,29 +215,35 @@
             <div style="width:${pct(c.val)}%;background:${c.color};height:6px;border-radius:4px;transition:width .4s"></div>
           </div>
         </div>`).join('');
-            }
-
-        // 파이차트 범례 업데이트
-        const pieLegend = document.querySelector('.pie-legend');
-        if (pieLegend && catTotal) {
-          const legs = [
-            { label:'숙박', val:catSums.stay,    color:'var(--sage)'  },
-            { label:'식비', val:catSums.food,    color:'var(--coral)' },
-            { label:'교통', val:catSums.transit, color:'#22B5C4'      },
-            { label:'입장', val:catSums.tour,    color:'#F5A623'      },
-          ];
-          pieLegend.innerHTML = legs.map(l =>
-                  `<div class="pie-leg-item"><div class="pie-dot" style="background:${l.color}"></div>${l.label} ${pct(l.val)}%</div>`
-          ).join('');
         }
 
-        // 잔여 예산 업데이트
+        // ✨ 파이차트 원(색상 비율) & 범례 완벽 동기화
+        const pieRing = document.querySelector('.pie-ring');
+        const pieLegend = document.querySelector('.pie-legend');
+        let pStay = pct(catSums.stay);
+        let pFood = pct(catSums.food);
+        let pTrans = pct(catSums.transit);
+        let pTour = pct(catSums.tour);
+
+        if (pieRing) {
+          pieRing.style.background = `conic-gradient(var(--sage) 0% ${pStay}%, var(--coral) ${pStay}% ${pStay+pFood}%, #22B5C4 ${pStay+pFood}% ${pStay+pFood+pTrans}%, #F5A623 ${pStay+pFood+pTrans}% 100%)`;
+          pieRing.style.borderRadius = '50%';
+        }
+        if (pieLegend) {
+          pieLegend.innerHTML = `
+            <div class="pie-leg-item"><div class="pie-dot" style="background:var(--sage)"></div>숙박 ${pStay}%</div>
+            <div class="pie-leg-item"><div class="pie-dot" style="background:var(--coral)"></div>식비 ${pFood}%</div>
+            <div class="pie-leg-item"><div class="pie-dot" style="background:#22B5C4"></div>교통 ${pTrans}%</div>
+            <div class="pie-leg-item"><div class="pie-dot" style="background:#F5A623"></div>입장료 ${pTour}%</div>
+          `;
+        }
+
         const remainEl = document.getElementById('map-budget-remaining');
         const inputBudget = parseInt(sessionStorage.getItem('plannerDraftState')
                 ? JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}')['s1-budget']?.replace(/,/g,'') || '0'
                 : '0');
         if (remainEl && inputBudget > 0) {
-          const remain = inputBudget - totalBudgetSum;
+          const remain = inputBudget - realTotalBudget;
           remainEl.textContent = remain >= 0
                   ? `예산 범위 내 ✓ 잔여 ₩${remain.toLocaleString()}`
                   : `⚠️ 예산 ₩${Math.abs(remain).toLocaleString()} 초과`;
@@ -242,8 +252,7 @@
           remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
         }
 
-
-        // 원본 마크업 구조 100% 동일하게 동적 주입
+        // 원본 마크업 구조 100% 동일하게 동적 주입 (불필요한 팝업 제거)
         listEl.innerHTML = routeData.map(day => `
       <div class="day-section" data-day="${day.day}">
         <div class="ds-hd">
@@ -271,9 +280,8 @@
           </div>
         `).join('') : ''}
       </div>
-    `).join('') +
-                `<div class="recalc-bar" id="recalcBar" style="display:none">🔄 경로 재계산 중... (route_recalc_needed = 1)</div>`;
-        // 카카오맵 연동용 실좌표 변수 리인젝션
+    `).join('');
+
         MAP_PINS = [];
         DAY_ROUTES = [];
         const colors = ['#2D9E8A', '#A78BFA', '#22B5C4', '#F5A623', '#F472B6'];
@@ -282,9 +290,8 @@
           let currentDayKeys = [];
           if(d.places) {
             d.places.forEach(p => {
-              if(!p.transit && p.name) { // 🔍 lat, lng 검증을 name 검증으로 변경!
+              if(!p.transit && p.name) {
                 let pinColor = p.type === 'stay' ? '#2D9E8A' : (p.type === 'food' ? '#F87171' : (p.type === 'cafe' ? '#7C3AED' : '#22B5C4'));
-                const normalizedType = (['stay','food','cafe','tour'].includes(p.type)) ? p.type : 'tour';
                 MAP_PINS.push({
                   key: p.key,
                   type: p.type,
@@ -292,10 +299,10 @@
                   color: pinColor,
                   label: p.name,
                   day: d.day,
-                  lat: null,     // 카카오 API 검색 결과로 채워질 예정
+                  lat: null,
                   lng: null,
-                  category: null, // 카카오 실제 세부 카테고리
-                  placeUrl: null  // 카카오 상세페이지 (메뉴, 실제평점용)
+                  category: null,
+                  placeUrl: null
                 });
                 currentDayKeys.push(p.key);
               }
@@ -308,7 +315,6 @@
         if (typeof initKakaoMap === 'function') initKakaoMap();
 
       } else {
-        // 데이터 로드 실패 시에만 정적 탭 표출
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d => `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">${d.label}</button>`).join('');
         listEl.innerHTML = '<div style="padding:20px;color:var(--text3);">생성된 일정이 없습니다. 챗봇 화면에서 일정을 생성해주세요.</div>';
       }
@@ -410,14 +416,13 @@
 
               // pin.key 대신 pin.label을 넘김 (문자열 따옴표 처리 주의)
               var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
-                      + 'style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;'
-                      + 'transform:translate(-50%,-100%)">'
-                      + '<div style="width:36px;height:36px;border-radius:50%;background:' + pin.color + ';'
-                      + 'display:flex;align-items:center;justify-content:center;font-size:16px;'
-                      + 'box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff">' + pin.icon + '</div>'
-                      + '<div style="background:#ffffff;border-radius:8px;padding:3px 8px;'
-                      + 'font-size:10px;font-weight:800;color:#111111;box-shadow:0 2px 6px rgba(0,0,0,.35);'
-                      + 'white-space:nowrap;margin-top:2px;border:1px solid rgba(0,0,0,.08)">' + pin.label + '</div>'
+                      + 'style="cursor:pointer; position:relative; width:0; height:0;">'
+                      + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
+                      + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
+                      + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
+                      + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
+                      + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
+                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div>'
                       + '</div>';
 
               var overlay = new kakao.maps.CustomOverlay({
@@ -428,14 +433,14 @@
               });
 
               overlay.setMap(window._kakaoMap);
-              window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: pin.type, day: pin.day });
+              const storedPin = MAP_PINS.find(p => p.key === pin.key);
+              window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
               bounds.extend(new kakao.maps.LatLng(realLat, realLng));
             } else {
               console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
 
               // 화면에 "경로 재계산 필요" 바 표시하기
               var rb = document.getElementById('recalcBar');
-              if (rb) rb.style.display = 'flex';
 
               // ✨ [중복 체크 가드 추가] 이미 대기열(_q)에 똑같은 장소명이 있는지 검사
               var isAlreadyInQueue = _q.some(function(item) {
@@ -483,11 +488,12 @@
 
         var polyline = new kakao.maps.Polyline({
           path: path,
-          strokeWeight: 3,
+          strokeWeight: 5,           // 두께를 도톰하게 5로 변경
           strokeColor: route.color,
-          strokeOpacity: 0.8,
-          strokeStyle: 'dashed'
+          strokeOpacity: 0.5,        // 투명도를 0.5로 낮춰서 반투명한 형광펜 느낌 주기
+          strokeStyle: 'solid'       // 렉의 주범인 dashed를 solid로 변경!
         });
+
         polyline.setMap(window._kakaoMap);
         window._kakaoPolylines.push({ day: route.day, line: polyline });
       });
@@ -855,46 +861,44 @@
         </div>
         <!-- Budget view -->
         <div id="budgetView" style="display:none;position:absolute;inset:0;background:var(--cream);overflow-y:auto;padding:20px 24px;z-index:8">
-          <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">BUDGET · EXPENSE REPORT</div>
-          <h3 style="font-size:16px;font-weight:800;margin-bottom:14px">가계부</h3>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+          <div style="max-width:800px; margin:0 auto;">
+
+            <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">BUDGET · EXPENSE REPORT</div>
+            <h3 style="font-size:16px;font-weight:800;margin-bottom:14px">가계부</h3>
+
+          <!-- 💡 기존 1fr 1fr 분할을 위아래 수직 나열(flex-column)로 변경했습니다 -->
+          <div style="display:flex; flex-direction:column; gap:24px;">
+
+            <!-- 상단: 항목별 바 차트 및 총액/잔여예산 -->
             <div>
-              <!-- 예산 항목: JS initMapPage() 로 동적 주입 -->
               <div id="map-budget-items"></div>
               <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
                 <div style="font-size:13px;font-weight:700">예상 총액</div>
-                <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩404,000</div>
+                <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩0</div>
               </div>
               <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
-                예산 범위 내 ✓ 잔여 ₩96,000</div>
+                예산 계산 중...
+              </div>
             </div>
-            <div>
+
+            <!-- 하단: 파이차트 및 저장 버튼 -->
+            <div style="padding-top:10px;">
               <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">카테고리별 지출 비중</div>
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
                 <div class="pie-ring" style="width:90px;height:90px"></div>
                 <div class="pie-legend">
-                  <div class="pie-leg-item"><div class="pie-dot" style="background:var(--sage)"></div>숙박 44%</div>
-                  <div class="pie-leg-item"><div class="pie-dot" style="background:var(--coral)"></div>식비 24%</div>
-                  <div class="pie-leg-item"><div class="pie-dot" style="background:#22B5C4"></div>교통 20%</div>
-                  <div class="pie-leg-item"><div class="pie-dot" style="background:#F5A623"></div>입장료 12%</div>
                 </div>
               </div>
-              <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">예상 vs 실제 비교</div>
-              <div style="font-size:10px;color:var(--text2);margin-bottom:3px">숙박</div>
-              <div class="cmp-bar" style="width:88%;background:var(--sage);font-size:9px;margin-bottom:2px">예상 ₩180K</div>
-              <div class="cmp-bar" style="width:75%;background:var(--sage);opacity:.6;font-size:9px;margin-bottom:8px">실제 ₩168K</div>
-              <div style="font-size:10px;color:var(--text2);margin-bottom:3px">식비</div>
-              <div class="cmp-bar" style="width:48%;background:var(--coral);opacity:.5;font-size:9px;margin-bottom:2px">예상 ₩96K</div>
-              <div class="cmp-bar" style="width:68%;background:var(--coral);font-size:9px;margin-bottom:4px">실제 ₩144K ⚠</div>
-              <div style="background:#FEF3F2;border-left:2px solid var(--coral);padding:4px 7px;font-size:10px;color:var(--coral);border-radius:0 5px 5px 0">식비 ₩48,000 초과 — 빨간색 강조</div>
+
               <div style="display:flex;gap:6px;margin-top:10px">
                 <button class="btn-export" onclick="toast('PNG 저장!')" style="flex:1;font-size:10px;padding:6px">PNG 저장</button>
                 <button class="btn-export" onclick="toast('PDF 저장!')" style="flex:1;font-size:10px;padding:6px">PDF 저장</button>
               </div>
             </div>
+
           </div>
         </div>
-      </div>
     </div>
   </div>
 
@@ -935,7 +939,9 @@
       <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
       <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8"></p>
     </div>
-  </div>
-</div>
+      </div>
+    </div>
 
+    </div>
+  </div>
 </div>

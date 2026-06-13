@@ -1487,19 +1487,26 @@ function switchMapTab(tab, btn) {
   if(tab==='map'){mv.style.display='block';bv.style.display='none';}
   else           {mv.style.display='none'; bv.style.display='block';}
 }
+
+
 function toggleMarker(btn, type) {
   btn.classList.toggle('on');
   const isOn = btn.classList.contains('on');
-  if (window._kakaoOverlays && window._kakaoMap) {
-    // 디버깅용 — 콘솔에서 실제 저장된 타입 확인
-    console.log('[toggleMarker] 요청 타입:', type, '| 전체 오버레이 타입:', window._kakaoOverlays.map(o => o.type));
 
-    window._kakaoOverlays.filter(o => o.type === type).forEach(o => {
+  if (window._kakaoOverlays && window._kakaoMap) {
+    window._kakaoOverlays.filter(o => {
+      // 💡 핵심: AI가 'tour' 대신 'sight', 'attraction' 등으로 지어낸 경우까지 모두 관광지로 묶어서 강제 필터링!
+      if (type === 'tour') {
+        return ['tour', 'sight', 'attraction', 'place'].includes(o.type);
+      }
+      return o.type === type;
+    }).forEach(o => {
       o.overlay.setMap(isOn ? window._kakaoMap : null);
     });
   } else {
     document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
   }
+
   toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,''));
 }
 
@@ -1755,13 +1762,112 @@ document.addEventListener('DOMContentLoaded', () => {
  * ─────────────────────────────────────────────── */
 function showConfirmModal()  { document.getElementById('confirmModal').classList.add('open'); }
 function openConfirmDone()   { document.getElementById('confirmDoneModal').classList.add('open'); }
-function openShareModal()    { document.getElementById('shareModal').classList.add('open'); }
 function showPlaceReviews(val){ const sec=document.getElementById('placeReviewsSection'); if(sec) sec.style.display=val?'block':'none'; }
 function setStars(btn, rating){ btn.closest('.star-sel').querySelectorAll('.star-btn').forEach((b,i)=>b.classList.toggle('lit',i<rating)); }
+
+// ── [여행 플랜 공유 기능] ──
+
+// 공유 모달 열기 및 데이터 로드
+async function openShareModal() {
+  const modal = document.getElementById('shareModal');
+  if (!modal) return;
+  modal.classList.add('open');
+
+  const tripId = window._currentTripId;
+  const listEl = document.getElementById('share-member-list');
+  const linkInp = document.getElementById('share-link-val');
+
+  if (!tripId) {
+    listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+    if(linkInp) linkInp.value = '';
+    return;
+  }
+
+  // 1. 고유 링크 생성 (현재 도메인 + tripId)
+  if (linkInp) linkInp.value = `${window.location.origin}/plan?id=${tripId}`;
+
+  // 2. 참여자 목록 로드
+  await loadShareMembers(tripId);
+}
+
+// 참여자 목록 API 호출 및 렌더링
+async function loadShareMembers(tripId) {
+  const listEl = document.getElementById('share-member-list');
+  listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
+
+  const res = await api.get(`/api/trips/${tripId}/members`);
+
+  // 백엔드 API 미연결 시 (내 정보만 가라로 띄우기)
+  if (!res.success || !res.data) {
+    const me = _currentUser ? _currentUser.name : '나';
+    listEl.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+          <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+        </div>
+        <div style="font-size:12px; color:var(--text3);">소유자</div>
+      </div>`;
+    return;
+  }
+
+  // 실제 데이터 렌더링
+  const members = res.data;
+  listEl.innerHTML = members.map(m => `
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${m.name[0]}</div>
+        <div style="font-weight:700; font-size:14px; color:#111;">${m.name} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+      </div>
+      <div style="font-size:12px; color:var(--text3);">${m.role === 'OWNER' ? '소유자' : '참여자'}</div>
+    </div>
+  `).join('');
+}
+
+// 이메일로 참여자 초대 API 호출
+async function inviteShareMember() {
+  const tripId = window._currentTripId;
+  const emailInp = document.getElementById('share-email-inp');
+  const email = emailInp.value.trim();
+
+  if (!tripId) return toast('플랜을 먼저 생성해주세요.');
+  if (!email) return toast('초대할 이메일을 입력해주세요.');
+
+  const res = await api.post(`/api/trips/${tripId}/members`, { email: email });
+  if (res.success) {
+    toast('초대가 완료되었습니다.');
+    emailInp.value = '';
+    loadShareMembers(tripId); // 목록 즉시 새로고침
+  } else {
+    toast('⚠️ ' + (res.message || '초대에 실패했습니다. 가입된 유저인지 확인해주세요.'));
+  }
+}
+
+// 링크 클립보드 복사
+function copyShareLink() {
+  const linkInp = document.getElementById('share-link-val');
+  if (!linkInp || !linkInp.value) return;
+
+  navigator.clipboard.writeText(linkInp.value).then(() => {
+    toast('링크가 클립보드에 복사되었습니다 ✓');
+  }).catch(err => {
+    toast('⚠️ 복사 실패: 브라우저 권한을 확인해주세요.');
+  });
+}
+
+// 공유 팝업 탭 전환
 function setShareTab(btn, tab) {
-  document.querySelectorAll('.share-tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
-  document.getElementById('share-members').style.display = tab==='members'?'block':'none';
-  document.getElementById('share-post').style.display    = tab==='post'?'block':'none';
+  document.querySelectorAll('.share-tab').forEach(b => {
+    b.classList.remove('on');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottom = 'none';
+  });
+  btn.classList.add('on');
+  btn.style.color = 'var(--sage-d)';
+  btn.style.borderBottom = '3px solid var(--sage)';
+
+  document.getElementById('share-members').style.display = tab === 'members' ? 'block' : 'none';
+  document.getElementById('share-post').style.display    = tab === 'post' ? 'block' : 'none';
 }
 
 /* ───────────────────────────────────────────────
