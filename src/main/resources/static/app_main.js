@@ -1014,13 +1014,18 @@ async function sendMsg() {
       let replyText = res.data.response;
 
       // (1) 정규식으로 AI가 몰래 보낸 [UPDATE:항목코드:새로운값] 태그 찾기
-      const updateRegex = /\[UPDATE:([A-Z]+):([^\]]*)\]/g;
+      const updateRegex = /\[UPDATE:([A-Za-z가-힣0-9]+):([^\]]*)\]/g;
       let match;
       const _patchFields = {};
       while ((match = updateRegex.exec(replyText)) !== null) {
         const field = match[1];
         const newVal = match[2].trim();
-        if (!newVal) continue;
+        if (!newVal) {
+          // 빈 값일 경우에 EXTRA 행 삭제 할 수 있도록 신호를 보내준다
+          const extraRow = document.getElementById('sum-extra-' + field);
+          if (extraRow) extraRow.remove();
+          continue;
+        }
 
         // (2) 코드를 요약 패널의 HTML ID와 매핑
         const domMap = {
@@ -1047,7 +1052,12 @@ async function sendMsg() {
         }
 
         // DB 업데이트용 필드 수집
-        const _apiMap = { 'BUDGET': 'budget', 'TRANS': 'transportType', 'ACC': 'accommodationType', 'DENSITY': 'scheduleDensity', 'DEST': 'destination' };
+        const _apiMap = {
+          'BUDGET': 'budget', 'TRANS': 'transportType',
+          'ACC': 'accommodationType', 'DENSITY': 'scheduleDensity', 'DEST': 'destination',
+          'PEOPLE': 'companionCount',
+          'PET': 'hasPet'
+        };
         const _af = _apiMap[field];
         if (_af) _patchFields[_af] = (_af === 'budget') ? newVal.replace(/[^0-9]/g, '') : newVal;
       }
@@ -1078,10 +1088,19 @@ async function sendMsg() {
           row.querySelector('.asc-val').textContent = value;
         }
       }
+      const _allExtraRows = document.querySelectorAll('#sum-extra-rows .asc-row');
+      if (_allExtraRows.length > 0 && window._currentTripId) {
+        const extraArr = [..._allExtraRows].map(r => ({
+          label: r.querySelector('.asc-label')?.textContent || '',
+          value: r.querySelector('.asc-val')?.textContent  || ''
+        }));
+        api.patch(`/api/trips/${window._currentTripId}/input-form`, {
+          extraNotes: JSON.stringify(extraArr)
+        });
+      }
 
 // (4) 모든 태그 제거 후 말풍선에 표시
-      replyText = replyText.replace(/\[UPDATE:[A-Z]+:[^\]]*\]/g, '').trim();
-      replyText = replyText.replace(/\[EXTRA:[^:\]]+:[^\]]+\]/g, '').trim();
+      eplyText = replyText.replace(/\[UPDATE:[A-Za-z가-힣0-9]+:[^\]]*\]/g, '').trim();
       addBubble(replyText, 'bot');
     } else {
       console.error('[Chat] 응답 오류:', res);
@@ -1862,7 +1881,7 @@ function resetPlannerForm() {
 // 검색어를 도/시 셀렉트에 매핑해서 자동 선택
   function _applyDestText(val) {
     const cityToProvMap = {
-      '제주': { prov: '제주', city: '제주시' },
+      '제주도': { prov: '제주', city: '제주시' },
       '강릉':   { prov: '강원', city: '강릉시' },
       '부산':   { prov: '부산', city: '' },
       '전주':   { prov: '전북', city: '전주시' },
@@ -1927,11 +1946,36 @@ function closePrev() { const m = document.getElementById('prevModal'); if(m) m.c
 /* ───────────────────────────────────────────────
  * 23. Chips / MBTI / Location
  * ─────────────────────────────────────────────── */
-function pick(chip, grp) { const p=chip.closest('.chip-row,.chip-grid4'); if(!p) return; p.querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); chip.classList.add('on'); }
+function clearOtherInputs(scope, exceptId) {
+  if (!scope) return;
+  scope.querySelectorAll('.other-input.show').forEach(el => {
+    if (el.id === exceptId) return;
+    el.classList.remove('show');
+    el.value = '';
+  });
+}
+function pick(chip, grp) {
+  const p=chip.closest('.chip-row,.chip-grid4');
+  if(!p) return;
+  const card = chip.closest('.pl-card') || p.parentElement;
+  p.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  chip.classList.add('on');
+  if (!chip.textContent.trim().includes('기타')) clearOtherInputs(card);
+}
 function tog(chip)    { chip.classList.toggle('on'); }
 function togBtn(btn)  { btn.classList.toggle('off'); }
 function pickVis(btn) { btn.closest('div').querySelectorAll('.vis-chip').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
-function showOtherInput(id, chip) { const el=document.getElementById(id); if(!el) return; if(chip.classList.contains('on')) el.classList.add('show'); else{el.classList.remove('show');el.value='';} }
+function showOtherInput(id, chip) {
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(chip.classList.contains('on')) {
+    clearOtherInputs(chip.closest('.pl-card'), id);
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+    el.value='';
+  }
+}
 
 let _mbti = {ei:'E',sn:'S',tf:'T',jp:'P'};
 function selectMbti(btn, dim, val) {

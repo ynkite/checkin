@@ -33,6 +33,7 @@ public class PlanInputFormSaveDto {
     private int hasPet = 0;
     private String scheduleDensity;     // DENSE / RELAXED
     private Long budget;
+    private String extraNotes;          // 기타 특수 조건 등 추가 입력(JSON 배열 문자열)
     private String preferenceSource = "UI_CLICK"; // UI_CLICK / CHATBOT / AUTO_LOADED
-    private Long loadedFromPlanId;      // 이전 취향 불러오기 시 원본 플랜 ID
+    private Long loadedFromPlanId;      // 이전 플랜 불러오기 시 원본 플랜 ID
 }

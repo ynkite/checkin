@@ -100,9 +100,13 @@ public class PlanInputForm {
     @Builder.Default
     private String preferenceSource = "UI_CLICK";
 
-    /** 이전 취향 불러오기 원본 플랜 ID */
+
     @Column(name = "loaded_from_plan_id")
     private Long loadedFromPlanId;
+
+    //AI 챗봇 EXTRA 태그 기타 사항 (JSON 배열 문자열)
+    @Column(name = "extra_notes", columnDefinition = "TEXT")
+    private String extraNotes;  // ← 여기 추가
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -122,7 +126,10 @@ public class PlanInputForm {
             case "transportType"         -> this.transportType = value;
             case "accommodationType"     -> this.accommodationType = value;
             case "scheduleDensity"       -> this.scheduleDensity = value;
-            case "budget"                -> this.budget = Long.parseLong(value);
+            case "budget"         -> this.budget = Long.parseLong(value);
+            case "companionCount" -> this.companionCount = Integer.parseInt(value);
+            case "hasPet"         -> this.hasPet = "동반".equals(value) ? 1 : 0;
+            case "extraNotes"     -> this.extraNotes = value;
         }
         this.preferenceSource = "CHATBOT";
     }
