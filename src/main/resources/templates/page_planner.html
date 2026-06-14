@@ -12,7 +12,7 @@
     /* ─────────────────────────────────────────────────────────
      * 플래너 초기화
      * - GET /api/users/me  → MBTI 기반 일정 밀도 자동선택
-     * - 이전 취향 불러오기 버튼 표시 여부는 서버 응답으로 결정
+     * - 이전 플랜 불러오기 버튼 표시 여부는 서버 응답으로 결정
      * ───────────────────────────────────────────────────────── */
     /* ── SPA fragment 대응: DOMContentLoaded 이미 발화된 경우 즉시 실행 ── */
     async function initPlannerMBTI() {
@@ -84,7 +84,7 @@
     }
 
     /* ─────────────────────────────────────────────────────────
-     * 이전 취향 불러오기
+     * 이전 플랜 불러오기
      * POST /api/trips/{tripId}/load-preference
      * ───────────────────────────────────────────────────────── */
     async function loadPreviousPreference() {
@@ -94,7 +94,7 @@
         });
         const json = await res.json();
         if (!json.success || !json.data) {
-          toast('이전 취향 데이터가 없습니다.');
+          toast('이전 플랜 데이터가 없습니다.');
           return;
         }
         const d = json.data;
@@ -301,9 +301,24 @@
           });
         }
 
-        toast('이전 여행 취향을 불러왔습니다 ✓');
+        const extraContainer = document.getElementById('sum-extra-rows');
+        if (extraContainer && d.extraNotes) {
+          try {
+            const extras = JSON.parse(d.extraNotes);
+            extraContainer.innerHTML = '';
+            extras.forEach(item => {
+              if (!item.label || !item.value) return;
+              const row = document.createElement('div');
+              row.id = 'sum-extra-' + item.label;
+              row.className = 'asc-row';
+              row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div>`;
+              extraContainer.appendChild(row);
+            });
+          } catch(e) { console.warn('extraNotes 파싱 실패', e); }
+        }
+        toast('이전 플랜을 불러왔습니다 ✓');
       } catch (e) {
-        toast('취향 불러오기 중 오류가 발생했습니다.');
+        toast('플랜 불러오기 중 오류가 발생했습니다.');
       }
     }
 
@@ -452,28 +467,48 @@
       if (!tripId) { toast('플랜이 생성되지 않았습니다.'); return; }
 
       // 1. 단일 선택값 수집
-      const trans = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '미입력';
-      const acc = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '미입력';
-      const comp = document.querySelector('#chip-comp .chip.on')?.textContent.trim() || '미입력';
+      const withOtherText = (selector, inputId) => {
+        const label = document.querySelector(selector)?.textContent.trim() || '미입력';
+        if (label !== '기타') return label;
+        const value = document.getElementById(inputId)?.value.trim();
+        return value ? `기타(${value})` : '기타';
+      };
+      const trans = withOtherText('#chip-trans .chip.on', 'other-trans');
+      const acc = withOtherText('#chip-acc .chip.on', 'other-acc');
+      const comp = withOtherText('#chip-comp .chip.on', 'other-comp');
       const pax = parseInt(document.getElementById('s1-pax').value) || 1;
       const budget = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
       const density = document.querySelector('#chip-density .chip.on')?.textContent.trim() || '여유롭게';
 
       // 2. 다중 선택값 (JSON 문자열로 변환)
-      const styles = JSON.stringify([...document.querySelectorAll('#chip-style .chip.on')].map(c => c.textContent.trim()));
+      const mapChipWithOther = (chip, inputId) => {
+        const label = chip.textContent.trim();
+        if (label !== '기타') return label;
+        const value = document.getElementById(inputId)?.value.trim();
+        return value ? `기타(${value})` : '기타';
+      };
+      const styles = JSON.stringify([...document.querySelectorAll('#chip-style .chip.on')].map(c => mapChipWithOther(c, 'other-style')));
       const foodChips = [...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim());
       const allergyText = document.getElementById('other-allergy')?.value.trim();
       if (allergyText) {
         const idx = foodChips.indexOf('알러지 있음');
         if (idx !== -1) foodChips[idx] = `알러지(${allergyText})`;
       }
+      const foodOtherText = document.getElementById('other-food')?.value.trim();
+      if (foodOtherText) {
+        const idx = foodChips.indexOf('기타');
+        if (idx !== -1) foodChips[idx] = `기타(${foodOtherText})`;
+      }
       const food = JSON.stringify(foodChips);
-      const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => c.textContent.trim()));
+      const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => mapChipWithOther(c, 'other-accopts')));
 
       // 3. 특수 조건 처리 (유아, 반려동물)
-      const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => c.textContent.trim());
+      const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => mapChipWithOther(c, 'other-special'));
       const hasInfant = special.some(s => s.includes('유아')) ? 1 : 0;
       const hasPet = special.some(s => s.includes('반려동물')) ? 1 : 0;
+      const extraNotes = special
+              .filter(s => s.startsWith('기타('))
+              .map(s => ({ label: '특수 조건', value: s.slice(3, -1) }));
       const depProv = document.getElementById('dep-prov')?.value || '';
       const depCity  = document.getElementById('dep-city')?.value  || '';
       const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
@@ -491,7 +526,8 @@
         accommodationOptions: accOpts,
         scheduleDensity: density,
         hasInfant: hasInfant,
-        hasPet: hasPet
+        hasPet: hasPet,
+        extraNotes: JSON.stringify(extraNotes)
       };
 
       // 5. 백엔드 취향 저장 API 호출 (POST /api/trips/{tripId}/input-form)
@@ -591,7 +627,7 @@
       <div class="step-panel active" id="sp-1">
 
         <div class="prev-pref">
-          ✦ 이전 여행 플랜 이력이 있으면 <strong style="margin:0 3px">이전 취향 불러오기</strong> 버튼이 표시됩니다 (AUTO_LOADED)
+          ✦ 이전 여행 플랜 이력이 있으면 <strong style="margin:0 3px">이전 플랜 불러오기</strong> 버튼이 표시됩니다 (AUTO_LOADED)
         </div>
 
         <!-- 여행지 & 날짜 -->
@@ -604,7 +640,7 @@
                   🌤️ <span id="weather-btn-label">날씨 미리보기</span>
                 </button>
               </div>
-              <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>
+              <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 플랜 불러오기</button>
             </div>
           </div>
 
@@ -730,7 +766,7 @@
 
         <div class="pl-btns">
           <button class="btn-next" onclick="createPlan()">다음 단계 →</button>
-<!--          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 취향 불러오기</button>-->
+<!--          <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 플랜 불러오기</button>-->
           <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
         </div>
       </div>

@@ -44,6 +44,7 @@ public class PlanDetailResponseDto {
     private final String scheduleDensity;
     private final Long budget;
     private final String preferenceSource;
+    private final String extraNotes;
 
     public PlanDetailResponseDto(TravelPlan plan) {
         this.tripId      = plan.getId();
@@ -71,6 +72,7 @@ public class PlanDetailResponseDto {
             this.scheduleDensity      = f.getScheduleDensity();
             this.budget               = f.getBudget();
             this.preferenceSource     = f.getPreferenceSource();
+            this.extraNotes           = f.getExtraNotes();
         } else {
             this.formId = null;
             this.departure = null; this.transportType = null;
@@ -80,6 +82,7 @@ public class PlanDetailResponseDto {
             this.hasInfant = 0; this.hasPet = 0;
             this.scheduleDensity = null; this.budget = null;
             this.preferenceSource = null;
+            this.extraNotes = null;
         }
     }
 }
