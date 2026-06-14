@@ -1,6 +1,6 @@
-package idusw.sbb.triplinker.domain.plan.controller;
+package idusw.sbb.triplinker.domain.route.controller;
 
-import idusw.sbb.triplinker.domain.plan.service.AiRouteService;
+import idusw.sbb.triplinker.domain.route.service.AiRouteService;
 import idusw.sbb.triplinker.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +33,7 @@ public class AiRouteController {
     }
 
     @PostMapping("/replace")
-    public org.springframework.http.ResponseEntity<?> replaceRoutePlaces(
+    public ResponseEntity<?> replaceRoutePlaces(
             @PathVariable Long tripId,
             @RequestBody java.util.Map<String, java.util.List<java.util.Map<String, String>>> payload) {
 
@@ -45,7 +45,7 @@ public class AiRouteController {
         // 새로 받아온 JSON을 DB에 덮어쓰고 반환
         aiRouteService.saveAiRouteToDb(tripId, updatedRouteJson);
 
-        return org.springframework.http.ResponseEntity.ok(
+        return ResponseEntity.ok(
                 java.util.Map.of("success", true, "data", updatedRouteJson)
         );
     }

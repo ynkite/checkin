@@ -370,17 +370,37 @@
 
     // ── 카카오맵 초기화 ──
     function initKakaoMap() {
-      if (typeof kakao === 'undefined') return;
+      // 카카오맵 스크립트가 아직 안 불려왔으면 0.2초 뒤에 다시 시도
+      if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
+        setTimeout(initKakaoMap, 200);
+        return;
+      }
 
       kakao.maps.load(function() {
         var container = document.getElementById('kakaoMap');
         if (!container) return;
+
+        // 🚨 [가장 핵심 해결책]: 화면이 전환되는 중이라 지도가 숨겨진 상태(크기 0)일 때
+        // 렌더링되면 지도가 백지(회색)가 됩니다.
+        // DOM이 화면에 완전히 펼쳐져서 크기를 가질 때까지 0.15초 단위로 기다렸다가 그립니다.
+        if (container.clientWidth === 0 || container.clientHeight === 0) {
+          setTimeout(initKakaoMap, 150);
+          return;
+        }
+
+        // 지도가 겹쳐서 깨지는 현상 방지
+        container.innerHTML = '';
 
         // 기본 지도 기동 (제주 중심점)
         window._kakaoMap = new kakao.maps.Map(container, {
           center: new kakao.maps.LatLng(33.3846, 126.5535),
           level: 10
         });
+
+        // 보험용 리레이아웃
+        setTimeout(function() {
+          if (window._kakaoMap) window._kakaoMap.relayout();
+        }, 300);
 
         window._kakaoMap.addControl(
                 new kakao.maps.ZoomControl(),
@@ -390,12 +410,12 @@
         window._kakaoOverlays = [];
         window._kakaoPolylines = [];
 
-        // 카카오 로컬 장소 검색 서비스 API 객체 생성
         var ps = new kakao.maps.services.Places();
         var bounds = new kakao.maps.LatLngBounds();
         var searchCount = 0;
         var totalPlaces = MAP_PINS.length;
 
+        // 장소가 0개면 지도 껍데기만 띄우고 종료
         if (totalPlaces === 0) return;
 
         // 각 한글 장소명 명칭으로 실시간 위경도 데이터 따오기
@@ -403,18 +423,16 @@
           ps.keywordSearch(pin.label, function(data, status, pagination) {
             if (status === kakao.maps.services.Status.OK) {
               console.log("✅ 카카오 API 검색 성공: [" + pin.label + "] -> ", data[0]);
-              var place = data[0]; // 가장 정확도 높은 1순위 결과 추출
+              var place = data[0];
 
               var realLat = parseFloat(place.y);
               var realLng = parseFloat(place.x);
 
-              // 🔍 실시간으로 획득한 메타데이터 전역 바인딩
               pin.lat = realLat;
               pin.lng = realLng;
-              pin.placeUrl = place.place_url; // 카카오맵 오피셜 상세페이지 웹 주소
-              pin.category = place.category_name.split(' > ').pop(); // 상세 업종명 요약
+              pin.placeUrl = place.place_url;
+              pin.category = place.category_name.split(' > ').pop();
 
-              // pin.key 대신 pin.label을 넘김 (문자열 따옴표 처리 주의)
               var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
                       + 'style="cursor:pointer; position:relative; width:0; height:0;">'
                       + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
@@ -439,31 +457,19 @@
             } else {
               console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
 
-              // 화면에 "경로 재계산 필요" 바 표시하기
-              var rb = document.getElementById('recalcBar');
-
-              // ✨ [중복 체크 가드 추가] 이미 대기열(_q)에 똑같은 장소명이 있는지 검사
               var isAlreadyInQueue = _q.some(function(item) {
                 return item.place === pin.label;
               });
 
-              // 대기열에 없을 때만 딱 1번만 집어넣기
               if (!isAlreadyInQueue) {
-                console.log(`📌 [큐 등록] ${pin.label} 장소는 대기열에 처음 등록됩니다.`);
                 _q.push({
                   place: pin.label,
                   req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
                 });
-              } else {
-                console.log(`⚠️ [큐 건너뛰기] ${pin.label} 장소는 이미 대기열에 존재하여 중복 등록을 차단합니다.`);
               }
-
-              // 큐 화면 새로고침
               if (typeof renderQ === 'function') renderQ();
-
             }
 
-            // 모든 비동기 장소의 좌표 수집이 완전히 완료되는 순간 구도 재조정 및 라인 렌더링 시작
             searchCount++;
             if (searchCount === totalPlaces) {
               drawLivePolylines();
@@ -939,14 +945,76 @@
       <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
       <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8"></p>
     </div>
+       </div>
+     </div>
+
+
+      <!-- page_map.html 맨 아래 후기 팝업들 옆에 추가 -->
+      <div class="overlay" id="shareModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal" style="width:480px">
+          <div class="modal-hd">
+            <div>
+              <div class="modal-ttl">🔗 플랜 공유</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px">멤버 초대 또는 링크로 공유하세요</div>
+            </div>
+            <button class="modal-x" onclick="document.getElementById('shareModal').classList.remove('open')">✕</button>
+          </div>
+          <div class="modal-bd">
+
+            <!-- 탭 -->
+            <div style="display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:16px">
+              <button class="share-tab on" onclick="setShareTab(this,'members')"
+                      style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--sage-d);border-bottom:3px solid var(--sage)">
+                👥 멤버 초대
+              </button>
+              <button class="share-tab" onclick="setShareTab(this,'post')"
+                      style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text3)">
+                🔗 링크 공유
+              </button>
+            </div>
+
+            <!-- 멤버 초대 탭 -->
+            <div id="share-members">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">
+                이메일로 초대 — 초대받은 멤버는 <strong style="color:var(--sage-d)">편집 권한</strong>을 가집니다
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:16px">
+                <input id="share-email-inp" type="email" placeholder="초대할 이메일 입력"
+                       style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;outline:none">
+                <button onclick="inviteShareMember(this)"
+                        style="padding:9px 16px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;">
+                  초대
+                </button>
+              </div>
+              <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">현재 멤버</div>
+              <div id="share-member-list" style="display:flex;flex-direction:column;gap:10px;min-height:50px">
+                <div style="font-size:13px;color:var(--text3)">불러오는 중...</div>
+              </div>
+            </div>
+
+            <!-- 링크 공유 탭 -->
+            <div id="share-post" style="display:none">
+              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">
+                링크로 공유 — 링크를 받은 사람은 <strong style="color:var(--coral)">읽기 전용</strong>으로만 볼 수 있습니다
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:12px">
+                <input id="share-link-val" readonly
+                       style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:var(--cream);color:var(--text2);outline:none"
+                       placeholder="플랜을 먼저 생성해주세요">
+                <button onclick="copyShareLink()"
+                        style="padding:9px 16px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
+                  복사
+                </button>
+              </div>
+              <div style="background:var(--cream);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text3);line-height:1.7">
+                📌 링크를 받은 사람은 로그인 없이도 지도와 일정을 볼 수 있습니다.<br>
+                📌 수정 권한이 필요하면 왼쪽 <strong>멤버 초대</strong> 탭에서 이메일로 초대하세요.
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
-    </div>
-
-
-
-
-
-
 
     </div>
   </div>

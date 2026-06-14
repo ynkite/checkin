@@ -1,4 +1,4 @@
-package idusw.sbb.triplinker.domain.plan.service;
+package idusw.sbb.triplinker.domain.route.service;
 
 import idusw.sbb.triplinker.domain.plan.entity.PlanInputForm;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;

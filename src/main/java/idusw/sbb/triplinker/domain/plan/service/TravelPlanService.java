@@ -43,4 +43,7 @@ public interface TravelPlanService {
     void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);
 
     Map<String, Object> getLatestPreference(Long userId);
+
+    Map<String, Object> getInputFormMap(Long tripId);
+
 }

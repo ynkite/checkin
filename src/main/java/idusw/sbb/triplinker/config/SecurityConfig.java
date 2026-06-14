@@ -51,7 +51,7 @@ public class SecurityConfig {
                 //2. API URL 주소별 접근 권한 나누기
                 .authorizeHttpRequests(auth -> auth
                         //정적 리소스 (CSS, JS, 이미지 등) 전체 허용
-                        .requestMatchers("/**.css", "/**.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf").permitAll()
+                        .requestMatchers("/**.css", "/**.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf", "/plan/**", "/plan/view/**").permitAll()
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
@@ -75,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()                     // 게시글 목록
                         .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()            // 게시글 상세
                         .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()   // 댓글 조회
+                        .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll() // 공유 링크 읽기 전용
 
                         //관리자 전용 기능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -88,6 +89,7 @@ public class SecurityConfig {
 
                 //소셜 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
+                        .loginPage("/")
                         .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2SuccessHandler)
                 )

@@ -1772,104 +1772,112 @@ async function openShareModal() {
   const modal = document.getElementById('shareModal');
   if (!modal) return;
   modal.classList.add('open');
+  setShareTab(document.querySelector('.share-tab'), 'members');
+  await loadShareMembersData();
+}
 
-  const tripId = window._currentTripId;
+async function loadShareMembersData() {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
   const listEl = document.getElementById('share-member-list');
-  const linkInp = document.getElementById('share-link-val');
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
 
   if (!tripId) {
-    listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
-    if(linkInp) linkInp.value = '';
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">⚠️ 저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+    if(linkEl) linkEl.value = '';
     return;
   }
 
-  // 1. 고유 링크 생성 (현재 도메인 + tripId)
-  if (linkInp) linkInp.value = `${window.location.origin}/plan?id=${tripId}`;
+  if(linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+  if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
 
-  // 2. 참여자 목록 로드
-  await loadShareMembers(tripId);
+  try {
+    const res = await api.get(`/api/trips/${tripId}/members`);
+    if (res.success && res.data && res.data.length > 0) {
+      listEl.innerHTML = res.data.map(m => `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
+        </div>`).join('');
+    } else {
+      const me = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.name : '나';
+      listEl.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">소유자</div>
+        </div>`;
+    }
+  } catch (e) {
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral);">서버 통신 오류가 발생했습니다.</div>';
+  }
 }
 
-// 참여자 목록 API 호출 및 렌더링
-async function loadShareMembers(tripId) {
-  const listEl = document.getElementById('share-member-list');
-  listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
+async function inviteShareMember(btn) {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  const input  = document.getElementById('share-email-inp');
+  if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+  if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
-  const res = await api.get(`/api/trips/${tripId}/members`);
-
-  // 백엔드 API 미연결 시 (내 정보만 가라로 띄우기)
-  if (!res.success || !res.data) {
-    const me = _currentUser ? _currentUser.name : '나';
-    listEl.innerHTML = `
-      <div style="display:flex; align-items:center; justify-content:space-between;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
-          <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
-        </div>
-        <div style="font-size:12px; color:var(--text3);">소유자</div>
-      </div>`;
-    return;
+  // 1. 버튼 상태 잠금 (시각적 피드백 제공)
+  const originalText = btn ? btn.innerHTML : '초대';
+  if (btn) {
+    btn.innerHTML = '⏳ 발송중...';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
   }
 
-  // 실제 데이터 렌더링
-  const members = res.data;
-  listEl.innerHTML = members.map(m => `
-    <div style="display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${m.name[0]}</div>
-        <div style="font-weight:700; font-size:14px; color:#111;">${m.name} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
-      </div>
-      <div style="font-size:12px; color:var(--text3);">${m.role === 'OWNER' ? '소유자' : '참여자'}</div>
-    </div>
-  `).join('');
-}
+  const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
+  let successCount = 0;
+  for (const email of emails) {
+    const res = await api.post(`/api/trips/${tripId}/members`, { email: email, role: 'EDITOR' });
+    if(res.success) successCount++;
+  }
 
-// 이메일로 참여자 초대 API 호출
-async function inviteShareMember() {
-  const tripId = window._currentTripId;
-  const emailInp = document.getElementById('share-email-inp');
-  const email = emailInp.value.trim();
+  // 2. 이메일 발송 완료 후 버튼 원상복구
+  if (btn) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
 
-  if (!tripId) return toast('플랜을 먼저 생성해주세요.');
-  if (!email) return toast('초대할 이메일을 입력해주세요.');
-
-  const res = await api.post(`/api/trips/${tripId}/members`, { email: email });
-  if (res.success) {
-    toast('초대가 완료되었습니다.');
-    emailInp.value = '';
-    loadShareMembers(tripId); // 목록 즉시 새로고침
+  if(successCount > 0) {
+    toast('✅ 초대(편집 권한)가 발송되었습니다.');
+    input.value = '';
+    await loadShareMembersData();
   } else {
-    toast('⚠️ ' + (res.message || '초대에 실패했습니다. 가입된 유저인지 확인해주세요.'));
+    toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
   }
 }
 
-// 링크 클립보드 복사
-function copyShareLink() {
-  const linkInp = document.getElementById('share-link-val');
-  if (!linkInp || !linkInp.value) return;
-
-  navigator.clipboard.writeText(linkInp.value).then(() => {
-    toast('링크가 클립보드에 복사되었습니다 ✓');
-  }).catch(err => {
-    toast('⚠️ 복사 실패: 브라우저 권한을 확인해주세요.');
-  });
+function copyShareLink() { // HTML에 맞게 함수명 수정
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+  if (!linkEl || !linkEl.value) { toast('링크가 없습니다.'); return; }
+  navigator.clipboard.writeText(linkEl.value).then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!')).catch(() => toast('링크 복사에 실패했습니다.'));
 }
 
-// 공유 팝업 탭 전환
 function setShareTab(btn, tab) {
-  document.querySelectorAll('.share-tab').forEach(b => {
+  if(!btn) return;
+  document.querySelectorAll('#shareModal .share-tab').forEach(b => {
     b.classList.remove('on');
     b.style.color = 'var(--text3)';
     b.style.borderBottom = 'none';
+    b.style.fontWeight = '600'; // 비활성화 시 폰트 굵기 조절
   });
   btn.classList.add('on');
   btn.style.color = 'var(--sage-d)';
   btn.style.borderBottom = '3px solid var(--sage)';
+  btn.style.fontWeight = '700'; // 활성화 시 폰트 굵기 조절
 
   document.getElementById('share-members').style.display = tab === 'members' ? 'block' : 'none';
-  document.getElementById('share-post').style.display    = tab === 'post' ? 'block' : 'none';
+  document.getElementById('share-post').style.display = tab === 'post' ? 'block' : 'none';
 }
-
 /* ───────────────────────────────────────────────
  * 22. Hero & 큐레이션 미리보기
  * ─────────────────────────────────────────────── */
@@ -2197,6 +2205,41 @@ window.addEventListener('popstate', e => {
 (async () => {
   // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
   _handleOAuthCallback();
+
+  // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
+  const params = new URLSearchParams(location.search);
+  const sharedId = params.get('id');
+
+  if (sharedId) {
+    window._currentTripId = parseInt(sharedId);
+    sessionStorage.setItem('plannerDraftId', sharedId);
+    sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
+
+    // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
+    if (location.pathname.includes('/plan/view')) {
+      // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle { display: none !important; }
+        [onclick*="openShareModal"] { display: none !important; } /* 공유 버튼 숨김 */
+        #recalcBar, .recalc-bar, [id*="recalc"] { display: none !important; } /* 교체 요청 바 원천 차단 */
+        #queueBox, .queue-box { display: none !important; } /* ✨ 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
+      `;
+      document.head.appendChild(style);
+
+      // 2. 브라우저의 기본 드래그 앤 드롭 동작을 강제로 무력화
+      document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      // 3. 자바스크립트 라이브러리(SortableJS 등)의 드래그 기능 무력화
+      setTimeout(() => {
+        document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
+        toast('👀 읽기 전용 모드로 플랜을 열람합니다.');
+      }, 800);
+    }
+  }
 
   // 기존 토큰으로 자동 로그인 복원
   const savedToken = Token.getAccess();

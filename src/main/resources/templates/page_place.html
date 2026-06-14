@@ -233,43 +233,6 @@
 
 
     <!-- =====================================================
-         플랜 확정 완료 모달  (confirmDoneModal)
-         ===================================================== -->
-    <div class="overlay" id="confirmDoneModal"
-         onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="modal" style="width:460px;border-radius:22px;overflow:hidden">
-            <button class="modal-x"
-                    style="position:absolute;top:14px;right:14px;z-index:10;color:#fff"
-                    onclick="this.closest('.overlay').classList.remove('open')">✕</button>
-            <div style="background:linear-gradient(135deg,var(--sage) 0%,var(--sage-l) 100%);
-                padding:32px 26px 26px;text-align:center;position:relative">
-                <div style="font-size:52px;margin-bottom:12px;
-                  filter:drop-shadow(0 4px 12px rgba(0,0,0,.15))">🎉</div>
-                <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px"
-                     id="cd-title">여행 플랜이 확정되었습니다!</div>
-                <div style="font-size:13px;color:rgba(255,255,255,.85)" id="cd-sub"></div>
-            </div>
-            <div style="padding:20px 22px 0">
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px"
-                     id="cd-stats"></div>
-                <div style="text-align:center;font-size:13px;color:var(--text2);
-                  line-height:1.6;margin-bottom:22px" id="cd-msg">
-                    이제 지도 탭에서 상세 일정을 확인하고<br>가계부에 결제 내역을 기록해보세요!
-                </div>
-                <div style="display:flex;gap:10px;margin-bottom:10px" id="cd-btns">
-                    <button class="btn-f"
-                            style="flex:1;padding:12px;border-radius:var(--r);font-size:13px;font-weight:700"
-                            onclick="this.closest('.overlay').classList.remove('open');
-                         go('mypage');toast('마이페이지로 이동합니다.')">
-                        👤 마이페이지로 가기
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- =====================================================
          여행 플랜 공유 모달  (shareModal)
          ===================================================== -->
     <div class="overlay" id="shareModal"
@@ -289,8 +252,8 @@
 
             <div id="share-members">
                 <div style="display:flex; gap:8px; margin-bottom:24px;">
-                    <input type="email" id="shareEmailInput" placeholder="이메일로 그룹 멤버 초대 (편집 권한)" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
-                    <button onclick="doShareInvite()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
+                    <input type="email" id="share-email-inp" placeholder="이메일로 그룹 멤버 초대 (편집 권한)" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
+                    <button onclick="inviteShareMember()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
                 </div>
 
                 <div id="share-member-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:30px; min-height:60px;">
@@ -821,5 +784,3 @@
             return (str || '').replace(/'/g, "\\'");
         }
     </script>
-
-</div>
