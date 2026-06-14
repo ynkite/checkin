@@ -28,16 +28,16 @@ public class TripShareService {
     private final TravelPlanRepository travelPlanRepository;
     private final UserRepository userRepository;
 
-    // ✨ 구글 SMTP 메일 발송 도구 주입!
+    // 구글 메일 발송 도구 주입
     private final JavaMailSender mailSender;
 
-    // 1. 멤버 목록 조회
+    // 멤버 목록 조회
     public List<TripMemberResponseDto> getMembers(Long tripId) {
-        // 1) 플랜 정보 가져오기 (소유자 확인용)
+        // 플랜 정보 가져오기 (소유자 확인용)
         TravelPlan plan = travelPlanRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
 
-        // 2) 공유 테이블에 저장된 초대 멤버들 불러오기
+        // 공유 테이블에 저장된 초대 멤버들 불러오기
         List<TripMemberResponseDto> members = tripMemberRepository.findByTravelPlanId(tripId).stream()
                 .map(m -> new TripMemberResponseDto(
                         m.getUser().getName(),
@@ -45,7 +45,7 @@ public class TripShareService {
                         m.getRole().name()
                 )).collect(Collectors.toList());
 
-        // 3) 소유자(방장)를 강제로 리스트 맨 앞에 1번으로 추가
+        // 소유자를 강제로 리스트 맨 앞에 1번으로 추가
         members.add(0, new TripMemberResponseDto(
                 plan.getUser().getName(),
                 plan.getUser().getEmail(),
@@ -55,7 +55,7 @@ public class TripShareService {
         return members;
     }
 
-    // 2. 멤버 초대 (편집 권한) 및 실제 이메일 발송
+    // 멤버 초대 및 실제 이메일 발송
     @Transactional
     public void inviteMember(Long tripId, ShareInviteRequestDto dto) {
         TravelPlan plan = travelPlanRepository.findById(tripId)
@@ -82,17 +82,17 @@ public class TripShareService {
 
         tripMemberRepository.save(newMember);
 
-        // ✨ 초대 대상자에게 진짜 이메일 발송 실행!
+        // 초대 대상자에게 진짜 이메일 발송 실행
         sendInviteEmail(invitee.getEmail(), invitee.getName(), plan.getTitle(), tripId);
     }
 
-    // 3. 읽기 전용 공유 링크 생성
+    // 읽기 전용 공유 링크 생성
     public Map<String, String> generateShareLink(Long tripId) {
         String readOnlyLink = "http://localhost:8080/plan/view?id=" + tripId;
         return Map.of("shareLink", readOnlyLink);
     }
 
-    // 💡 내부 헬퍼: 초대 이메일 내용 구성 및 발송 로직
+    // 내부 헬퍼: 초대 이메일 내용 구성 및 발송 로직
     private void sendInviteEmail(String email, String name, String planTitle, Long tripId) {
         String inviteLink = "http://localhost:8080/plan?id=" + tripId; // 클릭 시 들어올 플랜 주소
 

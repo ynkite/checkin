@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class ShareInviteRequestDto {
     private String email;
-    private String role; // "EDITOR"
+    private String role;
 }

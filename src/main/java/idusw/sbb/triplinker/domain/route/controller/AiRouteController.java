@@ -13,7 +13,6 @@ public class AiRouteController {
 
     private final AiRouteService aiRouteService;
 
-    // AiRouteController.java 추가 내용
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Object>> generateRoute(@PathVariable Long tripId) {
         // AI에게 일정을 짜달라고 요청
@@ -38,10 +37,8 @@ public class AiRouteController {
             @RequestBody java.util.Map<String, java.util.List<java.util.Map<String, String>>> payload) {
 
         java.util.List<java.util.Map<String, String>> requests = payload.get("requests");
-
         // 위에서 만든 서비스 메서드 호출
         String updatedRouteJson = aiRouteService.replaceAiRoutePlaces(tripId, requests);
-
         // 새로 받아온 JSON을 DB에 덮어쓰고 반환
         aiRouteService.saveAiRouteToDb(tripId, updatedRouteJson);
 

@@ -93,22 +93,22 @@ public class TravelPlanController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
-    // 1. (이메일 초대) 편집자용 플랜 화면 매핑
+    // 이메일 초대 편집자용 플랜 화면 매핑
     @GetMapping("/plan")
     public String editPlanShare(@RequestParam(value = "id", required = false) Long id, Model model) {
         if (id != null) {
             model.addAttribute("tripId", id);
         }
-        return "index"; // templates 폴더의 index.html 반환
+        return "index";
     }
 
-    // 2. (링크 복사) 읽기 전용 뷰 화면 매핑
+    // 링크 복사 읽기 전용 뷰 화면 매핑
     @GetMapping("/plan/view")
     public String viewPlanShare(@RequestParam(value = "id", required = false) Long id, Model model) {
         if (id != null) {
             model.addAttribute("tripId", id);
         }
-        return "index"; // templates 폴더의 index.html 반환
+        return "index";
     }
 
 }

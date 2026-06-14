@@ -82,15 +82,15 @@ public class AiRouteService {
 
         String aiRouteJson = "[]";
         try {
-            // 1. 메인 Groq API 호출 시도
+            // 메인 Groq API 호출 시도
             aiRouteJson = primaryClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
             System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
             try {
-                // 2. 실패 시 제미나이 폴백 작동
+                // 실패 시 제미나이 폴백 작동
                 aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
-                // 3. 둘 다 터졌을 때 방어용 더미 데이터 반환 가드 (무한 대기 및 500 에러 차단)
+                // 둘 다 터졌을 때 방어용 더미 데이터 반환
                 System.out.println("🚨 모든 LLM이 터져 방어용 데이터를 리턴합니다.");
                 aiRouteJson = String.format("[{\"day\": 1, \"label\": \"📅 Day 1 · %s\", \"budget\": \"₩0\", \"places\": []}]", plan.getDestination());
             }
@@ -121,7 +121,7 @@ public class AiRouteService {
         return plan.getRouteJson();
     }
 
-    // ✨ [추가] AI 부분 교체 전용 로직
+    // AI 부분 교체 전용 로직
     public String replaceAiRoutePlaces(Long tripId, java.util.List<java.util.Map<String, String>> requests) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
