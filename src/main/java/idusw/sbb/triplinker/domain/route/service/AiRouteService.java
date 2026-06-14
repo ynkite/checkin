@@ -87,7 +87,7 @@ public class AiRouteService {
         } catch (Exception e) {
             System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
             try {
-                // 실패 시 제미나이 폴백 작동
+                // 실패 시 제미나이 작동
                 aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
                 // 둘 다 터졌을 때 방어용 더미 데이터 반환
