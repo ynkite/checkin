@@ -1,5 +1,9 @@
 package idusw.sbb.triplinker.domain.plan.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import idusw.sbb.triplinker.domain.expense.entity.Expense;
+import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
 import idusw.sbb.triplinker.domain.plan.entity.PlanInputForm;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
@@ -9,20 +13,30 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 @Service
 @Transactional(readOnly = true)
 public class AiRouteService {
 
     private final TravelPlanRepository planRepository;
+    private final ExpenseRepository expenseRepository;
+    private final ObjectMapper objectMapper;
     private final ChatClient primaryClient;   // Groq
     private final ChatClient fallbackClient;  // Gemini
 
     public AiRouteService(
             TravelPlanRepository planRepository,
+            ExpenseRepository expenseRepository,
+            ObjectMapper objectMapper,
             @Qualifier("openAiChatModel") ChatModel groqModel,
             @Qualifier("googleGenAiChatModel") ChatModel geminiModel) {
 
         this.planRepository = planRepository;
+        this.expenseRepository = expenseRepository;
+        this.objectMapper = objectMapper;
         this.primaryClient  = ChatClient.builder(groqModel).build();
         this.fallbackClient = ChatClient.builder(geminiModel).build();
     }
@@ -92,6 +106,67 @@ public class AiRouteService {
         plan.setRouteJson(json);
         plan.setRouteRecalcNeeded(0);
         planRepository.save(plan);
+
+        parseAndSaveEstimatedExpenses(plan, json);
+    }
+
+    private void parseAndSaveEstimatedExpenses(TravelPlan plan, String json) {
+        // 재생성 시 기존 AI 예상 비용 초기화
+        expenseRepository.deleteEstimatedByPlanId(plan.getId());
+
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return;
+
+            for (JsonNode dayNode : root) {
+                int day = dayNode.path("day").asInt(1);
+                LocalDate expenseDate = plan.getStartDate().plusDays(day - 1);
+                JsonNode places = dayNode.path("places");
+                if (!places.isArray()) continue;
+
+                for (JsonNode place : places) {
+                    if (!place.has("type")) continue; // transit 항목 스킵
+
+                    String category = mapTypeToCategory(place.path("type").asText(""));
+                    if (category == null) continue;
+
+                    long amount = parseAmountFromSub(place.path("sub").asText(""));
+                    if (amount <= 0) continue;
+
+                    expenseRepository.save(Expense.builder()
+                            .plan(plan)
+                            .category(category)
+                            .description(place.path("name").asText(""))
+                            .amount(amount)
+                            .isEstimated(true)
+                            .expenseDate(expenseDate)
+                            .build());
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[Expense] AI 예상 비용 파싱 실패: " + e.getMessage());
+        }
+    }
+
+    private String mapTypeToCategory(String type) {
+        return switch (type.toLowerCase()) {
+            case "stay"  -> "STAY";
+            case "food"  -> "FOOD";
+            case "tour"  -> "TOUR";
+            case "cafe"  -> "CAFE";
+            default      -> null;
+        };
+    }
+
+    // "숙소 · ₩180,000" 또는 "관광지 · ₩2,000×2" 형태에서 금액 추출
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile("₩([\\d,]+)(?:×(\\d+))?");
+
+    private long parseAmountFromSub(String sub) {
+        Matcher m = AMOUNT_PATTERN.matcher(sub);
+        if (!m.find()) return 0L;
+        long amount = Long.parseLong(m.group(1).replace(",", ""));
+        if (m.group(2) != null) amount *= Long.parseLong(m.group(2));
+        return amount;
     }
 
     public Object getRoutesByTripId(Long tripId) {

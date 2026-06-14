@@ -7,16 +7,38 @@ import java.util.List;
 @Getter
 @Builder
 public class BudgetReportResponseDto {
-    private String currentPageCategory;
-    private Long categoryTotalAmount; // 스트림 연산으로 합산 처리할 지출 총액 통계
-    private List<ExpenseDetailDto> expenses;
+
+    private Long   budget;
+    private String tripTitle;
+    private String destination;
+    private String startDate;
+    private String endDate;
+
+    private Long totalEstimatedAmount;
+    private Long totalActualAmount;
+
+    private List<CategoryBudgetDto>  categoryBudgets;
+    private List<ExpenseDetailDto>   estimatedExpenses;
+    private List<ExpenseDetailDto>   actualExpenses;
+
+    @Getter
+    @Builder
+    public static class CategoryBudgetDto {
+        private String category;
+        private Long   estimatedAmount;
+        private Long   actualAmount;
+
+        public void addEstimated(Long amount) { this.estimatedAmount += amount; }
+        public void addActual(Long amount)    { this.actualAmount    += amount; }
+    }
 
     @Getter
     @Builder
     public static class ExpenseDetailDto {
-        private Long id;
-        private Long amount;
-        private String memo;
+        private Long   id;
+        private String category;
+        private String description;
+        private Long   amount;
         private String date;
     }
 }
