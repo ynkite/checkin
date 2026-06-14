@@ -73,6 +73,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                 .hasPet(dto.getHasPet())
                 .scheduleDensity(dto.getScheduleDensity())
                 .budget(dto.getBudget())
+                .extraNotes(dto.getExtraNotes())
                 .preferenceSource(dto.getPreferenceSource() != null ? dto.getPreferenceSource() : "UI_CLICK")
                 .loadedFromPlanId(dto.getLoadedFromPlanId())
                 .build();
@@ -132,6 +133,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                 .hasPet(prev.getHasPet())
                 .scheduleDensity(prev.getScheduleDensity())
                 .budget(prev.getBudget())
+                .extraNotes(prev.getExtraNotes())
                 .preferenceSource("AUTO_LOADED")
                 .loadedFromPlanId(prev.getPlan().getId())
                 .build();
@@ -167,7 +169,14 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             form.updateByChat("accommodationType", fields.get("accommodationType"));
         if (fields.containsKey("scheduleDensity"))
             form.updateByChat("scheduleDensity", fields.get("scheduleDensity"));
+        if (fields.containsKey("companionCount"))
+            form.updateByChat("companionCount", fields.get("companionCount"));
+        if (fields.containsKey("hasPet"))
+            form.updateByChat("hasPet", fields.get("hasPet"));
+        if (fields.containsKey("extraNotes"))
+            form.updateByChat("extraNotes", fields.get("extraNotes"));
         planInputFormRepository.save(form);
+
     }
     @Override
     @Transactional(readOnly = true)
@@ -188,6 +197,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                     m.put("hasPet",               form.getHasPet());
                     m.put("scheduleDensity",      form.getScheduleDensity());
                     m.put("budget",               form.getBudget());
+                    m.put("extraNotes",           form.getExtraNotes());
                     m.put("destination",          form.getPlan().getDestination());
                     m.put("startDate",            form.getPlan().getStartDate() != null ? form.getPlan().getStartDate().toString() : null);
                     m.put("endDate",              form.getPlan().getEndDate()   != null ? form.getPlan().getEndDate().toString()   : null);

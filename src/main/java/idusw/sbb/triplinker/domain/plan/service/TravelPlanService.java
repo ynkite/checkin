@@ -1,5 +1,5 @@
 //    여행 플랜 서비스 인터페이스
-//    플랜 생성, 취향 폼 저장, 상세/목록 조회, 이전 취향 불러오기 기능의 메서드를 정의한다.
+//    플랜 생성, 취향 폼 저장, 상세/목록 조회, 이전 플랜 불러오기 기능의 메서드를 정의한다.
 
 package idusw.sbb.triplinker.domain.plan.service;
 
@@ -34,7 +34,7 @@ public interface TravelPlanService {
     List<PlanDetailResponseDto> getMyPlans(Long userId);
 
     /**
-     * 이전 취향 불러오기 (AUTO_LOADED)
+     * 이전 플랜 불러오기 (AUTO_LOADED)
      * 가장 최근 UI_CLICK / CHATBOT 폼을 복사해서 현재 플랜에 저장
      * @return formId (없으면 null)
      */
