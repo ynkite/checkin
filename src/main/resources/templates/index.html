@@ -14,7 +14,7 @@
 </head>
 <body style="visibility: hidden">
 
-<!-- ===== NAV ===== -->
+<!-- NAV -->
 <nav>
   <div class="nav-logo" onclick="go('main');setNav(document.querySelector('.nav-link'))">
     <img th:src="@{/img/logo.png}" alt="TripLinker" class="logo-img" />
@@ -24,7 +24,29 @@
     <button class="nav-link" onclick="go('community');setNav(this)">👥 커뮤니티</button>
     <button class="nav-link" onclick="go('weather');setNav(this)">🌤️ 날씨</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">✈ 플랜</button>
+    <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
+      <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
+        <span class="nps-num">1</span>
+        <span class="nps-lbl">기본 정보</span>
+      </button>
+      <span class="nps-arrow">›</span>
+      <button class="nps-btn" id="nps-2" onclick="goPlanStep(2)">
+        <span class="nps-num">2</span>
+        <span class="nps-lbl">취향 설정</span>
+      </button>
+      <span class="nps-arrow">›</span>
+      <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
+        <span class="nps-num">3</span>
+        <span class="nps-lbl">AI 챗봇</span>
+      </button>
+      <span class="nps-arrow">›</span>
+      <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
+        <span class="nps-num">4</span>
+        <span class="nps-lbl">경로 생성</span>
+      </button>
+    </div>
   </div>
+
   <div class="nav-btns" id="navBtns">
     <button class="btn-o" id="navLoginBtn" onclick="go('login')">로그인</button>
     <button class="btn-f" id="navSignupBtn" onclick="go('signup')">→ 회원가입</button>

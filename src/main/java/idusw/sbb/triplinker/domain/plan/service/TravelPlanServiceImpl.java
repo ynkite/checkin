@@ -108,7 +108,12 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Transactional
     public Long loadPreviousPreference(Long userId, Long tripId) {
         PlanInputForm prev = planInputFormRepository
-                .findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
+                .findByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
+                .stream()
+                .filter(f -> f.getPlan() != null
+                        && f.getPlan().getRouteJson() != null
+                        && !f.getPlan().getRouteJson().isBlank())
+                .findFirst()
                 .orElse(null);
 
         if (prev == null) return null;
@@ -147,22 +152,16 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     @Transactional
     public void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
-
-        // destination은 TRAVEL_PLANS에, 나머지는 PLAN_INPUT_FORM에 저장
         String destination = fields.get("destination");
         if (destination != null) {
-            // TravelPlan에 destination setter가 없으므로 JPQL로 직접 업데이트
             travelPlanRepository.updateDestination(tripId, destination);
         }
 
-        PlanInputForm form = plan.getForm();
+        PlanInputForm form = planInputFormRepository.findByPlanIdWithLock(tripId).orElse(null);
         if (form == null) return;
 
-        if (fields.containsKey("budget")) {
+        if (fields.containsKey("budget"))
             form.updateByChat("budget", fields.get("budget").replaceAll("[^0-9]", ""));
-        }
         if (fields.containsKey("transportType"))
             form.updateByChat("transportType", fields.get("transportType"));
         if (fields.containsKey("accommodationType"))
@@ -175,14 +174,17 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             form.updateByChat("hasPet", fields.get("hasPet"));
         if (fields.containsKey("extraNotes"))
             form.updateByChat("extraNotes", fields.get("extraNotes"));
-        planInputFormRepository.save(form);
-
     }
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getLatestPreference(Long userId) {
         return planInputFormRepository
-                .findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
+                .findByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
+                .stream()
+                .filter(f -> f.getPlan() != null
+                        && f.getPlan().getRouteJson() != null
+                        && !f.getPlan().getRouteJson().isBlank())
+                .findFirst()
                 .map(form -> {
                     Map<String, Object> m = new HashMap<>();
                     m.put("departure",            form.getDeparture());
