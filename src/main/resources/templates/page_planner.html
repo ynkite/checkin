@@ -64,6 +64,7 @@
         const hasInput = ['dest-prov','s1-date-start','s1-date-end','s1-pax','s1-budget']
                 .some(id => { const el = document.getElementById(id); return el && el.value && el.value.trim() !== ''; });
         if (!hasInput) return;
+        if (typeof markPlanDirty === 'function') markPlanDirty();
         if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
         if (typeof updateNav === 'function') updateNav();
       };
@@ -99,7 +100,6 @@
         }
         const d = json.data;
 
-        // ── 여행지 ──
         if (d.destination) {
           const destProv = document.getElementById('dest-prov');
           if (destProv) {
@@ -126,23 +126,23 @@
             }
           }
         }
-        // ── 출발일 / 귀환일 (오늘 이후인 경우만 채움) ──
+
         const today = new Date().toISOString().split('T')[0];
         if (d.startDate && d.startDate >= today) {
           const startEl = document.getElementById('s1-date-start');
           if (startEl) {
             startEl.value = d.startDate;
-            startEl.dispatchEvent(new Event('change')); // onStartDateChange() 트리거 → endDate min 세팅
+            startEl.dispatchEvent(new Event('change'));
           }
         }
         if (d.endDate && d.endDate >= today) {
           const endEl = document.getElementById('s1-date-end');
           if (endEl) {
             endEl.value = d.endDate;
-            endEl.dispatchEvent(new Event('change')); // onEndDateChange() 트리거
+            endEl.dispatchEvent(new Event('change'));
           }
         }
-        // ── 출발지 ──
+
         if (d.departure) {
           const parts = d.departure.split(' ');
           const depProv = document.getElementById('dep-prov');
@@ -169,42 +169,54 @@
           }
         }
 
-        // ── 이동 수단 chip (단일) ──
         if (d.transportType) {
+          const isOther = d.transportType.startsWith('기타(');
+          const matchLabel = isOther ? '기타' : d.transportType;
           document.querySelectorAll('#chip-trans .chip').forEach(c => {
-            c.classList.toggle('on', c.textContent.trim() === d.transportType);
+            c.classList.toggle('on', c.textContent.trim() === matchLabel);
           });
+          if (isOther) {
+            const el = document.getElementById('other-trans');
+            if (el) { el.value = d.transportType.slice(3, -1); el.classList.add('show'); }
+          }
         }
 
-        // ── 숙소 형태 chip (단일) ──
         if (d.accommodationType) {
+          const isOther = d.accommodationType.startsWith('기타(');
+          const matchLabel = isOther ? '기타' : d.accommodationType;
           document.querySelectorAll('#chip-acc .chip').forEach(c => {
-            c.classList.toggle('on', c.textContent.trim() === d.accommodationType);
+            c.classList.toggle('on', c.textContent.trim() === matchLabel);
           });
+          if (isOther) {
+            const el = document.getElementById('other-acc');
+            if (el) { el.value = d.accommodationType.slice(3, -1); el.classList.add('show'); }
+          }
         }
 
-        // ── 동행자 유형 chip (단일) ──
         if (d.companionType) {
           const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
-          const label = compMap[d.companionType] || d.companionType;
+          const rawLabel = compMap[d.companionType] || d.companionType;
+          const isOther = rawLabel.startsWith('기타');
+          const matchLabel = isOther ? '기타' : rawLabel;
           document.querySelectorAll('#chip-comp .chip').forEach(c => {
-            c.classList.toggle('on', c.textContent.trim() === label);
+            c.classList.toggle('on', c.textContent.trim() === matchLabel);
           });
+          if (isOther && rawLabel.startsWith('기타(')) {
+            const el = document.getElementById('other-comp');
+            if (el) { el.value = rawLabel.slice(3, -1); el.classList.add('show'); }
+          }
         }
 
-        // ── 인원 수 ──
         if (d.companionCount) {
           const paxEl = document.getElementById('s1-pax');
           if (paxEl) paxEl.value = d.companionCount;
         }
 
-        // ── 예산 ──
         if (d.budget) {
           const budgetEl = document.getElementById('s1-budget');
           if (budgetEl) budgetEl.value = Number(d.budget).toLocaleString();
         }
 
-        // ── 여행 스타일 (다중, JSON 배열) ──
         if (d.travelStyles) {
           let styles = [];
           try { styles = JSON.parse(d.travelStyles); } catch(e) {}
@@ -225,7 +237,6 @@
           });
         }
 
-        // ── 식이 정보 (다중, JSON 배열) ──
         if (d.dietaryInfo) {
           let foods = [];
           try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
@@ -241,6 +252,7 @@
                 if (otherEl && f.startsWith('알러지(')) {
                   otherEl.value = f.slice(4, -1);
                   otherEl.classList.add('show');
+                  otherEl.style.display = '';
                 }
               }
               return;
@@ -260,7 +272,6 @@
           });
         }
 
-        // ── 특수 조건 chip (다중) — hasInfant / hasPet ──
         document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
         if (d.hasInfant === 1) {
           const chip = [...document.querySelectorAll('#chip-special .chip')]
@@ -273,14 +284,39 @@
           if (chip) chip.classList.add('on');
         }
 
-        // ── 일정 밀도 chip (단일) ──
+        const otherSpecialEl = document.getElementById('other-special');
+        if (otherSpecialEl) {
+          otherSpecialEl.value = '';
+          otherSpecialEl.classList.remove('show');
+        }
+        if (d.extraNotes) {
+          try {
+            const extras = JSON.parse(d.extraNotes);
+            const hasOlderly = extras.some(e => e.label === '노인 동반');
+            if (hasOlderly) {
+              const chip = [...document.querySelectorAll('#chip-special .chip')]
+                      .find(c => c.textContent.trim() === '노인 동반');
+              if (chip) chip.classList.add('on');
+            }
+            const specialOther = extras.find(e => e.label === '특수 조건');
+            if (specialOther) {
+              const chip = [...document.querySelectorAll('#chip-special .chip')]
+                      .find(c => c.textContent.trim() === '기타');
+              if (chip) chip.classList.add('on');
+              if (otherSpecialEl) {
+                otherSpecialEl.value = specialOther.value;
+                otherSpecialEl.classList.add('show');
+              }
+            }
+          } catch(e) {}
+        }
+
         if (d.scheduleDensity) {
           document.querySelectorAll('#chip-density .chip').forEach(c => {
             c.classList.toggle('on', c.textContent.trim() === d.scheduleDensity);
           });
         }
 
-        // ── 숙소 세부 옵션 (다중, JSON 배열) ──
         if (d.accommodationOptions) {
           let opts = [];
           try { opts = JSON.parse(d.accommodationOptions); } catch(e) {}
@@ -311,11 +347,16 @@
               const row = document.createElement('div');
               row.id = 'sum-extra-' + item.label;
               row.className = 'asc-row';
-              row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div>`;
+              row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();
+                clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
               extraContainer.appendChild(row);
             });
-          } catch(e) { console.warn('extraNotes 파싱 실패', e); }
+            const emptyMsg = document.getElementById('extra-empty-msg');
+            if (emptyMsg && extras.length > 0) emptyMsg.style.display = 'none';
+          } catch(e) {}
         }
+
+        updateSummaryCard();
         toast('이전 플랜을 불러왔습니다 ✓');
       } catch (e) {
         toast('플랜 불러오기 중 오류가 발생했습니다.');
@@ -373,6 +414,14 @@
       }
     }
     function updateSummaryCard() {
+      const _wrap = (str, n = 4) => {
+        if (!str || str === '—') return str;
+        const parts = str.split(', ');
+        if (parts.length <= n) return str;
+        const lines = [];
+        for (let i = 0; i < parts.length; i += n) lines.push(parts.slice(i, i + n).join(', '));
+        return lines.join('\n');
+      };
       const destProv = document.getElementById('dest-prov').value;
       const destCity = document.getElementById('dest-city').value;
       const dest = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
@@ -385,8 +434,17 @@
 
       const pax       = document.getElementById('s1-pax').value;
       const budgetRaw = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
-      const trans     = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '—';
-      const acc       = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '—';
+      const _transRaw = document.querySelector('#chip-trans .chip.on')?.textContent.trim() || '—';
+      const trans = _transRaw === '기타'
+              ? (document.getElementById('other-trans')?.value.trim()
+                      ? `기타(${document.getElementById('other-trans').value.trim()})` : '기타')
+              : _transRaw;
+
+      const _accRaw = document.querySelector('#chip-acc .chip.on')?.textContent.trim() || '—';
+      const acc = _accRaw === '기타'
+              ? (document.getElementById('other-acc')?.value.trim()
+                      ? `기타(${document.getElementById('other-acc').value.trim()})` : '기타')
+              : _accRaw;
 
       const styles = [...document.querySelectorAll('#chip-style .chip.on')].map(c => {
         const t = c.textContent.trim();
@@ -420,8 +478,8 @@
       if (el('sum-budget'))  el('sum-budget').textContent  = budgetRaw ? '₩' + budgetRaw.toLocaleString() : '—';
       if (el('sum-trans'))   el('sum-trans').textContent   = trans;
       if (el('sum-acc'))     el('sum-acc').textContent     = acc;
-      if (el('sum-style'))   el('sum-style').textContent   = styles;
-      if (el('sum-food'))    el('sum-food').textContent    = foodText;
+      if (el('sum-style'))   el('sum-style').textContent   = _wrap(styles);
+      if (el('sum-food'))    el('sum-food').textContent     = _wrap(foodText);
       if (el('sum-density')) el('sum-density').textContent = density;
       if (el('sum-pet')) {
         el('sum-pet').textContent = hasPet ? '동반' : '미동반';
@@ -445,7 +503,7 @@
         if (t === '기타') { const v = document.getElementById('other-accopts')?.value.trim(); return v ? `기타(${v})` : '기타'; }
         return t;
       }).join(', ');
-      if (el('sum-accopts')) el('sum-accopts').textContent = accOptsText2 || '—';
+      if (el('sum-accopts')) el('sum-accopts').textContent = _wrap(accOptsText2 || '—');
 
       // 특수 조건 (반려동물 제외 — 반려동물은 sum-pet에서 별도 표시)
       const specialText2 = [...document.querySelectorAll('#chip-special .chip.on')].map(c => {
@@ -453,7 +511,7 @@
         if (t === '기타') { const v = document.getElementById('other-special')?.value.trim(); return v ? `기타(${v})` : '기타'; }
         return t;
       }).filter(t => !t.includes('반려동물')).join(', ');
-      if (el('sum-special')) el('sum-special').textContent = specialText2 || '—';
+      if (el('sum-special')) el('sum-special').textContent = _wrap(specialText2 || '—');
     }
 
     /* ─────────────────────────────────────────────────────────
@@ -502,16 +560,21 @@
       const food = JSON.stringify(foodChips);
       const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => mapChipWithOther(c, 'other-accopts')));
 
-      // 3. 특수 조건 처리 (유아, 반려동물)
+// 3. 특수 조건 처리 (유아, 반려동물, 노인, 기타)
       const special = [...document.querySelectorAll('#chip-special .chip.on')].map(c => mapChipWithOther(c, 'other-special'));
-      const hasInfant = special.some(s => s.includes('유아')) ? 1 : 0;
-      const hasPet = special.some(s => s.includes('반려동물')) ? 1 : 0;
-      const extraNotes = special
-              .filter(s => s.startsWith('기타('))
-              .map(s => ({ label: '특수 조건', value: s.slice(3, -1) }));
+      const hasInfant  = special.some(s => s.includes('유아')) ? 1 : 0;
+      const hasPet     = special.some(s => s.includes('반려동물')) ? 1 : 0;
+      const hasOlderly = special.some(s => s.includes('노인')) ? 1 : 0;
+      const extraNotes = [
+        ...special
+                .filter(s => s.startsWith('기타('))
+                .map(s => ({ label: '특수 조건', value: s.slice(3, -1) })),
+        ...(hasOlderly ? [{ label: '노인 동반', value: '동반' }] : [])
+      ];
       const depProv = document.getElementById('dep-prov')?.value || '';
       const depCity  = document.getElementById('dep-city')?.value  || '';
       const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+
       // 4. 백엔드로 보낼 Payload 생성
 
       const payload = {
@@ -542,20 +605,30 @@
       }
     }
     function resetAndBackToStep1() {
+      // 경로가 있는 상태에서 초기화 → dirty 처리로 step 4 잠금
+      if (sessionStorage.getItem('ai_generated_route')) {
+        sessionStorage.removeItem('ai_generated_route');
+        window._planDirty = true;
+      }
+
       if (typeof resetPlannerForm === 'function') resetPlannerForm();
-      window._currentTripId = null;
-      sessionStorage.removeItem('plannerDraftId');
+
+      // _currentTripId는 유지 (기존 trip 컨텍스트 보존, 새 플랜 생성 시 덮어써짐)
       sessionStorage.removeItem('plannerDraftStep');
       sessionStorage.removeItem('plannerDraftState');
-      if (typeof updateNav === 'function') updateNav();   // 버튼 → '✈ 플랜' 으로 복귀
+
+      if (typeof updateNav === 'function') updateNav();
+
       for (let i = 1; i <= 3; i++) {
         const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
         if (!sb || !sp) continue;
         sb.classList.remove('active', 'done'); sp.classList.remove('active');
         if (i === 1) { sb.classList.add('active'); sp.classList.add('active'); }
       }
+
       history.pushState({ page: 'planner', step: 1 }, '', location.href);
-      toast('플랜이 초기화되었습니다.');
+      if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
+      toast('폼이 초기화되었습니다. 경로를 다시 생성하려면 1번부터 입력해주세요.');
     }
 
 
@@ -582,6 +655,8 @@
           }
 
           sessionStorage.setItem('ai_generated_route', cleanJson);
+          _planDirty = false;
+          if (typeof _syncStep4State === 'function') _syncStep4State();
           toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
           setTimeout(() => { go('map'); }, 500);
         } else {
@@ -608,7 +683,7 @@
         <div class="planner-ttl">여행 플랜 생성</div>
       </div>
 
-      <div class="step-bar">
+      <div class="step-bar" id="plannerStepBar" style="display:none">
         <div class="step-item active" id="sb-1" onclick="goPlanStep(1)">
           <div class="step-num">1</div>
           <div class="step-lbl">기본 정보</div>
@@ -621,15 +696,14 @@
           <div class="step-num">3</div>
           <div class="step-lbl">AI 챗봇</div>
         </div>
+        <div class="step-item" id="sb-4" onclick="goPlanStep(4)">
+          <div class="step-num">4</div>
+          <div class="step-lbl">경로 생성</div>
+        </div>
       </div>
 
       <!-- ══════════════ STEP 1 ══════════════ -->
       <div class="step-panel active" id="sp-1">
-
-        <div class="prev-pref">
-          ✦ 이전 여행 플랜 이력이 있으면 <strong style="margin:0 3px">이전 플랜 불러오기</strong> 버튼이 표시됩니다 (AUTO_LOADED)
-        </div>
-
         <!-- 여행지 & 날짜 -->
         <div class="pl-card">
           <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -795,9 +869,9 @@
           <div class="chip-row" id="chip-food">
             <button class="chip" onclick="tog(this)">비건</button>
             <button class="chip on" onclick="tog(this)">해산물 선호</button>
-            <button class="chip" onclick="tog(this);showOtherInput('other-allergy',this)">알러지 있음</button>
+            <button class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알러지 있음</button>
             <button class="chip" onclick="tog(this)">무관</button>
-            <button class="chip" onclick="tog(this);showOtherInput('other-food',this)">기타</button>
+            <button class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
           </div>
           <input class="other-input" id="other-allergy" placeholder="알러지를 정확하게 작성해주세요">
           <input class="other-input" id="other-food" placeholder="식이 정보를 직접 입력해주세요">
@@ -858,7 +932,7 @@
               <div style="margin-left:auto;font-size:10px;color:var(--text3)">국내 전용 · 예산 0~1,000만원</div>
             </div>
 
-            <div class="chat-info-bar">입력 폼 데이터가 LLM 초기 컨텍스트로 자동 주입됩니다.</div>
+            <div class="chat-info-bar">예산을 바꾸거나 특정 장소를 빼달라고 자유롭게 말해보세요!</div>
             <div class="chat-msgs" id="chatMsgs"></div>
 
             <div class="chat-inp-area">
@@ -873,67 +947,104 @@
           <div class="asc">
             <div class="asc-hd">
               <div class="asc-ttl">입력 정보 요약</div>
-              <div class="asc-sub">클릭하여 수정 · AI 대화로 실시간 변경</div>
+              <div class="asc-sub">AI 대화로 실시간 변경</div>
+            </div>
+
+            <!--  탭 네비게이션  -->
+            <div class="asc-tabs">
+              <button class="asc-tab on" data-tab="tab-basic" onclick="switchSumTab('tab-basic')">기본 정보</button>
+              <button class="asc-tab" data-tab="tab-pref"  onclick="switchSumTab('tab-pref')">여행 취향</button>
+              <button class="asc-tab" data-tab="tab-extra" onclick="switchSumTab('tab-extra')">추가사항<span id="extra-badge"></span></button>
             </div>
 
             <div id="sum-rows-container">
-              <div class="asc-row">
-                <div class="asc-label">출발지</div>
-                <div class="asc-val" id="sum-dep">—</div>
+
+              <!--  탭 1: 기본 정보  -->
+              <div id="tab-basic" class="asc-tab-panel">
+                <div class="asc-row">
+                  <div class="asc-label">출발지</div>
+                  <div class="asc-val" id="sum-dep">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('dep')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">여행지</div>
+                  <div class="asc-val" id="sum-dest">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('dest')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">날짜</div>
+                  <div class="asc-val" id="sum-date">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('date')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">인원</div>
+                  <div class="asc-val" id="sum-people">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('people')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">동행자</div>
+                  <div class="asc-val" id="sum-comp">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('comp')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">예산</div>
+                  <div class="asc-val" id="sum-budget">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('budget')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">이동</div>
+                  <div class="asc-val" id="sum-trans">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('trans')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">숙소</div>
+                  <div class="asc-val" id="sum-acc">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('acc')">✕</button>
+                </div>
               </div>
-              <div class="asc-row" onclick="toast('여행지 수동 변경')">
-                <div class="asc-label">여행지</div>
-                <div class="asc-val" id="sum-dest">—</div>
+
+              <!--  탭 2: 여행 취향  -->
+              <div id="tab-pref" class="asc-tab-panel" style="display:none">
+                <div class="asc-row">
+                  <div class="asc-label">숙소 옵션</div>
+                  <div class="asc-val" id="sum-accopts">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('accopts')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">여행 스타일</div>
+                  <div class="asc-val" id="sum-style">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('style')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">식이 정보</div>
+                  <div class="asc-val" id="sum-food">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('food')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">일정 밀도</div>
+                  <div class="asc-val" id="sum-density">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('density')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">반려동물</div>
+                  <div class="asc-val missing" id="sum-pet">— 미입력</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('pet')">✕</button>
+                </div>
+                <div class="asc-row">
+                  <div class="asc-label">특수 조건</div>
+                  <div class="asc-val" id="sum-special">—</div>
+                  <button class="asc-del" onclick="event.stopPropagation();clearSumField('special')">✕</button>
+                </div>
               </div>
-              <div class="asc-row" onclick="toast('날짜 수동 변경')">
-                <div class="asc-label">날짜</div>
-                <div class="asc-val" id="sum-date">—</div>
+
+              <!-- ── 탭 3: 추가사항 ── -->
+              <div id="tab-extra" class="asc-tab-panel" style="display:none">
+                <div id="sum-extra-rows"></div>
+                <div class="asc-note" id="extra-empty-msg">
+                  💬 챗봇과 대화하면<br>추가된 내용이 여기에 표시돼요
+                </div>
               </div>
-              <div class="asc-row" onclick="toast('인원 수동 변경')">
-                <div class="asc-label">인원</div>
-                <div class="asc-val" id="sum-people">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">동행자</div>
-                <div class="asc-val" id="sum-comp">—</div>
-              </div>
-              <div class="asc-row" onclick="openSummaryEdit('budget', 'sum-budget', '예산')">
-                <div class="asc-label">예산</div>
-                <div class="asc-val" id="sum-budget">—</div>
-              </div>
-              <div class="asc-row" onclick="toast('이동 수단 수정')">
-                <div class="asc-label">이동</div>
-                <div class="asc-val" id="sum-trans">—</div>
-              </div>
-              <div class="asc-row" onclick="toast('숙소 수정')">
-                <div class="asc-label">숙소</div>
-                <div class="asc-val" id="sum-acc">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">숙소 옵션</div>
-                <div class="asc-val" id="sum-accopts">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">여행 스타일</div>
-                <div class="asc-val" id="sum-style">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">식이 정보</div>
-                <div class="asc-val" id="sum-food">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">일정 밀도</div>
-                <div class="asc-val" id="sum-density">—</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">반려동물</div>
-                <div class="asc-val missing" id="sum-pet">— 미입력</div>
-              </div>
-              <div class="asc-row">
-                <div class="asc-label">특수 조건</div>
-                <div class="asc-val" id="sum-special">—</div>
-              </div>
-              <div id="sum-extra-rows"></div>
+
               <button class="btn-gen" onclick="generateScheduleAndGoMap(this)">
                 ✈ 일정 생성하기 → 경로 상세 수정
               </button>

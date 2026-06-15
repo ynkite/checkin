@@ -1,23 +1,23 @@
-//    여행 취향 폼 DB 조회 기능
-//    PlanInputForm 엔티티에 대한 JPA Repository 인터페이스.
-//    특정 플랜의 취향 폼 단건 조회, 이전 플랜 불러오기(AUTO_LOADED 제외한 가장 최근 폼) 쿼리를 제공한다.
-
 package idusw.sbb.triplinker.domain.plan.repository;
 
-
 import idusw.sbb.triplinker.domain.plan.entity.PlanInputForm;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface PlanInputFormRepository extends JpaRepository<PlanInputForm, Long> {
 
-
-
-    /** planId로 취향 폼 조회 (1:1) */
     Optional<PlanInputForm> findByPlanId(Long planId);
 
-//    이전 플랜 불러오기 — 해당 유저의 가장 최근 폼 조회
-     Optional<PlanInputForm> findTopByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(
-     Long userId, String preferenceSource);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT f FROM PlanInputForm f WHERE f.plan.id = :planId")
+    Optional<PlanInputForm> findByPlanIdWithLock(@Param("planId") Long planId);
+
+    List<PlanInputForm> findByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(
+            Long userId, String preferenceSource);
 }
