@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.ui.Model;
 
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,15 @@ public class TravelPlanController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    @GetMapping("/{tripId}/input-form")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getInputForm(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId) {
+
+        java.util.Map<String, Object> data = travelPlanService.getInputFormMap(tripId);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlanDetailResponseDto>>> getMyPlans(
             @AuthenticationPrincipal CustomUserDetails userDetails) {  // ← 수정
@@ -82,4 +92,23 @@ public class TravelPlanController {
         java.util.Map<String, Object> result = travelPlanService.getLatestPreference(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(result));
     }
+
+    // 이메일 초대 편집자용 플랜 화면 매핑
+    @GetMapping("/plan")
+    public String editPlanShare(@RequestParam(value = "id", required = false) Long id, Model model) {
+        if (id != null) {
+            model.addAttribute("tripId", id);
+        }
+        return "index";
+    }
+
+    // 링크 복사 읽기 전용 뷰 화면 매핑
+    @GetMapping("/plan/view")
+    public String viewPlanShare(@RequestParam(value = "id", required = false) Long id, Model model) {
+        if (id != null) {
+            model.addAttribute("tripId", id);
+        }
+        return "index";
+    }
+
 }

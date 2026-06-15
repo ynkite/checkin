@@ -1984,16 +1984,26 @@ function switchMapTab(tab, btn) {
   if(tab==='map'){mv.style.display='block';bv.style.display='none';}
   else           {mv.style.display='none'; bv.style.display='block';}
 }
+
+
 function toggleMarker(btn, type) {
   btn.classList.toggle('on');
   const isOn = btn.classList.contains('on');
+
   if (window._kakaoOverlays && window._kakaoMap) {
-    window._kakaoOverlays.filter(o => o.type === type).forEach(o => {
+    window._kakaoOverlays.filter(o => {
+      // 💡 핵심: AI가 'tour' 대신 'sight', 'attraction' 등으로 지어낸 경우까지 모두 관광지로 묶어서 강제 필터링!
+      if (type === 'tour') {
+        return ['tour', 'sight', 'attraction', 'place'].includes(o.type);
+      }
+      return o.type === type;
+    }).forEach(o => {
       o.overlay.setMap(isOn ? window._kakaoMap : null);
     });
   } else {
     document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
   }
+
   toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,''));
 }
 
@@ -2008,13 +2018,38 @@ function showReplaceInput(btn, name) {
   document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
   if(!open) area.style.display='block';
 }
-function addQueue(name) {
-  const inp=document.getElementById('rt-'+name), req=inp?inp.value.trim():'';
-  if(!req){toast('교체 요구사항을 입력해주세요.');return;}
-  _q.push({place:name,req});
-  document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
-  if(inp) inp.value='';
-  renderQ(); toast('"'+name+'" 교체 요청이 대기열에 추가됐습니다.');
+function addQueue(key) {
+  const inp = document.getElementById('rt-' + key);
+  const req = inp ? inp.value.trim() : '';
+  if (!req) { toast('교체 요구사항을 입력해주세요.'); return; }
+
+  // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
+  let placeName = key; // fallback
+  if (typeof MAP_PINS !== 'undefined') {
+    const pin = MAP_PINS.find(p => p.key === key);
+    if (pin && pin.label) placeName = pin.label;
+  }
+  if (placeName === key && typeof MAP_ITINERARY !== 'undefined' && Array.isArray(MAP_ITINERARY)) {
+    outer: for (const day of MAP_ITINERARY) {
+      if (!day.places) continue;
+      for (const p of day.places) {
+        if (p.key === key && p.name) { placeName = p.name; break outer; }
+      }
+    }
+  }
+
+  // 중복 등록 방지
+  if (_q.some(q => q.place === placeName)) { toast('이미 교체 요청 목록에 있습니다.'); return; }
+
+  _q.push({ place: placeName, req });
+
+  // 입력창 초기화 및 닫기
+  if (inp) inp.value = '';
+  const area = document.getElementById('ri-' + key);
+  if (area) area.style.display = 'none';
+
+  renderQ();
+  toast('"' + placeName + '" 교체 요청이 대기열에 추가됐습니다.');
 }
 function renderQ() {
   const box=document.getElementById('queueBox'), items=document.getElementById('qItems'), cnt=document.getElementById('qCnt'), btn=document.getElementById('btnAll');
@@ -2028,27 +2063,50 @@ function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
 function openQueue()  { document.getElementById('queueBox').classList.add('has'); document.getElementById('queueBox').style.display='block'; document.getElementById('queueToggle').style.display='none'; }
 
-/** POST /api/ai/schedule/regenerate */
+/** POST /api/trips/{tripId}/routes/replace */
 async function execAllReplace() {
-  if(_q.length===0) return;
-  const btn=document.getElementById('btnAll'), rb=document.getElementById('recalcBar'), cnt=_q.length;
-  if(btn){btn.textContent='⏳ AI 처리 중...';btn.disabled=true;}
-  if(rb)  rb.style.display='flex';
+  const tripId = window._currentTripId;
+  if (!tripId || _q.length === 0) return;
 
-  const feedback = _q.map(q => q.place + ': ' + q.req).join(', ');
-  const res = await api.post('/api/ai/schedule/regenerate', { planId: _budgetSelectedTripId, feedback });
+  const btn = document.getElementById('btnAll');
+  const originalText = btn ? btn.innerHTML : '';
+  const loadingOverlay = document.getElementById('replaceLoadingOverlay');
 
-  if(rb) rb.style.display='none';
-  _q=[]; renderQ();
-  if(btn){btn.textContent='✅ 전체 교체하기';btn.disabled=true;}
-  if(res.success) {
-    toast('🎉 '+cnt+'개 장소 교체 완료!');
-    setTimeout(()=>toast('✅ route_recalc_needed → 0 초기화'),1000);
-    if(_budgetSelectedTripId) {
-      await api.post('/api/trips/'+_budgetSelectedTripId+'/routes/recalculate', {});
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  if (btn) {
+    btn.innerHTML = '⏳ AI 부분 교체 중...';
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
+
+    if (res.success && res.data) {
+      toast('✅ AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+
+      // ✨ 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
+      let cleanJson = res.data;
+      if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
+        cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+      } else if (typeof cleanJson === 'object') {
+        cleanJson = JSON.stringify(cleanJson);
+      }
+      sessionStorage.setItem('ai_generated_route', cleanJson); // 이 코드가 없어서 옛날 마커가 떴던 겁니다!
+
+      // 1.5초 뒤 완벽하게 새로고침
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+
+    } else {
+      toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
-  } else {
-    toast('⚠️ 교체 처리에 실패했습니다.');
+  } catch(e) {
+    toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
   }
 }
 
@@ -2201,15 +2259,122 @@ document.addEventListener('DOMContentLoaded', () => {
  * ─────────────────────────────────────────────── */
 function showConfirmModal()  { document.getElementById('confirmModal').classList.add('open'); }
 function openConfirmDone()   { document.getElementById('confirmDoneModal').classList.add('open'); }
-function openShareModal()    { document.getElementById('shareModal').classList.add('open'); }
 function showPlaceReviews(val){ const sec=document.getElementById('placeReviewsSection'); if(sec) sec.style.display=val?'block':'none'; }
 function setStars(btn, rating){ btn.closest('.star-sel').querySelectorAll('.star-btn').forEach((b,i)=>b.classList.toggle('lit',i<rating)); }
-function setShareTab(btn, tab) {
-  document.querySelectorAll('.share-tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
-  document.getElementById('share-members').style.display = tab==='members'?'block':'none';
-  document.getElementById('share-post').style.display    = tab==='post'?'block':'none';
+
+// ── [여행 플랜 공유 기능] ──
+
+// 공유 모달 열기 및 데이터 로드
+async function openShareModal() {
+  const modal = document.getElementById('shareModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  setShareTab(document.querySelector('.share-tab'), 'members');
+  await loadShareMembersData();
 }
 
+async function loadShareMembersData() {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  const listEl = document.getElementById('share-member-list');
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+
+  if (!tripId) {
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">⚠️ 저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+    if(linkEl) linkEl.value = '';
+    return;
+  }
+
+  if(linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+  if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
+
+  try {
+    const res = await api.get(`/api/trips/${tripId}/members`);
+    if (res.success && res.data && res.data.length > 0) {
+      listEl.innerHTML = res.data.map(m => `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
+        </div>`).join('');
+    } else {
+      const me = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.name : '나';
+      listEl.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">소유자</div>
+        </div>`;
+    }
+  } catch (e) {
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral);">서버 통신 오류가 발생했습니다.</div>';
+  }
+}
+
+async function inviteShareMember(btn) {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  const input  = document.getElementById('share-email-inp');
+  if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+  if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
+
+  // 1. 버튼 상태 잠금 (시각적 피드백 제공)
+  const originalText = btn ? btn.innerHTML : '초대';
+  if (btn) {
+    btn.innerHTML = '⏳ 발송중...';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+  }
+
+  const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
+  let successCount = 0;
+  for (const email of emails) {
+    const res = await api.post(`/api/trips/${tripId}/members`, { email: email, role: 'EDITOR' });
+    if(res.success) successCount++;
+  }
+
+  // 2. 이메일 발송 완료 후 버튼 원상복구
+  if (btn) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+
+  if(successCount > 0) {
+    toast('✅ 초대(편집 권한)가 발송되었습니다.');
+    input.value = '';
+    await loadShareMembersData();
+  } else {
+    toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
+  }
+}
+
+function copyShareLink() { // HTML에 맞게 함수명 수정
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+  if (!linkEl || !linkEl.value) { toast('링크가 없습니다.'); return; }
+  navigator.clipboard.writeText(linkEl.value).then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!')).catch(() => toast('링크 복사에 실패했습니다.'));
+}
+
+function setShareTab(btn, tab) {
+  if(!btn) return;
+  document.querySelectorAll('#shareModal .share-tab').forEach(b => {
+    b.classList.remove('on');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottom = 'none';
+    b.style.fontWeight = '600'; // 비활성화 시 폰트 굵기 조절
+  });
+  btn.classList.add('on');
+  btn.style.color = 'var(--sage-d)';
+  btn.style.borderBottom = '3px solid var(--sage)';
+  btn.style.fontWeight = '700'; // 활성화 시 폰트 굵기 조절
+
+  document.getElementById('share-members').style.display = tab === 'members' ? 'block' : 'none';
+  document.getElementById('share-post').style.display = tab === 'post' ? 'block' : 'none';
+}
 /* ───────────────────────────────────────────────
  * 22. Hero & 큐레이션 미리보기
  * ─────────────────────────────────────────────── */
@@ -2538,7 +2703,12 @@ let _tt = null;
 function toast(msg, dur=2800) {
   const t=document.getElementById('toast'); if(!t) return;
   if(_tt) clearTimeout(_tt);
-  t.textContent=msg; t.classList.add('show');
+
+  t.innerHTML = msg;
+  t.style.color = '#111111';
+  t.style.fontWeight = '600';
+  t.classList.add('show');
+
   _tt=setTimeout(()=>t.classList.remove('show'), dur);
 }
 
@@ -2595,6 +2765,41 @@ window.addEventListener('popstate', e => {
 (async () => {
   // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
   _handleOAuthCallback();
+
+  // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
+  const params = new URLSearchParams(location.search);
+  const sharedId = params.get('id');
+
+  if (sharedId) {
+    window._currentTripId = parseInt(sharedId);
+    sessionStorage.setItem('plannerDraftId', sharedId);
+    sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
+
+    // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
+    if (location.pathname.includes('/plan/view')) {
+      // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle { display: none !important; }
+        [onclick*="openShareModal"] { display: none !important; } /* 공유 버튼 숨김 */
+        #recalcBar, .recalc-bar, [id*="recalc"] { display: none !important; } /* 교체 요청 바 원천 차단 */
+        #queueBox, .queue-box { display: none !important; } /* ✨ 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
+      `;
+      document.head.appendChild(style);
+
+      // 2. 브라우저의 기본 드래그 앤 드롭 동작을 강제로 무력화
+      document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      // 3. 자바스크립트 라이브러리(SortableJS 등)의 드래그 기능 무력화
+      setTimeout(() => {
+        document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
+        toast('👀 읽기 전용 모드로 플랜을 열람합니다.');
+      }, 800);
+    }
+  }
 
   // 기존 토큰으로 자동 로그인 복원
   const savedToken = Token.getAccess();

@@ -15,7 +15,7 @@ public class ChatbotController {
 
     private final ChatbotService chatbotService;
 
-    // API: 챗봇 세션 생성 (POST /api/chat/sessions)
+    // API 챗봇 세션 생성 (POST /api/chat/sessions)
     @PostMapping("/sessions")
     public ResponseEntity<?> createSession(@RequestBody Map<String, Long> request) {
         Long planId = request.get("planId");
@@ -28,7 +28,7 @@ public class ChatbotController {
         ));
     }
 
-    // API: AI 채팅 메시지 전송 (POST /api/chat/message)
+    // API AI 채팅 메시지 전송 (POST /api/chat/message)
     @PostMapping("/message")
     public ResponseEntity<?> sendMessage(@RequestBody ChatMessageDto request) {
 
