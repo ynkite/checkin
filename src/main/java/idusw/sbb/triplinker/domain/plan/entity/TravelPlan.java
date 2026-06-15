@@ -91,7 +91,7 @@ public class TravelPlan {
 
 
     @Column(columnDefinition = "TEXT")
-    private String routeJson; // 여기에 AI가 생성한 JSON 문자열을 통째로 저장합니다.
+    private String routeJson; // 여기에 AI가 생성한 JSON 문자열을 통째로 저장
 
     // ── 비즈니스 메서드 ────────────────────────────
 

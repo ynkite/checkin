@@ -667,6 +667,10 @@
           go('map');
 
           setTimeout(() => {
+            location.reload();
+          }, 500);
+
+          setTimeout(() => {
             if (typeof initMapPage === 'function') {
               initMapPage();
             }

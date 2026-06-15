@@ -93,10 +93,40 @@
             const dow = ['일','월','화','수','목','금','토'];
             const startDow = t.startDate ? `(${dow[new Date(t.startDate).getDay()]})` : '';
             const endDow   = t.endDate   ? `(${dow[new Date(t.endDate).getDay()]})`   : '';
-            // inputForm에서 동행자/이동수단 가져오기
+
+            // inputForm에서 동행자/이동수단 가져오기 (원래 재민님 코드)
             api.get(`/api/trips/${tripId}/input-form`).then(fr => {
-              const pax   = fr.data?.companionCount || t.pax || '';
-              const trans = fr.data?.transportType  || '';
+              let pax   = fr.data?.companionCount || t.pax || '';
+              let trans = fr.data?.transportType  || '';
+
+              // ✨ [안전장치 추가] 백엔드에서 더미 데이터(2, 자차)가 넘어오거나 비어있을 경우,
+              // 사용자가 방금 플래너 1단계에서 폼에 입력했던 '진짜 데이터'를 직접 꺼내서 덮어씌웁니다.
+              try {
+                const draft = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+
+                // 인원수 보정
+                if (!pax || pax === '2' || pax === 2) {
+                  if (draft['s1-pax']) pax = draft['s1-pax'];
+                }
+
+                // 이동수단 보정
+                if (!trans || trans.includes('자차')) {
+                  if (draft['chips_chip-trans']) {
+                    const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
+                    const idx = draft['chips_chip-trans'].findIndex(Boolean);
+                    if (idx !== -1) {
+                      trans = transArr[idx];
+                      if (trans === '기타' && draft['other-trans']) {
+                        trans = `기타(${draft['other-trans']})`;
+                      }
+                    }
+                  }
+                }
+              } catch(e) {
+                console.error("세션 데이터 읽기 오류:", e);
+              }
+
+              // 최종적으로 렌더링
               metaEl.textContent =
                       `${fmt(t.startDate)} ${startDow} – ${fmt(t.endDate)} ${endDow} · ${pax}인 · ${trans}`;
             });
@@ -813,6 +843,150 @@
     }
 
 
+    /* ── 🌤️ 지도 화면 전용: 날씨 팝업 열기 ── */
+    async function openMapWeatherPopup() {
+      const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+
+      // 1. DB에서 현재 플랜의 날짜와 여행지 조회
+      const r = await api.get(`/api/trips/${tripId}`);
+      if (!r.success || !r.data) { toast('플랜 정보를 불러올 수 없습니다.'); return; }
+      const t = r.data;
+      const s = t.startDate;
+      const e = t.endDate;
+      const locStr = t.destination ? t.destination.split(' ')[0] : '서울';
+
+      document.getElementById('mwp-title').textContent = `🌤️ ${locStr} 여행 날씨 예보`;
+
+      const ds = new Date(s);
+      const de = new Date(e);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diffDays = Math.floor((ds - today) / 86400000);
+
+      const noData = document.getElementById('mwp-no-data');
+      const dataWrap = document.getElementById('mwp-data-wrap');
+
+      // 예보 범위를 벗어난 경우
+      if (diffDays > 14 || diffDays < 0) {
+        noData.style.display = 'block';
+        dataWrap.style.display = 'none';
+        document.getElementById('mapWeatherPopup').classList.add('open');
+        return;
+      }
+
+      noData.style.display = 'none';
+      dataWrap.style.display = 'block';
+      document.getElementById('mapWeatherPopup').classList.add('open');
+
+      const grid = document.getElementById('mwp-grid');
+      grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
+
+      try {
+        const res = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
+        const json = await res.json();
+        if (!json.success || !json.data || json.data.length === 0) throw new Error('데이터 없음');
+
+        const allDays = [];
+        for (let d = new Date(ds); d <= de; d.setDate(d.getDate()+1)) allDays.push(new Date(d));
+        const previewDays = allDays.slice(0, 7); // 최대 7일치 표출
+
+        grid.style.gridTemplateColumns = `repeat(${previewDays.length}, 1fr)`;
+
+        const skyIconMap = { 1:'☀️', 3:'⛅', 4:'☁️' };
+        const ptyIconMap = { 1:'🌧️', 2:'🌧️', 3:'🌨️', 4:'🌦️' };
+        const skyDescMap = { 1:'맑음', 3:'구름많음', 4:'흐림' };
+        const ptyDescMap = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
+        const DAYS_KO = ['일','월','화','수','목','금','토'];
+        const fmt = d => `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} (${DAYS_KO[d.getDay()]})`;
+
+        const warnDays = [];
+        const warnDayNums = []; // ✨ 교체를 위한 '몇 일 차(Day N)' 기록
+
+        grid.innerHTML = previewDays.map((d, i) => {
+          const dto = json.data[i] || json.data[json.data.length - 1];
+          const warn = dto.pop >= 40 || dto.pty > 0 || dto.sky >= 3;
+          const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+          const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
+          if (warn) {
+            warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
+            warnDayNums.push(i + 1);
+          }
+          return `<div class="w-item${warn ? ' w-warn' : ''}">
+          <div class="w-icon">${icon}</div>
+          <div class="w-day">${fmt(d)}</div>
+          <div class="w-temp">${dto.tmp}°C</div>
+          <div class="w-desc">${desc}</div>
+        </div>`;
+        }).join('');
+
+        const alertEl = document.getElementById('mwp-alert');
+        const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
+        const replaceBtns = document.getElementById('mwp-ai-replace-btns');
+
+        // 악천후가 감지되었다면 버튼 띄우기
+        if (warnDays.length) {
+          alertEl.style.display = 'block';
+          alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
+
+          replaceWrap.style.display = 'block';
+          replaceBtns.innerHTML = warnDayNums.map(dayNum =>
+                  `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
+                   style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+             ✨ Day ${dayNum} 실내 일정으로 교체
+           </button>`
+          ).join('');
+        } else {
+          alertEl.style.display = 'none';
+          replaceWrap.style.display = 'none';
+        }
+
+      } catch (err) {
+        grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
+      }
+    }
+
+    /* ── ☔ AI 백엔드에 실내 대체 일정 교체 요청 ── */
+    async function requestMapIndoorAlternative(dayNum) {
+      const tripId = window._currentTripId;
+      if (!tripId) return;
+
+      const loadingOverlay = document.getElementById('replaceLoadingOverlay');
+      if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        const textEl = loadingOverlay.querySelector('div');
+        if (textEl) textEl.innerHTML = `☔ Day ${dayNum} 우천 대비<br>실내 맞춤 코스를 생성 중입니다...`;
+      } else {
+        toast(`⏳ Day ${dayNum} 실내 대체 일정 생성 중...`);
+      }
+
+      try {
+        // 위에서 만들었던 백엔드 API 컨트롤러 주소를 호출합니다.
+        const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`);
+
+        if (res.success && res.data) {
+          toast(`✅ Day ${dayNum} 일정이 실내 코스로 업데이트되었습니다!`);
+
+          let cleanJson = res.data;
+          if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
+            cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+          }
+
+          // 데이터 덮어씌우기
+          sessionStorage.setItem('ai_generated_route', cleanJson);
+
+          // 새로고침으로 깔끔하게 맵 다시 그리기
+          setTimeout(() => location.reload(), 1500);
+        } else {
+          toast('⚠️ 대체 일정 생성 실패');
+          if (loadingOverlay) loadingOverlay.style.display = 'none';
+        }
+      } catch (e) {
+        toast('⚠️ 통신 오류가 발생했습니다.');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+      }
+    }
+
+
 
 
 
@@ -859,8 +1033,8 @@
         <!-- Map view -->
         <div id="mapView" style="position:absolute;inset:0">
           <div id="kakaoMap" style="width:100%;height:100%"></div>
-          <div class="weather-alert" style="z-index:20" onclick="toast('AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)')">
-            <div class="wa-ttl">🌧️ 06/16 오후 날씨 악화 예보</div>
+          <div class="weather-alert" style="z-index:20; cursor:pointer;" onclick="openMapWeatherPopup()">
+            <div class="wa-ttl">🌧️ 날씨 악화 예보 감지</div>
             <div class="wa-body">태그 유사도 분석 기반 실내 대체 장소 제안</div>
             <div class="wa-cta">AI 대체 일정 제안 보기 →</div>
           </div>
@@ -1012,6 +1186,66 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+
+      <!-- 지도 화면 전용 날씨 및 대체 일정 팝업 -->
+      <div class="overlay" id="mapWeatherPopup" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
+          <button class="modal-x" onclick="document.getElementById('mapWeatherPopup').classList.remove('open')">✕</button>
+          <div style="padding:4px 0 14px">
+            <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">TRIP WEATHER</div>
+            <div style="font-size:16px;font-weight:800" id="mwp-title">🌤️ 여행 날씨 예보</div>
+          </div>
+
+          <!-- 예보 범위 초과 시 -->
+          <div id="mwp-no-data" style="display:none;text-align:center;padding:30px 16px">
+            <div style="font-size:40px;margin-bottom:14px">🌐</div>
+            <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
+            <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
+              <div style="font-size:13px;color:var(--text2);line-height:1.8">
+                📌 날씨 예보는 <strong>오늘로부터 최대 14일 이내</strong>의 기간만 제공됩니다.<br>
+                📌 너무 먼 미래의 일정은 현재 예보를 확인할 수 없습니다.
+              </div>
+            </div>
+          </div>
+
+          <!-- 날씨 그리드 및 AI 교체 제안 영역 -->
+          <div id="mwp-data-wrap">
+            <div class="weather-grid" id="mwp-grid" style="margin-top:0"></div>
+
+            <!-- 악천후 경고 텍스트 -->
+            <div id="mwp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
+
+            <!-- ✨ [AI 실내 일정 교체 버튼 래퍼] -->
+            <div id="mwp-ai-replace-wrap" style="display:none; margin-top:10px; padding:12px; border-radius:8px; background:var(--sage-pale); border:1px solid var(--sage-l);">
+              <div style="font-size:12px; font-weight:800; color:var(--sage-d); margin-bottom:8px;">🤖 비가 오는 날의 야외 일정을 실내로 바꿀까요?</div>
+              <div id="mwp-ai-replace-btns" style="display:flex; gap:8px; flex-wrap:wrap;">
+                <!-- 버튼 동적 생성 -->
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:var(--text3)">※ 실 서비스 연동 전 모의 데이터입니다</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="confirmDoneModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal" style="width:400px; text-align:center; padding:30px 20px;">
+          <div style="font-size:48px; margin-bottom:15px;">🎉</div>
+          <div style="font-size:18px; font-weight:800; margin-bottom:10px;">여행 일정이 확정되었습니다!</div>
+          <div style="font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:24px;">
+            완성된 여행 플랜은 마이페이지와 가계부에서<br>언제든지 다시 확인할 수 있습니다.
+          </div>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open')"
+                    style="padding:10px 24px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+              지도 더 보기
+            </button>
+            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open'); go('mypage');"
+                    style="padding:10px 24px; background:var(--sage); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+              마이페이지로 이동
+            </button>
           </div>
         </div>
       </div>

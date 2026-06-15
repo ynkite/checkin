@@ -357,6 +357,18 @@ async function tryLogin() {
   w.style.display = 'none';
 
   await _initSession(res.data.accessToken, res.data.refreshToken);
+
+  toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
+
+  // ✨ [핵심 수정] 로그인 전에 저장해 둔 초대장 링크(redirectUrl)가 있는지 체크합니다.
+  const redirectUrl = sessionStorage.getItem('redirectUrl');
+  if (redirectUrl) {
+    sessionStorage.removeItem('redirectUrl'); // 사용했으니 청소
+    window.location.href = redirectUrl;        // 주소창을 초대 링크 상태로 강제 변경하여 새로고침 기동!
+    return; // 메인화면으로 가는 아래 go('main') 코드를 실행하지 않고 여기서 끝냅니다.
+  }
+
+  await _initSession(res.data.accessToken, res.data.refreshToken);
   go('main');
   toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
 
@@ -2302,6 +2314,7 @@ async function execAllReplace() {
     if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
   }
 }
+
 
 /* ───────────────────────────────────────────────
  * 19. 관리자 (Admin Domain)
