@@ -2769,6 +2769,25 @@ window.addEventListener('popstate', e => {
   // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
   const params = new URLSearchParams(location.search);
   const sharedId = params.get('id');
+  const token = Token.getAccess();
+
+  // 🔒 공유 링크(?id=값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
+  if (sharedId && !location.pathname.includes('/plan/view') && !token) {
+    // 1. 현재 가려던 초대 링크 전체 주소를 브라우저 임시 창고에 박아둡니다.
+    sessionStorage.setItem('redirectUrl', location.pathname + location.search);
+    sessionStorage.setItem('currentPage', 'login');
+
+    // 2. 화면 깜빡임과 에러를 막기 위해 0.1초 뒤 시스템이 준비되면 안전하게 로그인창만 점등합니다.
+    setTimeout(() => {
+      if (typeof go === 'function') {
+        go('login');
+        toast('🔒 편집 권한 유저 전용 링크입니다. 로그인 후 연결됩니다.');
+      }
+    }, 100);
+
+    document.body.style.visibility = 'visible';
+    return; // 🚨 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 씹고 여기서 중단시킵니다.
+  }
 
   if (sharedId) {
     window._currentTripId = parseInt(sharedId);
