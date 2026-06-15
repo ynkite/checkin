@@ -207,4 +207,13 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                 })
                 .orElse(null);
     }
+
+    @Override
+    public java.util.Map<String, Object> getInputFormMap(Long tripId) {
+        java.util.Map<String, Object> map = new java.util.HashMap<>();
+        // 프론트엔드에서 터지지 않게 일단 기본값을 던져줍니다.
+        map.put("companionCount", "2");
+        map.put("transportType", "자차");
+        return map;
+    }
 }

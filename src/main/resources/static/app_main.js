@@ -98,6 +98,7 @@ async function refreshAccessToken() {
 const api = {
   get:   (path)         => apiCall(path, { method: 'GET' }),
   post:  (path, body)   => apiCall(path, { method: 'POST',  body: JSON.stringify(body) }),
+  put:   (path, body)   => apiCall(path, { method: 'PUT',   body: JSON.stringify(body) }),
   patch: (path, body)   => apiCall(path, { method: 'PATCH', body: JSON.stringify(body) }),
   del:   (path)         => apiCall(path, { method: 'DELETE' })
 };
@@ -112,6 +113,10 @@ let _userNotifs           = [];     // GET /api/notifications 응답의 data[]
 let _myTrips              = [];     // GET /api/trips 응답의 data[]
 let _chatSessionId        = null;   // POST /api/chat/sessions 응답의 data.sessionId
 let _budgetSelectedTripId = null;
+let _lastExpenseData      = null;
+let _allActualExps        = [];
+let _expensePage          = 1;
+const _EXP_PAGE_SIZE      = 8;
 let _activeTags           = new Set();
 let _loginFailCount       = 0;
 let _loginLockedUntil     = null;
@@ -564,6 +569,7 @@ function selLedger(tripId) {
 
 async function goLedger2() {
   go('ledger');
+  _populateLedgerTripCards();
   document.getElementById('ledger-selector').style.display = 'none';
   document.getElementById('ledger-main').style.display = 'block';
 
@@ -573,17 +579,489 @@ async function goLedger2() {
     el.textContent = (found.title || '여행 플랜') + ' · ' + (found.startDate || '') + ' ~ ' + (found.endDate || '');
   }
 
-  // GET /api/trips/{tripId}/expenses
   if (_budgetSelectedTripId) {
     await _loadExpenses(_budgetSelectedTripId);
   }
 }
 
-/** GET /api/trips/{tripId}/expenses */
+/** ledger-selector 내 여행 카드를 실제 _myTrips 데이터로 채우기 */
+function _populateLedgerTripCards() {
+  const container = document.getElementById('ledger-trip-cards');
+  if (!container) return;
+  if (!_myTrips || !_myTrips.length) {
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">등록된 여행이 없습니다.</div>';
+    return;
+  }
+  container.innerHTML = _myTrips.map(t => {
+    const isSel = (_budgetSelectedTripId === t.tripId);
+    return `
+      <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.tripId})">
+        <div class="ts-thumb">🗺️</div>
+        <div class="ts-info">
+          <div class="ts-name">${t.title || '여행 플랜'}</div>
+          <div class="ts-meta">${t.startDate || ''} ~ ${t.endDate || ''} · ${t.destination || ''}</div>
+        </div>
+        <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '✅ 확정' : '📝 초안'}</div>
+      </div>`;
+  }).join('');
+  // 버튼 onclick을 실제 API 연동 함수로 교체
+  const btn = document.querySelector('#ledger-selector .btn-next');
+  if (btn) btn.onclick = goLedger2;
+}
+
+function _selLedgerCard(el, tripId) {
+  document.querySelectorAll('#ledger-trip-cards .ts-card').forEach(c => c.classList.remove('on'));
+  el.classList.add('on');
+  _budgetSelectedTripId = tripId;
+}
+
+/** page_budget.html의 returnToLedgerSelector() 오버라이드 — 실제 데이터 사용 */
+function returnToLedgerSelector() {
+  document.getElementById('ledger-main').style.display = 'none';
+  document.getElementById('ledger-selector').style.display = 'block';
+  _populateLedgerTripCards();
+}
+
+const _CATEGORY_MAP = {
+  STAY: { label: '숙박', color: 'var(--sage)' },
+  FOOD: { label: '식비', color: 'var(--coral)' },
+  TOUR: { label: '관광', color: '#F5A623' },
+  CAFE: { label: '카페', color: '#22B5C4' }
+};
+
+function _fmtWon(n) {
+  if (!n) return '₩0';
+  return '₩' + Number(n).toLocaleString();
+}
+
+/** GET /api/trips/{tripId}/expenses → 가계부 상세 화면 렌더링 */
 async function _loadExpenses(tripId) {
   const res = await api.get('/api/trips/' + tripId + '/expenses');
   if (!res.success) return;
-  console.log('[Expense] 지출 내역 로드 완료:', res.data);
+  const d = res.data;
+  _lastExpenseData = d;
+
+  const cats       = d.categoryBudgets  || [];
+  const actualExps = d.actualExpenses   || [];
+  const estExps    = d.estimatedExpenses || [];
+
+  // 여행 정보 헤더
+  const metaEl = document.getElementById('ledger-trip-meta');
+  if (metaEl && d.tripTitle) metaEl.textContent = d.tripTitle;
+  const destEl = document.getElementById('ledger-trip-dest');
+  if (destEl) destEl.textContent = [d.destination, (d.startDate && d.endDate) ? d.startDate + ' ~ ' + d.endDate : null].filter(Boolean).join(' · ');
+
+  // 미입력 카테고리 경고
+  const estCatSet  = new Set(estExps.map(e => e.category));
+  const actCatSet  = new Set(actualExps.map(e => e.category));
+  const missingCats = [...estCatSet].filter(c => !actCatSet.has(c));
+  const warnEl     = document.getElementById('ledger-warning');
+  const warnCatsEl = document.getElementById('ledger-warn-cats');
+  if (warnEl) {
+    if (missingCats.length > 0) {
+      const labels = missingCats.map(c => (_CATEGORY_MAP[c] || { label: c }).label);
+      if (warnCatsEl) warnCatsEl.textContent = labels.join(', ');
+      warnEl.style.display = 'block';
+    } else {
+      warnEl.style.display = 'none';
+    }
+  }
+
+  // 요약 카드
+  const totalEl  = document.getElementById('ledger-total');
+  if (totalEl)  totalEl.textContent  = _fmtWon(d.totalEstimatedAmount);
+  const actualEl = document.getElementById('ledger-actual');
+  if (actualEl) actualEl.textContent = _fmtWon(d.totalActualAmount);
+  const statusEl = document.getElementById('ledger-status');
+  if (statusEl) {
+    const actual = d.totalActualAmount || 0;
+    const base   = d.budget || d.totalEstimatedAmount || 0;
+    if (base > 0) {
+      const remain = base - actual;
+      statusEl.textContent = remain >= 0 ? _fmtWon(remain) : '-' + _fmtWon(-remain);
+      statusEl.style.color = remain >= 0 ? 'var(--sage)' : 'var(--coral)';
+    } else {
+      statusEl.textContent = '-';
+    }
+  }
+  // 설정 예산 기준 표시
+  const budgetRefEl = document.getElementById('ledger-budget-ref');
+  if (budgetRefEl) {
+    if (d.budget) {
+      budgetRefEl.textContent = '설정 예산 ' + _fmtWon(d.budget) + ' 기준';
+      budgetRefEl.style.display = 'block';
+    } else {
+      budgetRefEl.style.display = 'none';
+    }
+  }
+
+  // ── 예상 파이 차트 ──
+  const estPieEl = document.getElementById('pie-estimated');
+  const estLegEl = document.getElementById('pie-est-legend');
+  if (cats.length > 0) {
+    const totalEst = d.totalEstimatedAmount || 1;
+    if (estLegEl) {
+      estLegEl.innerHTML = cats.map(c => {
+        const info = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+        const pct  = Math.round((c.estimatedAmount || 0) / totalEst * 100) + '%';
+        return `<div class="pie-leg-item"><div class="pie-dot" style="background:${info.color}"></div>${info.label} ${pct}</div>`;
+      }).join('');
+    }
+    if (estPieEl) {
+      let deg = 0;
+      const segs = cats.map(c => {
+        const info  = _CATEGORY_MAP[c.category] || { color: '#aaa' };
+        const start = deg;
+        deg += ((c.estimatedAmount || 0) / totalEst) * 360;
+        return `${info.color} ${Math.round(start)}deg ${Math.round(deg)}deg`;
+      });
+      estPieEl.style.background = `conic-gradient(${segs.join(', ')})`;
+    }
+  }
+
+  // ── 실제 파이 차트 ──
+  const actPieEl  = document.getElementById('pie-actual');
+  const actLegEl  = document.getElementById('pie-act-legend');
+  const totalAct  = d.totalActualAmount || 0;
+  const actCats   = cats.filter(c => (c.actualAmount || 0) > 0);
+  if (totalAct > 0 && actCats.length > 0) {
+    if (actLegEl) {
+      actLegEl.innerHTML = actCats.map(c => {
+        const info = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+        const pct  = Math.round((c.actualAmount || 0) / totalAct * 100) + '%';
+        return `<div class="pie-leg-item"><div class="pie-dot" style="background:${info.color}"></div>${info.label} ${pct}</div>`;
+      }).join('');
+    }
+    if (actPieEl) {
+      let deg = 0;
+      const segs = actCats.map(c => {
+        const info  = _CATEGORY_MAP[c.category] || { color: '#aaa' };
+        const start = deg;
+        deg += ((c.actualAmount || 0) / totalAct) * 360;
+        return `${info.color} ${Math.round(start)}deg ${Math.round(deg)}deg`;
+      });
+      actPieEl.style.background = `conic-gradient(${segs.join(', ')})`;
+    }
+  } else {
+    if (actPieEl) actPieEl.style.background = '#E5E7EB';
+    if (actLegEl) actLegEl.innerHTML = '<div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>';
+  }
+
+  // ── 카테고리별 비교 막대 (풀 너비 2컬럼 그리드) ──
+  const maxAmt = Math.max(...cats.map(c => Math.max(c.estimatedAmount || 0, c.actualAmount || 0)), 1);
+  const listEl = document.getElementById('ledger-item-list');
+  if (listEl) {
+    if (cats.length === 0) {
+      listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
+    } else {
+      const items = cats.map(c => {
+        const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+        const estW   = Math.round((c.estimatedAmount || 0) / maxAmt * 100) + '%';
+        const actW   = Math.round((c.actualAmount   || 0) / maxAmt * 100) + '%';
+        const noAct  = !actCatSet.has(c.category);   // 0원 입력도 "입력됨"으로 처리
+        const isOver = !noAct && (c.actualAmount > c.estimatedAmount);
+        return `
+          <div style="padding:12px 14px;background:var(--cream2);border-radius:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <div style="width:10px;height:10px;border-radius:50%;background:${info.color};flex-shrink:0"></div>
+                <span class="bi-label" style="margin:0">${info.label}${noAct ? ' <span style="font-size:10px;color:#9CA3AF;font-weight:400">미입력</span>' : ''}</span>
+              </div>
+              <div style="font-size:11px;color:var(--text3);text-align:right">
+                예상 <strong style="color:var(--text2)">${_fmtWon(c.estimatedAmount)}</strong>
+                &nbsp;/&nbsp; 실제 <strong style="color:${isOver ? 'var(--coral)' : 'var(--text)'}">${_fmtWon(c.actualAmount)}</strong>
+              </div>
+            </div>
+            <div class="bi-bar-track" title="예상 지출"><div class="bi-bar-fill" style="width:${estW};background:${info.color};opacity:.35"></div></div>
+            <div class="bi-bar-track" style="margin-top:4px" title="실제 지출"><div class="bi-bar-fill" style="width:${actW};background:${info.color}"></div></div>
+            ${isOver ? `<div style="font-size:11px;color:var(--coral);margin-top:5px;font-weight:600">⚠ ${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
+          </div>`;
+      }).join('');
+      listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${items}</div>`;
+    }
+  }
+
+  // ── 실제 지출 테이블 (페이지네이션) ──
+  _allActualExps = actualExps;
+  _expensePage   = 1;
+  _drawExpensePage();
+
+  // 지출 입력 카테고리 select
+  const selEl = document.getElementById('ledger-exp-cat');
+  if (selEl) {
+    selEl.innerHTML = Object.entries(_CATEGORY_MAP)
+      .map(([k, v]) => `<option value="${k}">${v.label}</option>`)
+      .join('');
+  }
+
+  // 날짜 input — 기본값: 오늘, 범위: 여행 기간
+  const dateEl = document.getElementById('ledger-exp-date');
+  if (dateEl) {
+    if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+    if (d.startDate) dateEl.min = d.startDate;
+    if (d.endDate)   dateEl.max = d.endDate;
+  }
+}
+
+/** 현재 페이지의 지출 내역 테이블 렌더링 */
+function _drawExpensePage() {
+  const actTableEl = document.getElementById('ledger-act-table');
+  if (!actTableEl) return;
+  const total    = _allActualExps.length;
+  const start    = (_expensePage - 1) * _EXP_PAGE_SIZE;
+  const pageExps = _allActualExps.slice(start, start + _EXP_PAGE_SIZE);
+
+  if (total === 0) {
+    actTableEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0">아직 입력된 실제 지출이 없습니다.</div>';
+  } else {
+    actTableEl.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="border-bottom:1.5px solid var(--border2);color:var(--text3)">
+            <th style="text-align:left;padding:6px 4px;font-weight:600">날짜</th>
+            <th style="text-align:left;padding:6px 4px;font-weight:600">카테고리</th>
+            <th style="text-align:left;padding:6px 4px;font-weight:600">메모</th>
+            <th style="text-align:right;padding:6px 4px;font-weight:600">금액</th>
+            <th style="padding:6px 4px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageExps.map(e => {
+            const info = _CATEGORY_MAP[e.category] || { label: e.category, color: '#aaa' };
+            const safeDesc = (e.description || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            return `<tr id="exp-row-${e.id}" style="border-bottom:1px solid var(--border)">
+              <td style="padding:7px 4px;color:var(--text3)">${e.date || '-'}</td>
+              <td style="padding:7px 4px"><span style="background:${info.color}22;color:${info.color};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">${info.label}</span></td>
+              <td style="padding:7px 4px;color:var(--text2)">${e.description || '-'}</td>
+              <td style="padding:7px 4px;text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
+              <td style="padding:7px 4px"><button onclick="startEditExpense(${e.id},'${e.category}',${e.amount},'${e.date || ''}','${safeDesc}')" style="font-size:11px;padding:3px 10px;background:var(--sage-pale);border:1.5px solid var(--sage-l);border-radius:5px;cursor:pointer;color:var(--sage-d);font-weight:600;white-space:nowrap">수정</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+  _drawPagination(total);
+}
+
+function _drawPagination(total) {
+  const el = document.getElementById('ledger-pagination');
+  if (!el) return;
+  const pages = Math.ceil(total / _EXP_PAGE_SIZE);
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  const prev = `<button class="pager-btn" onclick="setExpensePage(${_expensePage - 1})" ${_expensePage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`;
+  const next = `<button class="pager-btn" onclick="setExpensePage(${_expensePage + 1})" ${_expensePage === pages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`;
+  const nums = Array.from({ length: pages }, (_, i) => i + 1)
+    .map(n => `<button class="pager-btn${n === _expensePage ? ' on' : ''}" onclick="setExpensePage(${n})">${n}</button>`)
+    .join('');
+  el.innerHTML = `<div class="ledger-pager">${prev}${nums}${next}</div>`;
+}
+
+function setExpensePage(n) {
+  const pages = Math.ceil(_allActualExps.length / _EXP_PAGE_SIZE);
+  if (n < 1 || n > pages) return;
+  _expensePage = n;
+  _drawExpensePage();
+}
+
+/** POST /api/trips/{tripId}/expenses → 실제 지출 저장 후 새로고침 */
+async function addLedgerExpense() {
+  if (!_budgetSelectedTripId) return;
+  const cat  = document.getElementById('ledger-exp-cat')?.value;
+  const amt  = document.getElementById('ledger-exp-amount')?.value;
+  const date = document.getElementById('ledger-exp-date')?.value || null;
+  const memo = document.getElementById('ledger-exp-memo')?.value?.trim() || null;
+  if (!cat || amt === '' || +amt < 0) { toast('카테고리와 금액을 입력해주세요.'); return; }
+
+  const payload = { category: cat, amount: +amt };
+  if (date) payload.expenseDate = date;
+  if (memo) payload.description = memo;
+
+  const res = await api.post('/api/trips/' + _budgetSelectedTripId + '/expenses', payload);
+  if (!res.success) { toast('저장 실패: ' + res.message); return; }
+
+  document.getElementById('ledger-exp-amount').value = '';
+  const memoEl = document.getElementById('ledger-exp-memo');
+  if (memoEl) memoEl.value = '';
+  toast('지출이 저장됐습니다.');
+  await _loadExpenses(_budgetSelectedTripId);
+}
+
+/** 지출 행을 인라인 수정 모드로 전환 */
+function startEditExpense(id, category, amount, date, desc) {
+  const row = document.getElementById('exp-row-' + id);
+  if (!row) return;
+  const catOptions = Object.entries(_CATEGORY_MAP)
+    .map(([k, v]) => `<option value="${k}"${k === category ? ' selected' : ''}>${v.label}</option>`)
+    .join('');
+  row.innerHTML = `
+    <td><input type="date" id="edit-date-${id}" value="${date}" ${_lastExpenseData&&_lastExpenseData.startDate?'min="'+_lastExpenseData.startDate+'"':''} ${_lastExpenseData&&_lastExpenseData.endDate?'max="'+_lastExpenseData.endDate+'"':''} style="width:108px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
+    <td><select id="edit-cat-${id}" style="font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)">${catOptions}</select></td>
+    <td><input type="text" id="edit-desc-${id}" value="${desc}" placeholder="메모" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
+    <td><input type="number" id="edit-amt-${id}" value="${amount}" min="0" style="width:80px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
+    <td style="white-space:nowrap">
+      <button onclick="saveEditExpense(${id})" style="font-size:10px;padding:2px 7px;background:var(--sage);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:2px">저장</button>
+      <button onclick="_loadExpenses(_budgetSelectedTripId)" style="font-size:10px;padding:2px 7px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2)">취소</button>
+    </td>
+  `;
+}
+
+/** 인라인 수정 저장 → PUT /api/trips/{tripId}/expenses/{expenseId} */
+async function saveEditExpense(id) {
+  const category = document.getElementById('edit-cat-' + id)?.value;
+  const amount   = document.getElementById('edit-amt-' + id)?.value;
+  const date     = document.getElementById('edit-date-' + id)?.value || null;
+  const desc     = document.getElementById('edit-desc-' + id)?.value?.trim() || null;
+  if (!category || amount === '' || +amount < 0) { toast('카테고리와 금액을 확인해주세요.'); return; }
+  const payload = { category, amount: +amount };
+  if (date) payload.expenseDate = date;
+  if (desc) payload.description = desc;
+  const res = await api.put('/api/trips/' + _budgetSelectedTripId + '/expenses/' + id, payload);
+  if (!res.success) { toast('수정 실패: ' + res.message); return; }
+  toast('수정됐습니다.');
+  await _loadExpenses(_budgetSelectedTripId);
+}
+
+/** 가계부 PDF 자동 다운로드 (jsPDF + html2canvas) */
+async function exportBudgetPDF() {
+  if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
+    toast('PDF 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return;
+  }
+  const d = _lastExpenseData;
+
+  const catRows = (d.categoryBudgets || []).map(c => {
+    const info = _CATEGORY_MAP[c.category] || { label: c.category };
+    const diff = (c.actualAmount || 0) - (c.estimatedAmount || 0);
+    return `<tr>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${info.label}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right">${_fmtWon(c.estimatedAmount)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right">${_fmtWon(c.actualAmount)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right;color:${diff > 0 ? '#EF4444' : '#10B981'}">${diff > 0 ? '+' + _fmtWon(diff) : diff < 0 ? '-' + _fmtWon(-diff) : '-'}</td>
+    </tr>`;
+  }).join('');
+
+  const actRows = (d.actualExpenses || []).length === 0
+    ? '<tr><td colspan="4" style="padding:10px;text-align:center;color:#9CA3AF">실제 지출 내역 없음</td></tr>'
+    : (d.actualExpenses || []).map(e => {
+        const info = _CATEGORY_MAP[e.category] || { label: e.category };
+        return `<tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${e.date || '-'}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${info.label}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${e.description || '-'}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
+        </tr>`;
+      }).join('');
+
+  const pdfDiv = document.getElementById('budget-pdf-content');
+  if (!pdfDiv) return;
+
+  const thStyle = 'padding:8px 10px;text-align:left;background:#F9FAFB;font-weight:700;border-bottom:2px solid #E5E7EB';
+  pdfDiv.innerHTML = `
+    <h1 style="font-size:22px;font-weight:900;margin:0 0 4px">가계부 리포트</h1>
+    <p style="color:#6B7280;margin:0 0 6px;font-size:13px">${d.tripTitle || ''}${d.destination ? ' · ' + d.destination : ''}${d.startDate ? ' · ' + d.startDate + ' ~ ' + d.endDate : ''}</p>
+    ${d.budget ? `<p style="color:#6B7280;margin:0 0 20px;font-size:12px">설정 예산: ${_fmtWon(d.budget)}</p>` : '<div style="margin-bottom:20px"></div>'}
+
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid #E5E7EB;padding-bottom:6px">카테고리별 예산 비교</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:28px">
+      <thead><tr>
+        <th style="${thStyle}">카테고리</th>
+        <th style="${thStyle};text-align:right">예상 금액</th>
+        <th style="${thStyle};text-align:right">실제 지출</th>
+        <th style="${thStyle};text-align:right">차이</th>
+      </tr></thead>
+      <tbody>${catRows}</tbody>
+      <tfoot><tr style="font-weight:900;background:#F9FAFB">
+        <td style="padding:8px 10px;border-top:2px solid #E5E7EB">합계</td>
+        <td style="padding:8px 10px;border-top:2px solid #E5E7EB;text-align:right">${_fmtWon(d.totalEstimatedAmount)}</td>
+        <td style="padding:8px 10px;border-top:2px solid #E5E7EB;text-align:right">${_fmtWon(d.totalActualAmount)}</td>
+        <td style="padding:8px 10px;border-top:2px solid #E5E7EB"></td>
+      </tr></tfoot>
+    </table>
+
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid #E5E7EB;padding-bottom:6px">실제 지출 상세 내역</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr>
+        <th style="${thStyle}">날짜</th>
+        <th style="${thStyle}">카테고리</th>
+        <th style="${thStyle}">메모</th>
+        <th style="${thStyle};text-align:right">금액</th>
+      </tr></thead>
+      <tbody>${actRows}</tbody>
+    </table>`;
+
+  toast('PDF 생성 중...');
+  try {
+    const canvas   = await html2canvas(pdfDiv, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+    const { jsPDF } = window.jspdf;
+    const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageW    = doc.internal.pageSize.getWidth();
+    const pageH    = doc.internal.pageSize.getHeight();
+    const margin   = 10;
+    const imgW     = pageW - margin * 2;
+    const ratio    = canvas.width / imgW;
+    const pageImgH = (pageH - margin * 2) * ratio;
+
+    let srcY = 0;
+    while (srcY < canvas.height) {
+      if (srcY > 0) doc.addPage();
+      const sliceH = Math.min(pageImgH, canvas.height - srcY);
+      const slice  = document.createElement('canvas');
+      slice.width  = canvas.width;
+      slice.height = sliceH;
+      slice.getContext('2d').drawImage(canvas, 0, srcY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+      doc.addImage(slice.toDataURL('image/png'), 'PNG', margin, margin, imgW, sliceH / ratio);
+      srcY += pageImgH;
+    }
+
+    doc.save('가계부_' + (d.tripTitle || 'report') + '.pdf');
+    toast('PDF 다운로드 완료!');
+  } catch (e) {
+    console.error(e);
+    toast('PDF 생성 실패: ' + e.message);
+  }
+}
+
+/** 가계부 CSV 다운로드 (Excel에서 열기 가능, 개별 지출 내역 포함) */
+function exportBudgetCSV() {
+  if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  const d = _lastExpenseData;
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+
+  const rows = [];
+  rows.push([q('가계부 리포트')]);
+  if (d.tripTitle)   rows.push([q(d.tripTitle)]);
+  if (d.destination) rows.push([q('목적지'), q(d.destination)]);
+  if (d.startDate)   rows.push([q('기간'), q(d.startDate + ' ~ ' + d.endDate)]);
+  if (d.budget)      rows.push([q('설정 예산'), q(d.budget)]);
+  rows.push([]);
+
+  rows.push([q('[카테고리별 비교]')]);
+  rows.push([q('카테고리'), q('예상 금액(원)'), q('실제 지출(원)'), q('차이(원)')]);
+  (d.categoryBudgets || []).forEach(c => {
+    const info = _CATEGORY_MAP[c.category] || { label: c.category };
+    rows.push([q(info.label), q(c.estimatedAmount || 0), q(c.actualAmount || 0), q((c.actualAmount || 0) - (c.estimatedAmount || 0))]);
+  });
+  rows.push([q('합계'), q(d.totalEstimatedAmount || 0), q(d.totalActualAmount || 0), q((d.totalActualAmount || 0) - (d.totalEstimatedAmount || 0))]);
+  rows.push([]);
+
+  rows.push([q('[실제 지출 상세 내역]')]);
+  rows.push([q('날짜'), q('카테고리'), q('메모'), q('금액(원)')]);
+  if ((d.actualExpenses || []).length === 0) {
+    rows.push([q('(내역 없음)')]);
+  } else {
+    (d.actualExpenses || []).forEach(e => {
+      const info = _CATEGORY_MAP[e.category] || { label: e.category };
+      rows.push([q(e.date || ''), q(info.label), q(e.description || ''), q(e.amount || 0)]);
+    });
+  }
+
+  const csv  = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = '가계부_' + (d.tripTitle || 'report') + '.csv';
+  a.click();
+  toast('Excel(CSV) 다운로드 시작...');
 }
 
 function returnToMyLedger() {
@@ -1699,16 +2177,26 @@ function switchMapTab(tab, btn) {
   if(tab==='map'){mv.style.display='block';bv.style.display='none';}
   else           {mv.style.display='none'; bv.style.display='block';}
 }
+
+
 function toggleMarker(btn, type) {
   btn.classList.toggle('on');
   const isOn = btn.classList.contains('on');
+
   if (window._kakaoOverlays && window._kakaoMap) {
-    window._kakaoOverlays.filter(o => o.type === type).forEach(o => {
+    window._kakaoOverlays.filter(o => {
+      // 💡 핵심: AI가 'tour' 대신 'sight', 'attraction' 등으로 지어낸 경우까지 모두 관광지로 묶어서 강제 필터링!
+      if (type === 'tour') {
+        return ['tour', 'sight', 'attraction', 'place'].includes(o.type);
+      }
+      return o.type === type;
+    }).forEach(o => {
       o.overlay.setMap(isOn ? window._kakaoMap : null);
     });
   } else {
     document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
   }
+
   toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,''));
 }
 
@@ -1723,13 +2211,38 @@ function showReplaceInput(btn, name) {
   document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
   if(!open) area.style.display='block';
 }
-function addQueue(name) {
-  const inp=document.getElementById('rt-'+name), req=inp?inp.value.trim():'';
-  if(!req){toast('교체 요구사항을 입력해주세요.');return;}
-  _q.push({place:name,req});
-  document.querySelectorAll('.replace-area').forEach(a => a.style.display='none');
-  if(inp) inp.value='';
-  renderQ(); toast('"'+name+'" 교체 요청이 대기열에 추가됐습니다.');
+function addQueue(key) {
+  const inp = document.getElementById('rt-' + key);
+  const req = inp ? inp.value.trim() : '';
+  if (!req) { toast('교체 요구사항을 입력해주세요.'); return; }
+
+  // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
+  let placeName = key; // fallback
+  if (typeof MAP_PINS !== 'undefined') {
+    const pin = MAP_PINS.find(p => p.key === key);
+    if (pin && pin.label) placeName = pin.label;
+  }
+  if (placeName === key && typeof MAP_ITINERARY !== 'undefined' && Array.isArray(MAP_ITINERARY)) {
+    outer: for (const day of MAP_ITINERARY) {
+      if (!day.places) continue;
+      for (const p of day.places) {
+        if (p.key === key && p.name) { placeName = p.name; break outer; }
+      }
+    }
+  }
+
+  // 중복 등록 방지
+  if (_q.some(q => q.place === placeName)) { toast('이미 교체 요청 목록에 있습니다.'); return; }
+
+  _q.push({ place: placeName, req });
+
+  // 입력창 초기화 및 닫기
+  if (inp) inp.value = '';
+  const area = document.getElementById('ri-' + key);
+  if (area) area.style.display = 'none';
+
+  renderQ();
+  toast('"' + placeName + '" 교체 요청이 대기열에 추가됐습니다.');
 }
 function renderQ() {
   const box=document.getElementById('queueBox'), items=document.getElementById('qItems'), cnt=document.getElementById('qCnt'), btn=document.getElementById('btnAll');
@@ -1743,27 +2256,50 @@ function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
 function openQueue()  { document.getElementById('queueBox').classList.add('has'); document.getElementById('queueBox').style.display='block'; document.getElementById('queueToggle').style.display='none'; }
 
-/** POST /api/ai/schedule/regenerate */
+/** POST /api/trips/{tripId}/routes/replace */
 async function execAllReplace() {
-  if(_q.length===0) return;
-  const btn=document.getElementById('btnAll'), rb=document.getElementById('recalcBar'), cnt=_q.length;
-  if(btn){btn.textContent='⏳ AI 처리 중...';btn.disabled=true;}
-  if(rb)  rb.style.display='flex';
+  const tripId = window._currentTripId;
+  if (!tripId || _q.length === 0) return;
 
-  const feedback = _q.map(q => q.place + ': ' + q.req).join(', ');
-  const res = await api.post('/api/ai/schedule/regenerate', { planId: _budgetSelectedTripId, feedback });
+  const btn = document.getElementById('btnAll');
+  const originalText = btn ? btn.innerHTML : '';
+  const loadingOverlay = document.getElementById('replaceLoadingOverlay');
 
-  if(rb) rb.style.display='none';
-  _q=[]; renderQ();
-  if(btn){btn.textContent='✅ 전체 교체하기';btn.disabled=true;}
-  if(res.success) {
-    toast('🎉 '+cnt+'개 장소 교체 완료!');
-    setTimeout(()=>toast('✅ route_recalc_needed → 0 초기화'),1000);
-    if(_budgetSelectedTripId) {
-      await api.post('/api/trips/'+_budgetSelectedTripId+'/routes/recalculate', {});
+  if (loadingOverlay) loadingOverlay.style.display = 'flex';
+  if (btn) {
+    btn.innerHTML = '⏳ AI 부분 교체 중...';
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
+
+    if (res.success && res.data) {
+      toast('✅ AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+
+      // ✨ 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
+      let cleanJson = res.data;
+      if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
+        cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+      } else if (typeof cleanJson === 'object') {
+        cleanJson = JSON.stringify(cleanJson);
+      }
+      sessionStorage.setItem('ai_generated_route', cleanJson); // 이 코드가 없어서 옛날 마커가 떴던 겁니다!
+
+      // 1.5초 뒤 완벽하게 새로고침
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+
+    } else {
+      toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
-  } else {
-    toast('⚠️ 교체 처리에 실패했습니다.');
+  } catch(e) {
+    toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+    if (loadingOverlay) loadingOverlay.style.display = 'none';
+    if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
   }
 }
 
@@ -1916,15 +2452,122 @@ document.addEventListener('DOMContentLoaded', () => {
  * ─────────────────────────────────────────────── */
 function showConfirmModal()  { document.getElementById('confirmModal').classList.add('open'); }
 function openConfirmDone()   { document.getElementById('confirmDoneModal').classList.add('open'); }
-function openShareModal()    { document.getElementById('shareModal').classList.add('open'); }
 function showPlaceReviews(val){ const sec=document.getElementById('placeReviewsSection'); if(sec) sec.style.display=val?'block':'none'; }
 function setStars(btn, rating){ btn.closest('.star-sel').querySelectorAll('.star-btn').forEach((b,i)=>b.classList.toggle('lit',i<rating)); }
-function setShareTab(btn, tab) {
-  document.querySelectorAll('.share-tab').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
-  document.getElementById('share-members').style.display = tab==='members'?'block':'none';
-  document.getElementById('share-post').style.display    = tab==='post'?'block':'none';
+
+// ── [여행 플랜 공유 기능] ──
+
+// 공유 모달 열기 및 데이터 로드
+async function openShareModal() {
+  const modal = document.getElementById('shareModal');
+  if (!modal) return;
+  modal.classList.add('open');
+  setShareTab(document.querySelector('.share-tab'), 'members');
+  await loadShareMembersData();
 }
 
+async function loadShareMembersData() {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  const listEl = document.getElementById('share-member-list');
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+
+  if (!tripId) {
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">⚠️ 저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+    if(linkEl) linkEl.value = '';
+    return;
+  }
+
+  if(linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+  if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
+
+  try {
+    const res = await api.get(`/api/trips/${tripId}/members`);
+    if (res.success && res.data && res.data.length > 0) {
+      listEl.innerHTML = res.data.map(m => `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
+        </div>`).join('');
+    } else {
+      const me = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.name : '나';
+      listEl.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+          </div>
+          <div style="font-size:12px; color:var(--text3);">소유자</div>
+        </div>`;
+    }
+  } catch (e) {
+    if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral);">서버 통신 오류가 발생했습니다.</div>';
+  }
+}
+
+async function inviteShareMember(btn) {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  const input  = document.getElementById('share-email-inp');
+  if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+  if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
+
+  // 1. 버튼 상태 잠금 (시각적 피드백 제공)
+  const originalText = btn ? btn.innerHTML : '초대';
+  if (btn) {
+    btn.innerHTML = '⏳ 발송중...';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+    btn.style.cursor = 'not-allowed';
+  }
+
+  const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
+  let successCount = 0;
+  for (const email of emails) {
+    const res = await api.post(`/api/trips/${tripId}/members`, { email: email, role: 'EDITOR' });
+    if(res.success) successCount++;
+  }
+
+  // 2. 이메일 발송 완료 후 버튼 원상복구
+  if (btn) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+
+  if(successCount > 0) {
+    toast('✅ 초대(편집 권한)가 발송되었습니다.');
+    input.value = '';
+    await loadShareMembersData();
+  } else {
+    toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
+  }
+}
+
+function copyShareLink() { // HTML에 맞게 함수명 수정
+  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+  if (!linkEl || !linkEl.value) { toast('링크가 없습니다.'); return; }
+  navigator.clipboard.writeText(linkEl.value).then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!')).catch(() => toast('링크 복사에 실패했습니다.'));
+}
+
+function setShareTab(btn, tab) {
+  if(!btn) return;
+  document.querySelectorAll('#shareModal .share-tab').forEach(b => {
+    b.classList.remove('on');
+    b.style.color = 'var(--text3)';
+    b.style.borderBottom = 'none';
+    b.style.fontWeight = '600'; // 비활성화 시 폰트 굵기 조절
+  });
+  btn.classList.add('on');
+  btn.style.color = 'var(--sage-d)';
+  btn.style.borderBottom = '3px solid var(--sage)';
+  btn.style.fontWeight = '700'; // 활성화 시 폰트 굵기 조절
+
+  document.getElementById('share-members').style.display = tab === 'members' ? 'block' : 'none';
+  document.getElementById('share-post').style.display = tab === 'post' ? 'block' : 'none';
+}
 /* ───────────────────────────────────────────────
  * 22. Hero & 큐레이션 미리보기
  * ─────────────────────────────────────────────── */
@@ -2116,14 +2759,51 @@ function resetPlannerForm() {
   }
 
 const _md = {
-  jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}]},
-  seorak:   {tags:['가을 특선','10월 단풍'],ttl:'🍁 설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'🍜',name:'속초 닭강정 명가',r:'4.5'}]},
-  gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'🌸 경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'🍞',name:'황남빵 카페',r:'4.7'}]},
-  busan:    {tags:['여름 특선','서핑 시즌'],ttl:'🏄 부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'🐟',name:'자갈치시장 회',r:'4.6'}]},
-  gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'☕ 강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'☕',name:'테라로사 강릉본점',r:'4.9'}]},
-  jeonju:   {tags:['가성비 TOP','한식'],ttl:'🍚 전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'🍚',name:'비빔밥 명가',r:'4.8'}]},
-  namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'🏝 남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'🐙',name:'바다낙지 식당',r:'4.5'}]}
+  jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
+    coords:[{lat:33.5097,lng:126.4927},{lat:33.3946,lng:126.2390},{lat:33.2450,lng:126.4122},{lat:33.3617,lng:126.5292},{lat:33.4583,lng:126.9425},{lat:33.5008,lng:126.9519}]},
+  seorak:   {tags:['가을 특선','10월 단풍'],ttl:'🍁 설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'🍜',name:'속초 닭강정 명가',r:'4.5'}],
+    coords:[{lat:38.2070,lng:128.5918},{lat:38.2100,lng:128.5927},{lat:38.1190,lng:128.4654},{lat:38.1600,lng:128.4750},{lat:38.2070,lng:128.5918}]},
+  gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'🌸 경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'🍞',name:'황남빵 카페',r:'4.7'}],
+    coords:[{lat:35.8394,lng:129.2117},{lat:35.8347,lng:129.2198},{lat:35.8344,lng:129.2253},{lat:35.7896,lng:129.3317},{lat:35.7947,lng:129.3473}]},
+  busan:    {tags:['여름 특선','서핑 시즌'],ttl:'🏄 부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'🐟',name:'자갈치시장 회',r:'4.6'}],
+    coords:[{lat:35.1628,lng:129.1603},{lat:35.1533,lng:129.1186},{lat:35.0979,lng:129.0378},{lat:35.0590,lng:129.0850},{lat:35.0970,lng:129.0127}]},
+  gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'☕ 강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'☕',name:'테라로사 강릉본점',r:'4.9'}],
+    coords:[{lat:37.7958,lng:128.9004},{lat:37.7746,lng:128.9415},{lat:37.6847,lng:129.0527},{lat:37.7654,lng:128.9083},{lat:37.7755,lng:128.8745}]},
+  jeonju:   {tags:['가성비 TOP','한식'],ttl:'🍚 전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'🍚',name:'비빔밥 명가',r:'4.8'}],
+    coords:[{lat:35.8196,lng:127.1474},{lat:35.8196,lng:127.1504},{lat:35.8175,lng:127.1523},{lat:35.8162,lng:127.1551},{lat:35.8122,lng:127.1529}]},
+  namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'🏝 남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'🐙',name:'바다낙지 식당',r:'4.5'}],
+    coords:[{lat:34.9035,lng:127.9013},{lat:34.8369,lng:127.9211},{lat:34.7738,lng:127.9076},{lat:34.7990,lng:128.0448},{lat:34.8768,lng:128.0272}]}
 };
+
+let _prevMap = null;
+
+function initPreviewMap(coords) {
+  if (typeof kakao === 'undefined' || !coords || coords.length < 2) return;
+  kakao.maps.load(function() {
+    const container = document.getElementById('prevKakaoMap');
+    if (!container) return;
+    container.innerHTML = '';
+    _prevMap = null;
+    const latlngs = coords.map(c => new kakao.maps.LatLng(c.lat, c.lng));
+    const bounds = new kakao.maps.LatLngBounds();
+    latlngs.forEach(p => bounds.extend(p));
+    _prevMap = new kakao.maps.Map(container, { center: latlngs[0], level: 8 });
+    _prevMap.setDraggable(false);
+    _prevMap.setZoomable(false);
+    new kakao.maps.Polyline({
+      map: _prevMap, path: latlngs,
+      strokeWeight: 2, strokeColor: '#2D9E8A', strokeOpacity: 0.85, strokeStyle: 'solid'
+    });
+    latlngs.forEach((pos, i) => {
+      const edge = i === 0 || i === latlngs.length - 1;
+      new kakao.maps.CustomOverlay({
+        map: _prevMap, position: pos, zIndex: edge ? 2 : 1,
+        content: `<div style="width:${edge?9:6}px;height:${edge?9:6}px;background:${edge?'#E85D5D':'#2D9E8A'};border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transform:translate(-50%,-50%)"></div>`
+      });
+    });
+    _prevMap.setBounds(bounds);
+  });
+}
 
 function openPreview(key) {
   const d = _md[key] || _md.jeju;
@@ -2138,6 +2818,7 @@ function openPreview(key) {
   if (el('prevStay'))     el('prevStay').textContent    = d.stay;
   if (el('prevFoodList')) el('prevFoodList').innerHTML  = d.foods.map(f=>`<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">${f.icon}</span>${f.name}</div><span class="pfi-rating">★ ${f.r}</span></div>`).join('');
   modal.classList.add('open');
+  setTimeout(() => initPreviewMap(d.coords), 80);
 }
 function closePrev() { const m = document.getElementById('prevModal'); if(m) m.classList.remove('open'); }
 
@@ -2222,7 +2903,12 @@ let _tt = null;
 function toast(msg, dur=2800) {
   const t=document.getElementById('toast'); if(!t) return;
   if(_tt) clearTimeout(_tt);
-  t.textContent=msg; t.classList.add('show');
+
+  t.innerHTML = msg;
+  t.style.color = '#111111';
+  t.style.fontWeight = '600';
+  t.classList.add('show');
+
   _tt=setTimeout(()=>t.classList.remove('show'), dur);
 }
 
@@ -2279,6 +2965,41 @@ window.addEventListener('popstate', e => {
 (async () => {
   // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
   _handleOAuthCallback();
+
+  // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
+  const params = new URLSearchParams(location.search);
+  const sharedId = params.get('id');
+
+  if (sharedId) {
+    window._currentTripId = parseInt(sharedId);
+    sessionStorage.setItem('plannerDraftId', sharedId);
+    sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
+
+    // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
+    if (location.pathname.includes('/plan/view')) {
+      // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle { display: none !important; }
+        [onclick*="openShareModal"] { display: none !important; } /* 공유 버튼 숨김 */
+        #recalcBar, .recalc-bar, [id*="recalc"] { display: none !important; } /* 교체 요청 바 원천 차단 */
+        #queueBox, .queue-box { display: none !important; } /* ✨ 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
+      `;
+      document.head.appendChild(style);
+
+      // 2. 브라우저의 기본 드래그 앤 드롭 동작을 강제로 무력화
+      document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }, true);
+
+      // 3. 자바스크립트 라이브러리(SortableJS 등)의 드래그 기능 무력화
+      setTimeout(() => {
+        document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
+        toast('👀 읽기 전용 모드로 플랜을 열람합니다.');
+      }, 800);
+    }
+  }
 
   // 기존 토큰으로 자동 로그인 복원
   const savedToken = Token.getAccess();

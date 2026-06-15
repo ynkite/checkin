@@ -17,7 +17,7 @@ public class ChatMessage {
     @JoinColumn(name = "session_id")
     private ChatSession chatSession;
 
-    private String role; // "USER" 또는 "AI"
+    private String role;
 
     @Column(columnDefinition = "TEXT")
     private String content;

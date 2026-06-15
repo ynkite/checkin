@@ -32,7 +32,7 @@
       --warm-pale: #FBF0E6;
       --coral: #E87060;
       --sky: #5B9BD5;
-      --text: #1C2B2A;
+      --text1: #1C2B2A;
       --text2: #4A5E5C;
       --text3: #8FA3A0;
       --surface: #FFFFFF;
@@ -4483,32 +4483,12 @@
     }
 
     .prev-map-box {
-      background: linear-gradient(135deg, #D0ECE7, #B8E0D4);
       border-radius: 11px;
-      height: 150px;
+      height: 180px;
       position: relative;
       margin-bottom: 14px;
-      overflow: hidden
-    }
-
-    .prev-map-box svg {
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%
-    }
-
-    .prev-map-dot {
-      position: absolute;
-      border-radius: 50%;
-      border: 2.5px solid #fff;
-      box-shadow: 0 1px 5px rgba(0, 0, 0, .18)
-    }
-
-    .prev-map-grid {
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(0deg, rgba(45, 158, 138, .05) 0, rgba(45, 158, 138, .05) 1px, transparent 1px, transparent 28px), repeating-linear-gradient(90deg, rgba(45, 158, 138, .05) 0, rgba(45, 158, 138, .05) 1px, transparent 1px, transparent 28px)
+      overflow: hidden;
+      background: #e8f5f2
     }
 
     .prev-map-label {

@@ -7,14 +7,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
-/**
- * 이메일 인증번호를 임시로 저장하는 테이블
- * 사용자가 인증번호를 요청하면 이 테이블에 발송된 번호와 만료 시간을 기록
- */
+
+
+//이메일 인증번호를 임시로 저장하는 테이블
+//사용자가 인증번호를 요청하면 이 테이블에 발송된 번호와 만료 시간을 기록
 @Entity
 @Table(name = "email_auth")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자 접근을 막아 무분별한 객체 생성을 방지합니다.
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자 접근을 막아 무분별한 객체 생성을 방지
 public class EmailAuth {
 
     @Id
