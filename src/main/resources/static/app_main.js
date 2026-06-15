@@ -132,7 +132,7 @@ function openModal(id) {
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
   sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
-  if (addToHistory !== false && id !== 'main') history.pushState({page: id}, '', location.href);
+  if (addToHistory !== false) history.pushState({page: id}, '', location.href);
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
@@ -203,6 +203,7 @@ function go(id, addToHistory) {
   if (id === 'planner') {
     if (typeof initPlannerDateConstraints === 'function') setTimeout(initPlannerDateConstraints, 100);
     if (typeof initPlannerMBTI === 'function') setTimeout(initPlannerMBTI, 100);
+    setTimeout(_syncPlannerTopbar, 60);
 
     if (window._pendingDestText) {
       const val = window._pendingDestText;
@@ -220,15 +221,7 @@ function go(id, addToHistory) {
       }
     }, 100);
   }
-  if (id === 'map') {
-    setTimeout(function() {
-      if (window._kakaoMap) {
-        window._kakaoMap.relayout();
-      } else if (typeof initKakaoMap === 'function') {
-        initKakaoMap();
-      }
-    }, 100);
-  }
+  if (typeof _syncPlannerTopbar === 'function') setTimeout(_syncPlannerTopbar, 60);
 }
 
 function setNav(btn) {
@@ -299,6 +292,7 @@ function updateNav() {
             plannerBtn.textContent = '✈ 플랜';
           }
       }
+  if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
 }
 
 /** [v2] 로그인 잠금 카운트다운 (UI 실시간 업데이트) */
@@ -1521,6 +1515,7 @@ async function sendMsg() {
             el.style.color = 'var(--sage)';
             el.style.fontWeight = '800';
             setTimeout(() => { el.style.color = ''; el.style.fontWeight = ''; }, 2000);
+            reSyncChipFromUpdate(field, newVal);
             // BUDGET 변경 시 s1-budget 입력값도 동기화 → updateSummaryCard 재호출 시 덮어쓰기 방지
             if (field === 'BUDGET') {
               const s1b = document.getElementById('s1-budget');
@@ -1560,25 +1555,38 @@ async function sendMsg() {
           row = document.createElement('div');
           row.id = rowId;
           row.className = 'asc-row';
-          row.innerHTML = `<div class="asc-label">${label}</div><div class="asc-val">${value}</div>`;
+          row.innerHTML = `<div class="asc-label">${label}</div><div class="asc-val">${value}</div><button class="asc-del" onclick="event.stopPropagation();
+                clearExtraRow('${label.replace(/'/g,"\\'")}')">✕</button>`;
           extraContainer.appendChild(row);
         } else {
           row.querySelector('.asc-val').textContent = value;
         }
       }
       const _allExtraRows = document.querySelectorAll('#sum-extra-rows .asc-row');
-      if (_allExtraRows.length > 0 && window._currentTripId) {
-        const extraArr = [..._allExtraRows].map(r => ({
-          label: r.querySelector('.asc-label')?.textContent || '',
-          value: r.querySelector('.asc-val')?.textContent  || ''
-        }));
-        api.patch(`/api/trips/${window._currentTripId}/input-form`, {
-          extraNotes: JSON.stringify(extraArr)
-        });
+      if (_allExtraRows.length > 0) {
+        // empty 안내문 숨기기
+        const emptyMsg = document.getElementById('extra-empty-msg');
+        if (emptyMsg) emptyMsg.style.display = 'none';
+        // 현재 추가사항 탭이 아니면 badge 표시
+        const currentTab = document.querySelector('.asc-tab.on');
+        if (currentTab && currentTab.dataset.tab !== 'tab-extra') {
+          const badge = document.getElementById('extra-badge');
+          if (badge) badge.style.display = 'inline-block';
+        }
+        if (window._currentTripId) {
+          const extraArr = [..._allExtraRows].map(r => ({
+            label: r.querySelector('.asc-label')?.textContent || '',
+            value: r.querySelector('.asc-val')?.textContent  || ''
+          }));
+          api.patch(`/api/trips/${window._currentTripId}/input-form`, {
+            extraNotes: JSON.stringify(extraArr)
+          });
+        }
       }
 
 // (4) 모든 태그 제거 후 말풍선에 표시
-      eplyText = replyText.replace(/\[UPDATE:[A-Za-z가-힣0-9]+:[^\]]*\]/g, '').trim();
+      replyText = replyText.replace(/\[UPDATE:[A-Za-z가-힣0-9]+:[^\]]*\]/g, '').trim();
+      replyText = replyText.replace(/\[EXTRA:[^\]]+\]/g, '').trim();
       addBubble(replyText, 'bot');
     } else {
       console.error('[Chat] 응답 오류:', res);
@@ -1593,6 +1601,108 @@ async function sendMsg() {
     // 5. 처리가 끝나면 다시 입력창 열기
     inp.disabled = false;
     inp.focus();
+  }
+}
+/* 요약 패널 항목 삭제 */
+function clearSumField(key) {
+  const map = {
+    dep:     { el:'sum-dep',     clear(){['dep-prov','dep-city'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});}, api:{departure:''} },
+    dest:    { el:'sum-dest',    clear(){['dest-prov','dest-city'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});}, api:{destination:''} },
+    date:    { el:'sum-date',    clear(){['s1-date-start','s1-date-end'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});if(typeof updateWeatherBtn==='function')updateWeatherBtn();}, api:null },
+    people:  { el:'sum-people',  clear(){const e=document.getElementById('s1-pax');if(e)e.value='';}, api:{companionCount:0} },
+    comp:    { el:'sum-comp',    clear(){document.querySelectorAll('#chip-comp .chip').forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-comp');if(o){o.value='';o.classList.remove('show');}}, api:{companionType:''} },
+    budget:  { el:'sum-budget',  clear(){const e=document.getElementById('s1-budget');if(e)e.value='';}, api:{budget:0} },
+    trans:   { el:'sum-trans',   clear(){document.querySelectorAll('#chip-trans .chip').forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-trans');if(o){o.value='';o.classList.remove('show');}}, api:{transportType:''} },
+    acc:     { el:'sum-acc',     clear(){document.querySelectorAll('#chip-acc .chip').forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-acc');if(o){o.value='';o.classList.remove('show');}}, api:{accommodationType:''} },
+    accopts: { el:'sum-accopts', clear(){document.querySelectorAll('#chip-accopts .chip').forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-accopts');if(o){o.value='';o.classList.remove('show');}}, api:{accommodationOptions:'[]'} },
+    style:   { el:'sum-style',   clear(){document.querySelectorAll('#chip-style .chip').forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-style');if(o){o.value='';o.classList.remove('show');}}, api:{travelStyles:'[]'} },
+    food:    { el:'sum-food',    clear(){document.querySelectorAll('#chip-food .chip').forEach(c=>c.classList.remove('on'));['other-allergy','other-food'].forEach(id=>{const o=document.getElementById(id);if(o){o.value='';o.classList.remove('show');}});}, api:{dietaryInfo:'[]'} },
+    density: { el:'sum-density', clear(){document.querySelectorAll('#chip-density .chip').forEach(c=>c.classList.remove('on'));}, api:{scheduleDensity:''} },
+    pet:     { el:'sum-pet',     clear(){[...document.querySelectorAll('#chip-special .chip')].filter(c=>c.textContent.includes('반려동물')).forEach(c=>c.classList.remove('on'));}, api:{hasPet:0} },
+    special: { el:'sum-special', clear(){[...document.querySelectorAll('#chip-special .chip')].filter(c=>!c.textContent.includes('반려동물')).forEach(c=>c.classList.remove('on'));const o=document.getElementById('other-special');if(o){o.value='';o.classList.remove('show');}}, api:null },
+  };
+  const cfg = map[key];
+  if (!cfg) return;
+  const el = document.getElementById(cfg.el);
+  if (el) el.textContent = '—';
+  cfg.clear();
+  if (typeof updateSummaryCard === 'function') updateSummaryCard();
+  if (cfg.api && window._currentTripId) api.patch(`/api/trips/${window._currentTripId}/input-form`, cfg.api);
+  toast('항목이 초기화되었습니다');
+}
+
+/* 추가사항 행 삭제 */
+function clearExtraRow(label) {
+  const row = document.getElementById('sum-extra-' + label);
+  if (row) row.remove();
+  const remaining = document.querySelectorAll('#sum-extra-rows .asc-row');
+  const emptyMsg = document.getElementById('extra-empty-msg');
+  if (emptyMsg) emptyMsg.style.display = remaining.length === 0 ? '' : 'none';
+  if (window._currentTripId) {
+    const extraArr = [...remaining].map(r => ({
+      label: r.querySelector('.asc-label')?.textContent || '',
+      value: r.querySelector('.asc-val')?.textContent  || ''
+    }));
+    api.patch(`/api/trips/${window._currentTripId}/input-form`, { extraNotes: JSON.stringify(extraArr) });
+  }
+  toast('항목이 삭제되었습니다');
+}
+
+/*  챗봇 UPDATE 수신 시 칩 재선택  */
+function reSyncChipFromUpdate(field, value) {
+  if (!value || value === '—') return;
+  // 단일 선택 칩
+  const singleMap = {
+    TRANS: { group:'#chip-trans', other:'other-trans' },
+    ACC:   { group:'#chip-acc',   other:'other-acc'   },
+    DENSITY: { group:'#chip-density' },
+  };
+  if (singleMap[field]) {
+    const { group, other } = singleMap[field];
+    const isOther = value.startsWith('기타(');
+    const label   = isOther ? '기타' : value;
+    document.querySelectorAll(group + ' .chip').forEach(c => c.classList.toggle('on', c.textContent.trim() === label));
+    if (isOther && other) { const el = document.getElementById(other); if(el){el.value=value.slice(3,-1);el.classList.add('show');} }
+    return;
+  }
+  // 스타일 (다중)
+  if (field === 'STYLE') {
+    document.querySelectorAll('#chip-style .chip').forEach(c => c.classList.remove('on'));
+    value.split(',').map(s => s.trim()).forEach(v => {
+      const isOther = v.startsWith('기타('), label = isOther ? '기타' : v;
+      const chip = [...document.querySelectorAll('#chip-style .chip')].find(c => c.textContent.trim() === label);
+      if (chip) { chip.classList.add('on'); if(isOther){const el=document.getElementById('other-style');if(el){el.value=v.slice(3,-1);el.classList.add('show');}} }
+    });
+    return;
+  }
+  // 반려동물
+  if (field === 'PET') {
+    [...document.querySelectorAll('#chip-special .chip')].filter(c => c.textContent.includes('반려동물')).forEach(c => c.classList.toggle('on', value === '동반'));
+    return;
+  }
+  // 여행지 셀렉트 동기화
+  if (field === 'DEST') {
+    const parts = value.split(' '), provSel = document.getElementById('dest-prov');
+    if (provSel && parts[0]) {
+      for(let i=0;i<provSel.options.length;i++){if(provSel.options[i].text===parts[0]){provSel.selectedIndex=i;if(typeof updateCityDest==='function')updateCityDest(provSel);break;}}
+      if(parts[1]) setTimeout(()=>{const c=document.getElementById('dest-city');if(c)for(let i=0;i<c.options.length;i++){if(c.options[i].text===parts[1]){c.selectedIndex=i;break;}}},50);
+    }
+  }
+  // 인원 / 예산 input 동기화
+  if (field === 'PEOPLE') { const e=document.getElementById('s1-pax');    if(e) e.value=value.replace(/[^0-9]/g,''); }
+  if (field === 'BUDGET') { const e=document.getElementById('s1-budget'); if(e) e.value=value.replace(/[^0-9]/g,''); }
+}
+// 요약 패널 탭 전환
+function switchSumTab(panelId) {
+  document.querySelectorAll('.asc-tab').forEach(t =>
+      t.classList.toggle('on', t.dataset.tab === panelId)
+  );
+  document.querySelectorAll('.asc-tab-panel').forEach(p =>
+      p.style.display = p.id === panelId ? 'block' : 'none'
+  );
+  if (panelId === 'tab-extra') {
+    const badge = document.getElementById('extra-badge');
+    if (badge) badge.style.display = 'none';
   }
 }
 async function openSummaryEdit(field, domId, label) {
@@ -1928,11 +2038,90 @@ function _currentPlanStep() {
   return 1;
 }
 
+function markPlanDirty() {
+  if (!sessionStorage.getItem('ai_generated_route')) return;
+  _planDirty = true;
+  _syncStep4State();
+}
+
+function _syncStep4State() {
+  const sb4 = document.getElementById('sb-4');
+  if (!sb4) return;
+  const hasRoute = !!sessionStorage.getItem('ai_generated_route');
+  sb4.classList.remove('done', 'locked');
+  if (_planDirty) {
+    sb4.classList.add('locked');
+  } else if (hasRoute) {
+    sb4.classList.add('done');
+  }
+}
+
+function _syncPlannerTopbar() {
+  const hasDraft  = !!window._currentTripId;
+  const onPlanner = document.getElementById('page-planner')?.classList.contains('active') ?? false;
+  const onMap     = document.getElementById('page-map')?.classList.contains('active') ?? false;
+  const showSteps = onPlanner || (onMap && hasDraft);
+
+  const navSteps  = document.getElementById('navPlannerSteps');
+  const sb4       = document.getElementById('sb-4');
+  const stepBar   = document.getElementById('plannerStepBar');
+
+  if (navSteps) navSteps.style.display = showSteps ? 'flex' : 'none';
+  if (sb4)      sb4.style.display = hasDraft ? '' : 'none';
+  if (stepBar)  stepBar.classList.toggle('steps-4', hasDraft);
+
+  _syncStep4State();
+  _syncNavStepHighlight();
+}
+
+function _syncNavStepHighlight() {
+  const onMap    = document.getElementById('page-map')?.classList.contains('active') ?? false;
+  const current  = onMap ? 4 : ((typeof _currentPlanStep === 'function') ? _currentPlanStep() : 1);
+  const hasRoute = !!sessionStorage.getItem('ai_generated_route');
+
+  for (let i = 1; i <= 4; i++) {
+    const btn = document.getElementById('nps-' + i);
+    if (!btn) continue;
+    btn.classList.remove('active', 'done', 'locked');
+    if (i === current) {
+      btn.classList.add('active');
+    } else if (i < current) {
+      btn.classList.add('done');
+    } else if (i === 4) {
+      if (_planDirty)    btn.classList.add('locked');
+      else if (hasRoute) btn.classList.add('done');
+    }
+  }
+}
+
 function goPlanStep(n) {
   if (!_loggedIn) {
     toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
     openModal('modal-auth');
     return;
+  }
+
+  if (n === 4) {
+    if (!sessionStorage.getItem('ai_generated_route')) {
+      toast('⚠️ 먼저 AI 챗봇에서 일정을 생성해주세요.');
+      return;
+    }
+    if (_planDirty) {
+      toast('⚠️ 기본 정보 또는 취향 설정이 변경되었습니다. 일정을 다시 생성해주세요.');
+      return;
+    }
+    go('map');
+    return;
+  }
+
+  // map 페이지에서 1~3 클릭 시 planner 페이지로 먼저 전환
+  const onMap = document.getElementById('page-map')?.classList.contains('active') ?? false;
+  if (onMap) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-planner')?.classList.add('active');
+    sessionStorage.setItem('currentPage', 'planner');
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+    document.getElementById('navPlannerBtn')?.classList.add('on');
   }
 
   const current = _currentPlanStep();
@@ -1950,6 +2139,10 @@ function goPlanStep(n) {
     if(i<n) sb2.classList.add('done');
     if(i===n){ sb2.classList.add('active'); sp2.classList.add('active'); }
   }
+  _syncStep4State();
+  _syncPlannerTopbar();
+  _syncNavStepHighlight();
+
   if(n===3) startChatWithSummary();
   history.pushState({ page: 'planner', step: n }, '', location.href);
   if (window._currentTripId) _savePlannerDraft();
@@ -2519,6 +2712,11 @@ function resetPlannerForm() {
   });
   const extra = document.getElementById('sum-extra-rows');
   if (extra) extra.innerHTML = '';
+  switchSumTab('tab-basic');
+  const emptyMsg = document.getElementById('extra-empty-msg');
+  if (emptyMsg) emptyMsg.style.display = '';
+  const badge = document.getElementById('extra-badge');
+  if (badge) badge.style.display = 'none';
 }
 
 // 검색어를 도/시 셀렉트에 매핑해서 자동 선택
@@ -2642,19 +2840,20 @@ function pick(chip, grp) {
   p.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
   chip.classList.add('on');
   if (!chip.textContent.trim().includes('기타')) clearOtherInputs(card);
+  if (typeof markPlanDirty === 'function') markPlanDirty();
 }
-function tog(chip)    { chip.classList.toggle('on'); }
+function tog(chip)    { chip.classList.toggle('on'); if (typeof markPlanDirty === 'function') markPlanDirty(); }
 function togBtn(btn)  { btn.classList.toggle('off'); }
 function pickVis(btn) { btn.closest('div').querySelectorAll('.vis-chip').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
-function showOtherInput(id, chip) {
-  const el=document.getElementById(id);
-  if(!el) return;
-  if(chip.classList.contains('on')) {
-    clearOtherInputs(chip.closest('.pl-card'), id);
+function showOtherInput(id, chip, clearOthers = true) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (chip.classList.contains('on')) {
+    if (clearOthers) clearOtherInputs(chip.closest('.pl-card'), id);
     el.classList.add('show');
   } else {
     el.classList.remove('show');
-    el.value='';
+    el.value = '';
   }
 }
 
@@ -2699,6 +2898,7 @@ function updateCityDest(sel) { updateCity(sel,'dest-city'); }
 /* ───────────────────────────────────────────────
  * 24. TOAST
  * ─────────────────────────────────────────────── */
+let _planDirty = false;
 let _tt = null;
 function toast(msg, dur=2800) {
   const t=document.getElementById('toast'); if(!t) return;
@@ -2724,7 +2924,7 @@ document.addEventListener('keydown', e => {
 });
 
 window.addEventListener('popstate', e => {
-  const p = e.state?.page || sessionStorage.getItem('currentPage') || 'main';
+  const p = e.state?.page || 'main';
     const step = e.state?.step;
 
         // 플래너 내 스텝 뒤로가기
@@ -2821,11 +3021,13 @@ window.addEventListener('popstate', e => {
   if (_savedDraftId && !window._currentTripId) window._currentTripId = parseInt(_savedDraftId);
   updateNav();
 
-  // [v2] 새로고침 시 이전 페이지 복원
   const savedPage = sessionStorage.getItem('currentPage');
-  if (savedPage && savedPage !== 'main') go(savedPage, false);
-
-  // [v2] 초기화 완료 후 flash 방지
+  if (savedPage && savedPage !== 'main') {
+    go(savedPage, false);
+    history.replaceState({ page: savedPage }, '', location.href);
+  } else {
+    history.replaceState({ page: 'main' }, '', location.href);
+  }
   document.body.style.visibility = 'visible';
 })();
 

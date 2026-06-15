@@ -198,22 +198,22 @@
 
     /* TOAST */
     .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: var(--text);
-      color: #fff;
-      padding: 11px 22px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 500;
-      z-index: 9999;
-      transition: transform .3s;
-      max-width: 370px;
-      text-align: center;
-      pointer-events: none;
-      white-space: pre-line;
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(80px);
+        background: var(--text);
+        color: #fff;
+        padding: 11px 22px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 9999;
+        transition: transform .3s;
+        max-width: 90vw;
+        text-align: center;
+        pointer-events: none;
+        white-space: nowrap;
     }
 
     .toast.show {
@@ -1847,7 +1847,21 @@
       color: var(--sage-d);
       font-weight: 700
     }
-
+    .step-bar.steps-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .step-item.locked {
+        cursor: not-allowed;
+        opacity: 0.65;
+    }
+    .step-item.locked .step-num {
+        background: var(--coral);
+    }
+    .step-item.locked .step-lbl::after {
+        content: ' ⚠';
+        font-size: 10px;
+        color: var(--coral);
+    }
     .prev-pref {
       display: flex;
       align-items: center;
@@ -1980,7 +1994,7 @@
     /* chat layout */
     .chat-layout {
       display: grid;
-      grid-template-columns: 1fr 256px;
+      grid-template-columns: 1fr 300px;
       gap: 16px;
       align-items: start
     }
@@ -2020,8 +2034,8 @@
 
     .chat-msgs {
         padding: 14px;
-        min-height: 420px;
-        max-height: 500px;
+        min-height: 520px;
+        max-height: 700px;
         overflow-y: auto;
         display: flex;
         flex-direction: column;
@@ -2184,20 +2198,14 @@
     }
 
     .asc-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 9px 13px;
-      border-bottom: 1px solid var(--border2);
-      cursor: pointer;
-      transition: background .15s;
-      gap: 8px
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 9px 13px;
+        border-bottom: 1px solid var(--border2);
+        cursor: default;
+        gap: 8px
     }
-
-    .asc-row:hover {
-      background: var(--cream)
-    }
-
     .asc-label {
       font-size: 10px;
       color: var(--text3);
@@ -2207,10 +2215,12 @@
     }
 
     .asc-val {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text);
-      text-align: right
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text);
+        text-align: right;
+        flex: 1;
+        white-space: pre-line
     }
 
     .asc-val.missing {
@@ -2238,6 +2248,64 @@
       font-weight: 700;
       cursor: pointer;
       transition: all .18s
+    }
+
+    /* 요약 패널 탭 */
+    .asc-tabs {
+        display: flex;
+        border-bottom: 1px solid var(--border2);
+        background: var(--surface)
+    }
+
+    .asc-tab {
+        flex: 1;
+        padding: 8px 4px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text3);
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        transition: all .18s;
+        font-family: inherit
+    }
+
+    .asc-tab:hover {
+        color: var(--sage);
+        background: var(--sage-pale)
+    }
+
+    .asc-tab.on {
+        color: var(--sage-d);
+        font-weight: 700;
+        border-bottom: 2px solid var(--sage);
+        background: var(--sage-pale)
+    }
+    /* 요약 패널 삭제 버튼 *!*/
+    .asc-del {
+        background: none;
+        border: none;
+        color: var(--text3);
+        font-size: 10px;
+        cursor: pointer;
+        padding: 0 2px;
+        flex-shrink: 0;
+        opacity: 0;
+        line-height: 1;
+        transition: opacity .15s, color .15s
+    }
+    .asc-row:hover .asc-del { opacity: 1 }
+    .asc-del:hover { color: var(--coral) }
+
+    #extra-badge {
+        display: none;
+        width: 6px;
+        height: 6px;
+        background: var(--coral);
+        border-radius: 50%;
+        margin-left: 3px;
+        vertical-align: middle
     }
 
     .btn-gen:hover {
@@ -4566,3 +4634,51 @@
         0%, 80%, 100% { transform: scale(0); }
         40% { transform: scale(1); }
     }
+
+    .nav-planner-steps {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        background: var(--sage-pale);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        padding: 3px 8px;
+        margin: 0 16px;
+        flex-shrink: 0;
+    }
+
+    .nps-btn {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        border-radius: 6px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: inherit;
+        color: var(--text3);
+        font-weight: 500;
+        transition: all .15s;
+        white-space: nowrap;
+    }
+    .nps-btn:hover { background: rgba(45, 158, 138, .12); color: var(--sage); }
+    .nps-btn.active { background: var(--sage); color: #fff; }
+    .nps-btn.done   { color: var(--sage-d); }
+    .nps-btn.locked { color: var(--coral); cursor: not-allowed; opacity: .75; }
+
+    .nps-num {
+        width: 17px; height: 17px;
+        border-radius: 50%;
+        background: rgba(0,0,0,.08);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 10px; font-weight: 700;
+        flex-shrink: 0;
+    }
+    .nps-btn.active .nps-num { background: rgba(255,255,255,.3); }
+    .nps-btn.done   .nps-num { background: var(--sage); color: #fff; }
+    .nps-btn.locked .nps-num { background: var(--coral); color: #fff; }
+
+    .nps-lbl { font-weight: 500; }
+    .nps-arrow { color: var(--border); font-size: 14px; }
