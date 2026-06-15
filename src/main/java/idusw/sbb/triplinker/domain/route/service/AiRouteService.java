@@ -283,7 +283,7 @@ public class AiRouteService {
     }
 
 
-    // 💡 [추가] 우천 대비 특정 일차(Day) 실내 일정 전면 교체 로직
+    // 기상 악화 특정 일차 실내 일정 전면 교체
     public String replaceDayWithIndoor(Long tripId, int targetDay) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
