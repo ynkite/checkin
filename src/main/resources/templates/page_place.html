@@ -181,12 +181,7 @@
                     </div>
                 </div>
                 <div class="prev-map-box">
-                    <div class="prev-map-grid"></div>
-                    <svg viewBox="0 0 500 150" fill="none">
-                        <path d="M100 75 Q200 45 250 85" stroke="var(--sage)" stroke-width="2"
-                              fill="none" opacity=".75"/>
-                    </svg>
-                    <div id="prev-map-dots"></div>
+                    <div id="prevKakaoMap" style="width:100%;height:100%"></div>
                 </div>
                 <div class="prev-section-ttl">🏨 숙소 스냅샷</div>
                 <div class="prev-stay-list" id="prevStay"></div>
@@ -233,80 +228,38 @@
 
 
     <!-- =====================================================
-         플랜 확정 완료 모달  (confirmDoneModal)
-         ===================================================== -->
-    <div class="overlay" id="confirmDoneModal"
-         onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="modal" style="width:460px;border-radius:22px;overflow:hidden">
-            <button class="modal-x"
-                    style="position:absolute;top:14px;right:14px;z-index:10;color:#fff"
-                    onclick="this.closest('.overlay').classList.remove('open')">✕</button>
-            <div style="background:linear-gradient(135deg,var(--sage) 0%,var(--sage-l) 100%);
-                padding:32px 26px 26px;text-align:center;position:relative">
-                <div style="font-size:52px;margin-bottom:12px;
-                  filter:drop-shadow(0 4px 12px rgba(0,0,0,.15))">🎉</div>
-                <div style="font-size:20px;font-weight:900;color:#fff;margin-bottom:6px"
-                     id="cd-title">여행 플랜이 확정되었습니다!</div>
-                <div style="font-size:13px;color:rgba(255,255,255,.85)" id="cd-sub"></div>
-            </div>
-            <div style="padding:20px 22px 0">
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px"
-                     id="cd-stats"></div>
-                <div style="text-align:center;font-size:13px;color:var(--text2);
-                  line-height:1.6;margin-bottom:22px" id="cd-msg">
-                    이제 지도 탭에서 상세 일정을 확인하고<br>가계부에 결제 내역을 기록해보세요!
-                </div>
-                <div style="display:flex;gap:10px;margin-bottom:10px" id="cd-btns">
-                    <button class="btn-f"
-                            style="flex:1;padding:12px;border-radius:var(--r);font-size:13px;font-weight:700"
-                            onclick="this.closest('.overlay').classList.remove('open');
-                         go('mypage');toast('마이페이지로 이동합니다.')">
-                        👤 마이페이지로 가기
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- =====================================================
          여행 플랜 공유 모달  (shareModal)
          ===================================================== -->
     <div class="overlay" id="shareModal"
          onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="modal" style="width:480px">
-            <div class="modal-hd">
-                <div class="modal-ttl">🔗 여행 플랜 공유</div>
-                <button class="modal-x"
-                        onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+        <div class="modal" style="width:440px; padding:24px 28px;">
+            <div class="modal-hd" style="border-bottom:none; padding-bottom:0; margin-bottom:16px;">
+                <h2 style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px;">
+                    🔗 여행 플랜 공유
+                </h2>
+                <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
             </div>
-            <div class="modal-bd">
-                <div class="share-tabs">
-                    <button class="share-tab on" onclick="setShareTab(this,'members')">공유</button>
-                    <button class="share-tab" onclick="setShareTab(this,'post')">게시</button>
+
+            <div style="display:flex; gap:16px; border-bottom:1px solid var(--border2); margin-bottom:20px;">
+                <button class="share-tab on" onclick="setShareTab(this, 'members')" style="padding:0 4px 10px; font-size:14px; font-weight:700; color:var(--sage-d); border-bottom:3px solid var(--sage); cursor:pointer; background:none; border-top:none; border-left:none; border-right:none;">공유</button>
+                <button class="share-tab" onclick="setShareTab(this, 'post')" style="padding:0 4px 10px; font-size:14px; font-weight:700; color:var(--text3); cursor:pointer; background:none; border:none;">게시</button>
+            </div>
+
+            <div id="share-members">
+                <div style="display:flex; gap:8px; margin-bottom:24px;">
+                    <input type="email" id="share-email-inp" placeholder="이메일로 그룹 멤버 초대 (편집 권한)" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
+                    <button onclick="inviteShareMember()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
                 </div>
 
-                <div id="share-members">
-                    <div class="share-search-row">
-                        <input class="share-search" type="text" id="shareEmailInput"
-                               placeholder="쉼표로 구분한 이메일 또는 그룹">
-                        <button class="btn-invite" onclick="doShareInvite()">초대</button>
-                    </div>
-                    <div class="member-row">
-                        <div class="member-av" style="background:var(--sage)">나</div>
-                        <div class="member-info">
-                            <div class="member-name" id="share-my-name">나 (소유자)</div>
-                            <div class="member-email" id="share-my-email"></div>
-                        </div>
-                        <div class="member-role">소유자</div>
-                    </div>
-                    <div id="share-member-list"></div>
-                    <div style="font-size:11px;color:var(--text3);margin:12px 0 8px">링크 복사</div>
-                    <div class="link-row">
-                        <div class="link-url" id="share-link-url">링크 생성 중...</div>
-                        <button class="btn-copy" onclick="doShareLinkCopy()">링크 복사</button>
-                    </div>
+                <div id="share-member-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:30px; min-height:60px;">
                 </div>
+
+                <div style="font-size:11px; font-weight:700; color:var(--text3); margin-bottom:8px;">읽기 전용 링크 복사</div>
+                <div style="display:flex; gap:8px; background:var(--cream); padding:6px; border-radius:8px;">
+                    <input type="text" id="share-link-url" readonly style="flex:1; background:none; border:none; padding:4px 8px; font-size:13px; color:var(--text2); outline:none;">
+                    <button onclick="doShareLinkCopy()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">링크 복사</button>
+                </div>
+            </div>
 
                 <div id="share-post" style="display:none">
                     <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
@@ -706,64 +659,80 @@
          *     GET  /api/trips/{tripId}/members
          * ──────────────────────────────────────────────── */
         async function loadShareModal() {
-            const tripId = window._currentTripId;
-            if (!tripId) return;
-
-            // 공유 링크 생성
-            const linkRes = await api.post(`/api/trips/${tripId}/share`, { permission: 'READER' });
-            const linkEl  = document.getElementById('share-link-url');
-            if (linkEl) linkEl.textContent =
-                linkRes.success ? (linkRes.data?.shareLink || '링크 생성 실패') : '링크 생성 실패';
-
-            // 멤버 목록
-            const membersRes = await api.get(`/api/trips/${tripId}/members`);
-            const listEl = document.getElementById('share-member-list');
-            if (listEl && membersRes.success && Array.isArray(membersRes.data)) {
-                listEl.innerHTML = membersRes.data.map(m => `
-      <div class="member-row">
-        <div class="member-av">${(m.name||'?')[0]}</div>
-        <div class="member-info">
-          <div class="member-name">${m.name||''}</div>
-          <div class="member-email">${m.email||''}</div>
-        </div>
-        <div class="member-role">${m.role==='EDITOR'?'편집자':'열람자'}</div>
-      </div>`).join('');
+            const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+            if (!tripId) {
+                document.getElementById('share-member-list').innerHTML = '<div style="font-size:13px;color:var(--text3);">저장된 플랜이 없습니다.</div>';
+                return;
             }
 
-            // 내 이메일
-            const meRes = Token.getAccess() ? await api.get('/api/users/me') : null;
-            const myEmailEl = document.getElementById('share-my-email');
-            if (myEmailEl && meRes?.data) myEmailEl.textContent = meRes.data.email || '';
+            // 💡 읽기 전용 링크 세팅 (/plan/view 경로)
+            const linkEl = document.getElementById('share-link-url');
+            if (linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+
+            // 멤버 목록 렌더링
+            const membersRes = await api.get(`/api/trips/${tripId}/members`);
+            const listEl = document.getElementById('share-member-list');
+
+            if (listEl) {
+                if (membersRes.success && Array.isArray(membersRes.data) && membersRes.data.length > 0) {
+                    listEl.innerHTML = membersRes.data.map(m => `
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                          <div style="display:flex; align-items:center; gap:12px;">
+                            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+                            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+                          </div>
+                          <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
+                        </div>`).join('');
+                } else {
+                    // 연동 전 가짜 데이터
+                    const me = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.name : '나';
+                    listEl.innerHTML = `
+                      <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+                          <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+                        </div>
+                        <div style="font-size:12px; color:var(--text3);">소유자</div>
+                      </div>`;
+                }
+            }
         }
 
         /* ────────────────────────────────────────────────
          * 15. 멤버 초대   POST /api/trips/{tripId}/members
          * ──────────────────────────────────────────────── */
         async function doShareInvite() {
-            const tripId = window._currentTripId;
+            const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
             const input  = document.getElementById('shareEmailInput');
             if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
             if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
             const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
+            let successCount = 0;
             for (const email of emails) {
-                await api.post(`/api/trips/${tripId}/members`, { email, role: 'EDITOR' });
+                // 편집자(EDITOR) 권한 부여
+                const res = await api.post(`/api/trips/${tripId}/members`, { email, role: 'EDITOR' });
+                if(res.success) successCount++;
             }
-            toast('✅ 초대 이메일이 발송되었습니다.');
-            input.value = '';
-            await loadShareModal();
+            if(successCount > 0) {
+                toast('✅ 초대(편집 권한)가 발송되었습니다.');
+                input.value = '';
+                await loadShareModal();
+            } else {
+                toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
+            }
         }
 
         /* ────────────────────────────────────────────────
-         * 16. 공유 링크 복사
+         * 16. 공유 링크 복사 (읽기 전용)
          * ──────────────────────────────────────────────── */
         function doShareLinkCopy() {
-            const url = document.getElementById('share-link-url')?.textContent;
-            if (!url || url.includes('중') || url.includes('실패')) {
-                toast('링크를 먼저 생성해주세요.'); return;
+            const linkEl = document.getElementById('share-link-url');
+            if (!linkEl || !linkEl.value) {
+                toast('링크가 없습니다.'); return;
             }
-            navigator.clipboard?.writeText(url)
-                .then(() => toast('✅ 링크가 복사되었습니다!'))
+            navigator.clipboard?.writeText(linkEl.value)
+                .then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!'))
                 .catch(() => toast('링크 복사에 실패했습니다.'));
         }
 
@@ -772,7 +741,27 @@
          * ──────────────────────────────────────────────── */
         function openShareModal() {
             document.getElementById('shareModal').classList.add('open');
+            // 열릴 때 기본적으로 '공유' 탭 표시
+            setShareTab(document.querySelector('.share-tab'), 'members');
             loadShareModal();
+        }
+
+        /* ────────────────────────────────────────────────
+         * 18. 공유 팝업 탭 전환 로직
+         * ──────────────────────────────────────────────── */
+        function setShareTab(btn, tab) {
+            if(!btn) return;
+            document.querySelectorAll('#shareModal .share-tab').forEach(b => {
+                b.classList.remove('on');
+                b.style.color = 'var(--text3)';
+                b.style.borderBottom = 'none';
+            });
+            btn.classList.add('on');
+            btn.style.color = 'var(--sage-d)';
+            btn.style.borderBottom = '3px solid var(--sage)';
+
+            document.getElementById('share-members').style.display = tab === 'members' ? 'block' : 'none';
+            document.getElementById('share-post').style.display    = tab === 'post' ? 'block' : 'none';
         }
 
         /* ────────────────────────────────────────────────
@@ -790,5 +779,3 @@
             return (str || '').replace(/'/g, "\\'");
         }
     </script>
-
-</div>

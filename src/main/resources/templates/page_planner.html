@@ -642,33 +642,50 @@
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
       const originalText = btn.innerHTML;
-      btn.innerHTML = '⏳ DB 정보를 바탕으로 코스를 생성 중입니다...';
+      btn.innerHTML = '✨ 추천 코스 생성 중...';
       btn.disabled = true;
 
       try {
         const res = await api.post(`/api/trips/${tripId}/routes/generate`);
+
+        // 💡 백엔드에서 성공(success: true) 응답을 보냈을 때만 지도 페이지로 이동
         if (res.success && res.data) {
-          // AI가 가끔 덧붙이는 마크다운 기호 제거 (에러 방지용)
           let cleanJson = res.data;
           if (cleanJson.includes('[')) {
             cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
           }
 
           sessionStorage.setItem('ai_generated_route', cleanJson);
+
           _planDirty = false;
           if (typeof _syncStep4State === 'function') _syncStep4State();
           toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
           setTimeout(() => { go('map'); }, 500);
+
+
+          // go('map') 보다 세션 저장을 먼저, initMapPage는 충분한 딜레이 후
+          go('map');
+
+          setTimeout(() => {
+            if (typeof initMapPage === 'function') {
+              initMapPage();
+            }
+          }, 500);
+
         } else {
-          toast('⚠️ 일정 생성에 실패했습니다.');
+          // 💡 [추가] 백엔드에서 fail 응답을 보낸 경우 (토큰 부족 등) 무한 대기 해제
+          toast('⚠️ ' + (res.message || 'AI 토큰이 부족합니다. 잠시 후 다시 시도해 주세요.'));
+          btn.innerHTML = originalText;
+          btn.disabled = false;
         }
       } catch (e) {
-        toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
-      } finally {
+        // 💡 [추가] 아예 통신 자체가 끊기거나 뻗은 경우 예외 처리
+        toast('⚠️ AI 서버 연결에 실패했습니다. 프롬프트를 확인해 주세요.');
         btn.innerHTML = originalText;
         btn.disabled = false;
       }
     }
+
 
 
 
