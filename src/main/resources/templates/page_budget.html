@@ -266,19 +266,12 @@
 
   let _selectedLedgerKey = 'jeju';
 
+  // 실제 데이터는 app_main.js의 _populateLedgerTripCards()(go('ledger') 진입 시 호출)가 채운다.
+  // 여기서는 그 전까지 잠깐 보일 로딩 placeholder만 표시한다 (예전 더미 데이터 노출 방지).
   function initLedgerSelector() {
     const container = document.getElementById('ledger-trip-cards');
-    if (!container || typeof MOCK_LEDGER_TRIPS === 'undefined') return;
-    container.innerHTML = MOCK_LEDGER_TRIPS.map(t => `
-      <div class="ts-card${t.isOn ? ' on' : ''}" onclick="selectLedgerTrip(this, '${t.key}')">
-        <div class="ts-thumb">${t.thumb}</div>
-        <div class="ts-info">
-          <div class="ts-name">${t.name}</div>
-          <div class="ts-meta">${t.meta}</div>
-        </div>
-        <div class="ts-budget">${t.budget}</div>
-      </div>
-    `).join('');
+    if (!container) return;
+    container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
   }
 
   function selectLedgerTrip(el, key) {
