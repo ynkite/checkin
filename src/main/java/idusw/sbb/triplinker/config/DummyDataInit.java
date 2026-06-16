@@ -33,11 +33,9 @@ public class DummyDataInit implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-//        createUserAndPostDummies();
-//        createExpenseDummies();
     }
 
-    //유저 + 게시글 더미
+    // 유저 + 게시글 더미(임시)
     private void createUserAndPostDummies() {
         if (userRepository.findByUsername("posttest").isPresent()) return;
 
@@ -81,7 +79,7 @@ public class DummyDataInit implements CommandLineRunner {
         System.out.println("===== [더미] 유저 + 게시글 생성 완료 =====");
     }
 
-    //가계부 (TravelPlan + Expense) 더미
+    //가계부 더미(임시)
     private void createExpenseDummies() {
         //전용 테스트 유저 조회 또는 생성
         User user = userRepository.findByUsername("ledgertest")

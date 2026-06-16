@@ -7,18 +7,17 @@ package idusw.sbb.triplinker.domain.plan.dto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * POST /api/trips/{tripId}/input-form  요청 바디
- * PLAN_INPUT_FORM 저장 시 사용
- *
- * travel_styles / dietary_info / accommodation_options 는
- * 프론트에서 JSON 배열 문자열로 전달 (예: "[\"가성비\",\"힐링\"]")
- */
+
+//  POST /api/trips/{tripId}/input-form  요청 바디
+//  PLAN_INPUT_FORM 저장 시 사용
+//  travel_styles / dietary_info / accommodation_options 는
+//  프론트에서 JSON 배열 문자열로 전달 (예: "[\"가성비\",\"힐링\"]")
+
 @Getter
 @NoArgsConstructor
 public class PlanInputFormSaveDto {
 
-    // ── STEP 1 에서 수집 ───────────────────────────
+    //STEP 1 에서 수집
     private String departure;
     private String transportType;       // CAR / PUBLIC
     private String accommodationType;
@@ -26,7 +25,7 @@ public class PlanInputFormSaveDto {
     private String companionType;       // SOLO / COUPLE / FAMILY / FRIENDS
     private Integer companionCount;
 
-    // ── STEP 2 에서 수집 ───────────────────────────
+    // STEP 2 에서 수집
     private String travelStyles;        // JSON 배열 문자열
     private String dietaryInfo;         // JSON 배열 문자열
     private int hasInfant = 0;

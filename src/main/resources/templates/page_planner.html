@@ -14,9 +14,7 @@
          * - GET /api/users/me  → MBTI 기반 일정 밀도 자동선택
          * - 이전 플랜 불러오기 버튼 표시 여부는 서버 응답으로 결정
          * ───────────────────────────────────────────────────────── */
-        /* ── SPA fragment 대응: DOMContentLoaded 이미 발화된 경우 즉시 실행 ── */
         async function initPlannerMBTI() {
-            // 출발지/여행지 도/시 초기값 기준 구 목록 세팅
             const depEl  = document.getElementById('dep-prov');
             const destEl = document.getElementById('dest-prov');
             if (depEl) {
@@ -30,7 +28,6 @@
                 if (_savedDest) { const dc = document.getElementById('dest-city'); if (dc) dc.value = _savedDest; }
             }
 
-            // GET /api/users/me → MBTI 기반 일정 밀도 자동선택
             try {
                 const res = await fetch('/api/users/me', {
                     headers: { 'Authorization': 'Bearer ' + (Token.getAccess() || '') }
@@ -38,16 +35,15 @@
                 if (res.ok) {
                     const json = await res.json();
                     const mbti = (json.data?.mbti || '').toUpperCase();
-                    // J 성향 → 빼곡하게, P 성향 → 여유롭게
                     const isJ = mbti.endsWith('J');
                     const chips = document.querySelectorAll('#chip-density .chip');
                     chips.forEach(c => c.classList.remove('on'));
                     if (isJ) {
-                        document.querySelector('#chip-density .chip:first-child')?.classList.add('on'); // 빼곡하게
+                        document.querySelector('#chip-density .chip:first-child')?.classList.add('on');
                         document.getElementById('planner-dens-note').textContent =
                             `MBTI ${mbti} → J 성향 → '빼곡하게' 자동 선택됨`;
                     } else {
-                        document.querySelector('#chip-density .chip:last-child')?.classList.add('on');  // 여유롭게
+                        document.querySelector('#chip-density .chip:last-child')?.classList.add('on');
                         document.getElementById('planner-dens-note').textContent =
                             mbti ? `MBTI ${mbti} → P 성향 → '여유롭게' 자동 선택됨` : '';
                     }
@@ -79,7 +75,6 @@
                 });
         }
 
-        /* SPA fragment: DOMContentLoaded 이미 발화됐으면 즉시 실행 */
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initPlannerMBTI);
         } else {
@@ -174,7 +169,7 @@
                     }
                 }
 
-                // ── 이동 수단 chip (단일, 기타(내용) 패턴 포함) ──
+                // ── 이동 수단 chip (단일, 기타( 처리 포함) ──
                 if (d.transportType) {
                     const isOther = d.transportType.startsWith('기타(');
                     const matchLabel = isOther ? '기타' : d.transportType;
@@ -187,7 +182,7 @@
                     }
                 }
 
-                // ── 숙소 형태 chip (단일, 기타(내용) 패턴 포함) ──
+                // ── 숙소 형태 chip (단일, 기타( 처리 포함) ──
                 if (d.accommodationType) {
                     const isOther = d.accommodationType.startsWith('기타(');
                     const matchLabel = isOther ? '기타' : d.accommodationType;
@@ -200,7 +195,7 @@
                     }
                 }
 
-                // ── 동행자 유형 chip (단일, 기타(내용) 패턴 포함) ──
+                // ── 동행자 유형 chip (단일, 기타( 처리 포함) ──
                 if (d.companionType) {
                     const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
                     const rawLabel = compMap[d.companionType] || d.companionType;
@@ -248,7 +243,7 @@
                     });
                 }
 
-                // ── 식이 정보 (다중, JSON 배열, 알러지·기타 패턴 포함) ──
+                // ── 식이 정보 (다중, JSON 배열) ──
                 if (d.dietaryInfo) {
                     let foods = [];
                     try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
@@ -284,7 +279,7 @@
                     });
                 }
 
-                // ── 특수 조건 chip (다중) — hasInfant / hasPet ──
+                // ── 특수 조건 chip (다중) — hasInfant / hasPet / extraNotes(노인, 기타) ──
                 document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
                 if (d.hasInfant === 1) {
                     const chip = [...document.querySelectorAll('#chip-special .chip')]
@@ -297,7 +292,6 @@
                     if (chip) chip.classList.add('on');
                 }
 
-                // ── extraNotes에서 노인 동반·기타 특수 조건 복원 ──
                 const otherSpecialEl = document.getElementById('other-special');
                 if (otherSpecialEl) {
                     otherSpecialEl.value = '';
@@ -353,7 +347,7 @@
                     });
                 }
 
-                // ── 추가사항 탭 extra rows 복원 ──
+                // ── sum-extra-rows 복원 (삭제 버튼 포함) ──
                 const extraContainer = document.getElementById('sum-extra-rows');
                 if (extraContainer && d.extraNotes) {
                     try {
@@ -364,8 +358,7 @@
                             const row = document.createElement('div');
                             row.id = 'sum-extra-' + item.label;
                             row.className = 'asc-row';
-                            row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();
-                clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
+                            row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
                             extraContainer.appendChild(row);
                         });
                         const emptyMsg = document.getElementById('extra-empty-msg');
@@ -523,7 +516,7 @@
             }).join(', ');
             if (el('sum-accopts')) el('sum-accopts').textContent = _wrap(accOptsText2 || '—');
 
-            // 특수 조건 (반려동물 제외 — 반려동물은 sum-pet에서 별도 표시)
+            // 특수 조건 (반려동물 제외)
             const specialText2 = [...document.querySelectorAll('#chip-special .chip.on')].map(c => {
                 const t = c.textContent.trim();
                 if (t === '기타') { const v = document.getElementById('other-special')?.value.trim(); return v ? `기타(${v})` : '기타'; }
@@ -577,11 +570,11 @@
             const accOpts = JSON.stringify([...document.querySelectorAll('#chip-accopts .chip.on')].map(c => mapChipWithOther(c, 'other-accopts')));
 
             // 3. 특수 조건 처리 (유아, 반려동물, 노인, 기타)
-            const special     = [...document.querySelectorAll('#chip-special .chip.on')].map(c => mapChipWithOther(c, 'other-special'));
-            const hasInfant   = special.some(s => s.includes('유아')) ? 1 : 0;
-            const hasPet      = special.some(s => s.includes('반려동물')) ? 1 : 0;
-            const hasOlderly  = special.some(s => s.includes('노인')) ? 1 : 0;
-            const extraNotes  = [
+            const special    = [...document.querySelectorAll('#chip-special .chip.on')].map(c => mapChipWithOther(c, 'other-special'));
+            const hasInfant  = special.some(s => s.includes('유아')) ? 1 : 0;
+            const hasPet     = special.some(s => s.includes('반려동물')) ? 1 : 0;
+            const hasOlderly = special.some(s => s.includes('노인')) ? 1 : 0;
+            const extraNotes = [
                 ...special
                     .filter(s => s.startsWith('기타('))
                     .map(s => ({ label: '특수 조건', value: s.slice(3, -1) })),
@@ -595,18 +588,18 @@
             // 4. 백엔드로 보낼 Payload 생성
             const payload = {
                 departure,
-                transportType:        trans,
-                accommodationType:    acc,
-                companionType:        comp,
-                companionCount:       pax,
+                transportType: trans,
+                accommodationType: acc,
+                companionType: comp,
+                companionCount: pax,
                 budget,
-                travelStyles:         styles,
-                dietaryInfo:          food,
+                travelStyles: styles,
+                dietaryInfo: food,
                 accommodationOptions: accOpts,
-                scheduleDensity:      density,
+                scheduleDensity: density,
                 hasInfant,
                 hasPet,
-                extraNotes:           JSON.stringify(extraNotes)
+                extraNotes: JSON.stringify(extraNotes)
             };
 
             // 5. 백엔드 취향 저장 API 호출
@@ -636,7 +629,7 @@
 
             if (typeof updateNav === 'function') updateNav();
 
-            for (let i = 1; i <= 4; i++) {
+            for (let i = 1; i <= 3; i++) {
                 const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
                 if (!sb || !sp) continue;
                 sb.classList.remove('active', 'done'); sp.classList.remove('active');
@@ -651,8 +644,6 @@
         /* ─────────────────────────────────────────────────────────
          * AI 일정 생성 요청
          * POST /api/trips/{tripId}/routes/generate
-         * [머지] 파일1: _planDirty, _syncStep4State 유지
-         *        파일2: initMapPage() 호출 추가, 에러 메시지 개선
          * ───────────────────────────────────────────────────────── */
         async function generateScheduleAndGoMap(btn) {
             const tripId = window._currentTripId;
@@ -675,16 +666,13 @@
                     _planDirty = false;
                     if (typeof _syncStep4State === 'function') _syncStep4State();
                     toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
+                    go('map');
                     setTimeout(() => {
-                        go('map');
-                        // 지도 페이지 fragment가 DOM에 삽입된 후 초기화
-                        setTimeout(() => {
-                            if (typeof initMapPage === 'function') initMapPage();
-                        }, 300);
+                        if (typeof initMapPage === 'function') initMapPage();
                     }, 500);
                 } else {
-                    // 백엔드 fail 응답 (토큰 부족 등)
-                    toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.'));
+                    // res.message 우선 표시 (AI 토큰 부족 등 서버 메시지 반영)
+                    toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
                 }
             } catch (e) {
                 toast('⚠️ AI 서버 연결에 실패했습니다. 프롬프트를 확인해 주세요.');
@@ -701,10 +689,9 @@
 
             <div class="planner-hd">
                 <div class="planner-ey">AI TRAVEL PLANNER</div>
-                <div class="planner-ttl">여행 플랜 생성</div>
+                <div class="planner-ttl">✈ 여행 플랜 생성</div>
             </div>
 
-            <!-- 4단계 스텝바 (app_main.js에서 display 제어) -->
             <div class="step-bar" id="plannerStepBar" style="display:none">
                 <div class="step-item active" id="sb-1" onclick="goPlanStep(1)">
                     <div class="step-num">1</div>
@@ -726,7 +713,6 @@
 
             <!-- ══════════════ STEP 1 ══════════════ -->
             <div class="step-panel active" id="sp-1">
-
                 <!-- 여행지 & 날짜 -->
                 <div class="pl-card">
                     <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -789,14 +775,12 @@
                     <div class="pl-2col">
                         <div class="form-group">
                             <label class="form-label">출발일</label>
-                            <input class="form-input" type="date" id="s1-date-start"
-                                   onchange="onStartDateChange()">
+                            <input class="form-input" type="date" id="s1-date-start" onchange="onStartDateChange()">
                             <div style="font-size:11px;color:var(--text3);margin-top:4px">📅 오늘 이후 날짜만 선택 가능합니다</div>
                         </div>
                         <div class="form-group">
                             <label class="form-label">귀환일</label>
-                            <input class="form-input" type="date" id="s1-date-end"
-                                   onchange="onEndDateChange()">
+                            <input class="form-input" type="date" id="s1-date-end" onchange="onEndDateChange()">
                             <div style="font-size:11px;color:var(--text3);margin-top:4px">🏠 출발일 이후 날짜 선택 (당일 여행 가능)</div>
                         </div>
                     </div>
@@ -960,8 +944,8 @@
 
                         <div class="chat-inp-area">
                             <div class="chat-inp-row">
-              <textarea class="chat-inp" id="chatInp" rows="1" placeholder="메시지 입력..."
-                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
+                <textarea class="chat-inp" id="chatInp" rows="1" placeholder="메시지 입력..."
+                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
                                 <button class="btn-send" onclick="sendMsg()">↑</button>
                             </div>
                         </div>
@@ -1084,8 +1068,7 @@
     </div>
 
     <!-- ===== 날씨 팝업 모달 ===== -->
-    <div class="overlay" id="weatherPopup"
-         onclick="if(event.target===this)closeWeatherPopup()">
+    <div class="overlay" id="weatherPopup" onclick="if(event.target===this)closeWeatherPopup()">
         <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
             <button class="modal-x" onclick="closeWeatherPopup()">✕</button>
             <div style="padding:4px 0 14px">
@@ -1093,7 +1076,7 @@
                 <div style="font-size:16px;font-weight:800" id="wp-title">🌤️ 여행 날씨 예보</div>
             </div>
 
-            <!-- 날씨 데이터 없음 안내 (날짜가 현재 기준으로 너무 먼 경우) -->
+            <!-- 날씨 데이터 없음 안내 -->
             <div id="wp-no-data" style="display:none;text-align:center;padding:30px 16px">
                 <div style="font-size:40px;margin-bottom:14px">🌐</div>
                 <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
@@ -1117,7 +1100,7 @@
                 <div style="margin-top:10px;font-size:11px;color:var(--text3)">※ 실 서비스 연동 전 모의 데이터입니다</div>
             </div>
 
-            <!-- 네이버·구글 날씨 이동 버튼 (항상 표시) -->
+            <!-- 네이버·구글 날씨 이동 버튼 -->
             <div style="display:flex;gap:10px;margin-top:18px">
                 <a href="https://weather.naver.com" target="_blank"
                    style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
@@ -1144,7 +1127,6 @@
             const today    = new Date().toISOString().split('T')[0];
             const val      = startEl.value;
             if (!val) { updateWeatherBtn(); return; }
-
             if (val < today) {
                 toast('⚠️ 출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
                 startEl.value = '';
@@ -1165,7 +1147,6 @@
             const start   = startEl.value;
             const end     = endEl.value;
             if (!end) { updateWeatherBtn(); return; }
-
             if (start && end < start) {
                 toast('⚠️ 귀환일은 출발일과 같거나 이후 날짜만 선택할 수 있습니다.');
                 endEl.value = '';
@@ -1175,7 +1156,6 @@
             updateWeatherBtn();
         }
 
-        /* ── 날씨 버튼 표시/숨김 ── */
         function updateWeatherBtn() {
             const s    = document.getElementById('s1-date-start').value;
             const e    = document.getElementById('s1-date-end').value;
@@ -1187,7 +1167,6 @@
             wrap.style.display = 'block';
         }
 
-        /* ── 날씨 팝업 열기 ── */
         async function openWeatherPopup() {
             const s = document.getElementById('s1-date-start').value;
             const e = document.getElementById('s1-date-end').value;
@@ -1198,7 +1177,6 @@
             const today    = new Date(); today.setHours(0,0,0,0);
             const diffDays = Math.floor((ds - today) / 86400000);
 
-            // 지역명 추출 — dest-city 우선, 없으면 dest-prov
             const destProv = document.getElementById('dest-prov');
             const destCity = document.getElementById('dest-city');
             const loc = (destCity?.value && destCity.value !== '전체')
@@ -1211,7 +1189,6 @@
             const noData   = document.getElementById('wp-no-data');
             const dataWrap = document.getElementById('wp-data-wrap');
 
-            // ── 케이스 A: 출발일이 너무 먼 미래 ──
             if (diffDays > WEATHER_MAX_FUTURE) {
                 noData.style.display   = 'block';
                 dataWrap.style.display = 'none';
@@ -1219,7 +1196,6 @@
                 return;
             }
 
-            // ── 케이스 B: 정상 표시 ──
             noData.style.display   = 'none';
             dataWrap.style.display = 'block';
             document.getElementById('weatherPopup').classList.add('open');
@@ -1233,7 +1209,6 @@
 
                 if (!json.success || !json.data || json.data.length === 0) throw new Error('데이터 없음');
 
-                // 여행 일수 계산 (최대 7일)
                 const allDays = [];
                 for (let d = new Date(ds); d <= de; d.setDate(d.getDate()+1)) allDays.push(new Date(d));
                 const previewDays = allDays.slice(0, WEATHER_PREVIEW_DAYS);
@@ -1265,7 +1240,6 @@
         </div>`;
                 }).join('');
 
-                // 7일 초과 안내
                 if (clipped) {
                     grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--text3);text-align:center;padding:8px 0;border-top:1px dashed var(--border)">
           📌 이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 예보 범위 초과로 표시되지 않습니다

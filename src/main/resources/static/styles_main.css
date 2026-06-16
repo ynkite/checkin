@@ -35,6 +35,7 @@
       --text1: #1C2B2A;
       --text2: #4A5E5C;
       --text3: #8FA3A0;
+      --text: #1C2B2A;
       --surface: #FFFFFF;
       --border: #D8E6E3;
       --border2: #EAF2F0;
@@ -2964,23 +2965,23 @@
       background: var(--sage-pale)
     }
 
-    .btn-map-cfm {
-      flex: 2;
-      padding: 8px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 700;
-      background: var(--sage);
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-      min-width: 0
-    }
+    /*.btn-map-cfm {*/
+    /*  flex: 2;*/
+    /*  padding: 8px;*/
+    /*  border-radius: 8px;*/
+    /*  font-size: 12px;*/
+    /*  font-weight: 700;*/
+    /*  background: var(--sage);*/
+    /*  color: #fff;*/
+    /*  border: none;*/
+    /*  cursor: pointer;*/
+    /*  white-space: nowrap;*/
+    /*  min-width: 0*/
+    /*}*/
 
-    .btn-map-cfm:hover {
-      background: var(--sage-d)
-    }
+    /*.btn-map-cfm:hover {*/
+    /*  background: var(--sage-d)*/
+    /*}*/
 
     /* map right */
     .map-right {

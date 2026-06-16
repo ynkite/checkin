@@ -16,10 +16,9 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 회원 정보 관리(조회, 수정, 탈퇴)를 위한 REST Controller입니다.
- * 클라이언트의 요청을 받아 유저 서비스 로직(UserService)으로 연결하는 진입점 역할을 합니다.
- */
+//  회원 정보 관리(조회, 수정, 탈퇴)를 위한 REST Controller
+//  클라이언트의 요청을 받아 유저 서비스 로직(UserService)으로 연결하는 진입점의 역할
+
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
@@ -28,21 +27,21 @@ public class UserController {
     private final UserService userService;
     private final PostService postService;
 
-    // 1-1. 내 프로필 조회 (GET) - JWT에서 추출한 현재 로그인 유저 정보를 반환합니다.
+    // 내 프로필 조회 (GET) - JWT에서 추출한 현재 로그인 유저 정보를 반환합니다.
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponseDto>> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UserInfoResponseDto response = userService.getProfile(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("조회 성공", response));
     }
 
-    // 1-2. 회원 프로필 조회 (GET) - 특정 유저의 상세 정보를 반환합니다.
+    // 회원 프로필 조회 (GET) - 특정 유저의 상세 정보를 반환합니다.
     @GetMapping("/{userId}")
     public ResponseEntity<UserInfoResponseDto> getProfile(@PathVariable Long userId) {
         UserInfoResponseDto response = userService.getProfile(userId);
         return ResponseEntity.ok(response);
     }
 
-    // 2. 닉네임 변경 (PATCH) - 유저의 name(닉네임) 필드를 수정합니다
+    // 닉네임 변경 (PATCH) - 유저의 name(닉네임) 필드를 수정합니다
     @PatchMapping("/{userId}/nickname")
     public ResponseEntity<String> updateNickname(
             @PathVariable Long userId,
@@ -51,7 +50,7 @@ public class UserController {
         return ResponseEntity.ok("닉네임이 성공적으로 변경되었습니다.");
     }
 
-    // 3. 회원 탈퇴 (DELETE /api/users/me) - 개인정보 마스킹 + 토큰 즉시 삭제
+    // 회원 탈퇴 (DELETE /api/users/me) - 개인정보 마스킹 + 토큰 즉시 삭제
     @DeleteMapping("/me")
     public ResponseEntity<ApiResponse<Void>> withdrawMe(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
@@ -59,7 +58,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("회원 탈퇴가 완료되었습니다.", null));
     }
 
-    // 4. 현재 비밀번호 검증 (POST /api/users/me/verify-password)
+    // 현재 비밀번호 검증 (POST /api/users/me/verify-password)
     @PostMapping("/me/verify-password")
     public ResponseEntity<ApiResponse<Void>> verifyPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -69,7 +68,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("확인되었습니다.", null));
     }
 
-    // 5. 내 프로필 수정 (PATCH /api/users/me)
+    // 내 프로필 수정 (PATCH /api/users/me)
     @PatchMapping("/me")
     public ResponseEntity<ApiResponse<Void>> updateMyInfo(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -85,7 +84,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("수정되었습니다.", null));
     }
 
-    // 6. 비밀번호 변경 (PATCH /api/users/me/password)
+    // 비밀번호 변경 (PATCH /api/users/me/password)
     @PatchMapping("/me/password")
     public ResponseEntity<ApiResponse<Void>> updateMyPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -101,7 +100,7 @@ public class UserController {
         }
     }
 
-    //7. 작성한 후기 목록 조회
+    // 작성한 후기 목록 조회
     @GetMapping("/me/posts")
     public ResponseEntity<ApiResponse<List<PostListResponseDto>>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails
@@ -112,7 +111,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("작성한 후기 조회 성공", posts));
     }
 
-    //8. 좋아요한 후기 목록 조회
+    // 좋아요한 후기 목록 조회
     @GetMapping("/me/liked-posts")
     public ResponseEntity<ApiResponse<List<PostListResponseDto>>> getMyLikedPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails

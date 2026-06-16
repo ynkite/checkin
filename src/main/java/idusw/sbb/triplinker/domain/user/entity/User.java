@@ -8,10 +8,10 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * 회원(users 테이블)의 정보와 도메인 핵심 비즈니스 로직을 담은 JPA 엔티티 클래스입니다.
- * 유저의 상태 정보 관리 및 닉네임 변경, 논리 탈퇴 로직을 내부에 포함합니다.
- */
+
+//  회원(users 테이블)의 정보와 도메인 핵심 비즈니스 로직을 담은 JPA 엔티티 클래스
+//  유저의 상태 정보 관리 및 닉네임 변경, 논리 탈퇴 로직을 내부에 포함
+
 @Entity
 @Table(name = "users")
 @Getter

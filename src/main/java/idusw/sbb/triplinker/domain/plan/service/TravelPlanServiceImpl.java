@@ -211,7 +211,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     public java.util.Map<String, Object> getInputFormMap(Long tripId) {
         java.util.Map<String, Object> map = new java.util.HashMap<>();
-        // 프론트엔드에서 터지지 않게 일단 기본값을 던져줍니다.
+        // 프론트엔드에서 문제 생기지 않게 않게 일단 기본값을 넣음
         map.put("companionCount", "2");
         map.put("transportType", "자차");
         return map;

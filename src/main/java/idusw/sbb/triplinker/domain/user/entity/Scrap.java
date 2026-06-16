@@ -1,9 +1,8 @@
-/**
- * 장소 스크랩 엔티티
- * - 사용자가 스크랩한 장소 정보를 PLACE_SCRAPS 테이블에 저장한다.
- * - user_id와 place_id를 통해 사용자와 장소를 연결한다.
- * - category 값으로 숙소, 맛집, 관광지, 카페를 구분한다.
- */
+//장소 스크랩 엔티티
+//사용자가 스크랩한 장소 정보를 PLACE_SCRAPS 테이블에 저장
+//user_id와 place_id를 통해 사용자와 장소를 연결
+//category 값으로 숙소, 맛집, 관광지, 카페를 구분
+
 package idusw.sbb.triplinker.domain.user.entity;
 
 import jakarta.persistence.*;

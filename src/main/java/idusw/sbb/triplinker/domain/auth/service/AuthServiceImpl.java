@@ -45,17 +45,17 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(noRollbackFor = LoginFailException.class)
     public TokenResponseDto login(LoginRequestDto request) {
 
-        //1. 유저 조회
+        // 유저 조회
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 아이디입니다."));
 
-        //2. 계정 잠금 상태 확인
+        // 계정 잠금 상태 확인
         if (user.isLocked()) {
             long remainSeconds = ChronoUnit.SECONDS.between(LocalDateTime.now(), user.getLockedUntil());
             throw new LoginFailException(true, user.getLoginFailCount(), Math.max(remainSeconds, 0));
         }
 
-        //3. 비밀번호 검증(로그인 실패 시 카운트 증가)
+        // 비밀번호 검증(로그인 실패 시 카운트 증가)
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             user.increaseLoginFailCount();
             userRepository.save(user);
@@ -66,15 +66,15 @@ public class AuthServiceImpl implements AuthService {
             throw new LoginFailException(false, user.getLoginFailCount(), 0);
         }
 
-        //4. 로그인 성공 시 실패 카운트 초기화
+        // 로그인 성공 시 실패 카운트 초기화
         user.resetLoginFail();
         userRepository.save(user);
 
-        //5. 토큰 발급
+        // 토큰 발급
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
-        //6. Refresh Token 해싱 후 DB 저장 (기존 토큰 지우고 새로 저장)
+        // Refresh Token 해싱 후 DB 저장 (기존 토큰 지우고 새로 저장)
         refreshTokenRepository.deleteByUserId(user.getId());
         String hashedRefreshToken = hashSha256(refreshToken);
         RefreshToken tokenEntity = RefreshToken.builder()
@@ -84,14 +84,14 @@ public class AuthServiceImpl implements AuthService {
                 .build();
         refreshTokenRepository.save(tokenEntity);
 
-        //7. 90일 비밀번호 변경 권장 체크
+        // 90일 비밀번호 변경 권장 체크
         boolean pwChangeRecommended = false;
         if (user.getLastPwChangedAt() != null) {
             long days = ChronoUnit.DAYS.between(user.getLastPwChangedAt(), LocalDateTime.now());
             pwChangeRecommended = days >= 90;
         }
 
-        //8. 최종 응답 반환
+        // 최종 응답 반환
         return new TokenResponseDto(accessToken, refreshToken, pwChangeRecommended);
 
     }
@@ -170,14 +170,6 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void sendPasswordResetEmail(String email) {
-        // 임시 주석 - findByEmail UserRepository에 추가 후 해제
-        // User user = userRepository.findByEmail(email)
-        //         .orElseThrow(() -> new IllegalArgumentException("해당 이메일로 가입된 계정이 없습니다."));
-        // if (user.getPasswordHash() == null) {
-        //     throw new IllegalStateException("소셜 계정은 비밀번호 재설정을 사용할 수 없습니다.");
-        // }
-        // String token = UUID.randomUUID().toString();
-        // passwordResetTokenRepository.save(PasswordResetToken.of(user, token));
         System.out.println("[개발용] sendPasswordResetEmail 임시 처리");
     }
 
