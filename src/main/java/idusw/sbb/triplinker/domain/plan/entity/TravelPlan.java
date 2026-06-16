@@ -93,6 +93,7 @@ public class TravelPlan {
     @Column(columnDefinition = "TEXT")
     private String routeJson; //여기에 AI가 생성한 JSON 문자열을 통째로 저장
 
+
     // ── 비즈니스 메서드 ────────────────────────────
 
     /** ③ 지연 업데이트: PlanInputForm 저장 후 form_id 연결 */

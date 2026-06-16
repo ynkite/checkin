@@ -466,13 +466,14 @@ async function updateMyPageUI() {
   updateLedgerList();
 }
 
+// 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 function _renderMyTrips(trips) {
   const te = document.getElementById('my-trips');
   if (!te) return;
   te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
       trips.length
           ? trips.map(x => `
-          <div class="trip-card" onclick="go('map')">
+          <div class="trip-card" onclick="openMyTrip(${x.tripId})"> 
             <div class="trip-thumb">🗺️</div>
             <div class="trip-info">
               <div class="trip-ttl">${x.title || '여행 플랜'}</div>
@@ -482,6 +483,30 @@ function _renderMyTrips(trips) {
           </div>`).join('')
           : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
   );
+}
+
+// 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
+function openMyTrip(tripId) {
+  // ✨ 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
+  window._currentTripId = tripId;
+  sessionStorage.setItem('plannerDraftId', tripId);
+
+  // 맵 전환 시 이전 데이터 잔상이 보이지 않도록 화면 백지화
+  const listEl = document.getElementById('mapDayList');
+  if (listEl) listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--sage-d);font-weight:700;">✨ 여행 정보를 불러오는 중...</div>';
+
+  if (window._kakaoOverlays) window._kakaoOverlays.forEach(o => o.overlay.setMap(null));
+  if (window._kakaoPolylines) window._kakaoPolylines.forEach(p => p.line.setMap(null));
+
+  // 지도 화면으로 부드럽게 이동
+  go('map');
+
+  // 방금 덮어씌운 새 tripId를 바탕으로 지도를 새로 그림!
+  setTimeout(() => {
+    if (typeof initMapPage === 'function') {
+      initMapPage();
+    }
+  }, 50);
 }
 
 /** [v2] GET /api/users/me/posts → 작성한 후기 */
