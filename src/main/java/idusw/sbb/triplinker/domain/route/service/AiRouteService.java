@@ -239,6 +239,7 @@ public class AiRouteService {
 
                     expenseRepository.save(Expense.builder()
                             .plan(plan)
+                            .user(plan.getUser())
                             .category(category)
                             .description(place.path("name").asText(""))
                             .amount(amount)

@@ -107,15 +107,12 @@ public class DummyDataInit implements CommandLineRunner {
                 .build());
 
         //AI 예상 비용 (isEstimated = true)
-        expenseRepository.save(Expense.builder().plan(plan).category("STAY").description("제주 숙소 3박").amount(180_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 1)).build());
-        expenseRepository.save(Expense.builder().plan(plan).category("FOOD").description("식비 예상").amount(96_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 1)).build());
-        expenseRepository.save(Expense.builder().plan(plan).category("TOUR").description("관광지 입장료").amount(48_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 2)).build());
-        expenseRepository.save(Expense.builder().plan(plan).category("CAFE").description("카페/음료 예상").amount(30_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 3)).build());
-
-        //실제 지출 (isEstimated = false)
-        expenseRepository.save(Expense.builder().plan(plan).category("FOOD").description("흑돼지 맛집").amount(55_000L).isEstimated(false).expenseDate(LocalDate.of(2025, 8, 2)).build());
-        expenseRepository.save(Expense.builder().plan(plan).category("CAFE").description("협재 오션뷰 카페").amount(18_000L).isEstimated(false).expenseDate(LocalDate.of(2025, 8, 3)).build());
-
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("STAY").description("제주 숙소 3박").amount(180_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 1)).build());
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("FOOD").description("식비 예상").amount(96_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 1)).build());
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("TOUR").description("관광지 입장료").amount(48_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 2)).build());
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("CAFE").description("카페/음료 예상").amount(30_000L).isEstimated(true).expenseDate(LocalDate.of(2025, 8, 3)).build());
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("FOOD").description("흑돼지 맛집").amount(55_000L).isEstimated(false).expenseDate(LocalDate.of(2025, 8, 2)).build());
+        expenseRepository.save(Expense.builder().plan(plan).user(plan.getUser()).category("CAFE").description("협재 오션뷰 카페").amount(18_000L).isEstimated(false).expenseDate(LocalDate.of(2025, 8, 3)).build());
         System.out.println("===== [더미] 가계부 (TravelPlan + Expense) 생성 완료 =====");
     }
 }

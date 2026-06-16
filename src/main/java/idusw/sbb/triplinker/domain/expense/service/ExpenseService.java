@@ -91,6 +91,7 @@ public class ExpenseService {
 
         Expense expense = Expense.builder()
                 .plan(plan)
+                .user(plan.getUser())
                 .category(dto.getCategory())
                 .description(dto.getDescription())
                 .amount(dto.getAmount())
