@@ -66,21 +66,20 @@ public class WeatherServiceImpl implements WeatherService {
 
     @Override
     public List<WeatherResponseDto> getForecast(String region) {
-        // ── 1. 단기예보 (오늘~3일차) ──
+        // 단기예보 (오늘~3일차)
         List<WeatherResponseDto> shortTerm = getShortTermForecast(region);
 
-        // ── 2. 중기예보 (4~7일차) ──
+        // 중기예보 (4~7일차)
         List<WeatherResponseDto> midTerm = getMidTermForecast(region, shortTerm.size());
 
-        // ── 3. 합치기 ──
+        // 합치기
         List<WeatherResponseDto> result = new ArrayList<>(shortTerm);
         result.addAll(midTerm);
         return result;
     }
 
-    // ────────────────────────────────────────────
-    // 단기예보 (getVilageFcst) → 오늘~3일치
-    // ────────────────────────────────────────────
+
+    // 단기예보 (getVilageFcst) - 오늘~3일치
     private List<WeatherResponseDto> getShortTermForecast(String region) {
         int[] grid = REGION_GRID.getOrDefault(region, REGION_GRID.get("서울"));
 
@@ -134,9 +133,9 @@ public class WeatherServiceImpl implements WeatherService {
         return result;
     }
 
-    // ────────────────────────────────────────────
-    // 중기예보 (getMidLandFcst + getMidTa) → 4~7일치
-    // ────────────────────────────────────────────
+
+    // 중기예보 (getMidLandFcst + getMidTa) - 4~7일치
+
     private List<WeatherResponseDto> getMidTermForecast(String region, int shortTermSize) {
         String landCode = MID_LAND_CODE.getOrDefault(region, "11B00000");
         String taCode   = MID_TA_CODE.getOrDefault(region,   "11B10101");

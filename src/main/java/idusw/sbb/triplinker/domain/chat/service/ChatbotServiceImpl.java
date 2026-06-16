@@ -63,24 +63,24 @@ public class ChatbotServiceImpl implements ChatbotService {
         ChatSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
 
-        // 1. 유저의 새로운 메시지 DB 저장
+        // 유저의 새로운 메시지 DB 저장
         ChatMessage userChat = new ChatMessage();
         userChat.setChatSession(session);
         userChat.setRole("USER");
         userChat.setContent(message);
         messageRepository.save(userChat);
 
-        // 2. [슬라이딩 윈도우] 최근 20개 대화 역순으로 가져와서 시간순으로 뒤집기
+        // 최근 20개 대화 역순으로 가져와서 시간순으로 뒤집기
         List<ChatMessage> recentHistory = messageRepository.findTop10ByChatSessionOrderByIdDesc(session);
         Collections.reverse(recentHistory);
 
-        // 3. Spring AI에게 넘겨줄 프롬프트 조립
+        // Spring AI에게 넘겨줄 프롬프트 조립
         List<Message> promptMessages = new ArrayList<>();
 
         // 시스템 프롬프트 조립
         StringBuilder sysPrompt = new StringBuilder();
 
-        // [절대 규칙] - PlanInputForm 유무와 관계없이 항상 적용
+        // 절대 규칙 - PlanInputForm 유무와 관계없이 항상 적용
         sysPrompt.append("""
                 "You are a Korean travel planner chatbot named 'TripLinker'. " +
                 "ABSOLUTE RULE 1: Respond ONLY in Korean Hangul. NEVER use Chinese/Japanese characters or English words. " +
@@ -114,7 +114,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                      ④ 값은 최대 15글자로 간결하게.
                 """);
 
-        // [여행 정보 주입] - PlanInputForm 데이터가 있을 때만 추가
+        // 여행 정보 주입 - PlanInputForm 데이터가 있을 때만 추가
         if (session.getPlanId() != null) {
             planRepository.findById(session.getPlanId()).ifPresent(plan -> {
                 PlanInputForm form = plan.getForm();
@@ -163,7 +163,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         promptMessages.add(new SystemMessage(sysPrompt.toString()));
 
-        // 4. 최근 20개의 대화 기록 얹어주기
+        // 최근 20개의 대화 기록 얹어주기
         for (ChatMessage chat : recentHistory) {
             if ("USER".equals(chat.getRole())) {
                 promptMessages.add(new UserMessage(chat.getContent()));
@@ -172,7 +172,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             }
         }
 
-        // 5. AI 호출 (Groq 메인 → 실패 시 Gemini 자동 폴백)
+        // AI 호출 (Groq 메인 → 실패 시 Gemini 자동 폴백)
         String aiReply;
         try {
             aiReply = primaryClient.prompt()
@@ -187,7 +187,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                     .content();
         }
 
-        // 6. AI 답변 DB 저장
+        // AI 답변 DB 저장
         ChatMessage aiChat = new ChatMessage();
         aiChat.setChatSession(session);
         aiChat.setRole("AI");

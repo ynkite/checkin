@@ -1,8 +1,7 @@
-/**
- * 내 여행 기록 목록 응답 DTO
- * - 마이페이지에서 여행 기록 카드 형태로 보여줄 데이터를 담는다.
- * - 여행 제목, 기간 메타 정보, 예산, 여행 상태를 전달한다.
- */
+//내 여행 기록 목록 응답 DTO
+//마이페이지에서 여행 기록 카드 형태로 보여줄 데이터를 담는다.
+//여행 제목, 기간 메타 정보, 예산, 여행 상태를 전달한다.
+
 package idusw.sbb.triplinker.domain.plan.dto;
 
 import lombok.AllArgsConstructor;

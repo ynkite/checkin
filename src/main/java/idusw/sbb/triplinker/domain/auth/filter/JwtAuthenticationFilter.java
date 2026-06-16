@@ -14,11 +14,11 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-/*
-* 모든 API 요청마다 클라이언트가 보낸 JWT 토큰을 검사하는 인증 필터
-* - HTTP 요청 헤더에서 토큰을 추출하고 유효성을 검증
-* - 토큰이 정상적이라면 유저 정보를 조회하여 Spring Security Context에 인증 상태를 저장
-* */
+
+// 모든 API 요청마다 클라이언트가 보낸 JWT 토큰을 검사하는 인증 필터
+// HTTP 요청 헤더에서 토큰을 추출하고 유효성을 검증
+// 토큰이 정상적이라면 유저 정보를 조회하여 Spring Security Context에 인증 상태를 저장
+
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -29,28 +29,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-        //1. 요청 헤더에서 순수 토큰만 추출
+        // 요청 헤더에서 순수 토큰만 추출
         String token = resolveToken(request);
 
-        //2. 유효한 토큰인지 확인
+        // 유효한 토큰인지 확인
         if (token != null && jwtProvider.validateToken(token)) {
 
-            //3. 토큰 클레임에서 userId, role 추출 (DB 조회 없음)
+            // 토큰 클레임에서 userId, role 추출 (DB 조회 없음)
             Long userId = jwtProvider.getUserIdFromToken(token);
             String role = jwtProvider.getRoleFromToken(token);
 
-            //4. 클레임 기반으로 인증 객체 생성 (DB 조회 생략)
+            // 클레임 기반으로 인증 객체 생성 (DB 조회 생략)
             CustomUserDetails userDetails = new CustomUserDetails(userId, role);
 
-            //5. Spring Security가 알아볼 수 있는 형태의 '인증 통행증(Token)' 객체 생성
+            // Spring Security가 알아볼 수 있는 형태의 '인증 통행증(Token)' 객체 생성
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-            //6. SecurityContext(보안 전용 보관소)에 방금 만든 통행증을 저장하여 '로그인된 상태'임을 보장
+            // SecurityContext(보안 전용 보관소)에 방금 만든 통행증을 저장하여 '로그인된 상태'임을 보장
             SecurityContextHolder.getContext().setAuthentication(authentication);
         }
 
-        //7. 다음 필터나 목적지(Controller)로 요청을 넘겨줌
+        // 다음 필터나 목적지(Controller)로 요청을 넘겨줌
         filterChain.doFilter(request, response);
     }
 

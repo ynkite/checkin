@@ -9,11 +9,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 
-/*
-* Spring Security 인증 과정에서 유저 데이터를 가져오는 서비스 클래스
-* - 클라이언트가 로그인 요청 시 전달한 아이디(username)를 기반으로
-*   DB에서 실제 유저 정보를 조회하여 SecurityContext에 전달할 UserDetails 객체를 생성
-* */
+//Spring Security 인증 과정에서 유저 데이터를 가져오는 서비스 클래스
+//클라이언트가 로그인 요청 시 전달한 아이디(username)를 기반으로
+//DB에서 실제 유저 정보를 조회하여 SecurityContext에 전달할 UserDetails 객체를 생성
+
 @Service
 @RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {

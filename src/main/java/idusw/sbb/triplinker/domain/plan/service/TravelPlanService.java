@@ -14,30 +14,30 @@ import java.util.Map;
 
 public interface TravelPlanService {
 
-    /**
-     * ① TRAVEL_PLANS 생성 (form_id = NULL)
-     * @return 생성된 tripId
-     */
+
+//      TRAVEL_PLANS 생성 (form_id = NULL)
+//      @return 생성된 tripId
+
     Long createPlan(Long userId, PlanCreateDto dto);
 
-    /**
-     * ② PLAN_INPUT_FORM 저장
-     * ③ TRAVEL_PLANS.form_id 지연 업데이트
-     * @return 생성된 formId
-     */
+
+      //PLAN_INPUT_FORM 저장
+      //TRAVEL_PLANS.form_id 지연 업데이트
+      //@return 생성된 formId
+
     Long saveInputForm(Long userId, Long tripId, PlanInputFormSaveDto dto);
 
-    /** GET /api/trips/{tripId} */
+    // GET /api/trips/{tripId}
     PlanDetailResponseDto getPlanDetail(Long userId, Long tripId);
 
-    /** GET /api/trips */
+    // GET /api/trips
     List<PlanDetailResponseDto> getMyPlans(Long userId);
 
-    /**
-     * 이전 플랜 불러오기 (AUTO_LOADED)
-     * 가장 최근 UI_CLICK / CHATBOT 폼을 복사해서 현재 플랜에 저장
-     * @return formId (없으면 null)
-     */
+
+     // 이전 플랜 불러오기 (AUTO_LOADED)
+     // 가장 최근 UI_CLICK / CHATBOT 폼을 복사해서 현재 플랜에 저장
+     // @return formId (없으면 null)
+
     Long loadPreviousPreference(Long userId, Long tripId);
 
     void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);

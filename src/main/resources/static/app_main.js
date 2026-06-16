@@ -147,7 +147,7 @@ function go(id, addToHistory) {
   }
   document.querySelectorAll('.wf-item').forEach(b => b.classList.remove('on'));
   const map = {
-    main: 0, signup: 1, 'signup-kakao': 1, login: 2, mypage: 3, planner: 4,
+    main: 0, signup: 1, 'signup-social': 1, login: 2, mypage: 3, planner: 4,
     map: 5, budget: 6, ledger: 7, community: 8, admin: 9, review: 10,
     'edit-review': 11, 'place-reviews': 12, 'place-teraroasa': 12,
     'place-hyeopjae': 12, weather: 13,
@@ -400,16 +400,34 @@ function tryGoogleLogin() {
   window.location.href = API_BASE + '/oauth2/authorization/google';
 }
 
-/** OAuth2 콜백 후 토큰을 URL 파라미터로 수신하는 경우를 처리 */
+// OAuth2 콜백 후 토큰을 URL 파라미터로 수신하는 경우를 처리
 function _handleOAuthCallback() {
-  const params = new URLSearchParams(location.search);
-  const accessToken  = params.get('accessToken');
-  const refreshToken = params.get('refreshToken');
+  var params = new URLSearchParams(location.search);
+
+  // 소셜 로그인 에러 처리
+  var oauthError = params.get('oauthError');
+  if (oauthError) {
+    history.replaceState({}, '', location.pathname);
+    if (oauthError === 'email_already_exists') {
+      toast('⚠️ 이미 가입되어 있는 이메일입니다.');
+    } else {
+      toast('⚠️ 소셜 로그인 중 오류가 발생했습니다.');
+    }
+    return;
+  }
+
+  var accessToken  = params.get('accessToken');
+  var refreshToken = params.get('refreshToken');
   if (accessToken && refreshToken) {
     history.replaceState({}, '', location.pathname);
-    _initSession(accessToken, refreshToken).then(() => {
-      go('mypage');
-      toast((_currentUser ? _currentUser.name : '') + '님, 환영합니다! 🎉');
+    _initSession(accessToken, refreshToken).then(function() {
+      if (_currentUser && _currentUser.isSocial && _currentUser.region === '미설정') {
+        toast('회원가입을 먼저 진행해주세요!');
+        setTimeout(function() { startSocialSignup(); }, 800);
+      } else {
+        go('main');
+        toast((_currentUser ? _currentUser.name : '') + '님, 환영합니다! 🎉');
+      }
     });
   }
 }
@@ -425,19 +443,60 @@ async function doLogout() {
   go('main');
 }
 
-/** 카카오 회원가입 완료 */
-async function doKakaoSignup() {
-  const nameEl = document.getElementById('kakao-name');
+/** 소셜 회원가입 완료 */
+async function doSocialSignup() {
+  var nameEl = document.getElementById('social-name');
   if (!nameEl || !nameEl.value.trim()) { toast('이름을 입력해주세요'); return; }
-  const res = await api.patch('/api/users/me', { name: nameEl.value.trim() });
+
+  var birthEl = document.getElementById('social-birth');
+  var birthDate = birthEl ? birthEl.value : '';
+  if (!birthDate) { toast('생년월일을 선택해주세요'); return; }
+
+  var genderOn = document.querySelector('#social-gender-row .chip.on');
+  if (!genderOn) { toast('성별을 선택해주세요'); return; }
+  var gender = genderOn.textContent.trim() === '남성' ? 'M' : 'F';
+
+  var bigEl    = document.getElementById('social-region-big');
+  var province = bigEl ? bigEl.value : '';
+  if (!province) { toast('거주 지역(도/시)을 선택해주세요'); return; }
+  var cityEl  = document.getElementById('social-region-city');
+  var cityVal = cityEl ? cityEl.value : '';
+  var city    = (cityVal && cityVal !== '시/군/구 선택' && cityVal !== '전체') ? cityVal : '';
+  var region  = city ? (province + ' ' + city) : province;
+
+  var mbti = '';
+  document.querySelectorAll('#social-mbti .chip-row').forEach(function(row) {
+    var on = row.querySelector('.chip-sm.on');
+    if (on) mbti += on.textContent.trim()[0];
+  });
+  if (mbti.length !== 4) { toast('MBTI를 모두 선택해주세요'); return; }
+
+  var body = { name: nameEl.value.trim(), region: region, gender: gender, birthDate: birthDate, mbti: mbti };
+  var res = await api.patch('/api/users/me', body);
   if (res.success) {
-    toast('카카오 계정으로 회원가입 완료! 로그인해주세요 🟡');
-    setTimeout(() => go('login'), 1000);
+    if (_currentUser) {
+      _currentUser.name = body.name;
+      _currentUser.region = region;
+      _currentUser.gender = gender;
+      _currentUser.birthDate = birthDate;
+      _currentUser.mbti = mbti;
+    }
+    toast('✅ 소셜 계정으로 회원가입이 완료되었습니다!');
+    setTimeout(function() { go('mypage'); }, 1000);
+  } else {
+    toast('⚠️ ' + (res.message || '가입 처리 중 오류가 발생했습니다.'));
   }
 }
-function startKakaoSignup() {
-  toast('🟡 카카오 계정으로 연결되었습니다');
-  setTimeout(() => go('signup-kakao'), 600);
+function startSocialSignup() {
+  var provider = (_currentUser && _currentUser.username && _currentUser.username.startsWith('google')) ? 'google' : 'kakao';
+  var icon     = provider === 'google' ? '🔵' : '🟡';
+  var iconEl   = document.getElementById('social-signup-icon');
+  var noticeEl = document.getElementById('social-signup-notice');
+  if (iconEl)   iconEl.textContent = icon;
+  if (noticeEl) noticeEl.textContent = icon + ' 소셜 연결 완료 — 아이디·이메일·비밀번호는 소셜 계정으로 대체됩니다.';
+  go('signup-social');
+  var nameEl = document.getElementById('social-name');
+  if (nameEl && _currentUser && _currentUser.name) nameEl.value = _currentUser.name;
 }
 
 /* ───────────────────────────────────────────────
@@ -1152,7 +1211,7 @@ function buildEditHTML(u, isSocial) {
   const savedProvince = regionParts[0] || '';
   const savedCity     = regionParts.slice(1).join(' ') || '';
   const provinces = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
-  const cityData = typeof CITY_DATA !== 'undefined' ? CITY_DATA : {};
+  const cityData = _cities;
   const provinceOpts = provinces.map(p => `<option${p===savedProvince?' selected':''}>${p}</option>`).join('');
   const cities = cityData[savedProvince] || [];
   const cityOpts = '<option value="">시/군/구 선택</option>' + cities.map(c => `<option${c===savedCity?' selected':''}>${c}</option>`).join('');
@@ -1244,25 +1303,43 @@ async function saveInfoEdit() {
   const av = document.getElementById('myAvatar'); if (av) av.textContent = n.value.trim()[0];
   const nm = document.getElementById('myName');   if (nm) nm.textContent = n.value.trim();
 
-  resetInfoStep();
+  if (_currentUser?.isSocial) {
+    showSocialInfoEdit();
+  } else {
+    resetInfoStep();
+  }
   toast('✅ 회원정보가 수정되었습니다.');
 }
 
 /* ───────────────────────────────────────────────
  * 8. 회원 탈퇴 (DELETE /api/users/me)  [v2 신규]
  * ─────────────────────────────────────────────── */
-function doWithdraw() {
+async function doWithdraw() {
   if (!_currentUser) { toast('로그인이 필요합니다'); return; }
-  const input = document.getElementById('withdrawEmailInput');
-  const email = input?.value.trim();
-  if (!email) { toast('이메일을 입력해주세요'); return; }
-  const errEl = document.getElementById('withdraw-email-err');
-  if (email.toLowerCase() !== (_currentUser.email || '').toLowerCase()) {
-    if (errEl) errEl.style.display = 'block';
-    return;
+
+  if (_currentUser.isSocial) {
+    const inp    = document.getElementById('withdrawSocialInput');
+    const errEl  = document.getElementById('withdraw-social-err');
+    if (!inp || inp.value.trim() !== '탈퇴하겠습니다') {
+      if (errEl) errEl.style.display = 'block';
+      return;
+    }
+    if (errEl) errEl.style.display = 'none';
+    document.getElementById('withdraw-confirm-modal').style.display = 'flex';
+
+  } else {
+    // 일반 계정: 비밀번호로 본인 확인
+    const pw    = document.getElementById('withdrawPwInput')?.value;
+    const errEl = document.getElementById('withdraw-pw-err');
+    if (!pw) { toast('비밀번호를 입력해주세요'); return; }
+    const res = await api.post('/api/users/me/verify-password', { password: pw });
+    if (!res.success) {
+      if (errEl) errEl.style.display = 'block';
+      return;
+    }
+    if (errEl) errEl.style.display = 'none';
+    document.getElementById('withdraw-confirm-modal').style.display = 'flex';
   }
-  if (errEl) errEl.style.display = 'none';
-  document.getElementById('withdraw-confirm-modal').style.display = 'flex';
 }
 
 async function confirmWithdraw() {
@@ -2943,8 +3020,6 @@ function toast(msg, dur=2800) {
   if(_tt) clearTimeout(_tt);
 
   t.innerHTML = msg;
-  t.style.color = '#111111';
-  t.style.fontWeight = '600';
   t.classList.add('show');
 
   _tt=setTimeout(()=>t.classList.remove('show'), dur);
@@ -3108,7 +3183,8 @@ function showMySection(key, btn) {
   // 섹션별 초기화
   if (key === 'info') {
     resetInfoStep();
-    if (_currentUser?.social) {
+    // 속성명 통일: isSocial 로 검사
+    if (_currentUser?.isSocial) {
       showSocialInfoEdit();
     } else {
       const notice = document.getElementById('info-social-notice');
@@ -3117,15 +3193,53 @@ function showMySection(key, btn) {
       if (pwForm) pwForm.style.display = 'block';
     }
   }
-  if (key === 'withdraw') {
-    const inp = document.getElementById('withdrawEmailInput');
-    if (inp) inp.value = '';
-    const err = document.getElementById('withdraw-email-err');
-    if (err) err.style.display = 'none';
-  }
+  if (key === 'withdraw') initWithdrawSection();
   if (key === 'ledger')      updateLedgerList();
   if (key === 'scrap-stay')  loadMyScrap('stay');
   if (key === 'scrap-food')  loadMyScrap('food');
   if (key === 'scrap-tour')  loadMyScrap('tour');
   if (key === 'scrap-cafe')  loadMyScrap('cafe');
 }
+
+function initWithdrawSection() {
+  if (!_currentUser) return;
+  const warnEl    = document.getElementById('withdraw-warn-txt');
+  const socialBox = document.getElementById('withdraw-social-box');
+  const pwBox     = document.getElementById('withdraw-pw-box');
+
+  // 입력값/오류 초기화 (이메일, 비밀번호, 소셜 문구 모두 포함)
+  const emailInp  = document.getElementById('withdrawEmailInput');
+  const pwInp     = document.getElementById('withdrawPwInput');
+  const socialInp = document.getElementById('withdrawSocialInput');
+
+  const emailErr  = document.getElementById('withdraw-email-err');
+  const pwErr     = document.getElementById('withdraw-pw-err');
+  const socialErr = document.getElementById('withdraw-social-err');
+
+  if (emailInp)  emailInp.value = '';
+  if (pwInp)     pwInp.value    = '';
+  if (socialInp) socialInp.value = '';
+
+  if (emailErr)  emailErr.style.display  = 'none';
+  if (pwErr)     pwErr.style.display     = 'none';
+  if (socialErr) socialErr.style.display = 'none';
+
+  // 계정 타입에 따른 화면 분기
+  if (_currentUser.isSocial) {
+    if (warnEl) warnEl.innerHTML =
+        '🔗 소셜 계정 탈퇴 시 카카오·구글과의 연결이 즉시 해제됩니다.<br>' +
+        '• 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>' +
+        '• 탈퇴 후 복구는 불가능합니다.<br>' +
+        "• 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.";
+    if (socialBox) socialBox.style.display = 'block';
+    if (pwBox)     pwBox.style.display     = 'none';
+  } else {
+    if (warnEl) warnEl.innerHTML =
+        '• 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>' +
+        '• 탈퇴 후 복구는 불가능합니다.<br>' +
+        "• 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.";
+    if (socialBox) socialBox.style.display = 'none';
+    if (pwBox)     pwBox.style.display     = 'block';
+  }
+}
+

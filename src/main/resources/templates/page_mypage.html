@@ -287,9 +287,12 @@
           <div id="info-pw-form">
             <div class="form-group">
               <label class="form-label">현재 비밀번호</label>
-              <input class="form-input" type="password" id="infoPwInput" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')verifyInfoPw()">
+              <input class="form-input" type="password" id="infoPwInput" placeholder="비밀번호 입력"
+                     onkeydown="if(event.key==='Enter')verifyInfoPw()">
             </div>
-            <div id="info-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">⚠️ 비밀번호가 올바르지 않습니다.</div>
+            <div id="info-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">
+              ⚠️ 비밀번호가 올바르지 않습니다.
+            </div>
             <button class="btn-f" style="padding:10px 20px;border-radius:var(--r)" onclick="verifyInfoPw()">확인</button>
           </div>
         </div>
@@ -304,36 +307,59 @@
 
       <div id="my-withdraw" style="display:none">
         <h3 class="my-sec-ttl">회원 탈퇴</h3>
-        <div id="withdraw-warn-txt" style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8"></div>
-        <div class="form-group">
-          <label class="form-label">이메일 재확인</label>
-          <input class="form-input" type="email" id="withdrawEmailInput" placeholder="가입한 이메일 주소 입력"
-                 onkeydown="if(event.key==='Enter')doWithdraw()">
+
+        <div id="withdraw-warn-txt"
+             style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8">
         </div>
-        <div id="withdraw-email-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">⚠️ 이메일이 올바르지 않습니다.</div>
-        <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700"
+
+        <div id="withdraw-social-box" style="display:none" class="form-group">
+          <div style="background:var(--cream2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">
+            카카오 또는 구글 계정으로 가입한 회원은 Trip Linker 탈퇴 후, <br>
+            각 소셜 서비스의 계정 관리 화면에서 연결된 서비스 해제까지 진행해야 탈퇴가 완료됩니다.
+          </div>
+          <label class="form-label">탈퇴 확인</label>
+          <input class="form-input" type="text" id="withdrawSocialInput" placeholder="'탈퇴하겠습니다'를 입력해주세요"
+                 onkeydown="if(event.key==='Enter') doWithdraw()"
+                 style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">
+          <div id="withdraw-social-err" style="display:none;color:var(--coral);font-size:12px;margin-top:6px">
+            ⚠️ 제시된 문구를 정확히 입력해주세요.
+          </div>
+        </div>
+
+        <div id="withdraw-pw-box" style="display:none" class="form-group">
+          <label class="form-label">비밀번호 재확인</label>
+          <input class="form-input" type="password" id="withdrawPwInput" placeholder="비밀번호를 입력해주세요"
+                 onkeydown="if(event.key==='Enter') doWithdraw()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">
+          <div id="withdraw-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-top:6px">
+            ⚠️ 비밀번호가 올바르지 않습니다.
+          </div>
+        </div>
+
+        <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;margin-top:10px;"
                 onclick="doWithdraw()">회원 탈퇴</button>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- 회원 탈퇴 확인 모달 -->
-<div id="withdraw-confirm-modal"
-     style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
-     onclick="if(event.target===this)closeWithdrawModal()">
-  <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
-    <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">⚠️ 정말 탈퇴하시겠습니까?</h3>
-    <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
-      • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
-      • 탈퇴 후 복구는 불가능합니다.<br>
-      • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.
-    </div>
-    <div style="display:flex;gap:8px">
-      <button onclick="confirmWithdraw()"
-              style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
-      <button onclick="closeWithdrawModal()"
-              style="flex:1;padding:11px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:700">취소</button>
+
+      <div id="withdraw-confirm-modal"
+           style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
+           onclick="if(event.target===this)closeWithdrawModal()">
+        <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
+          <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">⚠️ 정말 탈퇴하시겠습니까?</h3>
+
+          <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
+            • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
+            • 탈퇴 후 복구는 불가능합니다.<br>
+            • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.
+          </div>
+
+          <div style="display:flex;gap:8px">
+            <button onclick="confirmWithdraw()"
+                    style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
+            <button onclick="closeWithdrawModal()"
+                    style="flex:1;padding:11px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:700">취소</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
