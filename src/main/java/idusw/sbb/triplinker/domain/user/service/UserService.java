@@ -1,8 +1,3 @@
-/**
- * 사용자 서비스 인터페이스
- * - 회원 정보 관리와 마이페이지 활동 조회 기능의 명세를 정의한다.
- * - 구현체는 프로필, 여행 기록, 가계부, 장소 스크랩 조회 로직을 처리한다.
- */
 package idusw.sbb.triplinker.domain.user.service;
 
 import idusw.sbb.triplinker.domain.expense.dto.BudgetReportResponseDto;
@@ -15,10 +10,10 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 
-/**
- * 회원 관리 기능의 비즈니스 핵심 명세를 정의한 서비스 인터페이스입니다.
- * 약속된 기능(조회, 수정, 탈퇴)을 명시하여 느슨한 결합 구조를 만듭니다.
- */
+
+//  회원 관리 기능의 비즈니스 핵심 명세를 정의한 서비스 인터페이스
+//  약속된 기능(조회, 수정, 탈퇴)을 명시하여 느슨한 결합 구조를 만듬
+
 public interface UserService {
     UserInfoResponseDto getProfile(Long userId);
     void updateNickname(Long userId, UserNicknameUpdateRequest request);

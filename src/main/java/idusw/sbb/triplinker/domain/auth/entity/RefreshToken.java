@@ -1,5 +1,4 @@
-// 로그인 시 발급하는 Refresh Token을 DB에 저장하는 Entity
-// 로그아웃·탈퇴 시 완전 삭제 (Hard Delete)
+// 로그인 시 발급하는 Refresh Token을 DB에 저장하는 Entity, 로그아웃·탈퇴 시 완전 삭제 (Hard Delete)
 
 package idusw.sbb.triplinker.domain.auth.entity;
 

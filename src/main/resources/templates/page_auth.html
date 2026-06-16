@@ -452,51 +452,84 @@
   </div>
 </div>
 
-<div class="page" id="page-signup-kakao">
-  <div class="auth-wrap" style="align-items:flex-start;padding-top:28px">
-    <div class="auth-card" style="width:560px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:#FEE500;display:flex;align-items:center;justify-content:center;font-size:18px">🟡</div>
-        <h2 class="auth-ttl" style="margin-bottom:0">카카오 계정으로 가입</h2>
-      </div>
-      <div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:18px">
-        🟡 카카오 연결 완료 — 아이디·이메일·비밀번호는 카카오 계정으로 대체됩니다.
-      </div>
-      <div class="form-row">
+  <div class="page" id="page-signup-social">
+    <div class="auth-wrap" style="align-items:flex-start;padding-top:28px">
+      <div class="auth-card" style="width:560px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span id="social-signup-icon" style="font-size:22px">🟡</span>
+          <h2 class="auth-ttl" style="margin-bottom:0">소셜 계정으로 가입</h2>
+        </div>
+        <div id="social-signup-notice" style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:18px">
+          소셜 연결 완료 — 아이디·이메일·비밀번호는 소셜 계정으로 대체됩니다.
+        </div>
+
         <div class="form-group">
           <label class="form-label">이름 <span style="color:var(--coral)">*</span></label>
-          <input class="form-input" type="text" id="kakao-name" placeholder="실명 입력">
+          <input class="form-input" id="social-name" placeholder="이름을 입력해주세요">
         </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">생년월일 <span style="color:var(--coral)">*</span></label>
+            <input class="form-input" type="date" id="social-birth">
+          </div>
+          <div class="form-group">
+            <label class="form-label">성별 <span style="color:var(--coral)">*</span></label>
+            <div class="chip-row" id="social-gender-row" style="margin-top:4px">
+              <button class="chip" onclick="pick(this)">남성</button>
+              <button class="chip" onclick="pick(this)">여성</button>
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
-          <label class="form-label">생년월일</label>
-          <input class="form-input" type="date" id="kakao-birthDate">
+          <label class="form-label">거주 지역 <span style="color:var(--coral)">*</span></label>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <select class="form-input" id="social-region-big" onchange="updateCity(this,'social-region-city')" style="flex:1">
+              <option value="">도/시 선택</option>
+              <option>서울</option><option>경기</option><option>인천</option>
+              <option>강원</option><option>충북</option><option>충남</option>
+              <option>대전</option><option>세종</option><option>전북</option>
+              <option>전남</option><option>광주</option><option>경북</option>
+              <option>경남</option><option>대구</option><option>울산</option>
+              <option>부산</option><option>제주</option>
+            </select>
+            <select class="form-input" id="social-region-city" style="flex:1">
+              <option value="">시/군/구 선택</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">성별</label>
-        <div class="chip-row" style="margin-top:4px">
-          <button class="chip" onclick="pick(this,'kakao-gender')" data-val="M">남성</button>
-          <button class="chip" onclick="pick(this,'kakao-gender')" data-val="F">여성</button>
+
+        <div class="form-group" id="social-mbti">
+          <label class="form-label">MBTI <span style="color:var(--coral)">*</span></label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+            <div class="chip-row" style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">EI</span>
+              <button class="chip chip-sm" onclick="pick(this)">E(외향)</button>
+              <button class="chip chip-sm" onclick="pick(this)">I(내향)</button>
+            </div>
+            <div class="chip-row" style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">SN</span>
+              <button class="chip chip-sm" onclick="pick(this)">S(감각)</button>
+              <button class="chip chip-sm" onclick="pick(this)">N(직관)</button>
+            </div>
+            <div class="chip-row" style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">TF</span>
+              <button class="chip chip-sm" onclick="pick(this)">T(사고)</button>
+              <button class="chip chip-sm" onclick="pick(this)">F(감정)</button>
+            </div>
+            <div class="chip-row" style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--text3);width:38px;flex-shrink:0">JP</span>
+              <button class="chip chip-sm" onclick="pick(this)">J(계획)</button>
+              <button class="chip chip-sm" onclick="pick(this)">P(즉흥)</button>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">거주 지역</label>
-        <div class="loc-selector">
-          <select class="loc-big" onchange="updateCity(this, 'kakao-city-select')">
-            <option value="">도/시 선택</option>
-          </select>
-          <select class="loc-big" id="kakao-city-select">
-            <option value="">시/군/구 선택</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn-f" style="width:100%;padding:12px;font-size:14px;border-radius:var(--r);margin-top:4px;background:#FEE500;color:#3C1E1E" onclick="doKakaoSignup()">🟡 카카오로 가입 완료</button>
-      <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--text3)">
-        <button class="auth-link" onclick="go('signup')">← 일반 가입으로 돌아가기</button>
+        <button class="btn-f" style="width:100%;padding:12px;font-size:14px;border-radius:var(--r);margin-top:8px"
+                onclick="doSocialSignup()">가입 완료</button>
       </div>
     </div>
   </div>
-</div>
 
 <div class="page" id="page-login">
   <div class="auth-wrap">

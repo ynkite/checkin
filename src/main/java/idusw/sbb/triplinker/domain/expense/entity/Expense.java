@@ -1,7 +1,7 @@
 package idusw.sbb.triplinker.domain.expense.entity;
 
-
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
+import idusw.sbb.triplinker.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -25,6 +25,10 @@ public class Expense {
     @JoinColumn(name = "plan_id", nullable = false)
     private TravelPlan plan;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @Column(nullable = false, length = 20)
     private String category; // STAY, FOOD, TOUR, CAFE
 
@@ -42,8 +46,10 @@ public class Expense {
     private LocalDate expenseDate;
 
     @Builder
-    public Expense(TravelPlan plan, String category, String description, Long amount, boolean isEstimated, LocalDate expenseDate) {
+    public Expense(TravelPlan plan, User user, String category, String description,
+                   Long amount, boolean isEstimated, LocalDate expenseDate) {
         this.plan = plan;
+        this.user = user;
         this.category = category;
         this.description = description;
         this.amount = amount;

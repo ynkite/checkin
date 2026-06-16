@@ -11,11 +11,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
-/*
-* Spring Security에서 사용하는 유저 정보 객체 (어댑터 클래스)
-* - 애플리케이션의 User 엔티티와 Spring Security의 UserDetails 인터페이스를 연결
-* - Security 인증 과정에서 필요한 유저의 권한 및 계정 상태 정보를 제공
-* */
+
+//Spring Security에서 사용하는 유저 정보 객체 (어댑터 클래스)
+//애플리케이션의 User 엔티티와 Spring Security의 UserDetails 인터페이스를 연결
+//Security 인증 과정에서 필요한 유저의 권한 및 계정 상태 정보를 제공
+
 
 public class CustomUserDetails implements UserDetails, OAuth2User {
 
@@ -41,7 +41,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
         this.tokenRole = null;
     }
 
-    // JWT 필터 전용 — DB 조회 없이 토큰 클레임만으로 생성
+    // JWT 필터 전용( DB 조회 없이 토큰 클레임만으로 생성 )
     public CustomUserDetails(Long userId, String role) {
         this.user = null;
         this.tokenUserId = userId;

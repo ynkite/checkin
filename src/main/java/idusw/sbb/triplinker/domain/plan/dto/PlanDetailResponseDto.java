@@ -13,10 +13,9 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * GET /api/trips/{tripId}  응답 바디
- * TravelPlan + PlanInputForm 을 조합해서 반환
- */
+//  GET /api/trips/{tripId}  응답 바디
+//  TravelPlan + PlanInputForm 을 조합해서 반환
+
 @Getter
 public class PlanDetailResponseDto {
 

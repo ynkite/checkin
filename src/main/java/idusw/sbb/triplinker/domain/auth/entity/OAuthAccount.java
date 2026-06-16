@@ -36,4 +36,12 @@ public class OAuthAccount {
         this.providerId = providerId;
         this.createdAt = LocalDateTime.now();
     }
+
+    @Column(name = "access_token", columnDefinition = "TEXT")
+    private String accessToken;
+
+    // 로그인할 때마다 최신 토큰으로 갱신
+    public void updateAccessToken(String accessToken) {
+        this.accessToken = accessToken;
+    }
 }

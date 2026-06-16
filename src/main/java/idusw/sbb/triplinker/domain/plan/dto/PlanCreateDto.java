@@ -11,10 +11,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-/**
- * POST /api/trips  요청 바디
- * TRAVEL_PLANS 생성 시 사용 (form_id 는 서버에서 NULL 처리)
- */
+
+//POST /api/trips  요청 바디
+//TRAVEL_PLANS 생성 시 사용 (form_id 는 서버에서 NULL 처리)
+
 @Getter
 @NoArgsConstructor
 public class PlanCreateDto {
