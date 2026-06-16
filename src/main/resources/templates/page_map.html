@@ -511,29 +511,35 @@
     }
 
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
+    // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
+
     function drawLivePolylines() {
       var pinByKey = {};
-      MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
 
+      MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
+      
       DAY_ROUTES.forEach(function(route) {
         var path = route.keys.map(function(k) {
           var p = pinByKey[k];
           return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
-        if (path.length < 2) return;
 
+        if (path.length < 2) return;
         var polyline = new kakao.maps.Polyline({
           path: path,
-          strokeWeight: 5,           // 두께를 도톰하게 5로 변경
+          strokeWeight: 5, // 두께를 도톰하게 5로 변경
           strokeColor: route.color,
-          strokeOpacity: 0.5,        // 투명도를 0.5로 낮춰서 반투명한 형광펜 느낌 주기
-          strokeStyle: 'solid'       // 렉의 주범인 dashed를 solid로 변경!
+          strokeOpacity: 0.5, // 투명도를 0.5로 낮춰서 반투명한 형광펜 느낌 주기
+          strokeStyle: 'solid' // 렉의 주범인 dashed를 solid로 변경!
+
         });
 
         polyline.setMap(window._kakaoMap);
         window._kakaoPolylines.push({ day: route.day, line: polyline });
       });
     }
+
+
 
     // ── Day 필터 변경 시 해당 마커만 보이도록 setBounds ──
     function updateBoundsForDay(day) {

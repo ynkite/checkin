@@ -18,7 +18,7 @@ public class AiRouteController {
         // AI에게 일정을 짜달라고 요청
         String aiRouteJson = aiRouteService.generateAiRoute(tripId);
 
-        // [중요] AI가 준 JSON을 DB에 저장하는 서비스 호출
+        // AI가 준 JSON을 DB에 저장하는 서비스 호출
         aiRouteService.saveAiRouteToDb(tripId, aiRouteJson);
 
         return ResponseEntity.ok(ApiResponse.success(aiRouteJson));
