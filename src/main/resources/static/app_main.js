@@ -112,7 +112,7 @@ let _loggedIn             = false;
 let _userNotifs           = [];     // GET /api/notifications 응답의 data[]
 let _myTrips              = [];     // GET /api/trips 응답의 data[]
 let _chatSessionId        = null;   // POST /api/chat/sessions 응답의 data.sessionId
-let _budgetSelectedTripId = null;
+let _budgetSelectedTripId = parseInt(sessionStorage.getItem('budgetSelectedTripId')) || null;  // [v2] 새로고침 복원용
 let _lastExpenseData      = null;
 let _allActualExps        = [];
 let _expensePage          = 1;
@@ -144,6 +144,23 @@ function go(id, addToHistory) {
         if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
       }
     }, 100);
+  }
+
+  //가계부 페이지 진입 시 항상 실제 데이터로 갱신
+  //page_budget.html의 DOMContentLoaded가 채워둔 더미 데이터를 덮어씀
+  if (id === 'ledger') {
+    _populateLedgerTripCards();
+    const selEl  = document.getElementById('ledger-selector');
+    const mainEl = document.getElementById('ledger-main');
+    const tripStillValid = _myTrips.some(t => t.tripId === _budgetSelectedTripId);
+    if (tripStillValid) {
+      if (selEl)  selEl.style.display  = 'none';
+      if (mainEl) mainEl.style.display = 'block';
+      _loadExpenses(_budgetSelectedTripId);
+    } else {
+      if (selEl)  selEl.style.display  = 'block';
+      if (mainEl) mainEl.style.display = 'none';
+    }
   }
   document.querySelectorAll('.wf-item').forEach(b => b.classList.remove('on'));
   const map = {
@@ -660,24 +677,13 @@ async function updateLedgerList() {
 
 function selLedger(tripId) {
   _budgetSelectedTripId = tripId;
+  sessionStorage.setItem('budgetSelectedTripId', tripId);  // [v2] 새로고침 복원용
   updateLedgerList();
 }
 
 async function goLedger2() {
+  // go('ledger') 내부에서 실제 트립 카드 채우기 / 선택된 여행 상세 로딩까지 처리한다
   go('ledger');
-  _populateLedgerTripCards();
-  document.getElementById('ledger-selector').style.display = 'none';
-  document.getElementById('ledger-main').style.display = 'block';
-
-  const found = _myTrips.find(l => l.tripId === _budgetSelectedTripId);
-  const el = document.getElementById('ledger-trip-meta');
-  if (el && found) {
-    el.textContent = (found.title || '여행 플랜') + ' · ' + (found.startDate || '') + ' ~ ' + (found.endDate || '');
-  }
-
-  if (_budgetSelectedTripId) {
-    await _loadExpenses(_budgetSelectedTripId);
-  }
 }
 
 /** ledger-selector 내 여행 카드를 실제 _myTrips 데이터로 채우기 */
@@ -709,6 +715,7 @@ function _selLedgerCard(el, tripId) {
   document.querySelectorAll('#ledger-trip-cards .ts-card').forEach(c => c.classList.remove('on'));
   el.classList.add('on');
   _budgetSelectedTripId = tripId;
+  sessionStorage.setItem('budgetSelectedTripId', tripId);  // [v2] 새로고침 복원용
 }
 
 /** page_budget.html의 returnToLedgerSelector() 오버라이드 — 실제 데이터 사용 */
