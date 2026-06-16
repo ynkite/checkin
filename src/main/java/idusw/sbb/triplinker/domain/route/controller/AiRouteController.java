@@ -46,4 +46,22 @@ public class AiRouteController {
                 java.util.Map.of("success", true, "data", updatedRouteJson)
         );
     }
+
+    // 날씨악화 실내 일정 교체 API
+    @PostMapping("/indoor-replace")
+    public ResponseEntity<?> replaceDayIndoor(
+            @PathVariable Long tripId,
+            @RequestParam int day) {
+
+        // AI한테 실내 일정으로 교체하라고 시킴
+        String newRouteJson = aiRouteService.replaceDayWithIndoor(tripId, day);
+
+        // 바뀐 일정을 DB에 즉시 덮어쓰기 저장
+        aiRouteService.saveAiRouteToDb(tripId, newRouteJson);
+
+        // 성공 시 프론트엔드에 새 JSON 내려줌
+        return ResponseEntity.ok(
+                java.util.Map.of("success", true, "data", newRouteJson)
+        );
+    }
 }

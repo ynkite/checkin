@@ -357,6 +357,18 @@ async function tryLogin() {
   w.style.display = 'none';
 
   await _initSession(res.data.accessToken, res.data.refreshToken);
+
+  toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
+
+  // ✨ [핵심 수정] 로그인 전에 저장해 둔 초대장 링크(redirectUrl)가 있는지 체크합니다.
+  const redirectUrl = sessionStorage.getItem('redirectUrl');
+  if (redirectUrl) {
+    sessionStorage.removeItem('redirectUrl'); // 사용했으니 청소
+    window.location.href = redirectUrl;        // 주소창을 초대 링크 상태로 강제 변경하여 새로고침 기동!
+    return; // 메인화면으로 가는 아래 go('main') 코드를 실행하지 않고 여기서 끝냅니다.
+  }
+
+  await _initSession(res.data.accessToken, res.data.refreshToken);
   go('main');
   toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
 
@@ -454,13 +466,14 @@ async function updateMyPageUI() {
   updateLedgerList();
 }
 
+// 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 function _renderMyTrips(trips) {
   const te = document.getElementById('my-trips');
   if (!te) return;
   te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
       trips.length
           ? trips.map(x => `
-          <div class="trip-card" onclick="go('map')">
+          <div class="trip-card" onclick="openMyTrip(${x.tripId})"> 
             <div class="trip-thumb">🗺️</div>
             <div class="trip-info">
               <div class="trip-ttl">${x.title || '여행 플랜'}</div>
@@ -470,6 +483,30 @@ function _renderMyTrips(trips) {
           </div>`).join('')
           : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
   );
+}
+
+// 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
+function openMyTrip(tripId) {
+  // ✨ 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
+  window._currentTripId = tripId;
+  sessionStorage.setItem('plannerDraftId', tripId);
+
+  // 맵 전환 시 이전 데이터 잔상이 보이지 않도록 화면 백지화
+  const listEl = document.getElementById('mapDayList');
+  if (listEl) listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--sage-d);font-weight:700;">✨ 여행 정보를 불러오는 중...</div>';
+
+  if (window._kakaoOverlays) window._kakaoOverlays.forEach(o => o.overlay.setMap(null));
+  if (window._kakaoPolylines) window._kakaoPolylines.forEach(p => p.line.setMap(null));
+
+  // 지도 화면으로 부드럽게 이동
+  go('map');
+
+  // 방금 덮어씌운 새 tripId를 바탕으로 지도를 새로 그림!
+  setTimeout(() => {
+    if (typeof initMapPage === 'function') {
+      initMapPage();
+    }
+  }, 50);
 }
 
 /** [v2] GET /api/users/me/posts → 작성한 후기 */
@@ -2303,6 +2340,7 @@ async function execAllReplace() {
   }
 }
 
+
 /* ───────────────────────────────────────────────
  * 19. 관리자 (Admin Domain)
  * ─────────────────────────────────────────────── */
@@ -2969,6 +3007,25 @@ window.addEventListener('popstate', e => {
   // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
   const params = new URLSearchParams(location.search);
   const sharedId = params.get('id');
+  const token = Token.getAccess();
+
+  // 🔒 공유 링크(?id=값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
+  if (sharedId && !location.pathname.includes('/plan/view') && !token) {
+    // 1. 현재 가려던 초대 링크 전체 주소를 브라우저 임시 창고에 박아둡니다.
+    sessionStorage.setItem('redirectUrl', location.pathname + location.search);
+    sessionStorage.setItem('currentPage', 'login');
+
+    // 2. 화면 깜빡임과 에러를 막기 위해 0.1초 뒤 시스템이 준비되면 안전하게 로그인창만 점등합니다.
+    setTimeout(() => {
+      if (typeof go === 'function') {
+        go('login');
+        toast('🔒 편집 권한 유저 전용 링크입니다. 로그인 후 연결됩니다.');
+      }
+    }, 100);
+
+    document.body.style.visibility = 'visible';
+    return; // 🚨 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 씹고 여기서 중단시킵니다.
+  }
 
   if (sharedId) {
     window._currentTripId = parseInt(sharedId);

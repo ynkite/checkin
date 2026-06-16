@@ -92,7 +92,7 @@ public class TripShareService {
         return Map.of("shareLink", readOnlyLink);
     }
 
-    // 내부 헬퍼: 초대 이메일 내용 구성 및 발송 로직
+    // 초대 이메일 내용 구성 및 발송 로직
     private void sendInviteEmail(String email, String name, String planTitle, Long tripId) {
         String inviteLink = "http://localhost:8080/plan?id=" + tripId; // 클릭 시 들어올 플랜 주소
 
