@@ -550,11 +550,11 @@
             } else {
               console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
               pin.isFound = false;
-              var isFound = _q.some(function(item) {
+              var isAlreadyInQueue = _q.some(function(item) {
                 return item.place === pin.label;
               });
 
-              if (!pin.isFound) {
+              if (!isAlreadyInQueue) {
                 _q.push({
                   place: pin.label,
                   req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
@@ -684,6 +684,7 @@
 
       var proj = window._kakaoMap.getProjection();
       if (!proj) return;
+
 
       window._kakaoPolylines.forEach(function(polyObj) {
         if (!polyObj.line.getMap() || !polyObj.path) return;
