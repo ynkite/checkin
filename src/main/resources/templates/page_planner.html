@@ -649,37 +649,244 @@
             const tripId = window._currentTripId;
             if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ 플랜을 생성 중입니다...';
+            // 1. 버튼 자체의 텍스트를 바꾸고 비활성화 (오버레이 창 제거)
+            btn.innerHTML = 'AI가 일정을 생성중입니다..';
             btn.disabled = true;
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
                 if (res.success && res.data) {
-                    // AI가 가끔 덧붙이는 마크다운 기호 제거 (에러 방지용)
                     let cleanJson = res.data;
                     if (cleanJson.includes('[')) {
                         cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
                     }
 
-                    sessionStorage.setItem('ai_generated_route', cleanJson);
-                    _planDirty = false;
-                    if (typeof _syncStep4State === 'function') _syncStep4State();
-                    toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
-                    go('map');
-                    setTimeout(() => {
-                        if (typeof initMapPage === 'function') initMapPage();
-                    }, 500);
+                    // 가상 검증 프로세스 카운터 초기화 및 가동
+                    sessionStorage.setItem('autoHealingRetries', '0');
+                    validateAndHealingRoute(tripId, JSON.parse(cleanJson), btn);
+
                 } else {
-                    // res.message 우선 표시 (AI 토큰 부족 등 서버 메시지 반영)
                     toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
+                    // 실패 시 버튼 즉시 원상복구
+                    btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                    btn.disabled = false;
                 }
             } catch (e) {
-                toast('⚠️ AI 서버 연결에 실패했습니다. 프롬프트를 확인해 주세요.');
-            } finally {
-                btn.innerHTML = originalText;
+                toast('⚠️ AI 서버 연결에 실패했습니다.');
+                // 에러 발생 시 버튼 즉시 원상복구
+                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
+        }
+
+        // ── 🤖 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
+        function validateAndHealingRoute(tripId, routeData, btn) {
+            if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || !kakao.maps.services) {
+                _finalizePlannerRoute(routeData, btn);
+                return;
+            }
+
+            const ps = new kakao.maps.services.Places();
+            const allPins = [];
+
+            routeData.forEach(d => {
+                if (d.places) {
+                    d.places.forEach(p => {
+                        if (!p.transit && p.name) {
+                            allPins.push({ day: d.day, type: p.type, label: p.name, lat: null, lng: null, isFound: false });
+                        }
+                    });
+                }
+            });
+
+            if (allPins.length === 0) {
+                _finalizePlannerRoute(routeData, btn);
+                return;
+            }
+
+            let searchCount = 0;
+            const totalPlaces = allPins.length;
+
+            allPins.forEach(pin => {
+                ps.keywordSearch(pin.label, function(data, status) {
+                    if (status === kakao.maps.services.Status.OK) {
+                        pin.lat = parseFloat(data[0].y);
+                        pin.lng = parseFloat(data[0].x);
+                        pin.isFound = true;
+                    } else {
+                        pin.isFound = false;
+                    }
+
+                    searchCount++;
+                    if (searchCount === totalPlaces) {
+                        const autoFixRequests = [];
+
+                        // 1. 가짜 장소 판별
+                        allPins.filter(p => !p.isFound).forEach(p => {
+                            console.warn(`[가짜 장소 발견] 상호명: "${p.label}" -> 카카오맵 API 검색 실패`);
+                            autoFixRequests.push({ place: p.label, req: "지도에 없는 가짜 상호명입니다. 실존하는 유명한 곳으로 교체해 주세요." });
+                        });
+
+                        // 2. 숙소 기준 20km 이상 거리 오차 판별
+                        const dayKeys = [...new Set(allPins.map(p => p.day))];
+                        dayKeys.forEach(dNum => {
+                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+                            const stayPin = allPins.find(p => p.day == dNum && p.type === 'stay');
+
+                            if (!stayPin || !stayPin.isFound) {
+                                console.warn(`[검증 경고] Day ${dNum} 숙소("${stayPin ? stayPin.label : '미지정'}")가 검색되지 않아 거리 측정 불가`);
+                                return; // 숙소가 없으면 거리 계산을 건너뜁니다.
+                            }
+
+                            dayPins.forEach(pin => {
+                                if (pin.type === 'stay') return;
+                                const R = 6371;
+                                const dLat = (pin.lat - stayPin.lat) * (Math.PI / 180);
+                                const dLng = (pin.lng - stayPin.lng) * (Math.PI / 180);
+                                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                    Math.cos(stayPin.lat * (Math.PI / 180)) * Math.cos(pin.lat * (Math.PI / 180)) *
+                                    Math.sin(dLng/2) * Math.sin(dLng/2);
+                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                                const dist = R * c;
+
+                                console.log(`[거리 측정 결과] Day ${dNum} | ${pin.label} ↔ ${stayPin.label} : ${dist.toFixed(1)}km`);
+
+                                if (dist > 20) {
+                                    console.warn(`[거리 초과 발견] Day ${dNum} | 장소: "${pin.label}" -> 숙소 기준 ${dist.toFixed(1)}km 떨어짐`);
+                                    autoFixRequests.push({ place: pin.label, req: `숙소에서 ${dist.toFixed(1)}km 떨어져 너무 멉니다. 20km 이내로 교체해 주세요.` });
+                                }
+                            });
+                        });
+
+                        // 🚨 동선이나 장소에 문제가 발견되었다면?
+                        if (autoFixRequests.length > 0) {
+                            const retries = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
+
+                            // 🎯 [핵심 조건 연동]: 2번 교정 찬스를 이미 다 썼는데도 실패작이 남아있다면?
+                            // 더 이상 AI를 호출하지 않고 수동 큐(session)에 담아 지도로 즉시 강제 이동!
+                            if (retries >= 2) {
+                                console.warn("⚠️ AI 자동 복구 제한 초과 (2/2) -> 수동 교체 목록 이관 후 지도 화면 강제 릴리즈");
+                                sessionStorage.setItem('map_fallback_queue', JSON.stringify(autoFixRequests));
+                                _finalizePlannerRoute(routeData, btn);
+                                return;
+
+                            }
+
+
+                            // 카운터 증가 및 버튼 상태 업데이트
+                            sessionStorage.setItem('autoHealingRetries', retries + 1);
+                            btn.innerHTML = `🤖 동선 오차 수정 중... ( ${retries + 1} / 2 시도 )`;
+
+                            api.post(`/api/trips/${tripId}/routes/replace`, { requests: autoFixRequests })
+                                .then(res => {
+                                    if (res.success && res.data) {
+                                        let nextJson = res.data;
+                                        if (nextJson.includes('[')) {
+                                            nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
+                                        }
+                                        validateAndHealingRoute(tripId, JSON.parse(nextJson), btn);
+                                    } else {
+                                        _finalizePlannerRoute(routeData, btn);
+                                    }
+                                })
+                                .catch(() => {
+                                    _finalizePlannerRoute(routeData, btn);
+                                });
+                        } else {
+                            // 이상 없으면 최종 확정 처리
+                            _finalizePlannerRoute(routeData, btn);
+                        }
+                    }
+                });
+            });
+        }
+
+        // ── 🏁 최종 일정 확정 및 안전한 화면 전환 처리 헬퍼 서브루틴 ──
+        function _finalizePlannerRoute(finalData, btn) {
+            sessionStorage.setItem('ai_generated_route', JSON.stringify(finalData));
+            sessionStorage.removeItem('autoHealingRetries');
+
+            if (typeof _planDirty !== 'undefined') window._planDirty = false;
+
+            // 버튼 안내 문구 연출
+            if (btn) btn.innerHTML = '지도로 이동합니다..';
+
+            setTimeout(function() {
+                // 다음번에 생성 탭으로 백했을 때를 대비해 버튼 속성 복구
+                if (btn) {
+                    btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                    btn.disabled = false;
+                }
+
+                // 진짜 페이지 전환 공통 라우터 함수 가동
+                if (typeof go === 'function') {
+                    go('map');
+                } else {
+                    console.error("🚨 단일 페이지 전환 함수(go)를 탐색하지 못했습니다.");
+                }
+
+                setTimeout(function() {
+                    if (typeof initMapPage === 'function') initMapPage();
+                }, 400);
+            }, 1000);
+        }
+
+        // ── 🎨 로딩 오버레이 제어 유틸리티 ──
+        function _showPlannerLoadingOverlay(msg) {
+            let overlay = document.getElementById('replaceLoadingOverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'replaceLoadingOverlay';
+                overlay.style = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:9999;font-size:15px;font-weight:700;text-align:center;line-height:1.6;';
+                overlay.innerHTML = `<div class="spinner" style="margin-bottom:20px;width:40px;height:40px;border:4px solid #f3f3f3;border-top:4px solid var(--sage);border-radius:50%;animation:spin 1s linear infinite;"></div><div id="p-load-msg"></div>`;
+                document.body.appendChild(overlay);
+
+                if(!document.getElementById('spin-style')) {
+                    let s = document.createElement('style');
+                    s.id = 'spin-style';
+                    s.innerHTML = '@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }';
+                    document.head.appendChild(s);
+                }
+            }
+            overlay.style.display = 'flex';
+            document.getElementById('p-load-msg').innerHTML = msg;
+        }
+
+        function _updatePlannerLoadingText(msg) {
+            const el = document.getElementById('p-load-msg');
+            if (el) el.innerHTML = msg;
+        }
+
+        function _hidePlannerLoadingOverlay() {
+            const overlay = document.getElementById('replaceLoadingOverlay');
+            if (overlay) overlay.style.display = 'none';
+        }
+
+        function initPlannerDateConstraints() {
+            const today   = new Date().toISOString().split('T')[0];
+            const startEl = document.getElementById('s1-date-start');
+            const endEl   = document.getElementById('s1-date-end');
+
+            if (!startEl || !endEl) {
+                setTimeout(initPlannerDateConstraints, 50);
+                return;
+            }
+
+            startEl.min = today;
+            if (startEl.value && startEl.value < today) startEl.value = '';
+
+            endEl.min = today;
+            if (endEl.value && endEl.value < today) endEl.value = '';
+
+            if (startEl.value) endEl.min = startEl.value;
+            updateWeatherBtn();
+            _initStep1AutoSave();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPlannerDateConstraints);
+        } else {
+            initPlannerDateConstraints();
         }
 
     </script>
