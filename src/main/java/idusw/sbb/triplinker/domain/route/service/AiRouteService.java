@@ -46,8 +46,8 @@ public class AiRouteService {
     public String generateAiRoute(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
-        PlanInputForm form = plan.getForm();
 
+        PlanInputForm form = plan.getForm();
         if (form == null) {
             throw new IllegalStateException("해당 플랜의 취향 정보가 DB에 없습니다.");
         }
@@ -282,6 +282,7 @@ public class AiRouteService {
     }
 
     // AI 부분 교체 전용 로직
+    @Transactional
     public String replaceAiRoutePlaces(Long tripId, java.util.List<java.util.Map<String, String>> requests) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -396,10 +397,17 @@ public class AiRouteService {
             updatedJson = updatedJson.substring(updatedJson.indexOf("["), updatedJson.lastIndexOf("]") + 1);
         }
 
-        return updatedJson != null ? updatedJson.trim() : originalJson;
+        String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        if (!finalJson.equals(originalJson)) {
+            saveAiRouteToDb(tripId, finalJson);
+        }
+
+        return finalJson;
     }
 
     // 기상 악화 특정 일차 실내 일정 전면 교체
+    @Transactional
     public String replaceDayWithIndoor(Long tripId, int targetDay) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -475,7 +483,14 @@ public class AiRouteService {
         if (updatedJson != null && updatedJson.contains("[")) {
             updatedJson = updatedJson.substring(updatedJson.indexOf("["), updatedJson.lastIndexOf("]") + 1);
         }
-        return updatedJson != null ? updatedJson.trim() : originalJson;
+
+        String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        if (!finalJson.equals(originalJson)) {
+            saveAiRouteToDb(tripId, finalJson);
+        }
+
+        return finalJson;
     }
 
 

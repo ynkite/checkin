@@ -64,4 +64,20 @@ public class AiRouteController {
                 java.util.Map.of("success", true, "data", newRouteJson)
         );
     }
+
+    @PostMapping("/reorder")
+    public ResponseEntity<?> updateRouteManually(
+            @PathVariable Long tripId,
+            @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
+        try {
+            String json = routeData.toString();
+            aiRouteService.saveAiRouteToDb(tripId, json);
+            return ResponseEntity.ok(java.util.Map.of("success", true));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(java.util.Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+
 }

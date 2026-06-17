@@ -73,53 +73,14 @@
       if (!window._currentTripId) {
         window._currentTripId = sessionStorage.getItem('plannerDraftId');
       }
-      var tripId = window._currentTripId; // 👈 const 대신 var로 안전하게 선언
+      var tripId = window._currentTripId;
 
-      // 🎯 [핵심 가드] 플래너 2회 자동 정정 실패 후 넘어온 오류 목록(대구-서울 오차) 연동 처리
-      var fallbackQ = null;
-      try {
-        var savedRaw = sessionStorage.getItem('map_fallback_queue');
-        if (savedRaw) {
-          const fallbackQ = JSON.parse(savedRaw);
-          window._q = fallbackQ;
-          sessionStorage.removeItem('map_fallback_queue'); // 연동 후 즉시 파괴
-
-          // 큐가 있으니 화면에 즉시 렌더링
-          setTimeout(() => {
-            if(typeof renderQ === 'function') renderQ();
-            toast('⚠️ 정밀 검수 결과, AI가 해결하지 못한 장소가 교체 목록에 추가되었습니다.');
-          }, 500);
-        } else {
-          window._q = [];
-
-        }
-      } catch(e) {
-        console.error("폴백 큐 파싱 실패:", e);
-      }
-
-      // 🎯 [확실한 주입] 실패 장소들이 있으면 진짜 교체 큐 배열 window._q에 냅다 박습니다!
-      if (fallbackQ && fallbackQ.length > 0) {
-        window._q = fallbackQ;
-      } else {
-        window._q = [];
-      }
-
-      // 교체 큐 화면 진짜 렌더링 가동
+      window._q = [];
       if (typeof renderQ === 'function') renderQ();
 
       var rb = document.getElementById('recalcBar');
       if (rb) rb.style.display = 'none';
 
-      // 큐 목록이 채워졌다면 자동으로 왼쪽 교체 사이드 레이어 강제 확장 연출
-      if (fallbackQ && fallbackQ.length > 0) {
-        setTimeout(function() {
-          toast('⚠️ AI가 자동 정정에 실패한 장소들이 교체 목록에 추가되었습니다.', 4000);
-          var qBox = document.getElementById('queueBox');
-          var qToggle = document.getElementById('queueToggle');
-          if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
-          if (qToggle) qToggle.style.display = 'none';
-        }, 500);
-      }
 
       // 변수 선언이 완료된 후 백엔드 정보 바인딩 수행 (오류 완전 소멸)
       if (tripId) {
@@ -455,29 +416,20 @@
 
     // ── 카카오맵 초기화 ──
     function initKakaoMap() {
+      if (window._isKakaoMapInitRunning) return;
+      window._isKakaoMapInitRunning = true;
       if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
+        window._isKakaoMapInitRunning = false;
         setTimeout(initKakaoMap, 200);
         return;
       }
 
       kakao.maps.load(function() {
         var container = document.getElementById('kakaoMap');
-        if (!container) return;
-
-        if (container.clientWidth === 0 || container.clientHeight === 0) {
+        if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+          window._isKakaoMapInitRunning = false;
           setTimeout(initKakaoMap, 150);
           return;
-        }
-
-        // 🎯 [핵심 추가] 지도가 새로 로드될 때 기존 메모리에 남아있던 흔적을 완벽하게 밀어버립니다.
-        if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
-          window._kakaoOverlays.forEach(function(item) { if(item.overlay) item.overlay.setMap(null); });
-        }
-        if (window._kakaoPolylines && window._kakaoPolylines.length > 0) {
-          window._kakaoPolylines.forEach(function(item) { if(item.line) item.line.setMap(null); });
-        }
-        if (window._kakaoArrows && window._kakaoArrows.length > 0) {
-          window._kakaoArrows.forEach(function(line) { if(line) line.setMap(null); });
         }
 
         // 지도가 겹쳐서 깨지는 현상 방지 껍데기 청소
@@ -502,21 +454,22 @@
         // 청소가 끝났으니 배열을 새롭게 초기화합니다.
         window._kakaoOverlays = [];
         window._kakaoPolylines = [];
-        window._kakaoArrows = []; // 👈 화살표 배열 누락 방지 초기화
 
         var ps = new kakao.maps.services.Places();
         var bounds = new kakao.maps.LatLngBounds();
         var searchCount = 0;
         var totalPlaces = MAP_PINS.length;
 
-        if (totalPlaces === 0) return;
+        if (totalPlaces === 0) {
+          window._isKakaoMapInitRunning = false;
+          return;
+        }
 
         MAP_PINS.forEach(function(pin) {
           ps.keywordSearch(pin.label, function(data, status, pagination) {
             if (status === kakao.maps.services.Status.OK) {
               console.log("✅ 카카오 API 검색 성공: [" + pin.label + "] -> ", data[0]);
               var place = data[0];
-
               var realLat = parseFloat(place.y);
               var realLng = parseFloat(place.x);
 
@@ -532,14 +485,10 @@
                       + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
                       + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
                       + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
-                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div>'
-                      + '</div>';
+                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div></div>';
 
               var overlay = new kakao.maps.CustomOverlay({
-                position: new kakao.maps.LatLng(realLat, realLng),
-                content: content,
-                xAnchor: 0,
-                yAnchor: 0
+                position: new kakao.maps.LatLng(realLat, realLng), content: content, xAnchor: 0, yAnchor: 0
               });
 
               overlay.setMap(window._kakaoMap);
@@ -550,7 +499,8 @@
             } else {
               console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
               pin.isFound = false;
-              var isAlreadyInQueue = _q.some(function(item) {
+
+              var isAlreadyInQueue = window._q.some(function(item) {
                 return item.place === pin.label;
               });
 
@@ -560,12 +510,23 @@
                   req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
                 });
               }
-              if (typeof renderQ === 'function') renderQ();
             }
 
             searchCount++;
             if (searchCount === totalPlaces) {
+              window._isKakaoMapInitRunning = false;
               sessionStorage.removeItem('autoHealingRetries');
+
+              // 🎯 큐에 넣은 걸 왼쪽 사이드바(사진 위치)에 렌더링
+              if (typeof renderQ === 'function') renderQ();
+
+              // 큐에 항목이 있으면 큐 박스 열어주기
+              if (window._q.length > 0) {
+                var qBox = document.getElementById('queueBox');
+                var qToggle = document.getElementById('queueToggle');
+                if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
+                if (qToggle) qToggle.style.display = 'none';
+              }
 
               // 🎯 선 깨짐 보정: 카메라 시점 이동을 먼저 락(Lock) 해두고 선을 그립니다.
               if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
@@ -589,7 +550,7 @@
       DAY_ROUTES.forEach(function(route) {
         var path = route.keys.map(function(k) {
           var p = pinByKey[k];
-          return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+          return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
 
         if (path.length < 2) return;
@@ -642,7 +603,8 @@
       var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
 
       var path = keys.map(function(k) {
-        var p = pinByKey[k]; return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+        var p = pinByKey[k];
+        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
       }).filter(Boolean);
       if (path.length < 2) return;
 
@@ -704,7 +666,7 @@
           var dy = px2.y - px1.y;
           var distPx = Math.sqrt(dx * dx + dy * dy);
 
-          var arrowCount = Math.floor(distPx / 30);
+          var arrowCount = Math.min(Math.floor(distPx / 30), 30);
           if (arrowCount < 1) continue;
 
           var angle = Math.atan2(dy, dx);
@@ -775,17 +737,37 @@
       var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
 
       var path = keys.map(function(k) {
-        var p = pinByKey[k]; return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+        var p = pinByKey[k];
+        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
       }).filter(Boolean);
       if (path.length < 2) return;
 
-      var polyline = new kakao.maps.Polyline({
-        path: path, strokeWeight: 3,
-        strokeColor: route ? route.color : '#2D9E8A',
-        strokeOpacity: 0.8, strokeStyle: 'dashed'
+      var lineColor = route ? route.color : '#2D9E8A';
+
+      // 🎯 [현재 스타일 1] 검은색 실선 배경 (두께 10)
+      var bgPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 10,
+        strokeColor: '#000000',
+        strokeOpacity: 0.6,
+        strokeStyle: 'solid'
       });
-      polyline.setMap(window._kakaoMap);
-      window._kakaoPolylines.push({ day: dayNum, line: polyline });
+      bgPolyline.setMap(window._kakaoMap);
+      window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
+
+      // 🎯 [현재 스타일 2] 컬러 실선 상단 적층 (두께 6)
+      var mainPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 6,
+        strokeColor: lineColor,
+        strokeOpacity: 1.0,
+        strokeStyle: 'solid'
+      });
+      mainPolyline.setMap(window._kakaoMap);
+      // 🎯 화살표 렌더링을 위해 path 데이터 필수 전달
+      window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
+
+      setTimeout(renderArrows, 50);
     }
 
     // ── 드래그 재정렬 초기화 ──
@@ -816,12 +798,47 @@
           var tgtSection = this.closest('.day-section');
           if (srcSection !== tgtSection) { toast('같은 날 안에서만 순서를 바꿀 수 있어요.'); return; }
 
-          // 내용과 key를 맞교환 (replace-area는 그대로 유지)
+          var dayNum = parseInt(tgtSection.dataset.day);
+
+          // 1. DOM 스왑
           var tmpHtml = dragSrc.innerHTML; dragSrc.innerHTML = this.innerHTML; this.innerHTML = tmpHtml;
           var tmpKey  = dragSrc.dataset.key; dragSrc.dataset.key = this.dataset.key; this.dataset.key = tmpKey;
 
-          redrawDayRoute(parseInt(tgtSection.dataset.day));
-          toast('순서가 변경됐습니다.');
+          // 2. MAP_ITINERARY 글로벌 배열 강제 동기화 (가장 중요)
+          var dayData = MAP_ITINERARY.find(function(d) { return d.day == dayNum; });
+          if (dayData && dayData.places) {
+            var newDOMKeys = Array.from(tgtSection.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+            var placesOnly = dayData.places.filter(function(p) { return !p.transit; });
+            var transitsOnly = dayData.places.filter(function(p) { return p.transit; });
+
+            // 화면 순서대로 배열 재정렬
+            placesOnly.sort(function(a, b) { return newDOMKeys.indexOf(a.key) - newDOMKeys.indexOf(b.key); });
+
+            var newPlaces = [];
+            for (var i = 0; i < placesOnly.length; i++) {
+              newPlaces.push(placesOnly[i]);
+              if (i < transitsOnly.length) newPlaces.push(transitsOnly[i]);
+            }
+            dayData.places = newPlaces;
+          }
+
+          // 3. DAY_ROUTES 전역 키 동기화
+          var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
+          if (route) {
+            route.keys = Array.from(tgtSection.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+          }
+
+          // 4. 세션 & DB 저장 호출
+          sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
+          if (window._currentTripId) {
+            // 🎯 순서 변경 시 저장하는 API 엔드포인트 호출
+            api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
+                    .then(function(res) {
+                      if(!res.success) toast('⚠️ DB 저장 실패: ' + res.message); // 에러 나면 빨간 팝업 띄워줌
+                    })
+                    .catch(function(err) { console.warn('DB 저장 에러:', err); });
+          }
+          redrawDayRoute(dayNum);
         });
       });
     }
