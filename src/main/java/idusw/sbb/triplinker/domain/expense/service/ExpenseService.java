@@ -114,4 +114,12 @@ public class ExpenseService {
                 dto.getExpenseDate() != null ? dto.getExpenseDate() : expense.getExpenseDate()
         );
     }
+
+    //실제 지출 삭제
+    @Transactional
+    public void deleteExpense(Long expenseId) {
+        Expense expense = expenseRepository.findById(expenseId)
+                .orElseThrow(() -> new EntityNotFoundException("지출 항목을 찾을 수 없습니다."));
+        expenseRepository.delete(expense);
+    }
 }

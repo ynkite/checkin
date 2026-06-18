@@ -46,4 +46,15 @@ public class ExpenseController {
         expenseService.updateExpense(expenseId, dto);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+
+    //실제 지출 삭제
+    @DeleteMapping("/{tripId}/expenses/{expenseId}")
+    public ResponseEntity<ApiResponse<Void>> deleteExpense(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId,
+            @PathVariable Long expenseId) {
+
+        expenseService.deleteExpense(expenseId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }
