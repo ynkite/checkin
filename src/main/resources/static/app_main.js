@@ -1112,12 +1112,10 @@ function renderNotifList() {
 
 /** 알림 개별 삭제 (DELETE /api/notifications/{notificationId}) */
 async function deleteNotif(notifId) {
-  // PATCH(읽음) 대신 DELETE(삭제) API를 호출하도록 변경하는 것이 자연스럽습니다.
-  await api.delete('/api/notifications/' + notifId);
-
-  // 성공적으로 삭제되면 화면 목록에서도 지우고 다시 그리기
+  await api.del('/api/notifications/' + notifId);  // delete → del, /read 제거
   _userNotifs = _userNotifs.filter(n => n.id !== notifId);
   renderNotifList();
+  updateNotifBadge();
 }
 // 여기까지
 
@@ -2189,7 +2187,7 @@ function closeReportAction() { document.getElementById('reportActionModal').clas
 function openSuspendModal(username, uid) {
   document.getElementById('su-username').textContent=username; document.getElementById('su-id').textContent=uid;
   document.getElementById('su-reason-select').value=''; document.getElementById('su-detail').value='';
-  document.getElementById('su-notify-msg').value='귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.';
+  document.getElementById('su-notify-msg').value='귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)';
   document.getElementById('suspendModal').classList.add('open');
 }
 function closeSuspendModal() { document.getElementById('suspendModal').classList.remove('open'); }

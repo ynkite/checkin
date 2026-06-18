@@ -72,7 +72,7 @@ public class AdminServiceImpl implements AdminService {
 
         String notifyMessage = (dto.notifyMessage() != null && !dto.notifyMessage().isBlank())
                 ? dto.notifyMessage()
-                : "귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.";
+                : "귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)";
         notificationService.send(target.getId(), "ACCOUNT_SUSPENDED", "계정 정지 안내", notifyMessage);
 
         adminLogRepository.save(AdminLog.of(admin, "USER_SUSPEND", target.getId(), dto.reason()));
