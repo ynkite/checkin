@@ -6,47 +6,47 @@
    * 실제 데이터베이스(DB)에서 조회해와야 하는 실시간 가짜 데이터입니다.
    * 백엔드 연동 시 이 블록은 지우시거나 주석 처리하시면 됩니다.
    * ============================================================ */
-
-  // ── 실시간 대시보드 통계 (API 대체 대상) ──
-  const ADMIN_STATS = [
-    { label: '총 가입자 수',   num: '12,841', sub: '↑ +234 이번 주',   alert: false },
-    { label: '일정 생성 수',   num: '38,492', sub: '↑ +1,204 이번 주', alert: false },
-    { label: '커뮤니티 게시글', num: '7,183',  sub: '↑ +89 이번 주',   alert: false },
-    { label: '신고 미처리',    num: '14',      sub: '즉시 처리 필요',   alert: true },
-  ];
-
-  // ── 실시간 회원 목록 (API 대체 대상) ──
-  const ADMIN_USERS = [
-    { id: '#1',   username: 'travel_kim',                email: 'kim***@email.com',           joinDate: '2024.03.12', status: 'ACTIVE',  statusCls: 'badge-a', canSuspend: true },
-    { id: '#142', username: 'deleted_user_username142',   email: 'deleted_user_142@del.com',   joinDate: '2023.09.15', status: 'DELETED', statusCls: 'badge-d', canSuspend: false },
-  ];
-
-  // ── 실시간 신고 목록 (API 대체 대상) ──
-  const ADMIN_REPORTS = [
-    { id: '#041', post: '강릉 커피 후기', reporter: 'user_123', reason: '허위 정보', status: '미처리' },
-  ];
-
-  // ── 실시간 등록된 큐레이션 목록 (API 대체 대상) ──
-  const ADMIN_CURATIONS = [
-    { title: '제주 에메랄드 해안', tags: '초여름, 힐링, 오션뷰', period: '~2026.06.30', order: 1 },
-  ];
-
-  // ── 실시간 큐레이션 내부 Day 상세 경로 (API 대체 대상) ──
-  const ADMIN_CUR_DAYS_SAMPLE = [
-    {
-      label: 'Day 1',
-      places: [
-        { typeIcon: '🏨', name: '오션뷰 펜션 체크인', type: '🏨 숙소',   time: '13:00', amount: 180000 },
-        { typeIcon: '📍', name: '협재해변',           type: '📍 관광지', time: '15:00', amount: 0 },
-      ],
-    },
-    {
-      label: 'Day 2',
-      places: [
-        { typeIcon: '📍', name: '성산일출봉', type: '📍 관광지', time: '09:00', amount: 4000 },
-      ],
-    },
-  ];
+  //
+  // // ── 실시간 대시보드 통계 (API 대체 대상) ──
+  // const ADMIN_STATS = [
+  //   { label: '총 가입자 수',   num: '12,841', sub: '↑ +234 이번 주',   alert: false },
+  //   { label: '일정 생성 수',   num: '38,492', sub: '↑ +1,204 이번 주', alert: false },
+  //   { label: '커뮤니티 게시글', num: '7,183',  sub: '↑ +89 이번 주',   alert: false },
+  //   { label: '신고 미처리',    num: '14',      sub: '즉시 처리 필요',   alert: true },
+  // ];
+  //
+  // // ── 실시간 회원 목록 (API 대체 대상) ──
+  // const ADMIN_USERS = [
+  //   { id: '#1',   username: 'travel_kim',                email: 'kim***@email.com',           joinDate: '2024.03.12', status: 'ACTIVE',  statusCls: 'badge-a', canSuspend: true },
+  //   { id: '#142', username: 'deleted_user_username142',   email: 'deleted_user_142@del.com',   joinDate: '2023.09.15', status: 'DELETED', statusCls: 'badge-d', canSuspend: false },
+  // ];
+  //
+  // // ── 실시간 신고 목록 (API 대체 대상) ──
+  // const ADMIN_REPORTS = [
+  //   { id: '#041', post: '강릉 커피 후기', reporter: 'user_123', reason: '허위 정보', status: '미처리' },
+  // ];
+  //
+  // // ── 실시간 등록된 큐레이션 목록 (API 대체 대상) ──
+  // const ADMIN_CURATIONS = [
+  //   { title: '제주 에메랄드 해안', tags: '초여름, 힐링, 오션뷰', period: '~2026.06.30', order: 1 },
+  // ];
+  //
+  // // ── 실시간 큐레이션 내부 Day 상세 경로 (API 대체 대상) ──
+  // const ADMIN_CUR_DAYS_SAMPLE = [
+  //   {
+  //     label: 'Day 1',
+  //     places: [
+  //       { typeIcon: '🏨', name: '오션뷰 펜션 체크인', type: '🏨 숙소',   time: '13:00', amount: 180000 },
+  //       { typeIcon: '📍', name: '협재해변',           type: '📍 관광지', time: '15:00', amount: 0 },
+  //     ],
+  //   },
+  //   {
+  //     label: 'Day 2',
+  //     places: [
+  //       { typeIcon: '📍', name: '성산일출봉', type: '📍 관광지', time: '09:00', amount: 4000 },
+  //     ],
+  //   },
+  // ];
 
 
   /* ============================================================
@@ -243,82 +243,157 @@
   }
 
   // 실시간 가변 데이터만 그리는 서브 함수
+  // function renderDynamicMockData() {
+  //   const statsEl = document.querySelector('.stats-grid');
+  //   if (statsEl && typeof ADMIN_STATS !== 'undefined') {
+  //     statsEl.innerHTML = ADMIN_STATS.map(s => `
+  //     <div class="stat-card"${s.alert ? ' style="border-color:var(--coral)"' : ''}>
+  //       <div class="sc-label">${s.label}</div>
+  //       <div class="sc-num"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.num}</div>
+  //       <div class="sc-sub"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.sub}</div>
+  //     </div>`).join('');
+  //   }
+  //
+  //   const userTbody = document.querySelector('#ad-users table tbody');
+  //   if (userTbody && typeof ADMIN_USERS !== 'undefined') {
+  //     userTbody.innerHTML = ADMIN_USERS.map(u => `
+  //     <tr>
+  //       <td>${u.id}</td><td>${u.username}</td><td>${u.email}</td><td>${u.joinDate}</td>
+  //       <td><span class="badge ${u.statusCls}">${u.status}</span></td>
+  //       <td>${u.canSuspend
+  //             ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openSuspendModal('${u.username}','${u.id}')">정지</button>`
+  //             : `<span style="font-size:11px;color:var(--text3)">파기 완료</span>`
+  //     }</td>
+  //     </tr>`).join('');
+  //   }
+  //
+  //   const reportTbody = document.querySelector('#ad-reports table tbody');
+  //   if (reportTbody && typeof ADMIN_REPORTS !== 'undefined') {
+  //     reportTbody.innerHTML = ADMIN_REPORTS.map(r => `
+  //     <tr>
+  //       <td>${r.id}</td><td>${r.post}</td><td>${r.reporter}</td><td>${r.reason}</td>
+  //       <td><span class="badge" style="background:#FEF3F2;color:var(--coral)">${r.status}</span></td>
+  //       <td>
+  //         <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete','${r.id}','${r.post}','${r.reporter}','${r.reason}')">삭제</button>&nbsp;
+  //         <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject','${r.id}','${r.post}','${r.reporter}','${r.reason}')">반려</button>
+  //       </td>
+  //     </tr>`).join('');
+  //   }
+  //
+  //   const curTbody = document.querySelector('#ad-curation table tbody');
+  //   if (curTbody && typeof ADMIN_CURATIONS !== 'undefined') {
+  //     curTbody.innerHTML = ADMIN_CURATIONS.map(c => `
+  //     <tr>
+  //       <td>${c.title}</td><td>${c.tags}</td><td>${c.period}</td><td>${c.order}</td>
+  //       <td>
+  //         <button class="btn-o" style="padding:3px 8px;font-size:11px">수정</button>&nbsp;
+  //         <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
+  //       </td>
+  //     </tr>`).join('');
+  //   }
+  //
+  //   const curDaysEl = document.getElementById('curDays');
+  //   if (curDaysEl && typeof ADMIN_CUR_DAYS_SAMPLE !== 'undefined' && typeof ADMIN_PLACE_TYPES !== 'undefined') {
+  //     const typeOpts = ADMIN_PLACE_TYPES.map(t => `<option>${t}</option>`).join('');
+  //     curDaysEl.innerHTML = ADMIN_CUR_DAYS_SAMPLE.map(day => `
+  //     <div class="plan-day-block" style="border:1px solid var(--sage-l)">
+  //       <div class="pdb-hd" style="border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:8px">
+  //         <span style="font-weight:800;color:var(--sage-d)">${day.label}</span>
+  //         <div style="display:flex;gap:6px">
+  //           <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
+  //           <button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
+  //         </div>
+  //       </div>
+  //       ${day.places.map(p => `
+  //       <div class="pdb-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+  //         <div style="display:flex;align-items:center;gap:8px;width:100%">
+  //           <span class="pdb-type-icon">${p.typeIcon}</span>
+  //           <input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" value="${p.name}" placeholder="장소명">
+  //         </div>
+  //         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
+  //           <select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">${typeOpts}</select>
+  //           <input type="time" value="${p.time}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
+  //           <input type="number" placeholder="금액(원)" value="${p.amount}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
+  //         </div>
+  //       </div>`).join('')}
+  //     </div>`).join('');
+  //   }
+  // }
+
+  // 제미나이 추가
   function renderDynamicMockData() {
-    const statsEl = document.querySelector('.stats-grid');
-    if (statsEl && typeof ADMIN_STATS !== 'undefined') {
-      statsEl.innerHTML = ADMIN_STATS.map(s => `
-      <div class="stat-card"${s.alert ? ' style="border-color:var(--coral)"' : ''}>
-        <div class="sc-label">${s.label}</div>
-        <div class="sc-num"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.num}</div>
-        <div class="sc-sub"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.sub}</div>
-      </div>`).join('');
-    }
+    const token = localStorage.getItem('accessToken');
+    const headers = { 'Authorization': 'Bearer ' + token };
 
-    const userTbody = document.querySelector('#ad-users table tbody');
-    if (userTbody && typeof ADMIN_USERS !== 'undefined') {
-      userTbody.innerHTML = ADMIN_USERS.map(u => `
-      <tr>
-        <td>${u.id}</td><td>${u.username}</td><td>${u.email}</td><td>${u.joinDate}</td>
-        <td><span class="badge ${u.statusCls}">${u.status}</span></td>
-        <td>${u.canSuspend
-              ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openSuspendModal('${u.username}','${u.id}')">정지</button>`
-              : `<span style="font-size:11px;color:var(--text3)">파기 완료</span>`
-      }</td>
-      </tr>`).join('');
-    }
+    // 대시보드
+    fetch('/api/admin/dashboard', { headers })
+            .then(r => r.json())
+            .then(res => {
+              const d = res.data;
+              const statsEl = document.querySelector('.stats-grid');
+              if (!statsEl) return;
+              statsEl.innerHTML = [
+                { label: '총 가입자 수',   num: d.totalUsers,      sub: `활성 ${d.userStatusBreakdown.active}명`, alert: false },
+                { label: '일정 생성 수',   num: d.totalTrips,      sub: '',                                        alert: false },
+                { label: '커뮤니티 게시글', num: d.totalPosts,      sub: `조회수 합계 ${d.totalPostViews}`,         alert: false },
+                { label: '신고 미처리',    num: d.pendingReports,  sub: d.pendingReports > 0 ? '즉시 처리 필요' : '없음', alert: d.pendingReports > 0 },
+              ].map(s => `
+        <div class="stat-card"${s.alert ? ' style="border-color:var(--coral)"' : ''}>
+          <div class="sc-label">${s.label}</div>
+          <div class="sc-num"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.num}</div>
+          <div class="sc-sub"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.sub}</div>
+        </div>`).join('');
+            });
 
-    const reportTbody = document.querySelector('#ad-reports table tbody');
-    if (reportTbody && typeof ADMIN_REPORTS !== 'undefined') {
-      reportTbody.innerHTML = ADMIN_REPORTS.map(r => `
+    // 회원 관리
+    fetch('/api/admin/users?page=0&size=20', { headers })
+            .then(r => r.json())
+            .then(res => {
+              const userTbody = document.querySelector('#ad-users table tbody');
+              if (!userTbody) return;
+              userTbody.innerHTML = res.data.content.map(u => {
+                const statusCls = u.status === 'ACTIVE' ? 'badge-a' : 'badge-d';
+                const dateStr = u.createdAt ? u.createdAt.substring(0, 10).replaceAll('-', '.') : '';
+                return `<tr>
+        <td>#${u.userId}</td>
+        <td>${u.username}</td>
+        <td>${u.email}</td>
+        <td>${dateStr}</td>
+        <td><span class="badge ${statusCls}">${u.status}</span></td>
+        <td>${u.status === 'DELETED'
+                        ? `<span style="font-size:11px;color:var(--text3)">탈퇴 회원</span>`
+                        : `${u.status === 'ACTIVE' ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>&nbsp;` : ''}${u.role === 'USER' ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--sage-d);border-color:var(--sage-d)" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 승격</button>` : `<button class="btn-o" style="padding:3px 9px;font-size:11px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 강등</button>`}`
+                }</td>
+      </tr>`;
+              }).join('');
+            });
+
+    // 신고 관리
+    fetch('/api/admin/reports?status=PENDING&page=0&size=20', { headers })
+            .then(r => r.json())
+            .then(res => {
+              const reportTbody = document.querySelector('#ad-reports table tbody');
+              if (!reportTbody) return;
+              const list = res.data.content || [];
+              if (list.length === 0) {
+                reportTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';
+                return;
+              }
+              reportTbody.innerHTML = list.map(r => `
       <tr>
-        <td>${r.id}</td><td>${r.post}</td><td>${r.reporter}</td><td>${r.reason}</td>
+        <td>#${r.id}</td>
+        <td>${r.postId}</td>
+        <td>#${r.reporterId}</td>
+        <td>${r.reason}</td>
         <td><span class="badge" style="background:#FEF3F2;color:var(--coral)">${r.status}</span></td>
         <td>
-          <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete','${r.id}','${r.post}','${r.reporter}','${r.reason}')">삭제</button>&nbsp;
-          <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject','${r.id}','${r.post}','${r.reporter}','${r.reason}')">반려</button>
+          <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete','${r.id}','${r.postId}','${r.reporterId}','${r.reason}')">삭제</button>&nbsp;
+          <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject','${r.id}','${r.postId}','${r.reporterId}','${r.reason}')">반려</button>
         </td>
       </tr>`).join('');
-    }
-
-    const curTbody = document.querySelector('#ad-curation table tbody');
-    if (curTbody && typeof ADMIN_CURATIONS !== 'undefined') {
-      curTbody.innerHTML = ADMIN_CURATIONS.map(c => `
-      <tr>
-        <td>${c.title}</td><td>${c.tags}</td><td>${c.period}</td><td>${c.order}</td>
-        <td>
-          <button class="btn-o" style="padding:3px 8px;font-size:11px">수정</button>&nbsp;
-          <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
-        </td>
-      </tr>`).join('');
-    }
-
-    const curDaysEl = document.getElementById('curDays');
-    if (curDaysEl && typeof ADMIN_CUR_DAYS_SAMPLE !== 'undefined' && typeof ADMIN_PLACE_TYPES !== 'undefined') {
-      const typeOpts = ADMIN_PLACE_TYPES.map(t => `<option>${t}</option>`).join('');
-      curDaysEl.innerHTML = ADMIN_CUR_DAYS_SAMPLE.map(day => `
-      <div class="plan-day-block" style="border:1px solid var(--sage-l)">
-        <div class="pdb-hd" style="border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:8px">
-          <span style="font-weight:800;color:var(--sage-d)">${day.label}</span>
-          <div style="display:flex;gap:6px">
-            <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
-            <button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
-          </div>
-        </div>
-        ${day.places.map(p => `
-        <div class="pdb-item" style="flex-direction:column;align-items:flex-start;gap:8px">
-          <div style="display:flex;align-items:center;gap:8px;width:100%">
-            <span class="pdb-type-icon">${p.typeIcon}</span>
-            <input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" value="${p.name}" placeholder="장소명">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
-            <select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">${typeOpts}</select>
-            <input type="time" value="${p.time}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
-            <input type="number" placeholder="금액(원)" value="${p.amount}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
-          </div>
-        </div>`).join('')}
-      </div>`).join('');
-    }
+            });
   }
+  // 여기까지
 
   function _renderAdminChips(selector, options, pickGroup, isToggle) {
     const row = document.querySelector(selector);

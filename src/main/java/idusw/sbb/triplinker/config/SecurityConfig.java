@@ -78,7 +78,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()            // 게시글 상세
                         .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()   // 댓글 조회
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll() // 공유 링크 읽기 전용
-
+                        .requestMatchers(HttpMethod.GET, "/api/curations").permitAll()
                         // 관리자 전용 기능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
@@ -87,6 +87,8 @@ public class SecurityConfig {
 
                         // 그 외의 모든 API 요청은 반드시 인증(JWT 유효성 검증) 필요
                         .anyRequest().authenticated()
+
+
                 )
 
                 // 소셜 로그인 설정
@@ -126,5 +128,7 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+
+
 
 }
