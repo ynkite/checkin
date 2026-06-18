@@ -648,35 +648,35 @@ async function loadAdminStatistics() {
  *      PATCH /api/admin/users/{userId}/suspend
  *      PATCH /api/admin/users/{userId}/unsuspend
  * ═══════════════════════════════════════════════════════════════════ */
-async function loadAdminUsers(page = 0) {
-  const res = await api.get('/api/admin/users?page=' + page + '&size=20');
-  if (!res.success || !res.data) return;
-
-  const users  = Array.isArray(res.data) ? res.data : (res.data.content || []);
-  const tbody  = document.getElementById('adminUserTable');
-  if (!tbody) return;
-
-  tbody.innerHTML = users.map(u => {
-    const isActive    = u.status === 'ACTIVE';
-    const isSuspended = u.status === 'SUSPENDED';
-    const badge       = isSuspended ? 'badge-warn' : isActive ? 'badge-ok' : 'badge-del';
-    return '<tr>' +
-      '<td>' + (u.userId   || '') + '</td>' +
-      '<td>' + _esc(u.username || '') + '</td>' +
-      '<td>' + _esc(u.name     || '') + '</td>' +
-      '<td>' + _esc(u.email    || '') + '</td>' +
-      '<td><span class="badge ' + badge + '">' + (u.status || '') + '</span></td>' +
-      '<td>' + (u.createdAt ? u.createdAt.substring(0, 10) : '') + '</td>' +
-      '<td>' +
-        (isSuspended
-          ? '<button onclick="unsuspendUser(' + u.userId + ')" class="btn-admin-sm btn-ok">해제</button>'
-          : isActive
-            ? '<button onclick="openSuspendModal(\'' + _esc(u.username) + '\',' + u.userId + ')" class="btn-admin-sm btn-warn">정지</button>'
-            : '') +
-      '</td>' +
-    '</tr>';
-  }).join('');
-}
+// async function loadAdminUsers(page = 0) {
+//   const res = await api.get('/api/admin/users?page=' + page + '&size=20');
+//   if (!res.success || !res.data) return;
+//
+//   const users  = Array.isArray(res.data) ? res.data : (res.data.content || []);
+//   const tbody  = document.getElementById('adminUserTable');
+//   if (!tbody) return;
+//
+//   tbody.innerHTML = users.map(u => {
+//     const isActive    = u.status === 'ACTIVE';
+//     const isSuspended = u.status === 'SUSPENDED';
+//     const badge       = isSuspended ? 'badge-warn' : isActive ? 'badge-ok' : 'badge-del';
+//     return '<tr>' +
+//       '<td>' + (u.userId   || '') + '</td>' +
+//       '<td>' + _esc(u.username || '') + '</td>' +
+//       '<td>' + _esc(u.name     || '') + '</td>' +
+//       '<td>' + _esc(u.email    || '') + '</td>' +
+//       '<td><span class="badge ' + badge + '">' + (u.status || '') + '</span></td>' +
+//       '<td>' + (u.createdAt ? u.createdAt.substring(0, 10) : '') + '</td>' +
+//       '<td>' +
+//         (isSuspended
+//           ? '<button onclick="unsuspendUser(' + u.userId + ')" class="btn-admin-sm btn-ok">해제</button>'
+//           : isActive
+//             ? '<button onclick="openSuspendModal(\'' + _esc(u.username) + '\',' + u.userId + ')" class="btn-admin-sm btn-warn">정지</button>'
+//             : '') +
+//       '</td>' +
+//     '</tr>';
+//   }).join('');
+// }
 
 /* ─── 정지 ─── */
 function openSuspendModal(username, uid) {

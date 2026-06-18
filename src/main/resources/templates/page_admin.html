@@ -1,548 +1,961 @@
 <div th:fragment="admin" xmlns:th="http://www.thymeleaf.org">
-<script>
-  /* ============================================================
-   * [1구역 - ❌ 백엔드 연동 시 '삭제' 및 'API 데이터'로 대체할 블록]
-   * ------------------------------------------------------------
-   * 실제 데이터베이스(DB)에서 조회해와야 하는 실시간 가짜 데이터입니다.
-   * 백엔드 연동 시 이 블록은 지우시거나 주석 처리하시면 됩니다.
-   * ============================================================ */
-  //
-  // // ── 실시간 대시보드 통계 (API 대체 대상) ──
-  // const ADMIN_STATS = [
-  //   { label: '총 가입자 수',   num: '12,841', sub: '↑ +234 이번 주',   alert: false },
-  //   { label: '일정 생성 수',   num: '38,492', sub: '↑ +1,204 이번 주', alert: false },
-  //   { label: '커뮤니티 게시글', num: '7,183',  sub: '↑ +89 이번 주',   alert: false },
-  //   { label: '신고 미처리',    num: '14',      sub: '즉시 처리 필요',   alert: true },
-  // ];
-  //
-  // // ── 실시간 회원 목록 (API 대체 대상) ──
-  // const ADMIN_USERS = [
-  //   { id: '#1',   username: 'travel_kim',                email: 'kim***@email.com',           joinDate: '2024.03.12', status: 'ACTIVE',  statusCls: 'badge-a', canSuspend: true },
-  //   { id: '#142', username: 'deleted_user_username142',   email: 'deleted_user_142@del.com',   joinDate: '2023.09.15', status: 'DELETED', statusCls: 'badge-d', canSuspend: false },
-  // ];
-  //
-  // // ── 실시간 신고 목록 (API 대체 대상) ──
-  // const ADMIN_REPORTS = [
-  //   { id: '#041', post: '강릉 커피 후기', reporter: 'user_123', reason: '허위 정보', status: '미처리' },
-  // ];
-  //
-  // // ── 실시간 등록된 큐레이션 목록 (API 대체 대상) ──
-  // const ADMIN_CURATIONS = [
-  //   { title: '제주 에메랄드 해안', tags: '초여름, 힐링, 오션뷰', period: '~2026.06.30', order: 1 },
-  // ];
-  //
-  // // ── 실시간 큐레이션 내부 Day 상세 경로 (API 대체 대상) ──
-  // const ADMIN_CUR_DAYS_SAMPLE = [
-  //   {
-  //     label: 'Day 1',
-  //     places: [
-  //       { typeIcon: '🏨', name: '오션뷰 펜션 체크인', type: '🏨 숙소',   time: '13:00', amount: 180000 },
-  //       { typeIcon: '📍', name: '협재해변',           type: '📍 관광지', time: '15:00', amount: 0 },
-  //     ],
-  //   },
-  //   {
-  //     label: 'Day 2',
-  //     places: [
-  //       { typeIcon: '📍', name: '성산일출봉', type: '📍 관광지', time: '09:00', amount: 4000 },
-  //     ],
-  //   },
-  // ];
+  <script>
+    /* ============================================================
+     * [1구역 - 고정 UI 설정 블록]
+     * ============================================================ */
+    const ADMIN_MENUS = [
+      { sec:'dashboard', icon:'📊', label:'대시보드', default:true },
+      { sec:'users',     icon:'👤', label:'회원 관리' },
+      { sec:'reports',   icon:'🚨', label:'신고 관리' },
+      { sec:'curation',  icon:'✨', label:'큐레이션 관리' },
+    ];
+    const ADMIN_DEP_PROVINCES  = ['서울','경기','인천','강원','충남','대전','부산','제주','전체'];
+    const ADMIN_DEST_PROVINCES = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
 
+    /* ★ STEP1/STEP2 동일 — 관리자가 선택 안 하면 빈 값으로 사용자에게 전달 */
+    const ADMIN_TRANSPORT_OPTS = [
+      {label:'🚗 자차',    default:false},
+      {label:'🚌 대중교통', default:false},
+      {label:'기타',       default:false, isOther:true},
+    ];
+    const ADMIN_ACC_OPTS = [
+      {label:'호텔',        default:false},{label:'펜션',        default:false},
+      {label:'게스트하우스', default:false},{label:'리조트',      default:false},
+      {label:'기타',        default:false, isOther:true},
+    ];
+    const ADMIN_COMP_OPTS = [
+      {label:'혼자', default:false},{label:'커플', default:false},
+      {label:'가족', default:false},{label:'친구', default:false},
+      {label:'기타', default:false, isOther:true},
+    ];
+    const ADMIN_STYLE_OPTS = [
+      {label:'가성비',   default:false},{label:'럭셔리',   default:false},
+      {label:'액티비티', default:false},{label:'힐링',     default:false},
+      {label:'문화·역사', default:false},{label:'음식 탐방', default:false},
+      {label:'기타',     default:false, isOther:true},
+    ];
+    const ADMIN_DIET_OPTS = [
+      {label:'비건',        default:false},
+      {label:'해산물 선호',  default:false},
+      {label:'알러지 있음',  default:false, isOther:true},
+      {label:'무관',        default:false},
+      {label:'기타',        default:false, isOther:true},
+    ];
+    const ADMIN_SPECIAL_OPTS = [
+      {label:'유아 동반',    default:false},{label:'반려동물 동반', default:false},
+      {label:'노인 동반',    default:false},{label:'기타',         default:false, isOther:true},
+    ];
+    const ADMIN_DENSITY_OPTS = [
+      {label:'빼곡하게', default:false},{label:'여유롭게', default:false},
+    ];
+    const ADMIN_ACCOPTS = [
+      {label:'오션뷰',   default:false},{label:'취사 가능', default:false},
+      {label:'조식 포함', default:false},{label:'수영장',   default:false},
+      {label:'기타',     default:false, isOther:true},
+    ];
+    const ADMIN_PLACE_TYPES = ['🏨 숙소','📍 관광지','🍽️ 맛집','☕ 카페','🎭 문화'];
 
-  /* ============================================================
-   * [2구역 - ⭕ 백엔드 연동 시에도 '절대 지우면 안 되는' 고정 UI 설정 블록]
-   * ------------------------------------------------------------
-   * 질문하신 이동 수단, 숙소 형태, 지역 리스트 등 화면 선택용 기본 옵션과
-   * 하단 빈 HTML 뼈대에 글자를 채워넣기 위한 고정 UI 텍스트들입니다.
-   * 외부 파일 수정을 못 하므로 화면을 그리기 위해 무조건 유지해야 합니다.
-   * ============================================================ */
-
-  // ── 사이드바 고정 메뉴 정보 ──
-  const ADMIN_MENUS = [
-    { sec: 'dashboard', icon: '📊', label: '대시보드', default: true },
-    { sec: 'users',     icon: '👤', label: '회원 관리' },
-    { sec: 'reports',   icon: '🚨', label: '신고 관리' },
-    { sec: 'curation',  icon: '✨', label: '큐레이션 관리' },
-  ];
-
-  // ── 큐레이션 등록 폼 전용 고정 선택 옵션 (★ 절대 유지) ──
-  const ADMIN_DEP_PROVINCES  = ['서울','경기','인천','강원','충남','대전','부산','제주','전체'];
-  const ADMIN_DEST_PROVINCES = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
-
-  const ADMIN_TRANSPORT_OPTS = [
-    { label: '🚗 자차',    default: true,  otherId: 'cadm-trans' },
-    { label: '🚌 대중교통', default: false, otherId: null },
-    { label: '기타',       default: false, otherId: 'cadm-trans' },
-  ];
-  const ADMIN_ACC_OPTS = ['호텔','펜션','게스트하우스','리조트'];
-  const ADMIN_COMP_OPTS = [
-    { label: '혼자', default: false },
-    { label: '커플', default: true },
-    { label: '가족', default: false },
-    { label: '친구', default: false },
-  ];
-  const ADMIN_STYLE_OPTS = ['가성비','럭셔리','액티비티','힐링','문화·역사','음식 탐방'];
-  const ADMIN_DIET_OPTS = [
-    { label: '비건',      default: false },
-    { label: '해산물 선호', default: true },
-    { label: '알러지 있음', default: false },
-    { label: '무관',       default: false },
-  ];
-  const ADMIN_SPECIAL_OPTS = ['유아 동반','반려동물 동반','노인 동반'];
-  const ADMIN_DENSITY_OPTS = [
-    { label: '빼곡하게', default: false },
-    { label: '여유롭게', default: true },
-  ];
-  const ADMIN_DENSITY_MBTI_NOTE = "MBTI ENFP → P 성향 → '여유롭게' 자동 선택됨";
-  const ADMIN_ACCOPTS = ['오션뷰','취사 가능','조식 포함','수영장'];
-  const ADMIN_PLACE_TYPES = ['🏨 숙소','📍 관광지','🍽️ 맛집','☕ 카페','🎭 문화'];
-
-  // ── 시스템 라벨 및 플레이스홀더 텍스트 ──
-  const ADMIN_UI_TEXTS = {
-    titles: {
-      dashboard: '대시보드', users: '회원 관리', reports: '신고 관리', curation: '큐레이션 관리'
-    },
-    tables: {
-      usersHead: ['ID', '아이디', '이메일', '가입일', '상태', '관리'],
-      reportsHead: ['ID', '게시글', '신고자', '사유', '상태', '처리'],
-      curationHead: ['제목', '태그', '노출 기간', '순서', '관리']
-    },
-    curationForm: {
-      cardTitle: '새 큐레이션 등록',
-      labels: [
-        '테마 (제목)', '태그', '노출 시작', '노출 종료',
-        '출발지', '여행지 (국내 전용)', '출발일', '귀환일', '인원', '총 예산 (최대 1,000만원)'
-      ],
-      placeholders: {
-        theme: '제주 에메랄드 해안 플랜', tags: '초여름, 힐링, 오션뷰', budget: '500000'
+    const ADMIN_UI_TEXTS = {
+      titles: {dashboard:'대시보드', users:'회원 관리', reports:'신고 관리', curation:'큐레이션 관리'},
+      tables: {
+        /* ★ 6열 (후기 열 없음 — 백엔드 /api/admin/users/{id}/posts 미구현) */
+        usersHead:    ['ID','아이디','이메일','가입일','상태','관리'],
+        reportsHead:  ['ID','게시글','신고자','작성자','사유','상태','처리'],
+        curationHead: ['ID','제목','테마','순서','노출 기간','관리']
       },
-      builderTitle: '📋 여행 플랜 구성 ',
-      builderSubTitle: '(관리자 추천 여행 경로 — DB 형식)',
-      sectionTitles: [
-        '📍 여행지 & 날짜', '🚗 이동 수단', '🏨 숙소 형태', '👥 동행자 유형',
-        '✨ 여행 스타일 (다중 선택 가능)', '🍽️ 식이 정보', '⚙️ 특수 조건', '📅 일정 밀도 ', '🏠 숙소 세부 옵션'
-      ],
-      sectionSubs: { density: 'MBTI 기반 자동 선택 (변경 가능)' },
-      inputPlaceholders: {
-        trans: '이동 수단 직접 입력',
-        acc: '숙소 형태를 직접 입력해주세요',
-        comp: '동행자 유형을 직접 입력해주세요',
-        style: '스타일 직접 입력',
-        food: '식이 정보를 직접 입력해주세요',
-        special: '특수 조건을 직접 입력해주세요',
-        accopts: '숙소 세부 옵션을 직접 입력해주세요'
-      },
-      btnAddDay: '+ Day 추가',
-      btnSubmit: '등록하기'
-    }
-  };
+      curationForm: {
+        cardTitle:'새 큐레이션 등록',
+        builderTitle:'📋 여행 플랜 구성 ',
+        builderSubTitle:'(관리자 추천 여행 경로)',
+        sectionTitles:[
+          '🚗 이동 수단','🏨 숙소 형태','👥 동행자 유형',
+          '✨ 여행 스타일 (다중 선택 가능)','🍽️ 식이 정보 (다중 선택 가능)',
+          '⚙️ 특수 조건 (다중 선택 가능)','📅 일정 밀도','🏠 숙소 세부 옵션 (다중 선택 가능)'
+        ],
+        sectionSubs:{density:'MBTI 기반 자동 선택 (변경 가능)'},
+        btnAddDay:'+ Day 추가', btnSubmit:'등록하기'
+      }
+    };
 
+    /* ============================================================
+     * [2구역 - 초기화 엔진]
+     * ============================================================ */
+    function initAdminPage() {
+      document.querySelector('#ad-dashboard h2').textContent = ADMIN_UI_TEXTS.titles.dashboard;
+      document.querySelector('#ad-users h2').textContent     = ADMIN_UI_TEXTS.titles.users;
+      document.querySelector('#ad-reports h2').textContent   = ADMIN_UI_TEXTS.titles.reports;
+      document.querySelector('#ad-curation h2').textContent  = ADMIN_UI_TEXTS.titles.curation;
 
-  /* ============================================================
-   * [3구역 - 동적 렌더링 및 고정 데이터 주입 엔진]
-   * ------------------------------------------------------------
-   * 하단의 텅 빈 HTML 뼈대에 상단 2구역의 옵션 및 텍스트를 자동 매핑하고
-   * 1구역(혹은 추후 Ajax 데이터)의 실시간 목록을 그려주는 자바스크립트 엔진입니다.
-   * ============================================================ */
-  function initAdminPage() {
-    // 1. 고정 텍스트 및 라벨 일괄 타이틀 주입
-    document.querySelector('#ad-dashboard h2').textContent = ADMIN_UI_TEXTS.titles.dashboard;
-    document.querySelector('#ad-users h2').textContent = ADMIN_UI_TEXTS.titles.users;
-    document.querySelector('#ad-reports h2').textContent = ADMIN_UI_TEXTS.titles.reports;
-    document.querySelector('#ad-curation h2').textContent = ADMIN_UI_TEXTS.titles.curation;
+      document.querySelector('#ad-users table thead tr').innerHTML    = ADMIN_UI_TEXTS.tables.usersHead.map(h=>`<th>${h}</th>`).join('');
+      document.querySelector('#ad-reports table thead tr').innerHTML  = ADMIN_UI_TEXTS.tables.reportsHead.map(h=>`<th>${h}</th>`).join('');
+      document.querySelector('#ad-curation table thead tr').innerHTML = ADMIN_UI_TEXTS.tables.curationHead.map(h=>`<th>${h}</th>`).join('');
 
-    document.querySelector('#ad-users table thead tr').innerHTML = ADMIN_UI_TEXTS.tables.usersHead.map(h => `<th>${h}</th>`).join('');
-    document.querySelector('#ad-reports table thead tr').innerHTML = ADMIN_UI_TEXTS.tables.reportsHead.map(h => `<th>${h}</th>`).join('');
-    document.querySelector('#ad-curation table thead tr').innerHTML = ADMIN_UI_TEXTS.tables.curationHead.map(h => `<th>${h}</th>`).join('');
+      document.querySelector('#ad-curation .bcard-ttl').textContent = ADMIN_UI_TEXTS.curationForm.cardTitle;
+      document.querySelector('#ad-curation .plan-builder-ttl').innerHTML =
+              `${ADMIN_UI_TEXTS.curationForm.builderTitle}<small style="font-size:11px;color:var(--text3);font-weight:400">${ADMIN_UI_TEXTS.curationForm.builderSubTitle}</small>`;
 
-    document.querySelector('#ad-curation .bcard-ttl').textContent = ADMIN_UI_TEXTS.curationForm.cardTitle;
+      const secs = ADMIN_UI_TEXTS.curationForm.sectionTitles;
+      document.querySelectorAll('.cadm-sec-ttl').forEach((el,i)=>{
+        if(i===6) el.innerHTML=`${secs[i]}<small style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">${ADMIN_UI_TEXTS.curationForm.sectionSubs.density}</small>`;
+        else el.textContent=secs[i]||'';
+      });
+      document.querySelector('#ad-curation .btn-add-day').textContent = ADMIN_UI_TEXTS.curationForm.btnAddDay;
+      document.querySelector('#ad-curation .btn-next').textContent    = ADMIN_UI_TEXTS.curationForm.btnSubmit;
 
-    const mainLabels = document.querySelectorAll('#ad-curation .bcard > .form-row .form-label');
-    mainLabels[0].textContent = ADMIN_UI_TEXTS.curationForm.labels[0];
-    mainLabels[1].textContent = ADMIN_UI_TEXTS.curationForm.labels[1];
-    mainLabels[2].textContent = ADMIN_UI_TEXTS.curationForm.labels[2];
-    mainLabels[3].textContent = ADMIN_UI_TEXTS.curationForm.labels[3];
+      /* 네비 생성 */
+      const navEl=document.querySelector('.admin-nav');
+      if(navEl){
+        const logoEl=navEl.querySelector('.admin-logo');
+        navEl.innerHTML=(logoEl?logoEl.outerHTML:'<div class="admin-logo">⚙️ Admin</div>')+
+                ADMIN_MENUS.map(m=>`<button class="admin-link${m.default?' on':''}" onclick="showAdmin('${m.sec}',this)">${m.icon} ${m.label}</button>`).join('')+
+                `<div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:10px"><button class="admin-link" onclick="go('main')">← 메인으로</button></div>`;
+      }
 
-    const mainInputs = document.querySelectorAll('#ad-curation .bcard > .form-row .form-input');
-    mainInputs[0].placeholder = ADMIN_UI_TEXTS.curationForm.placeholders.theme;
-    mainInputs[1].placeholder = ADMIN_UI_TEXTS.curationForm.placeholders.tags;
+      /* 셀렉트 박스 */
+      const depSel=document.querySelector('select[onchange*="cadm-dep-city"]');
+      const destSel=document.getElementById('cadm-dest-prov');
+      if(depSel)  depSel.innerHTML =`<option value="">도/시 선택</option>`+ADMIN_DEP_PROVINCES.map(p=>`<option>${p}</option>`).join('');
+      if(destSel) destSel.innerHTML=`<option value="">도/시 선택</option>`+ADMIN_DEST_PROVINCES.map(p=>`<option>${p}</option>`).join('');
 
-    document.querySelector('#ad-curation .plan-builder-ttl').innerHTML =
-            `${ADMIN_UI_TEXTS.curationForm.builderTitle}<small style="font-size:11px;color:var(--text3);font-weight:400">${ADMIN_UI_TEXTS.curationForm.builderSubTitle}</small>`;
+      /* 칩 렌더 */
+      _rChips('#cadm-chip-trans',   ADMIN_TRANSPORT_OPTS, 'c-trans',   false);
+      _rChips('#cadm-chip-acc',     ADMIN_ACC_OPTS,       'c-acc',     false);
+      _rChips('#cadm-chip-comp',    ADMIN_COMP_OPTS,      'c-comp',    false);
+      _rChips('#cadm-chip-style',   ADMIN_STYLE_OPTS,     null,        true);
+      _rChips('#cadm-chip-diet',    ADMIN_DIET_OPTS,      null,        true);
+      _rChips('#cadm-chip-special', ADMIN_SPECIAL_OPTS,   null,        true);
+      _rChips('#cadm-chip-density', ADMIN_DENSITY_OPTS,   'c-density', false);
+      _rChips('#cadm-chip-accopts', ADMIN_ACCOPTS,        null,        true);
 
-    // 2. 기존 nth-of-type 호환성 보존용 섹션 블록 타이틀 주입
-    const builderBlocks = document.querySelectorAll('.plan-builder > div[style*="background:var(--surface)"]');
+      /* ★ showAdmin 오버라이드 — 탭 전환 시 데이터 로드 */
+      window.showAdmin = function(sec, btn){
+        ['dashboard','users','reports','curation'].forEach(s=>{
+          const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
+        });
+        const t=document.getElementById('ad-'+sec); if(t) t.style.display='block';
+        document.querySelector('.admin-nav').querySelectorAll('.admin-link').forEach(b=>b.classList.remove('on'));
+        if(btn) btn.classList.add('on');
+        if(sec==='users')    loadAdminUsers();
+        if(sec==='reports')  loadAdminReports('PENDING');
+        if(sec==='curation') loadAdminCurations();
+      };
 
-    builderBlocks[0].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[0];
-    const block1Labels = builderBlocks[0].querySelectorAll('.form-label');
-    block1Labels[0].textContent = ADMIN_UI_TEXTS.curationForm.labels[4];
-    block1Labels[1].textContent = ADMIN_UI_TEXTS.curationForm.labels[5];
-    block1Labels[2].textContent = ADMIN_UI_TEXTS.curationForm.labels[6];
-    block1Labels[3].textContent = ADMIN_UI_TEXTS.curationForm.labels[7];
-    block1Labels[4].textContent = ADMIN_UI_TEXTS.curationForm.labels[8];
-    block1Labels[5].textContent = ADMIN_UI_TEXTS.curationForm.labels[9];
-    builderBlocks[0].querySelector('input[type="number"]:not([value])').placeholder = ADMIN_UI_TEXTS.curationForm.placeholders.budget;
+      /* ★ addDay Day1 부터 시작 */
+      window._dayN = 0; _admDayCount = 0;
+      window.addDay    = _admAddDay;
+      window.removeDay = _admRemoveDay;
+      window.addPlanItem = _admAddPlanItem;
+      window.loadAdminUsers        = loadAdminUsers;
+      window.loadAdminReports      = loadAdminReports;
+      window.filterAdminUserRows   = filterAdminUserRows;
+      window.findReportedAuthor    = findReportedAuthor;
+      window.searchAdminUserByName = searchAdminUserByName;
+      window.unsuspendUser         = unsuspendUser;
+      window.loadAdminCurations    = loadAdminCurations;
+      window.saveCuration          = saveCuration;
+      window.openEditCuration      = openEditCuration;
+      window.deleteCuration        = deleteCuration;
 
-    builderBlocks[1].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[1];
-    document.getElementById('cadm-trans').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.trans;
-
-    builderBlocks[2].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[2];
-    document.getElementById('cadm-acc').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.acc;
-
-    builderBlocks[3].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[3];
-    document.getElementById('cadm-comp').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.comp;
-
-    builderBlocks[4].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[4];
-    document.getElementById('cadm-style').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.style;
-
-    builderBlocks[5].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[5];
-    document.getElementById('cadm-food').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.food;
-
-    builderBlocks[6].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[6];
-    document.getElementById('cadm-special').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.special;
-
-    builderBlocks[7].querySelector('div:first-child').innerHTML =
-            `${ADMIN_UI_TEXTS.curationForm.sectionTitles[7]}<small style="font-size:10px;color:var(--text3);font-weight:400">${ADMIN_UI_TEXTS.curationForm.sectionSubs.density}</small>`;
-
-    builderBlocks[8].querySelector('div:first-child').textContent = ADMIN_UI_TEXTS.curationForm.sectionTitles[8];
-    document.getElementById('cadm-accopts').placeholder = ADMIN_UI_TEXTS.curationForm.inputPlaceholders.accopts;
-
-    document.querySelector('#ad-curation .btn-add-day').textContent = ADMIN_UI_TEXTS.curationForm.btnAddDay;
-    document.querySelector('#ad-curation .btn-next').textContent = ADMIN_UI_TEXTS.curationForm.btnSubmit;
-
-    // 3. 고정 UI 설정 리스트 기반으로 사이드 네비게이션 생성
-    const navEl = document.querySelector('.admin-nav');
-    if (navEl) {
-      const logoEl = navEl.querySelector('.admin-logo');
-      navEl.innerHTML = (logoEl ? logoEl.outerHTML : '<div class="admin-logo">⚙️ Admin</div>') +
-              ADMIN_MENUS.map(m => `<button class="admin-link${m.default?' on':''}" onclick="showAdmin('${m.sec}',this)">${m.icon} ${m.label}</button>`).join('') +
-              `<div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:10px"><button class="admin-link" onclick="go('main')">← 메인으로</button></div>`;
+      renderDynamicMockData();
     }
 
-    // 4. 셀렉트 박스 고정 옵션 아이템 목록 주입
-    const cadmDepSel  = document.querySelector('select[onchange*="cadm-dep-city"]');
-    const cadmDestSel = document.getElementById('cadm-dest-prov');
-    if (cadmDepSel) cadmDepSel.innerHTML = `<option value="">도/시 선택</option>` + ADMIN_DEP_PROVINCES.map(p => `<option>${p}</option>`).join('');
-    if (cadmDestSel) cadmDestSel.innerHTML = `<option value="">도/시 선택</option>` + ADMIN_DEST_PROVINCES.map(p => `<option>${p}</option>`).join('');
+    function _rChips(selector, options, pickGroup, isToggle){
+      const row=document.querySelector(selector); if(!row) return;
+      const otherIdMap={
+        '#cadm-chip-trans':'cadm-other-trans','#cadm-chip-acc':'cadm-other-acc',
+        '#cadm-chip-comp':'cadm-other-comp','#cadm-chip-style':'cadm-other-style',
+        '#cadm-chip-diet':'cadm-other-diet','#cadm-chip-special':'cadm-other-special',
+        '#cadm-chip-accopts':'cadm-other-accopts'
+      };
+      row.innerHTML=options.map(opt=>{
+        const otherId=opt.isOther?(otherIdMap[selector]||null):null;
+        const otherH=otherId?`;showOtherInput('${otherId}',this)`:'';
+        const handler=isToggle?`tog(this)${otherH}`:`pick(this,'${pickGroup}')${otherH}`;
+        return `<button class="chip chip-sm${opt.default?' on':''}" onclick="${handler}">${opt.label}</button>`;
+      }).join('');
+    }
 
-    // 5. ★ [핵심] 고정 옵션 데이터를 바탕으로 하단 빈 영역에 선택용 칩 버튼들을 자동 생성
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(1)', ADMIN_TRANSPORT_OPTS.map(o=>({label:o.label,default:o.default})), 'c-trans', false);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(2)', ADMIN_ACC_OPTS.map((l,i)=>({label:l,default:i===0})), 'c-acc', false);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(3)', ADMIN_COMP_OPTS, 'c-comp', false);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(4)', ADMIN_STYLE_OPTS.map((l,i)=>({label:l,default:i===0})), null, true);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(5)', ADMIN_DIET_OPTS, null, true);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(6)', ADMIN_SPECIAL_OPTS.map(l=>({label:l,default:false})), null, true);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(7)', ADMIN_DENSITY_OPTS, 'c-density', false);
-    _renderAdminChips('#ad-curation .chip-row:nth-of-type(8)', ADMIN_ACCOPTS.map(l=>({label:l,default:false})), null, true);
+    /* ============================================================
+     * [3구역 - 대시보드 + renderDynamicMockData (changeRole 호환)]
+     * ============================================================ */
+    function renderDynamicMockData(){
+      const token=localStorage.getItem('accessToken');
+      const headers={'Authorization':'Bearer '+token};
 
-    const densityNoteEl = document.querySelector('#ad-curation .chip-row:nth-of-type(7) + div');
-    if (densityNoteEl) densityNoteEl.textContent = ADMIN_DENSITY_MBTI_NOTE;
+      /* ★ 대시보드 — DTO 실제 필드 기준 5개 카드 */
+      fetch('/api/admin/dashboard',{headers})
+              .then(r=>r.json())
+              .then(res=>{
+                const d=res.data||{};
+                const userStatus  =d.userStatusBreakdown  ||{active:0,suspended:0,deleted:0};
+                const reportStatus=d.reportStatusBreakdown||{pending:0,rejected:0,resolved:0};
 
-    // 6. 실시간 가짜 데이터 화면 출력 (백엔드 오픈 시 이 하단 부분만 fetch API로 대체됨)
-    renderDynamicMockData();
-  }
+                const statsEl=document.querySelector('.stats-grid');
+                if(statsEl){
+                  const fmt=n=>(n!=null?Number(n).toLocaleString():'-');
+                  statsEl.innerHTML=[
+                    {label:'총 가입자 수',     num:fmt(d.totalUsers),     sub:`활성 ${userStatus.active}명`, alert:false},
+                    {label:'일정 생성 수',     num:fmt(d.totalTrips),     sub:'',                             alert:false},
+                    {label:'커뮤니티 게시글',   num:fmt(d.totalPosts),     sub:'',                             alert:false},
+                    {label:'게시글 누적 조회수', num:fmt(d.totalPostViews), sub:'',                             alert:false},
+                    {label:'신고 미처리',      num:fmt(d.pendingReports), sub:d.pendingReports>0?'즉시 처리 필요':'없음', alert:d.pendingReports>0},
+                  ].map(s=>`
+            <div class="stat-card"${s.alert?' style="border-color:var(--coral)"':''}>
+              <div class="sc-label">${s.label}</div>
+              <div class="sc-num"${s.alert?' style="color:var(--coral)"':''}>${s.num}</div>
+              <div class="sc-sub"${s.alert?' style="color:var(--coral)"':''}>${s.sub}</div>
+            </div>`).join('');
+                }
 
-  // 실시간 가변 데이터만 그리는 서브 함수
-  // function renderDynamicMockData() {
-  //   const statsEl = document.querySelector('.stats-grid');
-  //   if (statsEl && typeof ADMIN_STATS !== 'undefined') {
-  //     statsEl.innerHTML = ADMIN_STATS.map(s => `
-  //     <div class="stat-card"${s.alert ? ' style="border-color:var(--coral)"' : ''}>
-  //       <div class="sc-label">${s.label}</div>
-  //       <div class="sc-num"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.num}</div>
-  //       <div class="sc-sub"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.sub}</div>
-  //     </div>`).join('');
-  //   }
-  //
-  //   const userTbody = document.querySelector('#ad-users table tbody');
-  //   if (userTbody && typeof ADMIN_USERS !== 'undefined') {
-  //     userTbody.innerHTML = ADMIN_USERS.map(u => `
-  //     <tr>
-  //       <td>${u.id}</td><td>${u.username}</td><td>${u.email}</td><td>${u.joinDate}</td>
-  //       <td><span class="badge ${u.statusCls}">${u.status}</span></td>
-  //       <td>${u.canSuspend
-  //             ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openSuspendModal('${u.username}','${u.id}')">정지</button>`
-  //             : `<span style="font-size:11px;color:var(--text3)">파기 완료</span>`
-  //     }</td>
-  //     </tr>`).join('');
-  //   }
-  //
-  //   const reportTbody = document.querySelector('#ad-reports table tbody');
-  //   if (reportTbody && typeof ADMIN_REPORTS !== 'undefined') {
-  //     reportTbody.innerHTML = ADMIN_REPORTS.map(r => `
-  //     <tr>
-  //       <td>${r.id}</td><td>${r.post}</td><td>${r.reporter}</td><td>${r.reason}</td>
-  //       <td><span class="badge" style="background:#FEF3F2;color:var(--coral)">${r.status}</span></td>
-  //       <td>
-  //         <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete','${r.id}','${r.post}','${r.reporter}','${r.reason}')">삭제</button>&nbsp;
-  //         <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject','${r.id}','${r.post}','${r.reporter}','${r.reason}')">반려</button>
-  //       </td>
-  //     </tr>`).join('');
-  //   }
-  //
-  //   const curTbody = document.querySelector('#ad-curation table tbody');
-  //   if (curTbody && typeof ADMIN_CURATIONS !== 'undefined') {
-  //     curTbody.innerHTML = ADMIN_CURATIONS.map(c => `
-  //     <tr>
-  //       <td>${c.title}</td><td>${c.tags}</td><td>${c.period}</td><td>${c.order}</td>
-  //       <td>
-  //         <button class="btn-o" style="padding:3px 8px;font-size:11px">수정</button>&nbsp;
-  //         <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="if(confirm('삭제?'))toast('삭제 완료')">삭제</button>
-  //       </td>
-  //     </tr>`).join('');
-  //   }
-  //
-  //   const curDaysEl = document.getElementById('curDays');
-  //   if (curDaysEl && typeof ADMIN_CUR_DAYS_SAMPLE !== 'undefined' && typeof ADMIN_PLACE_TYPES !== 'undefined') {
-  //     const typeOpts = ADMIN_PLACE_TYPES.map(t => `<option>${t}</option>`).join('');
-  //     curDaysEl.innerHTML = ADMIN_CUR_DAYS_SAMPLE.map(day => `
-  //     <div class="plan-day-block" style="border:1px solid var(--sage-l)">
-  //       <div class="pdb-hd" style="border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:8px">
-  //         <span style="font-weight:800;color:var(--sage-d)">${day.label}</span>
-  //         <div style="display:flex;gap:6px">
-  //           <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
-  //           <button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
-  //         </div>
-  //       </div>
-  //       ${day.places.map(p => `
-  //       <div class="pdb-item" style="flex-direction:column;align-items:flex-start;gap:8px">
-  //         <div style="display:flex;align-items:center;gap:8px;width:100%">
-  //           <span class="pdb-type-icon">${p.typeIcon}</span>
-  //           <input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" value="${p.name}" placeholder="장소명">
-  //         </div>
-  //         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
-  //           <select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">${typeOpts}</select>
-  //           <input type="time" value="${p.time}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
-  //           <input type="number" placeholder="금액(원)" value="${p.amount}" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
-  //         </div>
-  //       </div>`).join('')}
-  //     </div>`).join('');
-  //   }
-  // }
+                const donutsEl=document.getElementById('dash-donuts');
+                if(donutsEl){
+                  donutsEl.innerHTML=
+                          renderDonut('회원 상태 분포',[
+                            {label:'활성', value:userStatus.active,    color:'var(--sage)'},
+                            {label:'정지', value:userStatus.suspended, color:'var(--coral)'},
+                            {label:'탈퇴', value:userStatus.deleted,   color:'var(--text3)'},
+                          ])+
+                          renderDonut('신고 처리 현황',[
+                            {label:'미처리',   value:reportStatus.pending,  color:'var(--coral)'},
+                            {label:'반려',     value:reportStatus.rejected, color:'var(--text3)'},
+                            {label:'처리완료', value:reportStatus.resolved, color:'var(--sage)'},
+                          ]);
+                }
 
-  // 제미나이 추가
-  function renderDynamicMockData() {
-    const token = localStorage.getItem('accessToken');
-    const headers = { 'Authorization': 'Bearer ' + token };
+                const popularEl=document.getElementById('dash-popular-posts');
+                if(popularEl){
+                  const pops=d.popularPosts||[];
+                  popularEl.innerHTML=pops.length
+                          ?pops.map(p=>`<tr><td>${p.title}</td><td>${p.viewCount}</td><td>${p.likeCount}</td></tr>`).join('')
+                          :'<tr><td colspan="3" style="text-align:center;color:var(--text3)">인기 게시글이 없습니다</td></tr>';
+                }
+              });
 
-    // 대시보드
-    fetch('/api/admin/dashboard', { headers })
-            .then(r => r.json())
-            .then(res => {
-              const d = res.data;
-              const statsEl = document.querySelector('.stats-grid');
-              if (!statsEl) return;
-              statsEl.innerHTML = [
-                { label: '총 가입자 수',   num: d.totalUsers,      sub: `활성 ${d.userStatusBreakdown.active}명`, alert: false },
-                { label: '일정 생성 수',   num: d.totalTrips,      sub: '',                                        alert: false },
-                { label: '커뮤니티 게시글', num: d.totalPosts,      sub: `조회수 합계 ${d.totalPostViews}`,         alert: false },
-                { label: '신고 미처리',    num: d.pendingReports,  sub: d.pendingReports > 0 ? '즉시 처리 필요' : '없음', alert: d.pendingReports > 0 },
-              ].map(s => `
-        <div class="stat-card"${s.alert ? ' style="border-color:var(--coral)"' : ''}>
-          <div class="sc-label">${s.label}</div>
-          <div class="sc-num"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.num}</div>
-          <div class="sc-sub"${s.alert ? ' style="color:var(--coral)"' : ''}>${s.sub}</div>
-        </div>`).join('');
-            });
+      /* 기간별 통계 초기값 */
+      const startEl=document.getElementById('stat-start-date');
+      const endEl  =document.getElementById('stat-end-date');
+      if(startEl&&endEl&&!startEl.value){
+        const today=new Date(),weekAgo=new Date(today.getTime()-6*24*60*60*1000);
+        startEl.value=weekAgo.toISOString().slice(0,10);
+        endEl.value  =today.toISOString().slice(0,10);
+      }
+      loadAdminStatistics();
 
-    // 회원 관리
-    fetch('/api/admin/users?page=0&size=20', { headers })
-            .then(r => r.json())
-            .then(res => {
-              const userTbody = document.querySelector('#ad-users table tbody');
-              if (!userTbody) return;
-              userTbody.innerHTML = res.data.content.map(u => {
-                const statusCls = u.status === 'ACTIVE' ? 'badge-a' : 'badge-d';
-                const dateStr = u.createdAt ? u.createdAt.substring(0, 10).replaceAll('-', '.') : '';
-                return `<tr>
-        <td>#${u.userId}</td>
-        <td>${u.username}</td>
-        <td>${u.email}</td>
-        <td>${dateStr}</td>
-        <td><span class="badge ${statusCls}">${u.status}</span></td>
-        <td>${u.status === 'DELETED'
-                        ? `<span style="font-size:11px;color:var(--text3)">탈퇴 회원</span>`
-                        : `${u.status === 'ACTIVE' ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>&nbsp;` : ''}${u.role === 'USER' ? `<button class="btn-o" style="padding:3px 9px;font-size:11px;color:var(--sage-d);border-color:var(--sage-d)" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 승격</button>` : `<button class="btn-o" style="padding:3px 9px;font-size:11px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 강등</button>`}`
-                }</td>
-      </tr>`;
-              }).join('');
-            });
+      /* 회원 목록 초기 로드 */
+      loadAdminUsers();
+      /* 신고 목록 초기 로드 */
+      loadAdminReports('PENDING');
+    }
 
-    // 신고 관리
-    fetch('/api/admin/reports?status=PENDING&page=0&size=20', { headers })
-            .then(r => r.json())
-            .then(res => {
-              const reportTbody = document.querySelector('#ad-reports table tbody');
-              if (!reportTbody) return;
-              const list = res.data.content || [];
-              if (list.length === 0) {
-                reportTbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';
-                return;
-              }
-              reportTbody.innerHTML = list.map(r => `
-      <tr>
-        <td>#${r.id}</td>
-        <td>${r.postId}</td>
-        <td>#${r.reporterId}</td>
-        <td>${r.reason}</td>
-        <td><span class="badge" style="background:#FEF3F2;color:var(--coral)">${r.status}</span></td>
-        <td>
-          <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete','${r.id}','${r.postId}','${r.reporterId}','${r.reason}')">삭제</button>&nbsp;
-          <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject','${r.id}','${r.postId}','${r.reporterId}','${r.reason}')">반려</button>
-        </td>
-      </tr>`).join('');
-            });
-  }
-  // 여기까지
-
-  function _renderAdminChips(selector, options, pickGroup, isToggle) {
-    const row = document.querySelector(selector);
-    if (!row) return;
-    row.innerHTML = options.map((opt, i) => {
-      const isOther = opt.label === '기타';
-      const otherId = isOther && pickGroup ? `cadm-${pickGroup.replace('c-','')}` : null;
-      const otherHandler = otherId ? `;showOtherInput('${otherId}',this)` : '';
-      const handler = isToggle ? `tog(this)${otherHandler}` : `pick(this,'${pickGroup}')${otherHandler}`;
-      return `<button class="chip chip-sm${opt.default?' on':''}" onclick="${handler}">${opt.label}</button>`;
-    }).join('');
-  }
-
-  document.addEventListener('DOMContentLoaded', initAdminPage);
-</script>
-
-<div class="page" id="page-admin">
-  <div class="admin-layout">
-    <div class="admin-nav">
-      <div class="admin-logo">⚙️ Admin</div>
-      <button class="admin-link on" onclick="showAdmin('dashboard',this)"></button>
-      <button class="admin-link" onclick="showAdmin('users',this)"></button>
-      <button class="admin-link" onclick="showAdmin('reports',this)"></button>
-      <button class="admin-link" onclick="showAdmin('curation',this)"></button>
-      <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">
-        <button class="admin-link" onclick="go('main')"></button>
+    function renderDonut(title,segments){
+      const total=segments.reduce((s,x)=>s+(x.value||0),0)||1;
+      let acc=0;
+      const stops=segments.map(s=>{const st=acc/total*100;acc+=(s.value||0);return`${s.color} ${st}% ${acc/total*100}%`;}).join(', ');
+      const legend=segments.map(s=>`
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3)">
+        <span style="width:9px;height:9px;border-radius:50%;background:${s.color};display:inline-block"></span>
+        <span>${s.label} ${s.value||0}</span>
+      </div>`).join('');
+      return`<div style="display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--text3)">${title}</div>
+      <div style="width:110px;height:110px;border-radius:50%;background:conic-gradient(${stops});display:flex;align-items:center;justify-content:center">
+        <div style="width:58px;height:58px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800">${total}</div>
       </div>
-    </div>
-    <div class="admin-body">
-      <div id="ad-dashboard">
-        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-        <div class="stats-grid"></div>
+      <div style="display:flex;flex-direction:column;gap:4px">${legend}</div>
+    </div>`;
+    }
+
+    function loadAdminStatistics(){
+      const token=localStorage.getItem('accessToken');
+      const headers={'Authorization':'Bearer '+token};
+      const start=document.getElementById('stat-start-date')?.value;
+      const end  =document.getElementById('stat-end-date')?.value;
+      if(!start||!end) return;
+      fetch(`/api/admin/statistics?startDate=${start}&endDate=${end}`,{headers})
+              .then(r=>r.json())
+              .then(res=>{
+                const d=res.data||{};
+                renderTrendChart(d.dailyTrend||[]);
+                renderDestBars(d.popularDestinations||[]);
+              });
+    }
+
+    function renderTrendChart(trend){
+      const svg=document.getElementById('stat-trend-svg');
+      const legEl=document.getElementById('stat-trend-legend');
+      if(!svg) return;
+      const series=[
+        {key:'newUsers', color:'var(--sage-d)',label:'신규 가입자'},
+        {key:'newTrips', color:'var(--coral)', label:'신규 일정'},
+        {key:'viewCount',color:'var(--text3)', label:'조회수'},
+      ];
+      if(legEl) legEl.innerHTML=series.map(s=>`
+      <div style="display:flex;align-items:center;gap:5px">
+        <span style="width:10px;height:2px;background:${s.color};display:inline-block"></span>${s.label}
+      </div>`).join('');
+      if(!trend.length){svg.innerHTML='';return;}
+      const W=640,H=200,PAD=28;
+      const maxVal=Math.max(1,...trend.flatMap(t=>[t.newUsers,t.newTrips,t.viewCount]));
+      const stepX=trend.length>1?(W-PAD*2)/(trend.length-1):0;
+      const toP=key=>trend.map((t,i)=>`${PAD+i*stepX},${H-PAD-(t[key]/maxVal)*(H-PAD*2)}`).join(' ');
+      const lines=series.map(s=>`<polyline points="${toP(s.key)}" fill="none" stroke="${s.color}" stroke-width="2"/>`).join('');
+      const tickEv=Math.max(1,Math.ceil(trend.length/8));
+      const axLabels=trend.map((t,i)=>{
+        if(i%tickEv!==0)return'';
+        return`<text x="${PAD+i*stepX}" y="${H-6}" font-size="9" fill="var(--text3)" text-anchor="middle">${t.date.slice(5)}</text>`;
+      }).join('');
+      svg.innerHTML=`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--border2)"/>`+lines+axLabels;
+    }
+
+    function renderDestBars(dests){
+      const el=document.getElementById('stat-dest-bars'); if(!el) return;
+      if(!dests.length){el.innerHTML='<div style="font-size:12px;color:var(--text3)">데이터가 없습니다</div>';return;}
+      const max=Math.max(...dests.map(d=>d.count));
+      el.innerHTML=dests.map(d=>`
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="width:60px;font-size:12px;color:var(--text3)">${d.destination}</div>
+        <div style="flex:1;background:var(--cream2);border-radius:6px;overflow:hidden;height:16px">
+          <div style="height:100%;background:var(--sage);width:${d.count/max*100}%"></div>
+        </div>
+        <div style="width:30px;font-size:12px;text-align:right">${d.count}</div>
+      </div>`).join('');
+    }
+
+    /* ============================================================
+     * [4구역 - 회원 관리] ★ 6열 / 검색 / 필터 / 승격·강등 / 정지
+     * ============================================================ */
+    function loadAdminUsers(page=0, status=''){
+      const token=localStorage.getItem('accessToken');
+      const headers={'Authorization':'Bearer '+token};
+      const statusSel=document.getElementById('admin-user-status-filter');
+      if(statusSel&&status===''&&statusSel.value) status=statusSel.value;
+      if(statusSel) statusSel.value=status;
+
+      fetch(`/api/admin/users?status=${status}&page=${page}&size=50`,{headers})
+              .then(r=>r.json())
+              .then(res=>{
+                const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
+                if(!res.data||!res.data.content){
+                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  return;
+                }
+                const list=res.data.content||[];
+                if(!list.length){
+                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
+                  return;
+                }
+                /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt
+                   name 필드는 표에 표시 안 함 (6열 유지) */
+                tbody.innerHTML=list.map(u=>{
+                  const dateStr=u.createdAt?u.createdAt.substring(0,10).replaceAll('-','.'):'';
+                  let badge='<span class="badge badge-a">ACTIVE</span>';
+                  if(u.status==='SUSPENDED') badge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">SUSPENDED</span>';
+                  if(u.status==='DELETED')   badge='<span class="badge badge-d">DELETED</span>';
+
+                  let mgmt='<span style="font-size:11px;color:var(--text3)">탈퇴 회원</span>';
+                  if(u.status!=='DELETED'){
+                    const suspBtn=u.status==='ACTIVE'
+                            ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
+                            :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+                    const roleBtn=u.role==='USER'
+                            ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 승격</button>`
+                            :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 강등</button>`;
+                    mgmt=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${suspBtn}${roleBtn}</div>`;
+                  }
+                  return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
+            <td>#${u.userId}</td>
+            <td>${u.username}</td>
+            <td>${u.email}</td>
+            <td>${dateStr}</td>
+            <td>${badge}</td>
+            <td style="white-space:nowrap">${mgmt}</td>
+          </tr>`;
+                }).join('');
+                filterAdminUserRows();
+              });
+    }
+
+    function filterAdminUserRows(){
+      const kw=(document.getElementById('admin-user-search')?.value||'').trim().toLowerCase();
+      document.querySelectorAll('#adminUserTable tr[data-username]').forEach(tr=>{
+        if(!kw){tr.style.display='';return;}
+        const hay=(tr.dataset.username+' '+tr.dataset.email+' '+(tr.dataset.name||'')).toLowerCase();
+        tr.style.display=hay.includes(kw)?'':'none';
+      });
+    }
+
+    /* ★ unsuspendUser — app_main.js에 없으므로 여기서 정의 */
+    async function unsuspendUser(userId){
+      if(!confirm('정지를 해제하시겠습니까?')) return;
+      const res=await api.patch('/api/admin/users/'+userId+'/unsuspend',{});
+      toast(res.success?'정지 해제 완료 · 알림 전송됨':'⚠️ 정지 해제에 실패했습니다.');
+      if(res.success) loadAdminUsers();
+    }
+
+    async function searchAdminUserByName(name){
+      if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
+      const usersBtn=document.querySelector('.admin-link[onclick*="\'users\'"]');
+      // 탭만 전환 (데이터 로드 없이)
+      ['dashboard','users','reports','curation'].forEach(s=>{
+        const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
+      });
+      document.getElementById('ad-users').style.display='block';
+      document.querySelectorAll('.admin-nav .admin-link').forEach(b=>b.classList.remove('on'));
+      if(usersBtn) usersBtn.classList.add('on');
+
+      // 검색어 먼저 세팅
+      const inp=document.getElementById('admin-user-search');
+      if(inp) inp.value=name;
+
+      // 검색어 세팅 후 fetch → 완료 후 filterAdminUserRows 실행
+      await loadAdminUsers(0,'');
+      filterAdminUserRows();
+      toast(`"${name}" 검색 결과로 이동했습니다`);
+    }
+
+    /* ============================================================
+     * [5구역 - 신고 관리] ★ DTO 필드명: reportId / postTitle / reporterName
+     * ============================================================ */
+    function loadAdminReports(status='PENDING', page=0){
+      const token=localStorage.getItem('accessToken');
+      const headers={'Authorization':'Bearer '+token};
+      const statusSel=document.getElementById('admin-report-status-filter');
+      if(statusSel) statusSel.value=status;
+
+      fetch(`/api/admin/reports?status=${status}&page=${page}&size=20`,{headers})
+              .then(r=>r.json())
+              .then(res=>{
+                const tbody=document.getElementById('adminReportTable'); if(!tbody) return;
+                if(!res.data||!res.data.content){
+                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  return;
+                }
+                const list=res.data.content||[];
+                if(!list.length){
+                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';
+                  return;
+                }
+                tbody.innerHTML=list.map(r=>{
+                  const esc=s=>(s||'').toString().replace(/'/g,"\\'");
+                  const actionCell=r.status==='PENDING'
+                          ?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">삭제</button>&nbsp;`
+                          +`<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">반려</button>`
+                          :'<span style="font-size:11px;color:var(--text3)">처리 완료</span>';
+                  return`<tr>
+            <td>#${r.reportId}</td>
+            <td>${r.postTitle||('#'+r.postId)}</td>
+            <td>${r.reporterName||'-'}</td>
+            <td><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId})">작성자 보기</button></td>
+            <td>${r.reason}</td>
+            <td><span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 8px;border-radius:12px;font-size:11px">${r.status}</span></td>
+            <td style="white-space:nowrap">${actionCell}</td>
+          </tr>`;
+                }).join('');
+              });
+    }
+
+    async function findReportedAuthor(postId){
+      const res=await api.get('/api/posts/'+postId);
+      if(!res.success||!res.data){toast('작성자 정보를 불러오지 못했습니다.');return;}
+      searchAdminUserByName(res.data.authorName);
+    }
+
+    /* ============================================================
+     * [6구역 - 큐레이션] ★ Day1 부터 / extra_notes JSON / 태그 없음
+     * ============================================================ */
+    let _admDayCount=0, _curEditId=null;
+
+    function _admAddDay(){
+      _admDayCount++;
+      const block=document.createElement('div');
+      block.className='plan-day-block'; block.dataset.day=_admDayCount;
+      block.style.cssText='border:1px solid var(--sage-l);border-radius:var(--r);padding:14px;background:var(--surface);margin-bottom:10px';
+      block.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:10px">
+        <span class="adm-day-label" style="font-weight:800;color:var(--sage-d);font-size:13px">Day ${_admDayCount}</span>
+        <div style="display:flex;gap:6px">
+          <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
+          <button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
+        </div>
+      </div>
+      <div class="adm-day-items"></div>`;
+      document.getElementById('curDays').appendChild(block);
+      _admAddItemToBlock(block.querySelector('.adm-day-items'));
+    }
+
+    function _admRemoveDay(btn){
+      btn.closest('.plan-day-block').remove();
+      _admDayCount=0;
+      document.querySelectorAll('#curDays .plan-day-block').forEach(b=>{
+        _admDayCount++;
+        b.dataset.day=_admDayCount;
+        b.querySelector('.adm-day-label').textContent=`Day ${_admDayCount}`;
+      });
+    }
+
+    function _admAddPlanItem(btn){
+      _admAddItemToBlock(btn.closest('.plan-day-block').querySelector('.adm-day-items'));
+    }
+
+    function _admAddItemToBlock(itemsEl){
+      const typeOpts=ADMIN_PLACE_TYPES.map(t=>`<option>${t}</option>`).join('');
+      const item=document.createElement('div');
+      item.className='pdb-item';
+      item.style.cssText='display:flex;flex-direction:column;gap:8px;padding:8px 0;border-bottom:1px solid var(--border2)';
+      item.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;width:100%">
+        <input style="flex:1;border:1px solid var(--border2);background:var(--cream2);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명" class="adm-pdb-name">
+        <button style="background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);font-size:11px" onclick="this.closest('.pdb-item').remove()">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
+        <select class="adm-pdb-type" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit;background:var(--cream2)">${typeOpts}</select>
+        <input type="time" class="adm-pdb-time" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit;background:var(--cream2)">
+        <input type="number" class="adm-pdb-amount" placeholder="금액(원)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit;background:var(--cream2)">
+      </div>`;
+      itemsEl.appendChild(item);
+    }
+
+    function loadAdminCurations(){
+      const token=localStorage.getItem('accessToken');
+      fetch('/api/admin/curations',{headers:{'Authorization':'Bearer '+token}})
+              .then(r=>r.json())
+              .then(res=>{
+                const tbody=document.getElementById('curationTable'); if(!tbody) return;
+                const list=res.data||[];
+                if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">등록된 큐레이션이 없습니다</td></tr>';return;}
+                tbody.innerHTML=list.map(c=>`
+          <tr>
+            <td>#${c.curationId||c.id}</td>
+            <td>${c.title}</td>
+            <td>${c.theme||'-'}</td>
+            <td>${c.displayOrder||'-'}</td>
+            <td>${c.startDate||''}~${c.endDate||''}</td>
+            <td>
+              <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openEditCuration(${c.curationId||c.id})">수정</button>&nbsp;
+              <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="deleteCuration(${c.curationId||c.id})">삭제</button>
+            </td>
+          </tr>`).join('');
+              });
+    }
+
+    async function saveCuration(){
+      const title=document.getElementById('cur-title')?.value?.trim();
+      if(!title){toast('제목을 입력하세요.');return;}
+
+      const getChipVal=(sel,multi)=>{
+        const chips=[...document.querySelectorAll(`${sel} .chip.on`)].map(c=>c.textContent.trim()).filter(t=>t!=='기타');
+        const otherId=sel.replace('#cadm-chip-','cadm-other-');
+        const otherEl=document.getElementById(otherId);
+        const otherVal=otherEl&&otherEl.classList.contains('show')&&otherEl.value?otherEl.value.trim():'';
+        if(otherVal) chips.push(otherVal);
+        return multi?chips:(chips[0]||'');
+      };
+
+      const days=[];
+      document.querySelectorAll('#curDays .plan-day-block').forEach((block,di)=>{
+        const places=[];
+        block.querySelectorAll('.pdb-item').forEach(item=>{
+          const name=item.querySelector('.adm-pdb-name')?.value?.trim()||''; if(!name) return;
+          places.push({
+            name, type:item.querySelector('.adm-pdb-type')?.value||'',
+            time:item.querySelector('.adm-pdb-time')?.value||'',
+            amount:parseInt(item.querySelector('.adm-pdb-amount')?.value||'0')||0,
+          });
+        });
+        days.push({day:di+1,label:`Day ${di+1}`,places});
+      });
+
+      const extra_notes=JSON.stringify({
+        preferences:{
+          transport:     getChipVal('#cadm-chip-trans',   false),
+          accommodation: getChipVal('#cadm-chip-acc',     false),
+          companion:     getChipVal('#cadm-chip-comp',    false),
+          style:         getChipVal('#cadm-chip-style',   true),
+          diet:          getChipVal('#cadm-chip-diet',    true),
+          special:       getChipVal('#cadm-chip-special', true),
+          density:       getChipVal('#cadm-chip-density', false),
+          accOptions:    getChipVal('#cadm-chip-accopts', true),
+        }, days
+      });
+
+      const payload={
+        title,
+        theme:        document.getElementById('cur-theme')?.value?.trim()||null,
+        startDate:    document.getElementById('cur-start')?.value||null,
+        endDate:      document.getElementById('cur-end')?.value||null,
+        displayOrder: parseInt(document.getElementById('cur-order')?.value)||1,
+        extra_notes,
+      };
+
+      let res;
+      if(_curEditId) res=await api.patch('/api/admin/curations/'+_curEditId,payload);
+      else           res=await api.post('/api/admin/curations',payload);
+
+      if(res&&res.success){
+        toast(_curEditId?'큐레이션이 수정되었습니다.':'큐레이션이 등록되었습니다.');
+        resetCurationForm(); loadAdminCurations();
+      } else toast('저장에 실패했습니다.');
+    }
+
+    function resetCurationForm(){
+      _curEditId=null; _admDayCount=0;
+      ['cur-title','cur-theme','cur-start','cur-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      const o=document.getElementById('cur-order');if(o)o.value='1';
+      document.getElementById('curDays').innerHTML='';
+      document.querySelector('#ad-curation .bcard-ttl').textContent=ADMIN_UI_TEXTS.curationForm.cardTitle;
+      document.querySelector('#ad-curation .btn-next').textContent=ADMIN_UI_TEXTS.curationForm.btnSubmit;
+      document.querySelectorAll('#ad-curation .chip.on').forEach(c=>c.classList.remove('on'));
+      document.querySelectorAll('#ad-curation .other-input.show').forEach(el=>{el.classList.remove('show');el.value='';});
+    }
+
+    async function openEditCuration(id){
+      const res=await api.get('/api/admin/curations/'+id);
+      if(!res.success||!res.data){toast('큐레이션 정보를 불러오지 못했습니다.');return;}
+      const c=res.data; _curEditId=id; _admDayCount=0;
+      document.getElementById('cur-title').value=c.title||'';
+      document.getElementById('cur-theme').value=c.theme||'';
+      document.getElementById('cur-start').value=c.startDate||'';
+      document.getElementById('cur-end').value=c.endDate||'';
+      document.getElementById('cur-order').value=c.displayOrder||1;
+      document.querySelector('#ad-curation .bcard-ttl').textContent='큐레이션 수정';
+      document.querySelector('#ad-curation .btn-next').textContent='수정 완료';
+      try{
+        const en=JSON.parse(c.extra_notes||'{}');
+        const pref=en.preferences||{};
+        const restoreChip=(sel,val,multi)=>{
+          document.querySelectorAll(`${sel} .chip`).forEach(chip=>{
+            chip.classList.toggle('on',multi?val.includes(chip.textContent.trim()):val===chip.textContent.trim());
+          });
+        };
+        restoreChip('#cadm-chip-trans',   pref.transport,     false);
+        restoreChip('#cadm-chip-acc',     pref.accommodation, false);
+        restoreChip('#cadm-chip-comp',    pref.companion,     false);
+        restoreChip('#cadm-chip-style',   pref.style||[],     true);
+        restoreChip('#cadm-chip-diet',    pref.diet||[],      true);
+        restoreChip('#cadm-chip-special', pref.special||[],   true);
+        restoreChip('#cadm-chip-density', pref.density,       false);
+        restoreChip('#cadm-chip-accopts', pref.accOptions||[],true);
+        const daysEl=document.getElementById('curDays'); daysEl.innerHTML='';
+        (en.days||[]).forEach(day=>{
+          _admAddDay();
+          const block=daysEl.lastElementChild;
+          const itemsEl=block.querySelector('.adm-day-items'); itemsEl.innerHTML='';
+          (day.places||[]).forEach(p=>{
+            _admAddItemToBlock(itemsEl);
+            const item=itemsEl.lastElementChild;
+            item.querySelector('.adm-pdb-name').value=p.name||'';
+            [...item.querySelector('.adm-pdb-type').options].forEach(o=>{if(o.value===p.type)o.selected=true;});
+            item.querySelector('.adm-pdb-time').value=p.time||'';
+            item.querySelector('.adm-pdb-amount').value=p.amount||'';
+          });
+        });
+      }catch(e){}
+      document.querySelector('#ad-curation .bcard').scrollIntoView({behavior:'smooth'});
+    }
+
+    async function deleteCuration(id){
+      if(!confirm('큐레이션을 삭제하시겠습니까?')) return;
+      const res=await api.del('/api/admin/curations/'+id);
+      if(res&&res.success){toast('삭제되었습니다.');loadAdminCurations();}
+      else toast('삭제에 실패했습니다.');
+    }
+
+    document.addEventListener('DOMContentLoaded', initAdminPage);
+  </script>
+
+  <!-- 정지 모달 전용 스타일 -->
+  <style>
+    .sus-wrap {background:var(--surface);border-radius:16px;padding:28px 28px 24px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.14);}
+    .sus-hd   {display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .sus-ttl  {font-size:17px;font-weight:800;color:var(--text1);display:flex;align-items:center;gap:8px;}
+    .sus-info {background:var(--cream2);border-radius:10px;padding:12px 16px;margin-bottom:18px;}
+    .sus-row  {display:flex;gap:16px;font-size:13px;margin-top:4px;}
+    .sus-lbl  {color:var(--text3);min-width:56px;}
+    .sus-val  {color:var(--text1);font-weight:600;}
+    .sus-notif{background:#FFFBEB;border:1px solid #FEF3C7;border-radius:10px;padding:14px 16px;margin:14px 0;}
+    .sus-n-ttl{font-size:12px;font-weight:700;color:#92400E;margin-bottom:4px;}
+    .sus-n-sub{font-size:11px;color:#B45309;margin-bottom:8px;}
+    .sus-n-ta {width:100%;border:none;background:transparent;font-size:13px;font-family:inherit;color:var(--text1);resize:none;outline:none;min-height:44px;}
+    .sus-guide{background:var(--cream2);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text3);line-height:1.65;margin-bottom:16px;}
+    .sus-foot {display:flex;gap:10px;}
+    .btn-sus-ok{flex:1;background:var(--coral);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;}
+    .btn-sus-ok:hover{filter:brightness(.92);}
+    .btn-sus-cl{flex:0 0 80px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);}
+    .btn-sus-cl:hover{background:var(--cream2);}
+  </style>
+
+  <div class="page" id="page-admin">
+    <div class="admin-layout">
+      <div class="admin-nav">
+        <div class="admin-logo">⚙️ Admin</div>
+        <button class="admin-link on" onclick="showAdmin('dashboard',this)"></button>
+        <button class="admin-link"    onclick="showAdmin('users',this)"></button>
+        <button class="admin-link"    onclick="showAdmin('reports',this)"></button>
+        <button class="admin-link"    onclick="showAdmin('curation',this)"></button>
+        <div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:10px">
+          <button class="admin-link" onclick="go('main')"></button>
+        </div>
       </div>
 
-      <div id="ad-users" style="display:none">
-        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-        <table class="admin-table">
-          <thead><tr></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <div class="admin-body">
 
-      <div id="ad-reports" style="display:none">
-        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-        <table class="admin-table">
-          <thead><tr></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+        <!-- ══ 대시보드 ══ -->
+        <div id="ad-dashboard">
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
+          <div class="stats-grid"></div>
 
-      <div id="ad-curation" style="display:none">
-        <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-        <div class="bcard">
-          <div class="bcard-ttl"></div>
-          <div class="form-row" style="margin-top:10px">
-            <div class="form-group"><label class="form-label"></label><input class="form-input"></div>
-            <div class="form-group"><label class="form-label"></label><input class="form-input"></div>
+          <div class="bcard" style="margin-top:20px">
+            <div class="bcard-ttl">회원 상태 / 신고 처리 현황</div>
+            <div id="dash-donuts" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:14px"></div>
           </div>
-          <div class="form-row">
-            <div class="form-group"><label class="form-label"></label><input class="form-input" type="date"></div>
-            <div class="form-group"><label class="form-label"></label><input class="form-input" type="date"></div>
+
+          <div class="bcard" style="margin-top:16px">
+            <div class="bcard-ttl">인기 게시글 Top5</div>
+            <table class="admin-table" style="margin-top:12px">
+              <thead><tr><th>제목</th><th>조회수</th><th>좋아요</th></tr></thead>
+              <tbody id="dash-popular-posts"></tbody>
+            </table>
           </div>
-          <div class="plan-builder" style="background:var(--cream2);border:2px solid var(--sage-l)">
-            <div class="plan-builder-ttl" style="color:var(--sage-d);font-size:14px"></div>
 
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="form-group"><label class="form-label"></label>
-                <div class="loc-selector">
-                  <select class="loc-big" onchange="updateCity(this,'cadm-dep-city')"><option value=""></option></select>
-                  <select class="loc-big" id="cadm-dep-city"><option></option></select>
-                </div>
-              </div>
-              <div class="form-group"><label class="form-label"></label>
-                <div class="loc-selector">
-                  <select class="loc-big" id="cadm-dest-prov" onchange="updateCity(this,'cadm-dest-city')"><option value=""></option></select>
-                  <select class="loc-big" id="cadm-dest-city"><option value=""></option></select>
-                </div>
-              </div>
-              <div class="form-row" style="margin-bottom:10px">
-                <div class="form-group"><label class="form-label"></label><input class="form-input" type="date"></div>
-                <div class="form-group"><label class="form-label"></label><input class="form-input" type="date"></div>
-              </div>
-              <div class="form-row" style="margin-bottom:10px">
-                <div class="form-group"><label class="form-label"></label><input class="form-input" type="number" value="2" min="1" max="20"></div>
-                <div class="form-group"><label class="form-label"></label><input class="form-input" type="number"></div>
+          <div class="bcard" style="margin-top:16px">
+            <div class="bcard-ttl" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <span>기간별 통계</span>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input class="form-input" type="date" id="stat-start-date" style="padding:5px 8px;font-size:12px;width:auto">
+                <span style="color:var(--text3);font-size:12px">~</span>
+                <input class="form-input" type="date" id="stat-end-date" style="padding:5px 8px;font-size:12px;width:auto">
+                <button class="btn-o" style="padding:5px 14px;font-size:12px" onclick="loadAdminStatistics()">조회</button>
               </div>
             </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-trans">
+            <div style="margin-top:18px">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">일자별 추이 (신규가입자 · 신규일정 · 조회수)</div>
+              <svg id="stat-trend-svg" viewBox="0 0 640 200" style="width:100%;height:200px;overflow:visible"></svg>
+              <div id="stat-trend-legend" style="display:flex;gap:16px;font-size:11px;color:var(--text3);margin-top:6px"></div>
             </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-acc">
+            <div style="margin-top:22px">
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">인기 여행지 Top5</div>
+              <div id="stat-dest-bars" style="display:flex;flex-direction:column;gap:8px"></div>
             </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-comp">
-            </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-style">
-            </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-food">
-            </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-special">
-            </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px"></div>
-              <div class="chip-row"></div>
-              <div style="font-size:11px;color:var(--text3);margin-top:6px"></div>
-            </div>
-
-            <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
-              <div class="chip-row"></div>
-              <input class="other-input" id="cadm-accopts">
-            </div>
-
-            <div id="curDays" style="display:flex;flex-direction:column;gap:10px"></div>
-            <button class="btn-add-day" onclick="addDay()" style="margin-top:4px;border-color:var(--sage-l);color:var(--sage-d)"></button>
           </div>
-          <button class="btn-next" style="margin-top:12px" onclick="toast('큐레이션 등록 완료 — 메인 화면 즉시 반영!')"></button>
         </div>
 
-        <table class="admin-table">
-          <thead><tr></tr></thead>
-          <tbody></tbody>
-        </table>
+        <!-- ══ 회원 관리 ══ -->
+        <div id="ad-users" style="display:none">
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
+          <!-- ★ 검색 + 상태 필터 -->
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input class="form-input" id="admin-user-search"
+                   placeholder="아이디, 이메일, 이름으로 검색"
+                   style="flex:1;min-width:220px"
+                   oninput="filterAdminUserRows()">
+            <select class="form-input" id="admin-user-status-filter"
+                    style="width:auto"
+                    onchange="loadAdminUsers(0,this.value)">
+              <option value="">전체 상태</option>
+              <option value="ACTIVE">활성</option>
+              <option value="SUSPENDED">정지</option>
+              <option value="DELETED">탈퇴</option>
+            </select>
+          </div>
+          <table class="admin-table">
+            <thead><tr></tr></thead>
+            <tbody id="adminUserTable"></tbody>
+          </table>
+        </div>
+
+        <!-- ══ 신고 관리 ══ -->
+        <div id="ad-reports" style="display:none">
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
+          <!-- ★ 신고 상태 필터 -->
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <select class="form-input" id="admin-report-status-filter"
+                    style="width:auto"
+                    onchange="loadAdminReports(this.value)">
+              <option value="PENDING">미처리</option>
+              <option value="RESOLVED">처리완료(삭제)</option>
+              <option value="REJECTED">반려됨</option>
+              <option value="">전체</option>
+            </select>
+          </div>
+          <table class="admin-table">
+            <thead><tr></tr></thead>
+            <tbody id="adminReportTable"></tbody>
+          </table>
+        </div>
+
+        <!-- ══ 큐레이션 관리 ══ -->
+        <div id="ad-curation" style="display:none">
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
+          <div class="bcard">
+            <div class="bcard-ttl"></div>
+
+            <!-- 제목 / 테마 (★ 태그 없음) -->
+            <div class="form-row" style="margin-top:10px">
+              <div class="form-group">
+                <label class="form-label">제목 <span style="color:var(--coral)">*</span></label>
+                <input class="form-input" id="cur-title" placeholder="제주 에메랄드 해안 플랜">
+              </div>
+              <div class="form-group">
+                <label class="form-label">테마</label>
+                <input class="form-input" id="cur-theme" placeholder="초여름, 힐링, 오션뷰">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">노출 시작</label>
+                <input class="form-input" type="date" id="cur-start">
+              </div>
+              <div class="form-group">
+                <label class="form-label">노출 종료</label>
+                <input class="form-input" type="date" id="cur-end">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">노출 순서</label>
+                <input class="form-input" type="number" id="cur-order" min="1" value="1">
+              </div>
+              <div class="form-group"></div>
+            </div>
+
+            <!-- ★ 플랜 빌더 (출발지·출발일·귀환일 없음 / STEP1&2 동일 칩) -->
+            <div class="plan-builder" style="background:var(--cream2);border:2px solid var(--sage-l)">
+              <div class="plan-builder-ttl" style="color:var(--sage-d);font-size:14px"></div>
+
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-trans"></div>
+                <input class="other-input" id="cadm-other-trans" placeholder="이동 수단 직접 입력">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-acc"></div>
+                <input class="other-input" id="cadm-other-acc" placeholder="숙소 형태를 직접 입력해주세요">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-comp"></div>
+                <input class="other-input" id="cadm-other-comp" placeholder="동행자 유형을 직접 입력해주세요">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-style"></div>
+                <input class="other-input" id="cadm-other-style" placeholder="스타일 직접 입력">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-diet"></div>
+                <input class="other-input" id="cadm-other-diet" placeholder="식이 정보를 직접 입력해주세요">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-special"></div>
+                <input class="other-input" id="cadm-other-special" placeholder="특수 조건을 직접 입력해주세요">
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px"></div>
+                <div class="chip-row" id="cadm-chip-density"></div>
+              </div>
+              <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
+                <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
+                <div class="chip-row" id="cadm-chip-accopts"></div>
+                <input class="other-input" id="cadm-other-accopts" placeholder="숙소 세부 옵션을 직접 입력해주세요">
+              </div>
+
+              <!-- ★ Day 목록 (Day1 부터) -->
+              <div id="curDays"></div>
+              <button class="btn-add-day" onclick="addDay()" style="margin-top:8px;border-color:var(--sage-l);color:var(--sage-d)"></button>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:12px">
+              <button class="btn-next" id="cur-save-btn" style="flex:1" onclick="saveCuration()"></button>
+              <button class="btn-o" style="padding:10px 18px;font-size:13px" onclick="resetCurationForm()">초기화</button>
+            </div>
+          </div>
+
+          <table class="admin-table" style="margin-top:20px">
+            <thead><tr></tr></thead>
+            <tbody id="curationTable"></tbody>
+          </table>
+        </div>
+
+      </div><!-- /.admin-body -->
+    </div><!-- /.admin-layout -->
+
+    <!-- ══════════ 정지 모달 (Image3 디자인) ══════════ -->
+    <div class="overlay" id="suspendModal" onclick="if(event.target===this)closeSuspendModal()">
+      <div class="sus-wrap">
+        <div class="sus-hd">
+          <div class="sus-ttl"><span style="color:var(--coral);font-size:20px">⊘</span> 회원 정지 처리</div>
+          <button onclick="closeSuspendModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1">✕</button>
+        </div>
+        <div class="sus-info">
+          <div class="sus-row"><span class="sus-lbl">회원 ID</span><span class="sus-val" id="su-id"></span></div>
+          <div class="sus-row"><span class="sus-lbl">아이디</span><span class="sus-val" id="su-username"></span></div>
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" style="font-weight:700;margin-bottom:6px;display:block">정지 사유 <span style="color:var(--coral)">*</span></label>
+          <select class="form-input" id="su-reason-select" style="background:var(--cream2)">
+            <option value="">사유 선택...</option>
+            <option value="스팸/광고성 콘텐츠">스팸/광고성 콘텐츠</option>
+            <option value="비정상 활동 감지">비정상 활동 감지</option>
+            <option value="욕설 및 혐오 표현">욕설 및 혐오 표현</option>
+            <option value="허위 정보 유포">허위 정보 유포</option>
+            <option value="개인정보 침해">개인정보 침해</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <!-- ★ 정지 사유 상세 (보이는 textarea) -->
+        <div class="form-group" style="margin-bottom:14px">
+        <textarea class="form-input" id="su-detail" rows="3"
+                  placeholder="정지 사유를 상세히 입력해주세요..."
+                  style="resize:vertical;background:var(--cream2);font-family:inherit"></textarea>
+        </div>
+        <div class="sus-notif">
+          <div class="sus-n-ttl">🔔 정지 알림 메시지</div>
+          <div class="sus-n-sub">로그인 시 해당 회원에게 표시될 메시지입니다</div>
+          <textarea class="sus-n-ta" id="su-notify-msg" rows="2"
+                    placeholder="귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다."></textarea>
+        </div>
+        <div class="sus-guide">
+          ℹ 정지 처리 시 해당 계정은 로그아웃 처리되며, 로그인 시 정지 알림이 표시됩니다.<br>
+          정지 계정은 로그아웃 및 마이페이지 내 정보 관리만 가능합니다.
+        </div>
+        <div class="sus-foot">
+          <button class="btn-sus-ok" onclick="confirmSuspend()">정지 완료</button>
+          <button class="btn-sus-cl" onclick="closeSuspendModal()">취소</button>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+
+    <!-- ══════════ 신고 처리 모달 ══════════ -->
+    <div class="overlay" id="reportActionModal" onclick="if(event.target===this)closeReportAction()">
+      <div class="modal" style="width:440px">
+        <div class="modal-hd">
+          <div class="modal-ttl" id="reportActionTitle">신고 처리</div>
+          <button class="modal-x" onclick="closeReportAction()">✕</button>
+        </div>
+        <div class="modal-bd">
+          <p style="font-size:12px;color:var(--text3);margin-bottom:10px">
+            신고 ID #<span id="ra-id"></span> · 게시글 "<span id="ra-post"></span>" · 신고자 <span id="ra-reporter"></span>
+          </p>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:14px">신고 사유: <span id="ra-reason"></span></p>
+          <div class="form-group">
+            <label class="form-label" id="ra-reason-label">처리 사유 <span style="color:var(--coral)">*</span></label>
+            <select class="form-input" id="ra-reason-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">상세 메모 (선택)</label>
+            <textarea class="form-input" id="ra-detail" rows="2" style="resize:vertical"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">사용자에게 보낼 알림 메시지</label>
+            <textarea class="form-input" id="ra-notify-msg" rows="2" style="resize:vertical"></textarea>
+          </div>
+          <button class="btn-f" id="ra-confirm-btn" style="width:100%;margin-top:6px" onclick="confirmReportAction()">처리 완료</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /#page-admin -->
 </div>

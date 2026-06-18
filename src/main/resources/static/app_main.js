@@ -2476,6 +2476,9 @@ function showAdmin(sec, btn) {
   const t=document.getElementById('ad-'+sec); if(t) t.style.display='block';
   btn.closest('.admin-nav').querySelectorAll('.admin-link').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
+  if(sec==='users')    loadAdminUsers();
+  if(sec==='reports')  loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
+  if(sec==='curation') { if(typeof loadAdminCurations==='function') loadAdminCurations(); }
 }
 
 let _dayN = 2;
@@ -2548,6 +2551,7 @@ async function confirmSuspend() {
   const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r});
   closeSuspendModal();
   toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'⚠️ 정지 처리에 실패했습니다.');
+  if(res.success) loadAdminUsers();
 }
 
 /** DELETE /api/admin/reports/{reportId} or PATCH (반려) */
@@ -2561,6 +2565,7 @@ async function confirmReportAction() {
   toast(res.success
       ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
       : '⚠️ 처리에 실패했습니다.');
+  if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING'); // ★ 추가
 }
 
 // 제미나이 추가
@@ -2580,8 +2585,7 @@ async function changeRole(action, userId, username) {
     if (data.success) {
       toast(`${label} 완료`);
       // 회원 목록 새로고침
-      document.querySelector('#ad-users table tbody').innerHTML = '';
-      renderDynamicMockData();
+      loadAdminUsers(); // ★ 회원 목록만 새로고침
     } else {
       toast('처리 실패: ' + (data.message || ''));
     }
