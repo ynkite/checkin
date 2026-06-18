@@ -158,6 +158,29 @@ public class User {
         this.lockedUntil = null;
     }
 
+    // 관리자에 의한 계정 정지 (관리자 계정 자체는 정지할 수 없도록 방어)
+    public void suspend() {
+        if ("ADMIN".equals(this.role)) {
+            throw new IllegalStateException("관리자 계정은 정지할 수 없습니다.");
+        }
+        this.status = "SUSPENDED";
+    }
+
+    // 관리자에 의한 정지 해제
+    public void unsuspend() {
+        this.status = "ACTIVE";
+    }
+
+    // 관리자 - 일반 회원을 관리자로 승격
+    public void promoteToAdmin() {
+        this.role = "ADMIN";
+    }
+
+    // 관리자 - 관리자를 일반 회원으로 강등
+    public void demoteToUser() {
+        this.role = "USER";
+    }
+
     //90일 권장 모달 노출 시각 기록
     public void recordPwChangeNotified() {
         this.pwChangeNotiAt = LocalDateTime.now();
