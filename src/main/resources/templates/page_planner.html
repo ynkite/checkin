@@ -787,8 +787,8 @@
                             const retries = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
 
                             // 🎯 2번 시도했으면 세션에 담지 않고 바로 지도로 보내버립니다.
-                            if (retries >= 2) {
-                                console.warn("⚠️ AI 복구 2회 완료 -> 지도로 쿨하게 이동");
+                            if (retries >= 1) {
+                                console.warn("⚠️ AI 복구 2회 완료 -> 지도로 이동");
                                 _finalizePlannerRoute(routeData, btn);
                                 return;
                             }
@@ -813,6 +813,28 @@
                 } // finalizeSearch 끝
             });
         }
+
+        function _finalizePlannerRoute(routeData, btn) {
+            if (btn) {
+                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                btn.disabled = false;
+            }
+
+            if (!routeData) {
+                toast('⚠️ 일정 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            // 1. 결과 저장
+            sessionStorage.setItem('ai_generated_route', JSON.stringify(routeData));
+            _planDirty = false; // 더티 플래그 해제
+
+            // 2. 화면 이동 (지도 페이지)
+            toast('✅ 일정이 생성되었습니다. 지도로 이동합니다.');
+            go('map');
+        }
+
+
 
     </script>
 

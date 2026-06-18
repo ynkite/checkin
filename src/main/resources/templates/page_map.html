@@ -535,11 +535,61 @@
 
               setTimeout(function() {
                 drawLivePolylines();
+                checkActualWeatherAlert(window._currentTripId);
               }, 100);
             }
           });
         });
       });
+    }
+    async function checkActualWeatherAlert(tripId) {
+      const alertBanner = document.querySelector('.weather-alert');
+      if (!alertBanner) return;
+
+      // 🎯 기본값은 숨김 처리
+      alertBanner.style.display = 'none';
+
+      try {
+        // 1. 현재 플랜의 행정구역(목적지) 정보 가져오기
+        const tripRes = await api.get('/api/trips/' + tripId);
+        if (!tripRes.success || !tripRes.data) return;
+
+        const locStr = tripRes.data.destination ? tripRes.data.destination.split(' ')[0] : '서울';
+
+        // 2. 백엔드 날씨 데이터 조회
+        const weatherRes = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
+        const json = await weatherRes.json();
+
+        if (!json.success || !json.data || json.data.length === 0) return;
+
+        // 3. 여행 기간(최대 7일) 중 하루라도 악천후 조건이 충족되는지 검사
+        let hasBadWeather = false;
+
+        for (let i = 0; i < json.data.length; i++) {
+          if (i >= 7) break; // 최대 7일까지만 가드
+          const dto = json.data[i];
+
+          // 강수 형태가 있거나(pty > 0), 강수 확률이 40% 이상이거나, 구름이 많고 흐린 날(sky >= 3)
+          if (dto.pty > 0 || dto.pop >= 40 || dto.sky >= 3) {
+            hasBadWeather = true;
+            break; // 하루라도 기상 악화가 있으면 즉시 탈출하여 배너를 켭니다.
+          }
+        }
+
+        // 4. 악천후 감지 시 2번 사진 양식의 순수 텍스트 구조로 주입 후 활성화
+        if (hasBadWeather) {
+          const titleEl = alertBanner.querySelector('.wa-ttl');
+          const bodyEl = alertBanner.querySelector('.wa-body');
+
+          // 🎯 2번 사진 구조와 토시 하나 안 틀리고 정확하게 매핑
+          if (titleEl) titleEl.textContent = '🌧️ 날씨 악화 예보 감지';
+          if (bodyEl) bodyEl.textContent = '태그 유사도 분석 기반 실내 대체 장소 제안';
+
+          alertBanner.style.display = 'block'; // 배너 온(ON)
+        }
+      } catch (err) {
+        console.warn('[WeatherAlert] 실시간 날씨 데이터 바인딩 실패:', err);
+      }
     }
 
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
@@ -788,10 +838,20 @@
         row.addEventListener('dragenter', function() {
           if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
         });
-        row.addEventListener('dragleave', function() { this.style.outline = ''; });
+        row.addEventListener('dragenter', function(e) {
+          e.preventDefault();
+          if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
+        });
+        row.addEventListener('dragleave', function(e) {
+          // 🎯 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
+          if (e.relatedTarget && this.contains(e.relatedTarget)) {
+            return; // 자식 노드로 들어간 거라면 점선 유지하고 무시!
+          }
+          this.style.outline = '';
+        });
         row.addEventListener('drop', function(e) {
           e.preventDefault(); e.stopPropagation();
-          this.style.outline = '';
+          this.style.outline = ''; // 마우스를 놓았으니 점선 제거
           if (!dragSrc || dragSrc === this) return;
 
           var srcSection = dragSrc.closest('.day-section');
@@ -1096,7 +1156,7 @@
       const noData = document.getElementById('mwp-no-data');
       const dataWrap = document.getElementById('mwp-data-wrap');
 
-      // 예보 범위를 벗어난 경우
+      // 예보 범위를 벗어난 경우 (14일 초과)
       if (diffDays > 14 || diffDays < 0) {
         noData.style.display = 'block';
         dataWrap.style.display = 'none';
@@ -1130,35 +1190,48 @@
         const fmt = d => `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} (${DAYS_KO[d.getDay()]})`;
 
         const warnDays = [];
-        const warnDayNums = []; // ✨ 교체를 위한 '몇 일 차(Day N)' 기록
+        const warnDayNums = [];
+        const allDayNums = []; // 🎯 테스트 확인용: 날씨 상태와 상관없이 모든 Day 카운터 확보
 
         grid.innerHTML = previewDays.map((d, i) => {
           const dto = json.data[i] || json.data[json.data.length - 1];
-          const warn = dto.pop >= 40 || dto.pty > 0 || dto.sky >= 3;
-          const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
-          const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
+          if (!dto) return '';
+
+          // 🎯 플래너 규격 매핑 일치화: 강수확률 60% 이상이거나 강수형태 존재 시 악천후 처리
+          const warn = (dto.pop && dto.pop >= 60) || (dto.pty && dto.pty > 0);
+
+          const icon = (dto.pty && dto.pty > 0) ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+          const desc = (dto.pty && dto.pty > 0) ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '맑음');
+
+          allDayNums.push(i + 1); // 모든 일차 기록
           if (warn) {
             warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
             warnDayNums.push(i + 1);
           }
+
+          // 🎯 플래너 스타일 컴포넌트 이식: 물방울 % 및 '실내 추천' 태그 싱크로율 100% 매핑
           return `<div class="w-item${warn ? ' w-warn' : ''}">
-          <div class="w-icon">${icon}</div>
-          <div class="w-day">${fmt(d)}</div>
-          <div class="w-temp">${dto.tmp}°C</div>
-          <div class="w-desc">${desc}</div>
-        </div>`;
+            <div class="w-icon">${icon}</div>
+            <div class="w-day">${fmt(d)}</div>
+            <div class="w-temp">${dto.tmp || 0}°C</div>
+            <div class="w-desc">${desc}</div>
+            ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
+            ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px;font-weight:700">실내 추천</div>' : ''}
+          </div>`;
         }).join('');
 
         const alertEl = document.getElementById('mwp-alert');
         const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
-        // 악천후가 감지되었다면 버튼 띄우기
-        if (warnDays.length) {
+        // 🎯 변경: 악천후 감지 여부와 무관하게 하단 제안 블록(`replaceWrap`)을 무조건 오픈하여 테스트 가동
+        replaceWrap.style.display = 'block';
+
+        if (warnDayNums.length > 0) {
+          // 진짜 비가 오는 날이 있을 때는 붉은 안내창 출력 및 해당 일차 버튼 우선 배치
           alertEl.style.display = 'block';
           alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
 
-          replaceWrap.style.display = 'block';
           replaceBtns.innerHTML = warnDayNums.map(dayNum =>
                   `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
                    style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
@@ -1166,12 +1239,57 @@
            </button>`
           ).join('');
         } else {
+          // 🎯 비가 안 오는 평화로운 날이더라도 언제든지 기능을 눌러볼 수 있도록 모든 Day 교체 버튼을 백폴용으로 배치
           alertEl.style.display = 'none';
-          replaceWrap.style.display = 'none';
+          replaceBtns.innerHTML = allDayNums.map(dayNum =>
+                  `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
+                   style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+             ✨ Day ${dayNum} 실내 일정으로 교체 (테스트)
+           </button>`
+          ).join('');
         }
 
       } catch (err) {
         grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
+      }
+    }
+    async function requestMapIndoorAlternative(dayNum) {
+      const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+
+      // 로딩을 알리기 위해 임시 토스트 창 띄우기
+      toast(`🤖 AI가 Day ${dayNum} 일정을 실내 코스로 전면 교체 중입니다...`, 6000);
+
+      try {
+        // 백엔드 컨트롤러 경로: @PostMapping("/indoor-replace") 형식에 완벽 매핑
+        // 쿼리 파라미터로 day 전달
+        const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`, {});
+
+        if (res.success && res.data) {
+          toast(`✨ Day ${dayNum} 실내 일정 전환 완료! 동선을 재구성합니다.`);
+
+          // 백엔드에서 새로 업데이트되어 내려온 경로 JSON 확보
+          let cleanJson = res.data;
+          if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
+            cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+          } else if (typeof cleanJson === 'object') {
+            cleanJson = JSON.stringify(cleanJson);
+          }
+
+          // 세션 동합 저장소에 갱신 주입하여 잔상 제거
+          sessionStorage.setItem('ai_generated_route', cleanJson);
+
+          // 1초 뒤 브라우저를 깔끔하게 새로고침하여 바뀐 실내 마커와 동선 화살표를 다시 그림
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+
+        } else {
+          toast('⚠️ 실내 일정 교체 처리에 실패했습니다.');
+        }
+      } catch (err) {
+        console.error('[IndoorReplace] 통신 에러:', err);
+        toast('⚠️ AI 서버 응답 지연이 발생했습니다. 잠시 후 다시 시도해 주세요.');
       }
     }
 
