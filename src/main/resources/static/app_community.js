@@ -629,25 +629,19 @@ async function loadAdminDashboard() {
 
 /* ─── 기간별 통계 ─── */
 async function loadAdminStatistics() {
-  const start = document.getElementById('stat-start') && document.getElementById('stat-start').value;
-  const end   = document.getElementById('stat-end')   && document.getElementById('stat-end').value;
-  if (!start || !end) { toast('조회 기간을 선택해주세요'); return; }
+  const startEl = document.getElementById('stat-start-date') || document.getElementById('stat-start');
+  const endEl = document.getElementById('stat-end-date') || document.getElementById('stat-end');
+  const start = startEl?.value;
+  const end = endEl?.value;
+  if (!start || !end) return; // 날짜 없으면 toast 없이 조용히 종료
 
-  const res = await api.get('/api/admin/statistics?startDate=' + start + '&endDate=' + end);
-  if (!res.success || !res.data) { toast('통계 데이터를 불러오지 못했습니다.'); return; }
-  const d = res.data;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = (val || 0).toLocaleString(); };
-  set('stat-visit',    d.visitCount);
-  set('stat-new-user', d.newUsers);
-  set('stat-new-trip', d.newTrips);
-}
 
-/* ═══════════════════════════════════════════════════════════════════
- * §17. 관리자 회원 목록
- *      GET   /api/admin/users
- *      PATCH /api/admin/users/{userId}/suspend
- *      PATCH /api/admin/users/{userId}/unsuspend
- * ═══════════════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════════════
+   * §17. 관리자 회원 목록
+   *      GET   /api/admin/users
+   *      PATCH /api/admin/users/{userId}/suspend
+   *      PATCH /api/admin/users/{userId}/unsuspend
+   * ═══════════════════════════════════════════════════════════════════ */
 // async function loadAdminUsers(page = 0) {
 //   const res = await api.get('/api/admin/users?page=' + page + '&size=20');
 //   if (!res.success || !res.data) return;
@@ -678,350 +672,395 @@ async function loadAdminStatistics() {
 //   }).join('');
 // }
 
-/* ─── 정지 ─── */
-function openSuspendModal(username, uid) {
-  const su = document.getElementById('su-username');
-  const si = document.getElementById('su-id');
-  const sr = document.getElementById('su-reason-select');
-  const sd = document.getElementById('su-detail');
-  const sn = document.getElementById('su-notify-msg');
-  if (su) su.textContent = username;
-  if (si) si.textContent = uid;
-  if (sr) sr.value = '';
-  if (sd) sd.value = '';
-  if (sn) sn.value = '귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.';
-  const modal = document.getElementById('suspendModal');
-  if (modal) modal.classList.add('open');
-}
-function closeSuspendModal() {
-  const modal = document.getElementById('suspendModal');
-  if (modal) modal.classList.remove('open');
-}
-async function confirmSuspend() {
-  const r   = document.getElementById('su-reason-select') && document.getElementById('su-reason-select').value;
-  const uid = document.getElementById('su-id') && document.getElementById('su-id').textContent;
-  if (!r) { toast('정지 사유를 선택해주세요'); return; }
-  const msg = document.getElementById('su-notify-msg') && document.getElementById('su-notify-msg').value;
-  const res = await api.patch('/api/admin/users/' + uid + '/suspend', { reason: r, notifyMessage: msg });
-  closeSuspendModal();
-  toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '⚠️ 정지 처리에 실패했습니다.');
-  if (res.success) loadAdminUsers();
-}
+  /* ─── 정지 ─── */
+  function openSuspendModal(username, uid) {
+    const su = document.getElementById('su-username');
+    const si = document.getElementById('su-id');
+    const sr = document.getElementById('su-reason-select');
+    const sd = document.getElementById('su-detail');
+    const sn = document.getElementById('su-notify-msg');
+    if (su) su.textContent = username;
+    if (si) si.textContent = uid;
+    if (sr) sr.value = '';
+    if (sd) sd.value = '';
+    if (sn) sn.value = '귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)';
+    const modal = document.getElementById('suspendModal');
+    if (modal) modal.classList.add('open');
+  }
 
-/* ─── 정지 해제 ─── */
-async function unsuspendUser(userId) {
-  const res = await api.patch('/api/admin/users/' + userId + '/unsuspend', {});
-  toast(res.success ? '✅ 계정 정지가 해제되었습니다.' : '⚠️ 처리에 실패했습니다.');
-  if (res.success) loadAdminUsers();
-}
+  function closeSuspendModal() {
+    const modal = document.getElementById('suspendModal');
+    if (modal) modal.classList.remove('open');
+  }
 
-/* ═══════════════════════════════════════════════════════════════════
- * §18. 관리자 신고 목록 + 처리
- *      GET    /api/admin/reports?status=
- *      DELETE /api/admin/reports/{reportId}   (게시글 삭제)
- *      PATCH  /api/admin/reports/{reportId}   (반려)
- * ═══════════════════════════════════════════════════════════════════ */
-async function loadAdminReports(status = 'PENDING', page = 0) {
-  const res = await api.get('/api/admin/reports?status=' + status + '&page=' + page + '&size=20');
-  if (!res.success || !res.data) return;
+  async function confirmSuspend() {
+    const r = document.getElementById('su-reason-select') && document.getElementById('su-reason-select').value;
+    const uid = document.getElementById('su-id') && document.getElementById('su-id').textContent;
+    if (!r) {
+      toast('정지 사유를 선택해주세요');
+      return;
+    }
+    const msg = document.getElementById('su-notify-msg') && document.getElementById('su-notify-msg').value;
+    const res = await api.patch('/api/admin/users/' + uid + '/suspend', {reason: r, notifyMessage: msg});
+    closeSuspendModal();
+    toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '⚠️ 정지 처리에 실패했습니다.');
+    if (res.success) loadAdminUsers();
+  }
 
-  const reports = Array.isArray(res.data) ? res.data : (res.data.content || []);
-  const tbody   = document.getElementById('adminReportTable');
-  if (!tbody) return;
+  /* ─── 정지 해제 ─── */
+  async function unsuspendUser(userId) {
+    const res = await api.patch('/api/admin/users/' + userId + '/unsuspend', {});
+    toast(res.success ? '✅ 계정 정지가 해제되었습니다.' : '⚠️ 처리에 실패했습니다.');
+    if (res.success) loadAdminUsers();
+  }
 
-  tbody.innerHTML = reports.map(r =>
-    '<tr>' +
-    '<td>' + (r.reportId || '') + '</td>' +
-    '<td>' + _esc(r.postTitle  || String(r.postId || '')) + '</td>' +
-    '<td>' + _esc(r.reporterName || '') + '</td>' +
-    '<td>' + _esc(r.reason      || '') + '</td>' +
-    '<td><span class="badge ' + (r.status === 'PENDING' ? 'badge-warn' : 'badge-ok') + '">' + (r.status || '') + '</span></td>' +
-    '<td>' + (r.createdAt ? r.createdAt.substring(0, 10) : '') + '</td>' +
-    '<td>' +
-      '<button onclick="openReportAction(\'delete\',' + r.reportId +
-        ',\'' + _esc(r.postTitle  || '').replace(/'/g,"\\'") + '\'' +
-        ',\'' + _esc(r.reporterName || '').replace(/'/g,"\\'") + '\'' +
-        ',\'' + _esc(r.reason      || '').replace(/'/g,"\\'") + '\')" class="btn-admin-sm btn-danger">삭제</button>' +
-      '<button onclick="openReportAction(\'reject\',' + r.reportId +
-        ',\'' + _esc(r.postTitle  || '').replace(/'/g,"\\'") + '\'' +
-        ',\'' + _esc(r.reporterName || '').replace(/'/g,"\\'") + '\'' +
-        ',\'' + _esc(r.reason      || '').replace(/'/g,"\\'") + '\')" class="btn-admin-sm">반려</button>' +
-    '</td>' +
-    '</tr>'
-  ).join('');
-}
+  /* ═══════════════════════════════════════════════════════════════════
+   * §18. 관리자 신고 목록 + 처리
+   *      GET    /api/admin/reports?status=
+   *      DELETE /api/admin/reports/{reportId}   (게시글 삭제)
+   *      PATCH  /api/admin/reports/{reportId}   (반려)
+   * ═══════════════════════════════════════════════════════════════════ */
+  async function loadAdminReports(status = 'PENDING', page = 0) {
+    const res = await api.get('/api/admin/reports?status=' + status + '&page=' + page + '&size=10');
+    if (!res.success || !res.data) return;
 
-/* ─── 신고 처리 모달 ─── */
-function openReportAction(type, id, post, reporter, reason) {
-  _reportAction = type;
-  const isDelete = (type === 'delete');
+    const data    = Array.isArray(res.data) ? { content: res.data, totalPages: 1, number: 0 } : res.data;
+    const reports = data.content || [];
+    const tbody   = document.getElementById('adminReportTable');
+    if (!tbody) return;
 
-  const el = (eid) => document.getElementById(eid);
-  if (el('reportActionTitle')) el('reportActionTitle').textContent = isDelete ? '🗑️ 게시글 삭제 처리' : '↩️ 신고 반려 처리';
-  if (el('ra-id'))       el('ra-id').textContent       = id;
-  if (el('ra-post'))     el('ra-post').textContent     = post;
-  if (el('ra-reporter')) el('ra-reporter').textContent = reporter;
-  if (el('ra-reason'))   el('ra-reason').textContent   = reason;
-  if (el('ra-reason-label')) el('ra-reason-label').innerHTML =
-    (isDelete ? '삭제 사유' : '반려 사유') + ' <span style="color:var(--coral)">*</span>';
+    // ↓ 빈 목록 처리 추가
+    if (!reports.length) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">신고 내역이 없습니다</td></tr>';
+      renderAdminPagination('admin-report-pagination', 0, 0, '_goReportPage');
+      return;
+    }
 
-  const sel = el('ra-reason-select');
-  if (sel) {
-    if (isDelete) {
-      sel.innerHTML =
-        '<option value="">사유 선택...</option>' +
-        '<option>허위 정보 게시</option>' +
-        '<option>스팸/광고성 콘텐츠</option>' +
-        '<option>불법 정보 포함</option>' +
-        '<option>욕설/혐오 표현</option>' +
-        '<option>개인정보 침해</option>' +
-        '<option value="other">직접 입력</option>';
-      if (el('ra-notify-msg')) el('ra-notify-msg').value = '귀하의 게시글이 운영 정책에 따라 삭제 처리되었습니다.';
-      if (el('ra-confirm-btn')) { el('ra-confirm-btn').style.background = 'var(--coral)'; el('ra-confirm-btn').textContent = '삭제 완료'; }
-    } else {
-      sel.innerHTML =
-        '<option value="">사유 선택...</option>' +
-        '<option>신고 증거 불충분</option>' +
-        '<option>허용된 표현 범위 내</option>' +
-        '<option>중복 신고</option>' +
-        '<option>사실과 다른 신고</option>' +
-        '<option value="other">직접 입력</option>';
-      if (el('ra-notify-msg')) el('ra-notify-msg').value = '귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.';
-      if (el('ra-confirm-btn')) { el('ra-confirm-btn').style.background = 'var(--sage)'; el('ra-confirm-btn').textContent = '반려 완료'; }
+    tbody.innerHTML = reports.map(r => {
+      const esc2 = s => _esc(s || '').replace(/'/g, "\\'");
+
+      // ↓ PENDING일 때만 버튼, 이미 처리된 건 텍스트 표시
+      const actionCell = r.status === 'PENDING'
+          ? '<button onclick="openReportAction(\'delete\',' + r.reportId + ',\'' + esc2(r.postTitle) + '\',\'' + esc2(r.reporterName) + '\',\'' + esc2(r.reason) + '\')" class="btn-admin-sm btn-danger">삭제</button>'
+          + '<button onclick="openReportAction(\'reject\',' + r.reportId + ',\'' + esc2(r.postTitle) + '\',\'' + esc2(r.reporterName) + '\',\'' + esc2(r.reason) + '\')" class="btn-admin-sm">반려</button>'
+          : '<span style="font-size:11px;color:var(--text3)">' + (r.status === 'RESOLVED' ? '처리완료' : '반려됨') + '</span>';
+
+      return '<tr>' +
+          '<td>' + (r.reportId || '') + '</td>' +
+          '<td>' + _esc(r.postTitle || String(r.postId || '')) + '</td>' +
+          '<td>' + _esc(r.reporterName || '') + '</td>' +
+          '<td>' + _esc(r.reason || '') + '</td>' +
+          '<td><span class="badge ' + (r.status === 'PENDING' ? 'badge-warn' : 'badge-ok') + '">' + (r.status || '') + '</span></td>' +
+          '<td>' + (r.createdAt ? r.createdAt.substring(0, 10) : '') + '</td>' +
+          '<td>' + actionCell + '</td>' +
+          '</tr>';
+    }).join('');
+
+    if (typeof renderAdminPagination === 'function') {
+      renderAdminPagination('admin-report-pagination', data.number || 0, data.totalPages || 1, '_goReportPage');
     }
   }
-  if (el('ra-detail')) el('ra-detail').value = '';
-  const modal = el('reportActionModal');
-  if (modal) modal.classList.add('open');
-}
 
-function closeReportAction() {
-  const modal = document.getElementById('reportActionModal');
-  if (modal) modal.classList.remove('open');
-}
 
-async function confirmReportAction() {
-  const r = document.getElementById('ra-reason-select') && document.getElementById('ra-reason-select').value;
-  if (!r) { toast('사유를 선택해주세요'); return; }
+  /* ─── 신고 처리 모달 ─── */
+  function openReportAction(type, id, post, reporter, reason) {
+    _reportAction = type;
+    const isDelete = (type === 'delete');
 
-  const rid = document.getElementById('ra-id') && document.getElementById('ra-id').textContent;
-  let res;
-  if (_reportAction === 'delete') {
-    res = await api.del('/api/admin/reports/' + rid);
-  } else {
-    const detail = document.getElementById('ra-detail') && document.getElementById('ra-detail').value;
-    res = await api.patch('/api/admin/reports/' + rid, { status: 'REJECTED', reason: r, adminNote: detail });
+    const el = (eid) => document.getElementById(eid);
+    if (el('reportActionTitle')) el('reportActionTitle').textContent = isDelete ? '🗑️ 게시글 삭제 처리' : '↩️ 신고 반려 처리';
+    if (el('ra-id')) el('ra-id').textContent = id;
+    if (el('ra-post')) el('ra-post').textContent = post;
+    if (el('ra-reporter')) el('ra-reporter').textContent = reporter;
+    if (el('ra-reason')) el('ra-reason').textContent = reason;
+    if (el('ra-reason-label')) el('ra-reason-label').innerHTML =
+        (isDelete ? '삭제 사유' : '반려 사유') + ' <span style="color:var(--coral)">*</span>';
+
+    const sel = el('ra-reason-select');
+    if (sel) {
+      if (isDelete) {
+        sel.innerHTML =
+            '<option value="">사유 선택...</option>' +
+            '<option>허위 정보 게시</option>' +
+            '<option>스팸/광고성 콘텐츠</option>' +
+            '<option>불법 정보 포함</option>' +
+            '<option>욕설/혐오 표현</option>' +
+            '<option>개인정보 침해</option>' +
+            '<option value="other">직접 입력</option>';
+        if (el('ra-notify-msg')) el('ra-notify-msg').value = '귀하의 게시글이 운영 정책에 따라 삭제 처리되었습니다.';
+        if (el('ra-confirm-btn')) {
+          el('ra-confirm-btn').style.background = 'var(--coral)';
+          el('ra-confirm-btn').textContent = '삭제 완료';
+        }
+      } else {
+        sel.innerHTML =
+            '<option value="">사유 선택...</option>' +
+            '<option>신고 증거 불충분</option>' +
+            '<option>허용된 표현 범위 내</option>' +
+            '<option>중복 신고</option>' +
+            '<option>사실과 다른 신고</option>' +
+            '<option value="other">직접 입력</option>';
+        if (el('ra-notify-msg')) el('ra-notify-msg').value = '귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.';
+        if (el('ra-confirm-btn')) {
+          el('ra-confirm-btn').style.background = 'var(--sage)';
+          el('ra-confirm-btn').textContent = '반려 완료';
+        }
+      }
+    }
+    if (el('ra-detail')) el('ra-detail').value = '';
+    const modal = el('reportActionModal');
+    if (modal) modal.classList.add('open');
   }
 
-  closeReportAction();
-  toast(res.success
-    ? (_reportAction === 'delete'
-        ? '게시글 삭제 완료 · 작성자 알림 전송됨'
-        : '신고 반려 완료 · 신고자 알림 전송됨')
-    : '⚠️ 처리에 실패했습니다.');
-  if (res.success) loadAdminReports();
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * §19. 큐레이션 관리
- *      GET    /api/admin/curations
- *      POST   /api/admin/curations
- *      PATCH  /api/admin/curations/{curationId}
- *      DELETE /api/admin/curations/{curationId}
- * ═══════════════════════════════════════════════════════════════════ */
-async function loadAdminCurations(page = 0) {
-  const res = await api.get('/api/admin/curations?page=' + page + '&size=20');
-  if (!res.success || !res.data) return;
-
-  const curations = Array.isArray(res.data) ? res.data : (res.data.content || []);
-  const tbody     = document.getElementById('curationTable');
-  if (!tbody) return;
-
-  tbody.innerHTML = curations.map(c =>
-    '<tr>' +
-    '<td>' + (c.curationId    || '') + '</td>' +
-    '<td>' + _esc(c.title     || '') + '</td>' +
-    '<td>' + _esc(c.theme     || '') + '</td>' +
-    '<td>' + (c.displayOrder  || '') + '</td>' +
-    '<td>' + (c.startAt ? c.startAt.substring(0, 10) : '-') + ' ~ ' + (c.endAt ? c.endAt.substring(0, 10) : '-') + '</td>' +
-    '<td><span class="badge ' + (c.isDefault ? 'badge-ok' : 'badge-info') + '">' + (c.isDefault ? '기본' : '시즌') + '</span></td>' +
-    '<td>' +
-      '<button onclick="openEditCuration(' + c.curationId + ')" class="btn-admin-sm">수정</button>' +
-      '<button onclick="deleteCuration(' + c.curationId + ')"   class="btn-admin-sm btn-danger">삭제</button>' +
-    '</td>' +
-    '</tr>'
-  ).join('');
-}
-
-/* ─── 큐레이션 등록/수정 폼 제출 ─── */
-async function saveCuration() {
-  const get = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-  const title   = get('cur-title');
-  const theme   = get('cur-theme');
-  const order   = get('cur-order');
-  const startAt = get('cur-start') || null;
-  const endAt   = get('cur-end')   || null;
-  const planId  = get('cur-plan-id');
-
-  if (!title) { toast('큐레이션 제목을 입력해주세요'); return; }
-
-  const body = {
-    title,
-    theme,
-    displayOrder: parseInt(order)  || 1,
-    startAt,
-    endAt,
-    planId:    planId ? parseInt(planId) : null,
-    isDefault: 0
-  };
-
-  let res;
-  if (_editCurationId) {
-    res = await api.patch('/api/admin/curations/' + _editCurationId, body);
-  } else {
-    res = await api.post('/api/admin/curations', body);
+  function closeReportAction() {
+    const modal = document.getElementById('reportActionModal');
+    if (modal) modal.classList.remove('open');
   }
 
-  if (res.success) {
-    toast(_editCurationId ? '✅ 큐레이션이 수정되었습니다.' : '✅ 큐레이션이 등록되었습니다.');
+  async function confirmReportAction() {
+    const r = document.getElementById('ra-reason-select') && document.getElementById('ra-reason-select').value;
+    if (!r) {
+      toast('사유를 선택해주세요');
+      return;
+    }
+
+    const rid = document.getElementById('ra-id') && document.getElementById('ra-id').textContent;
+    let res;
+    if (_reportAction === 'delete') {
+      res = await api.del('/api/admin/reports/' + rid);
+    } else {
+      const detail = document.getElementById('ra-detail') && document.getElementById('ra-detail').value;
+      res = await api.patch('/api/admin/reports/' + rid, {status: 'REJECTED', reason: r, adminNote: detail});
+    }
+
+    closeReportAction();
+    toast(res.success
+        ? (_reportAction === 'delete'
+            ? '게시글 삭제 완료 · 작성자 알림 전송됨'
+            : '신고 반려 완료 · 신고자 알림 전송됨')
+        : '⚠️ 처리에 실패했습니다.');
+    if (res.success) loadAdminReports();
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+   * §19. 큐레이션 관리
+   *      GET    /api/admin/curations
+   *      POST   /api/admin/curations
+   *      PATCH  /api/admin/curations/{curationId}
+   *      DELETE /api/admin/curations/{curationId}
+   * ═══════════════════════════════════════════════════════════════════ */
+  async function loadAdminCurations(page = 0) {
+    const res = await api.get('/api/admin/curations?page=' + page + '&size=20');
+    if (!res.success || !res.data) return;
+
+    const curations = Array.isArray(res.data) ? res.data : (res.data.content || []);
+    const tbody = document.getElementById('curationTable');
+    if (!tbody) return;
+
+    tbody.innerHTML = curations.map(c =>
+        '<tr>' +
+        '<td>' + (c.curationId || '') + '</td>' +
+        '<td>' + _esc(c.title || '') + '</td>' +
+        '<td>' + _esc(c.theme || '') + '</td>' +
+        '<td>' + (c.displayOrder || '') + '</td>' +
+        '<td>' + (c.startAt ? c.startAt.substring(0, 10) : '-') + ' ~ ' + (c.endAt ? c.endAt.substring(0, 10) : '-') + '</td>' +
+        '<td><span class="badge ' + (c.isDefault ? 'badge-ok' : 'badge-info') + '">' + (c.isDefault ? '기본' : '시즌') + '</span></td>' +
+        '<td>' +
+        '<button onclick="openEditCuration(' + c.curationId + ')" class="btn-admin-sm">수정</button>' +
+        '<button onclick="deleteCuration(' + c.curationId + ')"   class="btn-admin-sm btn-danger">삭제</button>' +
+        '</td>' +
+        '</tr>'
+    ).join('');
+  }
+
+  /* ─── 큐레이션 등록/수정 폼 제출 ─── */
+  async function saveCuration() {
+    const get = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+    const title = get('cur-title');
+    const theme = get('cur-theme');
+    const order = get('cur-order');
+    const startAt = get('cur-start') || null;
+    const endAt = get('cur-end') || null;
+    const planId = get('cur-plan-id');
+
+    if (!title) {
+      toast('큐레이션 제목을 입력해주세요');
+      return;
+    }
+
+    const body = {
+      title,
+      theme,
+      displayOrder: parseInt(order) || 1,
+      startAt,
+      endAt,
+      planId: planId ? parseInt(planId) : null,
+      isDefault: 0
+    };
+
+    let res;
+    if (_editCurationId) {
+      res = await api.patch('/api/admin/curations/' + _editCurationId, body);
+    } else {
+      res = await api.post('/api/admin/curations', body);
+    }
+
+    if (res.success) {
+      toast(_editCurationId ? '✅ 큐레이션이 수정되었습니다.' : '✅ 큐레이션이 등록되었습니다.');
+      _editCurationId = null;
+      _clearCurationForm();
+      loadAdminCurations();
+    } else {
+      toast('⚠️ ' + (res.message || '처리에 실패했습니다.'));
+    }
+  }
+
+  /* ─── 수정 모드 진입: 해당 큐레이션 데이터를 폼에 채움 ─── */
+  async function openEditCuration(curationId) {
+    _editCurationId = curationId;
+    const res = await api.get('/api/admin/curations/' + curationId);
+    if (!res.success || !res.data) {
+      toast('큐레이션 데이터를 불러오지 못했습니다.');
+      return;
+    }
+
+    const c = res.data;
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val || '';
+    };
+    set('cur-title', c.title);
+    set('cur-theme', c.theme);
+    set('cur-order', c.displayOrder);
+    set('cur-start', c.startAt ? c.startAt.substring(0, 10) : '');
+    set('cur-end', c.endAt ? c.endAt.substring(0, 10) : '');
+    set('cur-plan-id', c.planId);
+
+    const btn = document.getElementById('cur-save-btn');
+    if (btn) btn.textContent = '큐레이션 수정';
+    toast('수정 모드: ' + (c.title || ''));
+  }
+
+  /* ─── 큐레이션 삭제 ─── */
+  async function deleteCuration(curationId) {
+    if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
+    const res = await api.del('/api/admin/curations/' + curationId);
+    if (res.success) {
+      toast('✅ 큐레이션이 삭제되었습니다.');
+      loadAdminCurations();
+    } else {
+      toast('⚠️ 삭제에 실패했습니다.');
+    }
+  }
+
+  /* ─── 폼 초기화 ─── */
+  function _clearCurationForm() {
+    ['cur-title', 'cur-theme', 'cur-order', 'cur-start', 'cur-end', 'cur-plan-id'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
     _editCurationId = null;
-    _clearCurationForm();
-    loadAdminCurations();
-  } else {
-    toast('⚠️ ' + (res.message || '처리에 실패했습니다.'));
+    const btn = document.getElementById('cur-save-btn');
+    if (btn) btn.textContent = '큐레이션 등록';
   }
-}
 
-/* ─── 수정 모드 진입: 해당 큐레이션 데이터를 폼에 채움 ─── */
-async function openEditCuration(curationId) {
-  _editCurationId = curationId;
-  const res = await api.get('/api/admin/curations/' + curationId);
-  if (!res.success || !res.data) { toast('큐레이션 데이터를 불러오지 못했습니다.'); return; }
+  /* ═══════════════════════════════════════════════════════════════════
+   * §20. 관리자 큐레이션 Day 편집 헬퍼
+   *      addPlanItem() — app_main.js 의 오류 수정본
+   *      (기존: <select>가 JS 코드 사이에 삽입되어 있던 버그 제거)
+   * ═══════════════════════════════════════════════════════════════════ */
+  let _curDayN = 2;
 
-  const c = res.data;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-  set('cur-title',   c.title);
-  set('cur-theme',   c.theme);
-  set('cur-order',   c.displayOrder);
-  set('cur-start',   c.startAt ? c.startAt.substring(0, 10) : '');
-  set('cur-end',     c.endAt   ? c.endAt.substring(0, 10)   : '');
-  set('cur-plan-id', c.planId);
-
-  const btn = document.getElementById('cur-save-btn');
-  if (btn) btn.textContent = '큐레이션 수정';
-  toast('수정 모드: ' + (c.title || ''));
-}
-
-/* ─── 큐레이션 삭제 ─── */
-async function deleteCuration(curationId) {
-  if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
-  const res = await api.del('/api/admin/curations/' + curationId);
-  if (res.success) { toast('✅ 큐레이션이 삭제되었습니다.'); loadAdminCurations(); }
-  else             { toast('⚠️ 삭제에 실패했습니다.'); }
-}
-
-/* ─── 폼 초기화 ─── */
-function _clearCurationForm() {
-  ['cur-title','cur-theme','cur-order','cur-start','cur-end','cur-plan-id'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.value = '';
-  });
-  _editCurationId = null;
-  const btn = document.getElementById('cur-save-btn');
-  if (btn) btn.textContent = '큐레이션 등록';
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * §20. 관리자 큐레이션 Day 편집 헬퍼
- *      addPlanItem() — app_main.js 의 오류 수정본
- *      (기존: <select>가 JS 코드 사이에 삽입되어 있던 버그 제거)
- * ═══════════════════════════════════════════════════════════════════ */
-let _curDayN = 2;
-
-function removeDay(btn) {
-  const block = btn.closest('.plan-day-block');
-  if (document.querySelectorAll('#curDays .plan-day-block').length <= 1) {
-    toast('최소 1개의 Day가 필요합니다'); return;
+  function removeDay(btn) {
+    const block = btn.closest('.plan-day-block');
+    if (document.querySelectorAll('#curDays .plan-day-block').length <= 1) {
+      toast('최소 1개의 Day가 필요합니다');
+      return;
+    }
+    block.remove();
   }
-  block.remove();
-}
 
-function addDay() {
-  _curDayN++;
-  const div = document.createElement('div');
-  div.className   = 'plan-day-block';
-  div.style.cssText = 'border:1px solid var(--sage-l)';
-  div.innerHTML =
-    '<div class="pdb-hd" style="border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:8px">' +
-      '<span style="font-weight:800;color:var(--sage-d)">Day ' + _curDayN + '</span>' +
-      '<div style="display:flex;gap:6px">' +
+  function addDay() {
+    _curDayN++;
+    const div = document.createElement('div');
+    div.className = 'plan-day-block';
+    div.style.cssText = 'border:1px solid var(--sage-l)';
+    div.innerHTML =
+        '<div class="pdb-hd" style="border-bottom:1px solid var(--border2);padding-bottom:8px;margin-bottom:8px">' +
+        '<span style="font-weight:800;color:var(--sage-d)">Day ' + _curDayN + '</span>' +
+        '<div style="display:flex;gap:6px">' +
         '<button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>' +
         '<button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>' +
-      '</div>' +
-    '</div>' +
-    '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>';
-  document.getElementById('curDays').appendChild(div);
-}
+        '</div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>';
+    document.getElementById('curDays').appendChild(div);
+  }
 
-function addPlanItem(btn) {
-  const block = btn.closest('.plan-day-block');
-  const ph    = block.querySelector('[style*="text-align:center"]');
-  if (ph) ph.remove();
+  function addPlanItem(btn) {
+    const block = btn.closest('.plan-day-block');
+    const ph = block.querySelector('[style*="text-align:center"]');
+    if (ph) ph.remove();
 
-  const div = document.createElement('div');
-  div.className   = 'pdb-item';
-  div.style.cssText = 'flex-direction:column;align-items:flex-start;gap:8px;margin-top:6px';
+    const div = document.createElement('div');
+    div.className = 'pdb-item';
+    div.style.cssText = 'flex-direction:column;align-items:flex-start;gap:8px;margin-top:6px';
 
-  /* ✅ 수정: <select> 태그를 문자열 안에 올바르게 포함 */
-  div.innerHTML =
-    '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
-      '<span class="pdb-type-icon">📍</span>' +
-      '<input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">' +
-      '<button class="btn-pdb-rm" onclick="this.closest(\'.pdb-item\').remove()" style="flex-shrink:0">✕</button>' +
-    '</div>' +
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">' +
-      '<select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
+    /* ✅ 수정: <select> 태그를 문자열 안에 올바르게 포함 */
+    div.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
+        '<span class="pdb-type-icon">📍</span>' +
+        '<input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">' +
+        '<button class="btn-pdb-rm" onclick="this.closest(\'.pdb-item\').remove()" style="flex-shrink:0">✕</button>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">' +
+        '<select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
         '<option value="관광지">📍 관광지</option>' +
         '<option value="숙소">🏨 숙소</option>' +
         '<option value="맛집">🍽️ 맛집</option>' +
         '<option value="카페">☕ 카페</option>' +
-      '</select>' +
-      '<input type="time" value="10:00" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
-      '<input type="number" placeholder="금액(원)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
-    '</div>';
+        '</select>' +
+        '<input type="time" value="10:00" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
+        '<input type="number" placeholder="금액(원)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
+        '</div>';
 
-  block.appendChild(div);
-}
-
-/* ═══════════════════════════════════════════════════════════════════
- * §21. 커뮤니티 페이지 초기화
- *      (go('community') 또는 DOMContentLoaded 에서 호출)
- * ═══════════════════════════════════════════════════════════════════ */
-async function initCommunityPage() {
-  _commState.currentTab  = 'route';
-  _commState.currentPage = 0;
-  _commState.sortOrder   = 'scrap';
-  _activeTags.clear();
-
-  /* 탭 초기 상태 */
-  const firstTab = document.querySelector('#commTabs .comm-tab');
-  if (firstTab) {
-    document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
-    firstTab.classList.add('on');
+    block.appendChild(div);
   }
-  ['route','stay','food','tour','cafe'].forEach(c => {
-    const el = document.getElementById('tab-' + c);
-    if (el) el.style.display = (c === 'route') ? 'block' : 'none';
+
+  /* ═══════════════════════════════════════════════════════════════════
+   * §21. 커뮤니티 페이지 초기화
+   *      (go('community') 또는 DOMContentLoaded 에서 호출)
+   * ═══════════════════════════════════════════════════════════════════ */
+  async function initCommunityPage() {
+    _commState.currentTab = 'route';
+    _commState.currentPage = 0;
+    _commState.sortOrder = 'scrap';
+    _activeTags.clear();
+
+    /* 탭 초기 상태 */
+    const firstTab = document.querySelector('#commTabs .comm-tab');
+    if (firstTab) {
+      document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
+      firstTab.classList.add('on');
+    }
+    ['route', 'stay', 'food', 'tour', 'cafe'].forEach(c => {
+      const el = document.getElementById('tab-' + c);
+      if (el) el.style.display = (c === 'route') ? 'block' : 'none';
+    });
+
+    await loadCommunityPosts(0, true);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+   * §22. DOMContentLoaded
+   * ═══════════════════════════════════════════════════════════════════ */
+  document.addEventListener('DOMContentLoaded', () => {
+    const commPage = document.getElementById('page-community');
+    if (commPage && commPage.classList.contains('active')) {
+      initCommunityPage();
+    }
   });
-
-  await loadCommunityPosts(0, true);
 }
-
-/* ═══════════════════════════════════════════════════════════════════
- * §22. DOMContentLoaded
- * ═══════════════════════════════════════════════════════════════════ */
-document.addEventListener('DOMContentLoaded', () => {
-  const commPage = document.getElementById('page-community');
-  if (commPage && commPage.classList.contains('active')) {
-    initCommunityPage();
-  }
-});

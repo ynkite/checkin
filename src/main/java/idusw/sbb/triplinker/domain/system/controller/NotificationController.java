@@ -7,9 +7,7 @@ import idusw.sbb.triplinker.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -20,18 +18,37 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    /** GET /api/notifications — 내 알림 목록 */
     @GetMapping
     public ResponseEntity<ApiResponse<List<NotificationResponseDto>>> getNotifications(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        // 제미나이 추가
-        // 비로그인 상태일 경우 널포인터 에러(NPE) 방지
         if (userDetails == null) {
             return ResponseEntity.ok(ApiResponse.success(null));
         }
-        // 여기까지
-        // 로그인한 유저의 알림을 가져오는 로직
         List<NotificationResponseDto> result = notificationService.getNotifications(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    /** PATCH /api/notifications/read-all — 전체 읽음 처리 */
+    @PatchMapping("/read-all")
+    public ResponseEntity<ApiResponse<Void>> readAll(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+        notificationService.markAllRead(userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /** DELETE /api/notifications/{id} — 알림 개별 삭제 */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteOne(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.ok(ApiResponse.success(null));
+        }
+        notificationService.deleteOne(id, userDetails.getUserId());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

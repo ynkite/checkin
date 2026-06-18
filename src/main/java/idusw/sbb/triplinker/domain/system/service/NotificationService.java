@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,7 +18,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
 
-    // 정지/삭제/반려/권한변경 등 어디서든 호출하는 공통 알림 발송 메서드
+    /** 정지/삭제/반려/권한변경 등 어디서든 호출하는 공통 알림 발송 메서드 */
     @Transactional
     public void send(Long userId, String type, String title, String content) {
         notificationRepository.save(
@@ -31,23 +30,34 @@ public class NotificationService {
                         .build()
         );
     }
-    // 제미나이 추가
+
+    /** GET /api/notifications — 사용자 알림 목록 최신순 조회 */
     @Transactional(readOnly = true)
     public List<NotificationResponseDto> getNotifications(Long userId) {
-        // 1. Repository에서 유저의 알림을 최신순으로 가져옵니다.
-        List<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
-
-        // 2. Notification 엔티티를 NotificationResponseDto로 변환하여 리턴합니다.
-        return notifications.stream()
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
                 .map(noti -> NotificationResponseDto.builder()
                         .id(noti.getId())
                         .type(noti.getType())
-                        // DTO에 message라는 필드를 만들었다면 title과 content를 합쳐서 주거나 상황에 맞게 수정하세요.
-                        .message(noti.getTitle() + " - " + noti.getContent())
+                        .title(noti.getTitle())      // ← message 합치기 제거
+                        .content(noti.getContent())  // ← 분리해서 전달
                         .isRead(noti.isRead())
                         .createdAt(noti.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
     }
-    // 여기까지
+
+    /** PATCH /api/notifications/read-all — 전체 읽음 처리 */
+    @Transactional
+    public void markAllRead(Long userId) {
+        notificationRepository.markAllReadByUserId(userId);
+    }
+
+    /** DELETE /api/notifications/{id} — 알림 개별 삭제 */
+    @Transactional
+    public void deleteOne(Long notifId, Long userId) {
+        // 본인 알림만 삭제 가능 (보안)
+        notificationRepository.deleteByIdAndUserId(notifId, userId);
+    }
+
 }

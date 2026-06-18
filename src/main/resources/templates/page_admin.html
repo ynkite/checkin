@@ -324,6 +324,36 @@
     /* ============================================================
      * [4구역 - 회원 관리] ★ 6열 / 검색 / 필터 / 승격·강등 / 정지
      * ============================================================ */
+    /* ── 관리자 공통 페이지네이션 렌더러 ── */
+    function renderAdminPagination(containerId, currentPage, totalPages, callbackStr) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      if (totalPages <= 1) { el.innerHTML = ''; return; }
+
+      const btn = (label, page, active) =>
+              `<button onclick="${callbackStr}(${page})" style="
+      min-width:34px;padding:5px 11px;border-radius:7px;font-size:12px;font-weight:600;
+      cursor:pointer;border:1px solid ${active ? 'var(--sage-d)' : 'var(--border2)'};
+      background:${active ? 'var(--sage)' : 'var(--surface)'};
+      color:${active ? '#fff' : 'var(--text2)'}
+    ">${label}</button>`;
+
+      let html = '';
+      if (currentPage > 0) html += btn('‹', currentPage - 1, false);
+      const start = Math.max(0, currentPage - 2);
+      const end   = Math.min(totalPages - 1, start + 4);
+      for (let i = start; i <= end; i++) html += btn(i + 1, i, i === currentPage);
+      if (currentPage < totalPages - 1) html += btn('›', currentPage + 1, false);
+
+      el.innerHTML = `<div style="display:flex;gap:5px;justify-content:center;margin-top:16px">${html}</div>`;
+    }
+
+    /* 페이지네이션 onclick용 래퍼 */
+    function _goUserPage(page)   { loadAdminUsers(page); }
+    function _goReportPage(page) {
+      const status = document.getElementById('admin-report-status-filter')?.value || 'PENDING';
+      loadAdminReports(status, page);
+    }
     function loadAdminUsers(page=0, status=''){
       const token=localStorage.getItem('accessToken');
       const headers={'Authorization':'Bearer '+token};
@@ -331,17 +361,19 @@
       if(statusSel&&status===''&&statusSel.value) status=statusSel.value;
       if(statusSel) statusSel.value=status;
 
-      fetch(`/api/admin/users?status=${status}&page=${page}&size=50`,{headers})
+      fetch(`/api/admin/users?status=${status}&page=${page}&size=10`,{headers})  // ← 50→10
               .then(r=>r.json())
               .then(res=>{
                 const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
                   tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
                   return;
                 }
                 const list=res.data.content||[];
                 if(!list.length){
                   tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
                   return;
                 }
                 /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt
@@ -660,7 +692,19 @@
       else toast('삭제에 실패했습니다.');
     }
 
-    document.addEventListener('DOMContentLoaded', initAdminPage);
+    (function() {
+      function _hookAdminGo() {
+        if (typeof window.go !== 'function') { setTimeout(_hookAdminGo, 50); return; }
+        const _orig = window.go;
+        window.go = function(id, addToHistory) {
+          _orig(id, addToHistory);
+          if (id === 'admin') {
+            setTimeout(initAdminPage, 10);
+          }
+        };
+      }
+      _hookAdminGo();
+    })();
   </script>
 
   <!-- 정지 모달 전용 스타일 -->
@@ -746,10 +790,12 @@
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
             <input class="form-input" id="admin-user-search"
                    placeholder="아이디, 이메일, 이름으로 검색"
-                   style="flex:1;min-width:220px"
+                   style="flex:1;min-width:220px;background:#fff;border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text1);outline:none;box-shadow:0 1px 3px rgba(0,0,0,.06)"
+                   onfocus="this.style.borderColor='var(--sage)'"
+                   onblur="this.style.borderColor='var(--border2)'"
                    oninput="filterAdminUserRows()">
             <select class="form-input" id="admin-user-status-filter"
-                    style="width:auto"
+                    style="width:auto;background:#fff;border:1.5px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text1)"
                     onchange="loadAdminUsers(0,this.value)">
               <option value="">전체 상태</option>
               <option value="ACTIVE">활성</option>
@@ -761,6 +807,7 @@
             <thead><tr></tr></thead>
             <tbody id="adminUserTable"></tbody>
           </table>
+          <div id="admin-user-pagination"></div>
         </div>
 
         <!-- ══ 신고 관리 ══ -->
@@ -781,6 +828,7 @@
             <thead><tr></tr></thead>
             <tbody id="adminReportTable"></tbody>
           </table>
+          <div id="admin-report-pagination"></div>
         </div>
 
         <!-- ══ 큐레이션 관리 ══ -->
@@ -915,7 +963,7 @@
           <div class="sus-n-ttl">🔔 정지 알림 메시지</div>
           <div class="sus-n-sub">로그인 시 해당 회원에게 표시될 메시지입니다</div>
           <textarea class="sus-n-ta" id="su-notify-msg" rows="2"
-                    placeholder="귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다."></textarea>
+                    placeholder="귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)"></textarea>
         </div>
         <div class="sus-guide">
           ℹ 정지 처리 시 해당 계정은 로그아웃 처리되며, 로그인 시 정지 알림이 표시됩니다.<br>

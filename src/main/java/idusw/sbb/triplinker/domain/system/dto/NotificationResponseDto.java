@@ -9,16 +9,18 @@ import java.time.LocalDateTime;
 @Builder
 public class NotificationResponseDto {
     private Long id;
-    private String message;
     private String type;
+    private String title;
+    private String content;
     private boolean isRead;
     private LocalDateTime createdAt;
 
     public static NotificationResponseDto from(Notification notification) {
         return NotificationResponseDto.builder()
                 .id(notification.getId())
-                .message(notification.getContent())
                 .type(notification.getType())
+                .title(notification.getTitle())
+                .content(notification.getContent())
                 .isRead(notification.isRead())
                 .createdAt(notification.getCreatedAt())
                 .build();
