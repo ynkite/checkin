@@ -649,38 +649,192 @@
             const tripId = window._currentTripId;
             if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ 플랜을 생성 중입니다...';
+            // 1. 버튼 자체의 텍스트를 바꾸고 비활성화 (오버레이 창 제거)
+            btn.innerHTML = 'AI가 일정을 생성중입니다..';
             btn.disabled = true;
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
                 if (res.success && res.data) {
-                    // AI가 가끔 덧붙이는 마크다운 기호 제거 (에러 방지용)
                     let cleanJson = res.data;
                     if (cleanJson.includes('[')) {
                         cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
                     }
 
-                    sessionStorage.setItem('ai_generated_route', cleanJson);
-                    _planDirty = false;
-                    if (typeof _syncStep4State === 'function') _syncStep4State();
-                    toast('✅ 일정이 완성되었습니다! 지도로 이동합니다.');
-                    go('map');
-                    setTimeout(() => {
-                        if (typeof initMapPage === 'function') initMapPage();
-                    }, 500);
+                    // 가상 검증 프로세스 카운터 초기화 및 가동
+                    sessionStorage.setItem('autoHealingRetries', '0');
+                    validateAndHealingRoute(tripId, JSON.parse(cleanJson), btn);
+
                 } else {
-                    // res.message 우선 표시 (AI 토큰 부족 등 서버 메시지 반영)
                     toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
+                    // 실패 시 버튼 즉시 원상복구
+                    btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                    btn.disabled = false;
                 }
             } catch (e) {
-                toast('⚠️ AI 서버 연결에 실패했습니다. 프롬프트를 확인해 주세요.');
-            } finally {
-                btn.innerHTML = originalText;
+                toast('⚠️ AI 서버 연결에 실패했습니다.');
+                // 에러 발생 시 버튼 즉시 원상복구
+                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
         }
+
+        // ── 🤖 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
+        function validateAndHealingRoute(tripId, routeData, btn) {
+            if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || !kakao.maps.services) {
+                _finalizePlannerRoute(routeData, btn);
+                return;
+            }
+
+            const ps = new kakao.maps.services.Places();
+            const allPins = [];
+
+            // 🎯 1. 유저가 선택한 목적지(지역명) 가져오기 (타 지역 동명이인 픽업 방지용)
+            const destProv = document.getElementById('dest-prov') ? document.getElementById('dest-prov').value : '';
+            const destCity = document.getElementById('dest-city') ? document.getElementById('dest-city').value : '';
+            const destRegion = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
+
+            routeData.forEach(d => {
+                if (d.places) {
+                    d.places.forEach(p => {
+                        if (!p.transit && p.name) {
+                            allPins.push({ day: d.day, type: p.type, label: p.name, lat: null, lng: null, isFound: false, category: p.category });
+                        }
+                    });
+                }
+            });
+
+            if (allPins.length === 0) {
+                _finalizePlannerRoute(routeData, btn);
+                return;
+            }
+
+            let searchCount = 0;
+            const totalPlaces = allPins.length;
+
+            allPins.forEach(pin => {
+                // 🎯 에러 원인 해결: pin 객체에 접근하려면 반드시 forEach 루프 안에 선언되어야 함
+                const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
+
+                // [검색 지역 보정] 1차: 지역명 + 상호명으로 정밀 검색
+                ps.keywordSearch(searchQuery, function(data, status) {
+                    if (status === kakao.maps.services.Status.OK) {
+                        console.log(`✅ [플래너 지역검색 성공] [${pin.label}] -> 위치: ${data[0].address_name}`);
+                        pin.lat = parseFloat(data[0].y);
+                        pin.lng = parseFloat(data[0].x);
+                        pin.isFound = true;
+                        finalizeSearch();
+                    } else {
+                        // 2차: 지역명 붙여서 실패한 경우, 원본 상호명만으로 다시 검색 (안전망)
+                        ps.keywordSearch(pin.label, function(fallbackData, fallbackStatus) {
+                            if (fallbackStatus === kakao.maps.services.Status.OK) {
+                                console.log(`✅ [플래너 원본검색 성공] [${pin.label}] -> 위치: ${fallbackData[0].address_name}`);
+                                pin.lat = parseFloat(fallbackData[0].y);
+                                pin.lng = parseFloat(fallbackData[0].x);
+                                pin.isFound = true;
+                            } else {
+                                console.error(`❌ [플래너 검색 완전 실패] 없는 장소: [${pin.label}]`);
+                                pin.isFound = false;
+                            }
+                            finalizeSearch();
+                        });
+                    }
+                });
+
+                // 🎯 비동기 콜백 처리를 깔끔하게 묶어주는 헬퍼 함수
+                function finalizeSearch() {
+                    searchCount++;
+                    if (searchCount === totalPlaces) {
+                        const autoFixRequests = [];
+
+                        // 🎯 2. 순차적 거리 측정 (숙소 중심 고정 삭제 -> A -> B -> C 순서대로 측정)
+                        const dayKeys = [...new Set(allPins.map(p => p.day))];
+                        dayKeys.forEach(dNum => {
+                            // 해당 일차의 정상 검색된 핀들만 순서대로 가져옴
+                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+
+                            // 요소가 2개 이상일 때만 비교 가능
+                            for (let i = 1; i < dayPins.length; i++) {
+                                const prev = dayPins[i - 1];
+                                const curr = dayPins[i];
+
+                                const R = 6371;
+                                const dLat = (curr.lat - prev.lat) * (Math.PI / 180);
+                                const dLng = (curr.lng - prev.lng) * (Math.PI / 180);
+                                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                    Math.cos(prev.lat * (Math.PI / 180)) * Math.cos(curr.lat * (Math.PI / 180)) *
+                                    Math.sin(dLng/2) * Math.sin(dLng/2);
+                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                                const dist = R * c;
+
+                                if (dist > 30) { // 🎯 30km 초과 시, 튄 놈(curr)을 큐에 넣음
+                                    console.warn(`🚨 [거리 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
+
+                                    // 중복 삽입 방지
+                                    if (!autoFixRequests.some(r => r.place === curr.label)) {
+                                        autoFixRequests.push({
+                                            place: curr.label,
+                                            req: `직전 장소(${prev.label})에서 ${dist.toFixed(1)}km 떨어져 동선이 심하게 끊깁니다. 30km 이내로 교체해 주세요.`
+                                        });
+                                    }
+                                } else {
+                                    console.log(`📏 [거리 정상] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
+                                }
+                            }
+                        });
+
+                        if (autoFixRequests.length > 0) {
+                            const retries = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
+
+                            // 🎯 2번 시도했으면 세션에 담지 않고 바로 지도로 보내버립니다.
+                            if (retries >= 1) {
+                                console.warn("⚠️ AI 복구 2회 완료 -> 지도로 이동");
+                                _finalizePlannerRoute(routeData, btn);
+                                return;
+                            }
+
+                            sessionStorage.setItem('autoHealingRetries', retries + 1);
+                            btn.innerHTML = `🤖 동선 오차 수정 중... ( ${retries + 1} / 2 시도 )`;
+
+                            api.post(`/api/trips/${tripId}/routes/replace`, { requests: autoFixRequests })
+                                .then(res => {
+                                    if (res.success && res.data) {
+                                        let nextJson = res.data;
+                                        if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
+                                        validateAndHealingRoute(tripId, JSON.parse(nextJson), btn);
+                                    } else {
+                                        _finalizePlannerRoute(routeData, btn);
+                                    }
+                                }).catch(() => _finalizePlannerRoute(routeData, btn));
+                        } else {
+                            _finalizePlannerRoute(routeData, btn);
+                        }
+                    }
+                } // finalizeSearch 끝
+            });
+        }
+
+        function _finalizePlannerRoute(routeData, btn) {
+            if (btn) {
+                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                btn.disabled = false;
+            }
+
+            if (!routeData) {
+                toast('⚠️ 일정 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            // 1. 결과 저장
+            sessionStorage.setItem('ai_generated_route', JSON.stringify(routeData));
+            _planDirty = false; // 더티 플래그 해제
+
+            // 2. 화면 이동 (지도 페이지)
+            toast('✅ 일정이 생성되었습니다. 지도로 이동합니다.');
+            go('map');
+        }
+
+
 
     </script>
 

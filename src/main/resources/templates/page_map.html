@@ -69,18 +69,20 @@
     // ── DOM 렌더링 ──
     async function initMapPage() {
 
-      window._q = [];
-      if (typeof renderQ === 'function') renderQ();
-      var rb = document.getElementById('recalcBar');
-      if (rb) rb.style.display = 'none';
-
+      // 🎯 [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
       if (!window._currentTripId) {
         window._currentTripId = sessionStorage.getItem('plannerDraftId');
       }
+      var tripId = window._currentTripId;
 
-      const tripId = window._currentTripId;
-      let routeData = null;
+      window._q = [];
+      if (typeof renderQ === 'function') renderQ();
 
+      var rb = document.getElementById('recalcBar');
+      if (rb) rb.style.display = 'none';
+
+
+      // 변수 선언이 완료된 후 백엔드 정보 바인딩 수행 (오류 완전 소멸)
       if (tripId) {
         api.get(`/api/trips/${tripId}`).then(r => {
           if (!r.success || !r.data) return;
@@ -94,22 +96,15 @@
             const startDow = t.startDate ? `(${dow[new Date(t.startDate).getDay()]})` : '';
             const endDow   = t.endDate   ? `(${dow[new Date(t.endDate).getDay()]})`   : '';
 
-            // inputForm에서 동행자/이동수단 가져오기 (원래 재민님 코드)
             api.get(`/api/trips/${tripId}/input-form`).then(fr => {
               let pax   = fr.data?.companionCount || t.pax || '';
               let trans = fr.data?.transportType  || '';
 
-              // ✨ [안전장치 추가] 백엔드에서 더미 데이터(2, 자차)가 넘어오거나 비어있을 경우,
-              // 사용자가 방금 플래너 1단계에서 폼에 입력했던 '진짜 데이터'를 직접 꺼내서 덮어씌웁니다.
               try {
                 const draft = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
-
-                // 인원수 보정
                 if (!pax || pax === '2' || pax === 2) {
                   if (draft['s1-pax']) pax = draft['s1-pax'];
                 }
-
-                // 이동수단 보정
                 if (!trans || trans.includes('자차')) {
                   if (draft['chips_chip-trans']) {
                     const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
@@ -126,7 +121,6 @@
                 console.error("세션 데이터 읽기 오류:", e);
               }
 
-              // 최종적으로 렌더링
               metaEl.textContent =
                       `${fmt(t.startDate)} ${startDow} – ${fmt(t.endDate)} ${endDow} · ${pax}인 · ${trans}`;
             });
@@ -344,6 +338,28 @@
         if (typeof initDragAndDrop === 'function') initDragAndDrop();
         if (typeof initKakaoMap === 'function') initKakaoMap();
 
+        try {
+          const fallbackQ = sessionStorage.getItem('map_fallback_queue');
+          if (fallbackQ) {
+            window._q = JSON.parse(fallbackQ);
+            sessionStorage.removeItem('map_fallback_queue'); // 사용 후 즉시 파괴
+
+            // 왼쪽 큐 레이어 UI 강제 활성화 및 렌더링
+            setTimeout(function() {
+              if (typeof renderQ === 'function') {
+                renderQ();
+                toast('⚠️ AI가 자동 정정에 실패한 장소들이 교체 목록에 추가되었습니다.', 4000);
+                const qBox = document.getElementById('queueBox');
+                const qToggle = document.getElementById('queueToggle');
+                if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
+                if (qToggle) qToggle.style.display = 'none';
+              }
+            }, 800);
+          }
+        } catch(e) {
+          console.error("폴백 큐 파싱 실패:", e);
+        }
+
       } else {
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d => `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">${d.label}</button>`).join('');
         listEl.innerHTML = '<div style="padding:20px;color:var(--text3);">생성된 일정이 없습니다. 챗봇 화면에서 일정을 생성해주세요.</div>';
@@ -400,25 +416,23 @@
 
     // ── 카카오맵 초기화 ──
     function initKakaoMap() {
-      // 카카오맵 스크립트가 아직 안 불려왔으면 0.2초 뒤에 다시 시도
+      if (window._isKakaoMapInitRunning) return;
+      window._isKakaoMapInitRunning = true;
       if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
+        window._isKakaoMapInitRunning = false;
         setTimeout(initKakaoMap, 200);
         return;
       }
 
       kakao.maps.load(function() {
         var container = document.getElementById('kakaoMap');
-        if (!container) return;
-
-        // 🚨 [가장 핵심 해결책]: 화면이 전환되는 중이라 지도가 숨겨진 상태(크기 0)일 때
-        // 렌더링되면 지도가 백지(회색)가 됩니다.
-        // DOM이 화면에 완전히 펼쳐져서 크기를 가질 때까지 0.15초 단위로 기다렸다가 그립니다.
-        if (container.clientWidth === 0 || container.clientHeight === 0) {
+        if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+          window._isKakaoMapInitRunning = false;
           setTimeout(initKakaoMap, 150);
           return;
         }
 
-        // 지도가 겹쳐서 깨지는 현상 방지
+        // 지도가 겹쳐서 깨지는 현상 방지 껍데기 청소
         container.innerHTML = '';
 
         // 기본 지도 기동 (제주 중심점)
@@ -437,6 +451,7 @@
                 kakao.maps.ControlPosition.RIGHT
         );
 
+        // 청소가 끝났으니 배열을 새롭게 초기화합니다.
         window._kakaoOverlays = [];
         window._kakaoPolylines = [];
 
@@ -445,16 +460,16 @@
         var searchCount = 0;
         var totalPlaces = MAP_PINS.length;
 
-        // 장소가 0개면 지도 껍데기만 띄우고 종료
-        if (totalPlaces === 0) return;
+        if (totalPlaces === 0) {
+          window._isKakaoMapInitRunning = false;
+          return;
+        }
 
-        // 각 한글 장소명 명칭으로 실시간 위경도 데이터 따오기
         MAP_PINS.forEach(function(pin) {
           ps.keywordSearch(pin.label, function(data, status, pagination) {
             if (status === kakao.maps.services.Status.OK) {
               console.log("✅ 카카오 API 검색 성공: [" + pin.label + "] -> ", data[0]);
               var place = data[0];
-
               var realLat = parseFloat(place.y);
               var realLng = parseFloat(place.x);
 
@@ -470,24 +485,22 @@
                       + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
                       + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
                       + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
-                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div>'
-                      + '</div>';
+                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div></div>';
 
               var overlay = new kakao.maps.CustomOverlay({
-                position: new kakao.maps.LatLng(realLat, realLng),
-                content: content,
-                xAnchor: 0,
-                yAnchor: 0
+                position: new kakao.maps.LatLng(realLat, realLng), content: content, xAnchor: 0, yAnchor: 0
               });
 
               overlay.setMap(window._kakaoMap);
-              const storedPin = MAP_PINS.find(p => p.key === pin.key);
+              var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
               window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
               bounds.extend(new kakao.maps.LatLng(realLat, realLng));
+              pin.isFound = true;
             } else {
               console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
+              pin.isFound = false;
 
-              var isAlreadyInQueue = _q.some(function(item) {
+              var isAlreadyInQueue = window._q.some(function(item) {
                 return item.place === pin.label;
               });
 
@@ -497,17 +510,86 @@
                   req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
                 });
               }
-              if (typeof renderQ === 'function') renderQ();
             }
 
             searchCount++;
             if (searchCount === totalPlaces) {
-              drawLivePolylines();
-              window._kakaoMap.setBounds(bounds);
+              window._isKakaoMapInitRunning = false;
+              sessionStorage.removeItem('autoHealingRetries');
+
+              // 🎯 큐에 넣은 걸 왼쪽 사이드바(사진 위치)에 렌더링
+              if (typeof renderQ === 'function') renderQ();
+
+              // 큐에 항목이 있으면 큐 박스 열어주기
+              if (window._q.length > 0) {
+                var qBox = document.getElementById('queueBox');
+                var qToggle = document.getElementById('queueToggle');
+                if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
+                if (qToggle) qToggle.style.display = 'none';
+              }
+
+              // 🎯 선 깨짐 보정: 카메라 시점 이동을 먼저 락(Lock) 해두고 선을 그립니다.
+              if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
+                window._kakaoMap.setBounds(bounds);
+              }
+
+              setTimeout(function() {
+                drawLivePolylines();
+                checkActualWeatherAlert(window._currentTripId);
+              }, 100);
             }
           });
         });
       });
+    }
+    async function checkActualWeatherAlert(tripId) {
+      const alertBanner = document.querySelector('.weather-alert');
+      if (!alertBanner) return;
+
+      // 🎯 기본값은 숨김 처리
+      alertBanner.style.display = 'none';
+
+      try {
+        // 1. 현재 플랜의 행정구역(목적지) 정보 가져오기
+        const tripRes = await api.get('/api/trips/' + tripId);
+        if (!tripRes.success || !tripRes.data) return;
+
+        const locStr = tripRes.data.destination ? tripRes.data.destination.split(' ')[0] : '서울';
+
+        // 2. 백엔드 날씨 데이터 조회
+        const weatherRes = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
+        const json = await weatherRes.json();
+
+        if (!json.success || !json.data || json.data.length === 0) return;
+
+        // 3. 여행 기간(최대 7일) 중 하루라도 악천후 조건이 충족되는지 검사
+        let hasBadWeather = false;
+
+        for (let i = 0; i < json.data.length; i++) {
+          if (i >= 7) break; // 최대 7일까지만 가드
+          const dto = json.data[i];
+
+          // 강수 형태가 있거나(pty > 0), 강수 확률이 40% 이상이거나, 구름이 많고 흐린 날(sky >= 3)
+          if (dto.pty > 0 || dto.pop >= 40 || dto.sky >= 3) {
+            hasBadWeather = true;
+            break; // 하루라도 기상 악화가 있으면 즉시 탈출하여 배너를 켭니다.
+          }
+        }
+
+        // 4. 악천후 감지 시 2번 사진 양식의 순수 텍스트 구조로 주입 후 활성화
+        if (hasBadWeather) {
+          const titleEl = alertBanner.querySelector('.wa-ttl');
+          const bodyEl = alertBanner.querySelector('.wa-body');
+
+          // 🎯 2번 사진 구조와 토시 하나 안 틀리고 정확하게 매핑
+          if (titleEl) titleEl.textContent = '🌧️ 날씨 악화 예보 감지';
+          if (bodyEl) bodyEl.textContent = '태그 유사도 분석 기반 실내 대체 장소 제안';
+
+          alertBanner.style.display = 'block'; // 배너 온(ON)
+        }
+      } catch (err) {
+        console.warn('[WeatherAlert] 실시간 날씨 데이터 바인딩 실패:', err);
+      }
     }
 
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
@@ -518,22 +600,165 @@
       DAY_ROUTES.forEach(function(route) {
         var path = route.keys.map(function(k) {
           var p = pinByKey[k];
-          return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+          return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
+
         if (path.length < 2) return;
 
-        var polyline = new kakao.maps.Polyline({
+        // 🎯 [테두리 선] 밑에 깔리는 검은색 실선 (두께 10)
+        var bgPolyline = new kakao.maps.Polyline({
           path: path,
-          strokeWeight: 5,           // 두께를 도톰하게 5로 변경
-          strokeColor: route.color,
-          strokeOpacity: 0.5,        // 투명도를 0.5로 낮춰서 반투명한 형광펜 느낌 주기
-          strokeStyle: 'solid'       // 렉의 주범인 dashed를 solid로 변경!
+          strokeWeight: 10,
+          strokeColor: '#000000',
+          strokeOpacity: 0.6,
+          strokeStyle: 'solid'
         });
+        bgPolyline.setMap(window._kakaoMap);
+        window._kakaoPolylines.push({ day: route.day, line: bgPolyline, path: null });
 
-        polyline.setMap(window._kakaoMap);
-        window._kakaoPolylines.push({ day: route.day, line: polyline });
+        // 🎯 [내부 컬러 선] 검은색 선 위에 얹어지는 고유 컬러 선 (두께 6)
+        var mainPolyline = new kakao.maps.Polyline({
+          path: path,
+          strokeWeight: 6,
+          strokeColor: route.color,
+          strokeOpacity: 1.0,
+          strokeStyle: 'solid'
+        });
+        mainPolyline.setMap(window._kakaoMap);
+        window._kakaoPolylines.push({ day: route.day, line: mainPolyline, path: path });
+      });
+
+      setTimeout(renderArrows, 100);
+
+      if (!window._arrowEventRegistered && window._kakaoMap) {
+        kakao.maps.event.addListener(window._kakaoMap, 'idle', function() {
+          renderArrows();
+        });
+        window._arrowEventRegistered = true;
+      }
+    }
+
+    // ── 드래그 및 확대/축소 시 동선 다시 그리기 (구형 점선 찌꺼기 완벽 박멸 완료) ──
+    function redrawDayRoute(dayNum) {
+      if (!window._kakaoMap || !window._kakaoPolylines) return;
+      window._kakaoPolylines.forEach(function(p) { if (p.day == dayNum) p.line.setMap(null); });
+      window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
+
+      var pinByKey = {};
+      MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
+
+      var section = document.querySelector('.day-section[data-day="' + dayNum + '"]');
+      if (!section) return;
+      var keys = Array.from(section.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+      var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
+
+      var path = keys.map(function(k) {
+        var p = pinByKey[k];
+        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+      }).filter(Boolean);
+      if (path.length < 2) return;
+
+      var lineColor = route ? route.color : '#2D9E8A';
+
+      // 🎯 [보정 1] 검은색 실선 배경화 (두께 10)
+      var bgPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 10,
+        strokeColor: '#000000',
+        strokeOpacity: 0.6,
+        strokeStyle: 'solid'
+      });
+      bgPolyline.setMap(window._kakaoMap);
+      window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
+
+      // 🎯 [보정 2] 메인 고유 컬러 실선 상단 적층 (두께 6)
+      var mainPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 6,
+        strokeColor: lineColor,
+        strokeOpacity: 1.0,
+        strokeStyle: 'solid'
+      });
+      mainPolyline.setMap(window._kakaoMap);
+      window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
+
+      setTimeout(renderArrows, 50);
+    }
+
+    // ── 🎯 화면 픽셀 기준으로 화살표를 완벽하게 정렬하는 함수 ──
+    function renderArrows() {
+      if (window._kakaoArrows) {
+        window._kakaoArrows.forEach(function(overlay) { overlay.setMap(null); });
+      }
+      window._kakaoArrows = [];
+
+      if (!window._kakaoMap || !window._kakaoPolylines) return;
+
+      var proj = window._kakaoMap.getProjection();
+      if (!proj) return;
+
+
+      window._kakaoPolylines.forEach(function(polyObj) {
+        if (!polyObj.line.getMap() || !polyObj.path) return;
+
+        var path = polyObj.path;
+
+        for (var i = 0; i < path.length - 1; i++) {
+          var p1 = path[i];
+          var p2 = path[i + 1];
+
+          var px1 = proj.pointFromCoords(p1);
+          var px2 = proj.pointFromCoords(p2);
+
+          if (!px1 || !px2) continue;
+
+          var dx = px2.x - px1.x;
+          var dy = px2.y - px1.y;
+          var distPx = Math.sqrt(dx * dx + dy * dy);
+
+          var arrowCount = Math.min(Math.floor(distPx / 30), 30);
+          if (arrowCount < 1) continue;
+
+          var angle = Math.atan2(dy, dx);
+
+          for (var j = 1; j <= arrowCount; j++) {
+            var ratio = j / (arrowCount + 1);
+
+            var cx = px1.x + dx * ratio;
+            var cy = px1.y + dy * ratio;
+
+            var arrowSize = 3.5;
+            var angleOffset = Math.PI * 0.8;
+
+            var tipX = cx + Math.cos(angle) * (arrowSize / 2);
+            var tipY = cy + Math.sin(angle) * (arrowSize / 2);
+
+            var leftX = tipX + Math.cos(angle - angleOffset) * arrowSize;
+            var leftY = tipY + Math.sin(angle - angleOffset) * arrowSize;
+
+            var rightX = tipX + Math.cos(angle + angleOffset) * arrowSize;
+            var rightY = tipY + Math.sin(angle + angleOffset) * arrowSize;
+
+            var pTip = proj.coordsFromPoint(new kakao.maps.Point(tipX, tipY));
+            var pLeft = proj.coordsFromPoint(new kakao.maps.Point(leftX, leftY));
+            var pRight = proj.coordsFromPoint(new kakao.maps.Point(rightX, rightY));
+
+            var arrowLine = new kakao.maps.Polyline({
+              path: [pLeft, pTip, pRight],
+              strokeWeight: 2,
+              strokeColor: '#FFFFFF',
+              strokeOpacity: 1.0,
+              strokeStyle: 'solid'
+            });
+
+            arrowLine.setMap(window._kakaoMap);
+            window._kakaoArrows.push(arrowLine);
+          }
+        }
       });
     }
+
+
 
     // ── Day 필터 변경 시 해당 마커만 보이도록 setBounds ──
     function updateBoundsForDay(day) {
@@ -562,17 +787,37 @@
       var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
 
       var path = keys.map(function(k) {
-        var p = pinByKey[k]; return p ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+        var p = pinByKey[k];
+        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
       }).filter(Boolean);
       if (path.length < 2) return;
 
-      var polyline = new kakao.maps.Polyline({
-        path: path, strokeWeight: 3,
-        strokeColor: route ? route.color : '#2D9E8A',
-        strokeOpacity: 0.8, strokeStyle: 'dashed'
+      var lineColor = route ? route.color : '#2D9E8A';
+
+      // 🎯 [현재 스타일 1] 검은색 실선 배경 (두께 10)
+      var bgPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 10,
+        strokeColor: '#000000',
+        strokeOpacity: 0.6,
+        strokeStyle: 'solid'
       });
-      polyline.setMap(window._kakaoMap);
-      window._kakaoPolylines.push({ day: dayNum, line: polyline });
+      bgPolyline.setMap(window._kakaoMap);
+      window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
+
+      // 🎯 [현재 스타일 2] 컬러 실선 상단 적층 (두께 6)
+      var mainPolyline = new kakao.maps.Polyline({
+        path: path,
+        strokeWeight: 6,
+        strokeColor: lineColor,
+        strokeOpacity: 1.0,
+        strokeStyle: 'solid'
+      });
+      mainPolyline.setMap(window._kakaoMap);
+      // 🎯 화살표 렌더링을 위해 path 데이터 필수 전달
+      window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
+
+      setTimeout(renderArrows, 50);
     }
 
     // ── 드래그 재정렬 초기화 ──
@@ -593,22 +838,67 @@
         row.addEventListener('dragenter', function() {
           if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
         });
-        row.addEventListener('dragleave', function() { this.style.outline = ''; });
+        row.addEventListener('dragenter', function(e) {
+          e.preventDefault();
+          if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
+        });
+        row.addEventListener('dragleave', function(e) {
+          // 🎯 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
+          if (e.relatedTarget && this.contains(e.relatedTarget)) {
+            return; // 자식 노드로 들어간 거라면 점선 유지하고 무시!
+          }
+          this.style.outline = '';
+        });
         row.addEventListener('drop', function(e) {
           e.preventDefault(); e.stopPropagation();
-          this.style.outline = '';
+          this.style.outline = ''; // 마우스를 놓았으니 점선 제거
           if (!dragSrc || dragSrc === this) return;
 
           var srcSection = dragSrc.closest('.day-section');
           var tgtSection = this.closest('.day-section');
           if (srcSection !== tgtSection) { toast('같은 날 안에서만 순서를 바꿀 수 있어요.'); return; }
 
-          // 내용과 key를 맞교환 (replace-area는 그대로 유지)
+          var dayNum = parseInt(tgtSection.dataset.day);
+
+          // 1. DOM 스왑
           var tmpHtml = dragSrc.innerHTML; dragSrc.innerHTML = this.innerHTML; this.innerHTML = tmpHtml;
           var tmpKey  = dragSrc.dataset.key; dragSrc.dataset.key = this.dataset.key; this.dataset.key = tmpKey;
 
-          redrawDayRoute(parseInt(tgtSection.dataset.day));
-          toast('순서가 변경됐습니다.');
+          // 2. MAP_ITINERARY 글로벌 배열 강제 동기화 (가장 중요)
+          var dayData = MAP_ITINERARY.find(function(d) { return d.day == dayNum; });
+          if (dayData && dayData.places) {
+            var newDOMKeys = Array.from(tgtSection.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+            var placesOnly = dayData.places.filter(function(p) { return !p.transit; });
+            var transitsOnly = dayData.places.filter(function(p) { return p.transit; });
+
+            // 화면 순서대로 배열 재정렬
+            placesOnly.sort(function(a, b) { return newDOMKeys.indexOf(a.key) - newDOMKeys.indexOf(b.key); });
+
+            var newPlaces = [];
+            for (var i = 0; i < placesOnly.length; i++) {
+              newPlaces.push(placesOnly[i]);
+              if (i < transitsOnly.length) newPlaces.push(transitsOnly[i]);
+            }
+            dayData.places = newPlaces;
+          }
+
+          // 3. DAY_ROUTES 전역 키 동기화
+          var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
+          if (route) {
+            route.keys = Array.from(tgtSection.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
+          }
+
+          // 4. 세션 & DB 저장 호출
+          sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
+          if (window._currentTripId) {
+            // 🎯 순서 변경 시 저장하는 API 엔드포인트 호출
+            api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
+                    .then(function(res) {
+                      if(!res.success) toast('⚠️ DB 저장 실패: ' + res.message); // 에러 나면 빨간 팝업 띄워줌
+                    })
+                    .catch(function(err) { console.warn('DB 저장 에러:', err); });
+          }
+          redrawDayRoute(dayNum);
         });
       });
     }
@@ -866,7 +1156,7 @@
       const noData = document.getElementById('mwp-no-data');
       const dataWrap = document.getElementById('mwp-data-wrap');
 
-      // 예보 범위를 벗어난 경우
+      // 예보 범위를 벗어난 경우 (14일 초과)
       if (diffDays > 14 || diffDays < 0) {
         noData.style.display = 'block';
         dataWrap.style.display = 'none';
@@ -900,35 +1190,48 @@
         const fmt = d => `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} (${DAYS_KO[d.getDay()]})`;
 
         const warnDays = [];
-        const warnDayNums = []; // ✨ 교체를 위한 '몇 일 차(Day N)' 기록
+        const warnDayNums = [];
+        const allDayNums = []; // 🎯 테스트 확인용: 날씨 상태와 상관없이 모든 Day 카운터 확보
 
         grid.innerHTML = previewDays.map((d, i) => {
           const dto = json.data[i] || json.data[json.data.length - 1];
-          const warn = dto.pop >= 40 || dto.pty > 0 || dto.sky >= 3;
-          const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
-          const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
+          if (!dto) return '';
+
+          // 🎯 플래너 규격 매핑 일치화: 강수확률 60% 이상이거나 강수형태 존재 시 악천후 처리
+          const warn = (dto.pop && dto.pop >= 60) || (dto.pty && dto.pty > 0);
+
+          const icon = (dto.pty && dto.pty > 0) ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+          const desc = (dto.pty && dto.pty > 0) ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '맑음');
+
+          allDayNums.push(i + 1); // 모든 일차 기록
           if (warn) {
             warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
             warnDayNums.push(i + 1);
           }
+
+          // 🎯 플래너 스타일 컴포넌트 이식: 물방울 % 및 '실내 추천' 태그 싱크로율 100% 매핑
           return `<div class="w-item${warn ? ' w-warn' : ''}">
-          <div class="w-icon">${icon}</div>
-          <div class="w-day">${fmt(d)}</div>
-          <div class="w-temp">${dto.tmp}°C</div>
-          <div class="w-desc">${desc}</div>
-        </div>`;
+            <div class="w-icon">${icon}</div>
+            <div class="w-day">${fmt(d)}</div>
+            <div class="w-temp">${dto.tmp || 0}°C</div>
+            <div class="w-desc">${desc}</div>
+            ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
+            ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px;font-weight:700">실내 추천</div>' : ''}
+          </div>`;
         }).join('');
 
         const alertEl = document.getElementById('mwp-alert');
         const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
-        // 악천후가 감지되었다면 버튼 띄우기
-        if (warnDays.length) {
+        // 🎯 변경: 악천후 감지 여부와 무관하게 하단 제안 블록(`replaceWrap`)을 무조건 오픈하여 테스트 가동
+        replaceWrap.style.display = 'block';
+
+        if (warnDayNums.length > 0) {
+          // 진짜 비가 오는 날이 있을 때는 붉은 안내창 출력 및 해당 일차 버튼 우선 배치
           alertEl.style.display = 'block';
           alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
 
-          replaceWrap.style.display = 'block';
           replaceBtns.innerHTML = warnDayNums.map(dayNum =>
                   `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
                    style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
@@ -936,58 +1239,59 @@
            </button>`
           ).join('');
         } else {
+          // 🎯 비가 안 오는 평화로운 날이더라도 언제든지 기능을 눌러볼 수 있도록 모든 Day 교체 버튼을 백폴용으로 배치
           alertEl.style.display = 'none';
-          replaceWrap.style.display = 'none';
+          replaceBtns.innerHTML = allDayNums.map(dayNum =>
+                  `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
+                   style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+             ✨ Day ${dayNum} 실내 일정으로 교체 (테스트)
+           </button>`
+          ).join('');
         }
 
       } catch (err) {
         grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
       }
     }
-
-    /* ── ☔ AI 백엔드에 실내 대체 일정 교체 요청 ── */
     async function requestMapIndoorAlternative(dayNum) {
-      const tripId = window._currentTripId;
-      if (!tripId) return;
+      const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-      const loadingOverlay = document.getElementById('replaceLoadingOverlay');
-      if (loadingOverlay) {
-        loadingOverlay.style.display = 'flex';
-        const textEl = loadingOverlay.querySelector('div');
-        if (textEl) textEl.innerHTML = `☔ Day ${dayNum} 우천 대비<br>실내 맞춤 코스를 생성 중입니다...`;
-      } else {
-        toast(`⏳ Day ${dayNum} 실내 대체 일정 생성 중...`);
-      }
+      // 로딩을 알리기 위해 임시 토스트 창 띄우기
+      toast(`🤖 AI가 Day ${dayNum} 일정을 실내 코스로 전면 교체 중입니다...`, 6000);
 
       try {
-        // 위에서 만들었던 백엔드 API 컨트롤러 주소를 호출합니다.
-        const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`);
+        // 백엔드 컨트롤러 경로: @PostMapping("/indoor-replace") 형식에 완벽 매핑
+        // 쿼리 파라미터로 day 전달
+        const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`, {});
 
         if (res.success && res.data) {
-          toast(`✅ Day ${dayNum} 일정이 실내 코스로 업데이트되었습니다!`);
+          toast(`✨ Day ${dayNum} 실내 일정 전환 완료! 동선을 재구성합니다.`);
 
+          // 백엔드에서 새로 업데이트되어 내려온 경로 JSON 확보
           let cleanJson = res.data;
           if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
             cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
+          } else if (typeof cleanJson === 'object') {
+            cleanJson = JSON.stringify(cleanJson);
           }
 
-          // 데이터 덮어씌우기
+          // 세션 동합 저장소에 갱신 주입하여 잔상 제거
           sessionStorage.setItem('ai_generated_route', cleanJson);
 
-          // 새로고침으로 깔끔하게 맵 다시 그리기
-          setTimeout(() => location.reload(), 1500);
+          // 1초 뒤 브라우저를 깔끔하게 새로고침하여 바뀐 실내 마커와 동선 화살표를 다시 그림
+          setTimeout(() => {
+            location.reload();
+          }, 1000);
+
         } else {
-          toast('⚠️ 대체 일정 생성 실패');
-          if (loadingOverlay) loadingOverlay.style.display = 'none';
+          toast('⚠️ 실내 일정 교체 처리에 실패했습니다.');
         }
-      } catch (e) {
-        toast('⚠️ 통신 오류가 발생했습니다.');
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
+      } catch (err) {
+        console.error('[IndoorReplace] 통신 에러:', err);
+        toast('⚠️ AI 서버 응답 지연이 발생했습니다. 잠시 후 다시 시도해 주세요.');
       }
     }
-
-
-
 
 
   </script>

@@ -151,12 +151,23 @@ function go(id, addToHistory) {
   if (pg) pg.classList.add('active');
 
   if (id === 'map') {
+    // 🎯 지도방문 플래그가 없으면 세션에 기록하고 쿨하게 F5 한 번 날려버리기
+    if (!sessionStorage.getItem('map_refresh_lock')) {
+      sessionStorage.setItem('map_refresh_lock', 'true');
+      location.reload();
+      return; // 새로고침 되므로 아래 코드는 실행할 필요 없음
+    }
+
+    // F5를 누르고 다시 들어왔을 때 실행되는 안전망
     setTimeout(function() {
       if (window._kakaoMap) {
         window._kakaoMap.relayout();
         if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
       }
     }, 100);
+  } else {
+    // 🎯 지도 외에 다른 페이지(홈, 플래너 등)로 가면 플래너 플래그를 지워줘서 나중에 지도 올 때 또 새로고침 되게 함
+    sessionStorage.removeItem('map_refresh_lock');
   }
 
   //가계부 페이지 진입 시 항상 실제 데이터로 갱신

@@ -18,7 +18,7 @@ public class AiRouteController {
         // AI에게 일정을 짜달라고 요청
         String aiRouteJson = aiRouteService.generateAiRoute(tripId);
 
-        // [중요] AI가 준 JSON을 DB에 저장하는 서비스 호출
+        // AI가 준 JSON을 DB에 저장하는 서비스 호출
         aiRouteService.saveAiRouteToDb(tripId, aiRouteJson);
 
         return ResponseEntity.ok(ApiResponse.success(aiRouteJson));
@@ -64,4 +64,20 @@ public class AiRouteController {
                 java.util.Map.of("success", true, "data", newRouteJson)
         );
     }
+
+    @PostMapping("/reorder")
+    public ResponseEntity<?> updateRouteManually(
+            @PathVariable Long tripId,
+            @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
+        try {
+            String json = routeData.toString();
+            aiRouteService.saveAiRouteToDb(tripId, json);
+            return ResponseEntity.ok(java.util.Map.of("success", true));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(java.util.Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+
 }

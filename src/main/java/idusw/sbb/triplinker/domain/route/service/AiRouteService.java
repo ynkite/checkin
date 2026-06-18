@@ -46,8 +46,8 @@ public class AiRouteService {
     public String generateAiRoute(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
-        PlanInputForm form = plan.getForm();
 
+        PlanInputForm form = plan.getForm();
         if (form == null) {
             throw new IllegalStateException("해당 플랜의 취향 정보가 DB에 없습니다.");
         }
@@ -282,6 +282,7 @@ public class AiRouteService {
     }
 
     // AI 부분 교체 전용 로직
+    @Transactional
     public String replaceAiRoutePlaces(Long tripId, java.util.List<java.util.Map<String, String>> requests) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -296,11 +297,35 @@ public class AiRouteService {
             originalJson = "[]";
         }
 
-        // 사용자가 수정한 교체 요청 목록을 텍스트로 합치기
+
+        // 🎯 [인텔리제이 콘솔 로그 정밀 분기] 무슨 오류인지 종류별로 모아서 상세 로깅
+        System.out.println("======================== [동선 오차] ========================");
+        System.out.println("▶ 플랜 ID: " + tripId + " (" + plan.getDestination() + " 여행)");
+        System.out.println("▶ 발생한 검증 오류 분석 결과:");
+
         StringBuilder reqStr = new StringBuilder();
+
+        // 장소 종류별 분류를 위한 임시 카운터
+        int fakeCount = 0;
+        int distanceCount = 0;
+
         for (java.util.Map<String, String> req : requests) {
-            reqStr.append(String.format("- 타겟 장소: [%s] -> 변경 요구사항: %s\n", req.get("place"), req.get("req")));
+            String place = req.get("place");
+            String reason = req.get("req");
+
+            // 거리에 관한 오류인지 문장 검사 ("km나 떨어져", "멉니다", "20km 이내" 매칭)
+            if (reason != null && (reason.contains("km") || reason.contains("멉니다") || reason.contains("가까운"))) {
+                distanceCount++;
+                System.out.println("[거리 초과 오차 " + distanceCount + "] 장소: [" + place + "] | 상세 사유: " + reason);
+            } else {
+                fakeCount++;
+                System.out.println("[가짜 장소 오류 " + fakeCount + "] 장소: [" + place + "] | 상세 사유: " + reason);
+            }
+
+            reqStr.append(String.format("- 타겟 장소: [%s] -> 변경 요구사항: %s\n", place, reason));
         }
+        System.out.println("▶ 총 오차 집계 -> 가짜 장소: " + fakeCount + "건 / 동선 파괴(거리가 먼 장소): " + distanceCount + "건");
+        System.out.println("────────────────────────────────────────────────────────────────");
 
         String prompt = String.format("""
             당신은 'TripLinker'의 여행 동선 수정 전문 AI입니다.
@@ -372,10 +397,17 @@ public class AiRouteService {
             updatedJson = updatedJson.substring(updatedJson.indexOf("["), updatedJson.lastIndexOf("]") + 1);
         }
 
-        return updatedJson != null ? updatedJson.trim() : originalJson;
+        String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        if (!finalJson.equals(originalJson)) {
+            saveAiRouteToDb(tripId, finalJson);
+        }
+
+        return finalJson;
     }
 
     // 기상 악화 특정 일차 실내 일정 전면 교체
+    @Transactional
     public String replaceDayWithIndoor(Long tripId, int targetDay) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -387,7 +419,7 @@ public class AiRouteService {
         }
 
         String prompt = String.format("""
-            당신은 'TripLinker'의 여행 동선 수정 전문 AI입니다.
+            당신은 'TripLinker'의 여행 동선 수정 전문 AI입니다.ㅇ
             현재 사용자의 여행 일정 중 [Day %d]에 비/악천후 예보가 있습니다.
             아래 제공된 [여행 기본 정보]와 [원본 여행 동선 JSON]을 분석하여, 오직 "day": %d 에 해당하는 일정의 모든 야외 활동을 [100%% 실내 활동]으로 전면 교체해 주세요.
             
@@ -451,7 +483,14 @@ public class AiRouteService {
         if (updatedJson != null && updatedJson.contains("[")) {
             updatedJson = updatedJson.substring(updatedJson.indexOf("["), updatedJson.lastIndexOf("]") + 1);
         }
-        return updatedJson != null ? updatedJson.trim() : originalJson;
+
+        String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        if (!finalJson.equals(originalJson)) {
+            saveAiRouteToDb(tripId, finalJson);
+        }
+
+        return finalJson;
     }
 
 
