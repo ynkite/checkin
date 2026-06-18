@@ -311,6 +311,59 @@ function updateNav() {
   const lo = document.getElementById('navLogoutBtn');
   const al = document.getElementById('navAdminLink');
   const nb = document.getElementById('navBellBtn');
+
+  // 🎯 [신규] 상단바에 '초대받은 일정 저장하기' 버튼 동적 생성
+  let saveInviteBtn = document.getElementById('navSaveInviteBtn');
+  if (!saveInviteBtn) {
+    const navBtns = document.querySelector('.nav-btns');
+    if (navBtns) {
+      saveInviteBtn = document.createElement('button');
+      saveInviteBtn.id = 'navSaveInviteBtn';
+      saveInviteBtn.className = 'btn-f';
+      saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
+      saveInviteBtn.innerHTML = '💾 일정 저장하기';
+
+      saveInviteBtn.onclick = async () => {
+        const tid = window._currentTripId;
+        if (!tid) return;
+
+        // 로딩 처리
+        const originalHtml = saveInviteBtn.innerHTML;
+        saveInviteBtn.innerHTML = '⏳ 저장 중...';
+        saveInviteBtn.style.opacity = '0.7';
+        saveInviteBtn.style.pointerEvents = 'none';
+
+        try {
+          // 백엔드 초대 수락(플랜 참여) API 호출
+          const res = await api.post(`/api/trips/${tid}/members/join`, {});
+
+          if (res.success) {
+            toast('✅ 초대받은 일정이 내 목록에 저장되었습니다! 마이페이지에서 확인하세요.');
+            saveInviteBtn.style.display = 'none';
+            window._isInvitedEditView = false; // 저장 완료 시 뷰 플래그 해제
+
+            // 🎯 마이페이지의 데이터를 백그라운드에서 다시 불러와서 즉시 동기화
+            if (typeof updateMyPageUI === 'function') {
+              updateMyPageUI();
+            }
+          } else {
+            toast('⚠️ ' + (res.message || '일정 저장에 실패했습니다.'));
+            saveInviteBtn.innerHTML = originalHtml;
+            saveInviteBtn.style.opacity = '1';
+            saveInviteBtn.style.pointerEvents = 'auto';
+          }
+        } catch(e) {
+          console.error("일정 저장 오류:", e);
+          toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
+          saveInviteBtn.innerHTML = originalHtml;
+          saveInviteBtn.style.opacity = '1';
+          saveInviteBtn.style.pointerEvents = 'auto';
+        }
+      };
+      navBtns.insertBefore(saveInviteBtn, navBtns.firstChild);
+    }
+  }
+
   if (_loggedIn && _currentUser) {
     if (li) li.style.display = 'none';
     if (si) si.style.display = 'none';
@@ -326,6 +379,16 @@ function updateNav() {
     if (nb) nb.style.display = 'none';
     if (al) al.style.display = 'none';
   }
+
+  // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
+  if (saveInviteBtn) {
+    if (_loggedIn && window._isInvitedEditView) {
+      saveInviteBtn.style.display = 'inline-block';
+    } else {
+      saveInviteBtn.style.display = 'none';
+    }
+  }
+
   const plannerBtn = document.getElementById('navPlannerBtn');
     if (plannerBtn) {
         if (_loggedIn && _hasPlannerDraft()) {
@@ -568,58 +631,115 @@ async function updateMyPageUI() {
 }
 
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
-function _renderMyTrips(trips) {
+window._myTripsData = [];
+window._myTripsCurrentPage = 1;
+const TRIPS_PER_PAGE = 6; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+
+function _renderMyTrips(trips = null, page = 1) {
   const te = document.getElementById('my-trips');
   if (!te) return;
 
-  te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
-      trips.length
-          ? trips.map(x => {
-            console.log("Trip Data Check:", x);
+  // 1. 처음 데이터를 받을 때는 전역 변수에 저장하고 1페이지로 세팅, 그 외엔 페이지 이동
+  if (trips !== null) {
+    window._myTripsData = trips;
+    window._myTripsCurrentPage = 1;
+  } else {
+    window._myTripsCurrentPage = page;
+  }
 
-            // 1. 최종 수정 날짜 파싱 및 줄바꿈 처리
-            let lastUpdate = '—';
-            if (x.updatedAt) {
-              // 🎯 ISO 형식을 모든 브라우저(Safari, Chrome, 모바일)에서 에러 없이 인식하도록 변환 보완
-              let dateStr = x.updatedAt.replace ? x.updatedAt.replace(/-/g, '/').replace('T', ' ') : x.updatedAt;
-              // 밀리초나 나노초 단위 규격 문자열 찌꺼기 제거 (.)
-              if (typeof dateStr === 'string' && dateStr.includes('.')) {
-                dateStr = dateStr.split('.')[0];
-              }
+  const allTrips = window._myTripsData || [];
+  const totalPages = Math.ceil(allTrips.length / TRIPS_PER_PAGE) || 1;
+  const currentPage = window._myTripsCurrentPage;
 
-              const d = new Date(dateStr);
+  // 2. 현재 페이지에 해당하는 데이터만 잘라내기
+  const startIndex = (currentPage - 1) * TRIPS_PER_PAGE;
+  const paginatedTrips = allTrips.slice(startIndex, startIndex + TRIPS_PER_PAGE);
 
-              if (!isNaN(d.getTime())) {
-                const year  = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day   = String(d.getDate()).padStart(2, '0');
-                const hours = String(d.getHours()).padStart(2, '0');
-                const mins  = String(d.getMinutes()).padStart(2, '0');
+  let html = '<h3 class="my-sec-ttl">내 여행 기록</h3>';
 
-                lastUpdate = `${year}.${month}.${day}<br>${hours}:${mins}`;
-              }
-            }
+  // 3. 재민님이 주신 오리지널 스타일(trip-card) 그대로 렌더링
+  if (paginatedTrips.length > 0) {
+    html += paginatedTrips.map(x => {
+      console.log("Trip Data Check:", x);
 
-            // 2. 백엔드 DTO(TripListResponseDto)의 새로운 필드와 완벽 호환되도록 안전망 매핑
-            const displayStart = x.startDate ? x.startDate.replace(/-/g, '.') : '';
-            const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
-            const displayDest  = x.destination || '';
+      // 1. 최종 수정 날짜 파싱 및 줄바꿈 처리
+      let lastUpdate = '—';
+      if (x.updatedAt) {
+        let dateStr = x.updatedAt.replace ? x.updatedAt.replace(/-/g, '/').replace('T', ' ') : x.updatedAt;
+        if (typeof dateStr === 'string' && dateStr.includes('.')) {
+          dateStr = dateStr.split('.')[0];
+        }
 
-            return `
-          <div class="trip-card" onclick="openMyTrip(${x.id || x.tripId})"> 
-            <div class="trip-thumb">🗺️</div>
-            <div class="trip-info">
-              <div class="trip-ttl">${x.title || '여행 플랜'}</div>
-              <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
-            </div>
-            <div class="trip-budget" style="color:var(--text3); font-size:11px; text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
-                <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">최종 수정</span>
-                <span style="color:var(--text2); font-weight:500;">${lastUpdate}</span>
-            </div>
-          </div>`;
-          }).join('')
-          : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
-  );
+        const d = new Date(dateStr);
+
+        if (!isNaN(d.getTime())) {
+          const year  = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day   = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const mins  = String(d.getMinutes()).padStart(2, '0');
+
+          lastUpdate = `${year}.${month}.${day}<br>${hours}:${mins}`;
+        }
+      }
+
+      // 2. 백엔드 DTO 매핑
+      const displayStart = x.startDate ? x.startDate.replace(/-/g, '.') : '';
+      const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
+      const displayDest  = x.destination || '';
+
+      // 오리지널 카드 UI
+      return `
+      <div class="trip-card" onclick="openMyTrip(${x.id || x.tripId})"> 
+        <div class="trip-thumb">🗺️</div>
+        <div class="trip-info">
+          <div class="trip-ttl">${x.title || '여행 플랜'}</div>
+          <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
+        </div>
+        <div class="trip-budget" style="color:var(--text3); font-size:11px; text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
+            <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">최종 수정</span>
+            <span style="color:var(--text2); font-weight:500;">${lastUpdate}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // 4. 리스트 하단에 사진과 동일한 디자인의 페이지네이션 버튼 추가
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
+
+    // [이전] 화살표
+    if (currentPage > 1) {
+      html += `<button onclick="_renderMyTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&lt;</button>`;
+    }
+
+    // [숫자 버튼] 최대 5개씩 노출
+    let startP = Math.max(1, currentPage - 2);
+    let endP = Math.min(totalPages, startP + 4);
+    if (endP - startP < 4) {
+      startP = Math.max(1, endP - 4);
+    }
+
+    for (let p = startP; p <= endP; p++) {
+      const isCurrent = (p === currentPage);
+      const bg = isCurrent ? 'var(--sage)' : '#fff';
+      const color = isCurrent ? '#fff' : 'var(--text2)';
+      const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
+      const fw = isCurrent ? '800' : '500';
+
+      html += '<button onclick="_renderMyLedgerTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
+    }
+
+    // [다음] 화살표
+    if (currentPage < totalPages) {
+      html += `<button onclick="_renderMyTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&gt;</button>`;
+    }
+
+    html += `</div>`;
+
+  } else {
+    html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>';
+  }
+
+  te.innerHTML = html;
 }
 
 // 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
@@ -2845,6 +2965,9 @@ window.addEventListener('popstate', e => {
         document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
         toast('읽기 전용으로 플랜을 열람합니다.');
       }, 800);
+    }else {
+      // 🎯 [신규] 읽기 전용이 아닌 '수정 권한' 링크로 접근한 경우, 초대된 일정 뷰어임을 명시
+      window._isInvitedEditView = true;
     }
   }
 
