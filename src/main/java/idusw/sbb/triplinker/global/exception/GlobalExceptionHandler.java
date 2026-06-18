@@ -32,4 +32,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage(), data));
     }
+
+    // 사유 누락, 존재하지 않는 ID 조회, 잘못된 상태 변경 시도 등
+    // 프로젝트 전반에서 공통으로 던지는 일반 검증 예외를 한 곳에서 처리
+    @ExceptionHandler({IllegalArgumentException.class, IllegalStateException.class})
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
 }

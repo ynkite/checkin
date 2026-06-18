@@ -20,6 +20,8 @@ public class UserInfoResponseDto {
     private String mbti;
     private String region;
     private String status;
+    private String role;
+
 
     @JsonProperty("isSocial")
     private boolean isSocial;
@@ -37,5 +39,6 @@ public class UserInfoResponseDto {
         this.region   = deleted ? null : user.getRegion();
         this.status   = user.getStatus();
         this.isSocial = isSocial;
+        this.role   = user.getRole();
     }
 }

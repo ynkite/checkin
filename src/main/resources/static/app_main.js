@@ -304,6 +304,7 @@ function forceLogout() {
 
 /** 네비게이션 버튼 표시/숨김 */
 function updateNav() {
+  console.log("현재 유저 정보:", _currentUser);
   const li = document.getElementById('navLoginBtn');
   const si = document.getElementById('navSignupBtn');
   const un = document.getElementById('navUserNameBtn');
@@ -863,6 +864,41 @@ function closeNotifPopup() {
   document.getElementById('notifPopup').style.display = 'none';
 }
 
+// function renderNotifList() {
+//   const list = document.getElementById('notifList');
+//   if (!list) return;
+//   if (!_userNotifs.length) {
+//     list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">새로운 알림이 없습니다.</div>';
+//     return;
+//   }
+//   list.innerHTML = _userNotifs.map((n, i) => `
+//     <div style="padding:12px;border-radius:9px;margin-bottom:6px;
+//                 background:${n.isRead ? 'var(--cream)' : 'var(--sage-pale)'};
+//                 border:1px solid ${n.isRead ? 'var(--border2)' : 'var(--sage-l)'}">
+//       <div style="display:flex;align-items:flex-start;gap:9px">
+//         <span style="font-size:18px;flex-shrink:0">📢</span>
+//         <div style="flex:1;min-width:0">
+//           <div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.title || ''}</div>
+//           <div style="font-size:12px;color:var(--text2);line-height:1.6">${n.content || ''}</div>
+//           <div style="font-size:10px;color:var(--text3);margin-top:4px">${n.createdAt ? n.createdAt.substring(0,10) : ''}</div>
+//         </div>
+//         <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">✕</button>
+//       </div>
+//     </div>`).join('');
+//
+//   // PATCH /api/notifications/read-all
+//   api.patch('/api/notifications/read-all', {}).then(() => updateNotifBadge());
+// }
+//
+// /** PATCH /api/notifications/{notificationId}/read */
+// async function deleteNotif(notifId) {
+//   await api.patch('/api/notifications/' + notifId + '/read', {});
+//   _userNotifs = _userNotifs.filter(n => n.id !== notifId);
+//   renderNotifList();
+//   updateNotifBadge();
+// }
+
+// 제미나이 추가
 function renderNotifList() {
   const list = document.getElementById('notifList');
   if (!list) return;
@@ -870,7 +906,7 @@ function renderNotifList() {
     list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">새로운 알림이 없습니다.</div>';
     return;
   }
-  list.innerHTML = _userNotifs.map((n, i) => `
+  list.innerHTML = _userNotifs.map((n) => `
     <div style="padding:12px;border-radius:9px;margin-bottom:6px;
                 background:${n.isRead ? 'var(--cream)' : 'var(--sage-pale)'};
                 border:1px solid ${n.isRead ? 'var(--border2)' : 'var(--sage-l)'}">
@@ -886,16 +922,23 @@ function renderNotifList() {
     </div>`).join('');
 
   // PATCH /api/notifications/read-all
-  api.patch('/api/notifications/read-all', {}).then(() => updateNotifBadge());
+  api.patch('/api/notifications/read-all', {}).then(() => {
+    // 백엔드 처리가 성공하면 프론트엔드의 데이터도 전부 읽음 상태로 변경!
+    _userNotifs.forEach(n => n.isRead = true);
+    updateNotifBadge(); // 배지 업데이트 (알림 숫자 0으로 사라짐)
+  });
 }
 
-/** PATCH /api/notifications/{notificationId}/read */
+/** 알림 개별 삭제 (DELETE /api/notifications/{notificationId}) */
 async function deleteNotif(notifId) {
-  await api.patch('/api/notifications/' + notifId + '/read', {});
+  // PATCH(읽음) 대신 DELETE(삭제) API를 호출하도록 변경하는 것이 자연스럽습니다.
+  await api.delete('/api/notifications/' + notifId);
+
+  // 성공적으로 삭제되면 화면 목록에서도 지우고 다시 그리기
   _userNotifs = _userNotifs.filter(n => n.id !== notifId);
   renderNotifList();
-  updateNotifBadge();
 }
+// 여기까지
 
 /* ───────────────────────────────────────────────
  * 10. 지도 장소 팝업 (GET /api/maps/places)
@@ -1987,6 +2030,34 @@ async function confirmReportAction() {
       ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
       : '⚠️ 처리에 실패했습니다.');
 }
+
+// 제미나이 추가
+async function changeRole(action, userId, username) {
+  const label = action === 'promote' ? '관리자로 승격' : '일반 회원으로 강등';
+  if (!confirm(`${username} 님을 ${label}하시겠습니까?`)) return;
+
+  const token = localStorage.getItem('accessToken');
+  const url = `/api/admin/users/${userId}/${action === 'promote' ? 'promote' : 'demote'}`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast(`${label} 완료`);
+      // 회원 목록 새로고침
+      document.querySelector('#ad-users table tbody').innerHTML = '';
+      renderDynamicMockData();
+    } else {
+      toast('처리 실패: ' + (data.message || ''));
+    }
+  } catch (e) {
+    toast('오류 발생');
+  }
+}
+// 여기까지
 
 /* ───────────────────────────────────────────────
  * 20. 블로그 에디터 이미지 (AWS S3 업로드 준비)
