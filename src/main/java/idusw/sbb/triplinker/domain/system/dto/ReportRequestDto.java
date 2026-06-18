@@ -1,3 +1,4 @@
 package idusw.sbb.triplinker.domain.system.dto;
 
-public record ReportRequestDto(String reason) {}
+
+public record ReportRequestDto(Long postId, String reason) {}

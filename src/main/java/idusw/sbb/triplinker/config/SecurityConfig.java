@@ -55,6 +55,9 @@ public class SecurityConfig {
                         //정적 리소스 (CSS, JS, 이미지 등) 전체 허용
                         .requestMatchers("/**.css", "/**/*.css", "/**.js", "/**/*.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf", "/plan/**", "/plan/view/**").permitAll()
 
+                        // 업로드된 이미지 파일 비로그인 접근 허용
+                        .requestMatchers("/uploads/**").permitAll()
+
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
                                 "/",
@@ -74,11 +77,15 @@ public class SecurityConfig {
                         ).permitAll()
 
                         // 게시판은 보는 것(GET)만 비로그인 허용
-                        .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()                     // 게시글 목록
-                        .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()            // 게시글 상세
-                        .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()   // 댓글 조회
-                        .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll() // 공유 링크 읽기 전용
+                        .requestMatchers(HttpMethod.GET, "/api/posts").permitAll()                        // 게시글 목록
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*").permitAll()               // 게시글 상세
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/comments").permitAll()      // 댓글 조회
+                        .requestMatchers(HttpMethod.GET, "/api/posts/*/place-reviews").permitAll() // 게시글별 장소 리뷰
+                        .requestMatchers(HttpMethod.GET, "/api/places").permitAll()                // 장소 카드 탭 목록
+                        .requestMatchers(HttpMethod.GET, "/api/places/**").permitAll()             // 장소 상세 (후기·리뷰)
+                        .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll()        // 공유 링크 읽기 전용
                         .requestMatchers(HttpMethod.GET, "/api/curations").permitAll()
+
                         // 관리자 전용 기능
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
@@ -87,8 +94,6 @@ public class SecurityConfig {
 
                         // 그 외의 모든 API 요청은 반드시 인증(JWT 유효성 검증) 필요
                         .anyRequest().authenticated()
-
-
                 )
 
                 // 소셜 로그인 설정
@@ -128,7 +133,5 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
-
 
 }

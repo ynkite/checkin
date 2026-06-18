@@ -1,5 +1,6 @@
 package idusw.sbb.triplinker.domain.system.dto;
 
+import idusw.sbb.triplinker.domain.system.entity.Notification;
 import lombok.Builder;
 import lombok.Getter;
 import java.time.LocalDateTime;
@@ -8,10 +9,18 @@ import java.time.LocalDateTime;
 @Builder
 public class NotificationResponseDto {
     private Long id;
-    private String message;  // 알림 내용
-    private String type;     // 알림 타입 (예: SYSTEM, POST_LIKE 등)
-    private boolean isRead;  // 읽음 여부
+    private String message;
+    private String type;
+    private boolean isRead;
     private LocalDateTime createdAt;
-}
 
-// 전체 코드 제미나이 추가
+    public static NotificationResponseDto from(Notification notification) {
+        return NotificationResponseDto.builder()
+                .id(notification.getId())
+                .message(notification.getContent())
+                .type(notification.getType())
+                .isRead(notification.isRead())
+                .createdAt(notification.getCreatedAt())
+                .build();
+    }
+}

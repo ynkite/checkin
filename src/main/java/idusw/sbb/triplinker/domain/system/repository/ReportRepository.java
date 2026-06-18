@@ -12,4 +12,12 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
 
     // 대시보드 - 신고 미처리 건수
     long countByStatus(String status);
+    // 관리자 - 처리 상태별 신고 목록 조회
+    Page<Report> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+
+    // 특정 게시글에 접수된 신고 목록 조회
+    Page<Report> findByPostIdOrderByCreatedAtDesc(Long postId, Pageable pageable);
+
+    // 특정 사용자가 접수한 신고 목록 조회
+    Page<Report> findByReporterIdOrderByCreatedAtDesc(Long reporterId, Pageable pageable);
 }

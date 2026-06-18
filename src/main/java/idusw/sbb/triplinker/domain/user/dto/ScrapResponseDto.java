@@ -15,4 +15,7 @@ public class ScrapResponseDto {
     private Long scrapId;
     private Long placeId;
     private String category;
+    private String placeName;
+    private String address;
+    private Double avgRating;
 }

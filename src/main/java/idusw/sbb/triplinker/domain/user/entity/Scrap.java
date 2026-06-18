@@ -7,6 +7,7 @@ package idusw.sbb.triplinker.domain.user.entity;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
@@ -41,4 +42,12 @@ public class Scrap {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Builder
+    public Scrap(User user, Long placeId, String category) {
+        this.user = user;
+        this.placeId = placeId;
+        this.category = category;
+        this.createdAt = LocalDateTime.now();
+    }
 }

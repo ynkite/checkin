@@ -21,8 +21,10 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     @Query("SELECT t FROM TravelPlan t WHERE t.user.id = :userId AND t.endDate < :now ORDER BY t.startDate DESC")
     Page<TravelPlan> findPastTrips(@Param("userId") Long userId, @Param("now") LocalDate now, Pageable pageable);
 
+    //내 여행 일정 목록 (최신순)
     List<TravelPlan> findByUserIdOrderByCreatedAtDesc(Long userId);
 
+    // 공개 플랜 목록 (커뮤니티 스크랩 대상)
     List<TravelPlan> findByIsPublicOrderByCreatedAtDesc(int isPublic);
 
     @Modifying
@@ -41,5 +43,8 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     @Query("SELECT t.destination, COUNT(t) FROM TravelPlan t " +
             "WHERE t.createdAt BETWEEN :start AND :end GROUP BY t.destination ORDER BY COUNT(t) DESC")
     List<Object[]> findTopDestinations(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    // TODO: 확정 기능 구현 후 PlaceService.parseAndSavePlacesFromAllPlans() 에서 사용
+    List<TravelPlan> findByStatus(String status);
 
 }

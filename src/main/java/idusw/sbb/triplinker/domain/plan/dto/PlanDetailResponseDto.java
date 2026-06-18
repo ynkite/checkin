@@ -27,6 +27,7 @@ public class PlanDetailResponseDto {
     private final int isPublic;
     private final String status;
     private final LocalDateTime createdAt;
+    private final String routeJson;
     private final LocalDateTime updatedAt;
 
     // 취향 폼 (없을 수 있음)
@@ -55,6 +56,7 @@ public class PlanDetailResponseDto {
         this.isPublic    = plan.getIsPublic();
         this.status      = plan.getStatus();
         this.createdAt   = plan.getCreatedAt();
+        this.routeJson   = plan.getRouteJson();
         this.updatedAt   = plan.getUpdatedAt();
 
         PlanInputForm f = plan.getForm();

@@ -1,0 +1,1436 @@
+/* =============================================================================
+ * TripLinker - 커뮤니티 전용 스타일 (styles_community.css)
+ *
+ * 목적:
+ * - 기존 styles_main.css, styles_place.css 수정 최소화
+ * - 커뮤니티/후기 상세/댓글/CTA 영역만 별도 관리
+ * - 팀원 공통 CSS와 충돌 방지
+ * ============================================================================= */
+
+
+/* =========================================================
+ * 1. 후기 상세 - 연결된 여행 플랜 배지
+ * ========================================================= */
+
+#page-review .review-plan-badge {
+    display: none;
+    margin: 18px 0;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--sage-pale);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+#page-review .review-plan-badge.on,
+#page-review .review-plan-badge[style*="display: block"],
+#page-review .review-plan-badge[style*="display:block"] {
+    display: block;
+}
+
+#page-review .review-plan-badge strong {
+    color: var(--sage-d);
+    font-weight: 800;
+}
+
+#page-review .review-plan-badge .plan-preview-btn,
+#page-review .review-plan-badge button {
+    margin-top: 10px;
+}
+
+
+/* =========================================================
+ * 2. 후기 상세 - 댓글 영역
+ * ========================================================= */
+
+#page-review .comment-box {
+    margin-top: 26px;
+    padding: 18px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    box-shadow: var(--sh);
+}
+
+#page-review .comment-box h3 {
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    color: var(--text1);
+}
+
+#page-review #commentInput,
+#page-review .comment-box input {
+    background: var(--surface);
+    border: 1.5px solid var(--border2);
+    color: var(--text1);
+}
+
+#page-review #commentInput:focus,
+#page-review .comment-box input:focus {
+    background: var(--surface);
+    border-color: var(--sage);
+}
+
+#page-review #commentInput::placeholder,
+#page-review .comment-box input::placeholder {
+    color: var(--text3);
+    opacity: 1;
+}
+
+#page-review .comment-item {
+    padding: 12px 0;
+    border-top: 1px solid var(--border2);
+    font-size: 13px;
+}
+
+#page-review .comment-item:first-child {
+    border-top: none;
+}
+
+#page-review .comment-writer {
+    font-weight: 800;
+    color: var(--text1);
+    margin-bottom: 3px;
+}
+
+#page-review .comment-date {
+    font-size: 11px;
+    color: var(--text3);
+    margin-left: 6px;
+}
+
+#page-review .comment-content {
+    color: var(--text2);
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+ * 3. 후기 상세 - CTA 영역
+ * 와이어프레임 기준으로 크기 축소
+ * ========================================================= */
+
+#page-review .review-cta {
+    max-width: 520px;
+    min-height: 112px;
+    margin: 30px auto 0;
+    padding: 24px 20px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, var(--sage), var(--sage-l));
+    text-align: center;
+    box-shadow: var(--sh);
+}
+
+#page-review .review-cta h2,
+#page-review .review-cta .rcta-ttl {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    line-height: 1.35;
+}
+
+#page-review .review-cta .rcta-sub {
+    color: rgba(255, 255, 255, .88);
+    font-size: 12px;
+    margin-bottom: 12px;
+}
+
+#page-review .review-plan-btn,
+#page-review .btn-rcta {
+    background: #fff;
+    color: var(--sage);
+    border: none;
+    border-radius: 12px;
+    padding: 12px 28px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all .2s;
+}
+
+#page-review .review-plan-btn:hover,
+#page-review .btn-rcta:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .10);
+}
+
+
+/* =========================================================
+ * 4. 커뮤니티 상세 - 장소/경로 리스트 보정
+ * ========================================================= */
+
+#page-review #pr-place-list {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+#page-review .route-preview-card {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    margin-bottom: 10px;
+}
+
+#page-review .route-preview-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text1);
+    margin-bottom: 4px;
+}
+
+#page-review .route-preview-meta {
+    font-size: 12px;
+    color: var(--text3);
+}
+
+
+/* =========================================================
+ * 5. 커뮤니티 전용 모달 보정
+ * ========================================================= */
+
+.community-preview-modal {
+    max-width: 720px;
+}
+
+.community-preview-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.community-preview-day {
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--cream);
+    border: 1px solid var(--border2);
+}
+
+.community-preview-day-title {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--sage-d);
+    margin-bottom: 8px;
+}
+
+.community-preview-place {
+    padding: 9px 10px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 6px;
+}
+
+
+/* =========================================================
+ * 6. 모바일 대응
+ * ========================================================= */
+
+@media (max-width: 640px) {
+    #page-review .review-cta {
+        max-width: 100%;
+        margin-top: 24px;
+        padding: 22px 16px;
+    }
+
+    #page-review .review-cta h2,
+    #page-review .review-cta .rcta-ttl {
+        font-size: 18px;
+    }
+
+    #page-review .review-plan-btn,
+    #page-review .btn-rcta {
+        width: 100%;
+        padding: 12px 18px;
+    }
+}
+
+/* =========================================================
+ * community v2 - 연결된 플랜 미리보기 모달
+ * ========================================================= */
+
+.btn-plan-preview {
+    float: right;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    background: var(--sage);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.btn-plan-preview:hover {
+    background: var(--sage-d);
+}
+
+.community-plan-preview-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(28, 43, 42, .45);
+    padding: 20px;
+}
+
+.community-plan-preview-overlay.open {
+    display: flex;
+}
+
+.community-plan-preview-modal {
+    position: relative;
+    width: 640px;
+    max-width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 24px 70px rgba(28, 43, 42, .28);
+}
+
+.community-plan-preview-close {
+    position: absolute;
+    right: 18px;
+    top: 18px;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 50%;
+    background: var(--cream);
+    color: var(--text2);
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.community-plan-preview-badges {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.community-plan-preview-badges span {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--cream);
+    color: var(--text2);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.community-plan-preview-modal h2 {
+    font-size: 24px;
+    font-weight: 900;
+    margin-bottom: 22px;
+    color: var(--text1);
+}
+
+.community-plan-preview-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.community-plan-preview-stats div {
+    background: var(--cream);
+    border-radius: 12px;
+    padding: 18px 10px;
+    text-align: center;
+}
+
+.community-plan-preview-stats strong {
+    display: block;
+    color: var(--sage);
+    font-size: 20px;
+    font-weight: 900;
+    margin-bottom: 4px;
+}
+
+.community-plan-preview-stats span {
+    font-size: 12px;
+    color: var(--text3);
+}
+
+.community-plan-preview-map {
+    position: relative;
+    height: 160px;
+    border-radius: 14px;
+    background:
+            linear-gradient(rgba(45,158,138,.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(45,158,138,.08) 1px, transparent 1px),
+            #CDEDE6;
+    background-size: 28px 28px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.cpp-route-line {
+    position: absolute;
+    left: 120px;
+    top: 75px;
+    width: 270px;
+    height: 70px;
+    border-top: 4px solid rgba(45, 158, 138, .7);
+    border-radius: 50%;
+    transform: rotate(-6deg);
+}
+
+.cpp-pin {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,.18);
+}
+
+.cpp-pin-1 {
+    left: 120px;
+    top: 72px;
+    background: var(--sage);
+}
+
+.cpp-pin-2 {
+    left: 290px;
+    top: 82px;
+    background: var(--coral);
+}
+
+.cpp-pin-3 {
+    left: 405px;
+    top: 66px;
+    background: var(--sky);
+}
+
+.cpp-map-text {
+    position: absolute;
+    right: 16px;
+    bottom: 12px;
+    color: rgba(30, 122, 105, .55);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.community-plan-preview-section {
+    margin-top: 18px;
+}
+
+.community-plan-preview-section h3 {
+    font-size: 14px;
+    font-weight: 900;
+    margin-bottom: 10px;
+    color: var(--text1);
+}
+
+.community-plan-preview-section p {
+    font-size: 13px;
+    color: var(--text2);
+}
+
+.cpp-place-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 14px;
+    border-radius: 12px;
+    background: var(--cream);
+    margin-bottom: 8px;
+}
+
+.cpp-place-row strong {
+    font-size: 14px;
+    color: var(--text1);
+}
+
+.cpp-place-row em {
+    font-style: normal;
+    color: #F5A623;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.community-plan-preview-actions {
+    display: grid;
+    grid-template-columns: 1fr 110px;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.cpp-main-btn,
+.cpp-sub-btn {
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.cpp-main-btn {
+    border: none;
+    background: var(--sage);
+    color: #fff;
+}
+
+.cpp-sub-btn {
+    border: 1.5px solid var(--sage);
+    background: #fff;
+    color: var(--sage);
+}
+
+@media (max-width: 640px) {
+    .community-plan-preview-modal {
+        padding: 22px;
+    }
+
+    .community-plan-preview-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .community-plan-preview-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .btn-plan-preview {
+        float: none;
+        display: block;
+        margin-top: 10px;
+    }
+}
+
+/* =========================================================
+ * community v2 - 플랜 미리보기 버튼 위치 보정
+ * ========================================================= */
+
+#page-review #pr-plan-badge {
+    position: relative;
+    padding-right: 110px;
+}
+
+#page-review #btn-plan-preview {
+    float: none;
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+/* =========================================================
+ * community v2 - 플랜 미리보기 실제 지도 영역
+ * ========================================================= */
+
+.community-plan-preview-map {
+    position: relative;
+    height: 180px;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #CDEDE6;
+    margin-bottom: 20px;
+}
+
+#communityPlanKakaoMap {
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+}
+
+.cpp-map-loading {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sage-d);
+    font-size: 13px;
+    font-weight: 800;
+    background: #CDEDE6;
+}
+
+@media (max-width: 640px) {
+    #page-review #pr-plan-badge {
+        padding-right: 16px;
+    }
+
+    #page-review #btn-plan-preview {
+        position: static;
+        transform: none;
+        display: block;
+        width: fit-content;
+        margin-top: 10px;
+    }
+}
+
+.cpp-day-title {
+    margin: 12px 0 8px;
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--sage-d);
+}
+
+.cpp-transit-row {
+    margin: 6px 0 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--sage-pale);
+    color: var(--sage-d);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.community-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.community-card-meta {
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.community-card-tags {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.community-card-tags span {
+    font-size: 10px;
+    color: var(--sage-d);
+    background: var(--sage-pale);
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+
+.review-place-snapshot {
+    background: #fff;
+    border-radius: 18px;
+    padding: 22px;
+    margin: 22px 0;
+    box-shadow: var(--sh);
+}
+
+.review-place-snapshot h3 {
+    font-size: 15px;
+    font-weight: 900;
+    margin-bottom: 16px;
+    color: var(--text1);
+}
+
+.review-place-snapshot-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--cream2);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    min-width: 0;
+}
+
+.review-place-snapshot-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.review-place-snapshot-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 900;
+    color: var(--text1);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.review-place-snapshot-stars {
+    flex-shrink: 0;
+    color: #F5A623;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.review-place-snapshot-comment {
+    font-size: 12px;
+    color: var(--text2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-left: 2px;
+}
+
+/* =========================================================
+ * community v2 - 상세 페이지 장소 요약 박스 크기 보정
+ * 목적:
+ * - 와이어프레임처럼 방문 장소별 별점 카드 크기 축소
+ * - 해시태그/연결 플랜/장소 요약 간격 정리
+ * ========================================================= */
+
+/* 해시태그 영역 */
+.review-tags,
+.pr-tags,
+#pr-tags {
+    margin: 10px 0 14px;
+}
+
+/* 연결된 플랜 박스 */
+.review-linked-plan,
+.pr-linked-plan,
+#pr-plan-badge {
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+/* 방문 장소별 별점 전체 박스 */
+.review-spot-summary,
+.pr-spot-summary,
+.review-places-box {
+    padding: 18px 20px !important;
+    border-radius: 18px !important;
+}
+
+/* 방문 장소별 제목 줄 */
+.review-spot-summary h3,
+.pr-spot-summary h3,
+.review-places-box h3 {
+    font-size: 16px;
+    margin-bottom: 14px;
+}
+
+/* 각 장소 카드 */
+.review-spot-item,
+.pr-spot-item,
+.review-place-item,
+.place-review-item {
+    padding: 12px 14px !important;
+    border-radius: 14px !important;
+    min-height: auto !important;
+    margin-bottom: 10px !important;
+}
+
+/* 장소 카드 내부 왼쪽 영역 */
+.review-spot-left,
+.pr-spot-left,
+.review-place-main {
+    gap: 10px !important;
+    align-items: center;
+}
+
+/* 장소 아이콘 */
+.review-spot-icon,
+.pr-spot-icon,
+.review-place-icon {
+    width: 34px !important;
+    height: 34px !important;
+    font-size: 15px !important;
+    border-radius: 10px !important;
+}
+
+/* 장소명 */
+.review-spot-name,
+.pr-spot-name,
+.review-place-title {
+    font-size: 15px !important;
+    line-height: 1.3 !important;
+    font-weight: 700 !important;
+}
+
+/* 장소 하위 설명 */
+.review-spot-meta,
+.pr-spot-meta,
+.review-place-sub {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+}
+
+/* 별점/숫자 영역 */
+.review-spot-rating,
+.pr-spot-rating,
+.review-place-rating {
+    font-size: 13px !important;
+    gap: 4px !important;
+    white-space: nowrap;
+}
+
+/* 한줄평 */
+.review-spot-comment,
+.pr-spot-comment,
+.review-place-comment {
+    font-size: 12px !important;
+    line-height: 1.35 !important;
+    max-width: 250px;
+}
+
+.review-plan-summary {
+    margin-left: 8px;
+    color: var(--text2);
+    font-weight: 500;
+}
+
+.review-detail-tags {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0 14px;
+}
+
+.review-detail-tags span {
+    background: var(--sage-pale);
+    color: var(--sage-d);
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.review-place-view-btn {
+    border: none;
+    background: transparent;
+    color: var(--sage-d);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+
+.review-place-view-btn:hover {
+    text-decoration: underline;
+}
+
+/* =========================================================
+ * community v2 - 상세 장소 스냅샷 최종 축소 보정
+ * ========================================================= */
+
+#page-review .review-place-snapshot {
+    max-width: 760px;
+    margin: 18px auto 22px !important;
+    padding: 18px 22px !important;
+    border-radius: 16px !important;
+}
+
+#page-review .review-place-snapshot h3 {
+    font-size: 14px !important;
+    margin-bottom: 14px !important;
+}
+
+#page-review .review-place-snapshot-row {
+    min-height: 54px !important;
+    grid-template-columns: 34px 1fr auto !important;
+    gap: 12px !important;
+    padding: 10px 12px !important;
+    margin-bottom: 8px !important;
+    border-radius: 10px !important;
+}
+
+#page-review .review-place-snapshot-icon {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 15px !important;
+    border-radius: 9px !important;
+}
+
+#page-review .review-place-snapshot-info strong {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+}
+
+#page-review .review-place-snapshot-info span {
+    font-size: 10px !important;
+    margin-top: 2px !important;
+}
+
+#page-review .review-place-snapshot-rating {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    max-width: 280px;
+    font-size: 11px !important;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#page-review .review-place-snapshot-rating b {
+    font-size: 11px !important;
+    margin-right: 0 !important;
+    white-space: nowrap;
+}
+
+#page-review .review-place-snapshot-rating span {
+    display: none !important;
+}
+
+/* =========================================================
+ * community v2 - 방문 장소별 별점 박스 겹침 제거
+ * ========================================================= */
+
+#page-review #pr-place-list {
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 18px 0 22px !important;
+    overflow: visible !important;
+}
+
+#page-review .review-place-snapshot {
+    background: #fff !important;
+    box-shadow: var(--sh, 0 8px 24px rgba(0, 0, 0, .08)) !important;
+    margin: 0 auto !important;
+    padding: 18px 22px !important;
+    border-radius: 18px !important;
+    max-width: 760px;
+}
+
+/* =========================================================
+ * community v2 - AI 취향 추천 와이어프레임형 카드
+ * ========================================================= */
+
+#ai-reco-title {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--text3);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.community-ai-simple-card {
+    background: #fff;
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 18px 16px;
+    cursor: pointer;
+    transition: all .18s;
+}
+
+.community-ai-simple-card:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--sh, 0 6px 16px rgba(0, 0, 0, .08));
+}
+
+.community-ai-simple-cat {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--sage-pale);
+    color: var(--sage-d);
+    font-size: 11px;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.community-ai-simple-title {
+    color: var(--text1);
+    font-size: 14px;
+    font-weight: 900;
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.community-ai-simple-match {
+    color: var(--text3);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.community-ai-empty {
+    color: var(--text3);
+    font-size: 12px;
+}
+
+
+/* =========================================================
+ * community v2 - 카테고리별 페이징
+ * ========================================================= */
+
+.community-v2-pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin: 18px 0 30px;
+}
+
+.community-v2-page-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border2);
+    background: #fff;
+    color: var(--text2);
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.community-v2-page-btn.on {
+    background: var(--sage);
+    color: #fff;
+    border-color: var(--sage);
+}
+
+/* =========================================================
+ * community v2 - 목록 카드 카테고리별 왼쪽 책갈피 테두리
+ * ========================================================= */
+
+.comm-post-item .post-card {
+    position: relative;
+    overflow: hidden;
+}
+
+/* 왼쪽 세로 포인트 라인 공통 */
+.comm-post-item .post-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 12px 0 0 12px;
+    background: var(--sage);
+}
+
+/* 여행 경로 */
+.comm-post-item .post-card:has(.cat-route)::before {
+    background: #F97316;
+}
+
+/* 숙소 */
+.comm-post-item .post-card:has(.cat-stay)::before {
+    background: #2D9E8A;
+}
+
+/* 맛집 */
+.comm-post-item .post-card:has(.cat-food)::before {
+    background: #FF6B6B;
+}
+
+/* 관광지 */
+.comm-post-item .post-card:has(.cat-tour)::before {
+    background: #3B82F6;
+}
+
+/* 카페 */
+.comm-post-item .post-card:has(.cat-cafe)::before {
+    background: #A78BFA;
+}
+
+/* 왼쪽 라인이 생기면서 내용이 너무 붙지 않도록 살짝 보정 */
+.comm-post-item .post-card {
+    padding-left: 22px;
+}
+
+/* =========================================================
+ * community v3 - 후기 작성 장소별 별점 폼
+ * ========================================================= */
+
+.plr-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--cream);
+    border-radius: 8px;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.plr-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+
+.plr-icon.pr-stay { background: #E8F5F2; }
+.plr-icon.pr-food { background: #FEF3F2; }
+.plr-icon.pr-tour { background: #EBF4FC; }
+.plr-icon.pr-cafe { background: #F3F0FF; }
+
+.plr-name {
+    flex: 1;
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 80px;
+    color: var(--text);
+}
+
+.star-sel {
+    display: flex;
+    gap: 2px;
+}
+
+.star-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 17px;
+    color: var(--border);
+    transition: color .15s;
+    padding: 0 1px;
+    line-height: 1;
+}
+
+.star-btn.lit {
+    color: #F5A623;
+}
+
+.one-line {
+    flex: 1;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border2);
+    background: var(--surface);
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    min-width: 100px;
+}
+
+.one-line:focus {
+    border-color: var(--sage);
+}
+
+#placeReviewsSection {
+    border: 1.5px solid var(--border2);
+    border-radius: 10px;
+    padding: 12px;
+    background: var(--surface);
+    margin-top: 8px;
+    display: none;
+}
+
+#placeReviewsSection .plr-section-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--sage-d);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#placeReviewsSection .plr-note {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 6px;
+}
+
+#placeReviewsSection .plr-empty {
+    font-size: 12px;
+    color: var(--text3);
+    text-align: center;
+    padding: 16px 0;
+}
+
+/* =========================================================
+ * community v3 - 장소 리뷰 카드 (탭 목록용)
+ * ========================================================= */
+
+.place-review-card-wrap {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 14px;
+    padding: 14px 16px 14px 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: box-shadow .18s;
+}
+
+.place-review-card-wrap:hover {
+    box-shadow: 0 6px 20px rgba(45, 158, 138, .12);
+}
+
+.place-review-card-wrap::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 4px;
+    height: 100%;
+    border-radius: 12px 0 0 12px;
+}
+
+.place-review-card-wrap.type-stay::before { background: #2D9E8A; }
+.place-review-card-wrap.type-food::before { background: #FF6B6B; }
+.place-review-card-wrap.type-tour::before { background: #3B82F6; }
+.place-review-card-wrap.type-cafe::before { background: #A78BFA; }
+
+.place-review-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.place-review-card-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.place-review-card-stars {
+    color: #F5A623;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+
+.place-review-card-comment {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-top: 4px;
+}
+
+.place-review-card-meta {
+    font-size: 11px;
+    color: var(--text3);
+}
+
+.place-review-section-divider {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 0 6px;
+    border-top: 1px dashed var(--border2);
+    margin-top: 14px;
+}
+/* =============================================================================
+ * 장소 카드 탭 (v3)
+ * ============================================================================= */
+
+.place-card-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border2, #e8e8e8);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: box-shadow .15s, border-color .15s;
+}
+.place-card-item:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    border-color: var(--primary, #5c7cfa);
+}
+.place-card-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+.place-card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+.place-card-name {
+    font-weight: 600;
+    font-size: .96rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.place-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.place-card-stars { color: #f5a623; font-size: .85rem; letter-spacing: -.5px; }
+.place-card-avg   { font-size: .82rem; font-weight: 700; color: var(--text2, #555); }
+.place-card-count { font-size: .78rem; color: var(--text3, #999); }
+
+/* 뒤로 가기 */
+.place-back-btn {
+    background: none;
+    border: 1px solid var(--border2, #e0e0e0);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: .85rem;
+    cursor: pointer;
+    margin-bottom: 12px;
+    color: var(--text2, #555);
+    transition: background .12s;
+}
+.place-back-btn:hover { background: var(--surface2, #f5f5f5); }
+.place-back-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+/* ── 장소 후기 드릴다운 전체 래퍼 ── */
+.place-review-wrap {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px 18px 24px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07);
+}
+
+/* ── 평균 별점 헤더 (가운데 정렬, 크게) ── */
+.place-review-header {
+    text-align: center;
+    padding: 16px 0 20px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border2, #eee);
+}
+.place-review-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text1, #222);
+    margin-bottom: 12px;
+}
+.place-avg-stars {
+    font-size: 2rem;
+    color: #f5a623;
+    letter-spacing: 3px;
+    display: block;
+    margin-bottom: 4px;
+}
+.place-avg-score {
+    font-size: 2.6rem;
+    font-weight: 800;
+    color: var(--text1, #111);
+    display: block;
+    line-height: 1.1;
+    margin-bottom: 4px;
+}
+.place-avg-count {
+    font-size: .85rem;
+    color: var(--text3, #999);
+    display: block;
+}
+
+/* ── 리뷰 목록 ── */
+.place-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ── 개별 리뷰 카드 ── */
+.place-review-item {
+    background: #fafafa;
+    border: 1px solid var(--border2, #efefef);
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+.pri-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.pri-stars  { color: #f5a623; font-size: 1rem; }
+.pri-writer { font-size: .82rem; color: var(--text3, #888); }
+
+/* 한줄평 — 기본 2줄 클램프 */
+.pri-comment {
+    font-size: .9rem;
+    color: var(--text1, #333);
+    line-height: 1.55;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.pri-comment.expanded {
+    display: block;
+    overflow: visible;
+    -webkit-line-clamp: unset;
+}
+.pri-toggle-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: .8rem;
+    color: var(--primary, #4f8ef7);
+    cursor: pointer;
+    margin-bottom: 6px;
+    display: block;
+}
+.pri-toggle-btn:hover { text-decoration: underline; }
+
+/* 해당 후기로 이동 버튼 */
+.pri-goto {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 4px 12px;
+    border: 1px solid var(--primary, #4f8ef7);
+    border-radius: 6px;
+    background: none;
+    font-size: .8rem;
+    color: var(--primary, #4f8ef7);
+    cursor: pointer;
+    transition: background .12s, color .12s;
+}
+.pri-goto:hover {
+    background: var(--primary, #4f8ef7);
+    color: #fff;
+}
+
+/* ── 후기 수정 — 장소 리뷰 행 ── */
+.edit-plr-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border2, #f0f0f0);
+    flex-wrap: wrap;
+}
+.edit-plr-row:last-child { border-bottom: none; }
+.edit-plr-name {
+    min-width: 120px;
+    flex: 1;
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--text1, #222);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.edit-plr-cat {
+    font-size: .72rem;
+    color: var(--text3, #aaa);
+    background: var(--surface2, #f5f5f5);
+    border-radius: 4px;
+    padding: 1px 5px;
+}

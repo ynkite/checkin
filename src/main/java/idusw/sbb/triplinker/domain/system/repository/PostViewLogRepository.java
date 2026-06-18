@@ -1,6 +1,6 @@
-package idusw.sbb.triplinker.domain.post.repository;
+package idusw.sbb.triplinker.domain.system.repository;
 
-import idusw.sbb.triplinker.domain.post.entity.PostViewLog;
+import idusw.sbb.triplinker.domain.system.entity.PostViewLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -8,7 +8,7 @@ import idusw.sbb.triplinker.domain.admin.repository.CurationRepository;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.triplinker.domain.post.repository.PostRepository;
-import idusw.sbb.triplinker.domain.post.repository.PostViewLogRepository;
+import idusw.sbb.triplinker.domain.system.repository.PostViewLogRepository;
 import idusw.sbb.triplinker.domain.system.repository.ReportRepository;
 import idusw.sbb.triplinker.domain.system.service.NotificationService;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;

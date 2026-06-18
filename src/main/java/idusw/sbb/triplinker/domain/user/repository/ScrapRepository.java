@@ -10,6 +10,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 public interface ScrapRepository extends JpaRepository<Scrap, Long> {
     Page<Scrap> findByUserIdAndCategory(Long userId, String category, Pageable pageable);
+    List<Scrap> findByUserIdOrderByCreatedAtDesc(Long userId);
+    boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
+    void deleteByUserIdAndPlaceId(Long userId, Long placeId);
 }

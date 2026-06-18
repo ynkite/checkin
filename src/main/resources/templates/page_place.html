@@ -52,10 +52,10 @@
             </div>
 
             <div class="review-plan-badge" id="pr-plan-badge"></div>
-            <div class="bcard" style="margin-bottom:18px" id="pr-place-list"></div>
             <div class="review-body" id="pr-body">
                 <div style="text-align:center;padding:40px;color:var(--text3)">불러오는 중...</div>
             </div>
+            <div class="bcard" style="margin-top:18px;margin-bottom:18px;display:none" id="pr-place-list"></div>
             <div class="comment-box" id="pr-comments"></div>
 
             <div class="review-cta">
@@ -456,14 +456,65 @@
         /* ────────────────────────────────────────────────
          * 7. 후기 수정 페이지 진입
          * ──────────────────────────────────────────────── */
-        function goEditReview() {
+        async function goEditReview() {
             go('edit-review');
-            const titleEl = document.getElementById('pr-title');
-            const bodyEl  = document.getElementById('pr-body');
-            const editTitle = document.getElementById('editReviewTitle');
-            const editBody  = document.getElementById('editBlogEditor');
-            if (titleEl && editTitle) editTitle.value = titleEl.textContent;
-            if (bodyEl  && editBody)  editBody.innerHTML = bodyEl.innerHTML;
+
+            const post = window._currentPostDetail;
+            if (!post) { toast('후기 정보를 찾을 수 없습니다.'); return; }
+
+            // 제목
+            const titleEl = document.getElementById('editReviewTitle');
+            if (titleEl) titleEl.value = post.title || '';
+
+            // 본문 (raw content)
+            const bodyEl = document.getElementById('editBlogEditor');
+            if (bodyEl) bodyEl.innerHTML = post.content || '';
+
+            // 공개/비공개 버튼 상태
+            document.querySelectorAll('#page-edit-review .vis-chip').forEach(btn => {
+                const wantPublic = !btn.textContent.includes('비공개');
+                btn.classList.toggle('on', wantPublic === post.isPublic);
+            });
+
+            // 장소 리뷰 로드
+            const postId    = window._currentPostId;
+            const container = document.getElementById('edit-places-container');
+            if (!container || !postId) return;
+
+            container.innerHTML = '';
+
+            try {
+                const res     = await api.get(`/api/posts/${postId}/place-reviews`);
+                const reviews = (res && Array.isArray(res.data)) ? res.data
+                              : Array.isArray(res) ? res : [];
+
+                if (!reviews.length) return;
+
+                container.innerHTML = `
+                    <label class="form-label" style="display:block;margin-bottom:10px">
+                        📍 방문 장소별 별점 &amp; 한줄평
+                    </label>
+                    <div id="edit-place-list">
+                        ${reviews.map(r => `
+                        <div class="edit-plr-row" data-review-id="${r.id}">
+                            <div class="edit-plr-name">
+                                <span class="edit-plr-cat">${r.category || ''}</span>
+                                ${esc(r.placeName || '')}
+                            </div>
+                            <div class="star-sel" data-rating="${r.rating || 0}">
+                                ${[1,2,3,4,5].map(n =>
+                                    `<button class="star-btn${n <= (r.rating||0) ? ' lit' : ''}"
+                                             onclick="setStars(this,${n})">★</button>`
+                                ).join('')}
+                            </div>
+                            <input class="one-line edit-plr-comment"
+                                   value="${esc(r.comment || '')}"
+                                   placeholder="한줄평 (선택)" maxlength="200">
+                        </div>`).join('')}
+                    </div>`;
+            } catch (e) {
+                console.error('[edit] 장소 리뷰 로드 실패', e);
+            }
         }
 
         /* ────────────────────────────────────────────────
@@ -473,20 +524,38 @@
             const postId  = window._currentPostId;
             const title   = document.getElementById('editReviewTitle')?.value.trim();
             const content = document.getElementById('editBlogEditor')?.innerHTML.trim();
-            const isPublic = !!document.querySelector('#page-edit-review .vis-chip.on')
-                ?.textContent.includes('공개');
+            const activeChip = document.querySelector('#page-edit-review .vis-chip.on');
+            const isPublic   = activeChip ? !activeChip.textContent.includes('비공개') : true;
 
             if (!title)   { toast('제목을 입력해주세요.'); return; }
             if (!content) { toast('내용을 입력해주세요.'); return; }
 
+            // 1. 게시글 수정
             const res = await api.patch(`/api/posts/${postId}`, { title, content, isPublic });
-            if (res.success) {
-                toast('✅ 수정이 완료되었습니다.');
-                go('review');
-                loadReviewDetail(postId);
-            } else {
-                toast(res.message || '수정에 실패했습니다.');
+            if (!res || res.success === false) {
+                toast(res?.message || '수정에 실패했습니다.');
+                return;
             }
+
+            // 2. 장소 리뷰 수정
+            const rows = document.querySelectorAll('#edit-place-list .edit-plr-row');
+            if (rows.length) {
+                const reviews = Array.from(rows)
+                    .map(row => ({
+                        placeReviewId: Number(row.dataset.reviewId),
+                        rating: Number(row.querySelector('.star-sel')?.dataset.rating || 0),
+                        comment: (row.querySelector('.edit-plr-comment')?.value || '').trim() || null
+                    }))
+                    .filter(r => r.placeReviewId && r.rating >= 1);
+
+                if (reviews.length) {
+                    await api.patch(`/api/posts/${postId}/place-reviews`, { reviews });
+                }
+            }
+
+            toast('✅ 수정이 완료되었습니다.');
+            go('review');
+            loadReviewDetail(postId);
         }
 
         /* ────────────────────────────────────────────────
@@ -534,6 +603,9 @@
             }
 
             const place = Array.isArray(res.data) ? res.data[0] : res.data;
+
+            window._currentPlaceId       = place.id || place.placeId || null;
+            window._currentPlaceCategory = place.category || place.type || 'tour';
 
             // 헤더
             if (headerEl) headerEl.innerHTML = `
@@ -619,8 +691,14 @@
          * 11. 장소 스크랩 (커뮤니티 스크랩 패턴 활용)
          * ──────────────────────────────────────────────── */
         async function doPlaceScrap() {
-            if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
-            toast('★ 스크랩 완료!');
+            if (!window._commUtil?.requireLogin()) {
+                toast('로그인이 필요합니다.'); go('login'); return;
+            }
+            const placeId = window._currentPlaceId;
+            if (!placeId) { toast('장소 정보를 찾을 수 없습니다.'); return; }
+            const category = window._currentPlaceCategory || 'tour';
+            const res = await api.post(`/api/places/${placeId}/scraps`, { category });
+            toast(res?.success !== false ? '★ 스크랩했습니다!' : (res?.message || '이미 스크랩한 장소입니다.'));
         }
 
         /* ────────────────────────────────────────────────

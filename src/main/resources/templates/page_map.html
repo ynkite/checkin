@@ -68,6 +68,7 @@
 
     // ── DOM 렌더링 ──
     async function initMapPage() {
+      var routeData = null;
 
       // 🎯 [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
       if (!window._currentTripId) {

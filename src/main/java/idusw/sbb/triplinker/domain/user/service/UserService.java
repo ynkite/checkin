@@ -27,4 +27,7 @@ public interface UserService {
     Page<TripListResponseDto> getMyTrips(Long userId, String status, Pageable pageable);
     BudgetReportResponseDto getMyExpenseReport(Long userId, String category);
     Page<ScrapResponseDto> getMyScraps(Long userId, String category, Pageable pageable);
+    java.util.List<ScrapResponseDto> getMyScrapsAll(Long userId);
+    void addPlaceScrap(Long userId, Long placeId, String category);
+    void deletePlaceScrap(Long userId, Long scrapId);
 }

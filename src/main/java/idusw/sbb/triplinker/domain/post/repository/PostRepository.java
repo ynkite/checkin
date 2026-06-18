@@ -13,6 +13,31 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     List<Post> findByUserIdAndStatusOrderByIdDesc(Long userId, String status);
 
+    // 커뮤니티 - 게시글 목록 조회
+    Page<Post> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+
+    // 특정 여행 플랜과 연결된 게시글 목록 조회
+    Page<Post> findByPlanIdAndStatusOrderByCreatedAtDesc(Long planId, String status, Pageable pageable);
+
+    Page<Post> findByStatusAndCategoryOrderByCreatedAtDesc(String status, String category, Pageable pageable);
+
+    @Query("""
+        SELECT p
+        FROM Post p
+        WHERE p.status = :status
+          AND (
+                p.category = :category
+                OR p.category IS NULL
+                OR p.category = ''
+          )
+        ORDER BY p.createdAt DESC
+        """)
+    Page<Post> findRoutePostsIncludingNullCategory(
+            @Param("status") String status,
+            @Param("category") String category,
+            Pageable pageable
+    );
+
     // 관리자 대시보드 - 상태별 게시글 수 집계
     long countByStatus(String status);
 

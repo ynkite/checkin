@@ -15,28 +15,40 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class SystemController {
 
     private final SystemService systemService;
 
-    @PostMapping("/api/posts/{postId}/reports")
-    public ResponseEntity<ApiResponse<Void>> submitReport(
-            @PathVariable Long postId,
+    // 게시글 신고 접수
+    @PostMapping("/reports")
+    public ResponseEntity<Long> reportPost(
             @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody ReportRequestDto dto) {
-        systemService.submitReport(postId, userDetails.getUserId(), dto);
-        return ResponseEntity.ok(ApiResponse.success(null));
+            @RequestBody ReportRequestDto dto
+    ) {
+        Long reportId = systemService.reportPost(userDetails.getUserId(), dto);
+        return ResponseEntity.ok(reportId);
     }
 
-    @GetMapping("/api/admin/reports")
+    // 알림 읽음 처리
+    @PatchMapping("/notifications/{notificationId}/read")
+    public ResponseEntity<Void> readNotification(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long notificationId
+    ) {
+        systemService.readNotification(userDetails.getUserId(), notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/admin/reports")
     public ResponseEntity<ApiResponse<Page<AdminReportListResponseDto>>> getReports(
             @RequestParam(required = false) String status,
             @PageableDefault(size = 20) Pageable pageable) {
         return ResponseEntity.ok(ApiResponse.success(systemService.getReports(status, pageable)));
     }
 
-    @DeleteMapping("/api/admin/reports/{reportId}")
+    @DeleteMapping("/admin/reports/{reportId}")
     public ResponseEntity<ApiResponse<Void>> deleteReportedPost(
             @PathVariable Long reportId,
             @RequestParam(required = false) String reason,
@@ -45,7 +57,7 @@ public class SystemController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @PatchMapping("/api/admin/reports/{reportId}")
+    @PatchMapping("/admin/reports/{reportId}")
     public ResponseEntity<ApiResponse<Void>> rejectReport(
             @PathVariable Long reportId,
             @AuthenticationPrincipal CustomUserDetails adminDetails,

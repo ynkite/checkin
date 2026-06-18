@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&family=Gmarket+Sans:wght@300;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" th:href="@{/styles_main.css}">
   <link rel="stylesheet" th:href="@{/styles_place.css}">
+  <link rel="stylesheet" th:href="@{/styles_community.css}">
     <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=86e39dda6b2928c50783086448d212b8&autoload=false&libraries=services"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -77,6 +78,7 @@
 <script th:src="@{/app_main.js}"></script>
 <script th:src="@{/js/app_budget.js}"></script>
 <script th:src="@{/app_community.js}"></script>
+<script th:src="@{/app_community_v2.js}"></script>
 
 <!--제미나이에서 추가-->
 <div id="notifPopup"
@@ -95,5 +97,29 @@
 </div>
 <div id="notifOverlay" onclick="closeNotifPopup()" style="display:none;position:fixed;inset:0;z-index:1490"></div>
 <!--여기까지-->
+
+<!-- 게시글 신고 모달 -->
+<div id="reportPostModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center">
+  <div onclick="document.getElementById('reportPostModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">🚨 게시글 신고</div>
+    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+      <option value="">-- 사유 선택 --</option>
+      <option value="스팸/광고">스팸/광고</option>
+      <option value="욕설/혐오 표현">욕설/혐오 표현</option>
+      <option value="음란물">음란물</option>
+      <option value="허위 정보">허위 정보</option>
+      <option value="개인정보 침해">개인정보 침해</option>
+      <option value="기타 부적절한 게시글">기타 부적절한 게시글</option>
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="document.getElementById('reportPostModal').style.display='none'"
+              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+      <button onclick="submitReportPost()"
+              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -6,10 +6,14 @@ import idusw.sbb.triplinker.domain.auth.repository.RefreshTokenRepository;
 import idusw.sbb.triplinker.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.triplinker.domain.expense.entity.Expense;
 import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
+import idusw.sbb.triplinker.domain.place.entity.Place;
+import idusw.sbb.triplinker.domain.place.repository.PlaceRepository;
+import idusw.sbb.triplinker.domain.post.repository.PlaceReviewRepository;
 import idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.triplinker.domain.user.dto.ScrapResponseDto;
+import idusw.sbb.triplinker.domain.user.entity.Scrap;
 import idusw.sbb.triplinker.domain.user.dto.UserInfoResponseDto;
 import idusw.sbb.triplinker.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.triplinker.domain.user.entity.SecurityEventType;
@@ -52,6 +56,8 @@ public class UserServiceImpl implements UserService {
     private final TravelPlanRepository travelPlanRepository;
     private final ExpenseRepository expenseRepository;
     private final ScrapRepository scrapRepository;
+    private final PlaceRepository placeRepository;
+    private final PlaceReviewRepository placeReviewRepository;
 
     @Override
     public UserInfoResponseDto getProfile(Long userId) {
@@ -188,6 +194,56 @@ public class UserServiceImpl implements UserService {
                         .placeId(scrap.getPlaceId())
                         .category(scrap.getCategory())
                         .build());
+    }
+
+    @Override
+    public List<ScrapResponseDto> getMyScrapsAll(Long userId) {
+        return scrapRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+                .map(scrap -> {
+                    Place place = placeRepository.findById(scrap.getPlaceId()).orElse(null);
+                    double avg = placeReviewRepository.findByPlace_IdOrderByCreatedAtDesc(scrap.getPlaceId())
+                            .stream()
+                            .mapToInt(r -> r.getRating())
+                            .average()
+                            .orElse(0.0);
+                    return ScrapResponseDto.builder()
+                            .scrapId(scrap.getId())
+                            .placeId(scrap.getPlaceId())
+                            .category(scrap.getCategory())
+                            .placeName(place != null ? place.getName() : "알 수 없는 장소")
+                            .address(place != null ? place.getAddress() : null)
+                            .avgRating(avg > 0 ? Math.round(avg * 10.0) / 10.0 : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void addPlaceScrap(Long userId, Long placeId, String category) {
+        if (scrapRepository.existsByUserIdAndPlaceId(userId, placeId)) {
+            throw new IllegalStateException("이미 스크랩한 장소입니다.");
+        }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        placeRepository.findById(placeId)
+                .orElseThrow(() -> new IllegalArgumentException("장소를 찾을 수 없습니다."));
+        scrapRepository.save(Scrap.builder()
+                .user(user)
+                .placeId(placeId)
+                .category(category)
+                .build());
+    }
+
+    @Override
+    @Transactional
+    public void deletePlaceScrap(Long userId, Long scrapId) {
+        Scrap scrap = scrapRepository.findById(scrapId)
+                .orElseThrow(() -> new IllegalArgumentException("스크랩을 찾을 수 없습니다."));
+        if (!scrap.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("스크랩 삭제 권한이 없습니다.");
+        }
+        scrapRepository.deleteById(scrapId);
     }
 
     @Override

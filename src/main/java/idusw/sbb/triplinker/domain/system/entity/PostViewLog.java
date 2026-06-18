@@ -1,5 +1,6 @@
-package idusw.sbb.triplinker.domain.post.entity;
+package idusw.sbb.triplinker.domain.system.entity;
 
+import idusw.sbb.triplinker.domain.post.entity.Post;
 import idusw.sbb.triplinker.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

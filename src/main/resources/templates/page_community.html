@@ -308,9 +308,16 @@
           <input class="form-input" placeholder="제목을 입력해주세요" id="writeTitle">
         </div>
         <div class="form-group" style="margin-bottom:12px">
-          <label class="form-label">플랜 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(선택)</span></label>
-          <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value">
+          <label class="form-label">내 여행 기록 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(방문 장소 자동 바인딩)</span></label>
+          <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value; onWritePlanSelect(this.value)">
           </select>
+          <div id="placeReviewsSection">
+            <div class="plr-section-title">📍 장소별 별점 &amp; 한줄평 <span style="font-size:10px;font-weight:400;color:var(--text3)">(선택 사항)</span></div>
+            <div id="placeReviewsBody">
+              <div class="plr-empty">플랜을 선택하면 방문 장소가 표시됩니다.</div>
+            </div>
+            <div class="plr-note">별점·한줄평은 각 카테고리 탭에서도 확인할 수 있습니다.</div>
+          </div>
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">해시태그 <span style="font-size:11px;font-weight:400;color:var(--text3)">(쉼표로 구분)</span></label>
@@ -319,13 +326,26 @@
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">내용</label>
           <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
-            <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid var(--border);background:var(--surface)">
-              <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('bold')"><b>B</b></button>
-              <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="document.execCommand('italic')"><i>I</i></button>
-              <button class="btn-o" style="padding:4px 8px;font-size:12px" onclick="toast('이미지 업로드')">📷 사진 첨부</button>
+            <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
+              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700"
+                      onclick="document.getElementById('blogEditor').focus();document.execCommand('bold')">B</button>
+              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic"
+                      onclick="document.getElementById('blogEditor').focus();document.execCommand('italic')">I</button>
+              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline"
+                      onclick="document.getElementById('blogEditor').focus();document.execCommand('underline')">U</button>
             </div>
-            <div class="form-input" style="border:none;flex:1;outline:none;padding:12px;font-size:13px;line-height:1.6;overflow-y:auto" contenteditable="true" id="blogEditor" data-placeholder="후기를 상세히 공유해주세요..."></div>
+            <div id="blogEditor" contenteditable="true"
+                 data-placeholder="후기를 상세히 공유해주세요..."
+                 style="min-height:200px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto"></div>
           </div>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">첨부 이미지</label>
+          <div id="writeImagePreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:10px"></div>
+          <button type="button" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px"
+                  onclick="document.getElementById('writeImageInput').click()">새 이미지 추가</button>
+          <input id="writeImageInput" type="file" accept="image/*" multiple style="display:none"
+                 onchange="window._handleWriteImageSelect && window._handleWriteImageSelect(this)">
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">

@@ -2,22 +2,103 @@ package idusw.sbb.triplinker.domain.post.dto;
 
 import idusw.sbb.triplinker.domain.post.entity.Post;
 
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+
 public record PostListResponseDto(
         Long postId,
-        String catLabel,    //카테고리 라벨
-        String catClass,    //cat-route, cat-food, cat-stay 등으로 나눠, 카테고리별로 색상을 입히기 위해 사용
+        String category,
+        String catLabel,
+        String catClass,
         String title,
+        String content,
+        String writerName,
+        LocalDateTime createdAt,
+        List<String> styleTags,
         int likes,
-        int views
+        int scraps,
+        int views,
+        String thumbnailUrl          // 첫 번째 이미지 URL (없으면 null)
 ) {
     public static PostListResponseDto from(Post post) {
+        return from(post, 0, null);
+    }
+
+    public static PostListResponseDto from(Post post, int scraps) {
+        return from(post, scraps, null);
+    }
+
+    public static PostListResponseDto from(Post post, int scraps, String thumbnailUrl) {
+        String category = normalizeCategory(post.getCategory());
+
         return new PostListResponseDto(
                 post.getId(),
-                "카테고리 미정",
-                "cat-route",
+                category,
+                getCatLabel(category),
+                getCatClass(category),
                 post.getTitle(),
+                post.getContent(),
+                post.getUser() != null ? post.getUser().getName() : "사용자",
+                post.getCreatedAt(),
+                parseStyleTags(post.getStyleTags()),
                 post.getLikeCount(),
-                post.getViewCount()
+                scraps,
+                post.getViewCount(),
+                thumbnailUrl
         );
+    }
+
+    private static String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return "ROUTE";
+        }
+
+        return switch (category) {
+            case "STAY" -> "STAY";
+            case "FOOD" -> "FOOD";
+            case "TOUR" -> "TOUR";
+            case "CAFE" -> "CAFE";
+            case "ROUTE" -> "ROUTE";
+            default -> "ROUTE";
+        };
+    }
+
+    private static String getCatLabel(String category) {
+        return switch (category) {
+            case "STAY" -> "숙소";
+            case "FOOD" -> "맛집";
+            case "TOUR" -> "관광지";
+            case "CAFE" -> "카페";
+            default -> "여행 경로";
+        };
+    }
+
+    private static String getCatClass(String category) {
+        return switch (category) {
+            case "STAY" -> "cat-stay";
+            case "FOOD" -> "cat-food";
+            case "TOUR" -> "cat-tour";
+            case "CAFE" -> "cat-cafe";
+            default -> "cat-route";
+        };
+    }
+
+    private static List<String> parseStyleTags(String styleTags) {
+        if (styleTags == null || styleTags.isBlank()) {
+            return List.of();
+        }
+
+        String normalized = styleTags
+                .trim()
+                .replace("[", "")
+                .replace("]", "")
+                .replace("\"", "");
+
+        return Arrays.stream(normalized.split(","))
+                .map(String::trim)
+                .map(tag -> tag.replace("#", ""))
+                .filter(tag -> !tag.isBlank())
+                .toList();
     }
 }

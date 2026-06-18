@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import idusw.sbb.triplinker.domain.expense.entity.Expense;
 import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
+import idusw.sbb.triplinker.domain.place.service.PlaceService;
 import idusw.sbb.triplinker.domain.plan.entity.PlanInputForm;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
@@ -13,7 +14,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.util.regex.Matcher;
@@ -25,6 +25,7 @@ public class AiRouteService {
 
     private final TravelPlanRepository planRepository;
     private final ExpenseRepository expenseRepository;
+    private final PlaceService placeService;
     private final ObjectMapper objectMapper;
     private final ChatClient primaryClient;   // Groq
     private final ChatClient fallbackClient;  // Gemini
@@ -32,12 +33,14 @@ public class AiRouteService {
     public AiRouteService(
             TravelPlanRepository planRepository,
             ExpenseRepository expenseRepository,
+            PlaceService placeService,
             ObjectMapper objectMapper,
             @Qualifier("openAiChatModel") ChatModel groqModel,
             @Qualifier("googleGenAiChatModel") ChatModel geminiModel) {
 
         this.planRepository = planRepository;
         this.expenseRepository = expenseRepository;
+        this.placeService = placeService;
         this.objectMapper = objectMapper;
         this.primaryClient  = ChatClient.builder(groqModel).build();
         this.fallbackClient = ChatClient.builder(geminiModel).build();
@@ -211,6 +214,7 @@ public class AiRouteService {
         planRepository.save(plan);
 
         parseAndSaveEstimatedExpenses(plan, json);
+        placeService.parseAndSavePlacesFromRouteJson(plan, json);
     }
 
     // AI 동선 JSON을 파싱해 가계부(Expense)의 "AI 예상 비용"을 생성/갱신
