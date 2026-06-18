@@ -13,7 +13,9 @@ import idusw.sbb.triplinker.domain.post.dto.PostDetailResponseDto;
 import idusw.sbb.triplinker.global.service.LocalFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import idusw.sbb.triplinker.domain.post.entity.Post;
@@ -49,6 +51,17 @@ public class PostService {
     public List<PostListResponseDto> getMyLikedPosts(Long userId) {
         return postLikeRepository.findLikedPostsByUserId(userId)
                 .stream()
+                .map(PostListResponseDto::from)
+                .collect(Collectors.toList());
+    }
+
+    // 마이페이지 - 스크랩한 여행 경로 목록 조회
+    public List<PostListResponseDto> getMyScrappedRoutePosts(Long userId) {
+        Pageable pageable = PageRequest.of(0, 200, Sort.by(Sort.Direction.DESC, "createdAt"));
+        return postScrapRepository.findByUserIdAndCategoryOrderByCreatedAtDesc(userId, "ROUTE", pageable)
+                .stream()
+                .map(PostScrap::getPost)
+                .filter(post -> post != null && "ACTIVE".equals(post.getStatus()))
                 .map(PostListResponseDto::from)
                 .collect(Collectors.toList());
     }

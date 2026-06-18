@@ -97,6 +97,17 @@ public class PostController {
         return ResponseEntity.ok(postService.getMyLikedPosts(userDetails.getUserId()));
     }
 
+    // 마이페이지 - 스크랩한 여행 경로 목록 조회
+    @GetMapping("/scrapped")
+    public ResponseEntity<ApiResponse<List<PostListResponseDto>>> getMyScrappedPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success("스크랩한 여행 경로 목록 조회 성공",
+                        postService.getMyScrappedRoutePosts(userDetails.getUserId()))
+        );
+    }
+
     // 커뮤니티 - 게시글 작성
     @PostMapping
     public ResponseEntity<Long> createPost(

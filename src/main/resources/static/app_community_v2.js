@@ -2566,4 +2566,63 @@ window.doCommPlaceScrap = async function (placeId, category) {
     }
 };
 
+/* =============================================================================
+ * community v2 — 여행 경로 스크랩 (마이페이지)
+ * ============================================================================= */
+window.loadMyRouteScrap = async function() {
+    const el = document.getElementById('my-scrap-route-list');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+
+    const res = await api.get('/api/posts/scrapped');
+    if (!res || !res.success || !Array.isArray(res.data)) {
+        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+        return;
+    }
+
+    const list = res.data;
+    el.innerHTML = list.length
+        ? list.map(function(p) {
+            const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
+                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
+            }).join('');
+            const safeTitle  = escapeHtml(p.title  || '제목 없음');
+            const safeWriter = escapeHtml(p.writerName || '');
+            return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
+                '<div class="pc-hd">' +
+                    '<div class="pc-icon">🗺️</div>' +
+                    '<div style="flex:1;min-width:0">' +
+                        '<div class="pc-name">' + safeTitle + '</div>' +
+                        '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
+                        (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
+                        '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
+                    '</div>' +
+                    '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + p.postId + ',this)" ' +
+                        'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+                        '🗑️ 삭제' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+          }).join('')
+        : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+};
+
+window.goToScrapRoute = function(postId) {
+    go('community');
+    setTimeout(function() {
+        if (typeof openPostDetail === 'function') openPostDetail(postId);
+    }, 150);
+};
+
+window.deleteMyRouteScrap = async function(postId, btn) {
+    const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
+    if (res && res.success !== false) {
+        const card = btn.closest('.place-card');
+        if (card) card.remove();
+        if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+    } else {
+        if (typeof toast === 'function') toast('삭제에 실패했습니다.');
+    }
+};
+
 })();

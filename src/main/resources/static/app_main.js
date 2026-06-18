@@ -263,6 +263,21 @@ function go(id, addToHistory) {
     }, 100);
   }
   if (typeof _syncPlannerTopbar === 'function') setTimeout(_syncPlannerTopbar, 60);
+
+  if (id === 'mypage') {
+    if (typeof updateMyPageUI === 'function') updateMyPageUI();
+  }
+
+  if (id === 'community') {
+    setTimeout(function () {
+      var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
+      if (['stay', 'food', 'tour', 'cafe'].indexOf(tab) !== -1) {
+        if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
+      } else {
+        if (typeof window.loadCommunityPosts === 'function') window.loadCommunityPosts(0, true);
+      }
+    }, 100);
+  }
 }
 
 function setNav(btn) {
@@ -3072,6 +3087,7 @@ function showMySection(key, btn) {
   if (key === 'scrap-food')  loadMyScrap('food');
   if (key === 'scrap-tour')  loadMyScrap('tour');
   if (key === 'scrap-cafe')  loadMyScrap('cafe');
+  if (key === 'scrap-route') { if (typeof loadMyRouteScrap === 'function') loadMyRouteScrap(); }
 }
 
 function initWithdrawSection() {
