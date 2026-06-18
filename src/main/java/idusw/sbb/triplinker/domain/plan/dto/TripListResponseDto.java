@@ -4,10 +4,13 @@
 
 package idusw.sbb.triplinker.domain.plan.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -19,4 +22,13 @@ public class TripListResponseDto {
     private String meta;        // "2026.06.14~06.17 · 2인"
     private String budget;      // "₩404,000"
     private String status;      // "UPCOMING" 또는 "PAST"
+
+
+    private String startDate;
+    private String endDate;
+    private String destination;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    private LocalDateTime updatedAt;
+
 }

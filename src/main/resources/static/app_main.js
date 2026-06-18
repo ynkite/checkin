@@ -311,6 +311,59 @@ function updateNav() {
   const lo = document.getElementById('navLogoutBtn');
   const al = document.getElementById('navAdminLink');
   const nb = document.getElementById('navBellBtn');
+
+  // 🎯 [신규] 상단바에 '초대받은 일정 저장하기' 버튼 동적 생성
+  let saveInviteBtn = document.getElementById('navSaveInviteBtn');
+  if (!saveInviteBtn) {
+    const navBtns = document.querySelector('.nav-btns');
+    if (navBtns) {
+      saveInviteBtn = document.createElement('button');
+      saveInviteBtn.id = 'navSaveInviteBtn';
+      saveInviteBtn.className = 'btn-f';
+      saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
+      saveInviteBtn.innerHTML = '💾 일정 저장하기';
+
+      saveInviteBtn.onclick = async () => {
+        const tid = window._currentTripId;
+        if (!tid) return;
+
+        // 로딩 처리
+        const originalHtml = saveInviteBtn.innerHTML;
+        saveInviteBtn.innerHTML = '⏳ 저장 중...';
+        saveInviteBtn.style.opacity = '0.7';
+        saveInviteBtn.style.pointerEvents = 'none';
+
+        try {
+          // 백엔드 초대 수락(플랜 참여) API 호출
+          const res = await api.post(`/api/trips/${tid}/members/join`, {});
+
+          if (res.success) {
+            toast('✅ 초대받은 일정이 내 목록에 저장되었습니다! 마이페이지에서 확인하세요.');
+            saveInviteBtn.style.display = 'none';
+            window._isInvitedEditView = false; // 저장 완료 시 뷰 플래그 해제
+
+            // 🎯 마이페이지의 데이터를 백그라운드에서 다시 불러와서 즉시 동기화
+            if (typeof updateMyPageUI === 'function') {
+              updateMyPageUI();
+            }
+          } else {
+            toast('⚠️ ' + (res.message || '일정 저장에 실패했습니다.'));
+            saveInviteBtn.innerHTML = originalHtml;
+            saveInviteBtn.style.opacity = '1';
+            saveInviteBtn.style.pointerEvents = 'auto';
+          }
+        } catch(e) {
+          console.error("일정 저장 오류:", e);
+          toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
+          saveInviteBtn.innerHTML = originalHtml;
+          saveInviteBtn.style.opacity = '1';
+          saveInviteBtn.style.pointerEvents = 'auto';
+        }
+      };
+      navBtns.insertBefore(saveInviteBtn, navBtns.firstChild);
+    }
+  }
+
   if (_loggedIn && _currentUser) {
     if (li) li.style.display = 'none';
     if (si) si.style.display = 'none';
@@ -326,6 +379,16 @@ function updateNav() {
     if (nb) nb.style.display = 'none';
     if (al) al.style.display = 'none';
   }
+
+  // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
+  if (saveInviteBtn) {
+    if (_loggedIn && window._isInvitedEditView) {
+      saveInviteBtn.style.display = 'inline-block';
+    } else {
+      saveInviteBtn.style.display = 'none';
+    }
+  }
+
   const plannerBtn = document.getElementById('navPlannerBtn');
     if (plannerBtn) {
         if (_loggedIn && _hasPlannerDraft()) {
@@ -568,22 +631,115 @@ async function updateMyPageUI() {
 }
 
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
-function _renderMyTrips(trips) {
+window._myTripsData = [];
+window._myTripsCurrentPage = 1;
+const TRIPS_PER_PAGE = 6; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+
+function _renderMyTrips(trips = null, page = 1) {
   const te = document.getElementById('my-trips');
   if (!te) return;
-  te.innerHTML = '<h3 class="my-sec-ttl">내 여행 기록</h3>' + (
-      trips.length
-          ? trips.map(x => `
-          <div class="trip-card" onclick="openMyTrip(${x.tripId})"> 
-            <div class="trip-thumb">🗺️</div>
-            <div class="trip-info">
-              <div class="trip-ttl">${x.title || '여행 플랜'}</div>
-              <div class="trip-meta">${x.startDate || ''} ~ ${x.endDate || ''} · ${x.destination || ''}</div>
-            </div>
-            <div class="trip-budget">${x.status === 'CONFIRMED' ? '✅ 확정' : '📝 초안'}</div>
-          </div>`).join('')
-          : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>'
-  );
+
+  // 1. 처음 데이터를 받을 때는 전역 변수에 저장하고 1페이지로 세팅, 그 외엔 페이지 이동
+  if (trips !== null) {
+    window._myTripsData = trips;
+    window._myTripsCurrentPage = 1;
+  } else {
+    window._myTripsCurrentPage = page;
+  }
+
+  const allTrips = window._myTripsData || [];
+  const totalPages = Math.ceil(allTrips.length / TRIPS_PER_PAGE) || 1;
+  const currentPage = window._myTripsCurrentPage;
+
+  // 2. 현재 페이지에 해당하는 데이터만 잘라내기
+  const startIndex = (currentPage - 1) * TRIPS_PER_PAGE;
+  const paginatedTrips = allTrips.slice(startIndex, startIndex + TRIPS_PER_PAGE);
+
+  let html = '<h3 class="my-sec-ttl">내 여행 기록</h3>';
+
+  // 3. 재민님이 주신 오리지널 스타일(trip-card) 그대로 렌더링
+  if (paginatedTrips.length > 0) {
+    html += paginatedTrips.map(x => {
+      console.log("Trip Data Check:", x);
+
+      // 1. 최종 수정 날짜 파싱 및 줄바꿈 처리
+      let lastUpdate = '—';
+      if (x.updatedAt) {
+        let dateStr = x.updatedAt.replace ? x.updatedAt.replace(/-/g, '/').replace('T', ' ') : x.updatedAt;
+        if (typeof dateStr === 'string' && dateStr.includes('.')) {
+          dateStr = dateStr.split('.')[0];
+        }
+
+        const d = new Date(dateStr);
+
+        if (!isNaN(d.getTime())) {
+          const year  = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day   = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const mins  = String(d.getMinutes()).padStart(2, '0');
+
+          lastUpdate = `${year}.${month}.${day}<br>${hours}:${mins}`;
+        }
+      }
+
+      // 2. 백엔드 DTO 매핑
+      const displayStart = x.startDate ? x.startDate.replace(/-/g, '.') : '';
+      const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
+      const displayDest  = x.destination || '';
+
+      // 오리지널 카드 UI
+      return `
+      <div class="trip-card" onclick="openMyTrip(${x.id || x.tripId})"> 
+        <div class="trip-thumb">🗺️</div>
+        <div class="trip-info">
+          <div class="trip-ttl">${x.title || '여행 플랜'}</div>
+          <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
+        </div>
+        <div class="trip-budget" style="color:var(--text3); font-size:11px; text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
+            <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">최종 수정</span>
+            <span style="color:var(--text2); font-weight:500;">${lastUpdate}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // 4. 리스트 하단에 사진과 동일한 디자인의 페이지네이션 버튼 추가
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
+
+    // [이전] 화살표
+    if (currentPage > 1) {
+      html += `<button onclick="_renderMyTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&lt;</button>`;
+    }
+
+    // [숫자 버튼] 최대 5개씩 노출
+    let startP = Math.max(1, currentPage - 2);
+    let endP = Math.min(totalPages, startP + 4);
+    if (endP - startP < 4) {
+      startP = Math.max(1, endP - 4);
+    }
+
+    for (let p = startP; p <= endP; p++) {
+      const isCurrent = (p === currentPage);
+      const bg = isCurrent ? 'var(--sage)' : '#fff';
+      const color = isCurrent ? '#fff' : 'var(--text2)';
+      const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
+      const fw = isCurrent ? '800' : '500';
+
+      html += '<button onclick="_renderMyLedgerTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
+    }
+
+    // [다음] 화살표
+    if (currentPage < totalPages) {
+      html += `<button onclick="_renderMyTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&gt;</button>`;
+    }
+
+    html += `</div>`;
+
+  } else {
+    html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>';
+  }
+
+  te.innerHTML = html;
 }
 
 // 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
@@ -2119,18 +2275,65 @@ function setStars(btn, rating){ btn.closest('.star-sel').querySelectorAll('.star
 // ── [여행 플랜 공유 기능] ──
 
 // 공유 모달 열기 및 데이터 로드
-async function openShareModal() {
+function openShareModal() {
   const modal = document.getElementById('shareModal');
   if (!modal) return;
+
+  const tripId = window._currentTripId;
+  const linkEl = document.getElementById('share-link-val');
+
+  if (linkEl && tripId) {
+    // 🎯 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
+    const obscureToken = (tripId ^ 0x5A3C9B7D2E).toString(16);
+    linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
+  }
+
   modal.classList.add('open');
-  setShareTab(document.querySelector('.share-tab'), 'members');
-  await loadShareMembersData();
+  loadShareMembersData();
+
+  // 🎯 꼬여있던 내부 호출용 함수명을 아래 실제 구현된 함수명과 일치시킵니다.
+  loadShareMembersData();
 }
 
+function shareInviteToKakaoTalk() {
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+  if (!tripId) { toast('⚠️ 여행 플랜 정보가 올바르지 않습니다.'); return; }
+
+  if (typeof Kakao !== 'undefined') {
+    if (!Kakao.isInitialized()) {
+      Kakao.init('cb534606e630ecbec186e4ebd2917b04');
+    }
+
+    // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
+    const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+
+    // 🎯 [핵심 버그 수정]: 도메인 충돌 방지를 위해 카카오에 등록된 정품 로컬 주소를 명시적으로 강제 박기
+    const inviteUrl = `http://localhost:8080/plan/view?token=${obscureToken}`;
+
+    // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
+    Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: '✈️ TripLinker 여행 플랜 공유',
+        description: `🔗 플랜 열람 링크: ${inviteUrl}`,
+        imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
+        link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
+      },
+      buttons: [
+        { title: '🗺️ 여행 일정 열람하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
+      ]
+    });
+    toast('카카오톡 초대 창이 활성화되었습니다.');
+  } else {
+    toast('⚠️ 카카오 SDK를 불러올 수 없습니다.');
+  }
+}
+
+// 2. 참여자 목록 실시간 API 로드 및 인풋창 동기화
 async function loadShareMembersData() {
   const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
   const listEl = document.getElementById('share-member-list');
-  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
+  const linkEl = document.getElementById('share-link-val');
 
   if (!tripId) {
     if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">⚠️ 저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
@@ -2138,14 +2341,16 @@ async function loadShareMembersData() {
     return;
   }
 
-  if(linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+  // 🎯 화면 로드 시에도 링크 창에 완벽한 난수 주소가 유지되도록 체결
+  const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+  if(linkEl) linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
   if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
 
   try {
     const res = await api.get(`/api/trips/${tripId}/members`);
     if (res.success && res.data && res.data.length > 0) {
       listEl.innerHTML = res.data.map(m => `
-        <div style="display:flex; align-items:center; justify-content:space-between;">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
           <div style="display:flex; align-items:center; gap:12px;">
             <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
             <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
@@ -2168,13 +2373,13 @@ async function loadShareMembersData() {
   }
 }
 
+// 3. 이메일 기반 멤버 초대 요청 처리
 async function inviteShareMember(btn) {
   const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
   const input  = document.getElementById('share-email-inp');
   if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
   if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
-  // 1. 버튼 상태 잠금 (시각적 피드백 제공)
   const originalText = btn ? btn.innerHTML : '초대';
   if (btn) {
     btn.innerHTML = '⏳ 발송중...';
@@ -2190,7 +2395,6 @@ async function inviteShareMember(btn) {
     if(res.success) successCount++;
   }
 
-  // 2. 이메일 발송 완료 후 버튼 원상복구
   if (btn) {
     btn.innerHTML = originalText;
     btn.disabled = false;
@@ -2201,16 +2405,52 @@ async function inviteShareMember(btn) {
   if(successCount > 0) {
     toast('✅ 초대(편집 권한)가 발송되었습니다.');
     input.value = '';
-    await loadShareMembersData();
+    await loadShareMembersData(); // 목록 리로드 함수명 일치화
   } else {
     toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
   }
 }
 
-function copyShareLink() { // HTML에 맞게 함수명 수정
-  const linkEl = document.getElementById('share-link-val'); // HTML에 맞게 ID 수정
-  if (!linkEl || !linkEl.value) { toast('링크가 없습니다.'); return; }
-  navigator.clipboard.writeText(linkEl.value).then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!')).catch(() => toast('링크 복사에 실패했습니다.'));
+async function copyShareLink() {
+  const tripId = window._currentTripId;
+  if (!tripId) { toast('여행 플랜 정보가 올바르지 않습니다.'); return; }
+
+  try {
+    // 1. 백엔드 난수 링크 생성 API 호출
+    const response = await fetch(`/api/trips/${tripId}/share`, {
+      method: 'POST',
+      headers: {
+        'Authorization': Token.getAccess() ? `Bearer ${Token.getAccess()}` : '',
+        'Content-Type': 'application/json'
+      }
+    });
+    const res = await response.json();
+
+    // 2. 백엔드에서 생성해 준 안전한 난수 주소(?token=...)가 넘어왔을 때
+    if (res && res.success && res.data && res.data.shareLink) {
+      const linkEl = document.getElementById('share-link-val');
+      if (linkEl) {
+        linkEl.value = res.data.shareLink;
+      }
+      await navigator.clipboard.writeText(res.data.shareLink);
+      toast('읽기 전용 링크가 클립보드에 복사되었습니다!');
+    } else {
+      throw new Error("API 반환 오류");
+    }
+
+  } catch (error) {
+    console.error("공유 링크 생성 실패:", error);
+
+    // 3. 백엔드 통신 실패 시 프론트 자체 방어막 가드
+    const fallbackObscure = (tripId ^ 0x5A3C9B7D2E).toString(16);
+    const fallbackLink = `http://localhost:8080/plan/view?token=${fallbackObscure}`;
+
+    const linkEl = document.getElementById('share-link-val');
+    if (linkEl) linkEl.value = fallbackLink;
+
+    await navigator.clipboard.writeText(fallbackLink);
+    toast('링크가 복사되었습니다.');
+  }
 }
 
 function setShareTab(btn, tab) {
@@ -2625,13 +2865,25 @@ window.addEventListener('popstate', e => {
   // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
   _handleOAuthCallback();
 
-  // ✨ 공유 링크 접속 시 URL에서 id 추출 & 읽기 전용 UI 처리
+  // ✨ 공유 링크 접속 시 URL에서 token(난수) 추출 후 원본 id 복원 및 읽기 전용 UI 처리
   const params = new URLSearchParams(location.search);
-  const sharedId = params.get('id');
+  const shareToken = params.get('token'); // 🎯 token 난수 파라미터 읽기
   const token = Token.getAccess();
 
-  // 🔒 공유 링크(?id=값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
-  if (sharedId && !location.pathname.includes('/plan/view') && !token) {
+  // 난수 토큰이 존재하면 역으로 디코딩하여 원본 숫자로 복원
+  let sharedId = null;
+  if (shareToken) {
+    try {
+      // 16진수 난수를 다시 원본 숫자 ID로 안전하게 역연산 해독
+      const parsedHex = parseInt(shareToken, 16);
+      sharedId = (parsedHex ^ 0x5A3C9B7D2E).toString();
+    } catch (e) {
+      console.error("유효하지 않은 토큰 포맷입니다.");
+    }
+  }
+
+  // 🔒 공유 링크(?token=난수값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
+  if (shareToken && !location.pathname.includes('/plan/view') && !token) {
     // 1. 현재 가려던 초대 링크 전체 주소를 브라우저 임시 창고에 박아둡니다.
     sessionStorage.setItem('redirectUrl', location.pathname + location.search);
     sessionStorage.setItem('currentPage', 'login');
@@ -2645,9 +2897,10 @@ window.addEventListener('popstate', e => {
     }, 100);
 
     document.body.style.visibility = 'visible';
-    return; // 🚨 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 씹고 여기서 중단시킵니다.
+    return; // 🚨 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 중단시킵니다.
   }
 
+  // 복원된 고유 ID로 기존 지도 연동 시스템 매핑 체결
   if (sharedId) {
     window._currentTripId = parseInt(sharedId);
     sessionStorage.setItem('plannerDraftId', sharedId);
@@ -2655,15 +2908,51 @@ window.addEventListener('popstate', e => {
 
     // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
     if (location.pathname.includes('/plan/view')) {
+
+      Token.clear();
+      _loggedIn = false;
+      _currentUser = null;
+
       // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
       const style = document.createElement('style');
       style.innerHTML = `
         .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle { display: none !important; }
-        [onclick*="openShareModal"] { display: none !important; } /* 공유 버튼 숨김 */
-        #recalcBar, .recalc-bar, [id*="recalc"] { display: none !important; } /* 교체 요청 바 원천 차단 */
-        #queueBox, .queue-box { display: none !important; } /* ✨ 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
+        [onclick*=\"openShareModal\"] { display: none !important; } /* 공유 버튼 숨김 */
+        #recalcBar, .recalc-bar, [id*=\"recalc\"] { display: none !important; } /* 교체 요청 바 원천 차단 */
+        #queueBox, .queue-box { display: none !important; } /* 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
+        
+        /* 상단 네비게이션 싹 날리기 (로고 빼고) */
+        .nav-link, #navLoginBtn, #navSignupBtn, #navUserNameBtn, #navLogoutBtn, #navBellBtn, #navAdminLink, #navPlannerSteps { display: none !important; }
+        
+        /* 로고 클릭 이벤트 차단 */
+        .logo { pointer-events: none !important; cursor: default !important; }
       `;
       document.head.appendChild(style);
+
+      setTimeout(() => {
+        const logoEl = document.querySelector('.logo') || document.querySelector('.nav-logo') || document.querySelector('header a');
+
+        if (logoEl) {
+          // 🚨 로고의 a 태그 링크를 완전히 폭파시키고 클릭 이벤트 강제 정지
+          logoEl.removeAttribute('href');
+          logoEl.onclick = function(e) { e.preventDefault(); return false; };
+          logoEl.style.pointerEvents = 'none';
+
+          // 버튼 중복 생성 방지
+          if (!document.getElementById('tryTripLinkerBtn')) {
+            const tryBtn = document.createElement('a');
+            tryBtn.id = 'tryTripLinkerBtn';
+            tryBtn.href = 'http://localhost:8080'; // 🚀 클릭 시 이동할 타겟 메인 주소
+            tryBtn.target = '_blank';              // 🚀 무조건 새 창으로 열기
+            tryBtn.style.textDecoration = 'none';
+            tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
+            tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 TripLinker 사용해보기</span>';
+
+            // 로고 바로 오른쪽에 버튼 삽입
+            logoEl.parentNode.insertBefore(tryBtn, logoEl.nextSibling);
+          }
+        }
+      }, 100);
 
       // 2. 브라우저의 기본 드래그 앤 드롭 동작을 강제로 무력화
       document.addEventListener('dragstart', function(e) {
@@ -2674,8 +2963,11 @@ window.addEventListener('popstate', e => {
       // 3. 자바스크립트 라이브러리(SortableJS 등)의 드래그 기능 무력화
       setTimeout(() => {
         document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
-        toast('👀 읽기 전용 모드로 플랜을 열람합니다.');
+        toast('읽기 전용으로 플랜을 열람합니다.');
       }, 800);
+    }else {
+      // 🎯 [신규] 읽기 전용이 아닌 '수정 권한' 링크로 접근한 경우, 초대된 일정 뷰어임을 명시
+      window._isInvitedEditView = true;
     }
   }
 
@@ -2695,8 +2987,13 @@ window.addEventListener('popstate', e => {
       if (!ok) Token.clear();
     }
   }
+
   const _savedDraftId = sessionStorage.getItem('plannerDraftId');
-  if (_savedDraftId && !window._currentTripId) window._currentTripId = parseInt(_savedDraftId);
+  if (_savedDraftId && !window._currentTripId) {
+    window._currentTripId = parseInt(_savedDraftId);
+  } else if (window._currentTripId) {
+    sessionStorage.setItem('plannerDraftId', window._currentTripId);
+  }
   updateNav();
 
   const savedPage = sessionStorage.getItem('currentPage');

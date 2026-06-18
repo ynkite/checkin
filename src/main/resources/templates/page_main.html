@@ -239,6 +239,25 @@
 
       if (existingArrow) panelEl.insertBefore(frag, existingArrow); else panelEl.appendChild(frag);
       if (existingDots) existingDots.innerHTML = curations.map((_, i) => `<div class="dot${i===0?' on':''}" onclick="goSlide(${i})"></div>`).join('');
+
+      // 🎯 [여기부터 신규 추가!] 4초마다 자연스럽게 다음 슬라이드로 넘어가는 자동 롤링 기능
+      if (window._slideAutoTimer) clearInterval(window._slideAutoTimer);
+      window._slideAutoTimer = setInterval(() => {
+        // 현재 켜져있는('on' 클래스) 슬라이드가 몇 번째인지 찾기
+        const slides = document.querySelectorAll('.curation-panel .slide');
+        if (slides.length <= 1) return; // 1개 이하면 넘길 필요 없음
+
+        let currentIdx = Array.from(slides).findIndex(s => s.classList.contains('on'));
+        if (currentIdx === -1) currentIdx = 0;
+
+        // 다음 인덱스 계산 (마지막이면 다시 0으로 돌아감)
+        let nextIdx = (currentIdx + 1) % slides.length;
+
+        // 화면 전환 함수 호출 (미리 구현된 goSlide 연동)
+        if (typeof goSlide === 'function') {
+          goSlide(nextIdx);
+        }
+      }, 4000); // 4000ms = 4초
     }
 
     // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
@@ -311,11 +330,17 @@
                 ? places.map((p, idx) => _popCard(p, idx, cat.color)).join('')
                 : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">인기 명소가 없습니다.</div>';
       }
+
     }
   }
 
+
+
   document.addEventListener('DOMContentLoaded', initMainPage);
+
+
 </script>
+
 
 <div class="page active" id="page-main">
   <div class="hero">

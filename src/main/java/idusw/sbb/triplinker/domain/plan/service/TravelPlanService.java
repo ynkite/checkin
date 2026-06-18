@@ -8,6 +8,7 @@ package idusw.sbb.triplinker.domain.plan.service;
 import idusw.sbb.triplinker.domain.plan.dto.PlanCreateDto;
 import idusw.sbb.triplinker.domain.plan.dto.PlanDetailResponseDto;
 import idusw.sbb.triplinker.domain.plan.dto.PlanInputFormSaveDto;
+import idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto;
 
 import java.util.List;
 import java.util.Map;
@@ -46,4 +47,5 @@ public interface TravelPlanService {
 
     Map<String, Object> getInputFormMap(Long tripId);
 
+    List<TripListResponseDto> getMyTripList(Long userId);
 }

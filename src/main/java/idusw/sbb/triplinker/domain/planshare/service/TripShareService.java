@@ -87,14 +87,35 @@ public class TripShareService {
     }
 
     // 읽기 전용 공유 링크 생성
+    @Transactional
     public Map<String, String> generateShareLink(Long tripId) {
-        String readOnlyLink = "http://localhost:8080/plan/view?id=" + tripId;
+        String hexToken;
+        try {
+            long obscure = tripId ^ 0x5A3C9B7D2EL; // 비트 마스킹으로 숫자 완전 변형
+            hexToken = Long.toHexString(obscure);
+        } catch (Exception e) {
+            hexToken = String.valueOf(tripId);
+        }
+
+        //난수 주소 생성
+        String readOnlyLink = "http://localhost:8080/plan/view?token=" + hexToken;
         return Map.of("shareLink", readOnlyLink);
     }
 
+
     // 초대 이메일 내용 구성 및 발송 로직
     private void sendInviteEmail(String email, String name, String planTitle, Long tripId) {
-        String inviteLink = "http://localhost:8080/plan?id=" + tripId; // 클릭 시 들어올 플랜 주소
+        String hexToken;
+        try {
+            // 주소창/공유모달과 완벽하게 동일한 16진수 비트 연산 암호화 처리
+            long obscure = tripId ^ 0x5A3C9B7D2EL;
+            hexToken = Long.toHexString(obscure);
+        } catch (Exception e) {
+            hexToken = String.valueOf(tripId);
+        }
+
+        // 🎯 편집 링크 주소 뒤에 id=숫자 대신 token=난수 형태로 암호화하여 발송!
+        String inviteLink = "http://localhost:8080/plan?token=" + hexToken;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);

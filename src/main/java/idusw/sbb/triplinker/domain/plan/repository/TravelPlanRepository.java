@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
 
@@ -40,4 +41,5 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     @Query("SELECT t.destination, COUNT(t) FROM TravelPlan t " +
             "WHERE t.createdAt BETWEEN :start AND :end GROUP BY t.destination ORDER BY COUNT(t) DESC")
     List<Object[]> findTopDestinations(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
 }

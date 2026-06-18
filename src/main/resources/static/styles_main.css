@@ -4683,3 +4683,29 @@
 
     .nps-lbl { font-weight: 500; }
     .nps-arrow { color: var(--border); font-size: 14px; }
+
+
+/* ✨ 큐레이션 슬라이드 스르륵 넘어가는 애니메이션 효과 */
+.curation-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.curation-panel .slide {
+    display: flex !important; /* 기존 display:none 강제 해제 */
+    position: absolute !important;
+    top: 0; left: 0; right: 0; bottom: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(30px); /* 오른쪽 30px 위치에서 대기 */
+    transition: opacity 0.5s ease-out, transform 0.5s ease-out, visibility 0.5s; /* 0.5초 동안 부드럽게 */
+    z-index: 0;
+}
+
+.curation-panel .slide.on {
+    position: relative !important; /* 부모 컨테이너 높이 유지용 */
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0); /* 원래 자리로 스르륵 안착 */
+    z-index: 1;
+}

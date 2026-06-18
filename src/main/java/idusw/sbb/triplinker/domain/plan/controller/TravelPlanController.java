@@ -61,10 +61,9 @@ public class TravelPlanController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PlanDetailResponseDto>>> getMyPlans(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {  // ← 수정
-
-        List<PlanDetailResponseDto> plans = travelPlanService.getMyPlans(userDetails.getUserId());  // ← 수정
+    public ResponseEntity<ApiResponse<List<idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto>>> getMyPlans(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto> plans = travelPlanService.getMyTripList(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success(plans));
     }
 
