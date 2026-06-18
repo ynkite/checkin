@@ -1,0 +1,141 @@
+/* ── 요약 카드 ── */
+.ledger-summary-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px;
+}
+
+/*가계부 배경*/
+#page-ledger {
+    background: linear-gradient(160deg, var(--sage-pale) 0%, var(--cream) 380px);
+    background-attachment: fixed;
+}
+
+/* ── 여행 선택 래퍼 ── */
+.ledger-selector-outer {
+    padding: 40px 56px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-right: calc(56px + 120px);
+}
+
+/* ── 히어로 헤더 ── */
+.ledger-hero {
+    background: var(--sage-d);
+    padding: 24px 0 32px;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.ledger-hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 56px;
+    padding-right: calc(56px + 120px);
+}
+.ledger-back-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
+    color: #fff; border-radius: 20px; padding: 5px 14px;
+    font-size: 11px; font-weight: 700; cursor: pointer; margin-bottom: 18px;
+    letter-spacing: .2px; transition: background .15s;
+}
+.ledger-back-btn:hover { background: rgba(255,255,255,.28); }
+.ldh-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
+.ldh-title { font-size: 30px; font-weight: 900; color: #fff; margin: 0 0 4px; }
+.ldh-meta  { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.92); margin: 0; }
+.ldh-dest  { font-size: 11px; color: rgba(255,255,255,.65); margin: 3px 0 0; }
+
+/* ── 헤더 내보내기 버튼 ── */
+.ledger-hero-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+.ledger-header-export {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-bottom: 4px;
+}
+.btn-export-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,255,255,.4);
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+}
+.btn-export-header:hover { background: rgba(255,255,255,.28); }
+
+/* ── 본문 래퍼 ── */
+.ledger-body {
+    padding: 28px 56px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-right: calc(56px + 120px);
+}
+
+/* ── 차트 카드 ── */
+.ledger-chart-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px;
+}
+
+/* ── 지출 입력 / 내역 패널 ── */
+.ledger-add-panel, .ledger-table-panel {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    padding: 20px 22px;
+    margin-top: 16px;
+}
+.ledger-section-ttl {
+    font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px;
+}
+
+/* ── 탭 네비게이션 ── */
+.ledger-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+}
+.ledger-tab {
+    padding: 9px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    background: none;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    border-radius: 6px 6px 0 0;
+    transition: color .15s, border-color .15s;
+}
+.ledger-tab:hover { color: var(--text); }
+.ledger-tab.on { color: var(--sage-d); border-bottom-color: var(--sage); }
+
+/* ── 페이지네이션 ── */
+.ledger-pager {
+    display: flex; gap: 6px; justify-content: center;
+    margin-top: 14px; flex-wrap: wrap;
+}
+.pager-btn {
+    min-width: 32px; padding: 5px 10px;
+    border-radius: 7px; font-size: 12px; font-weight: 600;
+    border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
+    cursor: pointer; transition: all .15s;
+}
+.pager-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
+.pager-btn:hover:not(.on) { border-color: var(--sage-l); color: var(--sage); }

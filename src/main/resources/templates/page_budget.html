@@ -1,437 +1,12 @@
 <div th:fragment="budget" xmlns:th="http://www.thymeleaf.org">
 <script>
-  /* ============================================================
-   * 🚨 [임시 하드코딩 데이터]
-   * 나중에 백엔드 API 및 전역 데이터 연동이 완료되면 이 블록을 통째로 지워주세요!
-   * 지우는 순간, 아래의 실제 서비스 연동 로직으로 자동 전환됩니다.
-   * ============================================================ */
-
-  // 1. 헤더 및 기본 여행 정보
-  const MOCK_BUDGET_INFO = {
-    subTitle: 'BUDGET · EXPENSE REPORT',
-    mainTitle: '가계부',
-    metaDesc: '제주도 3박4일 · 2인 기준'
-  };
-
-  // 2. 예산 산출 구조 (왼쪽 섹션 리스트)
-  const MOCK_BUDGET_STRUCTURE = [
-    {
-      label: '숙박비',
-      sub: '기본 숙박비 + 인원 초과 요금 포함',
-      price: '₩450,000',
-      details: [
-        { key: '예상 단가', val: '₩150,000 / 박' },
-        { key: '숙박 일수', val: '3박' },
-        { key: '인원 추가', val: '0원 (2인 기준)' }
-      ]
-    },
-    {
-      label: '식비',
-      sub: '기본 식대 + 카페/디저트 예산',
-      price: '₩240,000',
-      details: [
-        { key: '예상 식대', val: '₩20,000 / 인·끼' },
-        { key: '목표 식수', val: '2인 × 6끼' },
-        { key: '카페/기타', val: '₩120,000 별도 배정' }
-      ]
-    }
-  ];
-
-  // 3. 예산 요약 데이터 (오른쪽 상단 통계)
-  const MOCK_BUDGET_SUMMARY = {
-    total: '₩1,200,000',
-    used: '₩890,000',
-    rest: '₩310,000',
-    progressWidth: '74%'
-  };
-
-  // 4. 파이 차트 및 범례 데이터
-  const MOCK_PIE_DATA = {
-    legends: [
-      { color: '#4A90E2', label: '숙박', pct: '48%' },
-      { color: '#F5A623', label: '식비', pct: '20%' },
-      { color: '#22B5C4', label: '교통', pct: '20%' },
-      { color: '#F5A623', label: '입장료', pct: '12%' }
-    ]
-  };
-
-  // 5. 예상 vs 실제 비교 막대 그래프 데이터
-  const MOCK_BUDGET_COMPARE = [
-    {
-      category: '숙박',
-      expected: '₩180K',
-      actual: '₩168K',
-      expectedWidth: '78%',
-      actualWidth: '70%',
-      color: 'var(--sage)',
-      isOver: false
-    },
-    {
-      category: '식비',
-      expected: '₩96K',
-      actual: '₩144K',
-      expectedWidth: '42%',
-      actualWidth: '60%',
-      color: 'var(--coral)',
-      isOver: true,
-      alertText: '식비 ₩48,000 초과'
-    }
-  ];
-  /* ============================================================ */
-
-
-  /* ─── 가계부 페이지 동적 데이터 주입 로직 ─── */
-  function initBudgetPage() {
-    let info = typeof MOCK_BUDGET_INFO !== 'undefined' ? MOCK_BUDGET_INFO : null;
-    if (info) {
-      document.getElementById('bg-sub-title').textContent = info.subTitle;
-      document.getElementById('bg-main-title').textContent = info.mainTitle;
-      document.getElementById('bg-meta-desc').textContent = info.metaDesc;
-    }
-
-    let structure = typeof MOCK_BUDGET_STRUCTURE !== 'undefined' ? MOCK_BUDGET_STRUCTURE : [];
-    const structContainer = document.getElementById('bg-struct-container');
-    if (structContainer && structure.length > 0) {
-      structContainer.innerHTML = structure.map(item => `
-      <div style="margin-bottom:18px">
-        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:4px">
-          <div>
-            <div class="bi-label">${item.label}</div>
-            <div class="bi-sub">${item.sub}</div>
-          </div>
-          <div class="bi-price">${item.price}</div>
-        </div>
-        <div class="bi-detail">
-          ${item.details.map(d => `
-            <div class="bi-det-row"><span>${d.key}</span><span>${d.val}</span></div>
-          `).join('')}
-        </div>
-      </div>
-    `).join('');
-    }
-
-    let summary = typeof MOCK_BUDGET_SUMMARY !== 'undefined' ? MOCK_BUDGET_SUMMARY : null;
-    if (summary) {
-      document.getElementById('bg-sum-total').textContent = summary.total;
-      document.getElementById('bg-sum-used').textContent = summary.used;
-      document.getElementById('bg-sum-rest').textContent = summary.rest;
-      document.getElementById('bg-progress-bar').style.width = summary.progressWidth;
-    }
-
-    let pie = typeof MOCK_PIE_DATA !== 'undefined' ? MOCK_PIE_DATA : null;
-    const legendContainer = document.getElementById('bg-pie-legends');
-    if (legendContainer && pie && pie.legends) {
-      legendContainer.innerHTML = pie.legends.map(l => `
-      <div class="pie-leg-item">
-        <div class="pie-dot" style="background:${l.color}"></div>${l.label} ${l.pct}
-      </div>
-    `).join('');
-    }
-
-    let compareList = typeof MOCK_BUDGET_COMPARE !== 'undefined' ? MOCK_BUDGET_COMPARE : [];
-    const compareContainer = document.getElementById('bg-compare-container');
-    if (compareContainer && compareList.length > 0) {
-      compareContainer.innerHTML = compareList.map(c => `
-      <div class="cmp-row" style="${c.category === '식비' ? 'margin-top:10px' : ''}">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:4px">${c.category}</div>
-        <div class="cmp-bar" style="width:${c.expectedWidth};background:${c.color};${c.isOver ? 'opacity:.5;' : ''}">예상 ${c.expected}</div>
-        <div class="cmp-bar" style="width:${c.actualWidth};background:${c.color};margin-top:2px;${c.isOver ? '' : 'opacity:.6;'}">실제 ${c.actual}${c.isOver ? ' ⚠' : ''}</div>
-        ${c.isOver ? `<div class="over-alert">${c.alertText}</div>` : ''}
-      </div>
-    `).join('');
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', initBudgetPage);
-</script>
-
-<div class="page" id="page-budget">
-  <div class="budget-wrap">
-
-    <div id="bg-sub-title" style="margin-bottom:5px;font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase"></div>
-    <h2 id="bg-main-title" style="font-size:28px;font-weight:800;margin-bottom:4px"></h2>
-    <p id="bg-meta-desc" style="color:var(--text3);margin-bottom:24px"></p>
-
-    <div class="budget-layout">
-      <div>
-        <div style="font-size:14px;font-weight:700;margin-bottom:14px">예산 산출 구조</div>
-        <div id="bg-struct-container"></div>
-      </div>
-
-      <div>
-        <div class="budget-card">
-          <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:14px">예산 요약 (Summary)</div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <span style="font-size:14px;color:var(--text2)">총 설정 예산</span>
-            <span id="bg-sum-total" style="font-size:20px;font-weight:900;color:var(--text)"></span>
-          </div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-            <span style="font-size:12px;color:var(--text3)">현재까지 지출</span>
-            <span id="bg-sum-used" style="font-size:14px;font-weight:700;color:var(--text2)"></span>
-          </div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <span style="font-size:12px;color:var(--text3)">남은 잔액</span>
-            <span id="bg-sum-rest" style="font-size:14px;font-weight:700;color:var(--sage)"></span>
-          </div>
-
-          <div class="budget-progress">
-            <div id="bg-progress-bar" class="bp-fill" style="width:0%"></div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:16px;margin-top:16px">
-          <div class="chart-section">
-            <div class="chart-ttl">카테고리별 비중</div>
-            <div style="display:flex;align-items:center;gap:16px;margin-top:12px">
-              <div class="pie-chart"></div>
-              <div id="bg-pie-legends" class="pie-legends"></div>
-            </div>
-          </div>
-
-          <div class="compare-section">
-            <div class="compare-ttl">예상 vs 실제 비교</div>
-            <div id="bg-compare-container"></div>
-          </div>
-        </div>
-
-        <div class="budget-export-btns">
-          <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('PDF 다운로드 시작...')">📄 PDF 내보내기</button>
-          <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="toast('엑셀 파일 생성 중...')">📊 Excel 저장</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-<script>
-  /* ============================================================
-   * 🚨 [임시 하드코딩 데이터 - 가계부 상세 페이지]
-   * 나중에 백엔드 API 연동이 완료되면 이 블록을 통째로 지워주세요!
-   * ============================================================ */
-
-  const MOCK_LEDGER_TRIPS = [
-    {
-      key: 'jeju',
-      thumb: '🗺️',
-      name: '제주도 3박4일 힐링 여행',
-      meta: '2025.06.14~06.17 · 2인 · 자차',
-      budget: '₩404,000',
-      isOn: true
-    },
-    {
-      key: 'busan',
-      thumb: '🏙️',
-      name: '부산 2박3일 가성비 투어',
-      meta: '2025.04.22~04.24 · 4인 · 대중교통',
-      budget: '₩280,000',
-      isOn: false
-    }
-  ];
-
-  const MOCK_LEDGER_DATA = {
-    jeju: {
-      meta: '제주도 3박4일 힐링 여행',
-      dest: '제주도 · 2025-08-01 ~ 2025-08-04',
-      items: [
-        {
-          label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000',
-          barWidth: '78%', barColor: 'var(--sage)',
-          details: [{ key: '예상 단가', val: '₩60,000 / 박' }, { key: '숙박 일수', val: '3박' }]
-        },
-        {
-          label: '식비', sub: '맛집 평균 단가 × 인원수', amount: '₩96,000',
-          barWidth: '42%', barColor: 'var(--coral)',
-          details: [{ key: '평균 단가', val: '₩16,000 / 인·끼' }, { key: '식수', val: '2인 × 3끼' }]
-        }
-      ],
-      total: '₩404,000', statusText: '예상 기준 잔여 ₩96,000'
-    },
-    busan: {
-      meta: '부산 2박3일 가성비 투어',
-      dest: '부산 · 2025-04-22 ~ 2025-04-24',
-      items: [
-        {
-          label: '숙박비', sub: '게스트하우스 2박', amount: '₩120,000',
-          barWidth: '43%', barColor: 'var(--sage)',
-          details: [{ key: '예상 단가', val: '₩30,000 / 인·박' }]
-        }
-      ],
-      total: '₩280,000', statusText: '예상 기준 잔여 ₩20,000'
-    }
-  };
-  /* ============================================================ */
-
-  let _selectedLedgerKey = 'jeju';
-
-  // 실제 데이터는 app_main.js의 _populateLedgerTripCards()(go('ledger') 진입 시 호출)가 채운다.
-  // 여기서는 그 전까지 잠깐 보일 로딩 placeholder만 표시한다 (예전 더미 데이터 노출 방지).
   function initLedgerSelector() {
     const container = document.getElementById('ledger-trip-cards');
     if (!container) return;
     container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
   }
-
-  function selectLedgerTrip(el, key) {
-    document.querySelectorAll('#ledger-trip-cards .ts-card').forEach(c => c.classList.remove('on'));
-    el.classList.add('on');
-    _selectedLedgerKey = key;
-  }
-
-  function goLedgerMain() {
-    const data = typeof MOCK_LEDGER_DATA !== 'undefined' ? MOCK_LEDGER_DATA[_selectedLedgerKey] : null;
-    if (!data) { toast('데이터를 찾을 수 없습니다.'); return; }
-
-    const metaEl = document.getElementById('ledger-trip-meta');
-    if (metaEl) metaEl.textContent = data.meta;
-    const destEl = document.getElementById('ledger-trip-dest');
-    if (destEl) destEl.textContent = data.dest || '';
-
-    const listEl = document.getElementById('ledger-item-list');
-    if (listEl) {
-      listEl.innerHTML = data.items.map(item => `
-        <div style="margin-bottom:14px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;align-items:center">
-            <div class="bi-label">${item.label}</div>
-            <div style="font-size:11px;color:var(--text3)">예상 ${item.amount} / 실제 -</div>
-          </div>
-          <div class="bi-bar-track" title="예상">
-            <div class="bi-bar-fill" style="width:${item.barWidth};background:${item.barColor};opacity:.4"></div>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    const totalEl = document.getElementById('ledger-total');
-    if (totalEl) totalEl.textContent = data.total;
-    const statusEl = document.getElementById('ledger-status');
-    if (statusEl) statusEl.textContent = data.statusText;
-
-    const selEl = document.getElementById('ledger-exp-cat');
-    if (selEl) {
-      selEl.innerHTML = Object.entries({ STAY:'숙박', FOOD:'식비', TOUR:'관광', CAFE:'카페' })
-        .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-    }
-
-    document.getElementById('ledger-selector').style.display = 'none';
-    document.getElementById('ledger-main').style.display = 'block';
-  }
-
-  function returnToLedgerSelector() {
-    document.getElementById('ledger-main').style.display = 'none';
-    document.getElementById('ledger-selector').style.display = 'block';
-  }
-
   document.addEventListener('DOMContentLoaded', initLedgerSelector);
 </script>
-
-<style>
-  .bi-det-row { display:flex; justify-content:space-between; font-size:11px; color:var(--text3); padding:2px 0 }
-  .bi-detail { margin-top:6px; padding:8px; background:var(--cream2); border-radius:6px }
-
-  /* ── 가계부 페이지 배경 ── */
-  #page-ledger {
-    background: linear-gradient(160deg, var(--sage-pale) 0%, var(--cream) 380px);
-    background-attachment: fixed;
-  }
-
-  /* ── 여행 선택 래퍼 ── */
-  .ledger-selector-outer {
-    padding: 40px 56px;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding-right: calc(56px + 120px);
-  }
-
-  /* ── 히어로 헤더 ── */
-  .ledger-hero {
-    background: linear-gradient(135deg, var(--sage-d) 0%, var(--sage) 55%, var(--sage-l) 100%);
-    padding: 24px 0 36px;
-    position: relative;
-    overflow: hidden;
-  }
-  /* 히어로 내부 컨텐츠는 body와 동일한 max-width + padding 제약 */
-  .ledger-hero-inner {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 0 56px;
-    padding-right: calc(56px + 120px);
-  }
-  .ledger-hero::before {
-    content: '';
-    position: absolute;
-    width: 320px; height: 320px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.07);
-    right: -60px; top: -120px;
-    pointer-events: none;
-  }
-  .ledger-hero::after {
-    content: '';
-    position: absolute;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: rgba(255,255,255,.05);
-    right: 220px; bottom: -80px;
-    pointer-events: none;
-  }
-  .ledger-back-btn {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
-    color: #fff; border-radius: 20px; padding: 5px 14px;
-    font-size: 11px; font-weight: 700; cursor: pointer; margin-bottom: 18px;
-    letter-spacing: .2px; transition: background .15s;
-  }
-  .ledger-back-btn:hover { background: rgba(255,255,255,.28); }
-  .ldh-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
-  .ldh-title { font-size: 30px; font-weight: 900; color: #fff; margin: 0 0 4px; }
-  .ldh-meta  { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.92); margin: 0; }
-  .ldh-dest  { font-size: 11px; color: rgba(255,255,255,.65); margin: 3px 0 0; }
-
-  /* ── 본문 래퍼 ── */
-  .ledger-body {
-    padding: 28px 56px 48px;
-    max-width: 1100px;
-    margin: 0 auto;
-    padding-right: calc(56px + 120px);
-  }
-
-  /* ── 차트 카드 ── */
-  .ledger-chart-card {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r);
-    padding: 20px;
-  }
-
-  /* ── 지출 입력 / 내역 패널 ── */
-  .ledger-add-panel, .ledger-table-panel {
-    background: var(--surface);
-    border: 1.5px solid var(--border);
-    border-radius: var(--r);
-    padding: 20px 22px;
-    margin-top: 16px;
-  }
-  .ledger-section-ttl {
-    font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 12px;
-  }
-
-  /* ── 페이지네이션 ── */
-  .ledger-pager {
-    display: flex; gap: 6px; justify-content: center;
-    margin-top: 14px; flex-wrap: wrap;
-  }
-  .pager-btn {
-    min-width: 32px; padding: 5px 10px;
-    border-radius: 7px; font-size: 12px; font-weight: 600;
-    border: 1.5px solid var(--border); background: var(--surface); color: var(--text2);
-    cursor: pointer; transition: all .15s;
-  }
-  .pager-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
-  .pager-btn:hover:not(.on) { border-color: var(--sage-l); color: var(--sage); }
-</style>
 
 <div class="page" id="page-ledger">
 
@@ -442,7 +17,8 @@
         <div class="ts-ttl">가계부 확인</div>
         <div class="ts-sub">어떤 여행의 가계부를 확인하시겠습니까?</div>
         <div id="ledger-trip-cards"></div>
-        <button class="btn-next" style="width:100%;margin-top:14px" onclick="goLedgerMain()">
+        <div id="ledger-card-pager"></div>
+        <button class="btn-next" style="width:100%;margin-top:14px" onclick="goLedger2()">
           선택한 여행 가계부 보기 →
         </button>
       </div>
@@ -452,14 +28,22 @@
   <!-- Step 2: 가계부 상세 -->
   <div id="ledger-main" style="display:none">
 
-    <!-- 히어로 헤더 -->
+    <!-- 헤더 -->
     <div class="ledger-hero">
       <div class="ledger-hero-inner">
-        <button onclick="returnToLedgerSelector()" class="ledger-back-btn">← 다른 여행 선택</button>
-        <div class="ldh-label">BUDGET · EXPENSE REPORT</div>
-        <h2 class="ldh-title">가계부</h2>
-        <p id="ledger-trip-meta" class="ldh-meta"></p>
-        <p id="ledger-trip-dest" class="ldh-dest"></p>
+        <div class="ledger-hero-row">
+          <div>
+            <button onclick="returnToLedgerSelector()" class="ledger-back-btn">← 다른 여행 선택</button>
+            <div class="ldh-label">BUDGET · EXPENSE REPORT</div>
+            <h2 class="ldh-title">가계부</h2>
+            <p id="ledger-trip-meta" class="ldh-meta"></p>
+            <p id="ledger-trip-dest" class="ldh-dest"></p>
+          </div>
+          <div class="ledger-header-export">
+            <button class="btn-export-header" onclick="exportBudgetPDF()">📄 PDF</button>
+            <button class="btn-export-header" onclick="exportBudgetCSV()">📊 Excel</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -468,92 +52,109 @@
 
       <!-- 요약 3카드 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:22px">
-        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px">
+        <div class="ledger-summary-card">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px">예상 총액</div>
           <div id="ledger-total" style="font-size:20px;font-weight:800;color:var(--text)">-</div>
         </div>
-        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px">
+        <div class="ledger-summary-card">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px">실제 지출</div>
           <div id="ledger-actual" style="font-size:20px;font-weight:800;color:var(--coral)">-</div>
         </div>
-        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px">
+        <div class="ledger-summary-card">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px">잔여 / 초과</div>
           <div id="ledger-status" style="font-size:20px;font-weight:800;color:var(--sage)">-</div>
           <div id="ledger-budget-ref" style="display:none;font-size:10px;color:var(--text3);margin-top:5px"></div>
         </div>
       </div>
 
-      <!-- 파이 차트 2컬럼 -->
-      <div class="budget-layout">
+      <!-- 탭 네비게이션 -->
+      <div class="ledger-tabs">
+        <button class="ledger-tab on" onclick="switchLedgerTab('charts', this)">📊 그래프</button>
+        <button class="ledger-tab" onclick="switchLedgerTab('history', this)">📝 지출 내역</button>
+      </div>
 
-        <!-- Left: 예상 지출 파이 -->
-        <div class="ledger-chart-card">
-          <div style="font-size:14px;font-weight:700;margin-bottom:12px">📊 예상 지출 (AI 산출)</div>
-          <div class="pie-wrap">
-            <div id="pie-estimated" class="pie-ring" style="background:#E5E7EB"></div>
-            <div id="pie-est-legend" class="pie-legend"></div>
+      <!-- 탭1: 그래프 -->
+      <div id="ledger-tab-charts">
+
+        <!-- 파이 -->
+        <div class="budget-layout">
+
+          <!-- 왼쪽: 예상 지출 파이 -->
+          <div class="ledger-chart-card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">📊 예상 지출 (AI 산출)</div>
+            <div class="pie-wrap">
+              <div id="pie-estimated" class="pie-ring" style="background:#E5E7EB"></div>
+              <div id="pie-est-legend" class="pie-legend"></div>
+            </div>
+          </div>
+
+          <!-- 오른쪽: 실제 지출 파이 -->
+          <div class="ledger-chart-card">
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">💳 실제 지출</div>
+            <div class="pie-wrap">
+              <div id="pie-actual" class="pie-ring" style="background:#E5E7EB"></div>
+              <div id="pie-act-legend" class="pie-legend">
+                <div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 카테고리별 막대 비교 -->
+        <div class="ledger-chart-card" style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div style="font-size:13px;font-weight:700;color:var(--text)">카테고리별 예상 vs 실제</div>
+            <div style="display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3)">
+              <div style="display:flex;align-items:center;gap:5px">
+                <div style="width:22px;height:7px;border-radius:3px;background:var(--text3);opacity:.35"></div>예상
+              </div>
+              <div style="display:flex;align-items:center;gap:5px">
+                <div style="width:22px;height:7px;border-radius:3px;background:var(--text3)"></div>실제
+              </div>
+            </div>
+          </div>
+          <div id="ledger-item-list"></div>
+        </div>
+
+        <!-- 일정별 지출 현황 -->
+        <div id="ledger-itinerary" style="display:none;margin-top:16px"></div>
+
+      </div>
+
+      <!-- 탭2: 지출 내역 -->
+      <div id="ledger-tab-history" style="display:none">
+
+        <!-- 지출 추가 입력 -->
+        <div class="ledger-add-panel" id="ledger-add-panel">
+          <div id="ledger-not-started" style="display:none;padding:12px 14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#1D4ED8"></div>
+          <div id="ledger-add-form">
+            <div class="ledger-section-ttl">실제 지출 추가 입력</div>
+            <div class="ledger-add" style="margin-top:0">
+              <select id="ledger-exp-cat"></select>
+              <input type="date" id="ledger-exp-date" style="flex:0 0 auto;padding:8px 8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface);color:var(--text)">
+              <input type="number" placeholder="금액 (원)" id="ledger-exp-amount" min="0">
+              <button class="btn-add-exp" onclick="addLedgerExpense()">추가</button>
+            </div>
+            <input type="text" placeholder="메모 (선택)" id="ledger-exp-memo"
+              style="margin-top:8px;width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface);color:var(--text)">
           </div>
         </div>
 
-        <!-- Right: 실제 지출 파이 -->
-        <div class="ledger-chart-card">
-          <div style="font-size:14px;font-weight:700;margin-bottom:12px">💳 실제 지출</div>
-          <div class="pie-wrap">
-            <div id="pie-actual" class="pie-ring" style="background:#E5E7EB"></div>
-            <div id="pie-act-legend" class="pie-legend">
-              <div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>
-            </div>
+        <!-- 실제 지출 내역 -->
+        <div class="ledger-table-panel">
+          <div class="ledger-section-ttl">지출 내역</div>
+          <div id="ledger-act-table">
+            <div style="color:var(--text3);font-size:12px;padding:12px 0">아직 입력된 실제 지출이 없습니다.</div>
+          </div>
+          <div id="ledger-pagination"></div>
+          <div id="ledger-warning" style="display:none;margin-top:14px;background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;padding:12px 16px">
+            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:3px">아직 실제 지출을 입력하지 않은 카테고리가 있어요</div>
+            <div style="font-size:12px;color:#B45309">미입력: <strong id="ledger-warn-cats"></strong></div>
           </div>
         </div>
 
-      </div>
 
-      <!-- 카테고리별 막대 비교 (풀 너비) -->
-      <div class="ledger-chart-card" style="margin-top:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <div style="font-size:13px;font-weight:700;color:var(--text)">카테고리별 예상 vs 실제</div>
-          <div style="display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3)">
-            <div style="display:flex;align-items:center;gap:5px">
-              <div style="width:22px;height:7px;border-radius:3px;background:var(--text3);opacity:.35"></div>예상
-            </div>
-            <div style="display:flex;align-items:center;gap:5px">
-              <div style="width:22px;height:7px;border-radius:3px;background:var(--text3)"></div>실제
-            </div>
-          </div>
-        </div>
-        <div id="ledger-item-list"></div>
-      </div>
-
-      <!-- 지출 추가 입력 -->
-      <div class="ledger-add-panel">
-        <div class="ledger-section-ttl">실제 지출 추가 입력</div>
-        <div class="ledger-add" style="margin-top:0">
-          <select id="ledger-exp-cat"></select>
-          <input type="date" id="ledger-exp-date" style="flex:0 0 auto;padding:8px 8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface);color:var(--text)">
-          <input type="number" placeholder="금액 (원)" id="ledger-exp-amount" min="0">
-          <button class="btn-add-exp" onclick="addLedgerExpense()">추가</button>
-        </div>
-        <input type="text" placeholder="메모 (선택)" id="ledger-exp-memo"
-          style="margin-top:8px;width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface);color:var(--text)">
-      </div>
-
-      <!-- 지출 내역 표 + 페이지네이션 + 미입력 경고 -->
-      <div class="ledger-table-panel">
-        <div class="ledger-section-ttl">지출 내역</div>
-        <div id="ledger-act-table">
-          <div style="color:var(--text3);font-size:12px;padding:12px 0">아직 입력된 실제 지출이 없습니다.</div>
-        </div>
-        <div id="ledger-pagination"></div>
-        <div id="ledger-warning" style="display:none;margin-top:14px;background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;padding:12px 16px">
-          <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:3px">아직 실제 지출을 입력하지 않은 카테고리가 있어요</div>
-          <div style="font-size:12px;color:#B45309">미입력: <strong id="ledger-warn-cats"></strong></div>
-        </div>
-      </div>
-
-      <!-- 내보내기 -->
-      <div class="budget-export-btns" style="margin-top:16px">
-        <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="exportBudgetPDF()">📄 PDF 내보내기</button>
-        <button class="btn-o" style="flex:1;padding:10px;font-size:12px" onclick="exportBudgetCSV()">📊 Excel 저장</button>
       </div>
 
     </div>

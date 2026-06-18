@@ -1054,7 +1054,7 @@
             <div>
               <div id="map-budget-items"></div>
               <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
-                <div style="font-size:13px;font-weight:700">예상 총액</div>
+                <div id="map-budget-total-label" style="font-size:13px;font-weight:700">예상 총액</div>
                 <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩0</div>
               </div>
               <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
@@ -1071,7 +1071,12 @@
                 </div>
               </div>
 
-              <div style="display:flex;gap:6px;margin-top:10px">
+              <button onclick="goToLedgerFromMap()"
+                      style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
+                             background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
+                📝 실제 지출 입력 / 수정하기
+              </button>
+              <div style="display:flex;gap:6px;margin-top:8px">
                 <button class="btn-export" onclick="toast('PNG 저장!')" style="flex:1;font-size:10px;padding:6px">PNG 저장</button>
                 <button class="btn-export" onclick="toast('PDF 저장!')" style="flex:1;font-size:10px;padding:6px">PDF 저장</button>
               </div>

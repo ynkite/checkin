@@ -53,7 +53,7 @@ public class SecurityConfig {
                 // API URL 주소별 접근 권한 나누기
                 .authorizeHttpRequests(auth -> auth
                         //정적 리소스 (CSS, JS, 이미지 등) 전체 허용
-                        .requestMatchers("/**.css", "/**.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf", "/plan/**", "/plan/view/**").permitAll()
+                        .requestMatchers("/**.css", "/**/*.css", "/**.js", "/**/*.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf", "/plan/**", "/plan/view/**").permitAll()
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
