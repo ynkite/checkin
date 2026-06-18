@@ -2103,6 +2103,41 @@ function openShareModal() {
   loadShareMembersData();
 }
 
+function shareInviteToKakaoTalk() {
+  const tripId = window._currentTripId;
+  if (!tripId) { toast('⚠️ 여행 플랜 정보가 올바르지 않습니다.'); return; }
+
+  // 백엔드와 동일한 16진수 난수 토큰 연산으로 편집 권한 주소 생성
+  const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+  const inviteUrl = `${window.location.origin}/plan?token=${obscureToken}`;
+
+  if (typeof Kakao !== 'undefined') {
+    if (!Kakao.isInitialized()) {
+      // 🔴 재민님의 카카오 디벨로퍼스 자바스크립트 키를 여기에 입력해 주세요
+      Kakao.init('cb534606e630ecbec186e4ebd2917b04');
+    }
+
+    Kakao.Share.sendDefault({
+      objectType: 'feed',
+      content: {
+        title: '✈️ TripLinker 여행 플랜 동시 편집 초대',
+        description: '일행분이 여행 일정을 함께 만들고 수정하기 위해 [편집자]로 초대했습니다. 지금 합류해 보세요!',
+        imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
+        link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
+      },
+      buttons: [
+        { title: '🗺️ 일정 함께 편집하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
+      ]
+    });
+    toast('🟡 카카오톡 초대 창이 활성화되었습니다.');
+  } else {
+    const fallbackLink = `https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(inviteUrl)}`;
+    window.open(fallbackLink, '_blank');
+    toast('🟡 카카오톡 간편 웹 초대 창으로 연동합니다.');
+  }
+}
+
+
 // 2. 참여자 목록 실시간 API 로드 및 인풋창 동기화
 async function loadShareMembersData() {
   const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
