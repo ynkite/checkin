@@ -105,6 +105,39 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     }
 
     @Override
+    public List<idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto> getMyTripList(Long userId) {
+        return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(plan -> {
+                    String startStr = plan.getStartDate() != null ? plan.getStartDate().toString().replace("-", ".") : "";
+                    String endStr = plan.getEndDate() != null ? plan.getEndDate().toString().replace("-", ".") : "";
+
+                    int pax = plan.getForm() != null ? plan.getForm().getCompanionCount() : 1;
+                    String metaString = startStr + " ~ " + endStr + " · " + pax + "인";
+
+                    long budgetAmount = (plan.getForm() != null && plan.getForm().getBudget() != null)
+                            ? plan.getForm().getBudget()
+                            : 0L;
+                    String budgetString = "₩" + String.format("%,d", budgetAmount);
+
+                    return idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto.builder()
+                            .id(plan.getId())
+                            .title(plan.getTitle() != null ? plan.getTitle() : plan.getDestination() + " 여행")
+                            .meta(metaString)
+                            .budget(budgetString)
+                            .status(plan.getStatus())
+                            .startDate(plan.getStartDate() != null ? plan.getStartDate().toString() : "")
+                            .endDate(plan.getEndDate() != null ? plan.getEndDate().toString() : "")
+                            .destination(plan.getDestination())
+                            .updatedAt(plan.getUpdatedAt())
+                            .build();
+                })
+                .toList();
+    }
+
+
+
+    @Override
     @Transactional
     public Long loadPreviousPreference(Long userId, Long tripId) {
         PlanInputForm prev = planInputFormRepository
@@ -174,6 +207,12 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             form.updateByChat("hasPet", fields.get("hasPet"));
         if (fields.containsKey("extraNotes"))
             form.updateByChat("extraNotes", fields.get("extraNotes"));
+
+        TravelPlan plan = form.getPlan();
+        if (plan != null) {
+            plan.setUpdatedAt(java.time.LocalDateTime.now());
+            travelPlanRepository.save(plan);
+        }
     }
     @Override
     @Transactional(readOnly = true)

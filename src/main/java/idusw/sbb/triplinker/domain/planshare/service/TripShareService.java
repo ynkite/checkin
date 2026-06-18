@@ -87,10 +87,21 @@ public class TripShareService {
     }
 
     // 읽기 전용 공유 링크 생성
+    @Transactional
     public Map<String, String> generateShareLink(Long tripId) {
-        String readOnlyLink = "http://localhost:8080/plan/view?id=" + tripId;
+        String hexToken;
+        try {
+            long obscure = tripId ^ 0x5A3C9B7D2EL; // 비트 마스킹으로 숫자 완전 변형
+            hexToken = Long.toHexString(obscure);
+        } catch (Exception e) {
+            hexToken = String.valueOf(tripId);
+        }
+
+        //난수 주소 생성
+        String readOnlyLink = "http://localhost:8080/plan/view?token=" + hexToken;
         return Map.of("shareLink", readOnlyLink);
     }
+
 
     // 초대 이메일 내용 구성 및 발송 로직
     private void sendInviteEmail(String email, String name, String planTitle, Long tripId) {

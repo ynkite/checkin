@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
 
@@ -28,4 +29,5 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     @Modifying
     @Query("UPDATE TravelPlan t SET t.destination = :destination WHERE t.id = :tripId")
     void updateDestination(@Param("tripId") Long tripId, @Param("destination") String destination);
+
 }

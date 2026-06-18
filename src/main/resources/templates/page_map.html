@@ -1191,59 +1191,67 @@
 
         const warnDays = [];
         const warnDayNums = [];
-        const allDayNums = []; // 🎯 테스트 확인용: 날씨 상태와 상관없이 모든 Day 카운터 확보
+        const allDayNums = [];
 
         grid.innerHTML = previewDays.map((d, i) => {
           const dto = json.data[i] || json.data[json.data.length - 1];
           if (!dto) return '';
 
-          // 🎯 플래너 규격 매핑 일치화: 강수확률 60% 이상이거나 강수형태 존재 시 악천후 처리
           const warn = (dto.pop && dto.pop >= 60) || (dto.pty && dto.pty > 0);
-
           const icon = (dto.pty && dto.pty > 0) ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
           const desc = (dto.pty && dto.pty > 0) ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '맑음');
 
-          allDayNums.push(i + 1); // 모든 일차 기록
+          allDayNums.push(i + 1);
           if (warn) {
             warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
             warnDayNums.push(i + 1);
           }
 
-          // 🎯 플래너 스타일 컴포넌트 이식: 물방울 % 및 '실내 추천' 태그 싱크로율 100% 매핑
           return `<div class="w-item${warn ? ' w-warn' : ''}">
-            <div class="w-icon">${icon}</div>
-            <div class="w-day">${fmt(d)}</div>
-            <div class="w-temp">${dto.tmp || 0}°C</div>
-            <div class="w-desc">${desc}</div>
-            ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
-            ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px;font-weight:700">실내 추천</div>' : ''}
-          </div>`;
+        <div class="w-icon">${icon}</div>
+        <div class="w-day">${fmt(d)}</div>
+        <div class="w-temp">${dto.tmp || 0}°C</div>
+        <div class="w-desc">${desc}</div>
+        ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
+        ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px;font-weight:700">실내 추천</div>' : ''}
+      </div>`;
         }).join('');
 
         const alertEl = document.getElementById('mwp-alert');
         const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
-        // 🎯 변경: 악천후 감지 여부와 무관하게 하단 제안 블록(`replaceWrap`)을 무조건 오픈하여 테스트 가동
-        replaceWrap.style.display = 'block';
+        // 🎯 [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
+        if (location.pathname.includes('/plan/view')) {
+          replaceWrap.style.display = 'block';
+          replaceWrap.style.background = '#F3F4F6';
+          replaceWrap.style.borderColor = '#D1D5DB';
 
+          if (alertEl) alertEl.style.display = 'none';
+
+          // 알림 타이틀 변경 및 버튼 구역을 가드용 안내 문구로 동적 갈아끼우기
+          replaceWrap.querySelector('div').innerHTML = '🔒 읽기 전용 열람 모드 안내';
+          replaceBtns.innerHTML = '<div style="font-size:12px; color:var(--text3); font-weight:600; padding:4px 2px;">현재 읽기 전용 링크로 접속 중이므로 AI 일정 교체 기능이 제한됩니다.</div>';
+          return;
+        }
+
+        // ── 편집 권한이 있는 원래 유저 전용 화면 렌더링 로직 (원래 원본 유지) ──
+        replaceWrap.style.display = 'block';
         if (warnDayNums.length > 0) {
-          // 진짜 비가 오는 날이 있을 때는 붉은 안내창 출력 및 해당 일차 버튼 우선 배치
           alertEl.style.display = 'block';
           alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
 
           replaceBtns.innerHTML = warnDayNums.map(dayNum =>
                   `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
-                   style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+               style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
              ✨ Day ${dayNum} 실내 일정으로 교체
            </button>`
           ).join('');
         } else {
-          // 🎯 비가 안 오는 평화로운 날이더라도 언제든지 기능을 눌러볼 수 있도록 모든 Day 교체 버튼을 백폴용으로 배치
           alertEl.style.display = 'none';
           replaceBtns.innerHTML = allDayNums.map(dayNum =>
                   `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
-                   style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
+               style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
              ✨ Day ${dayNum} 실내 일정으로 교체 (테스트)
            </button>`
           ).join('');
