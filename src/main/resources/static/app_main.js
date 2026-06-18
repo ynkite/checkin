@@ -2098,45 +2098,45 @@ function openShareModal() {
   }
 
   modal.classList.add('open');
+  loadShareMembersData();
 
   // 🎯 꼬여있던 내부 호출용 함수명을 아래 실제 구현된 함수명과 일치시킵니다.
   loadShareMembersData();
 }
 
 function shareInviteToKakaoTalk() {
-  const tripId = window._currentTripId;
+  const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
   if (!tripId) { toast('⚠️ 여행 플랜 정보가 올바르지 않습니다.'); return; }
-
-  // 백엔드와 동일한 16진수 난수 토큰 연산으로 편집 권한 주소 생성
-  const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
-  const inviteUrl = `${window.location.origin}/plan?token=${obscureToken}`;
 
   if (typeof Kakao !== 'undefined') {
     if (!Kakao.isInitialized()) {
-      // 🔴 재민님의 카카오 디벨로퍼스 자바스크립트 키를 여기에 입력해 주세요
       Kakao.init('cb534606e630ecbec186e4ebd2917b04');
     }
 
+    // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
+    const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+
+    // 🎯 [핵심 버그 수정]: 도메인 충돌 방지를 위해 카카오에 등록된 정품 로컬 주소를 명시적으로 강제 박기
+    const inviteUrl = `http://localhost:8080/plan/view?token=${obscureToken}`;
+
+    // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
     Kakao.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: '✈️ TripLinker 여행 플랜 동시 편집 초대',
-        description: '일행분이 여행 일정을 함께 만들고 수정하기 위해 [편집자]로 초대했습니다. 지금 합류해 보세요!',
+        title: '✈️ TripLinker 여행 플랜 공유',
+        description: `🔗 플랜 열람 링크: ${inviteUrl}`,
         imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
         link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
       },
       buttons: [
-        { title: '🗺️ 일정 함께 편집하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
+        { title: '🗺️ 여행 일정 열람하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
       ]
     });
-    toast('🟡 카카오톡 초대 창이 활성화되었습니다.');
+    toast('카카오톡 초대 창이 활성화되었습니다.');
   } else {
-    const fallbackLink = `https://sharer.kakao.com/talk/friends/picker/link?url=${encodeURIComponent(inviteUrl)}`;
-    window.open(fallbackLink, '_blank');
-    toast('🟡 카카오톡 간편 웹 초대 창으로 연동합니다.');
+    toast('⚠️ 카카오 SDK를 불러올 수 없습니다.');
   }
 }
-
 
 // 2. 참여자 목록 실시간 API 로드 및 인풋창 동기화
 async function loadShareMembersData() {
@@ -2236,15 +2236,12 @@ async function copyShareLink() {
     const res = await response.json();
 
     // 2. 백엔드에서 생성해 준 안전한 난수 주소(?token=...)가 넘어왔을 때
-    if (res && res.shareLink) {
-      // 🎯 [핵심 변경]: 링크 복사 시 화면에 보이는 input 창의 주소도 난수 주소로 즉시 바꿉니다!
+    if (res && res.success && res.data && res.data.shareLink) {
       const linkEl = document.getElementById('share-link-val');
       if (linkEl) {
-        linkEl.value = res.shareLink;
+        linkEl.value = res.data.shareLink;
       }
-
-      // 클립보드 복사 실행
-      await navigator.clipboard.writeText(res.shareLink);
+      await navigator.clipboard.writeText(res.data.shareLink);
       toast('읽기 전용 링크가 클립보드에 복사되었습니다!');
     } else {
       throw new Error("API 반환 오류");
@@ -2720,6 +2717,11 @@ window.addEventListener('popstate', e => {
 
     // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
     if (location.pathname.includes('/plan/view')) {
+
+      Token.clear();
+      _loggedIn = false;
+      _currentUser = null;
+
       // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
       const style = document.createElement('style');
       style.innerHTML = `
@@ -2728,21 +2730,38 @@ window.addEventListener('popstate', e => {
         #recalcBar, .recalc-bar, [id*=\"recalc\"] { display: none !important; } /* 교체 요청 바 원천 차단 */
         #queueBox, .queue-box { display: none !important; } /* 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
         
-        /* 상단바 1, 2, 3 단계 버튼 클릭 동결 */
-        #nps-1, #nps-2, #nps-3 { 
-          pointer-events: none !important; 
-          cursor: not-allowed !important; 
-          opacity: 0.65 !important; 
-        }
+        /* 상단 네비게이션 싹 날리기 (로고 빼고) */
+        .nav-link, #navLoginBtn, #navSignupBtn, #navUserNameBtn, #navLogoutBtn, #navBellBtn, #navAdminLink, #navPlannerSteps { display: none !important; }
         
-        /* 네비게이션 상단 바의 '작성중인 플랜' 버튼도 아예 클릭 불가능하게 잠금 */
-        #navPlannerBtn {
-          pointer-events: none !important;
-          cursor: not-allowed !important;
-          opacity: 0.5 !important;
-        }
+        /* 로고 클릭 이벤트 차단 */
+        .logo { pointer-events: none !important; cursor: default !important; }
       `;
       document.head.appendChild(style);
+
+      setTimeout(() => {
+        const logoEl = document.querySelector('.logo') || document.querySelector('.nav-logo') || document.querySelector('header a');
+
+        if (logoEl) {
+          // 🚨 로고의 a 태그 링크를 완전히 폭파시키고 클릭 이벤트 강제 정지
+          logoEl.removeAttribute('href');
+          logoEl.onclick = function(e) { e.preventDefault(); return false; };
+          logoEl.style.pointerEvents = 'none';
+
+          // 버튼 중복 생성 방지
+          if (!document.getElementById('tryTripLinkerBtn')) {
+            const tryBtn = document.createElement('a');
+            tryBtn.id = 'tryTripLinkerBtn';
+            tryBtn.href = 'http://localhost:8080'; // 🚀 클릭 시 이동할 타겟 메인 주소
+            tryBtn.target = '_blank';              // 🚀 무조건 새 창으로 열기
+            tryBtn.style.textDecoration = 'none';
+            tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
+            tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 TripLinker 사용해보기</span>';
+
+            // 로고 바로 오른쪽에 버튼 삽입
+            logoEl.parentNode.insertBefore(tryBtn, logoEl.nextSibling);
+          }
+        }
+      }, 100);
 
       // 2. 브라우저의 기본 드래그 앤 드롭 동작을 강제로 무력화
       document.addEventListener('dragstart', function(e) {
@@ -2774,8 +2793,13 @@ window.addEventListener('popstate', e => {
       if (!ok) Token.clear();
     }
   }
+
   const _savedDraftId = sessionStorage.getItem('plannerDraftId');
-  if (_savedDraftId && !window._currentTripId) window._currentTripId = parseInt(_savedDraftId);
+  if (_savedDraftId && !window._currentTripId) {
+    window._currentTripId = parseInt(_savedDraftId);
+  } else if (window._currentTripId) {
+    sessionStorage.setItem('plannerDraftId', window._currentTripId);
+  }
   updateNav();
 
   const savedPage = sessionStorage.getItem('currentPage');

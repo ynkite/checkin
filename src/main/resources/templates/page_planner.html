@@ -687,18 +687,27 @@
             }
 
             const ps = new kakao.maps.services.Places();
-            const allPins = [];
 
-            // 🎯 1. 유저가 선택한 목적지(지역명) 가져오기 (타 지역 동명이인 픽업 방지용)
             const destProv = document.getElementById('dest-prov') ? document.getElementById('dest-prov').value : '';
             const destCity = document.getElementById('dest-city') ? document.getElementById('dest-city').value : '';
             const destRegion = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
 
+            let currentStage = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
+
+            const allPins = [];
             routeData.forEach(d => {
                 if (d.places) {
                     d.places.forEach(p => {
                         if (!p.transit && p.name) {
-                            allPins.push({ day: d.day, type: p.type, label: p.name, lat: null, lng: null, isFound: false, category: p.category });
+                            allPins.push({
+                                day: d.day,
+                                type: p.type,
+                                label: p.name,
+                                lat: null,
+                                lng: null,
+                                isFound: false,
+                                category: p.category
+                            });
                         }
                     });
                 }
@@ -712,52 +721,49 @@
             let searchCount = 0;
             const totalPlaces = allPins.length;
 
+            // 🎯 비동기 카카오 검색 기동 루프
             allPins.forEach(pin => {
-                // 🎯 에러 원인 해결: pin 객체에 접근하려면 반드시 forEach 루프 안에 선언되어야 함
                 const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
 
-                // [검색 지역 보정] 1차: 지역명 + 상호명으로 정밀 검색
                 ps.keywordSearch(searchQuery, function(data, status) {
                     if (status === kakao.maps.services.Status.OK) {
-                        console.log(`✅ [플래너 지역검색 성공] [${pin.label}] -> 위치: ${data[0].address_name}`);
                         pin.lat = parseFloat(data[0].y);
                         pin.lng = parseFloat(data[0].x);
                         pin.isFound = true;
-                        finalizeSearch();
+                        finalizeSearch(); // 👈 콜백 내부에서 정상 호출
                     } else {
-                        // 2차: 지역명 붙여서 실패한 경우, 원본 상호명만으로 다시 검색 (안전망)
                         ps.keywordSearch(pin.label, function(fallbackData, fallbackStatus) {
                             if (fallbackStatus === kakao.maps.services.Status.OK) {
-                                console.log(`✅ [플래너 원본검색 성공] [${pin.label}] -> 위치: ${fallbackData[0].address_name}`);
                                 pin.lat = parseFloat(fallbackData[0].y);
                                 pin.lng = parseFloat(fallbackData[0].x);
                                 pin.isFound = true;
                             } else {
-                                console.error(`❌ [플래너 검색 완전 실패] 없는 장소: [${pin.label}]`);
+                                console.error(`❌ [검증 탈락] 지도에 없는 장소 원천 배제: ${pin.label}`);
                                 pin.isFound = false;
                             }
-                            finalizeSearch();
+                            finalizeSearch(); // 👈 콜백 내부에서 정상 호출
                         });
                     }
                 });
 
-                // 🎯 비동기 콜백 처리를 깔끔하게 묶어주는 헬퍼 함수
+                // 🎯 콜백 스코프 내부에서 확실하게 인지하도록 allPins.forEach 안에 밀어 넣은 핵심 제어 함수
                 function finalizeSearch() {
                     searchCount++;
-                    if (searchCount === totalPlaces) {
-                        const autoFixRequests = [];
+                    if (searchCount !== totalPlaces) return;
 
-                        // 🎯 2. 순차적 거리 측정 (숙소 중심 고정 삭제 -> A -> B -> C 순서대로 측정)
-                        const dayKeys = [...new Set(allPins.map(p => p.day))];
-                        dayKeys.forEach(dNum => {
-                            // 해당 일차의 정상 검색된 핀들만 순서대로 가져옴
-                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+                    const autoFixRequests = [];
+                    const dayKeys = [...new Set(allPins.map(p => p.day))];
 
-                            // 요소가 2개 이상일 때만 비교 가능
-                            for (let i = 1; i < dayPins.length; i++) {
-                                const prev = dayPins[i - 1];
-                                const curr = dayPins[i];
+                    dayKeys.forEach(dNum => {
+                        // [단계 1] 지도에 없는 거 원천 제외 필터링 완료된 실존 핀 목록 수집
+                        const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
 
+                        // [단계 2] 나머지 실존 장소들 간의 순차적 하바신 거리 측정 진행
+                        for (let i = 1; i < dayPins.length; i++) {
+                            const prev = dayPins[i - 1];
+                            const curr = dayPins[i];
+
+                            if (prev.lat && curr.lat) {
                                 const R = 6371;
                                 const dLat = (curr.lat - prev.lat) * (Math.PI / 180);
                                 const dLng = (curr.lng - prev.lng) * (Math.PI / 180);
@@ -767,50 +773,56 @@
                                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                                 const dist = R * c;
 
-                                if (dist > 30) { // 🎯 30km 초과 시, 튄 놈(curr)을 큐에 넣음
+                                if (dist > 30) {
                                     console.warn(`🚨 [거리 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
-
-                                    // 중복 삽입 방지
                                     if (!autoFixRequests.some(r => r.place === curr.label)) {
                                         autoFixRequests.push({
                                             place: curr.label,
                                             req: `직전 장소(${prev.label})에서 ${dist.toFixed(1)}km 떨어져 동선이 심하게 끊깁니다. 30km 이내로 교체해 주세요.`
                                         });
                                     }
-                                } else {
-                                    console.log(`📏 [거리 정상] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
                                 }
                             }
-                        });
-
-                        if (autoFixRequests.length > 0) {
-                            const retries = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
-
-                            // 🎯 2번 시도했으면 세션에 담지 않고 바로 지도로 보내버립니다.
-                            if (retries >= 1) {
-                                console.warn("⚠️ AI 복구 2회 완료 -> 지도로 이동");
-                                _finalizePlannerRoute(routeData, btn);
-                                return;
-                            }
-
-                            sessionStorage.setItem('autoHealingRetries', retries + 1);
-                            btn.innerHTML = `🤖 동선 오차 수정 중... ( ${retries + 1} / 2 시도 )`;
-
-                            api.post(`/api/trips/${tripId}/routes/replace`, { requests: autoFixRequests })
-                                .then(res => {
-                                    if (res.success && res.data) {
-                                        let nextJson = res.data;
-                                        if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
-                                        validateAndHealingRoute(tripId, JSON.parse(nextJson), btn);
-                                    } else {
-                                        _finalizePlannerRoute(routeData, btn);
-                                    }
-                                }).catch(() => _finalizePlannerRoute(routeData, btn));
-                        } else {
-                            _finalizePlannerRoute(routeData, btn);
                         }
+                    });
+
+                    // [단계 3] 오차 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
+                    if (autoFixRequests.length > 0 && currentStage < 2) {
+                        currentStage++;
+                        sessionStorage.setItem('autoHealingRetries', currentStage.toString());
+
+                        btn.innerHTML = `🤖 동선 오차 보정 중... (${currentStage} / 2 회차)`;
+
+                        fetch(`/api/trips/${tripId}/routes/replace`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + (Token.getAccess() || '')
+                            },
+                            body: JSON.stringify({ requests: autoFixRequests })
+                        })
+                            .then(res => res.json())
+                            .then(res => {
+                                if (res.success && res.data) {
+                                    let nextJson = res.data;
+                                    if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
+
+                                    const cleanData = JSON.parse(nextJson);
+                                    sessionStorage.setItem('ai_generated_route', nextJson);
+
+                                    // 🔄 보정본을 들고 다음 회차(2회차) 연쇄 필터링으로 진입
+                                    validateAndHealingRoute(tripId, cleanData, btn);
+                                } else {
+                                    _finalizePlannerRoute(routeData, btn);
+                                }
+                            })
+                            .catch(() => _finalizePlannerRoute(routeData, btn));
+
+                    } else {
+                        console.log("✅ 2회 연속 정밀 정화 마감. 최종 지도로 이동합니다.");
+                        _finalizePlannerRoute(routeData, btn);
                     }
-                } // finalizeSearch 끝
+                }
             });
         }
 
