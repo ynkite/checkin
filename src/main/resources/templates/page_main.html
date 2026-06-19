@@ -9,99 +9,99 @@
     - 인기 관광지 TOP3  → GET /api/places/popular?category=TOUR&size=3
     - 인기 카페 TOP3    → GET /api/places/popular?category=CAFE&size=3
 ============================================================ -->
-<script>
-  /* ============================================================
-   * 🚨 [임시 하드코딩 데이터 - 전체 통합 블록]
-   * 백엔드 API 연동 시 이 <script> 블록 하나만 통째로 삭제하세요.
-   * ============================================================ */
-  /* ============================================================
-   * 🚨 [임시 하드코딩 데이터]
-   * 나중에 백엔드 API 통신이 연결되면 이 블록을 통째로 지워주세요!
-   * 지우는 순간, 아래의 api.get() 호출 로직으로 자동 전환됩니다.
-   * ============================================================ */
-  const MOCK_CURATIONS = [
-    {
-      isMock: true,
-      curationId: "'jeju'",
-      gradient: 'linear-gradient(135deg,#1E7A69,#4DB8A4)',
-      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">📅 ~2026.06.30</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 관리자 큐레이션</span>',
-      title: '🌊 제주 에메랄드 해안',
-      subTitle: '3박4일 · 2인 · 자차 추천',
-      chipsHtml: '<span class="slide-chip">초여름</span><span class="slide-chip">힐링</span><span class="slide-chip">오션뷰</span>',
-      spots: '협재해변 · 성산일출봉',
-      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩425,000~</span>',
-      planData: "{dest:'제주',prov:'제주',nights:3,people:2,transport:'자차',companion:'커플',styles:['힐링','오션뷰'],budget:500000}"
-    },
-    {
-      isMock: true,
-      curationId: "'seorak'",
-      gradient: 'linear-gradient(135deg,#8c4a10,#d4854a)',
-      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">🍂 가을 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#8c4a10;border:1px solid var(--sage-l)">🔥 10월 단풍</span>',
-      title: '🍁 설악산 단풍 트레킹',
-      subTitle: '2박3일 · 2인 · 대중교통',
-      chipsHtml: '<span class="slide-chip">가을</span><span class="slide-chip">액티비티</span><span class="slide-chip">트레킹</span>',
-      spots: '설악동 · 속초',
-      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩380,000~</span>',
-      planData: "{dest:'속초',prov:'강원',nights:2,people:2,transport:'대중교통',companion:'커플',styles:['액티비티','자연'],budget:400000}"
-    },
-    {
-      isMock: true,
-      curationId: "'gyeongju'",
-      gradient: 'linear-gradient(135deg,#6a2880,#b070b0)',
-      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">🌸 봄 기획</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#6a2880;border:1px solid var(--sage-l)">봄 시즌 한정</span>',
-      title: '🌸 경주 벚꽃 역사 기행',
-      subTitle: '1박2일 · 커플 · 자차',
-      chipsHtml: '<span class="slide-chip">봄</span><span class="slide-chip">역사</span><span class="slide-chip">문화</span>',
-      spots: '불국사 · 첨성대',
-      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩290,000~</span>',
-      planData: "{dest:'경주',prov:'경북',nights:1,people:2,transport:'자차',companion:'커플',styles:['역사','문화'],budget:300000}"
-    },
-    {
-      isMock: true,
-      curationId: "'busan'",
-      gradient: 'linear-gradient(135deg,#1060a8,#4090d8)',
-      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--cream2);color:var(--text2);border:1px solid var(--border2)">☀️ 여름 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1060a8;border:1px solid var(--sage-l)">🏄 서핑 시즌</span>',
-      title: '🏄 부산 해운대 서핑 투어',
-      subTitle: '2박3일 · 친구 4인',
-      chipsHtml: '<span class="slide-chip">여름</span><span class="slide-chip">서핑</span><span class="slide-chip">액티비티</span>',
-      spots: '해운대 · 광안리',
-      budgetHtml: '<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(--sage-l)">💰 예상 ₩620,000~</span>',
-      planData: "{dest:'부산',prov:'부산',nights:2,people:4,transport:'대중교통',companion:'친구',styles:['서핑','액티비티','여름'],budget:700000}"
-    }
-  ];
+<!--<script>-->
+<!--  /* ============================================================-->
+<!--   * 🚨 [임시 하드코딩 데이터 - 전체 통합 블록]-->
+<!--   * 백엔드 API 연동 시 이 <script> 블록 하나만 통째로 삭제하세요.-->
+<!--   * ============================================================ */-->
+<!--  /* ============================================================-->
+<!--   * 🚨 [임시 하드코딩 데이터]-->
+<!--   * 나중에 백엔드 API 통신이 연결되면 이 블록을 통째로 지워주세요!-->
+<!--   * 지우는 순간, 아래의 api.get() 호출 로직으로 자동 전환됩니다.-->
+<!--   * ============================================================ */-->
+<!--  const MOCK_CURATIONS = [-->
+<!--    {-->
+<!--      isMock: true,-->
+<!--      curationId: "'jeju'",-->
+<!--      gradient: 'linear-gradient(135deg,#1E7A69,#4DB8A4)',-->
+<!--      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;cream2);color:var(&#45;&#45;text2);border:1px solid var(&#45;&#45;border2)">📅 ~2026.06.30</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;sage-pale);color:#1E7A69;border:1px solid var(&#45;&#45;sage-l)">⭐ 관리자 큐레이션</span>',-->
+<!--      title: '🌊 제주 에메랄드 해안',-->
+<!--      subTitle: '3박4일 · 2인 · 자차 추천',-->
+<!--      chipsHtml: '<span class="slide-chip">초여름</span><span class="slide-chip">힐링</span><span class="slide-chip">오션뷰</span>',-->
+<!--      spots: '협재해변 · 성산일출봉',-->
+<!--      budgetHtml: '<span style="font-size:11px;color:var(&#45;&#45;sage-d);background:var(&#45;&#45;sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(&#45;&#45;sage-l)">💰 예상 ₩425,000~</span>',-->
+<!--      planData: "{dest:'제주',prov:'제주',nights:3,people:2,transport:'자차',companion:'커플',styles:['힐링','오션뷰'],budget:500000}"-->
+<!--    },-->
+<!--    {-->
+<!--      isMock: true,-->
+<!--      curationId: "'seorak'",-->
+<!--      gradient: 'linear-gradient(135deg,#8c4a10,#d4854a)',-->
+<!--      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;cream2);color:var(&#45;&#45;text2);border:1px solid var(&#45;&#45;border2)">🍂 가을 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;sage-pale);color:#8c4a10;border:1px solid var(&#45;&#45;sage-l)">🔥 10월 단풍</span>',-->
+<!--      title: '🍁 설악산 단풍 트레킹',-->
+<!--      subTitle: '2박3일 · 2인 · 대중교통',-->
+<!--      chipsHtml: '<span class="slide-chip">가을</span><span class="slide-chip">액티비티</span><span class="slide-chip">트레킹</span>',-->
+<!--      spots: '설악동 · 속초',-->
+<!--      budgetHtml: '<span style="font-size:11px;color:var(&#45;&#45;sage-d);background:var(&#45;&#45;sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(&#45;&#45;sage-l)">💰 예상 ₩380,000~</span>',-->
+<!--      planData: "{dest:'속초',prov:'강원',nights:2,people:2,transport:'대중교통',companion:'커플',styles:['액티비티','자연'],budget:400000}"-->
+<!--    },-->
+<!--    {-->
+<!--      isMock: true,-->
+<!--      curationId: "'gyeongju'",-->
+<!--      gradient: 'linear-gradient(135deg,#6a2880,#b070b0)',-->
+<!--      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;cream2);color:var(&#45;&#45;text2);border:1px solid var(&#45;&#45;border2)">🌸 봄 기획</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;sage-pale);color:#6a2880;border:1px solid var(&#45;&#45;sage-l)">봄 시즌 한정</span>',-->
+<!--      title: '🌸 경주 벚꽃 역사 기행',-->
+<!--      subTitle: '1박2일 · 커플 · 자차',-->
+<!--      chipsHtml: '<span class="slide-chip">봄</span><span class="slide-chip">역사</span><span class="slide-chip">문화</span>',-->
+<!--      spots: '불국사 · 첨성대',-->
+<!--      budgetHtml: '<span style="font-size:11px;color:var(&#45;&#45;sage-d);background:var(&#45;&#45;sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(&#45;&#45;sage-l)">💰 예상 ₩290,000~</span>',-->
+<!--      planData: "{dest:'경주',prov:'경북',nights:1,people:2,transport:'자차',companion:'커플',styles:['역사','문화'],budget:300000}"-->
+<!--    },-->
+<!--    {-->
+<!--      isMock: true,-->
+<!--      curationId: "'busan'",-->
+<!--      gradient: 'linear-gradient(135deg,#1060a8,#4090d8)',-->
+<!--      badgesHtml: '<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;cream2);color:var(&#45;&#45;text2);border:1px solid var(&#45;&#45;border2)">☀️ 여름 특선</span> <span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(&#45;&#45;sage-pale);color:#1060a8;border:1px solid var(&#45;&#45;sage-l)">🏄 서핑 시즌</span>',-->
+<!--      title: '🏄 부산 해운대 서핑 투어',-->
+<!--      subTitle: '2박3일 · 친구 4인',-->
+<!--      chipsHtml: '<span class="slide-chip">여름</span><span class="slide-chip">서핑</span><span class="slide-chip">액티비티</span>',-->
+<!--      spots: '해운대 · 광안리',-->
+<!--      budgetHtml: '<span style="font-size:11px;color:var(&#45;&#45;sage-d);background:var(&#45;&#45;sage-pale);padding:4px 9px;border-radius:7px;border:1px solid var(&#45;&#45;sage-l)">💰 예상 ₩620,000~</span>',-->
+<!--      planData: "{dest:'부산',prov:'부산',nights:2,people:4,transport:'대중교통',companion:'친구',styles:['서핑','액티비티','여름'],budget:700000}"-->
+<!--    }-->
+<!--  ];-->
 
-  const MOCK_TOP3 = [
-    { isMock: true, url: "'r-jeju-gaseongbi'", title: '제주도 3박4일 가성비 코스 총정리', sub: '3박4일 · 2인 · 자차 · ₩404,000', pvbKey: "'gangneung'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩480,000 · 커피숍 6곳<br>해변 드라이브 · 안목해변 숙소', likeCount: '2,341', viewCount: '18,203', scrapCount: '892' },
-    { isMock: true, url: "'r-gangneung'", title: '강릉 바다+커피 힐링 완벽 루트', sub: '2박3일 · 2인 · 힐링 · ₩480,000', pvbKey: "'jeonju'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩320,000 · 맛집 8곳<br>전통 한옥 숙소 · 대중교통', likeCount: '1,892', viewCount: '14,501', scrapCount: '641' },
-    { isMock: true, url: "'r-jeju-east-west'", title: '제주 동쪽 코스 vs 서쪽 코스 비교', sub: '3박4일 · 2인 · 자차 · ₩450,000', pvbKey: "'namhae'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩620,000 · 자차 · 오션뷰 펜션<br>해양 액티비티 포함', likeCount: '1,654', viewCount: '12,789', scrapCount: '508' }
-  ];
+<!--  const MOCK_TOP3 = [-->
+<!--    { isMock: true, url: "'r-jeju-gaseongbi'", title: '제주도 3박4일 가성비 코스 총정리', sub: '3박4일 · 2인 · 자차 · ₩404,000', pvbKey: "'gangneung'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩480,000 · 커피숍 6곳<br>해변 드라이브 · 안목해변 숙소', likeCount: '2,341', viewCount: '18,203', scrapCount: '892' },-->
+<!--    { isMock: true, url: "'r-gangneung'", title: '강릉 바다+커피 힐링 완벽 루트', sub: '2박3일 · 2인 · 힐링 · ₩480,000', pvbKey: "'jeonju'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩320,000 · 맛집 8곳<br>전통 한옥 숙소 · 대중교통', likeCount: '1,892', viewCount: '14,501', scrapCount: '641' },-->
+<!--    { isMock: true, url: "'r-jeju-east-west'", title: '제주 동쪽 코스 vs 서쪽 코스 비교', sub: '3박4일 · 2인 · 자차 · ₩450,000', pvbKey: "'namhae'", pvbLabel: '🔍 미리보기 (클릭)', pvbText: '예산 ₩620,000 · 자차 · 오션뷰 펜션<br>해양 액티비티 포함', likeCount: '1,654', viewCount: '12,789', scrapCount: '508' }-->
+<!--  ];-->
 
-  const MOCK_FOOD = [
-    { isMock: true, url: "'place-f-olleisunjae'", icon: '🍽️', name: '제주 현지인 맛집 TOP10', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','힐링'], saveCount: '2,941', scrapCount: '318' },
-    { isMock: true, url: "'place-f-teraroasa-g'", icon: '☕', name: '강릉 테라로사 & 맛집 루트', address: '제주도 · 고깃집', stars: '★★★★☆', rating: '4.7', tags: ['흑돼지','제주'], saveCount: '2,512', scrapCount: '241' },
-    { isMock: true, url: "'place-f-jagalchi'", icon: '🐟', name: '부산 자갈치시장 회 맛집', address: '전주 · 한식', stars: '★★★★☆', rating: '4.6', tags: ['한식','가성비'], saveCount: '1,987', scrapCount: '198' }
-  ];
+<!--  const MOCK_FOOD = [-->
+<!--    { isMock: true, url: "'place-f-olleisunjae'", icon: '🍽️', name: '제주 현지인 맛집 TOP10', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','힐링'], saveCount: '2,941', scrapCount: '318' },-->
+<!--    { isMock: true, url: "'place-f-teraroasa-g'", icon: '☕', name: '강릉 테라로사 & 맛집 루트', address: '제주도 · 고깃집', stars: '★★★★☆', rating: '4.7', tags: ['흑돼지','제주'], saveCount: '2,512', scrapCount: '241' },-->
+<!--    { isMock: true, url: "'place-f-jagalchi'", icon: '🐟', name: '부산 자갈치시장 회 맛집', address: '전주 · 한식', stars: '★★★★☆', rating: '4.6', tags: ['한식','가성비'], saveCount: '1,987', scrapCount: '198' }-->
+<!--  ];-->
 
-  const MOCK_STAY = [
-    { isMock: true, url: "'s-hyeopjae'", icon: '🏖️', name: '협재 오션뷰 풀빌라', address: '제주도 · 펜션', stars: '★★★★★', rating: '4.9', tags: ['오션뷰','풀빌라'], saveCount: '3,241', scrapCount: '412' },
-    { isMock: true, url: "'s-anmok'", icon: '🌊', name: '안목해변 오션뷰 펜션', address: '강릉 · 펜션', stars: '★★★★★', rating: '4.8', tags: ['해변','힐링'], saveCount: '2,718', scrapCount: '287' },
-    { isMock: true, url: "'s-haeundae'", icon: '🏨', name: '해운대 씨뷰 호텔', address: '부산 · 호텔', stars: '★★★★☆', rating: '4.6', tags: ['도시','럭셔리'], saveCount: '2,104', scrapCount: '219' }
-  ];
+<!--  const MOCK_STAY = [-->
+<!--    { isMock: true, url: "'s-hyeopjae'", icon: '🏖️', name: '협재 오션뷰 풀빌라', address: '제주도 · 펜션', stars: '★★★★★', rating: '4.9', tags: ['오션뷰','풀빌라'], saveCount: '3,241', scrapCount: '412' },-->
+<!--    { isMock: true, url: "'s-anmok'", icon: '🌊', name: '안목해변 오션뷰 펜션', address: '강릉 · 펜션', stars: '★★★★★', rating: '4.8', tags: ['해변','힐링'], saveCount: '2,718', scrapCount: '287' },-->
+<!--    { isMock: true, url: "'s-haeundae'", icon: '🏨', name: '해운대 씨뷰 호텔', address: '부산 · 호텔', stars: '★★★★☆', rating: '4.6', tags: ['도시','럭셔리'], saveCount: '2,104', scrapCount: '219' }-->
+<!--  ];-->
 
-  const MOCK_TOUR = [
-    { isMock: true, url: "'place-t-seongsanilchulbong'", icon: '🌅', name: '성산일출봉', address: '제주도 · 세계자연유산', stars: '★★★★★', rating: '4.9', tags: ['일출','트레킹'], saveCount: '4,182', scrapCount: '528' },
-    { isMock: true, url: "'place-t-udo'", icon: '🏝️', name: '우도', address: '제주도 · 섬 여행', stars: '★★★★★', rating: '4.7', tags: ['자전거','힐링'], saveCount: '3,641', scrapCount: '412' },
-    { isMock: true, url: "'place-t-yongduram'", icon: '🪨', name: '용두암', address: '제주도 · 자연명소', stars: '★★★★☆', rating: '4.5', tags: ['바다뷰','사진명소'], saveCount: '2,840', scrapCount: '310' }
-  ];
+<!--  const MOCK_TOUR = [-->
+<!--    { isMock: true, url: "'place-t-seongsanilchulbong'", icon: '🌅', name: '성산일출봉', address: '제주도 · 세계자연유산', stars: '★★★★★', rating: '4.9', tags: ['일출','트레킹'], saveCount: '4,182', scrapCount: '528' },-->
+<!--    { isMock: true, url: "'place-t-udo'", icon: '🏝️', name: '우도', address: '제주도 · 섬 여행', stars: '★★★★★', rating: '4.7', tags: ['자전거','힐링'], saveCount: '3,641', scrapCount: '412' },-->
+<!--    { isMock: true, url: "'place-t-yongduram'", icon: '🪨', name: '용두암', address: '제주도 · 자연명소', stars: '★★★★☆', rating: '4.5', tags: ['바다뷰','사진명소'], saveCount: '2,840', scrapCount: '310' }-->
+<!--  ];-->
 
-  const MOCK_CAFE = [
-    { isMock: true, url: "'place-c-handam'", icon: '☕', name: '한담해안산책로 카페', address: '제주도 · 오션뷰 카페', stars: '★★★★★', rating: '4.7', tags: ['오션뷰','힐링'], saveCount: '3,012', scrapCount: '378' },
-    { isMock: true, url: "'place-teraroasa'", icon: '☕', name: '테라로사 강릉본점', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','로스터리'], saveCount: '2,941', scrapCount: '318' },
-    { isMock: true, url: "'place-c-monsant'", icon: '☕', name: '몬상블레', address: '제주도 · 감성 카페', stars: '★★★★☆', rating: '4.6', tags: ['감성','뷰맛집'], saveCount: '2,108', scrapCount: '241' }
-  ];
-  /* ============================================================ */
+<!--  const MOCK_CAFE = [-->
+<!--    { isMock: true, url: "'place-c-handam'", icon: '☕', name: '한담해안산책로 카페', address: '제주도 · 오션뷰 카페', stars: '★★★★★', rating: '4.7', tags: ['오션뷰','힐링'], saveCount: '3,012', scrapCount: '378' },-->
+<!--    { isMock: true, url: "'place-teraroasa'", icon: '☕', name: '테라로사 강릉본점', address: '강릉 · 로스터리 카페', stars: '★★★★★', rating: '4.9', tags: ['커피','로스터리'], saveCount: '2,941', scrapCount: '318' },-->
+<!--    { isMock: true, url: "'place-c-monsant'", icon: '☕', name: '몬상블레', address: '제주도 · 감성 카페', stars: '★★★★☆', rating: '4.6', tags: ['감성','뷰맛집'], saveCount: '2,108', scrapCount: '241' }-->
+<!--  ];-->
+<!--  /* ============================================================ */-->
 
-</script>
+<!--</script>-->
 
 <script>
   /* ============================================================
@@ -143,10 +143,21 @@
   // ── 렌더링 헬퍼 ──
   function _popCard(item, index, rankColor) {
     const rank = String(index + 1).padStart(2, '0');
-    const stars = item.stars || ('★'.repeat(Math.round(item.rating || 5)) + '☆'.repeat(5 - Math.round(item.rating || 5)));
-    const tags = Array.isArray(item.tags) ? item.tags : (item.tags || '').split(',').filter(Boolean);
-    const onClickAction = item.isMock ? `go(${item.url})` : `go('/place/${item.placeId || item.id}')`;
-    const onClickScrap = item.isMock ? `toast('스크랩!')` : `doLikePlace('${item.placeId}')`;
+    // API 응답: avgRating / reviewCount / placeId / name / category
+    const rating = item.avgRating != null ? Number(item.avgRating).toFixed(1)
+            : (item.rating != null ? Number(item.rating).toFixed(1) : '0.0');
+    const ratingNum = parseFloat(rating);
+    const stars = item.stars ||
+            ('★'.repeat(Math.round(ratingNum)) + '☆'.repeat(5 - Math.round(ratingNum)));
+    const reviewCnt = item.reviewCount != null ? item.reviewCount
+            : (item.saveCount != null ? item.saveCount : 0);
+    const tags = Array.isArray(item.tags) ? item.tags
+            : (item.tags ? String(item.tags).split(',').filter(Boolean) : []);
+    const placeId = item.placeId || item.id || '';
+    const onClickAction = item.isMock
+            ? `go(${item.url})`
+            : `openCommunityPlaceDetail(${placeId}, '${_esc(item.name)}', '${(item.category||'').toLowerCase()}')`;
+    const onClickScrap = item.isMock ? `toast('스크랩!')` : `doLikePlace('${placeId}')`;
 
     return `
     <div class="pop-card" onclick="${onClickAction}">
@@ -154,16 +165,16 @@
       <div class="pop-icon-row"><span class="pop-icon">${item.icon || '📍'}</span>
         <div>
           <div class="pop-name">${_esc(item.name)}</div>
-          <div class="pop-meta">${_esc(item.address || item.roadAddress)}</div>
+          <div class="pop-meta">${_esc(item.address || item.roadAddress || '')}</div>
         </div>
       </div>
       <div class="pop-rating">
         <span style="color:#F5A623">${stars}</span>
-        <span style="font-size:12px;font-weight:700;margin-left:3px">${item.rating || '0.0'}</span>
+        <span style="font-size:12px;font-weight:700;margin-left:3px">${rating}</span>
       </div>
-      <div class="pop-tags">${tags.map(t => `<span class="pop-tag">${t}</span>`).join('')}</div>
+      ${tags.length ? `<div class="pop-tags">${tags.map(t => `<span class="pop-tag">${_esc(t)}</span>`).join('')}</div>` : ''}
       <div class="pop-foot">
-        <span class="pop-saves">📌 ${item.saveCount || 0}번 담김</span>
+        <span class="pop-saves">📌 ${reviewCnt}번 담김</span>
         <span class="pop-scrap-n">★ ${item.scrapCount || 0}</span>
         <button class="pop-scrap-btn" onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
       </div>
@@ -193,6 +204,7 @@
       const res = await api.get('/api/curations');
       curations = res.success && Array.isArray(res.data) ? res.data : [];
     }
+    window._curationData = curations || [];
 
     const panelEl = document.querySelector('.curation-panel');
     if (panelEl && curations && curations.length) {
@@ -203,12 +215,39 @@
       const gradients = ['linear-gradient(135deg,#1E7A69,#4DB8A4)', 'linear-gradient(135deg,#8c4a10,#d4854a)', 'linear-gradient(135deg,#6a2880,#b070b0)'];
 
       curations.forEach((s, i) => {
-        const grad = s.gradient || gradients[i % gradients.length];
+        // extra_notes 파싱
+        let en = {};
+        try { en = JSON.parse(s.extra_notes || s.extraNotes || '{}'); } catch(e) {}
+
+        // cardColor → 상단 그라데이션 대신 단색 배경으로 사용
+        const cardColor = en.cardColor || null;
+        const grad = cardColor
+                ? cardColor
+                : (s.gradient || gradients[i % gradients.length]);
+
+        // tags → 칩 형태로 렌더
+        const tags = en.tags || (s.theme ? s.theme.split(',') : []);
+        const chipsHtml = tags.length
+                ? tags.map(t => `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);color:var(--sage-d);border:1px solid var(--sage-l)">${_esc(t)}</span>`).join('')
+                : '';
+        const chips = chipsHtml ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">${chipsHtml}</div>` : '';
+
+        // 숙박일수 · 인원 · 이동수단 → subTitle
+        const pref = en.preferences || {};
+        const days = en.days || [];
+        const nightCount = days.length > 1 ? `${days.length - 1}박${days.length}일` : (days.length === 1 ? '당일치기' : '');
+        const companion = pref.companion || '';
+        const transport = pref.transport || '';
+        const subTitleParts = [nightCount, companion, transport ? transport + ' 추천' : ''].filter(Boolean);
+        const subTitle = s.isMock ? s.subTitle : (subTitleParts.join(' · ') || _esc(s.subTitle || s.meta || ''));
+
+        // 관광지 spots 목록
+        const attractions = en.adminRecommendedAttractions || [];
+        const spots = s.isMock ? s.spots
+                : (attractions.length ? attractions.slice(0,3).map(a=>_esc(a)).join(' · ') : _esc(s.destination || ''));
+
         const badges = s.badgesHtml || `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 추천 큐레이션</span>`;
         const title = s.isMock ? s.title : _esc(s.title);
-        const subTitle = s.isMock ? s.subTitle : _esc(s.subTitle || s.meta || '');
-        const chips = s.chipsHtml ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">${s.chipsHtml}</div>` : '';
-        const spots = s.isMock ? s.spots : _esc(s.spots);
         const budget = s.budgetHtml || '';
 
         const onClickPrev = s.isMock ? `openPreview(${s.curationId})` : `openPreview('${s.curationId}')`;
@@ -263,7 +302,7 @@
     // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
     let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
     if (!top3Routes && typeof api !== 'undefined') {
-      const res = await api.get('/api/posts?sort=scrap&size=3');
+      const res = await api.get('/api/posts?sort=scrap&size=3&category=ROUTE');
       top3Routes = res.success ? (res.data.content || res.data || []) : [];
     }
 
@@ -272,8 +311,9 @@
       top3Grid.innerHTML = top3Routes.length ? top3Routes.map((r, i) => {
         const rank = String(i + 1).padStart(2, '0');
         const onClickCard = r.isMock ? `go(${r.url})` : `openPostDetail(${r.postId})`;
-        const title = r.isMock ? r.title : _esc(r.title);
-        const sub = r.isMock ? r.sub : `${_esc(r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
+        const rawTitle = r.isMock ? r.title : _esc(r.title || '');
+        const title = rawTitle.replace(' — ', '<br>— ').replace(' - ', '<br>- ');
+        const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
         const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
         const pvbLabel = r.isMock ? r.pvbLabel : '🔍 후기 상세보기 (클릭)';
         const pvbText = r.isMock ? r.pvbText : `${_esc(r.content?.substring(0, 45))}...`;
@@ -282,7 +322,7 @@
         return `
         <div class="top3-card" onclick="${onClickCard}">
           <div class="card-num" style="background:${SECTION_META.top3.rankColor}">${rank}</div>
-          <div class="card-ttl">${title}</div>
+          <div class="card-ttl">${title.replace(' — ', '<br>— ')}</div>
           <div class="card-sub">${sub}</div>
           <div class="preview-box" onclick="event.stopPropagation(); ${onClickPreview}">
             <div class="pvb-label">${pvbLabel}</div>

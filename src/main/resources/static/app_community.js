@@ -628,12 +628,77 @@ async function loadAdminDashboard() {
 }
 
 /* ─── 기간별 통계 ─── */
+/* ─── 기간별 통계 ─── */
 async function loadAdminStatistics() {
   const startEl = document.getElementById('stat-start-date') || document.getElementById('stat-start');
-  const endEl = document.getElementById('stat-end-date') || document.getElementById('stat-end');
-  const start = startEl?.value;
-  const end = endEl?.value;
-  if (!start || !end) return; // 날짜 없으면 toast 없이 조용히 종료
+  const endEl   = document.getElementById('stat-end-date')   || document.getElementById('stat-end');
+  const start   = startEl ? startEl.value : '';
+  const end     = endEl   ? endEl.value   : '';
+  if (!start || !end) return;
+
+  const res = await api.get('/api/admin/statistics?startDate=' + start + '&endDate=' + end);
+  if (!res.success || !res.data) { toast('통계 데이터를 불러오지 못했습니다.'); return; }
+  const d = res.data || {};
+  renderTrendChart(d.dailyTrend || []);
+  renderDestBars(d.popularDestinations || []);
+}
+
+function renderTrendChart(trend) {
+  var svg   = document.getElementById('stat-trend-svg');
+  var legEl = document.getElementById('stat-trend-legend');
+  if (!svg) return;
+  var series = [
+    { key: 'newUsers',  color: 'var(--sage-d)', label: '신규 가입자' },
+    { key: 'newTrips',  color: 'var(--coral)',  label: '신규 일정'   },
+    { key: 'viewCount', color: 'var(--text3)',  label: '조회수'      }
+  ];
+  if (legEl) {
+    legEl.innerHTML = series.map(function(s) {
+      return '<div style="display:flex;align-items:center;gap:5px">' +
+          '<span style="width:10px;height:2px;background:' + s.color + ';display:inline-block"></span>' +
+          s.label + '</div>';
+    }).join('');
+  }
+  if (!trend.length) { svg.innerHTML = ''; return; }
+  var W = 640, H = 200, PAD = 28;
+  var maxVal = Math.max.apply(null, [1].concat(trend.map(function(t) {
+    return Math.max(t.newUsers || 0, t.newTrips || 0, t.viewCount || 0);
+  })));
+  var stepX = trend.length > 1 ? (W - PAD * 2) / (trend.length - 1) : 0;
+  var lines = series.map(function(s) {
+    var pts = trend.map(function(t, i) {
+      return (PAD + i * stepX) + ',' + (H - PAD - ((t[s.key] || 0) / maxVal) * (H - PAD * 2));
+    }).join(' ');
+    return '<polyline points="' + pts + '" fill="none" stroke="' + s.color + '" stroke-width="2"/>';
+  }).join('');
+  var tickEv = Math.max(1, Math.ceil(trend.length / 8));
+  var axLabels = trend.map(function(t, i) {
+    if (i % tickEv !== 0) return '';
+    return '<text x="' + (PAD + i * stepX) + '" y="' + (H - 6) + '" font-size="9" fill="var(--text3)" text-anchor="middle">' +
+        (t.date ? t.date.slice(5) : '') + '</text>';
+  }).join('');
+  svg.innerHTML = '<line x1="' + PAD + '" y1="' + (H - PAD) + '" x2="' + (W - PAD) + '" y2="' + (H - PAD) + '" stroke="var(--border2)"/>' + lines + axLabels;
+}
+
+function renderDestBars(dests) {
+  var el = document.getElementById('stat-dest-bars');
+  if (!el) return;
+  if (!dests.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3)">데이터가 없습니다</div>';
+    return;
+  }
+  var max = Math.max.apply(null, dests.map(function (d) {
+    return d.count || 0;
+  }));
+  el.innerHTML = dests.map(function (d) {
+    var pct = max > 0 ? ((d.count || 0) / max * 100) : 0;
+    return '<div style="display:flex;align-items:center;gap:10px">' +
+        '<div style="width:60px;font-size:12px;color:var(--text3)">' + (d.destination || '') + '</div>' +
+        '<div style="flex:1;background:var(--cream2);border-radius:6px;overflow:hidden;height:16px">' +
+        '<div style="height:100%;background:var(--sage);width:' + pct + '%"></div></div>' +
+        '<div style="width:30px;font-size:12px;text-align:right">' + (d.count || 0) + '</div>' +
+        '</div>';
+  }).join('');
 
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -724,9 +789,9 @@ async function loadAdminStatistics() {
     const res = await api.get('/api/admin/reports?status=' + status + '&page=' + page + '&size=10');
     if (!res.success || !res.data) return;
 
-    const data    = Array.isArray(res.data) ? { content: res.data, totalPages: 1, number: 0 } : res.data;
+    const data = Array.isArray(res.data) ? {content: res.data, totalPages: 1, number: 0} : res.data;
     const reports = data.content || [];
-    const tbody   = document.getElementById('adminReportTable');
+    const tbody = document.getElementById('adminReportTable');
     if (!tbody) return;
 
     // ↓ 빈 목록 처리 추가

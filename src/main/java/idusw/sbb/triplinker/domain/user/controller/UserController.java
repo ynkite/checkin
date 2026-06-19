@@ -105,9 +105,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<PostListResponseDto>>> getMyPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        if (userDetails == null) {
+            return ResponseEntity.ok(ApiResponse.success("작성한 후기 조회 성공", List.of()));
+        }
         Long myUserId = Long.valueOf(userDetails.getName());
         List<PostListResponseDto> posts = postService.getMyPosts(myUserId);
-
         return ResponseEntity.ok(ApiResponse.success("작성한 후기 조회 성공", posts));
     }
 
@@ -116,9 +118,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<PostListResponseDto>>> getMyLikedPosts(
             @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
+        if (userDetails == null) {
+            return ResponseEntity.ok(ApiResponse.success("좋아요한 후기 조회 성공", List.of()));
+        }
         Long myUserId = Long.valueOf(userDetails.getName());
         List<PostListResponseDto> likedPosts = postService.getMyLikedPosts(myUserId);
-
         return ResponseEntity.ok(ApiResponse.success("좋아요한 후기 조회 성공", likedPosts));
     }
 }
