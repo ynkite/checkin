@@ -1,8 +1,3 @@
-
-//  장소 스크랩 Repository
-//  PLACE_SCRAPS 테이블에서 사용자의 장소 스크랩 목록을 조회
-//  숙소, 맛집, 관광지, 카페 카테고리별 페이징 조회를 지원
-
 package idusw.sbb.triplinker.domain.user.repository;
 
 import idusw.sbb.triplinker.domain.user.entity.Scrap;
@@ -11,10 +6,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ScrapRepository extends JpaRepository<Scrap, Long> {
     Page<Scrap> findByUserIdAndCategory(Long userId, String category, Pageable pageable);
     List<Scrap> findByUserIdOrderByCreatedAtDesc(Long userId);
     boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
     void deleteByUserIdAndPlaceId(Long userId, Long placeId);
+
+    // 토글 처리용 — 이미 스크랩했는지 엔티티 자체를 조회
+    Optional<Scrap> findByUserIdAndPlaceId(Long userId, Long placeId);
+
+    // 메인페이지 카드 스크랩 수 표시용
+    long countByPlaceId(Long placeId);
 }

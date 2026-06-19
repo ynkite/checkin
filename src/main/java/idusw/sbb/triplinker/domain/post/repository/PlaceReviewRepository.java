@@ -18,14 +18,16 @@ public interface PlaceReviewRepository extends JpaRepository<PlaceReview, Long> 
     List<PlaceReview> findByPlace_IdOrderByCreatedAtDesc(Long placeId);
 
     // 카테고리별 장소 카드: [placeId, name, category, avgRating, reviewCount]
+
     @Query("""
-            SELECT pr.place.id, pr.place.name, pr.place.category,
-                   AVG(pr.rating), COUNT(pr)
-            FROM PlaceReview pr
-            WHERE pr.place.category = :cat
-            GROUP BY pr.place.id, pr.place.name, pr.place.category
-            ORDER BY AVG(pr.rating) DESC, COUNT(pr) DESC
-            """)
+        SELECT pr.place.id, pr.place.name, pr.place.category,
+               AVG(pr.rating), COUNT(pr),
+               (SELECT COUNT(s) FROM Scrap s WHERE s.placeId = pr.place.id)
+        FROM PlaceReview pr
+        WHERE pr.place.category = :cat
+        GROUP BY pr.place.id, pr.place.name, pr.place.category
+        ORDER BY AVG(pr.rating) DESC, COUNT(pr) DESC
+        """)
     List<Object[]> findPlaceCardsByCategory(@Param("cat") PlaceCategory cat, Pageable pageable);
 
     // 특정 장소를 리뷰한 후기(Post) 목록
