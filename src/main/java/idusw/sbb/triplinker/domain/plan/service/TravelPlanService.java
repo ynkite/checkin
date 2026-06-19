@@ -48,4 +48,11 @@ public interface TravelPlanService {
     Map<String, Object> getInputFormMap(Long tripId);
 
     List<TripListResponseDto> getMyTripList(Long userId);
+
+    // 초대받은 링크 주소를 저장하는 전용 메서드
+    void saveInvitedPlan(Long userId, String inviteUrl, String title, String destination);
+
+    // 초대받은 링크 목록만 가져오는 전용 메서드
+    List<Map<String, String>> getInvitedPlans(Long userId);
+
 }

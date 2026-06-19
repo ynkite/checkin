@@ -108,6 +108,10 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     public List<idusw.sbb.triplinker.domain.plan.dto.TripListResponseDto> getMyTripList(Long userId) {
         return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
+
+                // 내 여행 기록에는 초대받은 일정(INVITED)이 노출되지 않도록 필터링
+                .filter(plan -> !"INVITED".equals(plan.getStatus()))
+
                 .map(plan -> {
                     String startStr = plan.getStartDate() != null ? plan.getStartDate().toString().replace("-", ".") : "";
                     String endStr = plan.getEndDate() != null ? plan.getEndDate().toString().replace("-", ".") : "";
@@ -255,4 +259,41 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         map.put("transportType", "자차");
         return map;
     }
+
+    // 🎯 2. 파일 맨 밑바닥에 아래 2개의 새로운 메서드를 추가해 주세요!
+    @Override
+    @Transactional
+    public void saveInvitedPlan(Long userId, String inviteUrl, String title, String destination) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+
+        TravelPlan plan = TravelPlan.builder()
+                .user(user)
+                .title(title)
+                .destination(destination != null ? destination : "공유받은 지역")
+                .startDate(java.time.LocalDate.now())
+                .endDate(java.time.LocalDate.now().plusDays(3))
+                .status("INVITED") // ✨ 구분용 마킹
+                .routeJson(inviteUrl) // ✨ 편집 링크 자체를 텍스트로 보관
+                .build();
+
+        travelPlanRepository.save(plan);
+    }
+
+    @Override
+    public List<Map<String, String>> getInvitedPlans(Long userId) {
+        return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(plan -> "INVITED".equals(plan.getStatus())) // ✨ 초대받은 일정만 필터링
+                .map(plan -> {
+                    Map<String, String> m = new HashMap<>();
+                    m.put("inviteUrl", plan.getRouteJson()); // 보관해둔 링크 꺼내기
+                    m.put("title", plan.getTitle());
+                    m.put("destination", plan.getDestination());
+                    return m;
+                })
+                .toList();
+    }
+
+
 }
