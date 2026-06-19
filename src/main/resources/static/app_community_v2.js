@@ -1157,12 +1157,13 @@ window._handleWriteImageSelect = function(input) {
 
         if (category !== 'ROUTE') {
             ['pr-detail-tags'].forEach(id => { const el = document.getElementById(id); if (el) el.remove(); });
-            ['pr-place-list', 'pr-plan-badge'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.display = 'none'; el.innerHTML = ''; }
-            });
+            // pr-plan-badge만 숨기고, pr-place-list는 장소 후기 표시를 위해 유지
+            const planBadgeEl = document.getElementById('pr-plan-badge');
+            if (planBadgeEl) { planBadgeEl.style.display = 'none'; planBadgeEl.innerHTML = ''; }
             renderDetailCategory(post);
             renderDetailMeta(post);
+            // STAY/FOOD/TOUR/CAFE도 장소 별점 한줄평 표시
+            renderPlaceSnapshot(post.postId);
             return;
         }
 
@@ -1225,12 +1226,15 @@ window._handleWriteImageSelect = function(input) {
 
     function ensurePreviewModal() {
         let overlay = document.getElementById('communityPlanPreviewOverlay');
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.id = 'communityPlanPreviewOverlay';
-            overlay.className = 'community-plan-preview-overlay';
-            document.body.appendChild(overlay);
+        if (overlay) {
+            // 이미 존재하면 innerHTML 재생성 없이 바로 반환
+            return overlay;
         }
+
+        overlay = document.createElement('div');
+        overlay.id = 'communityPlanPreviewOverlay';
+        overlay.className = 'community-plan-preview-overlay';
+        document.body.appendChild(overlay);
 
         overlay.innerHTML = `
             <div class="community-plan-preview-modal">
@@ -1260,8 +1264,54 @@ window._handleWriteImageSelect = function(input) {
             </div>
         `;
 
+        // onclick은 최초 생성 시 단 한 번만 등록
         const goBtn = document.getElementById('cpp-go-planner-btn');
-        if (goBtn) goBtn.onclick = function () { closeCommunityPlanPreview(); if (typeof go === 'function') go('planner'); };
+        if (goBtn) goBtn.onclick = function () {
+            const token = localStorage.getItem('accessToken');
+            if (!token) {
+                closeCommunityPlanPreview();
+                if (typeof openModal === 'function') openModal('modal-auth');
+                const post = window._currentPostDetail;
+                const dest = post?.planDestination || '';
+                const parts = dest ? dest.split('|') : [];
+                window._pendingLoginThenPlanner = { prov: parts[0]||'', city: parts[1]||'' };
+                return;
+            }
+
+            closeCommunityPlanPreview();
+            const post = window._currentPostDetail;
+            const dest = post?.planDestination || '';
+            const parts = dest ? dest.split('|') : [];
+            const prov = parts[0] || '';
+            const city = parts[1] || '';
+
+            window._pendingCommunityDest = { prov, city };
+            if (typeof resetPlannerForm === 'function') resetPlannerForm();
+            window._currentTripId = null;
+            if (typeof go === 'function') go('planner', false);
+            if (typeof goPlanStep === 'function') goPlanStep(1);
+
+            setTimeout(function () {
+                const pending = window._pendingCommunityDest;
+                if (!pending || !pending.prov) return;
+                const provSel = document.getElementById('dest-prov');
+                if (!provSel) return;
+                provSel.value = pending.prov;
+                if (typeof updateCityDest === 'function') updateCityDest(provSel);
+                if (pending.city) {
+                    setTimeout(function () {
+                        const cityEl = document.getElementById('dest-city');
+                        if (!cityEl) return;
+                        const cityOpts = Array.from(cityEl.options);
+                        const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
+                        if (cityMatch) cityEl.value = cityMatch.value;
+                        window._pendingCommunityDest = null;
+                    }, 50);
+                } else {
+                    window._pendingCommunityDest = null;
+                }
+            }, 0);
+        };
 
         return overlay;
     }
@@ -1973,7 +2023,7 @@ window._handleWriteImageSelect = function(input) {
 
         let posts = [];
         try {
-            const res = await requestJson('/api/posts/me', { method: 'GET', headers: authHeaders(false) });
+            const res = await requestJson('/api/users/me/posts', { method: 'GET', headers: authHeaders(false) });
             posts = extractPosts(res);
         } catch (e) {
             listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기를 불러오지 못했습니다.</p>';
@@ -2043,7 +2093,11 @@ window._handleWriteImageSelect = function(input) {
 
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
-            if (document.getElementById('my-reviews-list')) window._renderMyReviews();
+            const token = typeof getAccessToken === 'function' ? getAccessToken()
+                : localStorage.getItem('accessToken');
+            if (document.getElementById('my-reviews-list') && token) {
+                window._renderMyReviews();
+            }
         }, 700);
     });
 
@@ -2624,5 +2678,45 @@ window.deleteMyRouteScrap = async function(postId, btn) {
         if (typeof toast === 'function') toast('삭제에 실패했습니다.');
     }
 };
+    window.startPlanFromCommunityPost = function () {
+        const token = localStorage.getItem('accessToken');
+        const post = window._currentPostDetail;
+        const dest = post?.planDestination || '';
+        const parts = dest ? dest.split('|') : [];
+        const prov = parts[0] || '';
+        const city = parts[1] || '';
 
+        if (!token) {
+            if (typeof openModal === 'function') openModal('modal-auth');
+            window._pendingLoginThenPlanner = { prov, city };
+            return;
+        }
+
+        window._pendingCommunityDest = { prov, city };
+        if (typeof resetPlannerForm === 'function') resetPlannerForm();
+        window._currentTripId = null;
+        if (typeof go === 'function') go('planner', false);
+        if (typeof goPlanStep === 'function') goPlanStep(1);
+
+        setTimeout(function () {
+            const pending = window._pendingCommunityDest;
+            if (!pending || !pending.prov) return;
+            const provSel = document.getElementById('dest-prov');
+            if (!provSel) return;
+            provSel.value = pending.prov;
+            if (typeof updateCityDest === 'function') updateCityDest(provSel);
+            if (pending.city) {
+                setTimeout(function () {
+                    const cityEl = document.getElementById('dest-city');
+                    if (!cityEl) return;
+                    const cityOpts = Array.from(cityEl.options);
+                    const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
+                    if (cityMatch) cityEl.value = cityMatch.value;
+                    window._pendingCommunityDest = null;
+                }, 50);
+            } else {
+                window._pendingCommunityDest = null;
+            }
+        }, 0);
+    };
 })();

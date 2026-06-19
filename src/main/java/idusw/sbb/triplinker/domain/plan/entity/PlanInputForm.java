@@ -105,7 +105,8 @@ public class PlanInputForm {
 
     //AI 챗봇 EXTRA 태그 기타 사항 (JSON 배열 문자열)
     @Column(name = "extra_notes", columnDefinition = "TEXT")
-    private String extraNotes;  // ← 여기 추가
+    private String extraNotes;
+
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

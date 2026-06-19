@@ -223,8 +223,10 @@ public class AdminServiceImpl implements AdminService {
         Curation curation = Curation.builder()
                 .admin(admin).plan(plan).title(dto.title()).theme(dto.theme())
                 .displayOrder(dto.displayOrder())
-                .startAt(parseDate(dto.startAt())).endAt(parseDate(dto.endAt()))
+                .startAt(parseDate(dto.startDate())).endAt(parseDate(dto.endDate()))
                 .isDefault(dto.isDefault() != null && dto.isDefault() == 1)
+                .destination(dto.destination())
+                .extraNotes(dto.extraNotes())
                 .build();
 
         Long curationId = curationRepository.save(curation).getId();
@@ -242,7 +244,7 @@ public class AdminServiceImpl implements AdminService {
         TravelPlan plan = (dto.planId() != null) ? travelPlanRepository.findById(dto.planId()).orElse(null) : null;
 
         curation.update(plan, dto.title(), dto.theme(), dto.displayOrder(),
-                parseDate(dto.startAt()), parseDate(dto.endAt()));
+                parseDate(dto.startDate()), parseDate(dto.endDate()), dto.destination(), dto.extraNotes());
         adminLogRepository.save(AdminLog.of(admin, "CURATION_UPDATE", curationId, dto.title()));
     }
 

@@ -80,6 +80,13 @@
     /* ============================================================
      * [2구역 - 초기화 엔진]
      * ============================================================ */
+    function updateCurDestCity(sel){
+      const cityEl = document.getElementById('cur-dest-city');
+      if(!cityEl) return;
+      const cities = (typeof _cities !== 'undefined' && _cities[sel.value]) ? _cities[sel.value] : ['전체'];
+      cityEl.innerHTML = cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+    }
+
     function initAdminPage() {
       document.querySelector('#ad-dashboard h2').textContent = ADMIN_UI_TEXTS.titles.dashboard;
       document.querySelector('#ad-users h2').textContent     = ADMIN_UI_TEXTS.titles.users;
@@ -126,6 +133,22 @@
       _rChips('#cadm-chip-special', ADMIN_SPECIAL_OPTS,   null,        true);
       _rChips('#cadm-chip-density', ADMIN_DENSITY_OPTS,   'c-density', false);
       _rChips('#cadm-chip-accopts', ADMIN_ACCOPTS,        null,        true);
+
+      /* 카드 색상 미리보기 이벤트 */
+      const colorInput = document.getElementById('cur-card-color');
+      const colorPreview = document.getElementById('cur-color-preview');
+      if(colorInput && colorPreview){
+        colorInput.addEventListener('input', function(){
+          colorPreview.style.background = this.value;
+        });
+      }
+
+      /* 여행지 셀렉트 초기화 */
+      const destCurProvSel = document.getElementById('cur-dest-prov');
+      if(destCurProvSel){
+        destCurProvSel.innerHTML = '<option value="">도/시 선택</option>' +
+                ADMIN_DEST_PROVINCES.map(p=>`<option value="${p}">${p}</option>`).join('');
+      }
 
       /* ★ showAdmin 오버라이드 — 탭 전환 시 데이터 로드 */
       window.showAdmin = function(sec, btn){
@@ -265,62 +288,6 @@
     </div>`;
     }
 
-    function loadAdminStatistics(){
-      const token=localStorage.getItem('accessToken');
-      const headers={'Authorization':'Bearer '+token};
-      const start=document.getElementById('stat-start-date')?.value;
-      const end  =document.getElementById('stat-end-date')?.value;
-      if(!start||!end) return;
-      fetch(`/api/admin/statistics?startDate=${start}&endDate=${end}`,{headers})
-              .then(r=>r.json())
-              .then(res=>{
-                const d=res.data||{};
-                renderTrendChart(d.dailyTrend||[]);
-                renderDestBars(d.popularDestinations||[]);
-              });
-    }
-
-    function renderTrendChart(trend){
-      const svg=document.getElementById('stat-trend-svg');
-      const legEl=document.getElementById('stat-trend-legend');
-      if(!svg) return;
-      const series=[
-        {key:'newUsers', color:'var(--sage-d)',label:'신규 가입자'},
-        {key:'newTrips', color:'var(--coral)', label:'신규 일정'},
-        {key:'viewCount',color:'var(--text3)', label:'조회수'},
-      ];
-      if(legEl) legEl.innerHTML=series.map(s=>`
-      <div style="display:flex;align-items:center;gap:5px">
-        <span style="width:10px;height:2px;background:${s.color};display:inline-block"></span>${s.label}
-      </div>`).join('');
-      if(!trend.length){svg.innerHTML='';return;}
-      const W=640,H=200,PAD=28;
-      const maxVal=Math.max(1,...trend.flatMap(t=>[t.newUsers,t.newTrips,t.viewCount]));
-      const stepX=trend.length>1?(W-PAD*2)/(trend.length-1):0;
-      const toP=key=>trend.map((t,i)=>`${PAD+i*stepX},${H-PAD-(t[key]/maxVal)*(H-PAD*2)}`).join(' ');
-      const lines=series.map(s=>`<polyline points="${toP(s.key)}" fill="none" stroke="${s.color}" stroke-width="2"/>`).join('');
-      const tickEv=Math.max(1,Math.ceil(trend.length/8));
-      const axLabels=trend.map((t,i)=>{
-        if(i%tickEv!==0)return'';
-        return`<text x="${PAD+i*stepX}" y="${H-6}" font-size="9" fill="var(--text3)" text-anchor="middle">${t.date.slice(5)}</text>`;
-      }).join('');
-      svg.innerHTML=`<line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--border2)"/>`+lines+axLabels;
-    }
-
-    function renderDestBars(dests){
-      const el=document.getElementById('stat-dest-bars'); if(!el) return;
-      if(!dests.length){el.innerHTML='<div style="font-size:12px;color:var(--text3)">데이터가 없습니다</div>';return;}
-      const max=Math.max(...dests.map(d=>d.count));
-      el.innerHTML=dests.map(d=>`
-      <div style="display:flex;align-items:center;gap:10px">
-        <div style="width:60px;font-size:12px;color:var(--text3)">${d.destination}</div>
-        <div style="flex:1;background:var(--cream2);border-radius:6px;overflow:hidden;height:16px">
-          <div style="height:100%;background:var(--sage);width:${d.count/max*100}%"></div>
-        </div>
-        <div style="width:30px;font-size:12px;text-align:right">${d.count}</div>
-      </div>`).join('');
-    }
-
     /* ============================================================
      * [4구역 - 회원 관리] ★ 6열 / 검색 / 필터 / 승격·강등 / 정지
      * ============================================================ */
@@ -390,8 +357,8 @@
                             ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
                             :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
                     const roleBtn=u.role==='USER'
-                            ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 승격</button>`
-                            :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 강등</button>`;
+                            ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`
+                            :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
                     mgmt=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${suspBtn}${roleBtn}</div>`;
                   }
                   return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
@@ -549,24 +516,31 @@
 
     function loadAdminCurations(){
       const token=localStorage.getItem('accessToken');
-      fetch('/api/admin/curations',{headers:{'Authorization':'Bearer '+token}})
+      fetch('/api/admin/curations?page=0&size=50',{headers:{'Authorization':'Bearer '+token}})
               .then(r=>r.json())
               .then(res=>{
                 const tbody=document.getElementById('curationTable'); if(!tbody) return;
-                const list=res.data||[];
+                // Page<> 응답: res.data.content / 일반 배열 응답: res.data
+                const list=(res.data&&res.data.content)?res.data.content:(Array.isArray(res.data)?res.data:[]);
                 if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">등록된 큐레이션이 없습니다</td></tr>';return;}
-                tbody.innerHTML=list.map(c=>`
-          <tr>
+                tbody.innerHTML=list.map(c=>{
+                  // extra_notes에서 tags, cardColor 파싱
+                  let en={};
+                  try{en=JSON.parse(c.extra_notes||'{}');}catch(e){}
+                  const tags=(en.tags||[]).map(t=>`<span style="padding:2px 7px;border-radius:10px;font-size:10px;background:var(--sage-pale);color:var(--sage-d);border:1px solid var(--sage-l)">${t}</span>`).join(' ');
+                  const colorDot=en.cardColor?`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${en.cardColor};border:1px solid var(--border2);vertical-align:middle;margin-right:4px"></span>`:'';
+                  return`<tr>
             <td>#${c.curationId||c.id}</td>
-            <td>${c.title}</td>
+            <td>${colorDot}${c.title}${tags?`<div style="margin-top:3px">${tags}</div>`:''}</td>
             <td>${c.theme||'-'}</td>
             <td>${c.displayOrder||'-'}</td>
-            <td>${c.startDate||''}~${c.endDate||''}</td>
+            <td style="font-size:11px">${c.startDate?c.startDate.slice(0,10):'상시'}~${c.endDate?c.endDate.slice(0,10):'상시'}</td>
             <td>
               <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openEditCuration(${c.curationId||c.id})">수정</button>&nbsp;
               <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="deleteCuration(${c.curationId||c.id})">삭제</button>
             </td>
-          </tr>`).join('');
+          </tr>`;
+                }).join('');
               });
     }
 
@@ -597,7 +571,36 @@
         days.push({day:di+1,label:`Day ${di+1}`,places});
       });
 
+      // 태그 파싱 (#cur-tags 입력값 → 배열)
+      const tagsRaw = document.getElementById('cur-tags')?.value?.trim() || '';
+      const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
+
+      // Day에서 타입별 자동 추출
+      const adminRecommendedAccommodations = [];
+      const adminRecommendedRestaurants    = [];
+      const adminRecommendedAttractions    = [];
+      const adminRecommendedCafes          = [];
+      const adminRecommendedCultures       = [];
+      days.forEach(day => {
+        (day.places||[]).forEach(p => {
+          if(!p.name) return;
+          const entry = p.name;
+          if(p.type === '🏨 숙소')    adminRecommendedAccommodations.push(entry);
+          else if(p.type === '🍽️ 맛집') adminRecommendedRestaurants.push(entry);
+          else if(p.type === '📍 관광지') adminRecommendedAttractions.push(entry);
+          else if(p.type === '☕ 카페')  adminRecommendedCafes.push(entry);
+          else if(p.type === '🎭 문화')  adminRecommendedCultures.push(entry);
+        });
+      });
+
       const extra_notes=JSON.stringify({
+        cardColor: document.getElementById('cur-card-color')?.value || '#E0F7FA',
+        tags,
+        adminRecommendedAccommodations,
+        adminRecommendedRestaurants,
+        adminRecommendedAttractions,
+        adminRecommendedCafes,
+        adminRecommendedCultures,
         preferences:{
           transport:     getChipVal('#cadm-chip-trans',   false),
           accommodation: getChipVal('#cadm-chip-acc',     false),
@@ -616,6 +619,12 @@
         startDate:    document.getElementById('cur-start')?.value||null,
         endDate:      document.getElementById('cur-end')?.value||null,
         displayOrder: parseInt(document.getElementById('cur-order')?.value)||1,
+        destination:  (()=>{
+          const prov = document.getElementById('cur-dest-prov')?.value||'';
+          const city = document.getElementById('cur-dest-city')?.value||'';
+          if(!prov) return null;
+          return (city && city !== '전체') ? prov+'|'+city : prov;
+        })(),
         extra_notes,
       };
 
@@ -631,8 +640,13 @@
 
     function resetCurationForm(){
       _curEditId=null; _admDayCount=0;
-      ['cur-title','cur-theme','cur-start','cur-end'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+      ['cur-title','cur-theme','cur-start','cur-end','cur-tags','cur-dest-prov'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.value='';
+      });
+      const cityResetEl=document.getElementById('cur-dest-city');
+      if(cityResetEl) cityResetEl.innerHTML='<option value="">구/군 선택</option>';
       const o=document.getElementById('cur-order');if(o)o.value='1';
+      const cc=document.getElementById('cur-card-color');if(cc)cc.value='#E0F7FA';
       document.getElementById('curDays').innerHTML='';
       document.querySelector('#ad-curation .bcard-ttl').textContent=ADMIN_UI_TEXTS.curationForm.cardTitle;
       document.querySelector('#ad-curation .btn-next').textContent=ADMIN_UI_TEXTS.curationForm.btnSubmit;
@@ -649,11 +663,29 @@
       document.getElementById('cur-start').value=c.startDate||'';
       document.getElementById('cur-end').value=c.endDate||'';
       document.getElementById('cur-order').value=c.displayOrder||1;
+      // destination 복원 (형식: "제주" 또는 "제주|제주시")
+      const destCurProvEl=document.getElementById('cur-dest-prov');
+      const destCurCityEl=document.getElementById('cur-dest-city');
+      if(destCurProvEl && c.destination){
+        const parts = c.destination.split('|');
+        destCurProvEl.value = parts[0]||'';
+        updateCurDestCity(destCurProvEl);
+        if(destCurCityEl && parts[1]) destCurCityEl.value = parts[1];
+      }
       document.querySelector('#ad-curation .bcard-ttl').textContent='큐레이션 수정';
       document.querySelector('#ad-curation .btn-next').textContent='수정 완료';
       try{
         const en=JSON.parse(c.extra_notes||'{}');
         const pref=en.preferences||{};
+
+        // 카드 색상 복원
+        const ccEl=document.getElementById('cur-card-color');
+        if(ccEl) ccEl.value=en.cardColor||'#E0F7FA';
+
+        // 태그 복원 (배열 → 콤마 구분 문자열)
+        const tagsEl=document.getElementById('cur-tags');
+        if(tagsEl) tagsEl.value=(en.tags||[]).join(', ');
+
         const restoreChip=(sel,val,multi)=>{
           document.querySelectorAll(`${sel} .chip`).forEach(chip=>{
             chip.classList.toggle('on',multi?val.includes(chip.textContent.trim()):val===chip.textContent.trim());
@@ -837,7 +869,7 @@
           <div class="bcard">
             <div class="bcard-ttl"></div>
 
-            <!-- 제목 / 테마 (★ 태그 없음) -->
+            <!-- 제목 / 테마 -->
             <div class="form-row" style="margin-top:10px">
               <div class="form-group">
                 <label class="form-label">제목 <span style="color:var(--coral)">*</span></label>
@@ -848,6 +880,21 @@
                 <input class="form-input" id="cur-theme" placeholder="초여름, 힐링, 오션뷰">
               </div>
             </div>
+            <!-- 태그 / 카드 색상 -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">태그 <small style="color:var(--text3);font-weight:400">(쉼표로 구분 · 메인 카드에 표시)</small></label>
+                <input class="form-input" id="cur-tags" placeholder="초여름, 힐링, 오션뷰">
+              </div>
+              <div class="form-group">
+                <label class="form-label">카드 배경색 <small style="color:var(--text3);font-weight:400">(메인 카드 색상)</small></label>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <input type="color" id="cur-card-color" value="#E0F7FA"
+                         style="width:44px;height:36px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;padding:2px">
+                </div>
+              </div>
+            </div>
+            <!-- 노출 기간 / 순서 -->
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">노출 시작</label>
@@ -863,7 +910,18 @@
                 <label class="form-label">노출 순서</label>
                 <input class="form-input" type="number" id="cur-order" min="1" value="1">
               </div>
-              <div class="form-group"></div>
+              <div class="form-group">
+                <label class="form-label">여행지 <small style="color:var(--text3);font-weight:400">(계획하기 시 자동 선택)</small></label>
+                <div style="display:flex;gap:6px">
+                  <select class="form-input" id="cur-dest-prov" style="flex:1"
+                          onchange="updateCurDestCity(this)">
+                    <option value="">도/시 선택</option>
+                  </select>
+                  <select class="form-input" id="cur-dest-city" style="flex:1">
+                    <option value="">구/군 선택</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <!-- ★ 플랜 빌더 (출발지·출발일·귀환일 없음 / STEP1&2 동일 칩) -->

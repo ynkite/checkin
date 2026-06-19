@@ -252,6 +252,12 @@ function go(id, addToHistory) {
       setTimeout(() => _applyDestText(val), 150);
     }
 
+    if (window._pendingCurationPlan) {
+      const c = window._pendingCurationPlan;
+      window._pendingCurationPlan = null;
+      setTimeout(() => _applyCurationPreferences(c), 160);
+    }
+
   }
   if (id === 'map') {
     setTimeout(function() {
@@ -478,20 +484,45 @@ async function tryLogin() {
   w.style.display = 'none';
 
   await _initSession(res.data.accessToken, res.data.refreshToken);
-
   toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
 
-  // ✨ [핵심 수정] 로그인 전에 저장해 둔 초대장 링크(redirectUrl)가 있는지 체크합니다.
+  // 초대장 링크 처리
   const redirectUrl = sessionStorage.getItem('redirectUrl');
   if (redirectUrl) {
-    sessionStorage.removeItem('redirectUrl'); // 사용했으니 청소
-    window.location.href = redirectUrl;        // 주소창을 초대 링크 상태로 강제 변경하여 새로고침 기동!
-    return; // 메인화면으로 가는 아래 go('main') 코드를 실행하지 않고 여기서 끝냅니다.
+    sessionStorage.removeItem('redirectUrl');
+    window.location.href = redirectUrl;
+    return;
   }
 
-  await _initSession(res.data.accessToken, res.data.refreshToken);
+  // 커뮤니티에서 "이 경로로 여행 계획하기" 후 로그인한 경우 플래너로 이동
+  if (window._pendingLoginThenPlanner) {
+    const pending = window._pendingLoginThenPlanner;
+    window._pendingLoginThenPlanner = null;
+    if (typeof resetPlannerForm === 'function') resetPlannerForm();
+    window._currentTripId = null;
+    go('planner', false);
+    if (typeof goPlanStep === 'function') goPlanStep(1);
+    if (pending.prov) {
+      setTimeout(function () {
+        const provSel = document.getElementById('dest-prov');
+        if (!provSel) return;
+        provSel.value = pending.prov;
+        if (typeof updateCityDest === 'function') updateCityDest(provSel);
+        if (pending.city) {
+          setTimeout(function () {
+            const cityEl = document.getElementById('dest-city');
+            if (!cityEl) return;
+            const cityOpts = Array.from(cityEl.options);
+            const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
+            if (cityMatch) cityEl.value = cityMatch.value;
+          }, 50);
+        }
+      }, 0);
+    }
+    return;
+  }
+
   go('main');
-  toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
 
   if (_isSuspended) {
     setTimeout(() => {
@@ -1744,6 +1775,15 @@ function doSearch() {
 }
 
 function sortPosts(val) {
+  // _commState가 있으면 API 재호출로 정렬
+  if (typeof _commState !== 'undefined' && typeof loadCommunityPosts === 'function') {
+    _commState.sortOrder   = val;
+    _commState.currentPage = 0;
+    loadCommunityPosts(0, true);
+    toast('정렬: ' + val);
+    return;
+  }
+  // fallback: DOM 정렬
   ['tab-route','tab-stay','tab-food','tab-tour','tab-cafe'].forEach(tabId => {
     const tab = document.getElementById(tabId); if (!tab) return;
     const items = Array.from(tab.querySelectorAll('.comm-post-item')); if (!items.length) return;
@@ -1761,16 +1801,22 @@ function sortPosts(val) {
   toast('정렬: ' + val);
 }
 
-function setCommTab(btn, cat) {
-  document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  ['route','stay','food','tour','cafe'].forEach(c => { const el=document.getElementById('tab-'+c); if(el) el.style.display='none'; });
-  const t = document.getElementById('tab-' + cat); if(t) t.style.display = 'block';
-  const s = document.getElementById('sortSelect');
-  if (s) {
-    if (cat === 'route') s.innerHTML = '<option value="likes">좋아요순</option><option value="scrap" selected>스크랩순</option><option value="latest">최신순</option>';
-    else                 s.innerHTML = '<option value="saved" selected>담긴 순</option><option value="scrap">스크랩순</option><option value="latest">최신순</option>';
-  }
+function sortPosts(val) {
+  ['tab-route','tab-stay','tab-food','tab-tour','tab-cafe'].forEach(tabId => {
+    const tab = document.getElementById(tabId); if (!tab) return;
+    const items = Array.from(tab.querySelectorAll('.comm-post-item')); if (!items.length) return;
+    items.sort((a, b) => {
+      const al=parseInt(a.getAttribute('data-likes')||'0'), bl=parseInt(b.getAttribute('data-likes')||'0');
+      const as=parseInt(a.getAttribute('data-scrap')||'0'), bs=parseInt(b.getAttribute('data-scrap')||'0');
+      const ad=parseInt(a.getAttribute('data-date') ||'0'), bd=parseInt(b.getAttribute('data-date') ||'0');
+      if (val==='likes'||val==='saved') return bl-al;
+      if (val==='scrap')  return bs-as;
+      if (val==='latest') return bd-ad;
+      return 0;
+    });
+    items.forEach(el => tab.appendChild(el));
+  });
+  toast('정렬: ' + val);
 }
 
 /* ───────────────────────────────────────────────
@@ -1801,6 +1847,128 @@ function startPlanFromCard(data) {
   const sp=document.getElementById('sum-people');  if(sp) sp.textContent = data.people?(data.people+'인'):'';
   const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?('₩'+data.budget.toLocaleString()):'';
   toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
+}
+
+/* ───────────────────────────────────────────────
+ * 16-1. 관리자 큐레이션으로 플랜 시작 (메인페이지 "계획하기 →")
+ * ─────────────────────────────────────────────── */
+function startPlanFromCuration(curationId) {
+  if (!_loggedIn) {
+    toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
+    openModal('modal-auth');
+    return;
+  }
+  const c = (window._curationData || []).find(x => String(x.curationId) === String(curationId));
+  if (!c) { toast('큐레이션 정보를 불러올 수 없습니다.'); return; }
+
+  window._pendingCurationPlan = c;
+  resetPlannerForm();
+  window._currentTripId = null;
+  go('planner', false);
+  goPlanStep(1);
+
+  // 여행지 자동 세팅 (destination → dest-prov 셀렉트)
+  setTimeout(() => {
+    if (c.destination) {
+      const destSel = document.getElementById('dest-prov');
+      if (destSel) {
+        // 셀렉트 옵션 중 destination과 일치하는 것 선택
+        const opts = Array.from(destSel.options);
+        const parts = (c.destination||'').split('|');
+        const prov = parts[0]; const city = parts[1]||'';
+        const match = opts.find(o => o.value === prov || o.text === prov);
+        if (match) {
+          destSel.value = match.value;
+          // 도시 목록 먼저 채우고
+          if (typeof updateCityDest === 'function') updateCityDest(destSel);
+          // 채워진 직후 구/군 선택
+          if (city) {
+            const cityEl = document.getElementById('dest-city');
+            if (cityEl) {
+              // updateCityDest가 동기 함수이므로 바로 옵션 탐색
+              const cityOpts = Array.from(cityEl.options);
+              const cityMatch = cityOpts.find(o => o.value === city || o.text === city);
+              if (cityMatch) {
+                cityEl.value = cityMatch.value;
+              } else {
+                // 옵션이 아직 없으면 직접 추가 후 선택
+                const opt = document.createElement('option');
+                opt.value = city; opt.text = city;
+                cityEl.appendChild(opt);
+                cityEl.value = city;
+              }
+            }
+          }
+        } else {
+          window._pendingDestText = prov;
+        }
+      }
+    }
+    // preferences + 추천 정보 적용
+    _applyCurationPreferences(c);
+  }, 150);
+
+  toast((c.title || '') + ' 큐레이션으로 플랜을 시작합니다 ✈');
+}
+
+/** 큐레이션의 칩 선택값 + 추천 숙소/맛집을 플래너 화면에 적용 (사용자가 그 후 자유롭게 변경 가능) */
+function _applyCurationPreferences(c) {
+  let extra = {};
+  try { extra = JSON.parse(c.extraNotes || c.extra_notes || '{}'); } catch (e) { extra = {}; }
+  const pref = extra.preferences || {};
+
+  const setChip = (sel, val, multi) => {
+    if (!val || (Array.isArray(val) && !val.length)) return;
+    const vals = multi ? (Array.isArray(val) ? val : [val]) : [val];
+    document.querySelectorAll(sel + ' .chip').forEach(chip => {
+      chip.classList.toggle('on', vals.includes(chip.textContent.trim()));
+    });
+  };
+
+  setChip('#chip-trans',   pref.transport,     false);
+  setChip('#chip-acc',     pref.accommodation, false);
+  setChip('#chip-comp',    pref.companion,     false);
+  setChip('#chip-style',   pref.style,         true);
+  setChip('#chip-diet',    pref.diet,          true);
+  setChip('#chip-special', pref.special,       true);
+  setChip('#chip-density', pref.density,       false);
+  setChip('#chip-accopts', pref.accOptions,    true);
+
+  // extra_notes의 타입별 분류 필드에서 추천 정보 구성
+  const recoRows = [];
+  const addReco = (label, arr) => (arr||[]).forEach(name => recoRows.push({label, value: name}));
+  addReco('관리자 추천 숙소',  extra.adminRecommendedAccommodations);
+  addReco('관리자 추천 맛집',  extra.adminRecommendedRestaurants);
+  addReco('관리자 추천 관광지', extra.adminRecommendedAttractions);
+  addReco('관리자 추천 카페',  extra.adminRecommendedCafes);
+  addReco('관리자 추천 문화',  extra.adminRecommendedCultures);
+  // 위 필드가 없으면 days에서 fallback
+  if (!recoRows.length) {
+    (extra.days || []).forEach(day => (day.places || []).forEach(p => {
+      if (p.type === '🏨 숙소')        recoRows.push({ label: '관리자 추천 숙소', value: p.name });
+      else if (p.type === '🍽️ 맛집')   recoRows.push({ label: '관리자 추천 맛집', value: p.name });
+      else if (p.type === '📍 관광지')  recoRows.push({ label: '관리자 추천 관광지', value: p.name });
+      else if (p.type === '☕ 카페')    recoRows.push({ label: '관리자 추천 카페', value: p.name });
+      else if (p.type === '🎭 문화')    recoRows.push({ label: '관리자 추천 문화', value: p.name });
+    }));
+  }
+
+  if (recoRows.length) {
+    window._curationRecommendations = recoRows;
+    const extraContainer = document.getElementById('sum-extra-rows');
+    if (extraContainer) {
+      recoRows.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'asc-row';
+        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
+        extraContainer.appendChild(row);
+      });
+      const emptyMsg = document.getElementById('extra-empty-msg');
+      if (emptyMsg) emptyMsg.style.display = 'none';
+    }
+  }
+
+  toast('큐레이션 추천 정보가 반영됐어요. 원하는 항목은 자유롭게 바꿔주세요.');
 }
 
 function _validatePlanStep1() {
