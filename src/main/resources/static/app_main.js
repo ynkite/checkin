@@ -145,7 +145,7 @@ function loadPageCSS(href) {
  * ─────────────────────────────────────────────── */
 function go(id, addToHistory) {
   sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
-  if (addToHistory !== false) history.pushState({page: id}, '', location.href);
+  if (addToHistory !== false) history.pushState({page: id}, '', '/');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
@@ -411,7 +411,16 @@ function updateNav() {
   // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
   if (saveInviteBtn) {
     if (_loggedIn && window._isInvitedEditView) {
-      saveInviteBtn.style.display = 'inline-block';
+      // ✨ 내 브라우저(로컬 스토리지)에 이미 저장된 링크인지 싹 검사합니다!
+      const currentUrl = window.location.href;
+      const invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
+      const isAlreadySaved = invitedList.some(item => item.url === currentUrl);
+
+      if (isAlreadySaved) {
+        saveInviteBtn.style.display = 'none'; // 이미 저장했으면 숨김 처리
+      } else {
+        saveInviteBtn.style.display = 'inline-block'; // 안 저장했으면 띄움
+      }
     } else {
       saveInviteBtn.style.display = 'none';
     }
@@ -2225,7 +2234,7 @@ function goPlanStep(n) {
   _syncNavStepHighlight();
 
   if(n===3) startChatWithSummary();
-  history.pushState({ page: 'planner', step: n }, '', location.href);
+  history.pushState({ page: 'planner', step: n }, '', '/');
   if (window._currentTripId) _savePlannerDraft();
 }
 
@@ -2811,7 +2820,7 @@ function goResumePlanner() {
     if (savedStep === 3 && typeof startChatWithSummary === 'function') {
         setTimeout(() => startChatWithSummary(), 100);
       }
-    history.pushState({ page: 'planner', step: savedStep }, '', location.href);
+  history.pushState({ page: 'planner', step: savedStep }, '', '/');
 }
 function _hasPlannerDraft() {
   if (window._currentTripId) return true;
