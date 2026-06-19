@@ -110,33 +110,5 @@ public class TravelPlanController {
         return "index";
     }
 
-    @PostMapping("/invited")
-    public ResponseEntity<ApiResponse<Void>> saveInvitedLink(
-            @AuthenticationPrincipal CustomUserDetails userDetails,
-            @RequestBody Map<String, String> payload) {
-
-        if (userDetails == null) {
-            return ResponseEntity.status(401).body(ApiResponse.error("로그인이 필요합니다."));
-        }
-
-        String inviteUrl = payload.get("inviteUrl");
-        String title     = payload.get("title");
-        String dest      = payload.get("destination");
-
-        travelPlanService.saveInvitedPlan(userDetails.getUserId(), inviteUrl, title, dest);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
-    @GetMapping("/invited")
-    public ResponseEntity<ApiResponse<List<Map<String, String>>>> getInvitedLinks(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        if (userDetails == null) {
-            return ResponseEntity.ok(ApiResponse.success(java.util.Collections.emptyList()));
-        }
-
-        List<Map<String, String>> dataList = travelPlanService.getInvitedPlans(userDetails.getUserId());
-        return ResponseEntity.ok(ApiResponse.success(dataList));
-    }
 
 }
