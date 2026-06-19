@@ -345,44 +345,48 @@ function updateNav() {
       saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
       saveInviteBtn.innerHTML = '💾 일정 저장하기';
 
-      saveInviteBtn.onclick = async () => {
+      saveInviteBtn.onclick = () => {
         const tid = window._currentTripId;
         if (!tid) return;
 
-        const originalHtml = saveInviteBtn.innerHTML;
         saveInviteBtn.innerHTML = '⏳ 저장 중...';
         saveInviteBtn.style.opacity = '0.7';
         saveInviteBtn.style.pointerEvents = 'none';
 
-        try {
-          // ✨ 주소창이 지도 탭 등으로 인해 오염될 수 있으므로, 확실한 정식 편집자 링크를 조립해서 저장합니다.
-          const exactInviteUrl = `${window.location.origin}/plan?id=${tid}`;
+        setTimeout(() => {
+          try {
+            // 🎯 현재 브라우저 주소창의 링크를 그대로 가져옵니다.
+            const exactInviteUrl = window.location.href;
+            const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
+            const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
 
-          const payload = {
-            inviteUrl: exactInviteUrl, // 조립된 정식 편집 링크 전송
-            title: document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜',
-            destination: document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역'
-          };
+            // 로컬 스토리지(브라우저 저장소)에서 기존 초대 목록 가져오기
+            let invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
 
-          const res = await api.post('/api/trips/invited', payload);
+            // 중복 방지 (이미 같은 링크가 저장되어 있으면 무시)
+            if (!invitedList.some(item => item.url === exactInviteUrl)) {
+              invitedList.push({
+                url: exactInviteUrl,
+                title: titleText,
+                destination: metaText,
+                savedAt: new Date().toISOString()
+              });
+              // 로컬 스토리지에 저장 (DB 없이 프론트엔드에서만 관리)
+              localStorage.setItem('myInvitedTrips', JSON.stringify(invitedList));
+            }
 
-          if (res.success) {
             toast('✅ [초대받은 일정] 탭에 안전하게 저장되었습니다!');
             saveInviteBtn.style.display = 'none';
             window._isInvitedEditView = false;
+
             if (typeof updateMyPageUI === 'function') updateMyPageUI();
-          } else {
-            toast('⚠️ 저장 실패: ' + res.message);
-            saveInviteBtn.innerHTML = originalHtml;
+          } catch(e) {
+            toast('⚠️ 저장 중 오류가 발생했습니다.');
+            saveInviteBtn.innerHTML = '💾 일정 저장하기';
             saveInviteBtn.style.opacity = '1';
             saveInviteBtn.style.pointerEvents = 'auto';
           }
-        } catch(e) {
-          toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
-          saveInviteBtn.innerHTML = originalHtml;
-          saveInviteBtn.style.opacity = '1';
-          saveInviteBtn.style.pointerEvents = 'auto';
-        }
+        }, 400);
       };
       navBtns.insertBefore(saveInviteBtn, navBtns.firstChild);
     }
@@ -669,18 +673,19 @@ async function updateMyPageUI() {
   if (em) em.textContent = _currentUser.email || '';
 
   // ✨ 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
-  const [tripsRes, invitedRes] = await Promise.all([
+  const [tripsRes] = await Promise.all([
     api.get('/api/trips'),
-    api.get('/api/trips/invited'),
     _renderMyReviews(),
     _renderMyLikedPosts(),
   ]);
 
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
-  const invitedList = (invitedRes.success && invitedRes.data) ? invitedRes.data : [];
+
+  // 🎯 초대받은 일정은 DB가 아니라 브라우저(로컬 스토리지)에서 꺼냅니다!
+  const invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
 
   _renderMyTrips(_myTrips);
-  _renderMyInvitedTrips(invitedList); // 독립 렌더러 호출
+  _renderMyInvitedTrips(invitedList); // 로컬 데이터로 렌더러 기동
   updateLedgerList();
 }
 
@@ -688,7 +693,6 @@ window._invitedTripsData = [];
 window._invitedTripsCurrentPage = 1;
 const INVITED_PER_PAGE = 6;
 
-/** 🤝 초대받은 일정 전용 독립 고정형 페이지네이션 렌더러 */
 function _renderMyInvitedTrips(trips = null, page = 1) {
   const container = document.getElementById('my-invited-list');
   if (!container) return;
@@ -700,7 +704,10 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     window._invitedTripsCurrentPage = page;
   }
 
+  // 최신 저장순으로 정렬
   const allInvited = window._invitedTripsData || [];
+  allInvited.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+
   const totalPages = Math.ceil(allInvited.length / INVITED_PER_PAGE) || 1;
   const currentPage = window._invitedTripsCurrentPage;
 
@@ -711,13 +718,13 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
   if (paginated.length > 0) {
     html += paginated.map(x => {
-      // ✨ 누르면 저장된 편집 링크(x.inviteUrl)로 완벽하게 이동
+      // 🎯 클릭 시 복사해둔 브라우저 링크(x.url)로 바로 이동!
       return `
-      <div class="trip-card" onclick="window.location.href='${x.inviteUrl}'" style="cursor:pointer;"> 
+      <div class="trip-card" onclick="window.location.href='${x.url}'" style="cursor:pointer; position:relative;"> 
         <div class="trip-thumb">🤝</div>
         <div class="trip-info">
           <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
-          <div class="trip-meta">${x.destination || '공유받은 지역'} · 편집자 참여 일정</div>
+          <div class="trip-meta">${x.destination || '공유받은 지역'} · 내 브라우저 저장됨</div>
         </div>
         <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
           🔗 연결됨
@@ -756,6 +763,8 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
   container.innerHTML = html;
 }
+
+
 
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 window._myTripsData = [];
