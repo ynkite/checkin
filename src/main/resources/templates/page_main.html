@@ -156,8 +156,13 @@
     const placeId = item.placeId || item.id || '';
     const onClickAction = item.isMock
             ? `go(${item.url})`
+
+            : `goToPlaceReviews(${placeId}, '${_esc(item.name)}', '${(item.category||'').toLowerCase()}')`;
+    const onClickScrap = item.isMock ? `toast('스크랩!')` : `doCommPlaceScrap(${placeId}, '${(item.category||'').toLowerCase()}')`;
+
             : `openCommunityPlaceDetail(${placeId}, '${_esc(item.name)}', '${(item.category||'').toLowerCase()}')`;
     const onClickScrap = item.isMock ? `toast('스크랩!')` : `doLikePlace('${placeId}')`;
+
 
     return `
     <div class="pop-card" onclick="${onClickAction}">
@@ -181,8 +186,30 @@
     </div>`;
   }
 
+
   function _esc(str) {
     return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── 메인페이지 인기 장소 카드 클릭 → 커뮤니티 장소 후기 탭으로 이동 ──
+  function goToPlaceReviews(placeId, name, category) {
+    const catToType = { accommodation: 'stay', restaurant: 'food', attraction: 'tour', cafe: 'cafe' };
+
+    // [( 가 연속으로 붙지 않도록 키값을 먼저 변수로 추출합니다.
+    const targetKey = (category || '').toLowerCase();
+    const type = catToType[targetKey] || 'tour';
+
+    go('community');
+
+    setTimeout(function () {
+      const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*="\'' + type + '\'"]');
+      if (tabBtn && typeof window.setCommTab === 'function') {
+        window.setCommTab(tabBtn, type);
+      }
+      if (typeof window._openPlaceReviews === 'function') {
+        window._openPlaceReviews(placeId, name, type, null, null);
+      }
+    }, 100);
   }
 
   // ── 메인 페이지 초기화 (하드코딩 Fallback 자동 지원) ──
@@ -313,7 +340,11 @@
         const onClickCard = r.isMock ? `go(${r.url})` : `openPostDetail(${r.postId})`;
         const rawTitle = r.isMock ? r.title : _esc(r.title || '');
         const title = rawTitle.replace(' — ', '<br>— ').replace(' - ', '<br>- ');
+
+        const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.views || 0}`;
+
         const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
+
         const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
         const pvbLabel = r.isMock ? r.pvbLabel : '🔍 후기 상세보기 (클릭)';
         const pvbText = r.isMock ? r.pvbText : `${_esc(r.content?.substring(0, 45))}...`;
@@ -330,9 +361,9 @@
           </div>
           <div class="card-foot">
             <div class="card-stats">
-              <span class="card-stat">❤️ ${r.likeCount || 0}</span>
-              <span class="card-stat">👁 ${r.viewCount || 0}</span>
-              <span class="card-scrap-n">★ ${r.scrapCount || 0}</span>
+              <span class="card-stat">❤️ ${r.likes || 0}</span>
+              <span class="card-stat">👁 ${r.views || 0}</span>
+              <span class="card-scrap-n">★ ${r.scraps || 0}</span>
             </div>
             <button class="btn-scrap" onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
           </div>

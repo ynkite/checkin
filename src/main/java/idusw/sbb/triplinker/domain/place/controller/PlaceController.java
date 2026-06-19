@@ -6,6 +6,7 @@ import idusw.sbb.triplinker.domain.post.dto.PlaceReviewResponseDto;
 import idusw.sbb.triplinker.domain.post.dto.PostListResponseDto;
 import idusw.sbb.triplinker.domain.post.entity.Post;
 import idusw.sbb.triplinker.domain.post.repository.PlaceReviewRepository;
+import idusw.sbb.triplinker.domain.user.repository.ScrapRepository;
 import idusw.sbb.triplinker.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -21,6 +22,22 @@ import java.util.List;
 public class PlaceController {
 
     private final PlaceReviewRepository placeReviewRepository;
+    private final ScrapRepository scrapRepository;
+
+    // 인기 장소 (메인페이지용)
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<List<PlaceCardDto>>> getPopularPlaces(
+            @RequestParam(defaultValue = "food") String category,
+            @RequestParam(defaultValue = "3")    int size
+    ) {
+        PlaceCategory cat = toCategory(category);
+        List<PlaceCardDto> result = placeReviewRepository
+                .findPlaceCardsByCategory(cat, PageRequest.of(0, size))
+                .stream()
+                .map(row -> PlaceCardDto.from(row, scrapRepository.countByPlaceId((Long) row[0])))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success("인기 장소 조회 성공", result));
+    }
 
     // 인기 장소 (메인페이지용)
     @GetMapping("/popular")
@@ -47,7 +64,7 @@ public class PlaceController {
         List<PlaceCardDto> result = placeReviewRepository
                 .findPlaceCardsByCategory(cat, PageRequest.of(page, size))
                 .stream()
-                .map(PlaceCardDto::from)
+                .map(row -> PlaceCardDto.from(row, scrapRepository.countByPlaceId((Long) row[0])))
                 .toList();
 
         return ResponseEntity.ok(ApiResponse.success("장소 목록 조회 성공", result));
