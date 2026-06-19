@@ -731,7 +731,7 @@
                         pin.lat = parseFloat(data[0].y);
                         pin.lng = parseFloat(data[0].x);
                         pin.isFound = true;
-                        finalizeSearch(); // 👈 콜백 내부에서 정상 호출
+                        finalizeSearch();
                     } else {
                         ps.keywordSearch(pin.label, function(fallbackData, fallbackStatus) {
                             if (fallbackStatus === kakao.maps.services.Status.OK) {
@@ -742,24 +742,37 @@
                                 console.error(`❌ [검증 탈락] 지도에 없는 장소 원천 배제: ${pin.label}`);
                                 pin.isFound = false;
                             }
-                            finalizeSearch(); // 👈 콜백 내부에서 정상 호출
+                            finalizeSearch();
                         });
                     }
                 });
 
-                // 🎯 콜백 스코프 내부에서 확실하게 인지하도록 allPins.forEach 안에 밀어 넣은 핵심 제어 함수
+                // 🎯 모든 장소의 검색이 끝난 후 실행되는 검수 핵심 제어 함수
                 function finalizeSearch() {
                     searchCount++;
                     if (searchCount !== totalPlaces) return;
 
                     const autoFixRequests = [];
+
+                    // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
+                    allPins.forEach(pin => {
+                        if (!pin.isFound) {
+                            if (!autoFixRequests.some(r => r.place === pin.label)) {
+                                autoFixRequests.push({
+                                    place: pin.label,
+                                    req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
+                                });
+                            }
+                        }
+                    });
+
+                    // [검수 2단계] 지도에 있는 실존 장소들 간의 20km 반경 하바신 거리 측정 진행
                     const dayKeys = [...new Set(allPins.map(p => p.day))];
 
                     dayKeys.forEach(dNum => {
-                        // [단계 1] 지도에 없는 거 원천 제외 필터링 완료된 실존 핀 목록 수집
+                        // 정상적으로 좌표가 찾아진 실존 장소들만 필터링
                         const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
 
-                        // [단계 2] 나머지 실존 장소들 간의 순차적 하바신 거리 측정 진행
                         for (let i = 1; i < dayPins.length; i++) {
                             const prev = dayPins[i - 1];
                             const curr = dayPins[i];
@@ -774,12 +787,13 @@
                                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                                 const dist = R * c;
 
-                                if (dist > 30) {
-                                    console.warn(`🚨 [거리 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
+                                // 🎯 기준 거리를 20km로 단축 제한
+                                if (dist > 20) {
+                                    console.warn(`🚨 [동선 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
                                     if (!autoFixRequests.some(r => r.place === curr.label)) {
                                         autoFixRequests.push({
                                             place: curr.label,
-                                            req: `직전 장소(${prev.label})에서 ${dist.toFixed(1)}km 떨어져 동선이 심하게 끊깁니다. 30km 이내로 교체해 주세요.`
+                                            req: `직전 장소(${prev.label})에서 동선이 ${dist.toFixed(1)}km 떨어져 너무 멉니다. 20km 이내의 근거리 장소로 교체해 주세요.`
                                         });
                                     }
                                 }
@@ -787,12 +801,12 @@
                         }
                     });
 
-                    // [단계 3] 오차 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
+                    // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
                     if (autoFixRequests.length > 0 && currentStage < 2) {
                         currentStage++;
                         sessionStorage.setItem('autoHealingRetries', currentStage.toString());
 
-                        btn.innerHTML = `🤖 동선 오차 보정 중... (${currentStage} / 2 회차)`;
+                        btn.innerHTML = `🤖 정밀 보정 진행 중... (${currentStage} / 2 회차)`;
 
                         fetch(`/api/trips/${tripId}/routes/replace`, {
                             method: 'POST',
@@ -811,7 +825,7 @@
                                     const cleanData = JSON.parse(nextJson);
                                     sessionStorage.setItem('ai_generated_route', nextJson);
 
-                                    // 🔄 보정본을 들고 다음 회차(2회차) 연쇄 필터링으로 진입
+                                    // 🔄 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
                                     validateAndHealingRoute(tripId, cleanData, btn);
                                 } else {
                                     _finalizePlannerRoute(routeData, btn);
@@ -820,7 +834,7 @@
                             .catch(() => _finalizePlannerRoute(routeData, btn));
 
                     } else {
-                        console.log("✅ 2회 연속 정밀 정화 마감. 최종 지도로 이동합니다.");
+                        console.log("✅ 정밀 보정 프로세스 마감. 최종 지도로 이동합니다.");
                         _finalizePlannerRoute(routeData, btn);
                     }
                 }
