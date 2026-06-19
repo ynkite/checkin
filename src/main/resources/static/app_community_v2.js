@@ -1743,7 +1743,9 @@ window._handleWriteImageSelect = function(input) {
         if (reset !== false) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
 
         try {
-            const res  = await api.get(`/api/places?category=${type}&page=${page || 0}&size=20`);
+            // 수정
+            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'latest';
+            const res  = await api.get(`/api/places?category=${type}&page=${page || 0}&size=20&sort=${sortVal}`);
             const list = extractList(res);
             tabEl.innerHTML = '';
 
@@ -2612,13 +2614,17 @@ window.deleteMyPlaceScrap = async function(scrapId, btn) {
 /* =============================================================================
  * community v2 — 장소 스크랩 (장소 후기 탭)
  * ============================================================================= */
-window.doCommPlaceScrap = async function (placeId, category) {
-    if (!window._commUtil.requireLogin()) return;
-    const res = await api.post(`/api/places/${placeId}/scraps`, { category: category || 'tour' });
-    if (typeof toast === 'function') {
-        toast(res?.success !== false ? '★ 스크랩했습니다!' : (res?.message || '이미 스크랩한 장소입니다.'));
-    }
-};
+    window.doCommPlaceScrap = async function (placeId, category) {
+        if (!window._commUtil.requireLogin()) return;
+        const res = await api.post(`/api/places/${placeId}/scraps`, { category: category || 'tour' });
+        const scrapped = res?.data === true;
+        if (typeof toast === 'function') {
+            toast(res?.success === false
+                ? (res?.message || '스크랩 처리에 실패했습니다.')
+                : (scrapped ? '★ 스크랩했습니다!' : '스크랩을 취소했습니다.'));
+        }
+        return scrapped;
+    };
 
 /* =============================================================================
  * community v2 — 여행 경로 스크랩 (마이페이지)

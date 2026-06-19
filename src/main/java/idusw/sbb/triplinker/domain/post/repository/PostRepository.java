@@ -21,6 +21,7 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     Page<Post> findByStatusAndCategoryOrderByCreatedAtDesc(String status, String category, Pageable pageable);
 
+    // ORDER BY를 고정하지 않아 Pageable의 Sort(latest/likes/views 등)가 그대로 적용됨
     @Query("""
         SELECT p
         FROM Post p
@@ -30,7 +31,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
                 OR p.category IS NULL
                 OR p.category = ''
           )
-        ORDER BY p.createdAt DESC
         """)
     Page<Post> findRoutePostsIncludingNullCategory(
             @Param("status") String status,
