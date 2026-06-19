@@ -39,6 +39,20 @@ public class PlaceController {
         return ResponseEntity.ok(ApiResponse.success("인기 장소 조회 성공", result));
     }
 
+    // 인기 장소 (메인페이지용)
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<List<PlaceCardDto>>> getPopularPlaces(
+            @RequestParam(defaultValue = "food") String category,
+            @RequestParam(defaultValue = "3")    int size
+    ) {
+        PlaceCategory cat = toCategory(category);
+        List<PlaceCardDto> result = placeReviewRepository
+                .findPlaceCardsByCategory(cat, PageRequest.of(0, size))
+                .stream()
+                .map(PlaceCardDto::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success("인기 장소 조회 성공", result));
+    }
     // 카테고리별 장소 목록
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlaceCardDto>>> getPlaceCards(

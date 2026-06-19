@@ -156,8 +156,13 @@
     const placeId = item.placeId || item.id || '';
     const onClickAction = item.isMock
             ? `go(${item.url})`
+
             : `goToPlaceReviews(${placeId}, '${_esc(item.name)}', '${(item.category||'').toLowerCase()}')`;
     const onClickScrap = item.isMock ? `toast('스크랩!')` : `doCommPlaceScrap(${placeId}, '${(item.category||'').toLowerCase()}')`;
+
+            : `openCommunityPlaceDetail(${placeId}, '${_esc(item.name)}', '${(item.category||'').toLowerCase()}')`;
+    const onClickScrap = item.isMock ? `toast('스크랩!')` : `doLikePlace('${placeId}')`;
+
 
     return `
     <div class="pop-card" onclick="${onClickAction}">
@@ -335,7 +340,11 @@
         const onClickCard = r.isMock ? `go(${r.url})` : `openPostDetail(${r.postId})`;
         const rawTitle = r.isMock ? r.title : _esc(r.title || '');
         const title = rawTitle.replace(' — ', '<br>— ').replace(' - ', '<br>- ');
+
         const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.views || 0}`;
+
+        const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
+
         const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
         const pvbLabel = r.isMock ? r.pvbLabel : '🔍 후기 상세보기 (클릭)';
         const pvbText = r.isMock ? r.pvbText : `${_esc(r.content?.substring(0, 45))}...`;
