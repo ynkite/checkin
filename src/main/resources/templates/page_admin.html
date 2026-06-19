@@ -59,7 +59,7 @@
       titles: {dashboard:'대시보드', users:'회원 관리', reports:'신고 관리', curation:'큐레이션 관리'},
       tables: {
         /* ★ 6열 (후기 열 없음 — 백엔드 /api/admin/users/{id}/posts 미구현) */
-        usersHead:    ['ID','아이디','이메일','가입일','상태','관리'],
+        usersHead:    ['ID','아이디','이름','이메일','가입일','상태','관리'],
         reportsHead:  ['ID','게시글','신고자','작성자','사유','상태','처리'],
         curationHead: ['ID','제목','테마','순서','노출 기간','관리']
       },
@@ -173,6 +173,7 @@
       window.filterAdminUserRows   = filterAdminUserRows;
       window.findReportedAuthor    = findReportedAuthor;
       window.searchAdminUserByName = searchAdminUserByName;
+      window.openAdminPostDetail   = openAdminPostDetail;
       window.unsuspendUser         = unsuspendUser;
       window.loadAdminCurations    = loadAdminCurations;
       window.saveCuration          = saveCuration;
@@ -321,30 +322,32 @@
       const status = document.getElementById('admin-report-status-filter')?.value || 'PENDING';
       loadAdminReports(status, page);
     }
-    function loadAdminUsers(page=0, status=''){
+    function loadAdminUsers(page=0, status='', searchName=''){
       const token=localStorage.getItem('accessToken');
       const headers={'Authorization':'Bearer '+token};
       const statusSel=document.getElementById('admin-user-status-filter');
       if(statusSel&&status===''&&statusSel.value) status=statusSel.value;
       if(statusSel) statusSel.value=status;
 
-      fetch(`/api/admin/users?status=${status}&page=${page}&size=10`,{headers})  // ← 50→10
+      /* 이름 검색 시 전체 로드 (클라이언트 필터) */
+      const pageSize = searchName ? 9999 : 10;
+
+      fetch(`/api/admin/users?status=${status}&page=${page}&size=${pageSize}`,{headers})
               .then(r=>r.json())
               .then(res=>{
                 const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
-                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
-                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
+                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage');
                   return;
                 }
                 const list=res.data.content||[];
                 if(!list.length){
-                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
-                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
+                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage');
                   return;
                 }
-                /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt
-                   name 필드는 표에 표시 안 함 (6열 유지) */
+                /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt */
                 tbody.innerHTML=list.map(u=>{
                   const dateStr=u.createdAt?u.createdAt.substring(0,10).replaceAll('-','.'):'';
                   let badge='<span class="badge badge-a">ACTIVE</span>';
@@ -364,6 +367,7 @@
                   return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
             <td>#${u.userId}</td>
             <td>${u.username}</td>
+            <td style="color:var(--text2)">${u.name||'-'}</td>
             <td>${u.email}</td>
             <td>${dateStr}</td>
             <td>${badge}</td>
@@ -394,7 +398,7 @@
     async function searchAdminUserByName(name){
       if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
       const usersBtn=document.querySelector('.admin-link[onclick*="\'users\'"]');
-      // 탭만 전환 (데이터 로드 없이)
+      /* 탭 전환 */
       ['dashboard','users','reports','curation'].forEach(s=>{
         const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
       });
@@ -402,12 +406,12 @@
       document.querySelectorAll('.admin-nav .admin-link').forEach(b=>b.classList.remove('on'));
       if(usersBtn) usersBtn.classList.add('on');
 
-      // 검색어 먼저 세팅
+      /* 검색어 세팅 */
       const inp=document.getElementById('admin-user-search');
       if(inp) inp.value=name;
 
-      // 검색어 세팅 후 fetch → 완료 후 filterAdminUserRows 실행
-      await loadAdminUsers(0,'');
+      /* searchName 을 넘겨서 전체 로드(size=9999) 후 클라이언트 필터 */
+      await loadAdminUsers(0, '', name);
       filterAdminUserRows();
       toast(`"${name}" 검색 결과로 이동했습니다`);
     }
@@ -442,7 +446,9 @@
                           :'<span style="font-size:11px;color:var(--text3)">처리 완료</span>';
                   return`<tr>
             <td>#${r.reportId}</td>
-            <td>${r.postTitle||('#'+r.postId)}</td>
+            <td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600"
+                      onclick="openAdminPostDetail(${r.postId})"
+                      title="클릭하면 해당 게시글로 이동합니다">${r.postTitle||('#'+r.postId)}</span></td>
             <td>${r.reporterName||'-'}</td>
             <td><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId})">작성자 보기</button></td>
             <td>${r.reason}</td>
@@ -456,7 +462,21 @@
     async function findReportedAuthor(postId){
       const res=await api.get('/api/posts/'+postId);
       if(!res.success||!res.data){toast('작성자 정보를 불러오지 못했습니다.');return;}
-      searchAdminUserByName(res.data.authorName);
+      /* PostDetailResponseDto 는 writerName 필드를 사용 (authorName 아님) */
+      const name = res.data.writerName || res.data.authorName
+              || (res.data.author && (res.data.author.name || res.data.author.username)) || '';
+      if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
+      searchAdminUserByName(name);
+    }
+
+    /* 신고 관리에서 글 제목 클릭 시 커뮤니티 해당 게시글로 이동 */
+    function openAdminPostDetail(postId){
+      if(!postId) return;
+      toast('게시글로 이동합니다...');
+      if(typeof go === 'function') go('community');
+      setTimeout(function(){
+        if(typeof openPostDetail === 'function') openPostDetail(postId);
+      }, 350);
     }
 
     /* ============================================================
