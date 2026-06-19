@@ -343,33 +343,35 @@ function updateNav() {
         const tid = window._currentTripId;
         if (!tid) return;
 
-        // 로딩 처리
         const originalHtml = saveInviteBtn.innerHTML;
         saveInviteBtn.innerHTML = '⏳ 저장 중...';
         saveInviteBtn.style.opacity = '0.7';
         saveInviteBtn.style.pointerEvents = 'none';
 
         try {
-          // 백엔드 초대 수락(플랜 참여) API 호출
-          const res = await api.post(`/api/trips/${tid}/members/join`, {});
+          // ✨ 주소창이 지도 탭 등으로 인해 오염될 수 있으므로, 확실한 정식 편집자 링크를 조립해서 저장합니다.
+          const exactInviteUrl = `${window.location.origin}/plan?id=${tid}`;
+
+          const payload = {
+            inviteUrl: exactInviteUrl, // 조립된 정식 편집 링크 전송
+            title: document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜',
+            destination: document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역'
+          };
+
+          const res = await api.post('/api/trips/invited', payload);
 
           if (res.success) {
-            toast('✅ 초대받은 일정이 내 목록에 저장되었습니다! 마이페이지에서 확인하세요.');
+            toast('✅ [초대받은 일정] 탭에 안전하게 저장되었습니다!');
             saveInviteBtn.style.display = 'none';
-            window._isInvitedEditView = false; // 저장 완료 시 뷰 플래그 해제
-
-            // 🎯 마이페이지의 데이터를 백그라운드에서 다시 불러와서 즉시 동기화
-            if (typeof updateMyPageUI === 'function') {
-              updateMyPageUI();
-            }
+            window._isInvitedEditView = false;
+            if (typeof updateMyPageUI === 'function') updateMyPageUI();
           } else {
-            toast('⚠️ ' + (res.message || '일정 저장에 실패했습니다.'));
+            toast('⚠️ 저장 실패: ' + res.message);
             saveInviteBtn.innerHTML = originalHtml;
             saveInviteBtn.style.opacity = '1';
             saveInviteBtn.style.pointerEvents = 'auto';
           }
         } catch(e) {
-          console.error("일정 저장 오류:", e);
           toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
           saveInviteBtn.innerHTML = originalHtml;
           saveInviteBtn.style.opacity = '1';
@@ -635,15 +637,93 @@ async function updateMyPageUI() {
   if (nm) nm.textContent = _currentUser.name  || '';
   if (em) em.textContent = _currentUser.email || '';
 
-  const [tripsRes] = await Promise.all([
+  // ✨ 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
+  const [tripsRes, invitedRes] = await Promise.all([
     api.get('/api/trips'),
+    api.get('/api/trips/invited'),
     _renderMyReviews(),
     _renderMyLikedPosts(),
   ]);
+
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
+  const invitedList = (invitedRes.success && invitedRes.data) ? invitedRes.data : [];
 
   _renderMyTrips(_myTrips);
+  _renderMyInvitedTrips(invitedList); // 독립 렌더러 호출
   updateLedgerList();
+}
+
+window._invitedTripsData = [];
+window._invitedTripsCurrentPage = 1;
+const INVITED_PER_PAGE = 6;
+
+/** 🤝 초대받은 일정 전용 독립 고정형 페이지네이션 렌더러 */
+function _renderMyInvitedTrips(trips = null, page = 1) {
+  const container = document.getElementById('my-invited-list');
+  if (!container) return;
+
+  if (trips !== null) {
+    window._invitedTripsData = trips;
+    window._invitedTripsCurrentPage = 1;
+  } else {
+    window._invitedTripsCurrentPage = page;
+  }
+
+  const allInvited = window._invitedTripsData || [];
+  const totalPages = Math.ceil(allInvited.length / INVITED_PER_PAGE) || 1;
+  const currentPage = window._invitedTripsCurrentPage;
+
+  const startIndex = (currentPage - 1) * INVITED_PER_PAGE;
+  const paginated = allInvited.slice(startIndex, startIndex + INVITED_PER_PAGE);
+
+  let html = '';
+
+  if (paginated.length > 0) {
+    html += paginated.map(x => {
+      // ✨ 누르면 저장된 편집 링크(x.inviteUrl)로 완벽하게 이동
+      return `
+      <div class="trip-card" onclick="window.location.href='${x.inviteUrl}'" style="cursor:pointer;"> 
+        <div class="trip-thumb">🤝</div>
+        <div class="trip-info">
+          <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
+          <div class="trip-meta">${x.destination || '공유받은 지역'} · 편집자 참여 일정</div>
+        </div>
+        <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
+          🔗 연결됨
+        </div>
+      </div>`;
+    }).join('');
+
+    html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
+
+    if (currentPage > 1) {
+      html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);"><</button>`;
+    }
+
+    const pageGroup = Math.ceil(currentPage / 10);
+    let startP = (pageGroup - 1) * 10 + 1;
+    let endP = Math.min(totalPages, pageGroup * 10);
+
+    for (let p = startP; p <= endP; p++) {
+      const isCurrent = (p === currentPage);
+      const bg = isCurrent ? 'var(--sage)' : '#fff';
+      const color = isCurrent ? '#fff' : 'var(--text2)';
+      const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
+      const fw = isCurrent ? '800' : '500';
+
+      html += '<button onclick="_renderMyInvitedTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
+    }
+
+    if (currentPage < totalPages) {
+      html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);">></button>`;
+    }
+    html += `</div>`;
+
+  } else {
+    html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">초대받은 일정이 없습니다.</div>';
+  }
+
+  container.innerHTML = html;
 }
 
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
@@ -727,12 +807,10 @@ function _renderMyTrips(trips = null, page = 1) {
       html += `<button onclick="_renderMyTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&lt;</button>`;
     }
 
-    // [숫자 버튼] 최대 5개씩 노출
-    let startP = Math.max(1, currentPage - 2);
-    let endP = Math.min(totalPages, startP + 4);
-    if (endP - startP < 4) {
-      startP = Math.max(1, endP - 4);
-    }
+    // [숫자 버튼]
+    const pageGroup = Math.ceil(currentPage / 10); // 현재 페이지가 속한 10개 단위 그룹 (1그룹: 1~10, 2그룹: 11~20)
+    let startP = (pageGroup - 1) * 10 + 1;
+    let endP = Math.min(totalPages, pageGroup * 10);
 
     for (let p = startP; p <= endP; p++) {
       const isCurrent = (p === currentPage);
@@ -741,7 +819,7 @@ function _renderMyTrips(trips = null, page = 1) {
       const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
       const fw = isCurrent ? '800' : '500';
 
-      html += '<button onclick="_renderMyLedgerTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
+      html += '<button onclick="_renderMyTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
     }
 
     // [다음] 화살표
@@ -3057,7 +3135,7 @@ function showMySection(key, btn) {
     if (el.id.startsWith('my-') && !el.id.includes('list') && !el.id.includes('inner')
         && !el.id.includes('ledger-inner') && !el.id.includes('avatar')
         && !el.id.includes('name') && !el.id.includes('email')
-        && !el.id.includes('pager')) {
+        && !el.id.includes('pager') && el.id !== 'my-invited-list') {
       el.style.display = 'none';
     }
   });
