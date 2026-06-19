@@ -72,7 +72,9 @@ public class TravelPlanController {
             @AuthenticationPrincipal CustomUserDetails userDetails,  // ← 수정
             @PathVariable Long tripId) {
 
-        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userDetails.getUserId(), tripId);  // ← 수정
+        // 비회원(userDetails == null)일 때 에러가 나지 않도록 방어 로직 추가
+        Long userId = (userDetails != null) ? userDetails.getUserId() : null;
+        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userId, tripId);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(detail));
     }
 

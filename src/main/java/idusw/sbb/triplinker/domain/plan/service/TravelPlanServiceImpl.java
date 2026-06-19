@@ -89,9 +89,10 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         TravelPlan plan = travelPlanRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
 
-        if (!plan.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("접근 권한이 없습니다.");
-        }
+//      공유 링크 열람을 위해 본인 검증 로직을 주석 처리
+//        if (!plan.getUser().getId().equals(userId)) {
+//            throw new IllegalStateException("접근 권한이 없습니다.");
+//        }
 
         return new PlanDetailResponseDto(plan);
     }
@@ -253,10 +254,20 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
     @Override
     public java.util.Map<String, Object> getInputFormMap(Long tripId) {
+        // DB에 데이터를 반환
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
+
         java.util.Map<String, Object> map = new java.util.HashMap<>();
-        // 프론트엔드에서 문제 생기지 않게 않게 일단 기본값을 넣음
-        map.put("companionCount", "2");
-        map.put("transportType", "자차");
+
+        if (plan.getForm() != null) {
+            map.put("companionCount", plan.getForm().getCompanionCount());
+            map.put("transportType", plan.getForm().getTransportType());
+        } else {
+            map.put("companionCount", "2");
+            map.put("transportType", "자차");
+        }
+
         return map;
     }
 

@@ -343,7 +343,7 @@ function updateNav() {
       saveInviteBtn.id = 'navSaveInviteBtn';
       saveInviteBtn.className = 'btn-f';
       saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
-      saveInviteBtn.innerHTML = '💾 일정 저장하기';
+      saveInviteBtn.innerHTML = '🔗 링크 보관하기';
 
       saveInviteBtn.onclick = () => {
         const tid = window._currentTripId;
@@ -733,7 +733,7 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
         <div class="trip-thumb">🤝</div>
         <div class="trip-info">
           <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
-          <div class="trip-meta">${x.destination || '공유받은 지역'} · 내 브라우저 저장됨</div>
+          <div class="trip-meta">${x.destination || '공유받은 지역'}</div>
         </div>
         <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
           🔗 연결됨
