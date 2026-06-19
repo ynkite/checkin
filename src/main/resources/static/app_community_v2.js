@@ -304,20 +304,39 @@
 
         const res = await api.post(`/api/posts/${postId}/scraps?category=${category}`, {});
 
-        const isEmptyResponse = res && typeof res === 'object' && Object.keys(res).length === 0;
-        const isSuccessLike   = res && res.success !== false;
-
-        if (isEmptyResponse || isSuccessLike) {
-            const el = document.getElementById('scrap-cnt-' + postId);
-            if (el) {
-                const n = parseInt(el.textContent.replace(/\D/g, ''), 10) || 0;
-                el.textContent = '🔖 ' + (n + 1);
-            }
-            if (typeof toast === 'function') toast('스크랩했습니다.');
+        const isSuccess = res && res.success !== false;
+        if (!isSuccess) {
+            if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
             return;
         }
 
-        if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
+        /* data === true → 스크랩됨, data === false → 취소됨 */
+        const scrapped = res.data === true;
+
+        /* 카운트 UI 업데이트 */
+        const el = document.getElementById('scrap-cnt-' + postId);
+        if (el) {
+            const n = parseInt(el.textContent.replace(/\D/g, ''), 10) || 0;
+            el.textContent = '🔖 ' + (scrapped ? n + 1 : Math.max(0, n - 1));
+        }
+
+        /* 버튼 상태 토글 — 이벤트 타겟이 버튼이면 텍스트/스타일 변경 */
+        const btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
+        if (btn) {
+            if (scrapped) {
+                btn.textContent = '✅ 스크랩됨';
+                btn.style.background = 'var(--sage-pale)';
+                btn.style.borderColor = 'var(--sage-d)';
+                btn.style.color = 'var(--sage-d)';
+            } else {
+                btn.textContent = '🔖 스크랩';
+                btn.style.background = '';
+                btn.style.borderColor = '';
+                btn.style.color = '';
+            }
+        }
+
+        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
     };
 
 })();
@@ -347,12 +366,19 @@
 
         const list = Array.isArray(comments) ? comments : [];
 
+        /* 현재 열린 게시글 ID */
+        const curPostId = window._currentPostId || window._openedPostId || 0;
+
         const commentItems = list.length
             ? list.map(c => `
                 <div class="comment-item">
-                    <div>
+                    <div style="display:flex;align-items:center;gap:6px">
                         <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
+                        <button onclick="openReportCommentModal(${c.commentId || 0}, ${curPostId})"
+                                style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);
+                                       border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)"
+                                title="댓글 신고">🚨 신고</button>
                     </div>
                     <div class="comment-content">${escapeHtml(c.content || '')}</div>
                 </div>
@@ -2163,7 +2189,7 @@ window._handleWriteImageSelect = function(input) {
         const res      = await api.post(`/api/posts/${postId}/scraps?category=${category}`, {});
         const scrapped = res?.data === true;
         if (window._currentPostDetail) window._currentPostDetail.scrappedByMe = scrapped;
-        if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
+        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
 
         await window.openPostDetail(postId);
         setTimeout(applyActionState, 100);
@@ -2510,7 +2536,7 @@ window._handleWriteImageSelect = function(input) {
                             '<div class="plr-name">' + escapeHtml(p.name) + '</div>' +
                             '<div class="star-sel" data-rating="' + rating + '">' + stars + '</div>' +
                             '<input class="one-line" placeholder="한줄평 (선택)" maxlength="200" value="' + escapeHtml(comment) + '">' +
-                        '</div>';
+                            '</div>';
                     }).join('');
                 } else if (existingReviews.length) {
                     // planRouteJson 없어도 기존 리뷰는 표시
@@ -2524,7 +2550,7 @@ window._handleWriteImageSelect = function(input) {
                             '<div class="plr-name">' + escapeHtml(r.placeName||'') + '</div>' +
                             '<div class="star-sel" data-rating="' + (r.rating||0) + '">' + stars + '</div>' +
                             '<input class="one-line" placeholder="한줄평 (선택)" maxlength="200" value="' + escapeHtml(r.comment||'') + '">' +
-                        '</div>';
+                            '</div>';
                     }).join('');
                 }
             } catch(e) { console.error('[edit] 장소 리뷰 로드 실패', e); }
@@ -2533,157 +2559,157 @@ window._handleWriteImageSelect = function(input) {
         overlay.style.display = 'flex';
     };
 
-/* =============================================================================
- * community v2 — loadMyScrap override (마이페이지 장소 스크랩 탭)
- * app_community.js의 게시글 스크랩 버전을 장소 스크랩으로 교체
- * ============================================================================= */
-window.loadMyScrap = async function loadMyScrap(category) {
-    const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
-    const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
-    const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
-    const listId   = { stay: 'my-scrap-stay-list', food: 'my-scrap-food-list', tour: 'my-scrap-tour-list', cafe: 'my-scrap-cafe-list' };
+    /* =============================================================================
+     * community v2 — loadMyScrap override (마이페이지 장소 스크랩 탭)
+     * app_community.js의 게시글 스크랩 버전을 장소 스크랩으로 교체
+     * ============================================================================= */
+    window.loadMyScrap = async function loadMyScrap(category) {
+        const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
+        const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
+        const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
+        const listId   = { stay: 'my-scrap-stay-list', food: 'my-scrap-food-list', tour: 'my-scrap-tour-list', cafe: 'my-scrap-cafe-list' };
 
-    const el = document.getElementById(listId[category]);
-    if (!el) return;
+        const el = document.getElementById(listId[category]);
+        if (!el) return;
 
-    const res = await api.get('/api/scraps');
-    if (!res || !res.success || !Array.isArray(res.data)) {
-        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
-        return;
-    }
+        const res = await api.get('/api/scraps');
+        if (!res || !res.success || !Array.isArray(res.data)) {
+            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
+            return;
+        }
 
-    const dbCat = catMap[category] || category.toUpperCase();
-    const list  = res.data.filter(s => s.category === dbCat);
+        const dbCat = catMap[category] || category.toUpperCase();
+        const list  = res.data.filter(s => s.category === dbCat);
 
-    const starHtml = (avg) => {
-        if (!avg) return '';
-        const filled = Math.round(avg);
-        return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + avg.toFixed(1) + '</b>';
-    };
+        const starHtml = (avg) => {
+            if (!avg) return '';
+            const filled = Math.round(avg);
+            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + avg.toFixed(1) + '</b>';
+        };
 
-    el.innerHTML = list.length
-        ? list.map(s =>
-            '<div class="place-card" style="cursor:pointer" ' +
-              'onclick="window.goToScrapPlace(' + s.placeId + ',\'' + escapeHtml(s.placeName || '장소').replace(/'/g, "\\'") + '\',\'' + (s.category || '') + '\',' + (s.avgRating || 'null') + ')">' +
-              '<div class="pc-hd">' +
+        el.innerHTML = list.length
+            ? list.map(s =>
+                '<div class="place-card" style="cursor:pointer" ' +
+                'onclick="window.goToScrapPlace(' + s.placeId + ',\'' + escapeHtml(s.placeName || '장소').replace(/'/g, "\\'") + '\',\'' + (s.category || '') + '\',' + (s.avgRating || 'null') + ')">' +
+                '<div class="pc-hd">' +
                 '<div class="pc-icon">' + (iconMap[s.category] || '📍') + '</div>' +
                 '<div style="flex:1;min-width:0">' +
-                  '<div class="pc-name">' + escapeHtml(s.placeName || '장소') + '</div>' +
-                  '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
-                  (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
+                '<div class="pc-name">' + escapeHtml(s.placeName || '장소') + '</div>' +
+                '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
+                (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
                 '</div>' +
                 '<button onclick="event.stopPropagation();window.deleteMyPlaceScrap(' + s.scrapId + ',this)" ' +
-                  'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                  '🗑️ 삭제' +
+                'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+                '🗑️ 삭제' +
                 '</button>' +
-              '</div>' +
-            '</div>'
-          ).join('')
-        : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
-};
+                '</div>' +
+                '</div>'
+            ).join('')
+            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
+    };
 
-window.goToScrapPlace = function(placeId, placeName, category, avgRating) {
-    const catToType = { STAY: 'stay', FOOD: 'food', TOUR: 'tour', CAFE: 'cafe' };
-    const type = catToType[category] || 'tour';
+    window.goToScrapPlace = function(placeId, placeName, category, avgRating) {
+        const catToType = { STAY: 'stay', FOOD: 'food', TOUR: 'tour', CAFE: 'cafe' };
+        const type = catToType[category] || 'tour';
 
-    go('community');
+        go('community');
 
-    // 탭 전환 후 장소 후기 열기
-    setTimeout(function () {
-        const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*="\'' + type + '\'"]');
-        if (tabBtn && typeof window.setCommTab === 'function') {
-            window.setCommTab(tabBtn, type);
+        // 탭 전환 후 장소 후기 열기
+        setTimeout(function () {
+            const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*="\'' + type + '\'"]');
+            if (tabBtn && typeof window.setCommTab === 'function') {
+                window.setCommTab(tabBtn, type);
+            }
+            if (typeof window._openPlaceReviews === 'function') {
+                window._openPlaceReviews(placeId, placeName, type, avgRating, null);
+            }
+        }, 100);
+    };
+
+    window.deleteMyPlaceScrap = async function(scrapId, btn) {
+        const res = await api.del('/api/scraps/' + scrapId);
+        if (res && res.success !== false) {
+            const card = btn.closest('.place-card');
+            if (card) card.remove();
+            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+        } else {
+            if (typeof toast === 'function') toast('삭제에 실패했습니다.');
         }
-        if (typeof window._openPlaceReviews === 'function') {
-            window._openPlaceReviews(placeId, placeName, type, avgRating, null);
-        }
-    }, 100);
-};
+    };
 
-window.deleteMyPlaceScrap = async function(scrapId, btn) {
-    const res = await api.del('/api/scraps/' + scrapId);
-    if (res && res.success !== false) {
-        const card = btn.closest('.place-card');
-        if (card) card.remove();
-        if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
-    } else {
-        if (typeof toast === 'function') toast('삭제에 실패했습니다.');
-    }
-};
-
-/* =============================================================================
- * community v2 — 장소 스크랩 (장소 후기 탭)
- * ============================================================================= */
+    /* =============================================================================
+     * community v2 — 장소 스크랩 (장소 후기 탭)
+     * ============================================================================= */
     window.doCommPlaceScrap = async function (placeId, category) {
         if (!window._commUtil.requireLogin()) return;
         const res = await api.post(`/api/places/${placeId}/scraps`, { category: category || 'tour' });
         const scrapped = res?.data === true;
         if (typeof toast === 'function') {
             toast(res?.success === false
-                ? (res?.message || '스크랩 처리에 실패했습니다.')
-                : (scrapped ? '★ 스크랩했습니다!' : '스크랩을 취소했습니다.'));
+                ? (res?.message || '⚠️ 스크랩 처리에 실패했습니다.')
+                : (scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.'));
         }
         return scrapped;
     };
 
-/* =============================================================================
- * community v2 — 여행 경로 스크랩 (마이페이지)
- * ============================================================================= */
-window.loadMyRouteScrap = async function() {
-    const el = document.getElementById('my-scrap-route-list');
-    if (!el) return;
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+    /* =============================================================================
+     * community v2 — 여행 경로 스크랩 (마이페이지)
+     * ============================================================================= */
+    window.loadMyRouteScrap = async function() {
+        const el = document.getElementById('my-scrap-route-list');
+        if (!el) return;
+        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
 
-    const res = await api.get('/api/posts/scrapped');
-    if (!res || !res.success || !Array.isArray(res.data)) {
-        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
-        return;
-    }
+        const res = await api.get('/api/posts/scrapped');
+        if (!res || !res.success || !Array.isArray(res.data)) {
+            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+            return;
+        }
 
-    const list = res.data;
-    el.innerHTML = list.length
-        ? list.map(function(p) {
-            const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
-                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
-            }).join('');
-            const safeTitle  = escapeHtml(p.title  || '제목 없음');
-            const safeWriter = escapeHtml(p.writerName || '');
-            return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
-                '<div class="pc-hd">' +
+        const list = res.data;
+        el.innerHTML = list.length
+            ? list.map(function(p) {
+                const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
+                    return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
+                }).join('');
+                const safeTitle  = escapeHtml(p.title  || '제목 없음');
+                const safeWriter = escapeHtml(p.writerName || '');
+                return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
+                    '<div class="pc-hd">' +
                     '<div class="pc-icon">🗺️</div>' +
                     '<div style="flex:1;min-width:0">' +
-                        '<div class="pc-name">' + safeTitle + '</div>' +
-                        '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
-                        (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
-                        '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
+                    '<div class="pc-name">' + safeTitle + '</div>' +
+                    '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
+                    (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
+                    '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
                     '</div>' +
                     '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + p.postId + ',this)" ' +
-                        'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                        '🗑️ 삭제' +
+                    'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+                    '🗑️ 삭제' +
                     '</button>' +
-                '</div>' +
-            '</div>';
-          }).join('')
-        : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
-};
+                    '</div>' +
+                    '</div>';
+            }).join('')
+            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+    };
 
-window.goToScrapRoute = function(postId) {
-    go('community');
-    setTimeout(function() {
-        if (typeof openPostDetail === 'function') openPostDetail(postId);
-    }, 150);
-};
+    window.goToScrapRoute = function(postId) {
+        go('community');
+        setTimeout(function() {
+            if (typeof openPostDetail === 'function') openPostDetail(postId);
+        }, 150);
+    };
 
-window.deleteMyRouteScrap = async function(postId, btn) {
-    const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
-    if (res && res.success !== false) {
-        const card = btn.closest('.place-card');
-        if (card) card.remove();
-        if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
-    } else {
-        if (typeof toast === 'function') toast('삭제에 실패했습니다.');
-    }
-};
+    window.deleteMyRouteScrap = async function(postId, btn) {
+        const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
+        if (res && res.success !== false) {
+            const card = btn.closest('.place-card');
+            if (card) card.remove();
+            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+        } else {
+            if (typeof toast === 'function') toast('삭제에 실패했습니다.');
+        }
+    };
     window.startPlanFromCommunityPost = function () {
         const token = localStorage.getItem('accessToken');
         const post = window._currentPostDetail;
