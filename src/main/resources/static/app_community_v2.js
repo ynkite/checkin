@@ -190,6 +190,10 @@
             const category = tabToCategory[cat] || 'ROUTE';
             window._communityWriteCategory = category;
 
+            /* 탭 전환 시 후기 패널에서 숨겼던 검색/정렬 바 복원 */
+            const _sb = document.querySelector('#page-community .search-bar');
+            if (_sb) _sb.style.display = '';
+
             if (typeof _commState !== 'undefined') {
                 _commState.currentTab = cat || 'route';
                 _commState.page = 0;
@@ -1024,7 +1028,8 @@ window._handleWriteImageSelect = function(input) {
         }
 
         try {
-            const res      = await api.get(`/api/posts?page=${page}&size=10&sort=scrap&category=${tab}`);
+            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'scrap';
+            const res      = await api.get(`/api/posts?page=${page}&size=10&sort=${sortVal}&category=${tab}`);
             const pageData = extractPage(res);
 
             if (typeof window._renderPostList === 'function') {
@@ -1789,7 +1794,8 @@ window._handleWriteImageSelect = function(input) {
                     `<div class="place-card-meta">`,
                     `  <span class="place-card-stars">${starsHtml(Math.round(card.avgRating || 0))}</span>`,
                     `  <span class="place-card-avg">${(card.avgRating || 0).toFixed(1)}</span>`,
-                    `  <span class="place-card-count">후기 ${card.reviewCount || 0}개</span>`,
+                    `  <span class="place-card-count">📌 ${card.reviewCount || 0}번 담김</span>`,
+                    `  <span class="place-card-scrap">🔖 ${card.scrapCount || 0}</span>`,
                     `</div>`
                 ].join('');
                 el.addEventListener('click', function () {
@@ -1814,6 +1820,11 @@ window._handleWriteImageSelect = function(input) {
     async function openPlaceReviews(placeId, placeName, type, avgRating, reviewCount) {
         const tabEl = document.getElementById('tab-' + type);
         if (!tabEl) return;
+
+        /* 후기 패널에서는 검색/정렬 바를 숨김 */
+        const searchBar = document.querySelector('#page-community .search-bar');
+        if (searchBar) searchBar.style.display = 'none';
+
         tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
 
         try {
@@ -1826,20 +1837,60 @@ window._handleWriteImageSelect = function(input) {
 
             const back = document.createElement('button');
             back.className = 'place-back-btn'; back.textContent = '← 목록으로';
-            back.addEventListener('click', function () { window._loadPlaceCards(type, 0, true); });
+            back.addEventListener('click', function () {
+                /* 목록으로 돌아오면 검색/정렬 바 복원 */
+                const sb = document.querySelector('#page-community .search-bar');
+                if (sb) sb.style.display = '';
+                window._loadPlaceCards(type, 0, true);
+            });
             wrap.appendChild(back);
 
-            const avg = avgRating != null ? Number(avgRating) : 0;
+            /* 평균 별점: 인자로 안 넘어오면(예: 메인페이지에서 진입) 후기들의 rating 평균을 직접 계산 */
+            let avg;
+            if (avgRating != null && Number(avgRating) > 0) {
+                avg = Number(avgRating);
+            } else {
+                const rated = reviews.filter(function (r) { return r.rating != null && Number(r.rating) > 0; });
+                avg = rated.length
+                    ? rated.reduce(function (sum, r) { return sum + Number(r.rating); }, 0) / rated.length
+                    : 0;
+            }
             const cnt = reviewCount != null ? Number(reviewCount) : reviews.length;
+
+            /* 이 장소를 이미 스크랩했는지 확인 (집합 우선, 없으면 API 1회 조회) */
+            let alreadyScrapped = false;
+            try {
+                if (window._scrappedPlaceIds && window._scrappedPlaceIds.size > 0) {
+                    alreadyScrapped = window._scrappedPlaceIds.has(String(placeId));
+                } else {
+                    const sres = await api.get('/api/scraps');
+                    const slist = (sres && sres.success !== false) ? (sres.data || []) : [];
+                    window._scrappedPlaceIds = window._scrappedPlaceIds || new Set();
+                    slist.forEach(function (s) { if (s && s.placeId != null) window._scrappedPlaceIds.add(String(s.placeId)); });
+                    alreadyScrapped = window._scrappedPlaceIds.has(String(placeId));
+                }
+            } catch (e) {}
+
             const header = document.createElement('div');
             header.className = 'place-review-header';
+            const mapQuery = encodeURIComponent(placeName || '');
             header.innerHTML = [
                 `<div class="place-review-name">📍 ${escapeHtml(placeName)}</div>`,
                 `<div class="place-avg-stars">${starsHtml(Math.round(avg))}</div>`,
                 `<div class="place-avg-score">${avg.toFixed(1)}</div>`,
                 `<div class="place-avg-count">${cnt}개 후기</div>`,
-                `<button class="btn-o" style="padding:5px 12px;font-size:12px;margin-left:auto"
-                    onclick="doCommPlaceScrap(${placeId},'${type}')">★ 스크랩</button>`
+                `<button class="place-review-scrap-btn${alreadyScrapped ? ' scrapped' : ''}"`,
+                `        onclick="doCommPlaceScrapToggle(this, ${placeId},'${type}')">`,
+                `  <span class="prs-star">★</span> <span class="prs-label">스크랩</span>`,
+                `</button>`,
+                `<div class="place-map-links">`,
+                `  <div class="pml-title">지도 앱에서 보기</div>`,
+                `  <div class="pml-btns">`,
+                `    <a class="pml-btn pml-naver"  href="https://map.naver.com/v5/search/${mapQuery}" target="_blank" rel="noopener">네이버 지도</a>`,
+                `    <a class="pml-btn pml-kakao"  href="https://map.kakao.com/?q=${mapQuery}" target="_blank" rel="noopener">카카오맵</a>`,
+                `    <a class="pml-btn pml-google" href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" rel="noopener">구글 지도</a>`,
+                `  </div>`,
+                `</div>`
             ].join('');
             wrap.appendChild(header);
 
@@ -2649,7 +2700,30 @@ window._handleWriteImageSelect = function(input) {
                 ? (res?.message || '⚠️ 스크랩 처리에 실패했습니다.')
                 : (scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.'));
         }
+        /* 집합 갱신 → 다른 화면에서도 상태 일관 */
+        if (window._scrappedPlaceIds) {
+            if (scrapped) window._scrappedPlaceIds.add(String(placeId));
+            else          window._scrappedPlaceIds.delete(String(placeId));
+        }
         return scrapped;
+    };
+
+    /* 후기 패널 안의 스크랩 버튼 — 색을 토글하고 상태 유지 */
+    window.doCommPlaceScrapToggle = async function (btn, placeId, category) {
+        const scrapped = await window.doCommPlaceScrap(placeId, category);
+        if (btn && scrapped !== undefined) {
+            if (scrapped) {
+                btn.classList.add('scrapped');
+                btn.style.background  = '#46B29E';
+                btn.style.borderColor = '#46B29E';
+                btn.style.color       = '#fff';
+            } else {
+                btn.classList.remove('scrapped');
+                btn.style.background  = '';
+                btn.style.borderColor = '';
+                btn.style.color       = '';
+            }
+        }
     };
 
     /* =============================================================================

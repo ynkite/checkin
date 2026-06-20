@@ -143,6 +143,21 @@ function loadPageCSS(href) {
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
+// 로고/홈 클릭 → 메인페이지로 이동하면서 강제 새로고침
+// (SPA라 URL이 이미 '/'여도 reload가 생략되지 않도록 sessionStorage를 main으로 맞추고 reload)
+function goHomeRefresh() {
+  try {
+    sessionStorage.setItem('currentPage', 'main');
+    sessionStorage.removeItem('map_refresh_lock');
+  } catch (e) {}
+  // 경로가 '/'가 아니면 메인 경로로 이동(자동 새로고침), 이미 '/'면 강제 reload
+  if (location.pathname !== '/') {
+    location.href = '/';
+  } else {
+    location.reload();
+  }
+}
+
 function go(id, addToHistory) {
   sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
   if (addToHistory !== false) history.pushState({page: id}, '', location.href);
@@ -210,14 +225,14 @@ function go(id, addToHistory) {
   const wfi = document.querySelectorAll('.wf-item');
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   // nav-link .on 동기화 (로고 클릭 등 setNav 없이 호출되는 경우 대응)
-    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-    const _goNavMap = { main: 0, community: 1, weather: 2 };
-    const _goNavLinks = document.querySelectorAll('.nav-link');
-    if (_goNavMap[id] !== undefined && _goNavLinks[_goNavMap[id]]) {
-        _goNavLinks[_goNavMap[id]].classList.add('on');
-      } else if (id === 'planner') {
-        document.getElementById('navPlannerBtn')?.classList.add('on');
-      }
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+  const _goNavMap = { main: 0, community: 1, weather: 2 };
+  const _goNavLinks = document.querySelectorAll('.nav-link');
+  if (_goNavMap[id] !== undefined && _goNavLinks[_goNavMap[id]]) {
+    _goNavLinks[_goNavMap[id]].classList.add('on');
+  } else if (id === 'planner') {
+    document.getElementById('navPlannerBtn')?.classList.add('on');
+  }
   window.scrollTo(0, 0);
 
   // 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
@@ -276,6 +291,8 @@ function go(id, addToHistory) {
 
   if (id === 'community') {
     setTimeout(function () {
+      // 메인페이지에서 특정 장소 후기로 바로 진입하는 경우, 목록 로드로 덮어쓰지 않음
+      if (window._pendingPlaceReview) return;
       var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
       if (['stay', 'food', 'tour', 'cafe'].indexOf(tab) !== -1) {
         if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
@@ -414,13 +431,13 @@ function updateNav() {
   }
 
   const plannerBtn = document.getElementById('navPlannerBtn');
-    if (plannerBtn) {
-        if (_loggedIn && _hasPlannerDraft()) {
-            plannerBtn.textContent = '✏️ 작성중인 플랜';
-          } else {
-            plannerBtn.textContent = '✈ 플랜';
-          }
-      }
+  if (plannerBtn) {
+    if (_loggedIn && _hasPlannerDraft()) {
+      plannerBtn.textContent = '✏️ 작성중인 플랜';
+    } else {
+      plannerBtn.textContent = '✈ 플랜';
+    }
+  }
   if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
 }
 
@@ -1262,12 +1279,12 @@ async function showMapPlacePopup(key, type) {
   if (naviEl) {
     const pin = (typeof MAP_PINS !== 'undefined') ? MAP_PINS.find(p => p.key === key) : null;
     const displayName = (typeof PLACE_REVIEWS !== 'undefined' && PLACE_REVIEWS[key])
-      ? PLACE_REVIEWS[key].name : key;
+        ? PLACE_REVIEWS[key].name : key;
     naviEl.innerHTML = pin
-      ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
+        ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
            style="display:block;width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;
            text-decoration:none;text-align:center;font-size:13px;font-weight:700;margin-bottom:12px;box-sizing:border-box">🚗 카카오맵으로 길찾기</a>`
-      : '';
+        : '';
   }
 
   const res = await api.get('/api/maps/places?keyword=' + encodeURIComponent(key));
@@ -1371,21 +1388,21 @@ async function sendMsg() {
   inp.value = '';
 
 // 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
-    const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
-    if (overseasKeywords.some(k => txt.includes(k))) {
-        addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
-        inp.disabled = false;
-        inp.focus();
-        return;
-    }
+  const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
+  if (overseasKeywords.some(k => txt.includes(k))) {
+    addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+    inp.disabled = false;
+    inp.focus();
+    return;
+  }
 
 // 2_2. AI 로딩 애니메이션 띄우기 및 입력창 잠금
-    const msgs = document.getElementById('chatMsgs');
-    const loadingId = 'loading-' + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = loadingId;
-    loadingDiv.className = 'cmsg';
-    loadingDiv.innerHTML = `
+  const msgs = document.getElementById('chatMsgs');
+  const loadingId = 'loading-' + Date.now();
+  const loadingDiv = document.createElement('div');
+  loadingDiv.id = loadingId;
+  loadingDiv.className = 'cmsg';
+  loadingDiv.innerHTML = `
   <div class="cav bot">🤖</div>
   <div>
     <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
@@ -1394,9 +1411,9 @@ async function sendMsg() {
       <div class="typing-dot"></div>
     </div>
   </div>`;
-    msgs.appendChild(loadingDiv);
-    msgs.scrollTop = msgs.scrollHeight;
-    inp.disabled = true;
+  msgs.appendChild(loadingDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+  inp.disabled = true;
 
   // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
   const sessionId = _chatSessionId;
@@ -2784,25 +2801,25 @@ function goNewPlanner() {
 function goResumePlanner() {
   if (!_loggedIn) { toast('⚠️ 로그인이 필요합니다.'); go('login'); return; }
   if (!_hasPlannerDraft()) {
-        toast('작성중인 플랜이 없습니다.');
-        goNewPlanner();
-        return;
-      }
-    go('planner', false);
-    if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
-    const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '1');
-    // 검증 없이 직접 패널 전환
-        for (let i = 1; i <= 3; i++) {
-        const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
-        if (!sb || !sp) continue;
-        sb.classList.remove('active', 'done'); sp.classList.remove('active');
-        if (i < savedStep) sb.classList.add('done');
-        if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
-      }
-    if (savedStep === 3 && typeof startChatWithSummary === 'function') {
-        setTimeout(() => startChatWithSummary(), 100);
-      }
-    history.pushState({ page: 'planner', step: savedStep }, '', location.href);
+    toast('작성중인 플랜이 없습니다.');
+    goNewPlanner();
+    return;
+  }
+  go('planner', false);
+  if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
+  const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '1');
+  // 검증 없이 직접 패널 전환
+  for (let i = 1; i <= 3; i++) {
+    const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+    if (!sb || !sp) continue;
+    sb.classList.remove('active', 'done'); sp.classList.remove('active');
+    if (i < savedStep) sb.classList.add('done');
+    if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
+  }
+  if (savedStep === 3 && typeof startChatWithSummary === 'function') {
+    setTimeout(() => startChatWithSummary(), 100);
+  }
+  history.pushState({ page: 'planner', step: savedStep }, '', location.href);
 }
 function _hasPlannerDraft() {
   if (window._currentTripId) return true;
@@ -2816,63 +2833,63 @@ function _hasPlannerDraft() {
   } catch { return false; }
 }
 
-    function _savePlannerDraft() {
-      if (window._currentTripId) {
-                  sessionStorage.setItem('plannerDraftId', window._currentTripId);
-                }
-              sessionStorage.setItem('plannerDraftStep', _currentPlanStep());
-        const state = {};
-        ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
-          .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
-        ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
-          .forEach(id => {
-              const chips = document.querySelectorAll('#' + id + ' .chip');
-              state['chips_' + id] = Array.from(chips).map(c => c.classList.contains('on'));
-            });
-        ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
-          .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
-        sessionStorage.setItem('plannerDraftState', JSON.stringify(state));
-      }
+function _savePlannerDraft() {
+  if (window._currentTripId) {
+    sessionStorage.setItem('plannerDraftId', window._currentTripId);
+  }
+  sessionStorage.setItem('plannerDraftStep', _currentPlanStep());
+  const state = {};
+  ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+      .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
+  ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
+      .forEach(id => {
+        const chips = document.querySelectorAll('#' + id + ' .chip');
+        state['chips_' + id] = Array.from(chips).map(c => c.classList.contains('on'));
+      });
+  ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
+      .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
+  sessionStorage.setItem('plannerDraftState', JSON.stringify(state));
+}
 
 function _restorePlannerDraft() {
-    const savedId = sessionStorage.getItem('plannerDraftId');
-    if (savedId) window._currentTripId = parseInt(savedId);
-    const raw = sessionStorage.getItem('plannerDraftState');
-    if (!raw) return;
-    try {
-      const state = JSON.parse(raw);
-      ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
-          .forEach(id => { const el = document.getElementById(id); if (el && state[id] !== undefined) el.value = state[id]; });
-        ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
-          .forEach(id => {
-            const chips = document.querySelectorAll('#' + id + ' .chip');
-            const saved = state['chips_' + id];
-            if (saved) chips.forEach((c, i) => c.classList.toggle('on', !!saved[i]));
-          });
-        ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
-          .forEach(id => {
-            const el = document.getElementById(id);
-            if (el && state[id]) { el.value = state[id]; el.classList.add('show'); }
-          });
-        const depEl = document.getElementById('dep-prov');
-      if (depEl && state['dep-prov']) {
-                  depEl.value = state['dep-prov'];
-                  if (typeof updateCityDep === 'function') updateCityDep(depEl);
-                  // 옵션 재생성 후 city 값 재적용
-                      const depCityEl = document.getElementById('dep-city');
-                  if (depCityEl && state['dep-city']) depCityEl.value = state['dep-city'];
-                }
-        const destEl = document.getElementById('dest-prov');
-        if (destEl && state['dest-prov']) {
-                  destEl.value = state['dest-prov'];
-                  if (typeof updateCityDest === 'function') updateCityDest(destEl);
-                  // 옵션 재생성 후 city 값 재적용
-                      const destCityEl = document.getElementById('dest-city');
-                  if (destCityEl && state['dest-city']) destCityEl.value = state['dest-city'];
-                }
-        updateNav();
-      } catch (e) { console.warn('[planner] draft restore 실패', e); }
-  }
+  const savedId = sessionStorage.getItem('plannerDraftId');
+  if (savedId) window._currentTripId = parseInt(savedId);
+  const raw = sessionStorage.getItem('plannerDraftState');
+  if (!raw) return;
+  try {
+    const state = JSON.parse(raw);
+    ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+        .forEach(id => { const el = document.getElementById(id); if (el && state[id] !== undefined) el.value = state[id]; });
+    ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
+        .forEach(id => {
+          const chips = document.querySelectorAll('#' + id + ' .chip');
+          const saved = state['chips_' + id];
+          if (saved) chips.forEach((c, i) => c.classList.toggle('on', !!saved[i]));
+        });
+    ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el && state[id]) { el.value = state[id]; el.classList.add('show'); }
+        });
+    const depEl = document.getElementById('dep-prov');
+    if (depEl && state['dep-prov']) {
+      depEl.value = state['dep-prov'];
+      if (typeof updateCityDep === 'function') updateCityDep(depEl);
+      // 옵션 재생성 후 city 값 재적용
+      const depCityEl = document.getElementById('dep-city');
+      if (depCityEl && state['dep-city']) depCityEl.value = state['dep-city'];
+    }
+    const destEl = document.getElementById('dest-prov');
+    if (destEl && state['dest-prov']) {
+      destEl.value = state['dest-prov'];
+      if (typeof updateCityDest === 'function') updateCityDest(destEl);
+      // 옵션 재생성 후 city 값 재적용
+      const destCityEl = document.getElementById('dest-city');
+      if (destCityEl && state['dest-city']) destCityEl.value = state['dest-city'];
+    }
+    updateNav();
+  } catch (e) { console.warn('[planner] draft restore 실패', e); }
+}
 
 function resetPlannerForm() {
   // Step1 초기화
@@ -2909,43 +2926,43 @@ function resetPlannerForm() {
 }
 
 // 검색어를 도/시 셀렉트에 매핑해서 자동 선택
-  function _applyDestText(val) {
-    const cityToProvMap = {
-      '제주도': { prov: '제주', city: '제주시' },
-      '강릉':   { prov: '강원', city: '강릉시' },
-      '부산':   { prov: '부산', city: '' },
-      '전주':   { prov: '전북', city: '전주시' },
-      '경주':   { prov: '경북', city: '경주시' },
-    };
-    const mapped = cityToProvMap[val.trim()];
-    if (!mapped) return;
-    const provSel = document.getElementById('dest-prov');
-    if (!provSel) return;
-    for (let i = 0; i < provSel.options.length; i++) {
-      if (provSel.options[i].text === mapped.prov) {
-        provSel.selectedIndex = i;
-        updateCityDest(provSel);
-        break;
-      }
-    }
-    if (mapped.city) {
-      setTimeout(() => {
-        const citySel = document.getElementById('dest-city');
-        if (!citySel) return;
-        for (let i = 0; i < citySel.options.length; i++) {
-          if (citySel.options[i].text === mapped.city) {
-            citySel.selectedIndex = i;
-            break;
-          }
-        }
-        if (typeof updateSummaryCard === 'function') updateSummaryCard();
-      }, 50);
-    } else {
-      setTimeout(() => {
-        if (typeof updateSummaryCard === 'function') updateSummaryCard();
-      }, 50);
+function _applyDestText(val) {
+  const cityToProvMap = {
+    '제주도': { prov: '제주', city: '제주시' },
+    '강릉':   { prov: '강원', city: '강릉시' },
+    '부산':   { prov: '부산', city: '' },
+    '전주':   { prov: '전북', city: '전주시' },
+    '경주':   { prov: '경북', city: '경주시' },
+  };
+  const mapped = cityToProvMap[val.trim()];
+  if (!mapped) return;
+  const provSel = document.getElementById('dest-prov');
+  if (!provSel) return;
+  for (let i = 0; i < provSel.options.length; i++) {
+    if (provSel.options[i].text === mapped.prov) {
+      provSel.selectedIndex = i;
+      updateCityDest(provSel);
+      break;
     }
   }
+  if (mapped.city) {
+    setTimeout(() => {
+      const citySel = document.getElementById('dest-city');
+      if (!citySel) return;
+      for (let i = 0; i < citySel.options.length; i++) {
+        if (citySel.options[i].text === mapped.city) {
+          citySel.selectedIndex = i;
+          break;
+        }
+      }
+      if (typeof updateSummaryCard === 'function') updateSummaryCard();
+    }, 50);
+  } else {
+    setTimeout(() => {
+      if (typeof updateSummaryCard === 'function') updateSummaryCard();
+    }, 50);
+  }
+}
 
 const _md = {
   jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
@@ -3112,38 +3129,38 @@ document.addEventListener('keydown', e => {
 
 window.addEventListener('popstate', e => {
   const p = e.state?.page || 'main';
-    const step = e.state?.step;
+  const step = e.state?.step;
 
-        // 플래너 내 스텝 뒤로가기
-            if (p === 'planner' && step) {
-        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-        document.getElementById('page-planner')?.classList.add('active');
-        for (let i = 1; i <= 3; i++) {
-            const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
-            if (!sb || !sp) continue;
-            sb.classList.remove('active', 'done'); sp.classList.remove('active');
-            if (i < step) sb.classList.add('done');
-            if (i === step) { sb.classList.add('active'); sp.classList.add('active'); }
-          }
-        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-        document.getElementById('navPlannerBtn')?.classList.add('on');
-        return;
-      }
+  // 플래너 내 스텝 뒤로가기
+  if (p === 'planner' && step) {
+    document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+    document.getElementById('page-planner')?.classList.add('active');
+    for (let i = 1; i <= 3; i++) {
+      const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+      if (!sb || !sp) continue;
+      sb.classList.remove('active', 'done'); sp.classList.remove('active');
+      if (i < step) sb.classList.add('done');
+      if (i === step) { sb.classList.add('active'); sp.classList.add('active'); }
+    }
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+    document.getElementById('navPlannerBtn')?.classList.add('on');
+    return;
+  }
 
-      document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
   const pg = document.getElementById('page-' + p);
   if (pg) pg.classList.add('active');
   // nav-link .on 동기화
-        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-    const navLinks = document.querySelectorAll('.nav-link');
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+  const navLinks = document.querySelectorAll('.nav-link');
   // 순서: 0=홈, 1=커뮤니티, 2=날씨, 3=플랜(navPlannerBtn)
-        const navIdxMap = { main: 0, community: 1, weather: 2, planner: 3 };
-    const idx = navIdxMap[p];
-    if (idx !== undefined && navLinks[idx]) navLinks[idx].classList.add('on');
-    // wf-item 동기화
-        const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
-    const wfi = document.querySelectorAll('.wf-item');
-    if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
+  const navIdxMap = { main: 0, community: 1, weather: 2, planner: 3 };
+  const idx = navIdxMap[p];
+  if (idx !== undefined && navLinks[idx]) navLinks[idx].classList.add('on');
+  // wf-item 동기화
+  const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
+  const wfi = document.querySelectorAll('.wf-item');
+  if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
 });
 
 /* ───────────────────────────────────────────────
@@ -3375,4 +3392,3 @@ function initWithdrawSection() {
     if (pwBox)     pwBox.style.display     = 'block';
   }
 }
-
