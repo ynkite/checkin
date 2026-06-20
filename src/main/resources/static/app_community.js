@@ -61,7 +61,7 @@ const _commState = {
   currentPage:   0,
   pageSize:      10,
   totalPages:    0,
-  sortOrder:    'scrap',   // 'likes' | 'scrap' | 'latest'
+  sortOrder:    'scrap',   // 경로 기본=스크랩순 / 장소 기본=담긴순 (탭 전환 시 재설정)
   isLoading:    false
 };
 
@@ -88,20 +88,26 @@ function setCommTab(btn, cat) {
   if (s) {
     if (cat === 'route') {
       s.innerHTML =
-          '<option value="likes">좋아요순</option>' +
           '<option value="scrap" selected>스크랩순</option>' +
+          '<option value="views">조회수순</option>' +
+          '<option value="likes">좋아요순</option>' +
           '<option value="latest">최신순</option>';
+      _commState.sortOrder = 'scrap';
     } else {
       s.innerHTML =
-          '<option value="saved" selected>담긴 순</option>' +
+          '<option value="saved" selected>담긴순</option>' +
           '<option value="scrap">스크랩순</option>' +
+          '<option value="rating">평점순</option>' +
           '<option value="latest">최신순</option>';
+      _commState.sortOrder = 'saved';
     }
   }
 
   _commState.currentTab  = cat;
   _commState.currentPage = 0;
-  loadCommunityPosts(0, true);
+  /* 목록 로드는 app_community_v2.js의 setCommTab 래퍼가 탭 종류에 맞게 처리한다
+     (route → loadCommunityPosts, 장소 → _loadPlaceCards). 여기서 직접 호출하면
+     장소 탭에서도 /api/posts 가 호출되어 깜빡임/오정렬이 생기므로 호출하지 않음. */
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -111,8 +117,27 @@ function setCommTab(btn, cat) {
 function sortPosts(val) {
   _commState.sortOrder   = val;
   _commState.currentPage = 0;
-  loadCommunityPosts(0, true);
-  toast('정렬: ' + val);
+
+  /* 장소 탭(숙소/맛집/관광지/카페)이면 장소 카드 로더로 직접 위임 → 정렬이 실제로 적용됨 */
+  const placeTabs = ['stay', 'food', 'tour', 'cafe'];
+  if (placeTabs.indexOf(_commState.currentTab) !== -1) {
+    if (typeof window._loadPlaceCards === 'function') {
+      window._loadPlaceCards(_commState.currentTab, 0, true);
+    }
+  } else {
+    loadCommunityPosts(0, true);
+  }
+
+  /* 한글 라벨 토스트 */
+  const sortLabels = {
+    views:  '조회수순',
+    saved:  '담긴순',
+    scrap:  '스크랩순',
+    likes:  '좋아요순',
+    rating: '평점순',
+    latest: '최신순'
+  };
+  toast(sortLabels[val] ? (sortLabels[val] + '으로 정렬했습니다.') : '정렬했습니다.');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -363,7 +388,7 @@ async function submitReportPost() {
   const res = await api.post('/api/posts/' + _reportPostId + '/reports', { reason });
   const modal = document.getElementById('reportPostModal');
   if (modal) modal.classList.remove('open');
-  toast(res.success ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
+  toast((res && res.success !== false) ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
   _reportPostId = null;
 }
 
@@ -511,6 +536,8 @@ async function submitReportComment() {
   const reason = sel ? sel.value : '';
   if (!reason) { toast('신고 사유를 선택해주세요'); return; }
 
+  if (!_reportCommentPostId) { toast('⚠️ 신고 대상 게시글을 찾을 수 없습니다.'); return; }
+
   const modal = document.getElementById('reportCommentModal');
   if (modal) modal.style.display = 'none';
 
@@ -518,7 +545,8 @@ async function submitReportComment() {
   const res = await api.post('/api/posts/' + _reportCommentPostId + '/reports', {
     reason: '[댓글 신고] ' + reason
   });
-  toast(res.success ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
+  const ok = res && res.success !== false;
+  toast(ok ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
   _reportCommentId     = null;
   _reportCommentPostId = null;
 }
@@ -1196,7 +1224,7 @@ function renderDestBars(dests) {
   async function initCommunityPage() {
     _commState.currentTab = 'route';
     _commState.currentPage = 0;
-    _commState.sortOrder = 'scrap';
+    _commState.sortOrder = 'scrap';   // 경로 탭 기본 = 스크랩순
     _activeTags.clear();
 
     /* 탭 초기 상태 */

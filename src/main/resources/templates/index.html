@@ -17,11 +17,11 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo" onclick="go('main');setNav(document.querySelector('.nav-link'))">
+  <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
     <img th:src="@{/img/logo.png}" alt="TripLinker" class="logo-img" />
   </div>
   <div class="nav-links">
-    <button class="nav-link on" onclick="go('main');setNav(this)">🏠 홈</button>
+    <button class="nav-link on" onclick="goHomeRefresh()">🏠 홈</button>
     <button class="nav-link" onclick="go('community');setNav(this)">👥 커뮤니티</button>
     <button class="nav-link" onclick="go('weather');setNav(this)">🌤️ 날씨</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">✈ 플랜</button>
@@ -75,10 +75,10 @@
 <th:block th:insert="~{page_weather :: weather}"></th:block>
 
 <!-- ===== JS ===== -->
-<script th:src="@{/app_main.js}"></script>
+<script th:src="@{/app_main.js(v=20260620a)}"></script>
 <script th:src="@{/js/app_budget.js}"></script>
-<script th:src="@{/app_community.js}"></script>
-<script th:src="@{/app_community_v2.js}"></script>
+<script th:src="@{/app_community.js(v=20260620a)}"></script>
+<script th:src="@{/app_community_v2.js(v=20260620a)}"></script>
 
 <!--제미나이에서 추가-->
 <div id="notifPopup"

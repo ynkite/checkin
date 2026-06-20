@@ -103,7 +103,7 @@
 
   <!--</script>-->
 
-  <script>
+  <script th:inline="none">
     /* ============================================================
      * ✅ [서비스 로직] — 이 블록은 그대로 유지하세요.
      * MOCK 데이터가 없으면 자동으로 api.get() 호출로 전환됩니다.
@@ -160,13 +160,21 @@
       /* 카드 클릭: 해당 장소 후기로 이동 */
       var onClickAction = item.isMock
               ? 'go(' + item.url + ')'
-              : 'goToPlaceReviews(' + placeId + ', \'' + _esc(item.name) + '\', \'' + catLower + '\')';
+              : 'goToPlaceReviews(' + placeId + ', \'' + _esc(item.name) + '\', \'' + catLower + '\', ' + ratingNum + ', ' + reviewCnt + ')';
 
       /* 스크랩 버튼 토글 */
       var scrapBtnId = 'pop-scrap-' + placeId + '-' + index;
       var onClickScrap = item.isMock
-              ? '(function(b){b.textContent="✅ 스크랩됨";b.style.color="var(--sage-d)"})(this);toast("🔖 스크랩했습니다.")'
+              ? '(function(b){_applyMainScrapStyle(b,true)})(this);toast("🔖 스크랩했습니다.")'
               : 'toggleMainPlaceScrap(event,' + placeId + ',\'' + catLower + '\',\'' + scrapBtnId + '\')';
+
+      /* 이미 스크랩한 장소면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 → 새로고침/재진입 시에도 유지 */
+      var _alreadyScrapped = !item.isMock && placeId !== '' &&
+              window._scrappedPlaceIds && window._scrappedPlaceIds.has(String(placeId));
+      var scrapBtnCls   = 'pop-scrap-btn' + (_alreadyScrapped ? ' scrapped' : '');
+      var scrapBtnStyle = _alreadyScrapped
+              ? ' style="background:#46B29E;border-color:#46B29E;color:#fff"'
+              : '';
 
       var tagHtml = tags.length
               ? '<div class="pop-tags">' + tags.map(function(t){ return '<span class="pop-tag">' + _esc(t) + '</span>'; }).join('') + '</div>'
@@ -186,9 +194,11 @@
               '</div>' +
               tagHtml +
               '<div class="pop-foot">' +
+              '<span class="pop-stats">' +
               '<span class="pop-saves">📌 ' + reviewCnt + '번 담김</span>' +
               '<span class="pop-scrap-n">★ ' + (item.scrapCount || 0) + '</span>' +
-              '<button id="' + scrapBtnId + '" class="pop-scrap-btn" ' +
+              '</span>' +
+              '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '"' + scrapBtnStyle + ' ' +
               'onclick="event.stopPropagation(); ' + onClickScrap + '">★ 스크랩</button>' +
               '</div>' +
               '</div>';
@@ -198,9 +208,9 @@
       return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    // ── 메인페이지 인기 장소 카드 클릭 → 커뮤니티 장소 후기 탭으로 이동 (6b 수정) ──
-    function goToPlaceReviews(placeId, name, category) {
-      /* API 반환: FOOD/STAY/TOUR/CAFE (대문자) 또는 food/stay/tour/cafe (소문자) 모두 처리 */
+    // ── 메인페이지 인기 장소 카드 클릭 → 커뮤니티 해당 장소 후기로 직접 이동 (이슈 5) ──
+    function goToPlaceReviews(placeId, name, category, avgRating, reviewCount) {
+      /* API 반환: FOOD/STAY/TOUR/CAFE(대문자) 또는 food/stay/tour/cafe(소문자) 모두 처리 */
       const catLower = (category || '').toLowerCase();
       const catMap = {
         food: 'food', restaurant: 'food',
@@ -210,63 +220,153 @@
       };
       const type = catMap[catLower] || 'tour';
 
+      /* 메인 → 장소 후기 직행 플래그 (go()의 목록 자동 로드가 덮어쓰지 않게) */
+      window._pendingPlaceReview = { placeId: placeId, name: name, type: type };
+
+      /* 1) 커뮤니티 화면으로 즉시 전환 */
       go('community');
 
-      setTimeout(function () {
-        const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*=\"\'\'' + type + '\'\'\"');
-        if (tabBtn && typeof window.setCommTab === 'function') {
-          window.setCommTab(tabBtn, type);
+      /* 2) 목록 로드(setCommTab)를 거치지 않고, 탭 표시만 직접 전환 → 중간 화면 안 보임 */
+      const showTab = function () {
+        document.querySelectorAll('#commTabs .comm-tab').forEach(function (b) {
+          const oc = b.getAttribute('onclick') || '';
+          b.classList.toggle('on', oc.indexOf("'" + type + "'") !== -1);
+        });
+        ['route', 'stay', 'food', 'tour', 'cafe'].forEach(function (c) {
+          const el = document.getElementById('tab-' + c);
+          if (el) el.style.display = (c === type) ? 'block' : 'none';
+        });
+        if (typeof _commState !== 'undefined') { _commState.currentTab = type; _commState.currentPage = 0; }
+        window._communityWriteCategory = ({ food: 'FOOD', stay: 'STAY', tour: 'TOUR', cafe: 'CAFE' })[type] || 'TOUR';
+      };
+
+      /* 3) 해당 장소 후기 패널을 그림 */
+      const openReviews = function () {
+        showTab();
+        if (typeof window._openPlaceReviews === 'function') {
+          window._openPlaceReviews(placeId, name, type,
+                  (avgRating != null ? avgRating : null),
+                  (reviewCount != null ? reviewCount : null));
         }
-        setTimeout(function () {
-          if (typeof window._openPlaceReviews === 'function') {
-            window._openPlaceReviews(placeId, name, type, null, null);
-          }
-        }, 250);
-      }, 300);
+      };
+
+      /* 즉시 1회 + go() 내부의 100ms 목록 로직 이후 1회 더 그려서 확실히 후기 화면 유지 */
+      openReviews();
+      setTimeout(openReviews, 150);
+      setTimeout(function () { window._pendingPlaceReview = null; }, 700);
     }
 
     /* ── 메인페이지 장소 스크랩 토글 헬퍼 (이슈 6a) ── */
-    async function toggleMainPlaceScrap(e, placeId, category, btnId) {
-      e.stopPropagation();
-      if (!window._loggedIn) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
-      if (typeof window.doCommPlaceScrap !== 'function') { if (typeof toast === 'function') toast('잠시 후 다시 시도해 주세요.'); return; }
-      const scrapped = await window.doCommPlaceScrap(placeId, category);
-      const btn = document.getElementById(btnId);
-      if (btn) {
-        if (scrapped) {
-          btn.textContent = '\u2705 스크랩됨';
-          btn.style.background = 'var(--sage-pale)';
-          btn.style.borderColor = 'var(--sage-d)';
-          btn.style.color = 'var(--sage-d)';
-        } else {
-          btn.textContent = '\u2605 스크랩';
-          btn.style.background = '';
-          btn.style.borderColor = '';
-          btn.style.color = '';
-        }
+    /* 메인페이지 로그인 여부 — Token 기반(안정적) */
+    /* 내가 스크랩한 placeId 집합 — 새로고침/재진입 시에도 버튼 상태 유지용 */
+    window._scrappedPlaceIds = window._scrappedPlaceIds || new Set();
+    /* 내가 스크랩한 경로 게시글 postId 집합 */
+    window._scrappedPostIds = window._scrappedPostIds || new Set();
+    async function _loadMyScrappedPlaceIds() {
+      window._scrappedPlaceIds = new Set();
+      window._scrappedPostIds = new Set();
+      if (!_mainIsLoggedIn() || typeof api === 'undefined') return;
+      try {
+        const res = await api.get('/api/scraps');
+        const list = (res && res.success !== false) ? (res.data || []) : [];
+        list.forEach(function (s) {
+          if (s && s.placeId != null) window._scrappedPlaceIds.add(String(s.placeId));
+        });
+      } catch (e) {}
+      try {
+        const resP = await api.get('/api/posts/scrapped');
+        const listP = (resP && resP.success !== false) ? (resP.data || []) : [];
+        listP.forEach(function (p) {
+          if (p && p.postId != null) window._scrappedPostIds.add(String(p.postId));
+        });
+      } catch (e) {}
+    }
+
+    function _mainIsLoggedIn() {
+      try {
+        if (typeof Token !== 'undefined' && Token.getAccess && Token.getAccess()) return true;
+      } catch (e) {}
+      return !!(localStorage.getItem('accessToken') || localStorage.getItem('access_token'));
+    }
+
+    /* 스크랩 버튼 스타일 — 커뮤니티 상세 페이지와 동일(솔리드 그린 채움, 라벨은 '★ 스크랩' 유지) */
+    var _MAIN_SCRAP_ACTIVE = '#46B29E';
+    function _applyMainScrapStyle(btn, scrapped) {
+      if (!btn) return;
+      btn.textContent = '★ 스크랩';
+      if (scrapped) {
+        btn.classList.add('scrapped');
+        btn.style.background  = _MAIN_SCRAP_ACTIVE;
+        btn.style.borderColor = _MAIN_SCRAP_ACTIVE;
+        btn.style.color       = '#fff';
+      } else {
+        btn.classList.remove('scrapped');
+        btn.style.background  = '';
+        btn.style.borderColor = '';
+        btn.style.color       = '';
       }
     }
 
-    /* ── 메인페이지 인기 경로 스크랩 토글 (이슈 6a) ── */
+    /* 스크랩 카운트(★ 숫자) 실시간 갱신 — 버튼이 속한 카드 내부의 카운트 엘리먼트를 +1/-1 */
+    function _updateScrapCount(btn, scrapped, selector) {
+      if (!btn) return;
+      const card = btn.closest('.pop-card') || btn.closest('.top3-card') || btn.parentElement;
+      if (!card) return;
+      const el = card.querySelector(selector);
+      if (!el) return;
+      const cur = parseInt((el.textContent.match(/\d+/) || [0])[0], 10) || 0;
+      const next = Math.max(0, scrapped ? cur + 1 : cur - 1);
+      el.textContent = '★ ' + next;
+    }
+
+    async function toggleMainPlaceScrap(e, placeId, category, btnId) {
+      e.stopPropagation();
+      if (!_mainIsLoggedIn()) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
+      /* 외부 함수(doCommPlaceScrap)에 의존하지 않고 직접 토글 API 호출 → 로드 순서와 무관하게 동작 */
+      const _catKey = (category || '').toLowerCase();
+      const _catMap = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE',
+        accommodation: 'STAY', restaurant: 'FOOD' };
+      const dbCat = _catMap[_catKey] || 'TOUR';
+      let res;
+      try {
+        res = await api.post('/api/places/' + placeId + '/scraps', { category: dbCat });
+      } catch (err) {
+        if (typeof toast === 'function') toast('⚠️ 스크랩 처리에 실패했습니다.');
+        return;
+      }
+      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '⚠️ 스크랩 처리에 실패했습니다.'); return; }
+      const scrapped = res.data === true;
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        _applyMainScrapStyle(btn, scrapped);
+        _updateScrapCount(btn, scrapped, '.pop-scrap-n');
+      }
+      /* 집합 갱신 → 같은 장소가 다른 곳에서도 일관되게 표시 */
+      if (window._scrappedPlaceIds) {
+        if (scrapped) window._scrappedPlaceIds.add(String(placeId));
+        else          window._scrappedPlaceIds.delete(String(placeId));
+      }
+      if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
+    }
+
+    /* ── 메인페이지 인기 경로 스크랩 토글 (이슈 3) ── */
     async function toggleRouteScrap(e, postId, btn) {
       e.stopPropagation();
-      if (!window._loggedIn) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
+      if (!_mainIsLoggedIn()) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
       const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
       const isOk = res && res.success !== false;
-      if (!isOk) { if (typeof toast === 'function') toast('\u26a0\ufe0f 스크랩 처리에 실패했습니다.'); return; }
+      if (!isOk) { if (typeof toast === 'function') toast('⚠️ 스크랩 처리에 실패했습니다.'); return; }
       const scrapped = res.data === true;
       if (btn) {
-        if (scrapped) {
-          btn.textContent = '\u2705 스크랩됨';
-          btn.style.borderColor = 'var(--sage-d)';
-          btn.style.color = 'var(--sage-d)';
-        } else {
-          btn.textContent = '\u2605 스크랩';
-          btn.style.borderColor = '';
-          btn.style.color = '';
-        }
+        _applyMainScrapStyle(btn, scrapped);
+        _updateScrapCount(btn, scrapped, '.card-scrap-n');
       }
-      if (typeof toast === 'function') toast(scrapped ? '\U0001f516 스크랩했습니다.' : '\U0001f516 스크랩을 취소했습니다.');
+      /* 집합 갱신 → 새로고침 없이도 상태 일관 유지 */
+      if (window._scrappedPostIds) {
+        if (scrapped) window._scrappedPostIds.add(String(postId));
+        else          window._scrappedPostIds.delete(String(postId));
+      }
+      if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
     }
 
     // ── 메인 페이지 초기화 (하드코딩 Fallback 자동 지원) ──
@@ -384,6 +484,8 @@
       }
 
       // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
+      // ★ 스크랩 상태 유지를 위해 카드 렌더링 전에 내 스크랩 목록을 먼저 로드
+      await _loadMyScrappedPlaceIds();
       let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
       if (!top3Routes && typeof api !== 'undefined') {
         const res = await api.get('/api/posts?sort=scrap&size=3&category=ROUTE');
@@ -402,11 +504,19 @@
 
           const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
           const pvbLabel = r.isMock ? r.pvbLabel : '🔍 후기 상세보기 (클릭)';
-          const pvbText = r.isMock ? r.pvbText : `${_esc(r.content?.substring(0, 45))}...`;
+          const pvbText = r.isMock ? r.pvbText : _esc((r.content || '').replace(/[\r\n]+/g, ' ').trim());
           /* 스크랩 토글: mock은 인라인, API는 toggleRouteScrap 사용 */
           const onClickScrap = r.isMock
-                  ? `(function(b){b.textContent='✅ 스크랩됨';b.style.color='var(--sage-d)'})(this);toast('🔖 스크랩했습니다.')`
+                  ? `(function(b){_applyMainScrapStyle(b,true)})(this);toast('🔖 스크랩했습니다.')`
                   : `toggleRouteScrap(event, ${r.postId}, this)`;
+
+          /* 이미 스크랩한 경로면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 */
+          const _routeScrapped = !r.isMock && r.postId != null &&
+                  window._scrappedPostIds && window._scrappedPostIds.has(String(r.postId));
+          const scrapBtnCls   = 'btn-scrap' + (_routeScrapped ? ' scrapped' : '');
+          const scrapBtnStyle = _routeScrapped
+                  ? ' style="background:#46B29E;border-color:#46B29E;color:#fff"'
+                  : '';
 
           return `
         <div class="top3-card" onclick="${onClickCard}">
@@ -423,7 +533,7 @@
               <span class="card-stat">👁 ${r.views || r.viewCount || 0}</span>
               <span class="card-scrap-n">★ ${r.scraps || r.scrapCount || 0}</span>
             </div>
-            <button class="btn-scrap" onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
+            <button class="${scrapBtnCls}"${scrapBtnStyle} onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
           </div>
         </div>`;
         }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';
@@ -510,7 +620,7 @@
           <div class="sec-ey">커뮤니티 인기</div>
           <h2 class="sec-hd">인기 경로 TOP 3</h2>
         </div>
-        <div class="sec-meta">↻ 10분 주기 업데이트 · 실시간 스크랩순 랭킹</div>
+        <div class="sec-meta">↻ 실시간 스크랩순 랭킹</div>
       </div>
       <div class="top3-grid"></div>
     </div>
@@ -518,10 +628,9 @@
     <div class="sec">
       <div class="sec-row">
         <div>
-          <div class="sec-ey" style="color:var(--sage)">실제 저장 수 기반</div>
           <h2 class="sec-hd">인기 맛집 TOP 3</h2>
         </div>
-        <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
       </div>
       <div class="popular-grid" id="popular-food-grid"></div>
     </div>
@@ -529,10 +638,9 @@
     <div class="sec">
       <div class="sec-row">
         <div>
-          <div class="sec-ey" style="color:var(--coral)">실제 저장 수 기반</div>
           <h2 class="sec-hd">인기 숙소 TOP 3</h2>
         </div>
-        <div class="sec-meta">PLAN_PLACES 저장 횟수 · 평점 데이터 반영</div>
+        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
       </div>
       <div class="popular-grid" id="popular-stay-grid"></div>
     </div>
@@ -540,10 +648,9 @@
     <div class="sec">
       <div class="sec-row">
         <div>
-          <div class="sec-ey" style="color:var(--sky)">실제 저장 수 기반</div>
           <h2 class="sec-hd">인기 관광지 TOP 3</h2>
         </div>
-        <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
       </div>
       <div class="popular-grid" id="popular-tour-grid"></div>
     </div>
@@ -551,10 +658,9 @@
     <div class="sec">
       <div class="sec-row">
         <div>
-          <div class="sec-ey" style="color:#7C3AED">실제 저장 수 기반</div>
           <h2 class="sec-hd">인기 카페 TOP 3</h2>
         </div>
-        <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>
+        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
       </div>
       <div class="popular-grid" id="popular-cafe-grid"></div>
     </div>
@@ -814,7 +920,7 @@
   <!--        <div class="sec-ey" style="color:var(&#45;&#45;sage)">실제 저장 수 기반</div>-->
   <!--        <h2 class="sec-hd">인기 맛집 TOP 3</h2>-->
   <!--      </div>-->
-  <!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+  <!--      <div class="sec-meta">담긴 횟수 기준</div>-->
   <!--    </div>-->
   <!--    <div class="popular-grid" id="popular-food-grid"></div>-->
   <!--  </div>-->
@@ -825,7 +931,7 @@
   <!--        <div class="sec-ey" style="color:var(&#45;&#45;coral)">실제 저장 수 기반</div>-->
   <!--        <h2 class="sec-hd">인기 숙소 TOP 3</h2>-->
   <!--      </div>-->
-  <!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 · 평점 데이터 반영</div>-->
+  <!--      <div class="sec-meta">담긴 횟수 기준</div>-->
   <!--    </div>-->
   <!--    <div class="popular-grid" id="popular-stay-grid"></div>-->
   <!--  </div>-->
@@ -836,7 +942,7 @@
   <!--        <div class="sec-ey" style="color:var(&#45;&#45;sky)">실제 저장 수 기반</div>-->
   <!--        <h2 class="sec-hd">인기 관광지 TOP 3</h2>-->
   <!--      </div>-->
-  <!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+  <!--      <div class="sec-meta">담긴 횟수 기준</div>-->
   <!--    </div>-->
   <!--    <div class="popular-grid" id="popular-tour-grid"></div>-->
   <!--  </div>-->
@@ -847,7 +953,7 @@
   <!--        <div class="sec-ey" style="color:#7C3AED">실제 저장 수 기반</div>-->
   <!--        <h2 class="sec-hd">인기 카페 TOP 3</h2>-->
   <!--      </div>-->
-  <!--      <div class="sec-meta">PLAN_PLACES 저장 횟수 기준</div>-->
+  <!--      <div class="sec-meta">담긴 횟수 기준</div>-->
   <!--    </div>-->
   <!--    <div class="popular-grid" id="popular-cafe-grid"></div>-->
   <!--  </div>-->

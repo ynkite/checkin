@@ -159,6 +159,10 @@ public class PostService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
 
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 후기를 작성할 수 없습니다.");
+        }
+
         TravelPlan plan = null;
 
         if (dto.getPlanId() != null) {
@@ -287,6 +291,10 @@ public class PostService {
     public Long addComment(Long userId, Long postId, PostWriteDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 댓글을 작성할 수 없습니다.");
+        }
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));

@@ -356,12 +356,22 @@
 
                   let mgmt='<span style="font-size:11px;color:var(--text3)">탈퇴 회원</span>';
                   if(u.status!=='DELETED'){
-                    const suspBtn=u.status==='ACTIVE'
-                            ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
-                            :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
-                    const roleBtn=u.role==='USER'
-                            ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`
-                            :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+                    /* 관리자 계정은 정지할 수 없음(백엔드 방어) → 정지 버튼 숨김 */
+                    let suspBtn='';
+                    if(u.role!=='ADMIN'){
+                      suspBtn=u.status==='ACTIVE'
+                              ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
+                              :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+                    }
+                    /* 정지된 회원은 관리자로 전환할 수 없음(백엔드 방어) → 비활성 버튼 */
+                    let roleBtn;
+                    if(u.role==='USER'){
+                      roleBtn=(u.status==='SUSPENDED')
+                              ?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled title="정지된 회원은 관리자로 전환할 수 없습니다">관리자 전환</button>`
+                              :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`;
+                    } else {
+                      roleBtn=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+                    }
                     mgmt=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${suspBtn}${roleBtn}</div>`;
                   }
                   return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
