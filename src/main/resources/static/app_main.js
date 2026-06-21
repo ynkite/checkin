@@ -160,29 +160,21 @@ function goHomeRefresh() {
 
 function go(id, addToHistory) {
   sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
-  if (addToHistory !== false) history.pushState({page: id}, '', location.href);
+  if (addToHistory !== false) history.pushState({page: id}, '', '/');
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   const pg = document.getElementById('page-' + id);
   if (pg) pg.classList.add('active');
 
   if (id === 'map') {
-    // 🎯 지도방문 플래그가 없으면 세션에 기록하고 쿨하게 F5 한 번 날려버리기
-    if (!sessionStorage.getItem('map_refresh_lock')) {
-      sessionStorage.setItem('map_refresh_lock', 'true');
-      location.reload();
-      return; // 새로고침 되므로 아래 코드는 실행할 필요 없음
-    }
-
-    // F5를 누르고 다시 들어왔을 때 실행되는 안전망
+    // 🎯 강제 새로고침(location.reload)으로 인해 링크를 두 번 엔터쳐야 했던 버그 완벽 제거!
     setTimeout(function() {
       if (window._kakaoMap) {
         window._kakaoMap.relayout();
         if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
+      } else if (typeof initKakaoMap === 'function') {
+        initKakaoMap();
       }
     }, 100);
-  } else {
-    // 🎯 지도 외에 다른 페이지(홈, 플래너 등)로 가면 플래너 플래그를 지워줘서 나중에 지도 올 때 또 새로고침 되게 함
-    sessionStorage.removeItem('map_refresh_lock');
   }
 
   //가계부 페이지 진입 시 항상 실제 데이터로 갱신
@@ -360,46 +352,37 @@ function updateNav() {
       saveInviteBtn.id = 'navSaveInviteBtn';
       saveInviteBtn.className = 'btn-f';
       saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
-      saveInviteBtn.innerHTML = '💾 일정 저장하기';
+      saveInviteBtn.innerHTML = '🔗 링크 보관하기';
 
-      saveInviteBtn.onclick = async () => {
+      saveInviteBtn.onclick = () => {
         const tid = window._currentTripId;
         if (!tid) return;
 
-        const originalHtml = saveInviteBtn.innerHTML;
         saveInviteBtn.innerHTML = '⏳ 저장 중...';
         saveInviteBtn.style.opacity = '0.7';
         saveInviteBtn.style.pointerEvents = 'none';
 
-        try {
-          // ✨ 주소창이 지도 탭 등으로 인해 오염될 수 있으므로, 확실한 정식 편집자 링크를 조립해서 저장합니다.
-          const exactInviteUrl = `${window.location.origin}/plan?id=${tid}`;
+        const exactInviteUrl = window.location.href;
+        const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
+        const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
 
-          const payload = {
-            inviteUrl: exactInviteUrl, // 조립된 정식 편집 링크 전송
-            title: document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜',
-            destination: document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역'
-          };
-
-          const res = await api.post('/api/trips/invited', payload);
-
-          if (res.success) {
+        api.post('/api/trips/invited', {
+          originalTripId: tid,
+          inviteUrl: exactInviteUrl,
+          title: titleText,
+          destination: metaText
+        }).then(res => {
+          if(res.success) {
             toast('✅ [초대받은 일정] 탭에 안전하게 저장되었습니다!');
             saveInviteBtn.style.display = 'none';
-            window._isInvitedEditView = false;
             if (typeof updateMyPageUI === 'function') updateMyPageUI();
           } else {
-            toast('⚠️ 저장 실패: ' + res.message);
-            saveInviteBtn.innerHTML = originalHtml;
+            toast('⚠️ 저장 중 오류가 발생했습니다.');
+            saveInviteBtn.innerHTML = '📌 내 목록에 담기';
             saveInviteBtn.style.opacity = '1';
             saveInviteBtn.style.pointerEvents = 'auto';
           }
-        } catch(e) {
-          toast('⚠️ 서버 통신 중 오류가 발생했습니다.');
-          saveInviteBtn.innerHTML = originalHtml;
-          saveInviteBtn.style.opacity = '1';
-          saveInviteBtn.style.pointerEvents = 'auto';
-        }
+        });
       };
       navBtns.insertBefore(saveInviteBtn, navBtns.firstChild);
     }
@@ -424,7 +407,15 @@ function updateNav() {
   // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
   if (saveInviteBtn) {
     if (_loggedIn && window._isInvitedEditView) {
-      saveInviteBtn.style.display = 'inline-block';
+      api.get('/api/trips/invited').then(r => {
+        if (r.success && r.data) {
+          const currentUrl = window.location.href;
+          const tid = window._currentTripId;
+          const isAlreadySaved = r.data.some(item => item.originalTripId === tid || item.url === currentUrl);
+
+          saveInviteBtn.style.display = isAlreadySaved ? 'none' : 'inline-block';
+        }
+      });
     } else {
       saveInviteBtn.style.display = 'none';
     }
@@ -697,15 +688,15 @@ async function updateMyPageUI() {
   const invitedList = (invitedRes.success && invitedRes.data) ? invitedRes.data : [];
 
   _renderMyTrips(_myTrips);
-  _renderMyInvitedTrips(invitedList); // 독립 렌더러 호출
+  _renderMyInvitedTrips(invitedList); // DB 데이터로 렌더러 기동
   updateLedgerList();
 }
 
 window._invitedTripsData = [];
 window._invitedTripsCurrentPage = 1;
 const INVITED_PER_PAGE = 6;
+window._invitedDeleteMode = false;
 
-/** 🤝 초대받은 일정 전용 독립 고정형 페이지네이션 렌더러 */
 function _renderMyInvitedTrips(trips = null, page = 1) {
   const container = document.getElementById('my-invited-list');
   if (!container) return;
@@ -717,30 +708,54 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     window._invitedTripsCurrentPage = page;
   }
 
+  // 최신 저장순으로 정렬
   const allInvited = window._invitedTripsData || [];
+  allInvited.sort((a, b) => new Date(b.savedAt) - new Date(a.savedAt));
+
   const totalPages = Math.ceil(allInvited.length / INVITED_PER_PAGE) || 1;
   const currentPage = window._invitedTripsCurrentPage;
 
   const startIndex = (currentPage - 1) * INVITED_PER_PAGE;
   const paginated = allInvited.slice(startIndex, startIndex + INVITED_PER_PAGE);
 
-  let html = '';
+  let html = `
+  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 class="my-sec-ttl" style="margin:0;">초대받은 일정</h3>
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      ${window._invitedDeleteMode ? `
+        <button onclick="execInvitedBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="toggleInvitedDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
+      ` : `
+        <button onclick="toggleInvitedDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
+      `}
+    </div>
+  </div>
+  <div id="my-invited-list" class="trip-list">`;
 
   if (paginated.length > 0) {
     html += paginated.map(x => {
-      // ✨ 누르면 저장된 편집 링크(x.inviteUrl)로 완벽하게 이동
+      // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
+      const cardClickAction = window._invitedDeleteMode
+          ? `const chk = document.getElementById('chk-invited-${x.id}'); if(chk) chk.checked = !chk.checked;`
+          : `window.location.href='${x.url}'`;
+
       return `
-      <div class="trip-card" onclick="window.location.href='${x.inviteUrl}'" style="cursor:pointer;"> 
+      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+        ${window._invitedDeleteMode ? `
+          <input type="checkbox" class="invited-del-chk" id="chk-invited-${x.id}" value="${x.id}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
+        ` : ''}
         <div class="trip-thumb">🤝</div>
-        <div class="trip-info">
+        <div class="trip-info" style="flex:1;">
           <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
-          <div class="trip-meta">${x.destination || '공유받은 지역'} · 편집자 참여 일정</div>
+          <div class="trip-meta">${x.destination || '공유받은 지역'}</div>
         </div>
         <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
-          🔗 연결됨
+          ${window._invitedDeleteMode ? '<span style="color:var(--text3); font-size:11px; font-weight:600;">선택 대기</span>' : '🔗 연결됨'}
         </div>
       </div>`;
     }).join('');
+
+    html += `</div>`; // .trip-list 닫기
 
     html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
 
@@ -768,16 +783,47 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     html += `</div>`;
 
   } else {
+    html += `</div>`;
     html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">초대받은 일정이 없습니다.</div>';
   }
 
   container.innerHTML = html;
 }
 
+// 🎯 내 초대받은 일정 삭제 모드 토글
+function toggleInvitedDeleteMode(isDeleteMode) {
+  window._invitedDeleteMode = isDeleteMode;
+  _renderMyInvitedTrips(null, window._invitedTripsCurrentPage);
+}
+
+// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (API 연동)
+async function execInvitedBulkDelete() {
+  const chks = document.querySelectorAll('.invited-del-chk:checked');
+  if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+  if (!confirm(`선택한 ${chks.length}개의 초대 일정을 정말 삭제하시겠습니까?`)) return;
+
+  let successCount = 0;
+  for (const chk of chks) {
+    const id = chk.value;
+    const res = await api.del('/api/trips/invited/' + id);
+    if (res.success) successCount++;
+  }
+
+  if (successCount > 0) {
+    toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+    window._invitedDeleteMode = false;
+    updateMyPageUI(); // 마이페이지 전체 리로드
+  } else {
+    toast('⚠️ 삭제 처리에 실패했습니다.');
+  }
+}
+
+
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 window._myTripsData = [];
 window._myTripsCurrentPage = 1;
 const TRIPS_PER_PAGE = 6; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+window._myTripsDeleteMode = false;
 
 function _renderMyTrips(trips = null, page = 1) {
   const te = document.getElementById('my-trips');
@@ -799,44 +845,52 @@ function _renderMyTrips(trips = null, page = 1) {
   const startIndex = (currentPage - 1) * TRIPS_PER_PAGE;
   const paginatedTrips = allTrips.slice(startIndex, startIndex + TRIPS_PER_PAGE);
 
-  let html = '<h3 class="my-sec-ttl">내 여행 기록</h3>';
+  // 🎯 타이틀 옆에 삭제버튼 배치 (초대받은 일정과 동일한 로직)
+  let html = `
+  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 class="my-sec-ttl" style="margin:0;">내 여행 기록</h3>
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      ${window._myTripsDeleteMode ? `
+        <button onclick="execMyTripsBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="toggleMyTripsDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
+      ` : `
+        <button onclick="toggleMyTripsDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
+      `}
+    </div>
+  </div>`;
 
   // 3. 재민님이 주신 오리지널 스타일(trip-card) 그대로 렌더링
   if (paginatedTrips.length > 0) {
     html += paginatedTrips.map(x => {
-      console.log("Trip Data Check:", x);
-
       // 1. 최종 수정 날짜 파싱 및 줄바꿈 처리
       let lastUpdate = '—';
       if (x.updatedAt) {
         let dateStr = x.updatedAt.replace ? x.updatedAt.replace(/-/g, '/').replace('T', ' ') : x.updatedAt;
-        if (typeof dateStr === 'string' && dateStr.includes('.')) {
-          dateStr = dateStr.split('.')[0];
-        }
-
+        if (typeof dateStr === 'string' && dateStr.includes('.')) dateStr = dateStr.split('.')[0];
         const d = new Date(dateStr);
-
         if (!isNaN(d.getTime())) {
-          const year  = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day   = String(d.getDate()).padStart(2, '0');
-          const hours = String(d.getHours()).padStart(2, '0');
-          const mins  = String(d.getMinutes()).padStart(2, '0');
-
+          const year  = d.getFullYear(); const month = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0'); const mins = String(d.getMinutes()).padStart(2, '0');
           lastUpdate = `${year}.${month}.${day}<br>${hours}:${mins}`;
         }
       }
 
-      // 2. 백엔드 DTO 매핑
       const displayStart = x.startDate ? x.startDate.replace(/-/g, '.') : '';
       const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
       const displayDest  = x.destination || '';
 
-      // 오리지널 카드 UI
+      // 🎯 삭제 모드일 때 클릭하면 체크박스가 눌리도록 로직 분기
+      const cardClickAction = window._myTripsDeleteMode
+          ? `const chk = document.getElementById('chk-mytrip-${x.id || x.tripId}'); if(chk) chk.checked = !chk.checked;`
+          : `openMyTrip(${x.id || x.tripId})`;
+
       return `
-      <div class="trip-card" onclick="openMyTrip(${x.id || x.tripId})"> 
+      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+        ${window._myTripsDeleteMode ? `
+          <input type="checkbox" class="mytrip-del-chk" id="chk-mytrip-${x.id || x.tripId}" value="${x.id || x.tripId}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
+        ` : ''}
         <div class="trip-thumb">🗺️</div>
-        <div class="trip-info">
+        <div class="trip-info" style="flex:1;">
           <div class="trip-ttl">${x.title || '여행 플랜'}</div>
           <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
         </div>
@@ -882,6 +936,34 @@ function _renderMyTrips(trips = null, page = 1) {
   }
 
   te.innerHTML = html;
+}
+
+// 🎯 내 여행 기록 삭제 모드 토글
+function toggleMyTripsDeleteMode(isDeleteMode) {
+  window._myTripsDeleteMode = isDeleteMode;
+  _renderMyTrips(null, window._myTripsCurrentPage);
+}
+
+// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (새로 만든 API 연동)
+async function execMyTripsBulkDelete() {
+  const chks = document.querySelectorAll('.mytrip-del-chk:checked');
+  if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+  if (!confirm(`선택한 ${chks.length}개의 내 여행 일정을 정말 삭제하시겠습니까?`)) return;
+
+  let successCount = 0;
+  for (const chk of chks) {
+    const id = chk.value;
+    const res = await api.del('/api/trips/' + id); // 🚀 새로 추가한 백엔드 API 호출!
+    if (res.success) successCount++;
+  }
+
+  if (successCount > 0) {
+    toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+    window._myTripsDeleteMode = false;
+    updateMyPageUI(); // 마이페이지 전체 리로드
+  } else {
+    toast('⚠️ 삭제 처리에 실패했습니다.');
+  }
 }
 
 // 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
@@ -2233,7 +2315,7 @@ function goPlanStep(n) {
   _syncNavStepHighlight();
 
   if(n===3) startChatWithSummary();
-  history.pushState({ page: 'planner', step: n }, '', location.href);
+  history.pushState({ page: 'planner', step: n }, '', '/');
   if (window._currentTripId) _savePlannerDraft();
 }
 
@@ -2801,25 +2883,25 @@ function goNewPlanner() {
 function goResumePlanner() {
   if (!_loggedIn) { toast('⚠️ 로그인이 필요합니다.'); go('login'); return; }
   if (!_hasPlannerDraft()) {
-    toast('작성중인 플랜이 없습니다.');
-    goNewPlanner();
-    return;
-  }
-  go('planner', false);
-  if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
-  const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '1');
-  // 검증 없이 직접 패널 전환
-  for (let i = 1; i <= 3; i++) {
-    const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
-    if (!sb || !sp) continue;
-    sb.classList.remove('active', 'done'); sp.classList.remove('active');
-    if (i < savedStep) sb.classList.add('done');
-    if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
-  }
-  if (savedStep === 3 && typeof startChatWithSummary === 'function') {
-    setTimeout(() => startChatWithSummary(), 100);
-  }
-  history.pushState({ page: 'planner', step: savedStep }, '', location.href);
+        toast('작성중인 플랜이 없습니다.');
+        goNewPlanner();
+        return;
+      }
+    go('planner', false);
+    if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
+    const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '1');
+    // 검증 없이 직접 패널 전환
+        for (let i = 1; i <= 3; i++) {
+        const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+        if (!sb || !sp) continue;
+        sb.classList.remove('active', 'done'); sp.classList.remove('active');
+        if (i < savedStep) sb.classList.add('done');
+        if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
+      }
+    if (savedStep === 3 && typeof startChatWithSummary === 'function') {
+        setTimeout(() => startChatWithSummary(), 100);
+      }
+  history.pushState({ page: 'planner', step: savedStep }, '', '/');
 }
 function _hasPlannerDraft() {
   if (window._currentTripId) return true;
@@ -3213,10 +3295,6 @@ window.addEventListener('popstate', e => {
 
     // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
     if (location.pathname.includes('/plan/view')) {
-
-      Token.clear();
-      _loggedIn = false;
-      _currentUser = null;
 
       // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
       const style = document.createElement('style');
