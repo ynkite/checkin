@@ -113,4 +113,37 @@ public class TravelPlanController {
     }
 
 
+    //초대받은 링크 보관 DB 저장용
+    @PostMapping("/invited")
+    public ResponseEntity<ApiResponse<Void>> saveInvitedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody Map<String, Object> body) {
+        Long originalId = body.get("originalTripId") != null ? Long.valueOf(body.get("originalTripId").toString()) : null;
+        travelPlanService.saveInvitedPlan(userDetails.getUserId(), originalId, (String) body.get("inviteUrl"), (String) body.get("title"), (String) body.get("destination"));
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+    @GetMapping("/invited")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getInvitedPlans(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(travelPlanService.getInvitedPlans(userDetails.getUserId())));
+    }
+    @DeleteMapping("/invited/{planId}")
+    public ResponseEntity<ApiResponse<Void>> deleteInvitedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId) {
+        travelPlanService.deleteInvitedPlan(userDetails.getUserId(), planId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+
+
+    // 내 여행 기록 일반 삭제
+    @DeleteMapping("/{tripId}")
+    public ResponseEntity<ApiResponse<Void>> deletePlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId) {
+        travelPlanService.deletePlan(userDetails.getUserId(), tripId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
 }

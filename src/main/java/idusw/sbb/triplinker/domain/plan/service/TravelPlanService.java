@@ -49,4 +49,14 @@ public interface TravelPlanService {
 
     List<TripListResponseDto> getMyTripList(Long userId);
 
+    // 초대받은 링크 보관용
+    void saveInvitedPlan(Long userId, Long originalTripId, String inviteUrl, String title, String destination);
+    List<Map<String, Object>> getInvitedPlans(Long userId);
+    void deleteInvitedPlan(Long userId, Long planId);
+
+
+    //내 여행 기록일반 삭제 메서드
+    void deletePlan(Long userId, Long tripId);
+
+
 }
