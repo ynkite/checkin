@@ -191,7 +191,7 @@ function go(id, addToHistory) {
     _populateLedgerTripCards();
     const selEl  = document.querySelector('.ledger-selector-outer');
     const mainEl = document.getElementById('ledger-main');
-    const tripStillValid = _myTrips.some(t => t.tripId === _budgetSelectedTripId);
+    const tripStillValid = _myTrips.some(t => t.id === _budgetSelectedTripId);
     if (tripStillValid) {
       if (selEl)  selEl.style.display  = 'none';
       if (mainEl) mainEl.style.display = 'block';
