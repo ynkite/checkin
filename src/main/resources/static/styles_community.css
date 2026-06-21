@@ -945,6 +945,13 @@
     font-weight: 900;
     line-height: 1.4;
     margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-all;
 }
 
 .community-ai-simple-match {
@@ -1275,7 +1282,8 @@
 }
 .place-card-stars { color: #f5a623; font-size: .85rem; letter-spacing: -.5px; }
 .place-card-avg   { font-size: .82rem; font-weight: 700; color: var(--text2, #555); }
-.place-card-count { font-size: .78rem; color: var(--text3, #999); }
+.place-card-count { font-size: .78rem; color: var(--text3, #999); white-space: nowrap; }
+.place-card-scrap { font-size: .78rem; color: var(--sage-d, #5a8a6a); font-weight: 700; white-space: nowrap; }
 
 /* 뒤로 가기 */
 .place-back-btn {
@@ -1311,6 +1319,12 @@
     margin-bottom: 18px;
     border-bottom: 1px solid var(--border2, #eee);
 }
+/* 지도 링크 섹션이 들어가면 헤더 자체의 하단 구분선/여백은 지도 섹션이 대신하므로 정리 */
+.place-review-header:has(.place-map-links) {
+    padding-bottom: 16px;
+    margin-bottom: 16px;
+    border-bottom: none;
+}
 .place-review-name {
     font-size: 1rem;
     font-weight: 700;
@@ -1337,6 +1351,83 @@
     color: var(--text3, #999);
     display: block;
 }
+
+/* ── 평균 별점 아래 스크랩 버튼 (가운데, 알약형) ── */
+.place-review-scrap-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 12px auto 0;
+    padding: 7px 18px;
+    border: 1.5px solid var(--border2, #e0e0e0);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--text2, #555);
+    font-size: .85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+.place-review-scrap-btn:hover {
+    border-color: var(--sage-d, #46B29E);
+    color: var(--sage-d, #46B29E);
+}
+.place-review-scrap-btn .prs-star { font-size: .95rem; line-height: 1; }
+.place-review-scrap-btn.scrapped {
+    background: #46B29E;
+    border-color: #46B29E;
+    color: #fff;
+}
+.place-review-scrap-btn.scrapped:hover {
+    background: #3a9c8a;
+    border-color: #3a9c8a;
+    color: #fff;
+}
+
+/* ── 지도 앱 링크 섹션 ── */
+.place-map-links {
+    margin-top: 20px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border2, #eee);
+}
+.place-map-links .pml-title {
+    font-size: .8rem;
+    color: var(--text3, #999);
+    text-align: center;
+    margin-bottom: 12px;
+    letter-spacing: .02em;
+}
+.place-map-links .pml-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.place-map-links .pml-btn {
+    flex: 1 1 0;
+    min-width: 92px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 11px 8px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: .82rem;
+    font-weight: 700;
+    transition: transform .1s ease, box-shadow .15s ease, filter .15s ease;
+}
+.place-map-links .pml-btn::before {
+    content: "📍";
+    font-size: .9rem;
+}
+.place-map-links .pml-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(0,0,0,.14);
+    filter: brightness(1.03);
+}
+.place-map-links .pml-naver  { background: #03C75A; color: #fff; }
+.place-map-links .pml-kakao  { background: #FEE500; color: #3C1E1E; }
+.place-map-links .pml-google { background: #4285F4; color: #fff; }
 
 /* ── 리뷰 목록 ── */
 .place-review-list {
@@ -1433,4 +1524,28 @@
     background: var(--surface2, #f5f5f5);
     border-radius: 4px;
     padding: 1px 5px;
+}
+
+/* ============================================================
+   커뮤니티 상세페이지: 작성자 본인 전용 수정 버튼
+   - page-review 내부의 수정 버튼에만 적용
+   ============================================================ */
+#page-review .community-owner-edit-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    background: #47B39F;
+    border: 1px solid #47B39F;
+    color: #fff;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+#page-review .community-owner-edit-btn:hover {
+    background: #fff;
+    border-color: #47B39F;
+    color: #47B39F;
 }

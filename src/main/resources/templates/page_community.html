@@ -35,11 +35,11 @@
       const posts = typeof MOCK_COMMUNITY_POSTS !== 'undefined' ? MOCK_COMMUNITY_POSTS : null;
       if (posts) {
         const tabsData = [
-          { id: 'tab-route', key: 'route', label: '여행 경로', color: 'var(--warm)', catClass: 'cat-route', catStyle: '' },
-          { id: 'tab-stay', key: 'stay', label: '숙소', color: 'var(--sage)', catClass: 'cat-stay', catStyle: '' },
-          { id: 'tab-food', key: 'food', label: '맛집', color: 'var(--coral)', catClass: 'cat-food', catStyle: '' },
-          { id: 'tab-tour', key: 'tour', label: '관광지', color: 'var(--sky)', catClass: 'cat-tour', catStyle: '' },
-          { id: 'tab-cafe', key: 'cafe', label: '카페', color: '#A78BFA', catClass: '', catStyle: 'background:#F3F0FF;color:#7C3AED' }
+          { id: 'tab-route', key: 'route', label: '여행 경로', color: 'var(--warm)', catClass: 'cat-route', catStyle: '', borderClass: 'comm-tab-route' },
+          { id: 'tab-stay', key: 'stay', label: '숙소', color: 'var(--sage)', catClass: 'cat-stay', catStyle: '', borderClass: 'comm-tab-stay' },
+          { id: 'tab-food', key: 'food', label: '맛집', color: 'var(--coral)', catClass: 'cat-food', catStyle: '', borderClass: 'comm-tab-food' },
+          { id: 'tab-tour', key: 'tour', label: '관광지', color: 'var(--sky)', catClass: 'cat-tour', catStyle: '', borderClass: 'comm-tab-tour' },
+          { id: 'tab-cafe', key: 'cafe', label: '카페', color: '#A78BFA', catClass: '', catStyle: 'background:#F3F0FF;color:#7C3AED', borderClass: 'comm-tab-cafe' }
         ];
 
         tabsData.forEach(tab => {
@@ -48,8 +48,8 @@
           if (container) {
             if (items.length > 0) {
               container.innerHTML = items.map(p => `
-            <div class="post-card comm-post-item" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
-              data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}" style="border-left:3px solid ${tab.color}">
+            <div class="post-card comm-post-item ${tab.borderClass}" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
+              data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
                 <span class="post-cat ${tab.catClass}" style="${tab.catStyle}">${tab.label}</span>
                 <span style="font-size:10px;color:var(--text3)">${p.author} · ${p.dateStr}</span>
@@ -120,64 +120,8 @@
         // 1. [가장 중요] 화면에 그릴 뼈대와 데이터를 가장 먼저 주입합니다.
         initCommunityPageData();
 
-        // 2. 검색, 정렬 등 화면 조작 함수들을 세팅합니다.
-        window.setCommTab = function(btn, cat) {
-          document.querySelectorAll('#commTabs .comm-tab').forEach(b => b.classList.remove('on'));
-          btn.classList.add('on');
-          ['route','stay','food','tour','cafe'].forEach(c => {
-            const el = document.getElementById('tab-'+c);
-            if (el) el.style.display = (c === cat) ? 'block' : 'none';
-          });
-
-          // 👇 탭별 정렬 옵션 동적 변경
-          const sortSelect = document.getElementById('sortSelect');
-          if (sortSelect) {
-            sortSelect.innerHTML = '';
-            if (cat === 'route') {
-              // 여행경로: 최신순, 스크랩순, 좋아요순
-              sortSelect.innerHTML = `
-                <option value="latest">최신순</option>
-                <option value="scrap">스크랩순</option>
-                <option value="likes">좋아요순</option>
-              `;
-            } else {
-              // 숙소/맛집/관광지/카페: 담긴순, 스크랩순, 최신순
-              sortSelect.innerHTML = `
-                <option value="views">담긴순</option>
-                <option value="scrap">스크랩순</option>
-                <option value="latest">최신순</option>
-              `;
-            }
-            sortSelect.value = 'latest'; // 기본값 설정
-          }
-        };
-
-        window.sortPosts = function(val) {
-          // 현재 활성화된 탭 찾기
-          const activeTab = ['route','stay','food','tour','cafe'].find(cat => {
-            const el = document.getElementById('tab-'+cat);
-            return el && el.style.display !== 'none';
-          });
-
-          if (!activeTab) return;
-
-          const tab = document.getElementById('tab-'+activeTab);
-          if (!tab) return;
-
-          const items = Array.from(tab.querySelectorAll('.comm-post-item'));
-          if (!items.length) return;
-
-          items.sort(function(a, b) {
-            if (val==='likes')  return parseInt(b.getAttribute('data-likes')||0)  - parseInt(a.getAttribute('data-likes')||0);
-            if (val==='scrap')  return parseInt(b.getAttribute('data-scrap')||0)  - parseInt(a.getAttribute('data-scrap')||0);
-            if (val==='latest') return parseInt(b.getAttribute('data-date')||0)   - parseInt(a.getAttribute('data-date')||0);
-            if (val==='views')  return parseInt(b.getAttribute('data-views')||0)  - parseInt(a.getAttribute('data-views')||0);
-            return 0;
-          });
-
-          items.forEach(function(item){ tab.appendChild(item); });
-        };
-
+        // 2. 검색 함수만 세팅 (setCommTab/sortPosts 는 app_community.js + v2 의 정식 버전을 사용)
+        //    ※ 예전 인라인 정의는 서버 정렬을 무시하고 장소 탭 정렬이 안 되는 문제가 있어 제거함
         window.doSearch = function() {
           var type = document.getElementById('searchType').value;
           var q = (document.getElementById('searchInp').value||'').trim().toLowerCase();
@@ -222,6 +166,11 @@
     .active-tag { background: var(--sage) !important; color: #fff !important; border-color: var(--sage-d) !important }
     #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
     #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
+    .comm-tab-food  { border-left: 3px solid var(--coral) }
+    .comm-tab-tour  { border-left: 3px solid var(--sky) }
+    .comm-tab-cafe  { border-left: 3px solid #A78BFA }
+    .comm-tab-stay  { border-left: 3px solid var(--sage) }
+    .comm-tab-route { border-left: 3px solid var(--warm) }
   </style>
   <div class="page" id="page-community">
     <div class="comm-layout">
@@ -249,9 +198,10 @@
           <input class="search-inp" type="text" placeholder="키워드 검색..." id="searchInp">
           <button class="btn-search" onclick="doSearch()">검색</button>
           <select class="form-input" style="width:auto;padding:7px 10px;font-size:12px;cursor:pointer" id="sortSelect" onchange="sortPosts(this.value)">
-            <option value="latest">최신순</option>
-            <option value="scrap">스크랩순</option>
+            <option value="scrap" selected>스크랩순</option>
+            <option value="views">조회수순</option>
             <option value="likes">좋아요순</option>
+            <option value="latest">최신순</option>
           </select>
         </div>
 
@@ -341,9 +291,10 @@
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">첨부 이미지</label>
-          <div id="writeImagePreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:10px"></div>
+          <div id="writeImagePreview" style="display:none"></div>
           <button type="button" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px"
-                  onclick="document.getElementById('writeImageInput').click()">새 이미지 추가</button>
+                  onmousedown="window._commUtil && window._commUtil.saveEditorSelection(document.getElementById('blogEditor'), '_communityWriteEditorRange')"
+                  onclick="window.openWriteImagePicker && window.openWriteImagePicker()">새 이미지 추가</button>
           <input id="writeImageInput" type="file" accept="image/*" multiple style="display:none"
                  onchange="window._handleWriteImageSelect && window._handleWriteImageSelect(this)">
         </div>
@@ -830,6 +781,4 @@
     <button class="review-back" onclick="go('community')">← 커뮤니티</button>
     <div style="padding:40px;text-align:center;color:var(--text3)">로딩 중...</div>
   </div>
-</div>
-
 </div>

@@ -1,5 +1,7 @@
 package idusw.sbb.triplinker.config;
 
+import idusw.sbb.triplinker.domain.expense.entity.Expense;
+import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
 import idusw.sbb.triplinker.domain.place.repository.PlaceRepository;
 import idusw.sbb.triplinker.domain.post.repository.PlaceReviewRepository;
 import idusw.sbb.triplinker.domain.user.entity.User;
@@ -36,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PostRepository postRepository;
     private final PlaceRepository placeRepository;
     private final PlaceReviewRepository placeReviewRepository;
+    private final ExpenseRepository expenseRepository;
 
     @Override
     public void run(String... args) {
@@ -81,6 +84,84 @@ public class DataInitializer implements CommandLineRunner {
                 .endDate(LocalDate.now().plusMonths(2).plusDays(2))
                 .isPublic(1).status("CONFIRMED").build());
         log.info("관리자 추천 경로(TravelPlan) 4건이 생성되었습니다.");
+
+        // ── 관리자 플랜 routeJson + 가계부 예상 비용 ──
+        String jejuRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
+                "{\"name\":\"제주 오션뷰 펜션\",\"type\":\"stay\",\"sub\":\"숙소 · ₩180,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"협재 해물라면\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"18:30\"}]}," +
+                "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
+                "{\"name\":\"성산일출봉\",\"type\":\"tour\",\"sub\":\"관광지 · ₩5,000\",\"time\":\"07:00\"}," +
+                "{\"name\":\"성산일출봉 전망카페\",\"type\":\"cafe\",\"sub\":\"카페 · ₩8,000\",\"time\":\"09:00\"}," +
+                "{\"name\":\"제주 흑돼지 명가\",\"type\":\"food\",\"sub\":\"맛집 · ₩35,000\",\"time\":\"19:00\"}]}," +
+                "{\"day\":3,\"label\":\"Day 3\",\"places\":[" +
+                "{\"name\":\"애월 카페거리\",\"type\":\"cafe\",\"sub\":\"카페 · ₩9,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"한림공원\",\"type\":\"tour\",\"sub\":\"관광지 · ₩12,000\",\"time\":\"13:00\"}]}]";
+        jejuPlan.setRouteJson(jejuRoute);
+        travelPlanRepository.save(jejuPlan);
+        saveEstimatedExpenses(jejuPlan, admin, new Object[][]{
+                {"STAY", "제주 오션뷰 펜션",      180_000L, 0},
+                {"FOOD", "협재 해물라면",          15_000L,  0},
+                {"TOUR", "성산일출봉",             5_000L,   1},
+                {"CAFE", "성산일출봉 전망카페",    8_000L,   1},
+                {"FOOD", "제주 흑돼지 명가",       35_000L,  1},
+                {"CAFE", "애월 카페거리",          9_000L,   2},
+                {"TOUR", "한림공원",              12_000L,  2},
+        });
+
+        String busanRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
+                "{\"name\":\"해운대 오션뷰 호텔\",\"type\":\"stay\",\"sub\":\"숙소 · ₩220,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"해운대 회센터\",\"type\":\"food\",\"sub\":\"맛집 · ₩40,000\",\"time\":\"19:00\"}]}," +
+                "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
+                "{\"name\":\"광안리 서핑 스쿨\",\"type\":\"tour\",\"sub\":\"액티비티 · ₩50,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"광안리 카페거리\",\"type\":\"cafe\",\"sub\":\"카페 · ₩7,000\",\"time\":\"17:00\"}," +
+                "{\"name\":\"광안리 곱창골목\",\"type\":\"food\",\"sub\":\"맛집 · ₩25,000\",\"time\":\"20:00\"}]}]";
+        busanPlan.setRouteJson(busanRoute);
+        travelPlanRepository.save(busanPlan);
+        saveEstimatedExpenses(busanPlan, admin, new Object[][]{
+                {"STAY", "해운대 오션뷰 호텔",    220_000L, 0},
+                {"FOOD", "해운대 회센터",          40_000L,  0},
+                {"TOUR", "광안리 서핑 스쿨",       50_000L,  1},
+                {"CAFE", "광안리 카페거리",         7_000L,  1},
+                {"FOOD", "광안리 곱창골목",        25_000L,  1},
+        });
+
+        String gyeongjuRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
+                "{\"name\":\"경주 한옥 스테이\",\"type\":\"stay\",\"sub\":\"숙소 · ₩150,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"황리단길 한정식\",\"type\":\"food\",\"sub\":\"맛집 · ₩45,000\",\"time\":\"19:00\"}]}," +
+                "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
+                "{\"name\":\"불국사\",\"type\":\"tour\",\"sub\":\"관광지 · ₩6,000\",\"time\":\"09:00\"}," +
+                "{\"name\":\"석굴암\",\"type\":\"tour\",\"sub\":\"관광지 · ₩6,000\",\"time\":\"11:00\"}," +
+                "{\"name\":\"경주 교리김밥\",\"type\":\"food\",\"sub\":\"맛집 · ₩8,000\",\"time\":\"13:00\"}]}]";
+        gyeongjuPlan.setRouteJson(gyeongjuRoute);
+        travelPlanRepository.save(gyeongjuPlan);
+        saveEstimatedExpenses(gyeongjuPlan, admin, new Object[][]{
+                {"STAY", "경주 한옥 스테이",      150_000L, 0},
+                {"FOOD", "황리단길 한정식",         45_000L, 0},
+                {"TOUR", "불국사",                  6_000L,  1},
+                {"TOUR", "석굴암",                  6_000L,  1},
+                {"FOOD", "경주 교리김밥",            8_000L,  1},
+        });
+
+        String gangwonRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
+                "{\"name\":\"속초 오션뷰 펜션\",\"type\":\"stay\",\"sub\":\"숙소 · ₩130,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"속초 만석닭강정\",\"type\":\"food\",\"sub\":\"맛집 · ₩20,000\",\"time\":\"18:00\"}]}," +
+                "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
+                "{\"name\":\"권금성 케이블카\",\"type\":\"tour\",\"sub\":\"관광지 · ₩14,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"양양 물치항 대게\",\"type\":\"food\",\"sub\":\"맛집 · ₩55,000\",\"time\":\"13:00\"}]}," +
+                "{\"day\":3,\"label\":\"Day 3\",\"places\":[" +
+                "{\"name\":\"남이섬\",\"type\":\"tour\",\"sub\":\"관광지 · ₩16,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"춘천 닭갈비 골목\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"13:00\"}]}]";
+        gangwonPlan.setRouteJson(gangwonRoute);
+        travelPlanRepository.save(gangwonPlan);
+        saveEstimatedExpenses(gangwonPlan, admin, new Object[][]{
+                {"STAY", "속초 오션뷰 펜션",      130_000L, 0},
+                {"FOOD", "속초 만석닭강정",         20_000L, 0},
+                {"TOUR", "권금성 케이블카",         14_000L, 1},
+                {"FOOD", "양양 물치항 대게",        55_000L, 1},
+                {"TOUR", "남이섬",                  16_000L, 2},
+                {"FOOD", "춘천 닭갈비 골목",        15_000L, 2},
+        });
+        log.info("관리자 플랜 가계부 예상 비용이 생성되었습니다.");
 
         // ── Curation 4건 ──
         String jejuExtraNotes = "{\"cardColor\":\"#E0F7FA\",\"tags\":[\"초여름\",\"힐링\",\"오션뷰\"],\"adminRecommendedAccommodations\":[\"제주 오션뷰 펜션\",\"제주 애월 감성 게스트하우스\"],\"adminRecommendedRestaurants\":[\"협재 해물라면\",\"제주 흑돼지 명가\"],\"adminRecommendedAttractions\":[\"협재해변\",\"성산일출봉\",\"한림공원\"],\"adminRecommendedCafes\":[\"성산일출봉 전망카페\",\"애월 카페거리\"],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"펜션\",\"companion\":\"커플\",\"style\":[\"힐링\",\"오션뷰\"],\"diet\":[\"해산물 선호\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"오션뷰\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"제주 오션뷰 펜션\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":180000},{\"name\":\"협재 해물라면\",\"type\":\"🍽️ 맛집\",\"time\":\"12:30\",\"amount\":15000},{\"name\":\"협재해변\",\"type\":\"📍 관광지\",\"time\":\"17:00\",\"amount\":0}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"성산일출봉\",\"type\":\"📍 관광지\",\"time\":\"07:00\",\"amount\":5000},{\"name\":\"성산일출봉 전망카페\",\"type\":\"☕ 카페\",\"time\":\"09:00\",\"amount\":8000},{\"name\":\"제주 흑돼지 명가\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":35000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"애월 카페거리\",\"type\":\"☕ 카페\",\"time\":\"10:00\",\"amount\":9000},{\"name\":\"한림공원\",\"type\":\"📍 관광지\",\"time\":\"13:00\",\"amount\":12000}]}]}";
@@ -560,6 +641,21 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postRoute4).user(users[9]).rating(4).comment("자전거 타고 섬 한 바퀴 도는 게 최고예요").build());
 
         log.info("Place 및 PlaceReview 데이터가 생성되었습니다.");
+    }
+
+    // 플랜의 예상 비용 일괄 저장
+    private void saveEstimatedExpenses(TravelPlan plan, User user, Object[][] rows) {
+        for (Object[] row : rows) {
+            expenseRepository.save(Expense.builder()
+                    .plan(plan)
+                    .user(user)
+                    .category((String) row[0])
+                    .description((String) row[1])
+                    .amount((Long) row[2])
+                    .isEstimated(true)
+                    .expenseDate(plan.getStartDate().plusDays((int) row[3]))
+                    .build());
+        }
     }
 
 }

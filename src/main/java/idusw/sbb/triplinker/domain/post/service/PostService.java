@@ -13,6 +13,7 @@ import idusw.sbb.triplinker.domain.post.dto.PostDetailResponseDto;
 import idusw.sbb.triplinker.global.service.LocalFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -67,11 +68,14 @@ public class PostService {
     }
 
     // 커뮤니티 - 게시글 목록 조회
-    public Page<PostListResponseDto> getPosts(Pageable pageable, String category) {
+    public Page<PostListResponseDto> getPosts(Pageable pageable, String category, String sort) {
         Page<Post> posts;
 
-        if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
-            posts = postRepository.findByStatusOrderByCreatedAtDesc("ACTIVE", pageable);
+        if ("scrap".equals(sort)) {
+            // Post 엔티티에 scrapCount 컬럼이 없어 DB 정렬이 불가능 → 실제 스크랩 수를 집계해 메모리에서 정렬
+            posts = getPostsSortedByScrapCount(pageable, category);
+        } else if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
+            posts = postRepository.findByStatus("ACTIVE", pageable);
         } else {
             String categoryCode = toCategoryCode(category);
 
@@ -82,9 +86,9 @@ public class PostService {
                         pageable
                 );
             } else {
-                posts = postRepository.findByStatusAndCategoryOrderByCreatedAtDesc(
-                        "ACTIVE",
+                posts = postRepository.findByCategoryAndStatus(
                         categoryCode,
+                        "ACTIVE",
                         pageable
                 );
             }
@@ -96,6 +100,31 @@ public class PostService {
             String thumbnailUrl = images.isEmpty() ? null : images.get(0).getImageUrl();
             return PostListResponseDto.from(post, scraps, thumbnailUrl);
         });
+    }
+
+    // 스크랩 수("담긴순"/"스크랩순") 기준 정렬 — 실제 PostScrap 카운트로 메모리에서 정렬 후 직접 페이징
+    private Page<Post> getPostsSortedByScrapCount(Pageable pageable, String category) {
+        List<Post> all;
+        if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
+            all = postRepository.findByStatus("ACTIVE", Pageable.unpaged()).getContent();
+        } else {
+            String categoryCode = toCategoryCode(category);
+            all = "ROUTE".equals(categoryCode)
+                    ? postRepository.findRoutePostsIncludingNullCategory("ACTIVE", "ROUTE", Pageable.unpaged()).getContent()
+                    : postRepository.findByCategoryAndStatus(categoryCode, "ACTIVE", Pageable.unpaged()).getContent();
+        }
+
+        List<Post> sorted = all.stream()
+                .sorted((a, b) -> Long.compare(
+                        postScrapRepository.countByPost_Id(b.getId()),
+                        postScrapRepository.countByPost_Id(a.getId())))
+                .toList();
+
+        int start = (int) pageable.getOffset();
+        int end   = Math.min(start + pageable.getPageSize(), sorted.size());
+        List<Post> pageContent = (start >= sorted.size()) ? List.of() : sorted.subList(start, end);
+
+        return new PageImpl<>(pageContent, pageable, sorted.size());
     }
 
     private String toCategoryCode(String category) {
@@ -129,6 +158,10 @@ public class PostService {
     public Long createPost(Long userId, PostWriteDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 후기를 작성할 수 없습니다.");
+        }
 
         TravelPlan plan = null;
 
@@ -258,6 +291,10 @@ public class PostService {
     public Long addComment(Long userId, Long postId, PostWriteDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 댓글을 작성할 수 없습니다.");
+        }
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));

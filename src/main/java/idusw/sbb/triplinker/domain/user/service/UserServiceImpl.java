@@ -220,19 +220,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public void addPlaceScrap(Long userId, Long placeId, String category) {
-        if (scrapRepository.existsByUserIdAndPlaceId(userId, placeId)) {
-            throw new IllegalStateException("이미 스크랩한 장소입니다.");
-        }
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
-        placeRepository.findById(placeId)
-                .orElseThrow(() -> new IllegalArgumentException("장소를 찾을 수 없습니다."));
-        scrapRepository.save(Scrap.builder()
-                .user(user)
-                .placeId(placeId)
-                .category(category)
-                .build());
+    public boolean togglePlaceScrap(Long userId, Long placeId, String category) {
+        return scrapRepository.findByUserIdAndPlaceId(userId, placeId)
+                .map(scrap -> {
+                    scrapRepository.delete(scrap);
+                    return false; // 스크랩 취소됨
+                })
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+                    placeRepository.findById(placeId)
+                            .orElseThrow(() -> new IllegalArgumentException("장소를 찾을 수 없습니다."));
+                    scrapRepository.save(Scrap.builder()
+                            .user(user)
+                            .placeId(placeId)
+                            .category(category)
+                            .build());
+                    return true; // 스크랩 등록됨
+                });
     }
 
     @Override
@@ -245,6 +250,7 @@ public class UserServiceImpl implements UserService {
         }
         scrapRepository.deleteById(scrapId);
     }
+
 
     @Override
     public Page<TripListResponseDto> getMyTrips(Long userId, String condition, Pageable pageable) {

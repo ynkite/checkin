@@ -18,19 +18,22 @@ public class PlaceScrapController {
 
     private final UserService userService;
 
-    // 장소 스크랩 추가
+    // 장소 스크랩 토글 (눌렀다가 다시 누르면 해제)
     @PostMapping("/api/places/{placeId}/scraps")
-    public ResponseEntity<ApiResponse<Void>> addScrap(
+    public ResponseEntity<ApiResponse<Boolean>> toggleScrap(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long placeId,
             @RequestBody Map<String, String> body
     ) {
         String category = toDbCategory(body.getOrDefault("category", "tour"));
-        userService.addPlaceScrap(userDetails.getUserId(), placeId, category);
-        return ResponseEntity.ok(ApiResponse.success(null));
+        boolean scrapped = userService.togglePlaceScrap(userDetails.getUserId(), placeId, category);
+        return ResponseEntity.ok(ApiResponse.success(
+                scrapped ? "스크랩했습니다." : "스크랩을 취소했습니다.",
+                scrapped
+        ));
     }
 
-    // 장소 스크랩 삭제
+    // 장소 스크랩 삭제 (마이페이지 목록에서 scrapId로 직접 삭제)
     @DeleteMapping("/api/scraps/{scrapId}")
     public ResponseEntity<ApiResponse<Void>> deleteScrap(
             @AuthenticationPrincipal CustomUserDetails userDetails,

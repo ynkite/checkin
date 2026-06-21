@@ -30,23 +30,34 @@ public class PlaceController {
     ) {
         PlaceCategory cat = toCategory(category);
         List<PlaceCardDto> result = placeReviewRepository
-                .findPlaceCardsByCategory(cat, PageRequest.of(0, size))
+                .findPlaceCardsByCategoryOrderBySaved(cat, PageRequest.of(0, size))
                 .stream()
                 .map(PlaceCardDto::from)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success("인기 장소 조회 성공", result));
     }
+
     // 카테고리별 장소 목록
     @GetMapping
     public ResponseEntity<ApiResponse<List<PlaceCardDto>>> getPlaceCards(
             @RequestParam(defaultValue = "stay") String category,
             @RequestParam(defaultValue = "0")    int page,
-            @RequestParam(defaultValue = "20")   int size
+            @RequestParam(defaultValue = "20")   int size,
+            @RequestParam(required = false)      String sort
     ) {
         PlaceCategory cat = toCategory(category);
-        List<PlaceCardDto> result = placeReviewRepository
-                .findPlaceCardsByCategory(cat, PageRequest.of(page, size))
-                .stream()
+        PageRequest pageable = PageRequest.of(page, size);
+
+        String s = (sort == null) ? "" : sort.toLowerCase();
+        List<Object[]> rows = switch (s) {
+            case "views", "saved", "saved_desc", "담긴순" -> placeReviewRepository.findPlaceCardsByCategoryOrderBySaved(cat, pageable);
+            case "scrap", "scrap_desc", "스크랩순"       -> placeReviewRepository.findPlaceCardsByCategoryOrderByScrap(cat, pageable);
+            case "rating", "별점순", "평점순"            -> placeReviewRepository.findPlaceCardsByCategory(cat, pageable);
+            case "latest", "newest", "최신순"            -> placeReviewRepository.findPlaceCardsByCategoryOrderByLatest(cat, pageable);
+            default                                      -> placeReviewRepository.findPlaceCardsByCategoryOrderBySaved(cat, pageable);
+        };
+
+        List<PlaceCardDto> result = rows.stream()
                 .map(PlaceCardDto::from)
                 .toList();
 

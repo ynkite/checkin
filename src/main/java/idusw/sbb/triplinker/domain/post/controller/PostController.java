@@ -56,25 +56,22 @@ public class PostController {
             @RequestParam(required = false) String sort,
             @RequestParam(required = false) String category
     ) {
-        // 프론트엔드에서 넘어온 sort 값을 안전하게 변환
-        String sortProperty = "createdAt"; // 기본값: 최신순
-        if (sort != null && !sort.isEmpty()) {
-            if ("scrap".equals(sort)) {
-                // Post 엔티티에 scrap 필드가 없으므로, 임시로 좋아요순(likeCount)이나 최신순으로 우회합니다.
-                // 만약 나중에 Post 엔티티에 scrapCount 필드를 만드신다면 "scrapCount"로 변경하시면 됩니다.
-                sortProperty = "likeCount";
-            } else {
-                sortProperty = sort;
-            }
-        }
+        String normalizedSort = (sort == null) ? "" : sort;
+
+        // 프론트엔드 sort 값 → Post 엔티티의 실제 필드명으로 매핑
+        // (latest/likes/views/saved 같은 프론트 라벨 그대로 Sort.by에 넘기면
+        //  Post에 없는 속성이라 정렬 쿼리가 실패하거나 무시됨 → 반드시 변환 필요)
+        String sortProperty = switch (normalizedSort) {
+            case "likes"          -> "likeCount";
+            case "views", "saved" -> "viewCount";
+            case "scrap"          -> "createdAt"; // 실제 정렬은 서비스에서 스크랩 수 기준으로 별도 처리
+            default               -> "createdAt"; // "latest" 또는 빈 값
+        };
 
         // Pageable 객체 생성 (안전하게 변환된 sortProperty 사용)
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortProperty));
 
-
-//        Pageable pageable = PageRequest.of(page, size);
-
-        Page<PostListResponseDto> posts = postService.getPosts(pageable, category);
+        Page<PostListResponseDto> posts = postService.getPosts(pageable, category, normalizedSort);
 
         return ResponseEntity.ok(
                 ApiResponse.success("게시글 목록 조회 성공", posts)
@@ -219,14 +216,16 @@ public class PostController {
 
     // 커뮤니티 - 게시글 신고 접수
     @PostMapping("/{postId}/reports")
-    public ResponseEntity<Long> reportPost(
+    public ResponseEntity<ApiResponse<Long>> reportPost(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId,
             @RequestBody ReportRequestDto dto
     ) {
         ReportRequestDto reportDto = new ReportRequestDto(postId, dto.reason());
         Long reportId = systemService.reportPost(userDetails.getUserId(), reportDto);
-        return ResponseEntity.ok(reportId);
+        return ResponseEntity.ok(
+                ApiResponse.success("신고가 접수되었습니다.", reportId)
+        );
     }
 
 
