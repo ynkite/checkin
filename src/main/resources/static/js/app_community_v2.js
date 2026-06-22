@@ -1088,6 +1088,7 @@ window._handleWriteImageSelect = function(input) {
 
         document.querySelectorAll('div').forEach(div => {
             if (div.id === 'community-v2-pagination') return;
+            if (div.classList && div.classList.contains('place-v2-pagination')) return;
             const buttons = Array.from(div.querySelectorAll(':scope > button'));
             if (buttons.length < 2) return;
             if (buttons.every(btn => /^\d+$/.test(btn.textContent.trim()))) div.remove();
@@ -1890,26 +1891,120 @@ window._handleWriteImageSelect = function(input) {
         return [];
     }
 
+    const PLACE_PAGE_SIZE = 10;
+    const PLACE_MAX_PAGE_PROBE = 50;
     const _loading = {};
+    window._placeTabPageState = window._placeTabPageState || {};
+
+    function getPlaceSortValue() {
+        return (typeof _commState !== 'undefined' && _commState.sortOrder)
+            ? _commState.sortOrder
+            : 'saved';
+    }
+
+    function getPlacePageState(type) {
+        window._placeTabPageState[type] = window._placeTabPageState[type] || {
+            page: 0,
+            totalPages: 1,
+            loadedTotal: false,
+            sort: getPlaceSortValue()
+        };
+        return window._placeTabPageState[type];
+    }
+
+    async function requestPlaceCardList(type, page) {
+        const sortVal = getPlaceSortValue();
+        const pageNo = Number(page || 0);
+        const res = await api.get(`/api/places?category=${type}&page=${pageNo}&size=${PLACE_PAGE_SIZE}&sort=${sortVal}`);
+        return extractList(res);
+    }
+
+    async function calculatePlaceTotalPages(type, firstPageList) {
+        const state = getPlacePageState(type);
+        const sortVal = getPlaceSortValue();
+
+        if (state.loadedTotal && state.sort === sortVal) {
+            return state.totalPages || 1;
+        }
+
+        state.sort = sortVal;
+        let totalPages = firstPageList && firstPageList.length ? 1 : 0;
+
+        if (firstPageList && firstPageList.length >= PLACE_PAGE_SIZE) {
+            for (let page = 1; page < PLACE_MAX_PAGE_PROBE; page++) {
+                const list = await requestPlaceCardList(type, page);
+                if (!list.length) break;
+                totalPages = page + 1;
+                if (list.length < PLACE_PAGE_SIZE) break;
+            }
+        }
+
+        state.totalPages = Math.max(totalPages, 1);
+        state.loadedTotal = true;
+        return state.totalPages;
+    }
+
+    function removePlacePager(type) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (!tabEl) return;
+        tabEl.querySelectorAll('.place-v2-pagination').forEach(el => el.remove());
+    }
+
+    function renderPlacePager(type, currentPage, totalPages) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (!tabEl) return;
+
+        removePlacePager(type);
+        if (!totalPages || totalPages <= 1) return;
+
+        const pager = document.createElement('div');
+        pager.className = 'community-v2-pagination place-v2-pagination';
+        pager.dataset.placePagerFor = type;
+
+        let html = '';
+        for (let i = 0; i < totalPages; i++) {
+            html += `<button type="button" class="community-v2-page-btn place-v2-page-btn ${i === currentPage ? 'on' : ''}" data-page="${i}">${i + 1}</button>`;
+        }
+        pager.innerHTML = html;
+
+        pager.querySelectorAll('.place-v2-page-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                window._loadPlaceCards(type, Number(this.dataset.page || 0), true);
+            });
+        });
+
+        tabEl.appendChild(pager);
+    }
 
     window._loadPlaceCards = async function loadPlaceCards(type, page, reset) {
-        const key = type + ':' + (page || 0);
+        const pageNo = Number(page || 0);
+        const sortVal = getPlaceSortValue();
+        const key = type + ':' + pageNo + ':' + sortVal;
         if (_loading[key]) return;
         _loading[key] = true;
 
         const tabEl = document.getElementById('tab-' + type);
         if (!tabEl) { _loading[key] = false; return; }
 
+        const state = getPlacePageState(type);
+        if (state.sort !== sortVal || pageNo === 0) {
+            state.sort = sortVal;
+            state.loadedTotal = false;
+            state.totalPages = 1;
+        }
+        state.page = pageNo;
+
         if (reset !== false) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
 
         try {
-            // 수정
-            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'latest';
-            const res  = await api.get(`/api/places?category=${type}&page=${page || 0}&size=20&sort=${sortVal}`);
-            const list = extractList(res);
+            const list = await requestPlaceCardList(type, pageNo);
+            const totalPages = await calculatePlaceTotalPages(type, pageNo === 0 ? list : null);
             tabEl.innerHTML = '';
 
-            if (!list.length) { tabEl.innerHTML = '<div class="comm-empty">등록된 장소가 없습니다.</div>'; return; }
+            if (!list.length) {
+                tabEl.innerHTML = '<div class="comm-empty">등록된 장소가 없습니다.</div>';
+                return;
+            }
 
             const frag = document.createDocumentFragment();
             list.forEach(function (card) {
@@ -1933,6 +2028,7 @@ window._handleWriteImageSelect = function(input) {
                 frag.appendChild(el);
             });
             tabEl.appendChild(frag);
+            renderPlacePager(type, pageNo, totalPages);
 
         } catch (e) {
             console.error('[place-tab] 장소 카드 로드 실패:', e);
@@ -1970,7 +2066,8 @@ window._handleWriteImageSelect = function(input) {
                 /* 목록으로 돌아오면 검색/정렬 바 복원 */
                 const sb = document.querySelector('#page-community .search-bar');
                 if (sb) sb.style.display = '';
-                window._loadPlaceCards(type, 0, true);
+                const returnPage = window._placeTabPageState?.[type]?.page || 0;
+                window._loadPlaceCards(type, returnPage, true);
             });
             wrap.appendChild(back);
 
