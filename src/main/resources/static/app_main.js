@@ -291,9 +291,11 @@ function go(id, addToHistory) {
 
   if (id === 'community') {
     setTimeout(function () {
-      // 메인페이지에서 특정 장소 후기로 바로 진입하는 경우, 목록 로드로 덮어쓰지 않음
       if (window._pendingPlaceReview) return;
       var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
+      var tabEl = document.getElementById('tab-' + tab);
+      // 이미 게시글이 있으면 재로드 안 함 (뒤로가기 시 깜박임/초기화 방지)
+      if (tabEl && tabEl.querySelector('.comm-post-item')) return;
       if (['stay', 'food', 'tour', 'cafe'].indexOf(tab) !== -1) {
         if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
       } else {
@@ -323,6 +325,7 @@ async function _initSession(accessToken, refreshToken) {
   if (meRes.success && meRes.data) {
     _currentUser  = meRes.data;
     window._currentUser = _currentUser;
+    window._isAdmin   = (_currentUser.role === 'ADMIN');   // 숨김 콘텐츠 접근 제어용
     _isSuspended  = (_currentUser.role === 'SUSPENDED');
   }
 
@@ -334,7 +337,7 @@ async function _initSession(accessToken, refreshToken) {
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
   Token.clear();
-  _currentUser = null; window._currentUser = null; _isSuspended = false; _loggedIn = false;
+  _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
   _userNotifs = []; _myTrips = [];
   updateNav();
   toast('⚠️ 세션이 만료되었습니다. 다시 로그인해주세요.');
@@ -418,6 +421,9 @@ function updateNav() {
     if (un) { un.style.display = 'none'; un.textContent = ''; }
     if (lo) lo.style.display = 'none';
     if (nb) nb.style.display = 'none';
+    // 로그아웃 시 알림 배지 숫자도 반드시 숨김
+    const _badgeEl = document.getElementById('notifBadge');
+    if (_badgeEl) _badgeEl.style.display = 'none';
     if (al) al.style.display = 'none';
   }
 
@@ -607,7 +613,7 @@ function _handleOAuthCallback() {
 async function doLogout() {
   await api.post('/api/auth/logout', {});
   Token.clear();
-  _currentUser = null; window._currentUser = null; _isSuspended = false; _loggedIn = false;
+  _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
   _userNotifs = []; _myTrips = [];
   updateNav();
   toast('로그아웃 되었습니다.');
@@ -1170,7 +1176,14 @@ function updateNotifBadge() {
   const b = document.getElementById('notifBadge');
   if (!b) return;
   const cnt = _userNotifs.filter(n => !n.isRead).length;
-  b.style.display = cnt > 0 ? '' : 'none';
+  if (cnt > 0) {
+    b.style.display = 'inline-flex';
+    b.style.alignItems = 'center';
+    b.style.justifyContent = 'center';
+    b.textContent = cnt > 99 ? '99+' : String(cnt);
+  } else {
+    b.style.display = 'none';
+  }
 }
 
 async function openNotificationPopup() {
@@ -1179,6 +1192,11 @@ async function openNotificationPopup() {
   renderNotifList();
   document.getElementById('notifOverlay').style.display = 'block';
   document.getElementById('notifPopup').style.display = 'block';
+  // 팝업을 열 때 한 번만 전체 읽음 처리 (renderNotifList 안에서는 하지 않음)
+  api.patch('/api/notifications/read-all', {}).then(() => {
+    _userNotifs.forEach(n => n.isRead = true);
+    updateNotifBadge();
+  });
 }
 
 function closeNotifPopup() {
@@ -1228,27 +1246,40 @@ function renderNotifList() {
     list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">새로운 알림이 없습니다.</div>';
     return;
   }
+
+  function formatNotifContent(n) {
+    const raw = n.content || '';
+    // \n을 <br>로 변환하여 줄바꿈 보존
+    // 사유 라벨(정지사유 / 신고사유 / 반려사유)은 볼드 처리
+    return raw
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/(정지사유|신고사유|반려사유|삭제사유)/g,'<strong>$1</strong>')
+        .replace(/\n/g,'<br>');
+  }
+
+  function notifIcon(type) {
+    if (type === 'ACCOUNT_SUSPENDED') return '🚫';
+    if (type === 'REPORT_REJECTED')   return '↩️';
+    if (type === 'POST_DELETED')      return '🗑️';
+    if (type === 'ROLE_CHANGED')      return '🔑';
+    return '📢';
+  }
+
   list.innerHTML = _userNotifs.map((n) => `
     <div style="padding:12px;border-radius:9px;margin-bottom:6px;
                 background:${n.isRead ? 'var(--cream)' : 'var(--sage-pale)'};
                 border:1px solid ${n.isRead ? 'var(--border2)' : 'var(--sage-l)'}">
       <div style="display:flex;align-items:flex-start;gap:9px">
-        <span style="font-size:18px;flex-shrink:0">📢</span>
+        <span style="font-size:18px;flex-shrink:0">${notifIcon(n.type)}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.title || ''}</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.6">${n.content || ''}</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;word-break:keep-all;overflow-wrap:break-word">${formatNotifContent(n)}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:4px">${n.createdAt ? n.createdAt.substring(0,10) : ''}</div>
         </div>
         <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">✕</button>
       </div>
     </div>`).join('');
 
-  // PATCH /api/notifications/read-all
-  api.patch('/api/notifications/read-all', {}).then(() => {
-    // 백엔드 처리가 성공하면 프론트엔드의 데이터도 전부 읽음 상태로 변경!
-    _userNotifs.forEach(n => n.isRead = true);
-    updateNotifBadge(); // 배지 업데이트 (알림 숫자 0으로 사라짐)
-  });
 }
 
 /** 알림 개별 삭제 (DELETE /api/notifications/{notificationId}) */
@@ -2448,15 +2479,15 @@ function addPlanItem(btn) {
 }
 
 /** PATCH /api/admin/users/{userId}/suspend */
-var _reportAction = 'delete';
+var _reportAction = 'hide';
 function openReportAction(type, id, post, reporter, reason) {
-  _reportAction=type; const isDelete=(type==='delete');
-  document.getElementById('reportActionTitle').textContent = isDelete?'🗑️ 게시글 삭제 처리':'↩️ 신고 반려 처리';
+  _reportAction=type; const isDelete=(type==='hide');
+  document.getElementById('reportActionTitle').textContent = isDelete?'🙈 숨김 처리':'↩️ 신고 반려 처리';
   document.getElementById('ra-id').textContent=id; document.getElementById('ra-post').textContent=post;
   document.getElementById('ra-reporter').textContent=reporter; document.getElementById('ra-reason').textContent=reason;
-  document.getElementById('ra-reason-label').innerHTML=(isDelete?'삭제 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
+  document.getElementById('ra-reason-label').innerHTML=(isDelete?'숨김 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
   const sel=document.getElementById('ra-reason-select');
-  if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 삭제 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--coral)'; document.getElementById('ra-confirm-btn').textContent='삭제 완료';}
+  if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 숨김 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='#757575'; document.getElementById('ra-confirm-btn').textContent='숨김 완료';}
   else        {sel.innerHTML='<option value="">사유 선택...</option><option>신고 증거 불충분</option><option>허용된 표현 범위 내</option><option>중복 신고</option><option>사실과 다른 신고</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--sage)'; document.getElementById('ra-confirm-btn').textContent='반려 완료';}
   document.getElementById('ra-detail').value=''; document.getElementById('reportActionModal').classList.add('open');
 }
@@ -2473,7 +2504,8 @@ function closeSuspendModal() { document.getElementById('suspendModal').classList
 async function confirmSuspend() {
   const r=document.getElementById('su-reason-select').value; if(!r){toast('정지 사유를 선택해주세요');return;}
   const uid=document.getElementById('su-id').textContent;
-  const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r});
+  const notifyMsg=document.getElementById('su-notify-msg')?.value||'';
+  const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r, notifyMessage:notifyMsg});
   closeSuspendModal();
   toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'⚠️ 정지 처리에 실패했습니다.');
   if(res.success) loadAdminUsers();
@@ -2483,14 +2515,15 @@ async function confirmSuspend() {
 async function confirmReportAction() {
   const r=document.getElementById('ra-reason-select').value; if(!r){toast('사유를 선택해주세요');return;}
   const rid=document.getElementById('ra-id').textContent;
+  const notifyMsg=document.getElementById('ra-notify-msg')?.value||'';
   let res;
-  if(_reportAction==='delete') res=await api.del('/api/admin/reports/'+rid);
-  else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r});
+  if(_reportAction==='hide') res=await api.patch('/api/admin/reports/'+rid+'/hide?reason='+encodeURIComponent(r),{});
+  else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r,notifyMessage:notifyMsg});
   closeReportAction();
   toast(res.success
-      ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
+      ? (_reportAction==='hide'?'숨김 처리 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
       : '⚠️ 처리에 실패했습니다.');
-  if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING'); // ★ 추가
+  if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
 }
 
 // 제미나이 추가
@@ -3130,6 +3163,20 @@ document.addEventListener('keydown', e => {
 window.addEventListener('popstate', e => {
   const p = e.state?.page || 'main';
   const step = e.state?.step;
+  // 커뮤니티 복귀 시 탭이 비어있으면 게시글 재로드
+  if (p === 'community') {
+    setTimeout(function() {
+      var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
+      var tabEl = document.getElementById('tab-' + tab);
+      if (!tabEl || !tabEl.querySelector('.comm-post-item')) {
+        if (['stay','food','tour','cafe'].indexOf(tab) !== -1) {
+          if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
+        } else {
+          if (typeof window.loadCommunityPosts === 'function') window.loadCommunityPosts(0, true);
+        }
+      }
+    }, 50);
+  }
 
   // 플래너 내 스텝 뒤로가기
   if (p === 'planner' && step) {
@@ -3281,9 +3328,11 @@ window.addEventListener('popstate', e => {
   if (savedToken) {
     const meRes = await api.get('/api/users/me');
     if (meRes.success && meRes.data) {
-      _currentUser = meRes.data;
-      _isSuspended = (_currentUser.status === 'SUSPENDED');
-      _loggedIn    = true;
+      _currentUser           = meRes.data;
+      window._currentUser    = _currentUser;
+      window._isAdmin        = (_currentUser.role === 'ADMIN');
+      _isSuspended           = (_currentUser.role === 'SUSPENDED' || _currentUser.status === 'SUSPENDED');
+      _loggedIn              = true;
       await updateMyPageUI();
       await _loadNotifications();
     } else {

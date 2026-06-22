@@ -51,8 +51,14 @@
   <div class="nav-btns" id="navBtns">
     <button class="btn-o" id="navLoginBtn" onclick="go('login')">로그인</button>
     <button class="btn-f" id="navSignupBtn" onclick="go('signup')">→ 회원가입</button>
-    <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
-    background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; margin-right:8px;">🔔</button>
+    <div id="navBellWrapper" style="position:relative;display:inline-flex;align-items:center;margin-right:8px;">
+      <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
+      background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; line-height:1;">🔔</button>
+      <span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-7px;
+        background:#e53e3e;color:#fff;border-radius:50%;min-width:18px;height:18px;
+        font-size:10px;font-weight:700;text-align:center;line-height:18px;
+        padding:0 3px;pointer-events:none;box-sizing:border-box;border:2px solid #fff;"></span>
+    </div>
     <a class="btn-o" id="navAdminLink" onclick="go('admin')" style="display:none;cursor:pointer;color:var(--sage);font-weight:700">관리자</a>
     <button class="btn-o" id="navUserNameBtn" onclick="go('mypage')" style="display:none">마이페이지</button>
     <button class="btn-o" id="navLogoutBtn" onclick="doLogout()" style="display:none">로그아웃</button>
@@ -82,7 +88,7 @@
 
 <!--제미나이에서 추가-->
 <div id="notifPopup"
-     style="display:none;position:fixed;top:60px;right:130px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
+     style="display:none;position:fixed;top:60px;right:16px;width:580px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
   <div
           style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
     <div style="font-size:14px;font-weight:700">🔔 알림</div>

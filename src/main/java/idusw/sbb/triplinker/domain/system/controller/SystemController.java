@@ -57,6 +57,16 @@ public class SystemController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    // 신고된 콘텐츠 숨김 처리 (삭제 대신 숨김)
+    @PatchMapping("/admin/reports/{reportId}/hide")
+    public ResponseEntity<ApiResponse<Void>> hideReportedContent(
+            @PathVariable Long reportId,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal CustomUserDetails adminDetails) {
+        systemService.hideReportedContent(adminDetails.getUserId(), reportId, reason);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @PatchMapping("/admin/reports/{reportId}")
     public ResponseEntity<ApiResponse<Void>> rejectReport(
             @PathVariable Long reportId,

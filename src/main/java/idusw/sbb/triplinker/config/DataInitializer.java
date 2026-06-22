@@ -1,7 +1,11 @@
 package idusw.sbb.triplinker.config;
 
 import idusw.sbb.triplinker.domain.place.repository.PlaceRepository;
+import idusw.sbb.triplinker.domain.post.entity.PostComment;
 import idusw.sbb.triplinker.domain.post.repository.PlaceReviewRepository;
+import idusw.sbb.triplinker.domain.post.repository.PostCommentRepository;
+import idusw.sbb.triplinker.domain.system.entity.Report;
+import idusw.sbb.triplinker.domain.system.repository.ReportRepository;
 import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,8 @@ public class DataInitializer implements CommandLineRunner {
     private final PostRepository postRepository;
     private final PlaceRepository placeRepository;
     private final PlaceReviewRepository placeReviewRepository;
+    private final PostCommentRepository postCommentRepository;
+    private final ReportRepository reportRepository;
 
     @Override
     public void run(String... args) {
@@ -121,25 +127,25 @@ public class DataInitializer implements CommandLineRunner {
         log.info("관리자 큐레이션(Curation) 4건이 생성되었습니다.");
 
         // ── Post 4건 ──
-        postRepository.save(Post.builder()
+        Post adminPost1 = postRepository.save(Post.builder()
                 .user(admin).plan(jejuPlan)
                 .title("제주 여름 바캉스, 협재해변에서 보낸 3박4일")
                 .content("에메랄드빛 협재해변과 성산일출봉을 둘러볼 수 있는 여름 휴가 후기입니다.")
                 .styleTags("여름,힐링,오션뷰").isPublic(true).build());
 
-        postRepository.save(Post.builder()
+        Post adminPost2 = postRepository.save(Post.builder()
                 .user(admin).plan(busanPlan)
                 .title("부산 해운대 여름 휴가, 서핑 입문 후기")
                 .content("해운대와 광안리를 오가며 서핑을 배우고 야경까지 즐긴 여름 휴가 코스입니다.")
                 .styleTags("여름,서핑,액티비티").isPublic(true).build());
 
-        postRepository.save(Post.builder()
+        Post adminPost3 = postRepository.save(Post.builder()
                 .user(admin).plan(gyeongjuPlan)
                 .title("경주 2박3일, 불국사부터 황리단길까지")
                 .content("천년 고도 경주에서 역사와 힐링을 동시에! 가족 여행 코스 추천합니다.")
                 .styleTags("문화·역사,가족,힐링").isPublic(true).build());
 
-        postRepository.save(Post.builder()
+        Post adminPost4 = postRepository.save(Post.builder()
                 .user(admin).plan(gangwonPlan)
                 .title("강원 힐링 트레킹, 설악산에서 남이섬까지")
                 .content("속초·양양·춘천을 잇는 강원 자연 힐링 코스입니다.")
@@ -322,6 +328,102 @@ public class DataInitializer implements CommandLineRunner {
                 .styleTags("여름,액티비티,오션뷰").category("CAFE").isPublic(true).build());
 
         log.info("유저 Post 20건이 생성되었습니다.");
+
+        // ── 댓글 추가 (게시글마다 3개씩) ──
+        String[][] commentData = {
+                {"정말 잘 정리된 후기예요! 저도 비슷한 코스로 다녀왔는데 공감 100%입니다.","여기 소개된 곳 중에 특히 어디가 제일 좋으셨나요?","다음 여행 계획에 참고할게요 정보 감사합니다!"},
+                {"저도 비슷한 경험을 했어요. 특히 음식이 정말 맛있었죠?","언제 또 가고 싶네요. 후기 보니까 그리워집니다 ㅠㅠ","사진도 같이 올려주셨으면 더 좋았을 것 같아요!"},
+                {"오 이 코스 진짜 좋아 보여요! 당장 예약하고 싶네요.","날씨는 어떠셨나요? 제가 갔을 때 비가 와서 아쉬웠거든요.","교통편 정보도 공유해주시면 감사하겠습니다!"},
+                {"후기 정말 생생하게 잘 써주셨네요. 도움이 많이 됐어요!","여기 숙소 가격이 어떻게 되는지 혹시 아시나요?","다음 달에 방문 예정인데 참고할게요 감사해요"},
+                {"저도 이런 여행 한번 해보고 싶네요 부러워요","혹시 입장료 정보 맞나요? 최근에 바뀐 것 같던데","사진 보니까 날씨가 완벽했겠어요 좋겠다!"},
+                {"맛집 정보가 정말 유용해요 메모해뒀습니다","이 코스 혼자 여행해도 괜찮을까요? 솔직한 의견 부탁드려요","주차는 어떻게 했나요? 자차로 갈 예정이라서요"},
+                {"너무 잘 쓰셨어요 마치 제가 직접 간 것 같았어요!","꼭 가봐야 할 곳인 것 같아요 즐겨찾기 해뒀습니다","요즘 날씨에 가기 딱 좋겠네요 바로 따라가고 싶어요"},
+        };
+
+        // 관리자 게시글 댓글
+        PostComment sampleComment1 = postCommentRepository.save(PostComment.builder().post(adminPost1).user(users[3]).content(commentData[0][0]).build());
+        PostComment sampleComment2 = postCommentRepository.save(PostComment.builder().post(adminPost1).user(users[7]).content(commentData[0][1]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost1).user(users[11]).content(commentData[0][2]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost2).user(users[4]).content(commentData[1][0]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost2).user(users[8]).content(commentData[1][1]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost2).user(users[12]).content(commentData[1][2]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost3).user(users[5]).content(commentData[2][0]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost3).user(users[9]).content(commentData[2][1]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost3).user(users[13]).content(commentData[2][2]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost4).user(users[6]).content(commentData[3][0]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost4).user(users[10]).content(commentData[3][1]).build());
+        postCommentRepository.save(PostComment.builder().post(adminPost4).user(users[14]).content(commentData[3][2]).build());
+
+        // 유저 게시글 댓글 (postRoute1-4)
+        postCommentRepository.save(PostComment.builder().post(postRoute1).user(users[2]).content(commentData[4][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute1).user(users[5]).content(commentData[4][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute1).user(users[9]).content(commentData[4][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute2).user(users[0]).content(commentData[5][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute2).user(users[4]).content(commentData[5][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute2).user(users[8]).content(commentData[5][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute3).user(users[1]).content(commentData[6][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute3).user(users[3]).content(commentData[6][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute3).user(users[7]).content(commentData[6][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute4).user(users[5]).content(commentData[0][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute4).user(users[7]).content(commentData[1][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postRoute4).user(users[11]).content(commentData[2][2]).build());
+
+        // STAY 게시글 댓글
+        postCommentRepository.save(PostComment.builder().post(postStay1).user(users[0]).content(commentData[3][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay1).user(users[4]).content(commentData[3][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay1).user(users[8]).content(commentData[3][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay2).user(users[2]).content(commentData[4][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay2).user(users[6]).content(commentData[4][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay2).user(users[10]).content(commentData[4][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay3).user(users[1]).content(commentData[5][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay3).user(users[5]).content(commentData[5][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay3).user(users[9]).content(commentData[5][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay4).user(users[3]).content(commentData[6][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay4).user(users[7]).content(commentData[6][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postStay4).user(users[11]).content(commentData[6][2]).build());
+
+        // FOOD 게시글 댓글
+        postCommentRepository.save(PostComment.builder().post(postFood1).user(users[0]).content(commentData[0][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood1).user(users[4]).content(commentData[0][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood1).user(users[8]).content(commentData[0][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood2).user(users[1]).content(commentData[1][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood2).user(users[5]).content(commentData[1][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood2).user(users[9]).content(commentData[1][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood3).user(users[2]).content(commentData[2][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood3).user(users[6]).content(commentData[2][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood3).user(users[10]).content(commentData[2][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood4).user(users[3]).content(commentData[3][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood4).user(users[7]).content(commentData[3][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postFood4).user(users[11]).content(commentData[3][2]).build());
+
+        // TOUR 게시글 댓글
+        postCommentRepository.save(PostComment.builder().post(postTour1).user(users[0]).content(commentData[4][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour1).user(users[5]).content(commentData[4][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour1).user(users[10]).content(commentData[4][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour2).user(users[1]).content(commentData[5][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour2).user(users[6]).content(commentData[5][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour2).user(users[11]).content(commentData[5][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour3).user(users[2]).content(commentData[6][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour3).user(users[7]).content(commentData[6][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour3).user(users[12]).content(commentData[6][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour4).user(users[3]).content(commentData[0][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour4).user(users[8]).content(commentData[0][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postTour4).user(users[13]).content(commentData[0][2]).build());
+
+        // CAFE 게시글 댓글
+        postCommentRepository.save(PostComment.builder().post(postCafe1).user(users[0]).content(commentData[1][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe1).user(users[5]).content(commentData[1][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe1).user(users[10]).content(commentData[1][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe2).user(users[1]).content(commentData[2][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe2).user(users[6]).content(commentData[2][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe2).user(users[11]).content(commentData[2][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe3).user(users[2]).content(commentData[3][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe3).user(users[7]).content(commentData[3][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe3).user(users[12]).content(commentData[3][2]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe4).user(users[3]).content(commentData[4][0]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe4).user(users[8]).content(commentData[4][1]).build());
+        postCommentRepository.save(PostComment.builder().post(postCafe4).user(users[13]).content(commentData[4][2]).build());
+        log.info("댓글 72개가 생성되었습니다.");
 
         // ── Place 26건 생성 (PlaceReview에서 참조하기 위해 먼저 생성) ──
         // 숙소(ACCOMMODATION) 6건
@@ -559,7 +661,169 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postRoute4).user(users[15]).rating(5).comment("가을 단풍 때 오면 진짜 예술이에요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postRoute4).user(users[9]).rating(4).comment("자전거 타고 섬 한 바퀴 도는 게 최고예요").build());
 
+        // ── STAY 게시글 장소 후기 ──
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHotel).post(postStay1).user(users[1]).rating(5).comment("창밖으로 바다가 펼쳐지는 뷰 정말 최고예요. 아침 조식도 훌륭해요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHotel).post(postStay1).user(users[5]).rating(4).comment("위치가 너무 좋아요. 해운대 해수욕장 도보 3분 거리").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHotel).post(postStay1).user(users[9]).rating(5).comment("커플 여행으로 완벽한 호텔이에요. 분위기 최고").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeSokchoJejuPension).post(postStay2).user(users[3]).rating(5).comment("사장님이 직접 만들어주신 조식이 너무 맛있어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSokchoJejuPension).post(postStay2).user(users[6]).rating(4).comment("바베큐 시설이 잘 되어있어서 너무 좋았어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSokchoJejuPension).post(postStay2).user(users[14]).rating(5).comment("방에서 파도 소리가 들려서 잠이 너무 잘 왔어요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeJeonjuHanok).post(postStay3).user(users[5]).rating(5).comment("온돌 체험이 정말 특별했어요. 외국 친구도 극찬").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeJeonjuHanok).post(postStay3).user(users[8]).rating(4).comment("전통 가옥에서 하룻밤, 평생 기억에 남을 경험이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeJeonjuHanok).post(postStay3).user(users[17]).rating(5).comment("한옥마을 안에 있어서 새벽에 혼자 걷기도 좋아요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolGuesthouse).post(postStay4).user(users[10]).rating(5).comment("여기서 만난 여행자들이랑 같이 드라이브했어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolGuesthouse).post(postStay4).user(users[15]).rating(4).comment("호스트가 로컬 맛집 리스트 주셔서 너무 좋았어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolGuesthouse).post(postStay4).user(users[19]).rating(5).comment("혼행자에게 최고의 숙소예요. 따뜻한 분위기").build());
+
+        // ── FOOD 게시글 장소 후기 ──
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postFood1).user(users[6]).rating(5).comment("강릉 오면 무조건 와야 하는 커피 성지예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postFood1).user(users[14]).rating(5).comment("드립커피 향이 정말 풍부해요. 분위기도 최고").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postFood1).user(users[18]).rating(4).comment("굿즈도 예쁘고 커피도 맛있어요. 줄 서도 방문 가치 있어요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeGangneungDakgalbi).post(postFood1).user(users[6]).rating(5).comment("치즈 추가 강력 추천! 볶음밥도 대박이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGangneungDakgalbi).post(postFood1).user(users[16]).rating(4).comment("강릉 맛집 투어의 필수 코스예요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeYeosuDolgejang).post(postFood2).user(users[7]).rating(5).comment("밥도둑 그 자체예요. 국물에 밥 비벼 먹으면 천국").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeYeosuDolgejang).post(postFood2).user(users[13]).rating(4).comment("여수 여행의 하이라이트! 돌게장 꼭 드세요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeYeosuDolgejang).post(postFood2).user(users[17]).rating(5).comment("갓김치랑 같이 먹으면 더 맛있어요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postFood3).user(users[11]).rating(5).comment("부산 야식의 정석이에요. 야경과 함께 먹으면 최고").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postFood3).user(users[15]).rating(4).comment("소주 한 잔이랑 곱창, 부산에서만 느낄 수 있는 맛").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[11]).rating(5).comment("자갈치보다 여기가 더 신선하고 맛있어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[19]).rating(4).comment("양도 많고 신선도가 달라요. 부산 회는 여기서").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postFood4).user(users[13]).rating(5).comment("줄 서서 먹을 가치가 100% 있어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postFood4).user(users[16]).rating(5).comment("간이 딱 맞고 재료가 신선해서 계속 먹고 싶어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postFood4).user(users[18]).rating(4).comment("경주 대표 맛집 인증! 가성비 최고예요").build());
+
+        // ── TOUR 게시글 장소 후기 ──
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(postTour2).user(users[12]).rating(5).comment("케이블카에서 보는 울산바위가 압도적이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(postTour2).user(users[16]).rating(5).comment("비룡폭포까지 트레킹 강추! 공기가 정말 달라요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(postTour2).user(users[19]).rating(4).comment("단풍 시즌에 오면 진짜 예술이에요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanIlchulbong).post(postTour3).user(users[14]).rating(5).comment("새벽 일출은 평생 기억에 남아요. 꼭 올라가보세요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanIlchulbong).post(postTour3).user(users[17]).rating(5).comment("올라가는 길이 생각보다 어렵지 않아요. 30분이면 정상").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanIlchulbong).post(postTour3).user(users[19]).rating(4).comment("제주 여행의 하이라이트! 꼭 방문해야 하는 곳").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postTour4).user(users[15]).rating(5).comment("가을 단풍 때 오면 진짜 예술이에요. 메타세쿼이아길").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postTour4).user(users[18]).rating(4).comment("자전거 대여해서 섬 한 바퀴 도는 것 강추해요").build());
+
+        // ── CAFE 게시글 장소 후기 ──
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolCafe).post(postCafe1).user(users[16]).rating(5).comment("애월 오션뷰 카페 중 여기가 단연 최고예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolCafe).post(postCafe1).user(users[17]).rating(5).comment("감귤라테 너무 맛있어요. 뷰도 완벽해요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolCafe).post(postCafe1).user(users[19]).rating(4).comment("통유리로 바다가 보이는 통유리 뷰가 인상적이에요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postCafe2).user(users[17]).rating(5).comment("커피 성지 순례 완료! 드립커피가 정말 맛있어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postCafe2).user(users[18]).rating(5).comment("공장형 인테리어가 인상적이고 커피 향이 진짜 좋아요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[18]).rating(5).comment("창문으로 일출봉 보이는 뷰가 진짜 최고예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[14]).rating(4).comment("일출봉 올라갔다 내려와서 마신 커피가 꿀맛이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[16]).rating(5).comment("말차라테 색감도 예쁘고 맛도 너무 좋아요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postCafe4).user(users[19]).rating(5).comment("광안대교 야경 보면서 디저트 먹는 게 꿈같아요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postCafe4).user(users[14]).rating(4).comment("분위기 최고예요. 인스타 사진 찍기도 너무 좋아요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postCafe4).user(users[18]).rating(5).comment("부산 감성 카페 투어의 완결판이에요").build());
+
         log.info("Place 및 PlaceReview 데이터가 생성되었습니다.");
+
+        // ── 누락된 작성자 본인 리뷰 추가 ──
+        // 관리자(admin) 게시글의 admin 본인 리뷰
+        placeReviewRepository.save(PlaceReview.builder().place(placeHyeopjae).post(adminPost1).user(admin).rating(5).comment("협재해변 에메랄드빛 바다, 제주에서 가장 아름다운 해변이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeBlackPig).post(adminPost1).user(admin).rating(5).comment("제주 흑돼지는 정말 다르네요. 육질이 쫄깃하고 감칠맛이 달라요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeAewolCafe).post(adminPost1).user(admin).rating(4).comment("오션뷰 카페에서 감귤라테 한 잔, 제주 여행의 여유로움이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeJejuPension).post(adminPost1).user(admin).rating(5).comment("협재해변 도보 3분 거리, 오션뷰 최고 숙소예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanIlchulbong).post(adminPost1).user(admin).rating(5).comment("새벽 일출을 보기 위해 올라갔는데 평생 잊을 수 없는 경험이었어요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(adminPost2).user(admin).rating(5).comment("부산 오면 꼭 먹어야 할 횟집, 신선도가 정말 달라요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(adminPost2).user(admin).rating(4).comment("광안대교 야경 보면서 마시는 커피, 부산의 밤이 아름다웠어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHotel).post(adminPost2).user(admin).rating(5).comment("오션뷰 룸에서 아침 바다 보며 커피 한 잔, 완벽한 숙소였어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(adminPost2).user(admin).rating(4).comment("부산 야식으로 곱창과 소주, 광안리 밤이 그리워요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeBulguksa).post(adminPost3).user(admin).rating(5).comment("야경이 압도적이에요. 경주 방문 시 저녁에 꼭 오세요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(adminPost3).user(admin).rating(5).comment("줄이 길어도 기다릴 가치 100%, 경주 대표 맛집 인증").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuHanok).post(adminPost3).user(admin).rating(4).comment("황리단길 인근 한옥 스테이, 분위기가 정말 좋아요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeokguram).post(adminPost3).user(admin).rating(5).comment("석굴암 본존불 앞에서 압도됐어요. 꼭 방문해야 할 국보").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuMuseum).post(adminPost3).user(admin).rating(4).comment("무료인데 신라 유물들이 정말 많아요. 반나절은 잡아야 해요").build());
+
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(adminPost4).user(admin).rating(5).comment("케이블카에서 내려다보는 울산바위 전경이 압도적이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(adminPost4).user(admin).rating(5).comment("강릉 커피거리의 성지, 드립커피 향이 정말 진해요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSokchoChicken).post(adminPost4).user(admin).rating(4).comment("속초 중앙시장 닭강정, 달콤 바삭 간식 최고예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSokchoJejuPension).post(adminPost4).user(admin).rating(4).comment("설악산 트레킹 전날 묵은 속초 펜션, 파도소리 들으며 꿀잠").build());
+
+        // postTour1 (users[9] = 오예린, 통영) - 본인 리뷰 없음 → 추가
+        placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(postTour1).user(users[9]).rating(5).comment("케이블카에서 내려다보는 경치가 정말 대단해요. 통영 다음에 들렀어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postTour1).user(users[9]).rating(4).comment("남이섬 자전거 타고 한 바퀴, 통영 여행 끝나고 들른 힐링 코스").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postTour1).user(users[9]).rating(4).comment("통영에서 부산 거쳐 서울 올라오는 길에 광안리 카페 들렀어요").build());
+
+        // postRoute3 (users[4] = 정우진, 서울 당일치기) - 리뷰 1개뿐 → 추가
+        placeReviewRepository.save(PlaceReview.builder().place(placeHallimPark).post(postRoute3).user(users[4]).rating(4).comment("서울 당일치기 후 주말 추가 여행으로 방문했어요. 볼거리 가득").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postRoute3).user(users[4]).rating(5).comment("서울 일정 후 부산 야경 보러 내려왔어요. 광안리 카페가 최고").build());
+
+        log.info("누락 작성자 본인 리뷰가 추가되었습니다.");
+
+        // ── 신고 데이터 추가 (숨김 처리용 게시글 3개 포함) ──
+        // 숨김 처리될 게시글 3개 생성
+        Post hiddenPost1 = postRepository.save(Post.builder()
+                .user(users[4]).plan(userPlans[4])
+                .title("스팸 광고 - 최저가 여행 상품 안내!!!")
+                .content("클릭하시면 최저가 여행 상품을 확인하실 수 있습니다. 한정 특가!")
+                .styleTags("여행").category("ROUTE").isPublic(true).status("HIDDEN").build());
+
+        Post hiddenPost2 = postRepository.save(Post.builder()
+                .user(users[6]).plan(userPlans[6])
+                .title("[광고] 제주도 펜션 홍보 글입니다")
+                .content("저희 펜션을 이용하시면 특별 혜택을 드립니다. 예약 문의 주세요.")
+                .styleTags("힐링").category("STAY").isPublic(true).status("HIDDEN").build());
+
+        Post hiddenPost3 = postRepository.save(Post.builder()
+                .user(users[8]).plan(userPlans[8])
+                .title("허위 정보로 작성된 게시글 예시")
+                .content("잘못된 정보가 포함된 게시글로 숨김 처리된 예시입니다.")
+                .styleTags("여행").category("FOOD").isPublic(true).status("HIDDEN").build());
+
+        // PENDING 신고 3건 (처리 대기 중)
+        reportRepository.save(Report.builder()
+                .post(adminPost2).reporter(users[3])
+                .reason("스팸/광고").commentId(null).build());
+        // 실제 댓글 ID를 참조하는 댓글 신고
+        reportRepository.save(Report.builder()
+                .post(adminPost1).reporter(users[7])
+                .reason("[댓글 신고] 욕설/혐오 표현").commentId(sampleComment1.getId()).build());
+        reportRepository.save(Report.builder()
+                .post(postStay1).reporter(users[11])
+                .reason("허위 정보").commentId(null).build());
+
+        // REJECTED 신고 3건 (반려 처리됨)
+        Report rejReport1 = Report.builder().post(postTour1).reporter(users[1]).reason("스팸/광고").commentId(null).build();
+        rejReport1.reject("신고 증거 불충분", "관리자");
+        reportRepository.save(rejReport1);
+
+        Report rejReport2 = Report.builder().post(postCafe1).reporter(users[5]).reason("음란물").commentId(null).build();
+        rejReport2.reject("허용된 표현 범위 내", "관리자");
+        reportRepository.save(rejReport2);
+
+        Report rejReport3 = Report.builder().post(postFood2).reporter(users[9]).reason("허위 정보").commentId(null).build();
+        rejReport3.reject("중복 신고", "관리자");
+        reportRepository.save(rejReport3);
+
+        // RESOLVED 신고 3건 (게시글 숨김 처리 완료)
+        Report resReport1 = Report.builder().post(hiddenPost1).reporter(users[2]).reason("스팸/광고").commentId(null).build();
+        resReport1.resolve("스팸성 광고 게시글로 숨김 처리됨", "관리자");
+        reportRepository.save(resReport1);
+
+        Report resReport2 = Report.builder().post(hiddenPost2).reporter(users[6]).reason("스팸/광고").commentId(null).build();
+        resReport2.resolve("광고성 콘텐츠로 숨김 처리됨", "관리자");
+        reportRepository.save(resReport2);
+
+        Report resReport3 = Report.builder().post(hiddenPost3).reporter(users[10]).reason("허위 정보").commentId(null).build();
+        resReport3.resolve("허위 정보 게시글로 숨김 처리됨", "관리자");
+        reportRepository.save(resReport3);
+
+        log.info("신고 데이터 9건(미처리3+반려3+처리완료3)이 생성되었습니다.");
     }
 
 }

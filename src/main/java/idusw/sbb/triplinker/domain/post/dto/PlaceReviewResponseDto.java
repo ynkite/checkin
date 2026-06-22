@@ -11,6 +11,7 @@ public record PlaceReviewResponseDto(
         String        category,
         Long          writerId,
         String        writerName,
+        String        writerRole,    // ADMIN / USER (현재 역할)
         int           rating,
         String        starsHtml,
         String        comment,
@@ -37,6 +38,7 @@ public record PlaceReviewResponseDto(
                 pr.getPlace().getCategory().name().toLowerCase(),
                 pr.getUser().getId(),
                 writerName,
+                pr.getUser().getRole(),
                 pr.getRating(),
                 stars(pr.getRating()),
                 pr.getComment(),
