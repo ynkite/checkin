@@ -80,6 +80,7 @@ public class Post {
     public void decreaseLikeCount() {if(this.likeCount > 0) this.likeCount--;}
     public void increaseViewCount() {this.viewCount++;}
     public void delete() {this.status = "DELETED";}
+    public void hide()   {this.status = "HIDDEN";}
 
     public void update(String title, String content, String styleTags, String category, Boolean isPublic) {
         this.title = title;

@@ -501,7 +501,7 @@ async function loadComments(postId) {
       '<span style="font-size:10px;color:var(--text3)">' +
       (c.createdAt ? c.createdAt.substring(0, 10) : '') +
       '</span>' +
-      '<button onclick="openReportCommentModal(' + (c.commentId || 0) + ', ' + postId + ')" ' +
+      '<button onclick="openReportCommentModal(' + c.commentId + ', ' + postId + ')" ' +
       'style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);' +
       'border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)" ' +
       'title="댓글 신고">🚨 신고</button>' +
@@ -520,7 +520,8 @@ let _reportCommentPostId = null;
 function openReportCommentModal(commentId, postId) {
   if (!_loggedIn) { toast('로그인이 필요합니다'); return; }
   _reportCommentId     = commentId;
-  _reportCommentPostId = postId;
+  // postId가 0이거나 없을 경우 현재 열린 게시글 ID로 대체
+  _reportCommentPostId = postId || window._currentPostId || window._openedPostId || postId;
   const modal = document.getElementById('reportCommentModal');
   if (modal) {
     const sel = document.getElementById('reportCommentReasonSelect');
@@ -536,14 +537,19 @@ async function submitReportComment() {
   const reason = sel ? sel.value : '';
   if (!reason) { toast('신고 사유를 선택해주세요'); return; }
 
+  // _reportCommentPostId가 없으면 현재 열린 게시글 ID 사용
+  if (!_reportCommentPostId) {
+    _reportCommentPostId = window._currentPostId || window._openedPostId;
+  }
   if (!_reportCommentPostId) { toast('⚠️ 신고 대상 게시글을 찾을 수 없습니다.'); return; }
 
   const modal = document.getElementById('reportCommentModal');
   if (modal) modal.style.display = 'none';
 
-  /* 댓글 신고는 해당 게시글 신고 endpoint를 재사용, reason에 [댓글 신고] 표시 */
+  /* 댓글 신고는 해당 게시글 신고 endpoint를 재사용, commentId와 reason 전달 */
   const res = await api.post('/api/posts/' + _reportCommentPostId + '/reports', {
-    reason: '[댓글 신고] ' + reason
+    reason: '[댓글 신고] ' + reason,
+    commentId: _reportCommentId
   });
   const ok = res && res.success !== false;
   toast(ok ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');

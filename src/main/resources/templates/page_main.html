@@ -430,7 +430,13 @@
           const spots = s.isMock ? s.spots
                   : (attractions.length ? attractions.slice(0,3).map(a=>_esc(a)).join(' · ') : _esc(s.destination || ''));
 
-          const badges = s.badgesHtml || `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 추천 큐레이션</span>`;
+          // ⭐ 배지: starBadges 배열 우선 → 없으면 "⭐ 추천 큐레이션" 기본값
+          const _starBadges = en.starBadges && en.starBadges.length ? en.starBadges : null;
+          const badges = s.badgesHtml || (
+                  _starBadges
+                          ? _starBadges.map(t=>`<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ ${_esc(t)}</span>`).join(' ')
+                          : `<span style="padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ 추천 큐레이션</span>`
+          );
           const title = s.isMock ? s.title : _esc(s.title);
           const budget = s.budgetHtml || '';
 

@@ -586,20 +586,45 @@
         /* 현재 열린 게시글 ID */
         const curPostId = window._currentPostId || window._openedPostId || 0;
 
-        const commentItems = list.length
-            ? list.map(c => `
+        const _myIdForComment = window._myUserId ? window._myUserId() : null;
+
+        // 숨김 댓글: 관리자 또는 댓글 작성자 본인만 보임
+        const _isAdminForComment = window._checkIsAdmin ? window._checkIsAdmin() : false;
+        const visibleComments = list.filter(c => {
+            if (c.status === 'DELETED') return false;
+            if (c.status === 'HIDDEN') {
+                return _isAdminForComment || (_myIdForComment && Number(c.userId) === Number(_myIdForComment));
+            }
+            return true;
+        });
+
+        const commentItems = visibleComments.length
+            ? visibleComments.map(c => {
+                const isHiddenComment = c.status === 'HIDDEN';
+                if (isHiddenComment) {
+                    return `
+                <div class="comment-item" style="background:#FFF3F3;border-radius:8px;padding:8px 12px;opacity:0.8">
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <span class="comment-writer" style="color:#9E9E9E">${escapeHtml(c.writerName || '사용자')}</span>
+                        <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
+                        <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
+                    </div>
+                    <div style="color:#BDBDBD;font-style:italic;font-size:13px">(운영 정책 위반으로 숨김 처리된 댓글입니다)</div>
+                </div>`;
+                }
+                return `
                 <div class="comment-item">
                     <div style="display:flex;align-items:center;gap:6px">
-                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}</span>
+                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
-                        <button onclick="openReportCommentModal(${c.commentId || 0}, ${curPostId})"
+                        <button onclick="openReportCommentModal(${c.commentId}, ${curPostId})"
                                 style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);
                                        border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)"
                                 title="댓글 신고">🚨 신고</button>
                     </div>
                     <div class="comment-content">${escapeHtml(c.content || '')}</div>
-                </div>
-            `).join('')
+                </div>`;
+            }).join('')
             : `<div style="padding:12px 0;color:var(--text3);font-size:13px">아직 댓글이 없습니다.</div>`;
 
         box.innerHTML = `
@@ -703,6 +728,21 @@
     function renderPostDetail(post) {
         if (!post) return;
 
+        // 숨김 게시글 접근 제어
+        const _myId = window._myUserId ? window._myUserId() : null;
+        const _isAdminUser = window._checkIsAdmin ? window._checkIsAdmin() : false;
+        const _isMyPost = _myId && (
+            Number(post.userId) === Number(_myId) ||
+            Number(post.writerId) === Number(_myId)
+        );
+        const _isHiddenPost = post.status === 'HIDDEN';
+        if (_isHiddenPost && !_isAdminUser && !_isMyPost) {
+            // 접근 불가: 커뮤니티로 돌아감
+            if (typeof toast === 'function') toast('접근할 수 없는 게시글입니다.');
+            if (typeof go === 'function') go('community');
+            return;
+        }
+
         window._currentPostId      = post.postId;
         window._openedPostId       = post.postId;
         window._currentPostCategory = post.category || 'ROUTE';
@@ -711,7 +751,32 @@
         const tags = parseStyleTags(post.styleTags);
 
         setText('pr-title',       post.title || '');
-        setText('pr-author-name', post.writerName || '사용자');
+
+        // 숨김 배너 (관리자 & 본인에게만 표시)
+        const _prHiddenBanner = document.getElementById('pr-hidden-banner');
+        if (_isHiddenPost) {
+            if (_prHiddenBanner) {
+                _prHiddenBanner.style.display = 'flex';
+            } else {
+                // 동적 생성
+                const _banner = document.createElement('div');
+                _banner.id = 'pr-hidden-banner';
+                _banner.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;margin:12px 0;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:8px;font-size:13px;color:#E53935;font-weight:600';
+                _banner.innerHTML = '🚫 이 게시글은 운영 정책 위반으로 숨김 처리된 글입니다. (작성자 및 관리자에게만 표시됩니다)';
+                const _titleEl = document.getElementById('pr-title');
+                if (_titleEl && _titleEl.parentNode) {
+                    _titleEl.parentNode.insertBefore(_banner, _titleEl.nextSibling);
+                }
+            }
+        } else {
+            if (_prHiddenBanner) _prHiddenBanner.style.display = 'none';
+        }
+        // 관리자 배지 포함 작성자명
+        const _prAuthorEl = document.getElementById('pr-author-name');
+        if (_prAuthorEl) {
+            _prAuthorEl.innerHTML = escapeHtml(post.writerName || '사용자') +
+                (window._adminBadge ? window._adminBadge(post.writerRole) : '');
+        }
         setText('pr-author-av',   (post.writerName || 'U').substring(0, 1));
         setText('pr-cat',         '여행 후기');
         setText('pr-tag',         tags.length ? '#' + tags[0] : '#커뮤니티');
@@ -1148,6 +1213,13 @@ window._handleWriteImageSelect = function(input) {
         }
 
         posts.forEach(post => {
+            const isHidden   = post.hidden === true;
+            // 숨김 게시글: 관리자 또는 작성자 본인만 볼 수 있음
+            const _myId = window._myUserId ? window._myUserId() : null;
+            const _isMyPost = _myId && Number(post.writerId) === Number(_myId);
+            const _adminCheck = window._checkIsAdmin ? window._checkIsAdmin() : false;
+            if (isHidden && !_adminCheck && !_isMyPost) return;
+
             const postId     = post.postId;
             const tags       = parseStyleTags(post.styleTags);
             const dateText   = formatPostDate(post.createdAt);
@@ -1169,11 +1241,17 @@ window._handleWriteImageSelect = function(input) {
             div.setAttribute('data-scrap',   scraps);
             div.setAttribute('data-date',    dateVal);
 
+            // 숨김 처리된 글 표시 (관리자 & 본인)
+            const hiddenBadge = isHidden
+                ? `<span style="font-size:10px;color:#E53935;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px;margin-left:6px">🚫 숨김 처리된 글</span>`
+                : '';
+
             div.innerHTML = `
-                <div class="post-card" onclick="openPostDetail(${postId})">
+                <div class="post-card" onclick="openPostDetail(${postId})"
+                     style="${isHidden ? 'opacity:0.55;background:#FAFAFA' : ''}">
                     <div class="community-card-head">
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
-                        <span class="community-card-meta">${escapeHtml(writerText)} · ${escapeHtml(dateText)}</span>
+                        <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole) : ''} · ${escapeHtml(dateText)}${hiddenBadge}</span>
                     </div>
                     <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}</div>
                     ${tags.length ? `<div class="community-card-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
@@ -1201,6 +1279,43 @@ window._handleWriteImageSelect = function(input) {
  * ============================================================================= */
 (function () {
     'use strict';
+
+    // 현재 로그인 사용자 ID 반환 헬퍼
+    window._myUserId = () => {
+        const u = window._currentUser;
+        if (!u) return null;
+        return u.id || u.userId || u.memberId || null;
+    };
+
+    // 관리자 여부 체크 (window._isAdmin → window._currentUser.role → 로컬 _currentUser 순으로 시도)
+    window._checkIsAdmin = () => {
+        if (window._isAdmin === true) return true;
+        if (window._currentUser && window._currentUser.role === 'ADMIN') return true;
+        try {
+            // app_main.js의 let _currentUser에 직접 접근 (같은 페이지 스코프)
+            if (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.role === 'ADMIN') return true;
+        } catch(e) {}
+        return false;
+    };
+
+    // 관리자 배지 HTML 헬퍼
+    window._adminBadge = (role) =>
+        role === 'ADMIN'
+            ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
+            : '';
+
+    // 장소 카테고리 → 커뮤니티 탭 이름 매핑
+    const _catToTab = {accommodation:'stay', restaurant:'food', cafe:'cafe', attraction:'tour'};
+
+    // 방문 장소 스냅샷 카드 클릭: 장소 이름과 함께 리뷰 페이지로 이동
+    window._placeSnapshotClick = function(el) {
+        const placeId   = Number(el.dataset.placeId);
+        const placeName = el.dataset.placeName || '';
+        // page_place.html의 goToPlaceReviews로 전용 페이지 이동 (커뮤니티 탭 간섭 없음)
+        if (typeof goToPlaceReviews === 'function') {
+            goToPlaceReviews(placeId, placeName);
+        }
+    };
 
     const { extractPosts } = window._commUtil;
 
@@ -1409,16 +1524,36 @@ window._handleWriteImageSelect = function(input) {
 
         try {
             const res = await api.get(`/api/posts/${postId}/place-reviews`);
-            const reviews = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+            const allReviews = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
 
-            if (!reviews.length) return;
+            // ① 게시글 작성자 본인이 쓴 리뷰만 필터
+            const postAuthorId = window._currentPostDetail?.userId;
+            const authorReviews = postAuthorId
+                ? allReviews.filter(r => Number(r.writerId) === Number(postAuthorId))
+                : allReviews; // 작성자 정보 없는 경우 fallback
+
+            // ② placeId 기준 중복 제거 (createdAt desc = 최신 1건)
+            const seenPlaceIds = new Set();
+            const uniqueReviews = [];
+            authorReviews.forEach(r => {
+                if (!seenPlaceIds.has(r.placeId)) {
+                    seenPlaceIds.add(r.placeId);
+                    uniqueReviews.push(r);
+                }
+            });
+
+            if (!uniqueReviews.length) return;
 
             placeList.style.display = 'block';
             placeList.innerHTML = `
                 <div class="review-place-snapshot">
                     <h3>📍 방문 장소별 별점 & 한줄평</h3>
-                    ${reviews.map(r => `
-                        <div class="review-place-snapshot-row">
+                    ${uniqueReviews.map(r => `
+                        <div class="review-place-snapshot-row" style="cursor:pointer"
+                             data-place-id="${r.placeId}"
+                             data-place-name="${escapeHtml(r.placeName||'')}"
+                             data-category="${r.category||'attraction'}"
+                             onclick="_placeSnapshotClick(this)">
                             <div class="review-place-snapshot-top">
                                 <strong class="review-place-snapshot-name">${escapeHtml(r.placeName || '')}</strong>
                                 <b class="review-place-snapshot-stars">${escapeHtml(r.starsHtml || '')}</b>
