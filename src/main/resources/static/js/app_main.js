@@ -737,6 +737,44 @@ window._invitedTripsCurrentPage = 1;
 const INVITED_PER_PAGE = 5;
 window._invitedDeleteMode = false;
 
+/* ── 마이페이지 공통 페이저: 5개 숫자만 노출 + 현재 페이지 중앙 정렬 ── */
+function _getMyPageWindow(currentPage, totalPages, windowSize = 5) {
+    const total = Math.max(1, Number(totalPages) || 1);
+    const size = Math.min(Number(windowSize) || 5, total);
+    const current = Math.min(Math.max(Number(currentPage) || 1, 1), total);
+
+    let start = current - Math.floor(size / 2);
+    if (start < 1) start = 1;
+    if (start + size - 1 > total) start = Math.max(1, total - size + 1);
+
+    return Array.from({ length: size }, function (_, idx) { return start + idx; });
+}
+
+function _renderMyPagePagerHtml(currentPage, totalPages, callBuilder) {
+    if (!totalPages || totalPages <= 0) return '';
+
+    const current = Math.min(Math.max(Number(currentPage) || 1, 1), Number(totalPages));
+    const pages = _getMyPageWindow(current, totalPages, 5);
+
+    let html = '<div class="community-v2-pagination mypage-section-pagination" style="margin-top:24px;padding-bottom:20px;">';
+
+    if (totalPages > 1) {
+        html += '<button type="button" class="community-v2-page-btn" onclick="' + callBuilder(Math.max(1, current - 1)) + '" ' + (current === 1 ? 'disabled' : '') + '>&lt;</button>';
+    }
+
+    pages.forEach(function (p) {
+        html += '<button type="button" class="community-v2-page-btn ' + (p === current ? 'on' : '') + '" onclick="' + callBuilder(p) + '">' + p + '</button>';
+    });
+
+    if (totalPages > 1) {
+        html += '<button type="button" class="community-v2-page-btn" onclick="' + callBuilder(Math.min(Number(totalPages), current + 1)) + '" ' + (current === Number(totalPages) ? 'disabled' : '') + '>&gt;</button>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+
 function _renderMyInvitedTrips(trips = null, page = 1) {
     const container = document.getElementById('my-invited-list');
     if (!container) return;
@@ -797,30 +835,9 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
         html += `</div>`; // .trip-list 닫기
 
-        html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
-
-        if (currentPage > 1) {
-            html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);"><</button>`;
-        }
-
-        const pageGroup = Math.ceil(currentPage / 10);
-        let startP = (pageGroup - 1) * 10 + 1;
-        let endP = Math.min(totalPages, pageGroup * 10);
-
-        for (let p = startP; p <= endP; p++) {
-            const isCurrent = (p === currentPage);
-            const bg = isCurrent ? 'var(--sage)' : '#fff';
-            const color = isCurrent ? '#fff' : 'var(--text2)';
-            const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
-            const fw = isCurrent ? '800' : '500';
-
-            html += '<button onclick="_renderMyInvitedTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
-        }
-
-        if (currentPage < totalPages) {
-            html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);">></button>`;
-        }
-        html += `</div>`;
+        html += _renderMyPagePagerHtml(currentPage, totalPages, function (p) {
+            return '_renderMyInvitedTrips(null, ' + p + ')';
+        });
 
     } else {
         html += `</div>`;
@@ -941,35 +958,10 @@ function _renderMyTrips(trips = null, page = 1) {
       </div>`;
         }).join('');
 
-        // 4. 리스트 하단에 사진과 동일한 디자인의 페이지네이션 버튼 추가
-        html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
-
-        // [이전] 화살표
-        if (currentPage > 1) {
-            html += `<button onclick="_renderMyTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&lt;</button>`;
-        }
-
-        // [숫자 버튼]
-        const pageGroup = Math.ceil(currentPage / 10); // 현재 페이지가 속한 10개 단위 그룹 (1그룹: 1~10, 2그룹: 11~20)
-        let startP = (pageGroup - 1) * 10 + 1;
-        let endP = Math.min(totalPages, pageGroup * 10);
-
-        for (let p = startP; p <= endP; p++) {
-            const isCurrent = (p === currentPage);
-            const bg = isCurrent ? 'var(--sage)' : '#fff';
-            const color = isCurrent ? '#fff' : 'var(--text2)';
-            const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
-            const fw = isCurrent ? '800' : '500';
-
-            html += '<button onclick="_renderMyTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
-        }
-
-        // [다음] 화살표
-        if (currentPage < totalPages) {
-            html += `<button onclick="_renderMyTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&gt;</button>`;
-        }
-
-        html += `</div>`;
+        // 4. 리스트 하단에 통일된 페이지네이션 버튼 추가
+        html += _renderMyPagePagerHtml(currentPage, totalPages, function (p) {
+            return '_renderMyTrips(null, ' + p + ')';
+        });
 
     } else {
         html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>';
