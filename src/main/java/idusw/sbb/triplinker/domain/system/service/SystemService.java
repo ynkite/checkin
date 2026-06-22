@@ -14,6 +14,7 @@ public interface SystemService {
     Page<AdminReportListResponseDto> getReports(String status, Pageable pageable);
 
     void deleteReportedPost(Long adminId, Long reportId, String reason);
+    void hideReportedContent(Long adminId, Long reportId, String reason);
 
     void rejectReport(Long adminId, Long reportId, ReportRejectRequestDto dto);
 

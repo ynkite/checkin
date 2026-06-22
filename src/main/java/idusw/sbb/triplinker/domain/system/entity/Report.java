@@ -32,6 +32,9 @@ public class Report {
     @JoinColumn(name = "reporter_id", nullable = false)
     private User reporter;
 
+    @Column(name = "comment_id")
+    private Long commentId;  // 댓글 신고 시 해당 댓글 ID (게시글 신고는 null)
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reason;
 
@@ -40,6 +43,9 @@ public class Report {
 
     @Column(name = "admin_note", columnDefinition = "TEXT")
     private String adminNote;
+
+    @Column(name = "processed_by_name", length = 100)
+    private String processedByName;  // 처리한 관리자 이름
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
@@ -54,25 +60,28 @@ public class Report {
     }
 
     @Builder
-    public Report(Post post, User reporter, String reason) {
+    public Report(Post post, User reporter, String reason, Long commentId) {
         this.post = post;
         this.reporter = reporter;
         this.reason = reason;
+        this.commentId = commentId;
         this.status = "PENDING";
     }
 
     // 관리자 - 신고 반려(무혐의) 처리
-    public void reject(String adminNote) {
+    public void reject(String adminNote, String processedByName) {
         this.status = "REJECTED";
         this.adminNote = adminNote;
         this.processedAt = LocalDateTime.now();
+        this.processedByName = processedByName;
     }
 
     // 관리자 - 신고를 받아들여 게시글 삭제로 종결 처리
-    public void resolve(String adminNote) {
+    public void resolve(String adminNote, String processedByName) {
         this.status = "RESOLVED";
         this.adminNote = adminNote;
         this.processedAt = LocalDateTime.now();
+        this.processedByName = processedByName;
     }
 
 }

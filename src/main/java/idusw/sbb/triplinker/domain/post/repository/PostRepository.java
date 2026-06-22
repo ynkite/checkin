@@ -52,5 +52,18 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     // PostRepository.java
     Page<Post> findByCategoryAndStatus(String category, String status, Pageable pageable);
     Page<Post> findByStatus(String status, Pageable pageable);
+
+    // ACTIVE + HIDDEN 포함 (관리자 뷰)
+    Page<Post> findByStatusInOrderByCreatedAtDesc(List<String> statuses, Pageable pageable);
+
+    @Query("""
+        SELECT p FROM Post p
+        WHERE p.status IN :statuses
+          AND (p.category = :cat OR (:cat = 'ROUTE' AND (p.category IS NULL OR p.category = 'ROUTE')))
+        ORDER BY p.createdAt DESC""")
+    Page<Post> findByStatusInAndCategoryOrderByCreatedAtDesc(
+            @Param("statuses") List<String> statuses,
+            @Param("cat") String cat,
+            Pageable pageable);
     // 여기까지
 }

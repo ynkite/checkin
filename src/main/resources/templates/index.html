@@ -8,7 +8,7 @@
   <link rel="stylesheet" th:href="@{/styles_main.css}">
   <link rel="stylesheet" th:href="@{/styles_place.css}">
   <link rel="stylesheet" th:href="@{/styles_community.css}">
-    <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=86e39dda6b2928c50783086448d212b8&autoload=false&libraries=services"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=86e39dda6b2928c50783086448d212b8&autoload=false&libraries=services"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
@@ -17,11 +17,11 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo" onclick="go('main');setNav(document.querySelector('.nav-link'))">
+  <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
     <img th:src="@{/img/logo.png}" alt="TripLinker" class="logo-img" />
   </div>
   <div class="nav-links">
-    <button class="nav-link on" onclick="go('main');setNav(this)">🏠 홈</button>
+    <button class="nav-link on" onclick="goHomeRefresh()">🏠 홈</button>
     <button class="nav-link" onclick="go('community');setNav(this)">👥 커뮤니티</button>
     <button class="nav-link" onclick="go('weather');setNav(this)">🌤️ 날씨</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">✈ 플랜</button>
@@ -51,8 +51,14 @@
   <div class="nav-btns" id="navBtns">
     <button class="btn-o" id="navLoginBtn" onclick="go('login')">로그인</button>
     <button class="btn-f" id="navSignupBtn" onclick="go('signup')">→ 회원가입</button>
-    <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
-    background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; margin-right:8px;">🔔</button>
+    <div id="navBellWrapper" style="position:relative;display:inline-flex;align-items:center;margin-right:8px;">
+      <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
+      background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; line-height:1;">🔔</button>
+      <span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-7px;
+        background:#e53e3e;color:#fff;border-radius:50%;min-width:18px;height:18px;
+        font-size:10px;font-weight:700;text-align:center;line-height:18px;
+        padding:0 3px;pointer-events:none;box-sizing:border-box;border:2px solid #fff;"></span>
+    </div>
     <a class="btn-o" id="navAdminLink" onclick="go('admin')" style="display:none;cursor:pointer;color:var(--sage);font-weight:700">관리자</a>
     <button class="btn-o" id="navUserNameBtn" onclick="go('mypage')" style="display:none">마이페이지</button>
     <button class="btn-o" id="navLogoutBtn" onclick="doLogout()" style="display:none">로그아웃</button>
@@ -75,14 +81,14 @@
 <th:block th:insert="~{page_weather :: weather}"></th:block>
 
 <!-- ===== JS ===== -->
-<script th:src="@{/app_main.js}"></script>
+<script th:src="@{/app_main.js(v=20260620a)}"></script>
 <script th:src="@{/js/app_budget.js}"></script>
-<script th:src="@{/app_community.js}"></script>
-<script th:src="@{/app_community_v2.js}"></script>
+<script th:src="@{/app_community.js(v=20260620a)}"></script>
+<script th:src="@{/app_community_v2.js(v=20260620a)}"></script>
 
 <!--제미나이에서 추가-->
 <div id="notifPopup"
-     style="display:none;position:fixed;top:60px;right:130px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
+     style="display:none;position:fixed;top:60px;right:16px;width:580px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
   <div
           style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
     <div style="font-size:14px;font-weight:700">🔔 알림</div>
@@ -117,6 +123,29 @@
       <button onclick="document.getElementById('reportPostModal').style.display='none'"
               style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
       <button onclick="submitReportPost()"
+              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+    </div>
+  </div>
+</div>
+<!-- 댓글 신고 모달 -->
+<div id="reportCommentModal" style="display:none;position:fixed;inset:0;z-index:2100;align-items:center;justify-content:center">
+  <div onclick="document.getElementById('reportCommentModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
+  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">🚨 댓글 신고</div>
+    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+      <option value="">-- 사유 선택 --</option>
+      <option value="스팸/광고">스팸/광고</option>
+      <option value="욕설/혐오 표현">욕설/혐오 표현</option>
+      <option value="음란물">음란물</option>
+      <option value="허위 정보">허위 정보</option>
+      <option value="개인정보 침해">개인정보 침해</option>
+      <option value="기타 부적절한 댓글">기타 부적절한 댓글</option>
+    </select>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="document.getElementById('reportCommentModal').style.display='none'"
+              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+      <button onclick="submitReportComment()"
               style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
     </div>
   </div>

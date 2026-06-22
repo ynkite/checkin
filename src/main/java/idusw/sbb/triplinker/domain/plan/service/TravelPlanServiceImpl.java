@@ -1,5 +1,6 @@
 package idusw.sbb.triplinker.domain.plan.service;
 
+import idusw.sbb.triplinker.domain.expense.repository.ExpenseRepository;
 import idusw.sbb.triplinker.domain.plan.dto.PlanCreateDto;
 import idusw.sbb.triplinker.domain.plan.dto.PlanDetailResponseDto;
 import idusw.sbb.triplinker.domain.plan.dto.PlanInputFormSaveDto;
@@ -7,6 +8,7 @@ import idusw.sbb.triplinker.domain.plan.entity.PlanInputForm;
 import idusw.sbb.triplinker.domain.plan.entity.TravelPlan;
 import idusw.sbb.triplinker.domain.plan.repository.PlanInputFormRepository;
 import idusw.sbb.triplinker.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.triplinker.domain.planshare.repository.TripMemberRepository;
 import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,8 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     private final TravelPlanRepository travelPlanRepository;
     private final PlanInputFormRepository planInputFormRepository;
     private final UserRepository userRepository;
+    private final ExpenseRepository expenseRepository;
+    private final TripMemberRepository tripMemberRepository;
 
     @Override
     @Transactional
@@ -89,9 +93,10 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         TravelPlan plan = travelPlanRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
 
-        if (!plan.getUser().getId().equals(userId)) {
-            throw new IllegalStateException("접근 권한이 없습니다.");
-        }
+//      공유 링크 열람을 위해 본인 검증 로직을 주석 처리
+//        if (!plan.getUser().getId().equals(userId)) {
+//            throw new IllegalStateException("접근 권한이 없습니다.");
+//        }
 
         return new PlanDetailResponseDto(plan);
     }
@@ -253,13 +258,120 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
     @Override
     public java.util.Map<String, Object> getInputFormMap(Long tripId) {
+        // DB에 데이터를 반환
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
+
         java.util.Map<String, Object> map = new java.util.HashMap<>();
-        // 프론트엔드에서 문제 생기지 않게 않게 일단 기본값을 넣음
-        map.put("companionCount", "2");
-        map.put("transportType", "자차");
+
+        if (plan.getForm() != null) {
+            map.put("companionCount", plan.getForm().getCompanionCount());
+            map.put("transportType", plan.getForm().getTransportType());
+        } else {
+            map.put("companionCount", "2");
+            map.put("transportType", "자차");
+        }
+
         return map;
     }
 
+
+
+    // 초대받은 링크 보관
+    @Override
+    @Transactional
+    public void saveInvitedPlan(Long userId, Long originalTripId, String inviteUrl, String title, String destination) {
+        User user = userRepository.findById(userId).orElseThrow();
+
+        TravelPlan plan = TravelPlan.builder()
+                .user(user)
+                .title(title)
+                .destination(destination != null ? destination : "공유받은 지역")
+                .startDate(java.time.LocalDate.now())
+                .endDate(java.time.LocalDate.now())
+                .status("INVITED") // 내 플랜과 섞이지 않도록 상태 분리
+                .routeJson(inviteUrl) // 링크를 통째로 보관
+                .scrapedFromPlanId(originalTripId) // 원래 플랜 번호
+                .build();
+        travelPlanRepository.save(plan);
+    }
+    @Override
+    public List<Map<String, Object>> getInvitedPlans(Long userId) {
+        return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(plan -> "INVITED".equals(plan.getStatus()))
+                .map(plan -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", plan.getId());
+                    m.put("originalTripId", plan.getScrapedFromPlanId());
+                    m.put("url", plan.getRouteJson());
+                    m.put("title", plan.getTitle());
+                    m.put("destination", plan.getDestination());
+                    m.put("savedAt", plan.getCreatedAt());
+                    return m;
+                })
+                .toList();
+    }
+    @Override
+    @Transactional
+    public void deleteInvitedPlan(Long userId, Long planId) {
+        travelPlanRepository.findById(planId).ifPresent(plan -> {
+            if (plan.getUser().getId().equals(userId) && "INVITED".equals(plan.getStatus())) {
+
+                // 초대받은 일정폼 (PlanInputForm) 삭제
+                planInputFormRepository.findByPlanId(planId).ifPresent(form -> {
+                    planInputFormRepository.delete(form);
+                });
+
+                // 초대받은 일정 가계부(Expense) 삭제
+                expenseRepository.findByPlanId(planId).forEach(expense -> {
+                    expenseRepository.delete(expense);
+                });
+
+                // 초대받은 일정 멤버 꼬임 방지
+                tripMemberRepository.findByTravelPlanId(planId).forEach(member -> {
+                    tripMemberRepository.delete(member);
+                });
+
+                // 부모 데이터  삭제
+                travelPlanRepository.delete(plan);
+            }
+        });
+    }
+
+
+
+    @Override
+    @Transactional
+    public void deletePlan(Long userId, Long tripId) {
+        travelPlanRepository.findById(tripId).ifPresent(plan -> {
+            if (plan.getUser().getId().equals(userId)) {
+
+                // 플랜에 엮인 취향 폼(PlanInputForm)  삭제
+                planInputFormRepository.findByPlanId(tripId).ifPresent(form -> {
+                    planInputFormRepository.delete(form);
+                });
+
+                // 가계부 지출 내역(Expense) 삭제
+                expenseRepository.findByPlanId(tripId).forEach(expense -> {
+                    expenseRepository.delete(expense);
+                });
+
+                // 이 플랜에 엮인 공유 멤버(TripMember) 삭제
+                tripMemberRepository.findByTravelPlanId(tripId).forEach(member -> {
+                    tripMemberRepository.delete(member);
+                });
+
+                // 다른 사람들이 초대받은 일정으로 보관해둔 복사본(INVITED) 삭제
+                travelPlanRepository.findByScrapedFromPlanId(tripId).forEach(invitedPlan -> {
+                    travelPlanRepository.delete(invitedPlan);
+                });
+
+                // TravelPlan 삭제
+                travelPlanRepository.delete(plan);
+            }
+        });
+    }
 
 
 }

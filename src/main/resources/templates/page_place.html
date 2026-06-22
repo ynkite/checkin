@@ -47,8 +47,8 @@
                         onclick="doReviewScrap()">★ 스크랩</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)"
                         onclick="doReviewReport()">🚨 신고</button>
-                <button class="btn-o" style="padding:4px 10px;font-size:11px;margin-left:auto;display:none"
-                        id="btn-review-edit" onclick="goEditReview()">✏️ 수정</button>
+                <button class="btn-o community-owner-edit-btn"
+                        id="btn-review-edit" onclick="openCurrentPostEditModal()">✏️ 수정</button>
             </div>
 
             <div class="review-plan-badge" id="pr-plan-badge"></div>
@@ -309,7 +309,15 @@
         // 작성자
         const avEl = document.getElementById('pr-author-av');
         if (avEl) avEl.textContent = (d.authorName || '?')[0];
-        _setText('pr-author-name', d.authorName || '');
+        // 관리자 배지 포함 작성자명 렌더링
+        const _adminBadgeHtml = (role) =>
+            role === 'ADMIN'
+                ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
+                : '';
+        const _authorEl = document.getElementById('pr-author-name');
+        if (_authorEl) {
+            _authorEl.innerHTML = escapeHtml(d.authorName || '') + _adminBadgeHtml(d.writerRole);
+        }
         _setHTML('pr-meta',
             `<span>${d.createdAt||''}</span>
      <span>👁 ${d.viewCount||0}</span>
@@ -335,10 +343,19 @@
             const prRes = await apiCall(`/api/posts/${postId}/place-reviews`);
             const allPlaceReviews = (prRes.success && Array.isArray(prRes.data)) ? prRes.data : [];
 
-            // placeId 기준 중복 제거 (백엔드가 createdAt desc로 내려주므로 첫 항목 = 최신 리뷰)
+            // 게시글 작성자 본인이 직접 쓴 리뷰만 표시 (다른 사용자 리뷰 완전 제외)
+            // d.userId = 현재 게시글 작성자 ID (PostDetailResponseDto.userId)
+            const postAuthorId = d.userId;
+            window._currentPostDetail = d;  // 다른 컴포넌트에서도 사용 가능하도록 저장
+
+            const authorOnlyReviews = allPlaceReviews.filter(
+                p => postAuthorId && Number(p.writerId) === Number(postAuthorId)
+            );
+
+            // 같은 장소에 여러 번 방문한 경우 최신 1건만 (placeId 기준 중복 제거)
             const seenPlaceIds = new Set();
             const repReviews = [];
-            allPlaceReviews.forEach(p => {
+            authorOnlyReviews.forEach(p => {
                 if (!seenPlaceIds.has(p.placeId)) {
                     seenPlaceIds.add(p.placeId);
                     repReviews.push(p);
@@ -409,17 +426,42 @@
                 onclick="doCommentWrite()">등록</button>
       </div>
     </div>` +
-            list.map(c => `
+            (() => {
+                const _myId = window._currentUser ? (window._currentUser.id || window._currentUser.userId) : null;
+                return list.filter(c => {
+                    // 숨김 댓글: 관리자 또는 댓글 작성자 본인만 볼 수 있음
+                    if (c.status === 'HIDDEN') {
+                        const _adm = (window._checkIsAdmin ? window._checkIsAdmin() : false) || (window._isAdmin === true) || !!(window._currentUser && window._currentUser.role === 'ADMIN');
+                        return _adm || (_myId && Number(c.userId) === Number(_myId));
+                    }
+                    return c.status !== 'DELETED';
+                }).map(c => {
+                    const isHidden = c.status === 'HIDDEN';
+                    if (isHidden) return `
+      <div style="display:flex;gap:8px;margin-bottom:11px">
+        <div class="comm-av" style="opacity:0.4;background:#FFEBEE;color:#E53935">${(c.authorName||'?')[0]}</div>
+        <div class="comm-bubble" style="background:#FFF3F3;border-color:#FFCDD2;flex:1">
+          <div class="comm-hd" style="display:flex;align-items:center;gap:6px">
+            <span class="comm-author" style="color:#9E9E9E">${c.authorName||''}</span>
+            <span class="comm-date">${c.createdAt||''}</span>
+            <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
+          </div>
+          <div class="comm-text" style="color:#BDBDBD;font-style:italic">(운영 정책 위반으로 숨김 처리된 댓글입니다)</div>
+        </div>
+      </div>`;
+                    return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
         <div class="comm-av">${(c.authorName||'?')[0]}</div>
         <div class="comm-bubble">
           <div class="comm-hd">
-            <span class="comm-author">${c.authorName||''}</span>
+            <span class="comm-author">${c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
           </div>
           <div class="comm-text">${c.content||''}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+                }).join('');
+            })();
     }
 
     /* ────────────────────────────────────────────────
@@ -604,9 +646,9 @@
      * 10. 장소 리뷰 목록   GET /api/places/{placeId}/reviews
      *     window._currentPlaceId 세팅 후 go('place-reviews') 호출
      * ──────────────────────────────────────────────── */
-    function goToPlaceReviews(placeId) {
+    function goToPlaceReviews(placeId, placeName) {
         go('place-reviews');
-        loadPlaceReviews(placeId);
+        loadPlaceReviews(placeId, placeName);
     }
 
     function _placeCatIcon(category) {
@@ -619,21 +661,35 @@
             [(category || '').toLowerCase()] || '';
     }
 
-    async function loadPlaceReviews(placeId) {
+    async function loadPlaceReviews(placeId, hintPlaceName) {
         window._currentPlaceId = placeId;
 
         const headerEl = document.getElementById('place-reviews-header');
-        if (headerEl) headerEl.innerHTML = `
-    <div class="prc-icon" style="background:var(--sage-pale);font-size:22px">📍</div>
-    <div><div style="font-size:12px;color:var(--text3)">불러오는 중...</div></div>`;
+        // 미리 알고 있는 이름이 있으면 즉시 헤더 표시, 없으면 로딩 표시
+        if (headerEl) headerEl.innerHTML = hintPlaceName
+            ? `<div class="prc-icon" style="background:var(--sage-pale);font-size:22px">📍</div>
+               <div style="flex:1"><div style="font-size:18px;font-weight:800">${escapeHtml ? escapeHtml(hintPlaceName) : hintPlaceName}</div></div>`
+            : `<div class="prc-icon" style="background:var(--sage-pale);font-size:22px">📍</div>
+               <div><div style="font-size:12px;color:var(--text3)">불러오는 중...</div></div>`;
 
         const res = await api.get(`/api/places/${placeId}/reviews`);
         const reviews = (res.success && Array.isArray(res.data)) ? res.data : [];
 
-        // 정렬용으로 메모리에 캐시 (백엔드 재호출 없이 클라이언트에서 정렬)
-        window._currentPlaceReviews = reviews;
+        // 사용자별 중복 제거: writerId 기준 최신 1건만 유지
+        const _seenUsers = new Map();
+        reviews.forEach(r => {
+            const uid = r.writerId;  // PlaceReviewResponseDto 필드명은 writerId
+            if (!_seenUsers.has(uid) ||
+                new Date(r.createdAt || 0) > new Date(_seenUsers.get(uid).createdAt || 0)) {
+                _seenUsers.set(uid, r);
+            }
+        });
+        const deduplicatedReviews = Array.from(_seenUsers.values());
 
-        const placeName = reviews[0]?.placeName || '장소';
+        // 정렬용으로 메모리에 캐시 (백엔드 재호출 없이 클라이언트에서 정렬)
+        window._currentPlaceReviews = deduplicatedReviews;
+
+        const placeName = hintPlaceName || reviews[0]?.placeName || '장소';
         const category  = reviews[0]?.category  || 'tour';
         window._currentPlaceCategory = category;
 
@@ -671,7 +727,7 @@
 
         _setHTML('place-tags-box', '');
 
-        renderPlaceReviewList(_sortPlaceReviews(reviews, 'latest'));
+        renderPlaceReviewList(_sortPlaceReviews(deduplicatedReviews, 'latest'));
     }
 
     function loadPlaceReviewsSorted(sort) {
@@ -702,7 +758,7 @@
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <div class="comm-av">${(r.writerName||'?')[0]}</div>
         <div>
-          <div style="font-weight:700;font-size:13px">${r.writerName||''}</div>
+          <div style="font-weight:700;font-size:13px">${r.writerName||''}${r.writerRole==='ADMIN'?' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>':''}</div>
           <div style="font-size:11px;color:var(--text3)">${(r.createdAt||'').toString().substring(0,10)}${r.postTitle ? ' · '+r.postTitle : ''}</div>
         </div>
         <div style="margin-left:auto;color:var(--warm);font-weight:700">

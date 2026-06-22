@@ -214,16 +214,19 @@ public class PostController {
         );
     }
 
-    // 커뮤니티 - 게시글 신고 접수
+    // 커뮤니티 - 게시글/댓글 신고 접수
     @PostMapping("/{postId}/reports")
-    public ResponseEntity<Long> reportPost(
+    public ResponseEntity<ApiResponse<Long>> reportPost(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long postId,
             @RequestBody ReportRequestDto dto
     ) {
-        ReportRequestDto reportDto = new ReportRequestDto(postId, dto.reason());
+        // commentId 가 있으면 댓글 신고, 없으면 게시글 신고
+        ReportRequestDto reportDto = new ReportRequestDto(postId, dto.reason(), dto.commentId());
         Long reportId = systemService.reportPost(userDetails.getUserId(), reportDto);
-        return ResponseEntity.ok(reportId);
+        return ResponseEntity.ok(
+                ApiResponse.success("신고가 접수되었습니다.", reportId)
+        );
     }
 
 

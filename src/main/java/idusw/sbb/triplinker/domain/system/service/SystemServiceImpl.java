@@ -1,6 +1,8 @@
 package idusw.sbb.triplinker.domain.system.service;
 
 import idusw.sbb.triplinker.domain.post.entity.Post;
+import idusw.sbb.triplinker.domain.post.entity.PostComment;
+import idusw.sbb.triplinker.domain.post.repository.PostCommentRepository;
 import idusw.sbb.triplinker.domain.post.repository.PostRepository;
 import idusw.sbb.triplinker.domain.system.dto.AdminReportListResponseDto;
 import idusw.sbb.triplinker.domain.system.dto.NotificationResponseDto;
@@ -28,6 +30,7 @@ public class SystemServiceImpl implements SystemService {
     private final ReportRepository reportRepository;
     private final NotificationRepository notificationRepository;
     private final PostRepository postRepository;
+    private final PostCommentRepository postCommentRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
 
@@ -45,6 +48,7 @@ public class SystemServiceImpl implements SystemService {
                 .post(post)
                 .reporter(reporter)
                 .reason(dto.reason())
+                .commentId(dto.commentId())
                 .build();
 
         return reportRepository.save(report).getId();
@@ -89,6 +93,7 @@ public class SystemServiceImpl implements SystemService {
                 .post(post)
                 .reporter(reporter)
                 .reason(dto.reason())
+                .commentId(dto.commentId())
                 .build());
     }
 
@@ -97,7 +102,15 @@ public class SystemServiceImpl implements SystemService {
         Page<Report> reports = (status != null && !status.isBlank())
                 ? reportRepository.findByStatusOrderByIdDesc(status, pageable)
                 : reportRepository.findAll(pageable);
-        return reports.map(AdminReportListResponseDto::from);
+        return reports.map(report -> {
+            String commentAuthorName = null;
+            if (report.getCommentId() != null && report.getCommentId() > 0) {
+                commentAuthorName = postCommentRepository.findById(report.getCommentId())
+                        .map(c -> c.getUser().getName())
+                        .orElse(null);
+            }
+            return AdminReportListResponseDto.from(report, commentAuthorName);
+        });
     }
 
     @Override
@@ -114,11 +127,52 @@ public class SystemServiceImpl implements SystemService {
                 ? reason
                 : "관리자 판단에 따라 게시글이 삭제되었습니다.";
 
+        User admin = userRepository.findById(adminId).orElse(null);
+        String adminName = (admin != null) ? admin.getName() : "관리자";
+
         Post post = report.getPost();
         post.delete();
-        report.resolve(adminNote);
+        report.resolve(adminNote, adminName);
 
         notificationService.send(post.getUser().getId(), "POST_DELETED", "게시글 삭제 안내", adminNote);
+    }
+
+    @Override
+    @Transactional
+    public void hideReportedContent(Long adminId, Long reportId, String reason) {
+        Report report = reportRepository.findById(reportId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 신고입니다."));
+
+        if (!"PENDING".equals(report.getStatus())) {
+            throw new IllegalStateException("이미 처리된 신고입니다.");
+        }
+
+        String adminNote = (reason != null && !reason.isBlank())
+                ? reason
+                : "운영 정책 위반으로 해당 콘텐츠가 숨김 처리되었습니다.";
+
+        User admin = userRepository.findById(adminId).orElse(null);
+        String adminName = (admin != null) ? admin.getName() : "관리자";
+
+        if (report.getCommentId() != null && report.getCommentId() > 0) {
+            // 댓글 숨김 처리
+            postCommentRepository.findById(report.getCommentId()).ifPresent(comment -> {
+                comment.hide();
+                notificationService.send(comment.getUser().getId(),
+                        "COMMENT_HIDDEN", "댓글 숨김 안내", adminNote);
+            });
+        } else if (report.getReason() != null && report.getReason().contains("[댓글 신고]")) {
+            // 댓글 신고인데 commentId가 없음 → 게시글 숨김 금지, 오류 반환
+            throw new IllegalArgumentException("댓글 신고이지만 댓글 ID가 없습니다. 댓글을 직접 확인해주세요.");
+        } else {
+            // 게시글 숨김 처리
+            Post post = report.getPost();
+            post.hide();
+            notificationService.send(post.getUser().getId(),
+                    "POST_HIDDEN", "게시글 숨김 안내", adminNote);
+        }
+
+        report.resolve(adminNote, adminName);
     }
 
     @Override
@@ -134,13 +188,23 @@ public class SystemServiceImpl implements SystemService {
         String combinedNote = dto.reason()
                 + (dto.adminNote() != null && !dto.adminNote().isBlank() ? " - " + dto.adminNote() : "");
 
-        report.reject(combinedNote);
+        String baseMessage = (dto.notifyMessage() != null && !dto.notifyMessage().isBlank())
+                ? dto.notifyMessage()
+                : "귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.";
+
+        User admin = userRepository.findById(adminId).orElse(null);
+        String adminName = (admin != null) ? admin.getName() : "관리자";
+        report.reject(combinedNote, adminName);
+
+        String notifContent = baseMessage
+                + "\n신고사유 - " + report.getReason()
+                + "\n반려사유 - " + dto.reason();
 
         notificationService.send(
                 report.getReporter().getId(),
                 "REPORT_REJECTED",
                 "신고 반려 안내",
-                "신고하신 내용이 검토 후 반려되었습니다. (" + combinedNote + ")"
+                notifContent
         );
     }
 }

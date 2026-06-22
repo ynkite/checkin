@@ -158,6 +158,219 @@
         return data;
     };
 
+    /* ── 본문 이미지 삽입/저장/렌더링 유틸 ─────────────────────────
+     * 새 이미지는 작성/수정 중에는 URL 문자열이 아니라 실제 이미지 미리보기로 보인다.
+     * 이때 src는 브라우저 임시 미리보기용 data:image URL이고,
+     * 등록/수정 버튼을 누르는 순간 /api/posts/images 로 업로드한 뒤 실제 서버 URL로 교체해서 저장한다.
+     */
+    window._commUtil.saveEditorSelection = function saveEditorSelection(editor, key) {
+        if (!editor || !key) return;
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+
+        const range = sel.getRangeAt(0);
+        const node = range.commonAncestorContainer;
+        if (node === editor || editor.contains(node)) {
+            window[key] = range.cloneRange();
+        }
+    };
+
+    window._commUtil.restoreEditorSelection = function restoreEditorSelection(editor, key) {
+        if (!editor || !key || !window[key]) return false;
+
+        const range = window[key].cloneRange();
+        const node = range.commonAncestorContainer;
+        if (!(node === editor || editor.contains(node))) return false;
+
+        const sel = window.getSelection();
+        if (!sel) return false;
+        editor.focus();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+    };
+
+    window._commUtil.bindEditorSelectionMemory = function bindEditorSelectionMemory(editor, key) {
+        if (!editor || !key || editor.dataset.selectionMemoryBound === key) return;
+        editor.dataset.selectionMemoryBound = key;
+
+        ['keyup', 'mouseup', 'focus', 'input'].forEach(eventName => {
+            editor.addEventListener(eventName, function () {
+                window._commUtil.saveEditorSelection(editor, key);
+            });
+        });
+    };
+
+    window._commUtil.insertImagesIntoEditor = function insertImagesIntoEditor(editor, files, selectedImages, selectionKey) {
+        if (!editor) return;
+        selectedImages = selectedImages || [];
+
+        const validFiles = Array.from(files || []).filter(file => {
+            if (!file.type || !file.type.startsWith('image/')) {
+                if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
+                return false;
+            }
+            return true;
+        });
+
+        validFiles.forEach(file => {
+            const itemId = 'inline-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+            selectedImages.push({ id: itemId, file: file });
+
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.alt = file.name || '첨부 이미지';
+                img.dataset.inlineImageId = itemId;
+                img.style.cssText = 'max-width:100%;border-radius:10px;margin:10px 0;display:block;';
+
+                const br = document.createElement('br');
+                let inserted = false;
+
+                if (selectionKey) {
+                    inserted = window._commUtil.restoreEditorSelection(editor, selectionKey);
+                }
+
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount && (editor.contains(sel.anchorNode) || sel.anchorNode === editor)) {
+                    const range = sel.getRangeAt(0);
+                    range.deleteContents();
+
+                    // range.insertNode는 뒤에 넣은 노드가 앞에 오기 때문에 br을 먼저 넣고 img를 넣는다.
+                    range.insertNode(br);
+                    range.insertNode(img);
+
+                    range.setStartAfter(br);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    inserted = true;
+                }
+
+                if (!inserted) {
+                    editor.appendChild(img);
+                    editor.appendChild(br);
+                }
+
+                editor.focus();
+                if (selectionKey) window._commUtil.saveEditorSelection(editor, selectionKey);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (validFiles.length && typeof toast === 'function') {
+            toast('본문에 이미지가 삽입되었습니다.');
+        }
+    };
+
+    window._commUtil.uploadPostImages = async function uploadPostImages(selectedImages) {
+        const items = Array.from(selectedImages || []);
+        if (!items.length) return [];
+
+        const formData = new FormData();
+        items.forEach(item => formData.append('files', item.file));
+
+        const token = window._commUtil.getAccessToken();
+        const uploadRes = await fetch('/api/posts/images', {
+            method: 'POST',
+            headers: token ? { Authorization: 'Bearer ' + token } : {},
+            body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
+        return await uploadRes.json();
+    };
+
+    window._commUtil.finalizeInlineEditorImages = async function finalizeInlineEditorImages(editor, selectedImages) {
+        if (!editor) return { content: '', imageUrls: [] };
+
+        const pendingImgs = Array.from(editor.querySelectorAll('img[data-inline-image-id]'));
+        const usedItems = Array.from(selectedImages || []).filter(item =>
+            pendingImgs.some(img => img.dataset.inlineImageId === item.id)
+        );
+
+        const uploadedUrls = await window._commUtil.uploadPostImages(usedItems);
+
+        usedItems.forEach((item, index) => {
+            const img = pendingImgs.find(el => el.dataset.inlineImageId === item.id);
+            if (!img) return;
+            img.src = uploadedUrls[index];
+            img.removeAttribute('data-inline-image-id');
+        });
+
+        const content = window._commUtil.sanitizePostContent(editor.innerHTML).trim();
+        const imageUrls = window._commUtil.extractImageUrlsFromHtml(content)
+            .filter(src => src && !src.startsWith('data:image/'));
+
+        return { content, imageUrls };
+    };
+
+    window._commUtil.editorHasContent = function editorHasContent(editor) {
+        if (!editor) return false;
+        const text = (editor.textContent || '').replace(/\u00a0/g, ' ').trim();
+        return !!text || !!editor.querySelector('img');
+    };
+
+    window._commUtil.sanitizePostContent = function sanitizePostContent(html) {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'DIV', 'P', 'SPAN', 'IMG']);
+
+        function clean(node) {
+            Array.from(node.childNodes).forEach(child => clean(child));
+
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+            const tag = node.tagName.toUpperCase();
+
+            if (!allowedTags.has(tag)) {
+                node.replaceWith(document.createTextNode(node.textContent || ''));
+                return;
+            }
+
+            const originalSrc = tag === 'IMG' ? (node.getAttribute('src') || '') : '';
+            Array.from(node.attributes).forEach(attr => node.removeAttribute(attr.name));
+
+            if (tag === 'IMG') {
+                const src = originalSrc;
+                const allowedSrc = src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:image/');
+                if (!allowedSrc) {
+                    node.remove();
+                    return;
+                }
+                node.setAttribute('src', src);
+                node.setAttribute('alt', '첨부 이미지');
+                node.setAttribute('style', 'max-width:100%;border-radius:10px;margin:10px 0;display:block;');
+            }
+        }
+
+        clean(template.content);
+        return template.innerHTML;
+    };
+
+    window._commUtil.extractImageUrlsFromHtml = function extractImageUrlsFromHtml(html) {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        return Array.from(template.content.querySelectorAll('img[src]'))
+            .map(img => img.getAttribute('src'))
+            .filter(Boolean);
+    };
+
+    window._commUtil.buildEditableContentWithImages = function buildEditableContentWithImages(post) {
+        const baseContent = window._commUtil.sanitizePostContent(post?.content || '');
+        const inlineUrls = new Set(window._commUtil.extractImageUrlsFromHtml(baseContent));
+        const detachedImages = Array.isArray(post?.imageUrls) ? post.imageUrls : [];
+
+        const detachedImageHtml = detachedImages
+            .filter(url => url && !inlineUrls.has(url))
+            .map(url => '<p><img src="' + window._commUtil.escapeHtml(url) + '" alt="첨부 이미지" style="max-width:100%;border-radius:10px;margin:10px 0;display:block;"></p>')
+            .join('');
+
+        return (baseContent + detachedImageHtml).trim();
+    };
+
+
 })();
 
 
@@ -189,6 +402,10 @@
             /* ── IIFE 4: 카테고리 추적 ── */
             const category = tabToCategory[cat] || 'ROUTE';
             window._communityWriteCategory = category;
+
+            /* 탭 전환 시 후기 패널에서 숨겼던 검색/정렬 바 복원 */
+            const _sb = document.querySelector('#page-community .search-bar');
+            if (_sb) _sb.style.display = '';
 
             if (typeof _commState !== 'undefined') {
                 _commState.currentTab = cat || 'route';
@@ -304,20 +521,39 @@
 
         const res = await api.post(`/api/posts/${postId}/scraps?category=${category}`, {});
 
-        const isEmptyResponse = res && typeof res === 'object' && Object.keys(res).length === 0;
-        const isSuccessLike   = res && res.success !== false;
-
-        if (isEmptyResponse || isSuccessLike) {
-            const el = document.getElementById('scrap-cnt-' + postId);
-            if (el) {
-                const n = parseInt(el.textContent.replace(/\D/g, ''), 10) || 0;
-                el.textContent = '🔖 ' + (n + 1);
-            }
-            if (typeof toast === 'function') toast('스크랩했습니다.');
+        const isSuccess = res && res.success !== false;
+        if (!isSuccess) {
+            if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
             return;
         }
 
-        if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
+        /* data === true → 스크랩됨, data === false → 취소됨 */
+        const scrapped = res.data === true;
+
+        /* 카운트 UI 업데이트 */
+        const el = document.getElementById('scrap-cnt-' + postId);
+        if (el) {
+            const n = parseInt(el.textContent.replace(/\D/g, ''), 10) || 0;
+            el.textContent = '🔖 ' + (scrapped ? n + 1 : Math.max(0, n - 1));
+        }
+
+        /* 버튼 상태 토글 — 이벤트 타겟이 버튼이면 텍스트/스타일 변경 */
+        const btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
+        if (btn) {
+            if (scrapped) {
+                btn.textContent = '✅ 스크랩됨';
+                btn.style.background = 'var(--sage-pale)';
+                btn.style.borderColor = 'var(--sage-d)';
+                btn.style.color = 'var(--sage-d)';
+            } else {
+                btn.textContent = '🔖 스크랩';
+                btn.style.background = '';
+                btn.style.borderColor = '';
+                btn.style.color = '';
+            }
+        }
+
+        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
     };
 
 })();
@@ -347,16 +583,48 @@
 
         const list = Array.isArray(comments) ? comments : [];
 
-        const commentItems = list.length
-            ? list.map(c => `
-                <div class="comment-item">
-                    <div>
-                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}</span>
+        /* 현재 열린 게시글 ID */
+        const curPostId = window._currentPostId || window._openedPostId || 0;
+
+        const _myIdForComment = window._myUserId ? window._myUserId() : null;
+
+        // 숨김 댓글: 관리자 또는 댓글 작성자 본인만 보임
+        const _isAdminForComment = window._checkIsAdmin ? window._checkIsAdmin() : false;
+        const visibleComments = list.filter(c => {
+            if (c.status === 'DELETED') return false;
+            if (c.status === 'HIDDEN') {
+                return _isAdminForComment || (_myIdForComment && Number(c.userId) === Number(_myIdForComment));
+            }
+            return true;
+        });
+
+        const commentItems = visibleComments.length
+            ? visibleComments.map(c => {
+                const isHiddenComment = c.status === 'HIDDEN';
+                if (isHiddenComment) {
+                    return `
+                <div class="comment-item" style="background:#FFF3F3;border-radius:8px;padding:8px 12px;opacity:0.8">
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <span class="comment-writer" style="color:#9E9E9E">${escapeHtml(c.writerName || '사용자')}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
+                        <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
+                    </div>
+                    <div style="color:#BDBDBD;font-style:italic;font-size:13px">(운영 정책 위반으로 숨김 처리된 댓글입니다)</div>
+                </div>`;
+                }
+                return `
+                <div class="comment-item">
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
+                        <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
+                        <button onclick="openReportCommentModal(${c.commentId}, ${curPostId})"
+                                style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);
+                                       border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)"
+                                title="댓글 신고">🚨 신고</button>
                     </div>
                     <div class="comment-content">${escapeHtml(c.content || '')}</div>
-                </div>
-            `).join('')
+                </div>`;
+            }).join('')
             : `<div style="padding:12px 0;color:var(--text3);font-size:13px">아직 댓글이 없습니다.</div>`;
 
         box.innerHTML = `
@@ -403,8 +671,77 @@
         }
     }
 
+    function getLoggedInUserIdForReviewEdit() {
+        const user = (typeof window._currentUser !== 'undefined' && window._currentUser)
+            ? window._currentUser
+            : (typeof _currentUser !== 'undefined' ? _currentUser : null);
+
+        return user?.userId ?? user?.id ?? null;
+    }
+
+    function isCurrentUserPostOwnerForReviewEdit(post) {
+        if (!post) return false;
+
+        // 백엔드에서 본인 여부를 내려주는 경우 우선 사용
+        if (post.isMine === true || post.mine === true) return true;
+
+        const loginUserId = getLoggedInUserIdForReviewEdit();
+        const writerId = post.userId ?? post.writerId ?? post.authorId ?? null;
+
+        if (!loginUserId || !writerId) return false;
+        return String(loginUserId) === String(writerId);
+    }
+
+    function updateReviewEditButtonForModal(post) {
+        const editBtn = document.getElementById('btn-review-edit');
+        if (!editBtn) return;
+
+        const postId = post?.postId ?? post?.id ?? window._currentPostId ?? window._openedPostId;
+        const canEdit = !!postId && isCurrentUserPostOwnerForReviewEdit(post);
+
+        editBtn.style.display = canEdit ? 'inline-flex' : 'none';
+        editBtn.dataset.postId = canEdit ? String(postId) : '';
+    }
+
+    window.openCurrentPostEditModal = async function openCurrentPostEditModal() {
+        const editBtn = document.getElementById('btn-review-edit');
+        const postId = editBtn?.dataset.postId
+            || window._currentPostId
+            || window._openedPostId
+            || window._currentPostDetail?.postId
+            || window._currentPostDetail?.id;
+
+        if (!postId) {
+            if (typeof toast === 'function') toast('게시글 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        if (typeof window.editMyPost !== 'function') {
+            if (typeof toast === 'function') toast('수정 기능을 준비하지 못했습니다.');
+            return;
+        }
+
+        await window.editMyPost(postId);
+    };
+
+
     function renderPostDetail(post) {
         if (!post) return;
+
+        // 숨김 게시글 접근 제어
+        const _myId = window._myUserId ? window._myUserId() : null;
+        const _isAdminUser = window._checkIsAdmin ? window._checkIsAdmin() : false;
+        const _isMyPost = _myId && (
+            Number(post.userId) === Number(_myId) ||
+            Number(post.writerId) === Number(_myId)
+        );
+        const _isHiddenPost = post.status === 'HIDDEN';
+        if (_isHiddenPost && !_isAdminUser && !_isMyPost) {
+            // 접근 불가: 커뮤니티로 돌아감
+            if (typeof toast === 'function') toast('접근할 수 없는 게시글입니다.');
+            if (typeof go === 'function') go('community');
+            return;
+        }
 
         window._currentPostId      = post.postId;
         window._openedPostId       = post.postId;
@@ -414,7 +751,32 @@
         const tags = parseStyleTags(post.styleTags);
 
         setText('pr-title',       post.title || '');
-        setText('pr-author-name', post.writerName || '사용자');
+
+        // 숨김 배너 (관리자 & 본인에게만 표시)
+        const _prHiddenBanner = document.getElementById('pr-hidden-banner');
+        if (_isHiddenPost) {
+            if (_prHiddenBanner) {
+                _prHiddenBanner.style.display = 'flex';
+            } else {
+                // 동적 생성
+                const _banner = document.createElement('div');
+                _banner.id = 'pr-hidden-banner';
+                _banner.style.cssText = 'display:flex;align-items:center;gap:8px;padding:10px 14px;margin:12px 0;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:8px;font-size:13px;color:#E53935;font-weight:600';
+                _banner.innerHTML = '🚫 이 게시글은 운영 정책 위반으로 숨김 처리된 글입니다. (작성자 및 관리자에게만 표시됩니다)';
+                const _titleEl = document.getElementById('pr-title');
+                if (_titleEl && _titleEl.parentNode) {
+                    _titleEl.parentNode.insertBefore(_banner, _titleEl.nextSibling);
+                }
+            }
+        } else {
+            if (_prHiddenBanner) _prHiddenBanner.style.display = 'none';
+        }
+        // 관리자 배지 포함 작성자명
+        const _prAuthorEl = document.getElementById('pr-author-name');
+        if (_prAuthorEl) {
+            _prAuthorEl.innerHTML = escapeHtml(post.writerName || '사용자') +
+                (window._adminBadge ? window._adminBadge(post.writerRole) : '');
+        }
         setText('pr-author-av',   (post.writerName || 'U').substring(0, 1));
         setText('pr-cat',         '여행 후기');
         setText('pr-tag',         tags.length ? '#' + tags[0] : '#커뮤니티');
@@ -431,9 +793,15 @@
                </div>`
             : '';
 
-        const imageHtml = (post.imageUrls && post.imageUrls.length)
+        const safeContent = window._commUtil.sanitizePostContent(post.content || '');
+        const inlineImageUrls = new Set(window._commUtil.extractImageUrlsFromHtml(safeContent));
+        const fallbackImageUrls = Array.isArray(post.imageUrls)
+            ? post.imageUrls.filter(url => url && !inlineImageUrls.has(url))
+            : [];
+
+        const imageHtml = fallbackImageUrls.length
             ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-                ${post.imageUrls.map(url =>
+                ${fallbackImageUrls.map(url =>
                 `<img src="${escapeHtml(url)}" alt="첨부 이미지"
                           style="max-width:100%;border-radius:10px;display:block"
                           onerror="this.style.display='none'">`
@@ -444,7 +812,7 @@
         setHtml('pr-body', `
             ${tagHtml}
             <div style="white-space:pre-wrap;line-height:1.8;color:var(--text2);font-size:15px">
-                ${escapeHtml(post.content || '')}
+                ${safeContent}
             </div>
             ${imageHtml}
         `);
@@ -456,11 +824,9 @@
         if (ctaSub) ctaSub.textContent = post.planTitle
             ? `${post.planTitle} 플랜을 기반으로 새 여행을 계획할 수 있습니다.` : '';
 
-        const editBtn = document.getElementById('btn-review-edit');
-        if (editBtn && typeof _currentUser !== 'undefined' && _currentUser && _currentUser.userId === post.userId) {
-            editBtn.style.display = 'inline-flex';
-        }
+        updateReviewEditButtonForModal(post);
     }
+
 
     window.openPostDetail = async function (postId) {
         if (!postId) {
@@ -547,13 +913,12 @@
         const publicEl  = document.getElementById('writePublic');
 
         const title   = titleEl ? titleEl.value.trim() : '';
-        const content = editorEl ? (editorEl.innerHTML || '').trim() : '';
         const tagText = tagsEl ? tagsEl.value.trim() : '';
 
         const styleTags = tagText.split(/[\s,]+/).map(v => v.trim()).filter(Boolean).join(',');
         const isPublic  = publicEl ? !!publicEl.checked : true;
 
-        if (!title || !content) {
+        if (!title || !window._commUtil.editorHasContent(editorEl)) {
             if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
             return;
         }
@@ -561,32 +926,26 @@
         const categoryCode = getCategoryFromCurrentTabButton();
         window._communityWriteCategory = categoryCode;
 
-        // 이미지 업로드
-        let imageUrls = [];
-        const selectedImages = window._communityWriteImages || window._communitySelectedImages || [];
-
-        if (selectedImages.length > 0) {
-            const formData = new FormData();
-            selectedImages.forEach(item => formData.append('files', item.file));
-
-            const token = window._commUtil.getAccessToken();
-            const uploadRes = await fetch('/api/posts/images', {
-                method: 'POST',
-                headers: token ? { Authorization: 'Bearer ' + token } : {},
-                body: formData
-            });
-
-            if (!uploadRes.ok) {
-                if (typeof toast === 'function') toast('이미지 업로드에 실패했습니다.');
-                return;
-            }
-            imageUrls = await uploadRes.json();
+        let finalized;
+        try {
+            finalized = await window._commUtil.finalizeInlineEditorImages(
+                editorEl,
+                window._communityWriteImages || []
+            );
+        } catch (e) {
+            if (typeof toast === 'function') toast(e.message || '이미지 업로드에 실패했습니다.');
+            return;
         }
 
         const body = {
             planId: document.getElementById('writePlanId')?.value
                 ? Number(document.getElementById('writePlanId').value) : null,
-            title, content, styleTags, category: categoryCode, isPublic, imageUrls
+            title,
+            content: finalized.content,
+            styleTags,
+            category: categoryCode,
+            isPublic,
+            imageUrls: finalized.imageUrls
         };
 
         const res = await api.post('/api/posts', body);
@@ -595,6 +954,10 @@
 
         if (success) {
             window._communitySelectedImages = [];
+            window._communityWriteImages = [];
+            if (editorEl) editorEl.innerHTML = '';
+            const preview = document.getElementById('writeImagePreview');
+            if (preview) preview.innerHTML = '';
             if (typeof closeWrite === 'function') closeWrite();
             if (typeof toast === 'function') toast('후기가 등록되었습니다! 🎉');
             if (typeof loadCommunityPosts === 'function') await loadCommunityPosts(0, true);
@@ -604,6 +967,7 @@
 
         if (typeof toast === 'function') toast(res?.message || '게시글 등록에 실패했습니다.');
     };
+
 
 })();
 
@@ -708,6 +1072,23 @@
 
     window._communitySelectedImages = window._communitySelectedImages || [];
 
+    window.openWriteImagePicker = function openWriteImagePicker() {
+        const editor = document.getElementById('blogEditor');
+
+        if (editor && window._commUtil) {
+            window._commUtil.bindEditorSelectionMemory(editor, '_communityWriteEditorRange');
+            window._commUtil.saveEditorSelection(editor, '_communityWriteEditorRange');
+        }
+
+        const input = document.getElementById('writeImageInput');
+
+        if (input) {
+            input.click();
+        } else if (typeof toast === 'function') {
+            toast('이미지 입력창을 찾을 수 없습니다.');
+        }
+    };
+
     function findImageButton() {
         return [...document.querySelectorAll('button')]
             .find(btn => btn.innerText && btn.innerText.includes('사진 첨부'));
@@ -727,35 +1108,24 @@
     }
 
     function handleImageSelect(e) {
-        const files  = [...(e.target.files || [])];
+        const files = [...(e.target.files || [])];
         if (!files.length) return;
 
         const editor = document.getElementById('blogEditor');
         if (!editor) {
             if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+            e.target.value = '';
             return;
         }
 
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) {
-                if (typeof toast === 'function') toast('이미지 파일만 첨부할 수 있습니다.');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const dataUrl = event.target.result;
-                window._communitySelectedImages.push({ file, name: file.name, type: file.type, size: file.size, dataUrl });
+        window._communityWriteImages = window._communityWriteImages || [];
+        window._commUtil.insertImagesIntoEditor(
+            editor,
+            files,
+            window._communityWriteImages,
+            '_communityWriteEditorRange'
+        );
 
-                const img = document.createElement('img');
-                img.src = dataUrl; img.alt = file.name;
-                img.style.cssText = 'max-width:100%;border-radius:10px;margin:10px 0;display:block';
-                editor.appendChild(img);
-                editor.appendChild(document.createElement('br'));
-            };
-            reader.readAsDataURL(file);
-        });
-
-        if (typeof toast === 'function') toast('이미지를 첨부했습니다.');
         e.target.value = '';
     }
 
@@ -793,33 +1163,17 @@ window._communityWriteImages = window._communityWriteImages || [];
 window._handleWriteImageSelect = function(input) {
     var files = Array.prototype.slice.call(input.files || []);
     if (!files.length) return;
-    var preview = document.getElementById('writeImagePreview');
-    files.forEach(function(file) {
-        if (!file.type.startsWith('image/')) {
-            if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
-            return;
-        }
-        var itemId = 'write-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-        window._communityWriteImages.push({ id: itemId, file: file });
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            var card = document.createElement('div');
-            card.id = itemId;
-            card.style.cssText = 'border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff';
-            card.innerHTML =
-                '<img src="' + ev.target.result + '" alt="새 이미지" style="width:100%;height:110px;object-fit:cover;display:block">' +
-                '<button type="button" style="width:100%;border:none;border-top:1px solid var(--border);background:#F8FAF9;color:var(--text2);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer">추가 취소</button>';
-            card.querySelector('button').onclick = function() {
-                window._communityWriteImages = window._communityWriteImages.filter(function(img) { return img.id !== itemId; });
-                card.remove();
-            };
-            if (preview) preview.appendChild(card);
-        };
-        reader.readAsDataURL(file);
-    });
+
+    var editor = document.getElementById('blogEditor');
+    if (!editor) {
+        if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+        input.value = '';
+        return;
+    }
+
+    window._commUtil.insertImagesIntoEditor(editor, files, window._communityWriteImages, '_communityWriteEditorRange');
     input.value = '';
 };
-
 
 /* =============================================================================
  * community v2 — 목록 카드 렌더링
@@ -859,6 +1213,13 @@ window._handleWriteImageSelect = function(input) {
         }
 
         posts.forEach(post => {
+            const isHidden   = post.hidden === true;
+            // 숨김 게시글: 관리자 또는 작성자 본인만 볼 수 있음
+            const _myId = window._myUserId ? window._myUserId() : null;
+            const _isMyPost = _myId && Number(post.writerId) === Number(_myId);
+            const _adminCheck = window._checkIsAdmin ? window._checkIsAdmin() : false;
+            if (isHidden && !_adminCheck && !_isMyPost) return;
+
             const postId     = post.postId;
             const tags       = parseStyleTags(post.styleTags);
             const dateText   = formatPostDate(post.createdAt);
@@ -880,11 +1241,17 @@ window._handleWriteImageSelect = function(input) {
             div.setAttribute('data-scrap',   scraps);
             div.setAttribute('data-date',    dateVal);
 
+            // 숨김 처리된 글 표시 (관리자 & 본인)
+            const hiddenBadge = isHidden
+                ? `<span style="font-size:10px;color:#E53935;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px;margin-left:6px">🚫 숨김 처리된 글</span>`
+                : '';
+
             div.innerHTML = `
-                <div class="post-card" onclick="openPostDetail(${postId})">
+                <div class="post-card" onclick="openPostDetail(${postId})"
+                     style="${isHidden ? 'opacity:0.55;background:#FAFAFA' : ''}">
                     <div class="community-card-head">
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
-                        <span class="community-card-meta">${escapeHtml(writerText)} · ${escapeHtml(dateText)}</span>
+                        <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole) : ''} · ${escapeHtml(dateText)}${hiddenBadge}</span>
                     </div>
                     <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}</div>
                     ${tags.length ? `<div class="community-card-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
@@ -912,6 +1279,43 @@ window._handleWriteImageSelect = function(input) {
  * ============================================================================= */
 (function () {
     'use strict';
+
+    // 현재 로그인 사용자 ID 반환 헬퍼
+    window._myUserId = () => {
+        const u = window._currentUser;
+        if (!u) return null;
+        return u.id || u.userId || u.memberId || null;
+    };
+
+    // 관리자 여부 체크 (window._isAdmin → window._currentUser.role → 로컬 _currentUser 순으로 시도)
+    window._checkIsAdmin = () => {
+        if (window._isAdmin === true) return true;
+        if (window._currentUser && window._currentUser.role === 'ADMIN') return true;
+        try {
+            // app_main.js의 let _currentUser에 직접 접근 (같은 페이지 스코프)
+            if (typeof _currentUser !== 'undefined' && _currentUser && _currentUser.role === 'ADMIN') return true;
+        } catch(e) {}
+        return false;
+    };
+
+    // 관리자 배지 HTML 헬퍼
+    window._adminBadge = (role) =>
+        role === 'ADMIN'
+            ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
+            : '';
+
+    // 장소 카테고리 → 커뮤니티 탭 이름 매핑
+    const _catToTab = {accommodation:'stay', restaurant:'food', cafe:'cafe', attraction:'tour'};
+
+    // 방문 장소 스냅샷 카드 클릭: 장소 이름과 함께 리뷰 페이지로 이동
+    window._placeSnapshotClick = function(el) {
+        const placeId   = Number(el.dataset.placeId);
+        const placeName = el.dataset.placeName || '';
+        // page_place.html의 goToPlaceReviews로 전용 페이지 이동 (커뮤니티 탭 간섭 없음)
+        if (typeof goToPlaceReviews === 'function') {
+            goToPlaceReviews(placeId, placeName);
+        }
+    };
 
     const { extractPosts } = window._commUtil;
 
@@ -998,7 +1402,8 @@ window._handleWriteImageSelect = function(input) {
         }
 
         try {
-            const res      = await api.get(`/api/posts?page=${page}&size=10&sort=scrap&category=${tab}`);
+            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'scrap';
+            const res      = await api.get(`/api/posts?page=${page}&size=10&sort=${sortVal}&category=${tab}`);
             const pageData = extractPage(res);
 
             if (typeof window._renderPostList === 'function') {
@@ -1119,16 +1524,36 @@ window._handleWriteImageSelect = function(input) {
 
         try {
             const res = await api.get(`/api/posts/${postId}/place-reviews`);
-            const reviews = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+            const allReviews = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
 
-            if (!reviews.length) return;
+            // ① 게시글 작성자 본인이 쓴 리뷰만 필터
+            const postAuthorId = window._currentPostDetail?.userId;
+            const authorReviews = postAuthorId
+                ? allReviews.filter(r => Number(r.writerId) === Number(postAuthorId))
+                : allReviews; // 작성자 정보 없는 경우 fallback
+
+            // ② placeId 기준 중복 제거 (createdAt desc = 최신 1건)
+            const seenPlaceIds = new Set();
+            const uniqueReviews = [];
+            authorReviews.forEach(r => {
+                if (!seenPlaceIds.has(r.placeId)) {
+                    seenPlaceIds.add(r.placeId);
+                    uniqueReviews.push(r);
+                }
+            });
+
+            if (!uniqueReviews.length) return;
 
             placeList.style.display = 'block';
             placeList.innerHTML = `
                 <div class="review-place-snapshot">
                     <h3>📍 방문 장소별 별점 & 한줄평</h3>
-                    ${reviews.map(r => `
-                        <div class="review-place-snapshot-row">
+                    ${uniqueReviews.map(r => `
+                        <div class="review-place-snapshot-row" style="cursor:pointer"
+                             data-place-id="${r.placeId}"
+                             data-place-name="${escapeHtml(r.placeName||'')}"
+                             data-category="${r.category||'attraction'}"
+                             onclick="_placeSnapshotClick(this)">
                             <div class="review-place-snapshot-top">
                                 <strong class="review-place-snapshot-name">${escapeHtml(r.placeName || '')}</strong>
                                 <b class="review-place-snapshot-stars">${escapeHtml(r.starsHtml || '')}</b>
@@ -1763,7 +2188,8 @@ window._handleWriteImageSelect = function(input) {
                     `<div class="place-card-meta">`,
                     `  <span class="place-card-stars">${starsHtml(Math.round(card.avgRating || 0))}</span>`,
                     `  <span class="place-card-avg">${(card.avgRating || 0).toFixed(1)}</span>`,
-                    `  <span class="place-card-count">후기 ${card.reviewCount || 0}개</span>`,
+                    `  <span class="place-card-count">📌 ${card.reviewCount || 0}번 담김</span>`,
+                    `  <span class="place-card-scrap">🔖 ${card.scrapCount || 0}</span>`,
                     `</div>`
                 ].join('');
                 el.addEventListener('click', function () {
@@ -1788,6 +2214,11 @@ window._handleWriteImageSelect = function(input) {
     async function openPlaceReviews(placeId, placeName, type, avgRating, reviewCount) {
         const tabEl = document.getElementById('tab-' + type);
         if (!tabEl) return;
+
+        /* 후기 패널에서는 검색/정렬 바를 숨김 */
+        const searchBar = document.querySelector('#page-community .search-bar');
+        if (searchBar) searchBar.style.display = 'none';
+
         tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
 
         try {
@@ -1800,20 +2231,60 @@ window._handleWriteImageSelect = function(input) {
 
             const back = document.createElement('button');
             back.className = 'place-back-btn'; back.textContent = '← 목록으로';
-            back.addEventListener('click', function () { window._loadPlaceCards(type, 0, true); });
+            back.addEventListener('click', function () {
+                /* 목록으로 돌아오면 검색/정렬 바 복원 */
+                const sb = document.querySelector('#page-community .search-bar');
+                if (sb) sb.style.display = '';
+                window._loadPlaceCards(type, 0, true);
+            });
             wrap.appendChild(back);
 
-            const avg = avgRating != null ? Number(avgRating) : 0;
+            /* 평균 별점: 인자로 안 넘어오면(예: 메인페이지에서 진입) 후기들의 rating 평균을 직접 계산 */
+            let avg;
+            if (avgRating != null && Number(avgRating) > 0) {
+                avg = Number(avgRating);
+            } else {
+                const rated = reviews.filter(function (r) { return r.rating != null && Number(r.rating) > 0; });
+                avg = rated.length
+                    ? rated.reduce(function (sum, r) { return sum + Number(r.rating); }, 0) / rated.length
+                    : 0;
+            }
             const cnt = reviewCount != null ? Number(reviewCount) : reviews.length;
+
+            /* 이 장소를 이미 스크랩했는지 확인 (집합 우선, 없으면 API 1회 조회) */
+            let alreadyScrapped = false;
+            try {
+                if (window._scrappedPlaceIds && window._scrappedPlaceIds.size > 0) {
+                    alreadyScrapped = window._scrappedPlaceIds.has(String(placeId));
+                } else {
+                    const sres = await api.get('/api/scraps');
+                    const slist = (sres && sres.success !== false) ? (sres.data || []) : [];
+                    window._scrappedPlaceIds = window._scrappedPlaceIds || new Set();
+                    slist.forEach(function (s) { if (s && s.placeId != null) window._scrappedPlaceIds.add(String(s.placeId)); });
+                    alreadyScrapped = window._scrappedPlaceIds.has(String(placeId));
+                }
+            } catch (e) {}
+
             const header = document.createElement('div');
             header.className = 'place-review-header';
+            const mapQuery = encodeURIComponent(placeName || '');
             header.innerHTML = [
                 `<div class="place-review-name">📍 ${escapeHtml(placeName)}</div>`,
                 `<div class="place-avg-stars">${starsHtml(Math.round(avg))}</div>`,
                 `<div class="place-avg-score">${avg.toFixed(1)}</div>`,
                 `<div class="place-avg-count">${cnt}개 후기</div>`,
-                `<button class="btn-o" style="padding:5px 12px;font-size:12px;margin-left:auto"
-                    onclick="doCommPlaceScrap(${placeId},'${type}')">★ 스크랩</button>`
+                `<button class="place-review-scrap-btn${alreadyScrapped ? ' scrapped' : ''}"`,
+                `        onclick="doCommPlaceScrapToggle(this, ${placeId},'${type}')">`,
+                `  <span class="prs-star">★</span> <span class="prs-label">스크랩</span>`,
+                `</button>`,
+                `<div class="place-map-links">`,
+                `  <div class="pml-title">지도 앱에서 보기</div>`,
+                `  <div class="pml-btns">`,
+                `    <a class="pml-btn pml-naver"  href="https://map.naver.com/v5/search/${mapQuery}" target="_blank" rel="noopener">네이버 지도</a>`,
+                `    <a class="pml-btn pml-kakao"  href="https://map.kakao.com/?q=${mapQuery}" target="_blank" rel="noopener">카카오맵</a>`,
+                `    <a class="pml-btn pml-google" href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" rel="noopener">구글 지도</a>`,
+                `  </div>`,
+                `</div>`
             ].join('');
             wrap.appendChild(header);
 
@@ -2163,7 +2634,7 @@ window._handleWriteImageSelect = function(input) {
         const res      = await api.post(`/api/posts/${postId}/scraps?category=${category}`, {});
         const scrapped = res?.data === true;
         if (window._currentPostDetail) window._currentPostDetail.scrappedByMe = scrapped;
-        if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
+        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
 
         await window.openPostDetail(postId);
         setTimeout(applyActionState, 100);
@@ -2213,7 +2684,14 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label class="form-label">내용</label>
-                    <textarea id="communityEditContent" class="form-input" placeholder="내용을 입력하세요" style="width:100%;min-height:180px;resize:vertical;line-height:1.7"></textarea>
+                    <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:220px">
+                        <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700" onclick="document.getElementById('communityEditContent').focus();document.execCommand('bold')">B</button>
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic" onclick="document.getElementById('communityEditContent').focus();document.execCommand('italic')">I</button>
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline" onclick="document.getElementById('communityEditContent').focus();document.execCommand('underline')">U</button>
+                        </div>
+                        <div id="communityEditContent" contenteditable="true" data-placeholder="내용을 입력하세요" style="min-height:220px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto"></div>
+                    </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px" id="communityEditPlaceReviewsSection" style="display:none">
                     <label class="form-label">📍 장소별 별점 &amp; 한줄평</label>
@@ -2226,13 +2704,8 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="form-group" style="margin-bottom:18px">
                     <label class="form-label">첨부 이미지</label>
-                    <div id="communityEditImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
-                    <p id="communityEditImageEmpty" style="display:none;color:var(--text3);font-size:13px;margin:8px 0 0">첨부된 이미지가 없습니다.</p>
-                    <div style="margin-top:10px">
-                        <button type="button" id="communityEditAddImageBtn" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px">새 이미지 추가</button>
-                        <input id="communityEditImageInput" type="file" accept="image/*" multiple style="display:none">
-                    </div>
-                    <div id="communityEditNewImagePreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px"></div>
+                    <button type="button" id="communityEditAddImageBtn" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px">새 이미지 추가</button>
+                    <input id="communityEditImageInput" type="file" accept="image/*" multiple style="display:none">
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
                     <button type="button" id="communityEditCancelBtn" class="btn-prev-step" style="padding:11px 18px;border-radius:var(--r)">취소</button>
@@ -2242,6 +2715,9 @@ window._handleWriteImageSelect = function(input) {
         `;
         document.body.appendChild(overlay);
 
+        const editEditor = document.getElementById('communityEditContent');
+        if (editEditor) window._commUtil.bindEditorSelectionMemory(editEditor, '_communityEditEditorRange');
+
         overlay.addEventListener('click', e => { if (e.target === overlay) closeEditModal(); });
         document.getElementById('communityEditCloseBtn').onclick  = closeEditModal;
         document.getElementById('communityEditCancelBtn').onclick = closeEditModal;
@@ -2249,126 +2725,110 @@ window._handleWriteImageSelect = function(input) {
 
         const btn   = document.getElementById('communityEditAddImageBtn');
         const input = document.getElementById('communityEditImageInput');
-        if (btn && input) { btn.onclick = () => input.click(); input.onchange = handleEditImageSelect; }
+        if (btn && input) {
+            btn.onmousedown = function () {
+                const editor = document.getElementById('communityEditContent');
+                if (editor) window._commUtil.saveEditorSelection(editor, '_communityEditEditorRange');
+            };
+            btn.onclick = function () { input.click(); };
+            input.onchange = handleEditImageSelect;
+        }
 
         return overlay;
     }
+
 
     function closeEditModal() {
         const overlay = document.getElementById('communityEditPostOverlay');
         if (overlay) overlay.style.display = 'none';
     }
 
+    // 기존 이미지는 본문 에디터 안에만 표시하고, POST_IMAGES 데이터는 썸네일/하위 호환용으로 유지한다.
     function renderEditImages(postId, imageUrls) {
-        const box   = document.getElementById('communityEditImages');
-        const empty = document.getElementById('communityEditImageEmpty');
-        if (!box || !empty) return;
-
-        const urls = Array.isArray(imageUrls) ? imageUrls : [];
-        if (!urls.length) { box.innerHTML = ''; empty.style.display = 'block'; return; }
-
-        empty.style.display = 'none';
-        box.innerHTML = urls.map(url => `
-            <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff">
-                <img src="${escapeHtml(url)}" alt="첨부 이미지" style="width:100%;height:110px;object-fit:cover;display:block" onerror="this.style.display='none'">
-                <button type="button" class="community-edit-image-delete"
-                        data-post-id="${escapeHtml(postId)}" data-image-url="${escapeHtml(url)}"
-                        style="width:100%;border:none;border-top:1px solid var(--border);background:#FEF3F2;color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
-            </div>
-        `).join('');
-
-        box.querySelectorAll('.community-edit-image-delete').forEach(btn => {
-            btn.onclick = async function () {
-                const targetPostId = this.getAttribute('data-post-id');
-                const imageUrl     = this.getAttribute('data-image-url');
-                if (!targetPostId || !imageUrl) return;
-                if (!confirm('이 이미지를 삭제하시겠습니까? 삭제하면 복구할 수 없습니다.')) return;
-
-                try {
-                    await requestJson(`/api/posts/${targetPostId}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
-                        method: 'DELETE', headers: authHeaders(false)
-                    });
-                    const item = this.closest('.community-edit-image-item');
-                    if (item) item.remove();
-                    if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
-                    if (typeof toast === 'function') toast('이미지가 삭제되었습니다.');
-                } catch (e) {
-                    if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
-                }
-            };
-        });
+        // const box   = document.getElementById('communityEditImages');
+        // const empty = document.getElementById('communityEditImageEmpty');
+        // if (!box || !empty) return;
+        //
+        // const urls = Array.isArray(imageUrls) ? imageUrls : [];
+        // if (!urls.length) { box.innerHTML = ''; empty.style.display = 'block'; return; }
+        //
+        // empty.style.display = 'none';
+        // box.innerHTML = urls.map(url => `
+        //     <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff">
+        //         <img src="${escapeHtml(url)}" alt="첨부 이미지" style="width:100%;height:110px;object-fit:cover;display:block" onerror="this.style.display='none'">
+        //         <button type="button" class="community-edit-image-delete"
+        //                 data-post-id="${escapeHtml(postId)}" data-image-url="${escapeHtml(url)}"
+        //                 style="width:100%;border:none;border-top:1px solid var(--border);background:#FEF3F2;color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
+        //     </div>
+        // `).join('');
+        //
+        // box.querySelectorAll('.community-edit-image-delete').forEach(btn => {
+        //     btn.onclick = async function () {
+        //         const targetPostId = this.getAttribute('data-post-id');
+        //         const imageUrl     = this.getAttribute('data-image-url');
+        //         if (!targetPostId || !imageUrl) return;
+        //         if (!confirm('이 이미지를 삭제하시겠습니까? 삭제하면 복구할 수 없습니다.')) return;
+        //
+        //         try {
+        //             await requestJson(`/api/posts/${targetPostId}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
+        //                 method: 'DELETE', headers: authHeaders(false)
+        //             });
+        //             const item = this.closest('.community-edit-image-item');
+        //             if (item) item.remove();
+        //             if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
+        //             if (typeof toast === 'function') toast('이미지가 삭제되었습니다.');
+        //         } catch (e) {
+        //             if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
+        //         }
+        //     };
+        // });
     }
 
     function handleEditImageSelect(e) {
-        const files   = [...(e.target.files || [])];
+        const files = [...(e.target.files || [])];
         if (!files.length) return;
-        const preview = document.getElementById('communityEditNewImagePreview');
-        if (!preview) return;
 
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) {
-                if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
-                return;
-            }
-            const itemId = 'edit-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-            editSelectedImages.push({ id: itemId, file });
+        const editor = document.getElementById('communityEditContent');
+        if (!editor) {
+            if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+            e.target.value = '';
+            return;
+        }
 
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const card = document.createElement('div');
-                card.id = itemId;
-                card.style.cssText = 'border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;';
-                card.innerHTML = `
-                    <img src="${event.target.result}" alt="새 이미지" style="width:100%;height:110px;object-fit:cover;display:block">
-                    <button type="button" style="width:100%;border:none;border-top:1px solid var(--border);background:#F8FAF9;color:var(--text2);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">추가 취소</button>
-                `;
-                card.querySelector('button').onclick = function () {
-                    editSelectedImages = editSelectedImages.filter(img => img.id !== itemId);
-                    card.remove();
-                };
-                preview.appendChild(card);
-            };
-            reader.readAsDataURL(file);
-        });
+        window._commUtil.insertImagesIntoEditor(editor, files, editSelectedImages, '_communityEditEditorRange');
         e.target.value = '';
     }
 
     async function uploadEditImages() {
-        if (!editSelectedImages.length) return [];
-        const formData = new FormData();
-        editSelectedImages.forEach(item => formData.append('files', item.file));
-
-        const token = getAccessToken();
-        const res   = await fetch('/api/posts/images', {
-            method: 'POST',
-            headers: token ? { Authorization: 'Bearer ' + token } : {},
-            body: formData
-        });
-        if (!res.ok) throw new Error('이미지 업로드에 실패했습니다.');
-        return await res.json();
+        const editor = document.getElementById('communityEditContent');
+        return await window._commUtil.finalizeInlineEditorImages(editor, editSelectedImages);
     }
 
     async function submitEditPost() {
         const postId   = document.getElementById('communityEditPostId')?.value;
         const title    = document.getElementById('communityEditTitle')?.value.trim();
-        const content  = document.getElementById('communityEditContent')?.value.trim();
+        const editor   = document.getElementById('communityEditContent');
         const tags     = document.getElementById('communityEditTags')?.value || '';
         const isPublic = !!document.getElementById('communityEditPublic')?.checked;
         const category = window._communityEditOriginalPost?.category || 'ROUTE';
 
-        if (!postId || !title || !content) {
+        if (!postId || !title || !window._commUtil.editorHasContent(editor)) {
             if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
             return;
         }
 
-        let uploadedImageUrls = [];
-        try { uploadedImageUrls = await uploadEditImages(); }
+        let finalized;
+        try { finalized = await uploadEditImages(); }
         catch (e) { if (typeof toast === 'function') toast(e.message || '이미지 업로드에 실패했습니다.'); return; }
 
         const body = {
-            title, content, styleTags: inputToStyleTags(tags), category, isPublic,
+            title,
+            content: finalized.content,
+            styleTags: inputToStyleTags(tags),
+            category,
+            isPublic,
             planId: window._communityEditOriginalPost?.planId || null,
-            imageUrls: uploadedImageUrls
+            imageUrls: finalized.imageUrls
         };
 
         try {
@@ -2417,6 +2877,7 @@ window._handleWriteImageSelect = function(input) {
         }
     }
 
+
     window.editMyPost = async function (postId) {
         if (!postId) return;
         if (!window._commUtil.requireLogin()) return;
@@ -2432,8 +2893,13 @@ window._handleWriteImageSelect = function(input) {
         const post = postRes?.data || postRes;
         if (!post || !post.postId) return;
 
-        if (typeof _currentUser !== 'undefined' && _currentUser?.userId && post.userId &&
-            Number(_currentUser.userId) !== Number(post.userId)) {
+        const loginUserId = (typeof window._currentUser !== 'undefined' && window._currentUser)
+            ? (window._currentUser.userId ?? window._currentUser.id)
+            : (typeof _currentUser !== 'undefined' && _currentUser ? (_currentUser.userId ?? _currentUser.id) : null);
+
+        const writerId = post.userId ?? post.writerId ?? post.authorId ?? null;
+
+        if (loginUserId && writerId && String(loginUserId) !== String(writerId)) {
             if (typeof toast === 'function') toast('본인이 작성한 글만 수정할 수 있습니다.');
             return;
         }
@@ -2443,7 +2909,12 @@ window._handleWriteImageSelect = function(input) {
 
         document.getElementById('communityEditPostId').value  = post.postId;
         document.getElementById('communityEditTitle').value   = post.title || '';
-        document.getElementById('communityEditContent').value = post.content || '';
+        const editor = document.getElementById('communityEditContent');
+        if (editor) {
+            editor.innerHTML = window._commUtil.buildEditableContentWithImages(post);
+            window._commUtil.bindEditorSelectionMemory(editor, '_communityEditEditorRange');
+            window._communityEditEditorRange = null;
+        }
         document.getElementById('communityEditTags').value    = styleTagsToInput(post.styleTags);
         document.getElementById('communityEditPublic').checked = post.isPublic !== false;
 
@@ -2458,10 +2929,9 @@ window._handleWriteImageSelect = function(input) {
         renderEditImages(post.postId, post.imageUrls || []);
         editSelectedImages = [];
 
-        const preview    = document.getElementById('communityEditNewImagePreview');
-        if (preview) preview.innerHTML = '';
         const imageInput = document.getElementById('communityEditImageInput');
         if (imageInput) imageInput.value = '';
+
 
         // 장소 리뷰 로드 (planRouteJson 파싱 + 기존 리뷰 매핑)
         const plrSection = document.getElementById('communityEditPlaceReviewsSection');
@@ -2510,7 +2980,7 @@ window._handleWriteImageSelect = function(input) {
                             '<div class="plr-name">' + escapeHtml(p.name) + '</div>' +
                             '<div class="star-sel" data-rating="' + rating + '">' + stars + '</div>' +
                             '<input class="one-line" placeholder="한줄평 (선택)" maxlength="200" value="' + escapeHtml(comment) + '">' +
-                        '</div>';
+                            '</div>';
                     }).join('');
                 } else if (existingReviews.length) {
                     // planRouteJson 없어도 기존 리뷰는 표시
@@ -2524,7 +2994,7 @@ window._handleWriteImageSelect = function(input) {
                             '<div class="plr-name">' + escapeHtml(r.placeName||'') + '</div>' +
                             '<div class="star-sel" data-rating="' + (r.rating||0) + '">' + stars + '</div>' +
                             '<input class="one-line" placeholder="한줄평 (선택)" maxlength="200" value="' + escapeHtml(r.comment||'') + '">' +
-                        '</div>';
+                            '</div>';
                     }).join('');
                 }
             } catch(e) { console.error('[edit] 장소 리뷰 로드 실패', e); }
@@ -2533,157 +3003,180 @@ window._handleWriteImageSelect = function(input) {
         overlay.style.display = 'flex';
     };
 
-/* =============================================================================
- * community v2 — loadMyScrap override (마이페이지 장소 스크랩 탭)
- * app_community.js의 게시글 스크랩 버전을 장소 스크랩으로 교체
- * ============================================================================= */
-window.loadMyScrap = async function loadMyScrap(category) {
-    const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
-    const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
-    const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
-    const listId   = { stay: 'my-scrap-stay-list', food: 'my-scrap-food-list', tour: 'my-scrap-tour-list', cafe: 'my-scrap-cafe-list' };
+    /* =============================================================================
+     * community v2 — loadMyScrap override (마이페이지 장소 스크랩 탭)
+     * app_community.js의 게시글 스크랩 버전을 장소 스크랩으로 교체
+     * ============================================================================= */
+    window.loadMyScrap = async function loadMyScrap(category) {
+        const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
+        const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
+        const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
+        const listId   = { stay: 'my-scrap-stay-list', food: 'my-scrap-food-list', tour: 'my-scrap-tour-list', cafe: 'my-scrap-cafe-list' };
 
-    const el = document.getElementById(listId[category]);
-    if (!el) return;
+        const el = document.getElementById(listId[category]);
+        if (!el) return;
 
-    const res = await api.get('/api/scraps');
-    if (!res || !res.success || !Array.isArray(res.data)) {
-        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
-        return;
-    }
+        const res = await api.get('/api/scraps');
+        if (!res || !res.success || !Array.isArray(res.data)) {
+            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
+            return;
+        }
 
-    const dbCat = catMap[category] || category.toUpperCase();
-    const list  = res.data.filter(s => s.category === dbCat);
+        const dbCat = catMap[category] || category.toUpperCase();
+        const list  = res.data.filter(s => s.category === dbCat);
 
-    const starHtml = (avg) => {
-        if (!avg) return '';
-        const filled = Math.round(avg);
-        return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + avg.toFixed(1) + '</b>';
-    };
+        const starHtml = (avg) => {
+            if (!avg) return '';
+            const filled = Math.round(avg);
+            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + avg.toFixed(1) + '</b>';
+        };
 
-    el.innerHTML = list.length
-        ? list.map(s =>
-            '<div class="place-card" style="cursor:pointer" ' +
-              'onclick="window.goToScrapPlace(' + s.placeId + ',\'' + escapeHtml(s.placeName || '장소').replace(/'/g, "\\'") + '\',\'' + (s.category || '') + '\',' + (s.avgRating || 'null') + ')">' +
-              '<div class="pc-hd">' +
+        el.innerHTML = list.length
+            ? list.map(s =>
+                '<div class="place-card" style="cursor:pointer" ' +
+                'onclick="window.goToScrapPlace(' + s.placeId + ',\'' + escapeHtml(s.placeName || '장소').replace(/'/g, "\\'") + '\',\'' + (s.category || '') + '\',' + (s.avgRating || 'null') + ')">' +
+                '<div class="pc-hd">' +
                 '<div class="pc-icon">' + (iconMap[s.category] || '📍') + '</div>' +
                 '<div style="flex:1;min-width:0">' +
-                  '<div class="pc-name">' + escapeHtml(s.placeName || '장소') + '</div>' +
-                  '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
-                  (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
+                '<div class="pc-name">' + escapeHtml(s.placeName || '장소') + '</div>' +
+                '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
+                (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
                 '</div>' +
                 '<button onclick="event.stopPropagation();window.deleteMyPlaceScrap(' + s.scrapId + ',this)" ' +
-                  'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                  '🗑️ 삭제' +
+                'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+                '🗑️ 삭제' +
                 '</button>' +
-              '</div>' +
-            '</div>'
-          ).join('')
-        : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
-};
+                '</div>' +
+                '</div>'
+            ).join('')
+            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
+    };
 
-window.goToScrapPlace = function(placeId, placeName, category, avgRating) {
-    const catToType = { STAY: 'stay', FOOD: 'food', TOUR: 'tour', CAFE: 'cafe' };
-    const type = catToType[category] || 'tour';
+    window.goToScrapPlace = function(placeId, placeName, category, avgRating) {
+        const catToType = { STAY: 'stay', FOOD: 'food', TOUR: 'tour', CAFE: 'cafe' };
+        const type = catToType[category] || 'tour';
 
-    go('community');
+        go('community');
 
-    // 탭 전환 후 장소 후기 열기
-    setTimeout(function () {
-        const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*="\'' + type + '\'"]');
-        if (tabBtn && typeof window.setCommTab === 'function') {
-            window.setCommTab(tabBtn, type);
+        // 탭 전환 후 장소 후기 열기
+        setTimeout(function () {
+            const tabBtn = document.querySelector('#commTabs .comm-tab[onclick*="\'' + type + '\'"]');
+            if (tabBtn && typeof window.setCommTab === 'function') {
+                window.setCommTab(tabBtn, type);
+            }
+            if (typeof window._openPlaceReviews === 'function') {
+                window._openPlaceReviews(placeId, placeName, type, avgRating, null);
+            }
+        }, 100);
+    };
+
+    window.deleteMyPlaceScrap = async function(scrapId, btn) {
+        const res = await api.del('/api/scraps/' + scrapId);
+        if (res && res.success !== false) {
+            const card = btn.closest('.place-card');
+            if (card) card.remove();
+            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+        } else {
+            if (typeof toast === 'function') toast('삭제에 실패했습니다.');
         }
-        if (typeof window._openPlaceReviews === 'function') {
-            window._openPlaceReviews(placeId, placeName, type, avgRating, null);
-        }
-    }, 100);
-};
+    };
 
-window.deleteMyPlaceScrap = async function(scrapId, btn) {
-    const res = await api.del('/api/scraps/' + scrapId);
-    if (res && res.success !== false) {
-        const card = btn.closest('.place-card');
-        if (card) card.remove();
-        if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
-    } else {
-        if (typeof toast === 'function') toast('삭제에 실패했습니다.');
-    }
-};
-
-/* =============================================================================
- * community v2 — 장소 스크랩 (장소 후기 탭)
- * ============================================================================= */
+    /* =============================================================================
+     * community v2 — 장소 스크랩 (장소 후기 탭)
+     * ============================================================================= */
     window.doCommPlaceScrap = async function (placeId, category) {
         if (!window._commUtil.requireLogin()) return;
         const res = await api.post(`/api/places/${placeId}/scraps`, { category: category || 'tour' });
         const scrapped = res?.data === true;
         if (typeof toast === 'function') {
             toast(res?.success === false
-                ? (res?.message || '스크랩 처리에 실패했습니다.')
-                : (scrapped ? '★ 스크랩했습니다!' : '스크랩을 취소했습니다.'));
+                ? (res?.message || '⚠️ 스크랩 처리에 실패했습니다.')
+                : (scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.'));
+        }
+        /* 집합 갱신 → 다른 화면에서도 상태 일관 */
+        if (window._scrappedPlaceIds) {
+            if (scrapped) window._scrappedPlaceIds.add(String(placeId));
+            else          window._scrappedPlaceIds.delete(String(placeId));
         }
         return scrapped;
     };
 
-/* =============================================================================
- * community v2 — 여행 경로 스크랩 (마이페이지)
- * ============================================================================= */
-window.loadMyRouteScrap = async function() {
-    const el = document.getElementById('my-scrap-route-list');
-    if (!el) return;
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+    /* 후기 패널 안의 스크랩 버튼 — 색을 토글하고 상태 유지 */
+    window.doCommPlaceScrapToggle = async function (btn, placeId, category) {
+        const scrapped = await window.doCommPlaceScrap(placeId, category);
+        if (btn && scrapped !== undefined) {
+            if (scrapped) {
+                btn.classList.add('scrapped');
+                btn.style.background  = '#46B29E';
+                btn.style.borderColor = '#46B29E';
+                btn.style.color       = '#fff';
+            } else {
+                btn.classList.remove('scrapped');
+                btn.style.background  = '';
+                btn.style.borderColor = '';
+                btn.style.color       = '';
+            }
+        }
+    };
 
-    const res = await api.get('/api/posts/scrapped');
-    if (!res || !res.success || !Array.isArray(res.data)) {
-        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
-        return;
-    }
+    /* =============================================================================
+     * community v2 — 여행 경로 스크랩 (마이페이지)
+     * ============================================================================= */
+    window.loadMyRouteScrap = async function() {
+        const el = document.getElementById('my-scrap-route-list');
+        if (!el) return;
+        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
 
-    const list = res.data;
-    el.innerHTML = list.length
-        ? list.map(function(p) {
-            const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
-                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
-            }).join('');
-            const safeTitle  = escapeHtml(p.title  || '제목 없음');
-            const safeWriter = escapeHtml(p.writerName || '');
-            return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
-                '<div class="pc-hd">' +
+        const res = await api.get('/api/posts/scrapped');
+        if (!res || !res.success || !Array.isArray(res.data)) {
+            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+            return;
+        }
+
+        const list = res.data;
+        el.innerHTML = list.length
+            ? list.map(function(p) {
+                const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
+                    return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
+                }).join('');
+                const safeTitle  = escapeHtml(p.title  || '제목 없음');
+                const safeWriter = escapeHtml(p.writerName || '');
+                return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
+                    '<div class="pc-hd">' +
                     '<div class="pc-icon">🗺️</div>' +
                     '<div style="flex:1;min-width:0">' +
-                        '<div class="pc-name">' + safeTitle + '</div>' +
-                        '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
-                        (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
-                        '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
+                    '<div class="pc-name">' + safeTitle + '</div>' +
+                    '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
+                    (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
+                    '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
                     '</div>' +
                     '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + p.postId + ',this)" ' +
-                        'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                        '🗑️ 삭제' +
+                    'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+                    '🗑️ 삭제' +
                     '</button>' +
-                '</div>' +
-            '</div>';
-          }).join('')
-        : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
-};
+                    '</div>' +
+                    '</div>';
+            }).join('')
+            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+    };
 
-window.goToScrapRoute = function(postId) {
-    go('community');
-    setTimeout(function() {
-        if (typeof openPostDetail === 'function') openPostDetail(postId);
-    }, 150);
-};
+    window.goToScrapRoute = function(postId) {
+        go('community');
+        setTimeout(function() {
+            if (typeof openPostDetail === 'function') openPostDetail(postId);
+        }, 150);
+    };
 
-window.deleteMyRouteScrap = async function(postId, btn) {
-    const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
-    if (res && res.success !== false) {
-        const card = btn.closest('.place-card');
-        if (card) card.remove();
-        if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
-    } else {
-        if (typeof toast === 'function') toast('삭제에 실패했습니다.');
-    }
-};
+    window.deleteMyRouteScrap = async function(postId, btn) {
+        const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
+        if (res && res.success !== false) {
+            const card = btn.closest('.place-card');
+            if (card) card.remove();
+            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+        } else {
+            if (typeof toast === 'function') toast('삭제에 실패했습니다.');
+        }
+    };
     window.startPlanFromCommunityPost = function () {
         const token = localStorage.getItem('accessToken');
         const post = window._currentPostDetail;

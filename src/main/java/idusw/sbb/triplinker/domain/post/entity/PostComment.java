@@ -67,4 +67,8 @@ public class PostComment {
         this.status = "DELETED";
         this.updatedAt = LocalDateTime.now();
     }
+    public void hide() {
+        this.status = "HIDDEN";
+        this.updatedAt = LocalDateTime.now();
+    }
 }

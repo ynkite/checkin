@@ -72,7 +72,9 @@ public class TravelPlanController {
             @AuthenticationPrincipal CustomUserDetails userDetails,  // ← 수정
             @PathVariable Long tripId) {
 
-        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userDetails.getUserId(), tripId);  // ← 수정
+        // 비회원(userDetails == null)일 때 에러가 나지 않도록 방어 로직 추가
+        Long userId = (userDetails != null) ? userDetails.getUserId() : null;
+        PlanDetailResponseDto detail = travelPlanService.getPlanDetail(userId, tripId);  // ← 수정
         return ResponseEntity.ok(ApiResponse.success(detail));
     }
 
@@ -110,5 +112,38 @@ public class TravelPlanController {
         return "index";
     }
 
+
+    //초대받은 링크 보관 DB 저장용
+    @PostMapping("/invited")
+    public ResponseEntity<ApiResponse<Void>> saveInvitedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody Map<String, Object> body) {
+        Long originalId = body.get("originalTripId") != null ? Long.valueOf(body.get("originalTripId").toString()) : null;
+        travelPlanService.saveInvitedPlan(userDetails.getUserId(), originalId, (String) body.get("inviteUrl"), (String) body.get("title"), (String) body.get("destination"));
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+    @GetMapping("/invited")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getInvitedPlans(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(travelPlanService.getInvitedPlans(userDetails.getUserId())));
+    }
+    @DeleteMapping("/invited/{planId}")
+    public ResponseEntity<ApiResponse<Void>> deleteInvitedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId) {
+        travelPlanService.deleteInvitedPlan(userDetails.getUserId(), planId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+
+
+    // 내 여행 기록 일반 삭제
+    @DeleteMapping("/{tripId}")
+    public ResponseEntity<ApiResponse<Void>> deletePlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId) {
+        travelPlanService.deletePlan(userDetails.getUserId(), tripId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 
 }

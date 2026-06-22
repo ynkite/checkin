@@ -59,7 +59,7 @@
       titles: {dashboard:'대시보드', users:'회원 관리', reports:'신고 관리', curation:'큐레이션 관리'},
       tables: {
         /* ★ 6열 (후기 열 없음 — 백엔드 /api/admin/users/{id}/posts 미구현) */
-        usersHead:    ['ID','아이디','이메일','가입일','상태','관리'],
+        usersHead:    ['ID','아이디','이름','이메일','가입일','상태','관리','전환'],
         reportsHead:  ['ID','게시글','신고자','작성자','사유','상태','처리'],
         curationHead: ['ID','제목','테마','순서','노출 기간','관리']
       },
@@ -93,8 +93,35 @@
       document.querySelector('#ad-reports h2').textContent   = ADMIN_UI_TEXTS.titles.reports;
       document.querySelector('#ad-curation h2').textContent  = ADMIN_UI_TEXTS.titles.curation;
 
-      document.querySelector('#ad-users table thead tr').innerHTML    = ADMIN_UI_TEXTS.tables.usersHead.map(h=>`<th>${h}</th>`).join('');
-      document.querySelector('#ad-reports table thead tr').innerHTML  = ADMIN_UI_TEXTS.tables.reportsHead.map(h=>`<th>${h}</th>`).join('');
+      // 정렬 상태
+      window._uSort={col:null,dir:'asc',list:[]};
+      window._rSort={col:null,dir:'asc',list:[]};
+
+      const sortIcon=(col,state)=>{
+        if(state.col!==col) return '<span style="opacity:.35;font-size:10px;margin-left:2px">↕</span>';
+        return state.dir==='asc'
+                ?'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↑</span>'
+                :'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↓</span>';
+      };
+
+      // 회원 테이블 정렬 가능 컬럼
+      const uSortKeys=['userId','username','name','email','createdAt','status',null,null];
+      document.querySelector('#ad-users table thead tr').innerHTML =
+              ADMIN_UI_TEXTS.tables.usersHead.map((h,i)=>{
+                const key=uSortKeys[i];
+                if(!key) return `<th>${h}</th>`;
+                return `<th style="cursor:pointer;user-select:none" onclick="sortUserTable('${key}')">${h}${sortIcon(key,window._uSort)}</th>`;
+              }).join('');
+
+      // 신고 테이블 정렬 가능 컬럼
+      const rSortKeys=['reportId',null,'reporterName',null,'reason','status',null];
+      document.querySelector('#ad-reports table thead tr').innerHTML =
+              ADMIN_UI_TEXTS.tables.reportsHead.map((h,i)=>{
+                const key=rSortKeys[i];
+                if(!key) return `<th>${h}</th>`;
+                return `<th style="cursor:pointer;user-select:none" onclick="sortReportTable('${key}')">${h}${sortIcon(key,window._rSort)}</th>`;
+              }).join('');
+
       document.querySelector('#ad-curation table thead tr').innerHTML = ADMIN_UI_TEXTS.tables.curationHead.map(h=>`<th>${h}</th>`).join('');
 
       document.querySelector('#ad-curation .bcard-ttl').textContent = ADMIN_UI_TEXTS.curationForm.cardTitle;
@@ -143,6 +170,20 @@
         });
       }
 
+      /* ⭐ 배지 실시간 미리보기 */
+      window.updateStarPreview = function(val){
+        const prev=document.getElementById('cur-star-preview'); if(!prev) return;
+        const parts=(val||'').split(',').map(t=>t.trim()).filter(Boolean);
+        prev.innerHTML=parts.length
+                ? parts.map(t=>`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--sage-pale);color:#1E7A69;border:1px solid var(--sage-l)">⭐ ${t}</span>`).join('')
+                : '<span style="font-size:11px;color:var(--text3)">입력하면 미리보기가 표시됩니다</span>';
+      };
+      const starInput=document.getElementById('cur-star-badges');
+      if(starInput){
+        starInput.addEventListener('input',function(){ updateStarPreview(this.value); });
+        updateStarPreview(starInput.value);
+      }
+
       /* 여행지 셀렉트 초기화 */
       const destCurProvSel = document.getElementById('cur-dest-prov');
       if(destCurProvSel){
@@ -168,11 +209,80 @@
       window.addDay    = _admAddDay;
       window.removeDay = _admRemoveDay;
       window.addPlanItem = _admAddPlanItem;
+      function _applySort(list, col, dir){
+        if(!col) return list;
+        return [...list].sort((a,b)=>{
+          let av=a[col]??'', bv=b[col]??'';
+          if(typeof av==='string') av=av.toLowerCase();
+          if(typeof bv==='string') bv=bv.toLowerCase();
+          if(av<bv) return dir==='asc'?-1:1;
+          if(av>bv) return dir==='asc'?1:-1;
+          return 0;
+        });
+      }
+
+      function _reRenderUserTable(list){
+        const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
+        // 회원 상태 배지 + 행 재렌더 (loadAdminUsers의 map 로직 재사용)
+        if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';return;}
+        tbody.innerHTML=list.map(u=>{
+          const dateStr=u.createdAt?u.createdAt.substring(0,10).replaceAll('-','.'):'';
+          let badge;
+          if(u.status==='ACTIVE') badge='<span class="badge" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">활성</span>';
+          else if(u.status==='SUSPENDED') badge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">정지</span>';
+          else if(u.status==='DELETED') badge='<span class="badge" style="background:#F5F5F5;color:#9E9E9E;border:1px solid #BDBDBD;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">탈퇴</span>';
+          else badge=`<span class="badge badge-a">${u.status}</span>`;
+          let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
+          let roleCell='<span style="font-size:11px;color:var(--text3)">탈퇴</span>';
+          if(u.status!=='DELETED'){
+            if(u.role!=='ADMIN') suspCell=u.status==='ACTIVE'?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`:`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+            else suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
+            if(u.role==='USER') roleCell=u.status==='SUSPENDED'?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled>관리자 전환</button>`:`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`;
+            else roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+          }
+          return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}"><td>#${u.userId}</td><td>${u.username}</td><td style="color:var(--text2)">${u.name||'-'}</td><td>${u.email}</td><td>${dateStr}</td><td>${badge}</td><td style="white-space:nowrap">${suspCell}</td><td style="white-space:nowrap">${roleCell}</td></tr>`;
+        }).join('');
+        filterAdminUserRows();
+      }
+
+      window.sortUserTable=function(col){
+        if(window._uSort.col===col) window._uSort.dir=window._uSort.dir==='asc'?'desc':'asc';
+        else{window._uSort.col=col;window._uSort.dir='asc';}
+        const sortIcon=(c)=>{if(window._uSort.col!==c) return '<span style="opacity:.35;font-size:10px;margin-left:2px">↕</span>';return window._uSort.dir==='asc'?'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↑</span>':'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↓</span>';};
+        const uSortKeys=['userId','username','name','email','createdAt','status',null,null];
+        document.querySelector('#ad-users table thead tr').innerHTML=ADMIN_UI_TEXTS.tables.usersHead.map((h,i)=>{const key=uSortKeys[i];if(!key)return`<th>${h}</th>`;return`<th style="cursor:pointer;user-select:none" onclick="sortUserTable('${key}')">${h}${sortIcon(key)}</th>`;}).join('');
+        _reRenderUserTable(_applySort(window._uSort.list,col,window._uSort.dir));
+      };
+
+      window.sortReportTable=function(col){
+        if(window._rSort.col===col) window._rSort.dir=window._rSort.dir==='asc'?'desc':'asc';
+        else{window._rSort.col=col;window._rSort.dir='asc';}
+        const sortIcon=(c)=>{if(window._rSort.col!==c) return '<span style="opacity:.35;font-size:10px;margin-left:2px">↕</span>';return window._rSort.dir==='asc'?'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↑</span>':'<span style="font-size:10px;margin-left:2px;color:var(--sage-d)">↓</span>';};
+        const rSortKeys=['reportId',null,'reporterName',null,'reason','status',null];
+        document.querySelector('#ad-reports table thead tr').innerHTML=ADMIN_UI_TEXTS.tables.reportsHead.map((h,i)=>{const key=rSortKeys[i];if(!key)return`<th>${h}</th>`;return`<th style="cursor:pointer;user-select:none" onclick="sortReportTable('${key}')">${h}${sortIcon(key)}</th>`;}).join('');
+        // 정렬된 목록으로 신고 테이블 재렌더
+        const sorted=_applySort(window._rSort.list,col,window._rSort.dir);
+        const tbody=document.getElementById('adminReportTable'); if(!tbody) return;
+        if(!sorted.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';return;}
+        const esc=s=>(s||'').toString().replace(/'/g,"\'");
+        tbody.innerHTML=sorted.map(r=>{
+          const actionCell=r.status==='PENDING'?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">숨김</button>&nbsp;<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">반려</button>`:'<span style="font-size:11px;color:var(--text3)">-</span>';
+          const pName=r.processedByName?`[${r.processedByName}]`:'';
+          let rStatusBadge;
+          if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
+          else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
+          else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
+          else rStatusBadge=`<span class="badge">${r.status}</span>`;
+          return`<tr><td>#${r.reportId}</td><td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600" onclick="openAdminPostDetail(${r.postId})">${r.postTitle||('#'+r.postId)}</span></td><td>${r.reporterName||'-'}</td><td style="white-space:nowrap"><span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? esc(r.commentAuthorName||'-') : esc(r.postAuthorName||'-')}</span><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},'${esc(r.commentAuthorName||'')}')">보기</button></td><td>${r.reason}</td><td>${rStatusBadge}</td><td style="white-space:nowrap">${actionCell}</td></tr>`;
+        }).join('');
+      };
+
       window.loadAdminUsers        = loadAdminUsers;
       window.loadAdminReports      = loadAdminReports;
       window.filterAdminUserRows   = filterAdminUserRows;
       window.findReportedAuthor    = findReportedAuthor;
       window.searchAdminUserByName = searchAdminUserByName;
+      window.openAdminPostDetail   = openAdminPostDetail;
       window.unsuspendUser         = unsuspendUser;
       window.loadAdminCurations    = loadAdminCurations;
       window.saveCuration          = saveCuration;
@@ -321,55 +431,73 @@
       const status = document.getElementById('admin-report-status-filter')?.value || 'PENDING';
       loadAdminReports(status, page);
     }
-    function loadAdminUsers(page=0, status=''){
+    function loadAdminUsers(page=0, status='', searchName=''){
       const token=localStorage.getItem('accessToken');
       const headers={'Authorization':'Bearer '+token};
       const statusSel=document.getElementById('admin-user-status-filter');
       if(statusSel&&status===''&&statusSel.value) status=statusSel.value;
       if(statusSel) statusSel.value=status;
 
-      fetch(`/api/admin/users?status=${status}&page=${page}&size=10`,{headers})  // ← 50→10
+      /* 이름 검색 시 전체 로드 (클라이언트 필터) */
+      const pageSize = searchName ? 9999 : 10;
+
+      fetch(`/api/admin/users?status=${status}&page=${page}&size=${pageSize}`,{headers})
               .then(r=>r.json())
               .then(res=>{
                 const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
-                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
-                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
+                  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage');
                   return;
                 }
                 const list=res.data.content||[];
                 if(!list.length){
-                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
-                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage'); // ← 추가
+                  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3)">회원이 없습니다</td></tr>';
+                  renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage');
                   return;
                 }
-                /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt
-                   name 필드는 표에 표시 안 함 (6열 유지) */
+                /* ★ AdminUserListResponseDto: userId / username / name / email / status / role / createdAt */
                 tbody.innerHTML=list.map(u=>{
                   const dateStr=u.createdAt?u.createdAt.substring(0,10).replaceAll('-','.'):'';
-                  let badge='<span class="badge badge-a">ACTIVE</span>';
-                  if(u.status==='SUSPENDED') badge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">SUSPENDED</span>';
-                  if(u.status==='DELETED')   badge='<span class="badge badge-d">DELETED</span>';
+                  // 한글 상태 배지
+                  let badge;
+                  if(u.status==='ACTIVE')    badge='<span class="badge" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">활성</span>';
+                  else if(u.status==='SUSPENDED') badge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">정지</span>';
+                  else if(u.status==='DELETED')   badge='<span class="badge" style="background:#F5F5F5;color:#9E9E9E;border:1px solid #BDBDBD;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">탈퇴</span>';
+                  else badge=`<span class="badge badge-a">${u.status}</span>`;
 
-                  let mgmt='<span style="font-size:11px;color:var(--text3)">탈퇴 회원</span>';
+                  // 관리 열: 정지/정지해제만
+                  let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
+                  // 전환 열: 역할 변경만
+                  let roleCell='<span style="font-size:11px;color:var(--text3)">탈퇴</span>';
                   if(u.status!=='DELETED'){
-                    const suspBtn=u.status==='ACTIVE'
-                            ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
-                            :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
-                    const roleBtn=u.role==='USER'
-                            ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`
-                            :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
-                    mgmt=`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">${suspBtn}${roleBtn}</div>`;
+                    if(u.role!=='ADMIN'){
+                      suspCell=u.status==='ACTIVE'
+                              ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
+                              :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+                    } else {
+                      suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
+                    }
+                    if(u.role==='USER'){
+                      roleCell=(u.status==='SUSPENDED')
+                              ?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled title="정지된 회원은 관리자로 전환할 수 없습니다">관리자 전환</button>`
+                              :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`;
+                    } else {
+                      roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+                    }
                   }
                   return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
             <td>#${u.userId}</td>
             <td>${u.username}</td>
+            <td style="color:var(--text2)">${u.name||'-'}</td>
             <td>${u.email}</td>
             <td>${dateStr}</td>
             <td>${badge}</td>
-            <td style="white-space:nowrap">${mgmt}</td>
+            <td style="white-space:nowrap">${suspCell}</td>
+            <td style="white-space:nowrap">${roleCell}</td>
           </tr>`;
                 }).join('');
+                window._uSort.list=list;
                 filterAdminUserRows();
               });
     }
@@ -394,7 +522,7 @@
     async function searchAdminUserByName(name){
       if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
       const usersBtn=document.querySelector('.admin-link[onclick*="\'users\'"]');
-      // 탭만 전환 (데이터 로드 없이)
+      /* 탭 전환 */
       ['dashboard','users','reports','curation'].forEach(s=>{
         const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
       });
@@ -402,12 +530,12 @@
       document.querySelectorAll('.admin-nav .admin-link').forEach(b=>b.classList.remove('on'));
       if(usersBtn) usersBtn.classList.add('on');
 
-      // 검색어 먼저 세팅
+      /* 검색어 세팅 */
       const inp=document.getElementById('admin-user-search');
       if(inp) inp.value=name;
 
-      // 검색어 세팅 후 fetch → 완료 후 filterAdminUserRows 실행
-      await loadAdminUsers(0,'');
+      /* searchName 을 넘겨서 전체 로드(size=9999) 후 클라이언트 필터 */
+      await loadAdminUsers(0, '', name);
       filterAdminUserRows();
       toast(`"${name}" 검색 결과로 이동했습니다`);
     }
@@ -434,29 +562,62 @@
                   tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';
                   return;
                 }
+                window._rSort.list=list;
                 tbody.innerHTML=list.map(r=>{
                   const esc=s=>(s||'').toString().replace(/'/g,"\\'");
                   const actionCell=r.status==='PENDING'
-                          ?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('delete',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">삭제</button>&nbsp;`
+                          ?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">숨김</button>&nbsp;`
                           +`<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">반려</button>`
-                          :'<span style="font-size:11px;color:var(--text3)">처리 완료</span>';
+                          :'<span style="font-size:11px;color:var(--text3)">-</span>';
+                  // 한글 상태 배지 + 처리자 이름
+                  const pName=r.processedByName?`[${r.processedByName}]`:'';
+                  let rStatusBadge;
+                  if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
+                  else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:#E8F5E9;color:#2E7D32;border:1px solid #A5D6A7;padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
+                  else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:#E3F2FD;color:#1565C0;border:1px solid #90CAF9;padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
+                  else rStatusBadge=`<span class="badge">${r.status}</span>`;
                   return`<tr>
             <td>#${r.reportId}</td>
-            <td>${r.postTitle||('#'+r.postId)}</td>
+            <td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600"
+                      onclick="openAdminPostDetail(${r.postId})"
+                      title="클릭하면 해당 게시글로 이동합니다">${r.postTitle||('#'+r.postId)}</span></td>
             <td>${r.reporterName||'-'}</td>
-            <td><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId})">작성자 보기</button></td>
+            <td style="white-space:nowrap">
+              <span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? esc(r.commentAuthorName||'-') : esc(r.postAuthorName||'-')}</span>
+              <button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},'${esc(r.commentAuthorName||'')}')">보기</button>
+            </td>
             <td>${r.reason}</td>
-            <td><span class="badge" style="background:#FEF3F2;color:var(--coral);border:1px solid #FECACA;padding:3px 8px;border-radius:12px;font-size:11px">${r.status}</span></td>
+            <td>${rStatusBadge}</td>
             <td style="white-space:nowrap">${actionCell}</td>
           </tr>`;
                 }).join('');
               });
     }
 
-    async function findReportedAuthor(postId){
+    async function findReportedAuthor(postId, commentAuthorName){
+      /* 댓글 신고인 경우 commentAuthorName 이 이미 내려옴 → 바로 검색 */
+      if(commentAuthorName && commentAuthorName.trim()){
+        searchAdminUserByName(commentAuthorName.trim());
+        return;
+      }
+      /* 게시글 신고인 경우 게시글 작성자를 조회 */
       const res=await api.get('/api/posts/'+postId);
       if(!res.success||!res.data){toast('작성자 정보를 불러오지 못했습니다.');return;}
-      searchAdminUserByName(res.data.authorName);
+      /* PostDetailResponseDto 는 writerName 필드를 사용 (authorName 아님) */
+      const name = res.data.writerName || res.data.authorName
+              || (res.data.author && (res.data.author.name || res.data.author.username)) || '';
+      if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
+      searchAdminUserByName(name);
+    }
+
+    /* 신고 관리에서 글 제목 클릭 시 커뮤니티 해당 게시글로 이동 */
+    function openAdminPostDetail(postId){
+      if(!postId) return;
+      toast('게시글로 이동합니다...');
+      if(typeof go === 'function') go('community');
+      setTimeout(function(){
+        if(typeof openPostDetail === 'function') openPostDetail(postId);
+      }, 350);
     }
 
     /* ============================================================
@@ -571,8 +732,8 @@
         days.push({day:di+1,label:`Day ${di+1}`,places});
       });
 
-      // 태그 파싱 (#cur-tags 입력값 → 배열)
-      const tagsRaw = document.getElementById('cur-tags')?.value?.trim() || '';
+      // 테마+태그 합친 필드 파싱 (cur-theme을 쉼표로 분리해 tags로 사용)
+      const tagsRaw = document.getElementById('cur-theme')?.value?.trim() || '';
       const tags = tagsRaw ? tagsRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
 
       // Day에서 타입별 자동 추출
@@ -593,8 +754,13 @@
         });
       });
 
+      // ⭐ 배지 파싱
+      const starBadgesRaw = document.getElementById('cur-star-badges')?.value?.trim() || '';
+      const starBadges = starBadgesRaw ? starBadgesRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
+
       const extra_notes=JSON.stringify({
         cardColor: document.getElementById('cur-card-color')?.value || '#E0F7FA',
+        starBadges,
         tags,
         adminRecommendedAccommodations,
         adminRecommendedRestaurants,
@@ -640,7 +806,7 @@
 
     function resetCurationForm(){
       _curEditId=null; _admDayCount=0;
-      ['cur-title','cur-theme','cur-start','cur-end','cur-tags','cur-dest-prov'].forEach(id=>{
+      ['cur-title','cur-theme','cur-start','cur-end','cur-tags','cur-star-badges','cur-dest-prov'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.value='';
       });
       const cityResetEl=document.getElementById('cur-dest-city');
@@ -682,9 +848,16 @@
         const ccEl=document.getElementById('cur-card-color');
         if(ccEl) ccEl.value=en.cardColor||'#E0F7FA';
 
-        // 태그 복원 (배열 → 콤마 구분 문자열)
-        const tagsEl=document.getElementById('cur-tags');
-        if(tagsEl) tagsEl.value=(en.tags||[]).join(', ');
+        // 태그 복원 → cur-theme 필드에 (합친 필드)
+        const themeEl=document.getElementById('cur-theme');
+        if(themeEl && en.tags && en.tags.length) themeEl.value=en.tags.join(', ');
+
+        // ⭐ 배지 복원
+        const starBadgesEl=document.getElementById('cur-star-badges');
+        if(starBadgesEl && en.starBadges && en.starBadges.length){
+          starBadgesEl.value=en.starBadges.join(', ');
+          updateStarPreview(starBadgesEl.value);
+        }
 
         const restoreChip=(sel,val,multi)=>{
           document.querySelectorAll(`${sel} .chip`).forEach(chip=>{
@@ -851,7 +1024,7 @@
                     style="width:auto"
                     onchange="loadAdminReports(this.value)">
               <option value="PENDING">미처리</option>
-              <option value="RESOLVED">처리완료(삭제)</option>
+              <option value="RESOLVED">처리완료</option>
               <option value="REJECTED">반려됨</option>
               <option value="">전체</option>
             </select>
@@ -869,29 +1042,31 @@
           <div class="bcard">
             <div class="bcard-ttl"></div>
 
-            <!-- 제목 / 테마 -->
+            <!-- 제목 / 테마+태그 (합친 필드) -->
             <div class="form-row" style="margin-top:10px">
               <div class="form-group">
                 <label class="form-label">제목 <span style="color:var(--coral)">*</span></label>
                 <input class="form-input" id="cur-title" placeholder="제주 에메랄드 해안 플랜">
               </div>
               <div class="form-group">
-                <label class="form-label">테마</label>
-                <input class="form-input" id="cur-theme" placeholder="초여름, 힐링, 오션뷰">
+                <label class="form-label">테마 / 태그 <small style="color:var(--text3);font-weight:400">(쉼표로 구분 · 메인 카드 배지로 표시)</small></label>
+                <input class="form-input" id="cur-theme" placeholder="여름 여행지 추천, 힐링, 오션뷰">
+                <input type="hidden" id="cur-tags" value="">
               </div>
             </div>
-            <!-- 태그 / 카드 색상 -->
+            <!-- 카드 색상 + ⭐ 배지 -->
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">태그 <small style="color:var(--text3);font-weight:400">(쉼표로 구분 · 메인 카드에 표시)</small></label>
-                <input class="form-input" id="cur-tags" placeholder="초여름, 힐링, 오션뷰">
-              </div>
               <div class="form-group">
                 <label class="form-label">카드 배경색 <small style="color:var(--text3);font-weight:400">(메인 카드 색상)</small></label>
                 <div style="display:flex;align-items:center;gap:8px">
                   <input type="color" id="cur-card-color" value="#E0F7FA"
                          style="width:44px;height:36px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;padding:2px">
                 </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">⭐ 배지 텍스트 <small style="color:var(--text3);font-weight:400">(쉼표로 구분 · 카드 상단 배지에 표시)</small></label>
+                <input class="form-input" id="cur-star-badges" placeholder="여름, 액티비티, 서핑">
+                <div id="cur-star-preview" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;min-height:24px"></div>
               </div>
             </div>
             <!-- 노출 기간 / 순서 -->

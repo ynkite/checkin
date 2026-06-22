@@ -47,4 +47,7 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     // TODO: 확정 기능 구현 후 PlaceService.parseAndSavePlacesFromAllPlans() 에서 사용
     List<TravelPlan> findByStatus(String status);
 
+    // 보관해둔 복사본(INVITED)들을 찾기
+    List<TravelPlan> findByScrapedFromPlanId(Long scrapedFromPlanId);
+
 }

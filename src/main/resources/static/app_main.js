@@ -143,6 +143,21 @@ function loadPageCSS(href) {
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
+// 로고/홈 클릭 → 메인페이지로 이동하면서 강제 새로고침
+// (SPA라 URL이 이미 '/'여도 reload가 생략되지 않도록 sessionStorage를 main으로 맞추고 reload)
+function goHomeRefresh() {
+  try {
+    sessionStorage.setItem('currentPage', 'main');
+    sessionStorage.removeItem('map_refresh_lock');
+  } catch (e) {}
+  // 경로가 '/'가 아니면 메인 경로로 이동(자동 새로고침), 이미 '/'면 강제 reload
+  if (location.pathname !== '/') {
+    location.href = '/';
+  } else {
+    location.reload();
+  }
+}
+
 function go(id, addToHistory) {
   sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
   if (addToHistory !== false) history.pushState({page: id}, '', '/');
@@ -151,23 +166,15 @@ function go(id, addToHistory) {
   if (pg) pg.classList.add('active');
 
   if (id === 'map') {
-    // 🎯 지도방문 플래그가 없으면 세션에 기록하고 쿨하게 F5 한 번 날려버리기
-    if (!sessionStorage.getItem('map_refresh_lock')) {
-      sessionStorage.setItem('map_refresh_lock', 'true');
-      location.reload();
-      return; // 새로고침 되므로 아래 코드는 실행할 필요 없음
-    }
-
-    // F5를 누르고 다시 들어왔을 때 실행되는 안전망
+    // 🎯 강제 새로고침(location.reload)으로 인해 링크를 두 번 엔터쳐야 했던 버그 완벽 제거!
     setTimeout(function() {
       if (window._kakaoMap) {
         window._kakaoMap.relayout();
         if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
+      } else if (typeof initKakaoMap === 'function') {
+        initKakaoMap();
       }
     }, 100);
-  } else {
-    // 🎯 지도 외에 다른 페이지(홈, 플래너 등)로 가면 플래너 플래그를 지워줘서 나중에 지도 올 때 또 새로고침 되게 함
-    sessionStorage.removeItem('map_refresh_lock');
   }
 
   //가계부 페이지 진입 시 항상 실제 데이터로 갱신
@@ -176,7 +183,7 @@ function go(id, addToHistory) {
     _populateLedgerTripCards();
     const selEl  = document.querySelector('.ledger-selector-outer');
     const mainEl = document.getElementById('ledger-main');
-    const tripStillValid = _myTrips.some(t => t.tripId === _budgetSelectedTripId);
+    const tripStillValid = _myTrips.some(t => t.id === _budgetSelectedTripId);
     if (tripStillValid) {
       if (selEl)  selEl.style.display  = 'none';
       if (mainEl) mainEl.style.display = 'block';
@@ -210,14 +217,14 @@ function go(id, addToHistory) {
   const wfi = document.querySelectorAll('.wf-item');
   if (map[id] !== undefined && wfi[map[id]]) wfi[map[id]].classList.add('on');
   // nav-link .on 동기화 (로고 클릭 등 setNav 없이 호출되는 경우 대응)
-    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-    const _goNavMap = { main: 0, community: 1, weather: 2 };
-    const _goNavLinks = document.querySelectorAll('.nav-link');
-    if (_goNavMap[id] !== undefined && _goNavLinks[_goNavMap[id]]) {
-        _goNavLinks[_goNavMap[id]].classList.add('on');
-      } else if (id === 'planner') {
-        document.getElementById('navPlannerBtn')?.classList.add('on');
-      }
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+  const _goNavMap = { main: 0, community: 1, weather: 2 };
+  const _goNavLinks = document.querySelectorAll('.nav-link');
+  if (_goNavMap[id] !== undefined && _goNavLinks[_goNavMap[id]]) {
+    _goNavLinks[_goNavMap[id]].classList.add('on');
+  } else if (id === 'planner') {
+    document.getElementById('navPlannerBtn')?.classList.add('on');
+  }
   window.scrollTo(0, 0);
 
   // 후기/장소 상세 페이지 이동 시 렌더러 자동 호출
@@ -276,7 +283,11 @@ function go(id, addToHistory) {
 
   if (id === 'community') {
     setTimeout(function () {
+      if (window._pendingPlaceReview) return;
       var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
+      var tabEl = document.getElementById('tab-' + tab);
+      // 이미 게시글이 있으면 재로드 안 함 (뒤로가기 시 깜박임/초기화 방지)
+      if (tabEl && tabEl.querySelector('.comm-post-item')) return;
       if (['stay', 'food', 'tour', 'cafe'].indexOf(tab) !== -1) {
         if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
       } else {
@@ -306,6 +317,7 @@ async function _initSession(accessToken, refreshToken) {
   if (meRes.success && meRes.data) {
     _currentUser  = meRes.data;
     window._currentUser = _currentUser;
+    window._isAdmin   = (_currentUser.role === 'ADMIN');   // 숨김 콘텐츠 접근 제어용
     _isSuspended  = (_currentUser.role === 'SUSPENDED');
   }
 
@@ -317,7 +329,7 @@ async function _initSession(accessToken, refreshToken) {
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
   Token.clear();
-  _currentUser = null; window._currentUser = null; _isSuspended = false; _loggedIn = false;
+  _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
   _userNotifs = []; _myTrips = [];
   updateNav();
   toast('⚠️ 세션이 만료되었습니다. 다시 로그인해주세요.');
@@ -343,7 +355,7 @@ function updateNav() {
       saveInviteBtn.id = 'navSaveInviteBtn';
       saveInviteBtn.className = 'btn-f';
       saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
-      saveInviteBtn.innerHTML = '💾 일정 저장하기';
+      saveInviteBtn.innerHTML = '🔗 링크 보관하기';
 
       saveInviteBtn.onclick = () => {
         const tid = window._currentTripId;
@@ -353,40 +365,27 @@ function updateNav() {
         saveInviteBtn.style.opacity = '0.7';
         saveInviteBtn.style.pointerEvents = 'none';
 
-        setTimeout(() => {
-          try {
-            // 🎯 현재 브라우저 주소창의 링크를 그대로 가져옵니다.
-            const exactInviteUrl = window.location.href;
-            const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
-            const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
+        const exactInviteUrl = window.location.href;
+        const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
+        const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
 
-            // 로컬 스토리지(브라우저 저장소)에서 기존 초대 목록 가져오기
-            let invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
-
-            // 중복 방지 (이미 같은 링크가 저장되어 있으면 무시)
-            if (!invitedList.some(item => item.url === exactInviteUrl)) {
-              invitedList.push({
-                url: exactInviteUrl,
-                title: titleText,
-                destination: metaText,
-                savedAt: new Date().toISOString()
-              });
-              // 로컬 스토리지에 저장 (DB 없이 프론트엔드에서만 관리)
-              localStorage.setItem('myInvitedTrips', JSON.stringify(invitedList));
-            }
-
+        api.post('/api/trips/invited', {
+          originalTripId: tid,
+          inviteUrl: exactInviteUrl,
+          title: titleText,
+          destination: metaText
+        }).then(res => {
+          if(res.success) {
             toast('✅ [초대받은 일정] 탭에 안전하게 저장되었습니다!');
             saveInviteBtn.style.display = 'none';
-            window._isInvitedEditView = false;
-
             if (typeof updateMyPageUI === 'function') updateMyPageUI();
-          } catch(e) {
+          } else {
             toast('⚠️ 저장 중 오류가 발생했습니다.');
-            saveInviteBtn.innerHTML = '💾 일정 저장하기';
+            saveInviteBtn.innerHTML = '📌 내 목록에 담기';
             saveInviteBtn.style.opacity = '1';
             saveInviteBtn.style.pointerEvents = 'auto';
           }
-        }, 400);
+        });
       };
       navBtns.insertBefore(saveInviteBtn, navBtns.firstChild);
     }
@@ -405,35 +404,37 @@ function updateNav() {
     if (un) { un.style.display = 'none'; un.textContent = ''; }
     if (lo) lo.style.display = 'none';
     if (nb) nb.style.display = 'none';
+    // 로그아웃 시 알림 배지 숫자도 반드시 숨김
+    const _badgeEl = document.getElementById('notifBadge');
+    if (_badgeEl) _badgeEl.style.display = 'none';
     if (al) al.style.display = 'none';
   }
 
   // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
   if (saveInviteBtn) {
     if (_loggedIn && window._isInvitedEditView) {
-      // ✨ 내 브라우저(로컬 스토리지)에 이미 저장된 링크인지 싹 검사합니다!
-      const currentUrl = window.location.href;
-      const invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
-      const isAlreadySaved = invitedList.some(item => item.url === currentUrl);
+      api.get('/api/trips/invited').then(r => {
+        if (r.success && r.data) {
+          const currentUrl = window.location.href;
+          const tid = window._currentTripId;
+          const isAlreadySaved = r.data.some(item => item.originalTripId === tid || item.url === currentUrl);
 
-      if (isAlreadySaved) {
-        saveInviteBtn.style.display = 'none'; // 이미 저장했으면 숨김 처리
-      } else {
-        saveInviteBtn.style.display = 'inline-block'; // 안 저장했으면 띄움
-      }
+          saveInviteBtn.style.display = isAlreadySaved ? 'none' : 'inline-block';
+        }
+      });
     } else {
       saveInviteBtn.style.display = 'none';
     }
   }
 
   const plannerBtn = document.getElementById('navPlannerBtn');
-    if (plannerBtn) {
-        if (_loggedIn && _hasPlannerDraft()) {
-            plannerBtn.textContent = '✏️ 작성중인 플랜';
-          } else {
-            plannerBtn.textContent = '✈ 플랜';
-          }
-      }
+  if (plannerBtn) {
+    if (_loggedIn && _hasPlannerDraft()) {
+      plannerBtn.textContent = '✏️ 작성중인 플랜';
+    } else {
+      plannerBtn.textContent = '✈ 플랜';
+    }
+  }
   if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
 }
 
@@ -603,7 +604,7 @@ function _handleOAuthCallback() {
 async function doLogout() {
   await api.post('/api/auth/logout', {});
   Token.clear();
-  _currentUser = null; window._currentUser = null; _isSuspended = false; _loggedIn = false;
+  _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
   _userNotifs = []; _myTrips = [];
   updateNav();
   toast('로그아웃 되었습니다.');
@@ -682,25 +683,25 @@ async function updateMyPageUI() {
   if (em) em.textContent = _currentUser.email || '';
 
   // ✨ 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
-  const [tripsRes] = await Promise.all([
+  const [tripsRes, invitedRes] = await Promise.all([
     api.get('/api/trips'),
+    api.get('/api/trips/invited'),
     _renderMyReviews(),
     _renderMyLikedPosts(),
   ]);
 
   _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
-
-  // 🎯 초대받은 일정은 DB가 아니라 브라우저(로컬 스토리지)에서 꺼냅니다!
-  const invitedList = JSON.parse(localStorage.getItem('myInvitedTrips') || '[]');
+  const invitedList = (invitedRes.success && invitedRes.data) ? invitedRes.data : [];
 
   _renderMyTrips(_myTrips);
-  _renderMyInvitedTrips(invitedList); // 로컬 데이터로 렌더러 기동
+  _renderMyInvitedTrips(invitedList); // DB 데이터로 렌더러 기동
   updateLedgerList();
 }
 
 window._invitedTripsData = [];
 window._invitedTripsCurrentPage = 1;
 const INVITED_PER_PAGE = 6;
+window._invitedDeleteMode = false;
 
 function _renderMyInvitedTrips(trips = null, page = 1) {
   const container = document.getElementById('my-invited-list');
@@ -723,23 +724,44 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
   const startIndex = (currentPage - 1) * INVITED_PER_PAGE;
   const paginated = allInvited.slice(startIndex, startIndex + INVITED_PER_PAGE);
 
-  let html = '';
+  let html = `
+  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 class="my-sec-ttl" style="margin:0;">초대받은 일정</h3>
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      ${window._invitedDeleteMode ? `
+        <button onclick="execInvitedBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="toggleInvitedDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
+      ` : `
+        <button onclick="toggleInvitedDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
+      `}
+    </div>
+  </div>
+  <div id="my-invited-list" class="trip-list">`;
 
   if (paginated.length > 0) {
     html += paginated.map(x => {
-      // 🎯 클릭 시 복사해둔 브라우저 링크(x.url)로 바로 이동!
+      // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
+      const cardClickAction = window._invitedDeleteMode
+          ? `const chk = document.getElementById('chk-invited-${x.id}'); if(chk) chk.checked = !chk.checked;`
+          : `window.location.href='${x.url}'`;
+
       return `
-      <div class="trip-card" onclick="window.location.href='${x.url}'" style="cursor:pointer; position:relative;"> 
+      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+        ${window._invitedDeleteMode ? `
+          <input type="checkbox" class="invited-del-chk" id="chk-invited-${x.id}" value="${x.id}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
+        ` : ''}
         <div class="trip-thumb">🤝</div>
-        <div class="trip-info">
+        <div class="trip-info" style="flex:1;">
           <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
-          <div class="trip-meta">${x.destination || '공유받은 지역'} · 내 브라우저 저장됨</div>
+          <div class="trip-meta">${x.destination || '공유받은 지역'}</div>
         </div>
         <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
-          🔗 연결됨
+          ${window._invitedDeleteMode ? '<span style="color:var(--text3); font-size:11px; font-weight:600;">선택 대기</span>' : '🔗 연결됨'}
         </div>
       </div>`;
     }).join('');
+
+    html += `</div>`; // .trip-list 닫기
 
     html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
 
@@ -767,18 +789,47 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     html += `</div>`;
 
   } else {
+    html += `</div>`;
     html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">초대받은 일정이 없습니다.</div>';
   }
 
   container.innerHTML = html;
 }
 
+// 🎯 내 초대받은 일정 삭제 모드 토글
+function toggleInvitedDeleteMode(isDeleteMode) {
+  window._invitedDeleteMode = isDeleteMode;
+  _renderMyInvitedTrips(null, window._invitedTripsCurrentPage);
+}
+
+// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (API 연동)
+async function execInvitedBulkDelete() {
+  const chks = document.querySelectorAll('.invited-del-chk:checked');
+  if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+  if (!confirm(`선택한 ${chks.length}개의 초대 일정을 정말 삭제하시겠습니까?`)) return;
+
+  let successCount = 0;
+  for (const chk of chks) {
+    const id = chk.value;
+    const res = await api.del('/api/trips/invited/' + id);
+    if (res.success) successCount++;
+  }
+
+  if (successCount > 0) {
+    toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+    window._invitedDeleteMode = false;
+    updateMyPageUI(); // 마이페이지 전체 리로드
+  } else {
+    toast('⚠️ 삭제 처리에 실패했습니다.');
+  }
+}
 
 
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 window._myTripsData = [];
 window._myTripsCurrentPage = 1;
 const TRIPS_PER_PAGE = 6; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+window._myTripsDeleteMode = false;
 
 function _renderMyTrips(trips = null, page = 1) {
   const te = document.getElementById('my-trips');
@@ -800,44 +851,52 @@ function _renderMyTrips(trips = null, page = 1) {
   const startIndex = (currentPage - 1) * TRIPS_PER_PAGE;
   const paginatedTrips = allTrips.slice(startIndex, startIndex + TRIPS_PER_PAGE);
 
-  let html = '<h3 class="my-sec-ttl">내 여행 기록</h3>';
+  // 🎯 타이틀 옆에 삭제버튼 배치 (초대받은 일정과 동일한 로직)
+  let html = `
+  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 class="my-sec-ttl" style="margin:0;">내 여행 기록</h3>
+    <div style="display:flex; gap:8px; margin-left:auto;">
+      ${window._myTripsDeleteMode ? `
+        <button onclick="execMyTripsBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="toggleMyTripsDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
+      ` : `
+        <button onclick="toggleMyTripsDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
+      `}
+    </div>
+  </div>`;
 
   // 3. 재민님이 주신 오리지널 스타일(trip-card) 그대로 렌더링
   if (paginatedTrips.length > 0) {
     html += paginatedTrips.map(x => {
-      console.log("Trip Data Check:", x);
-
       // 1. 최종 수정 날짜 파싱 및 줄바꿈 처리
       let lastUpdate = '—';
       if (x.updatedAt) {
         let dateStr = x.updatedAt.replace ? x.updatedAt.replace(/-/g, '/').replace('T', ' ') : x.updatedAt;
-        if (typeof dateStr === 'string' && dateStr.includes('.')) {
-          dateStr = dateStr.split('.')[0];
-        }
-
+        if (typeof dateStr === 'string' && dateStr.includes('.')) dateStr = dateStr.split('.')[0];
         const d = new Date(dateStr);
-
         if (!isNaN(d.getTime())) {
-          const year  = d.getFullYear();
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const day   = String(d.getDate()).padStart(2, '0');
-          const hours = String(d.getHours()).padStart(2, '0');
-          const mins  = String(d.getMinutes()).padStart(2, '0');
-
+          const year  = d.getFullYear(); const month = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0'); const mins = String(d.getMinutes()).padStart(2, '0');
           lastUpdate = `${year}.${month}.${day}<br>${hours}:${mins}`;
         }
       }
 
-      // 2. 백엔드 DTO 매핑
       const displayStart = x.startDate ? x.startDate.replace(/-/g, '.') : '';
       const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
       const displayDest  = x.destination || '';
 
-      // 오리지널 카드 UI
+      // 🎯 삭제 모드일 때 클릭하면 체크박스가 눌리도록 로직 분기
+      const cardClickAction = window._myTripsDeleteMode
+          ? `const chk = document.getElementById('chk-mytrip-${x.id || x.tripId}'); if(chk) chk.checked = !chk.checked;`
+          : `openMyTrip(${x.id || x.tripId})`;
+
       return `
-      <div class="trip-card" onclick="openMyTrip(${x.id || x.tripId})"> 
+      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+        ${window._myTripsDeleteMode ? `
+          <input type="checkbox" class="mytrip-del-chk" id="chk-mytrip-${x.id || x.tripId}" value="${x.id || x.tripId}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
+        ` : ''}
         <div class="trip-thumb">🗺️</div>
-        <div class="trip-info">
+        <div class="trip-info" style="flex:1;">
           <div class="trip-ttl">${x.title || '여행 플랜'}</div>
           <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
         </div>
@@ -883,6 +942,34 @@ function _renderMyTrips(trips = null, page = 1) {
   }
 
   te.innerHTML = html;
+}
+
+// 🎯 내 여행 기록 삭제 모드 토글
+function toggleMyTripsDeleteMode(isDeleteMode) {
+  window._myTripsDeleteMode = isDeleteMode;
+  _renderMyTrips(null, window._myTripsCurrentPage);
+}
+
+// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (새로 만든 API 연동)
+async function execMyTripsBulkDelete() {
+  const chks = document.querySelectorAll('.mytrip-del-chk:checked');
+  if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+  if (!confirm(`선택한 ${chks.length}개의 내 여행 일정을 정말 삭제하시겠습니까?`)) return;
+
+  let successCount = 0;
+  for (const chk of chks) {
+    const id = chk.value;
+    const res = await api.del('/api/trips/' + id); // 🚀 새로 추가한 백엔드 API 호출!
+    if (res.success) successCount++;
+  }
+
+  if (successCount > 0) {
+    toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+    window._myTripsDeleteMode = false;
+    updateMyPageUI(); // 마이페이지 전체 리로드
+  } else {
+    toast('⚠️ 삭제 처리에 실패했습니다.');
+  }
 }
 
 // 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
@@ -1171,7 +1258,14 @@ function updateNotifBadge() {
   const b = document.getElementById('notifBadge');
   if (!b) return;
   const cnt = _userNotifs.filter(n => !n.isRead).length;
-  b.style.display = cnt > 0 ? '' : 'none';
+  if (cnt > 0) {
+    b.style.display = 'inline-flex';
+    b.style.alignItems = 'center';
+    b.style.justifyContent = 'center';
+    b.textContent = cnt > 99 ? '99+' : String(cnt);
+  } else {
+    b.style.display = 'none';
+  }
 }
 
 async function openNotificationPopup() {
@@ -1180,6 +1274,11 @@ async function openNotificationPopup() {
   renderNotifList();
   document.getElementById('notifOverlay').style.display = 'block';
   document.getElementById('notifPopup').style.display = 'block';
+  // 팝업을 열 때 한 번만 전체 읽음 처리 (renderNotifList 안에서는 하지 않음)
+  api.patch('/api/notifications/read-all', {}).then(() => {
+    _userNotifs.forEach(n => n.isRead = true);
+    updateNotifBadge();
+  });
 }
 
 function closeNotifPopup() {
@@ -1229,27 +1328,40 @@ function renderNotifList() {
     list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:13px">새로운 알림이 없습니다.</div>';
     return;
   }
+
+  function formatNotifContent(n) {
+    const raw = n.content || '';
+    // \n을 <br>로 변환하여 줄바꿈 보존
+    // 사유 라벨(정지사유 / 신고사유 / 반려사유)은 볼드 처리
+    return raw
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/(정지사유|신고사유|반려사유|삭제사유)/g,'<strong>$1</strong>')
+        .replace(/\n/g,'<br>');
+  }
+
+  function notifIcon(type) {
+    if (type === 'ACCOUNT_SUSPENDED') return '🚫';
+    if (type === 'REPORT_REJECTED')   return '↩️';
+    if (type === 'POST_DELETED')      return '🗑️';
+    if (type === 'ROLE_CHANGED')      return '🔑';
+    return '📢';
+  }
+
   list.innerHTML = _userNotifs.map((n) => `
     <div style="padding:12px;border-radius:9px;margin-bottom:6px;
                 background:${n.isRead ? 'var(--cream)' : 'var(--sage-pale)'};
                 border:1px solid ${n.isRead ? 'var(--border2)' : 'var(--sage-l)'}">
       <div style="display:flex;align-items:flex-start;gap:9px">
-        <span style="font-size:18px;flex-shrink:0">📢</span>
+        <span style="font-size:18px;flex-shrink:0">${notifIcon(n.type)}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.title || ''}</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.6">${n.content || ''}</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;word-break:keep-all;overflow-wrap:break-word">${formatNotifContent(n)}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:4px">${n.createdAt ? n.createdAt.substring(0,10) : ''}</div>
         </div>
         <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">✕</button>
       </div>
     </div>`).join('');
 
-  // PATCH /api/notifications/read-all
-  api.patch('/api/notifications/read-all', {}).then(() => {
-    // 백엔드 처리가 성공하면 프론트엔드의 데이터도 전부 읽음 상태로 변경!
-    _userNotifs.forEach(n => n.isRead = true);
-    updateNotifBadge(); // 배지 업데이트 (알림 숫자 0으로 사라짐)
-  });
 }
 
 /** 알림 개별 삭제 (DELETE /api/notifications/{notificationId}) */
@@ -1280,12 +1392,12 @@ async function showMapPlacePopup(key, type) {
   if (naviEl) {
     const pin = (typeof MAP_PINS !== 'undefined') ? MAP_PINS.find(p => p.key === key) : null;
     const displayName = (typeof PLACE_REVIEWS !== 'undefined' && PLACE_REVIEWS[key])
-      ? PLACE_REVIEWS[key].name : key;
+        ? PLACE_REVIEWS[key].name : key;
     naviEl.innerHTML = pin
-      ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
+        ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
            style="display:block;width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;
            text-decoration:none;text-align:center;font-size:13px;font-weight:700;margin-bottom:12px;box-sizing:border-box">🚗 카카오맵으로 길찾기</a>`
-      : '';
+        : '';
   }
 
   const res = await api.get('/api/maps/places?keyword=' + encodeURIComponent(key));
@@ -1389,21 +1501,21 @@ async function sendMsg() {
   inp.value = '';
 
 // 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
-    const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
-    if (overseasKeywords.some(k => txt.includes(k))) {
-        addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
-        inp.disabled = false;
-        inp.focus();
-        return;
-    }
+  const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
+  if (overseasKeywords.some(k => txt.includes(k))) {
+    addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+    inp.disabled = false;
+    inp.focus();
+    return;
+  }
 
 // 2_2. AI 로딩 애니메이션 띄우기 및 입력창 잠금
-    const msgs = document.getElementById('chatMsgs');
-    const loadingId = 'loading-' + Date.now();
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = loadingId;
-    loadingDiv.className = 'cmsg';
-    loadingDiv.innerHTML = `
+  const msgs = document.getElementById('chatMsgs');
+  const loadingId = 'loading-' + Date.now();
+  const loadingDiv = document.createElement('div');
+  loadingDiv.id = loadingId;
+  loadingDiv.className = 'cmsg';
+  loadingDiv.innerHTML = `
   <div class="cav bot">🤖</div>
   <div>
     <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
@@ -1412,9 +1524,9 @@ async function sendMsg() {
       <div class="typing-dot"></div>
     </div>
   </div>`;
-    msgs.appendChild(loadingDiv);
-    msgs.scrollTop = msgs.scrollHeight;
-    inp.disabled = true;
+  msgs.appendChild(loadingDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+  inp.disabled = true;
 
   // app_main.js 상단에 정의된 전역 변수 _chatSessionId 사용
   const sessionId = _chatSessionId;
@@ -2449,15 +2561,15 @@ function addPlanItem(btn) {
 }
 
 /** PATCH /api/admin/users/{userId}/suspend */
-var _reportAction = 'delete';
+var _reportAction = 'hide';
 function openReportAction(type, id, post, reporter, reason) {
-  _reportAction=type; const isDelete=(type==='delete');
-  document.getElementById('reportActionTitle').textContent = isDelete?'🗑️ 게시글 삭제 처리':'↩️ 신고 반려 처리';
+  _reportAction=type; const isDelete=(type==='hide');
+  document.getElementById('reportActionTitle').textContent = isDelete?'🙈 숨김 처리':'↩️ 신고 반려 처리';
   document.getElementById('ra-id').textContent=id; document.getElementById('ra-post').textContent=post;
   document.getElementById('ra-reporter').textContent=reporter; document.getElementById('ra-reason').textContent=reason;
-  document.getElementById('ra-reason-label').innerHTML=(isDelete?'삭제 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
+  document.getElementById('ra-reason-label').innerHTML=(isDelete?'숨김 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
   const sel=document.getElementById('ra-reason-select');
-  if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 삭제 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--coral)'; document.getElementById('ra-confirm-btn').textContent='삭제 완료';}
+  if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 숨김 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='#757575'; document.getElementById('ra-confirm-btn').textContent='숨김 완료';}
   else        {sel.innerHTML='<option value="">사유 선택...</option><option>신고 증거 불충분</option><option>허용된 표현 범위 내</option><option>중복 신고</option><option>사실과 다른 신고</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--sage)'; document.getElementById('ra-confirm-btn').textContent='반려 완료';}
   document.getElementById('ra-detail').value=''; document.getElementById('reportActionModal').classList.add('open');
 }
@@ -2474,7 +2586,8 @@ function closeSuspendModal() { document.getElementById('suspendModal').classList
 async function confirmSuspend() {
   const r=document.getElementById('su-reason-select').value; if(!r){toast('정지 사유를 선택해주세요');return;}
   const uid=document.getElementById('su-id').textContent;
-  const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r});
+  const notifyMsg=document.getElementById('su-notify-msg')?.value||'';
+  const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r, notifyMessage:notifyMsg});
   closeSuspendModal();
   toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'⚠️ 정지 처리에 실패했습니다.');
   if(res.success) loadAdminUsers();
@@ -2484,14 +2597,15 @@ async function confirmSuspend() {
 async function confirmReportAction() {
   const r=document.getElementById('ra-reason-select').value; if(!r){toast('사유를 선택해주세요');return;}
   const rid=document.getElementById('ra-id').textContent;
+  const notifyMsg=document.getElementById('ra-notify-msg')?.value||'';
   let res;
-  if(_reportAction==='delete') res=await api.del('/api/admin/reports/'+rid);
-  else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r});
+  if(_reportAction==='hide') res=await api.patch('/api/admin/reports/'+rid+'/hide?reason='+encodeURIComponent(r),{});
+  else                         res=await api.patch('/api/admin/reports/'+rid,{status:'REJECTED',reason:r,notifyMessage:notifyMsg});
   closeReportAction();
   toast(res.success
-      ? (_reportAction==='delete'?'게시글 삭제 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
+      ? (_reportAction==='hide'?'숨김 처리 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
       : '⚠️ 처리에 실패했습니다.');
-  if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING'); // ★ 추가
+  if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
 }
 
 // 제미나이 추가
@@ -2834,63 +2948,63 @@ function _hasPlannerDraft() {
   } catch { return false; }
 }
 
-    function _savePlannerDraft() {
-      if (window._currentTripId) {
-                  sessionStorage.setItem('plannerDraftId', window._currentTripId);
-                }
-              sessionStorage.setItem('plannerDraftStep', _currentPlanStep());
-        const state = {};
-        ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
-          .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
-        ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
-          .forEach(id => {
-              const chips = document.querySelectorAll('#' + id + ' .chip');
-              state['chips_' + id] = Array.from(chips).map(c => c.classList.contains('on'));
-            });
-        ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
-          .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
-        sessionStorage.setItem('plannerDraftState', JSON.stringify(state));
-      }
+function _savePlannerDraft() {
+  if (window._currentTripId) {
+    sessionStorage.setItem('plannerDraftId', window._currentTripId);
+  }
+  sessionStorage.setItem('plannerDraftStep', _currentPlanStep());
+  const state = {};
+  ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+      .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
+  ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
+      .forEach(id => {
+        const chips = document.querySelectorAll('#' + id + ' .chip');
+        state['chips_' + id] = Array.from(chips).map(c => c.classList.contains('on'));
+      });
+  ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
+      .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
+  sessionStorage.setItem('plannerDraftState', JSON.stringify(state));
+}
 
 function _restorePlannerDraft() {
-    const savedId = sessionStorage.getItem('plannerDraftId');
-    if (savedId) window._currentTripId = parseInt(savedId);
-    const raw = sessionStorage.getItem('plannerDraftState');
-    if (!raw) return;
-    try {
-      const state = JSON.parse(raw);
-      ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
-          .forEach(id => { const el = document.getElementById(id); if (el && state[id] !== undefined) el.value = state[id]; });
-        ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
-          .forEach(id => {
-            const chips = document.querySelectorAll('#' + id + ' .chip');
-            const saved = state['chips_' + id];
-            if (saved) chips.forEach((c, i) => c.classList.toggle('on', !!saved[i]));
-          });
-        ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
-          .forEach(id => {
-            const el = document.getElementById(id);
-            if (el && state[id]) { el.value = state[id]; el.classList.add('show'); }
-          });
-        const depEl = document.getElementById('dep-prov');
-      if (depEl && state['dep-prov']) {
-                  depEl.value = state['dep-prov'];
-                  if (typeof updateCityDep === 'function') updateCityDep(depEl);
-                  // 옵션 재생성 후 city 값 재적용
-                      const depCityEl = document.getElementById('dep-city');
-                  if (depCityEl && state['dep-city']) depCityEl.value = state['dep-city'];
-                }
-        const destEl = document.getElementById('dest-prov');
-        if (destEl && state['dest-prov']) {
-                  destEl.value = state['dest-prov'];
-                  if (typeof updateCityDest === 'function') updateCityDest(destEl);
-                  // 옵션 재생성 후 city 값 재적용
-                      const destCityEl = document.getElementById('dest-city');
-                  if (destCityEl && state['dest-city']) destCityEl.value = state['dest-city'];
-                }
-        updateNav();
-      } catch (e) { console.warn('[planner] draft restore 실패', e); }
-  }
+  const savedId = sessionStorage.getItem('plannerDraftId');
+  if (savedId) window._currentTripId = parseInt(savedId);
+  const raw = sessionStorage.getItem('plannerDraftState');
+  if (!raw) return;
+  try {
+    const state = JSON.parse(raw);
+    ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+        .forEach(id => { const el = document.getElementById(id); if (el && state[id] !== undefined) el.value = state[id]; });
+    ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
+        .forEach(id => {
+          const chips = document.querySelectorAll('#' + id + ' .chip');
+          const saved = state['chips_' + id];
+          if (saved) chips.forEach((c, i) => c.classList.toggle('on', !!saved[i]));
+        });
+    ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special','other-accopts']
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el && state[id]) { el.value = state[id]; el.classList.add('show'); }
+        });
+    const depEl = document.getElementById('dep-prov');
+    if (depEl && state['dep-prov']) {
+      depEl.value = state['dep-prov'];
+      if (typeof updateCityDep === 'function') updateCityDep(depEl);
+      // 옵션 재생성 후 city 값 재적용
+      const depCityEl = document.getElementById('dep-city');
+      if (depCityEl && state['dep-city']) depCityEl.value = state['dep-city'];
+    }
+    const destEl = document.getElementById('dest-prov');
+    if (destEl && state['dest-prov']) {
+      destEl.value = state['dest-prov'];
+      if (typeof updateCityDest === 'function') updateCityDest(destEl);
+      // 옵션 재생성 후 city 값 재적용
+      const destCityEl = document.getElementById('dest-city');
+      if (destCityEl && state['dest-city']) destCityEl.value = state['dest-city'];
+    }
+    updateNav();
+  } catch (e) { console.warn('[planner] draft restore 실패', e); }
+}
 
 function resetPlannerForm() {
   // Step1 초기화
@@ -2927,43 +3041,43 @@ function resetPlannerForm() {
 }
 
 // 검색어를 도/시 셀렉트에 매핑해서 자동 선택
-  function _applyDestText(val) {
-    const cityToProvMap = {
-      '제주도': { prov: '제주', city: '제주시' },
-      '강릉':   { prov: '강원', city: '강릉시' },
-      '부산':   { prov: '부산', city: '' },
-      '전주':   { prov: '전북', city: '전주시' },
-      '경주':   { prov: '경북', city: '경주시' },
-    };
-    const mapped = cityToProvMap[val.trim()];
-    if (!mapped) return;
-    const provSel = document.getElementById('dest-prov');
-    if (!provSel) return;
-    for (let i = 0; i < provSel.options.length; i++) {
-      if (provSel.options[i].text === mapped.prov) {
-        provSel.selectedIndex = i;
-        updateCityDest(provSel);
-        break;
-      }
-    }
-    if (mapped.city) {
-      setTimeout(() => {
-        const citySel = document.getElementById('dest-city');
-        if (!citySel) return;
-        for (let i = 0; i < citySel.options.length; i++) {
-          if (citySel.options[i].text === mapped.city) {
-            citySel.selectedIndex = i;
-            break;
-          }
-        }
-        if (typeof updateSummaryCard === 'function') updateSummaryCard();
-      }, 50);
-    } else {
-      setTimeout(() => {
-        if (typeof updateSummaryCard === 'function') updateSummaryCard();
-      }, 50);
+function _applyDestText(val) {
+  const cityToProvMap = {
+    '제주도': { prov: '제주', city: '제주시' },
+    '강릉':   { prov: '강원', city: '강릉시' },
+    '부산':   { prov: '부산', city: '' },
+    '전주':   { prov: '전북', city: '전주시' },
+    '경주':   { prov: '경북', city: '경주시' },
+  };
+  const mapped = cityToProvMap[val.trim()];
+  if (!mapped) return;
+  const provSel = document.getElementById('dest-prov');
+  if (!provSel) return;
+  for (let i = 0; i < provSel.options.length; i++) {
+    if (provSel.options[i].text === mapped.prov) {
+      provSel.selectedIndex = i;
+      updateCityDest(provSel);
+      break;
     }
   }
+  if (mapped.city) {
+    setTimeout(() => {
+      const citySel = document.getElementById('dest-city');
+      if (!citySel) return;
+      for (let i = 0; i < citySel.options.length; i++) {
+        if (citySel.options[i].text === mapped.city) {
+          citySel.selectedIndex = i;
+          break;
+        }
+      }
+      if (typeof updateSummaryCard === 'function') updateSummaryCard();
+    }, 50);
+  } else {
+    setTimeout(() => {
+      if (typeof updateSummaryCard === 'function') updateSummaryCard();
+    }, 50);
+  }
+}
 
 const _md = {
   jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
@@ -3130,38 +3244,52 @@ document.addEventListener('keydown', e => {
 
 window.addEventListener('popstate', e => {
   const p = e.state?.page || 'main';
-    const step = e.state?.step;
-
-        // 플래너 내 스텝 뒤로가기
-            if (p === 'planner' && step) {
-        document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
-        document.getElementById('page-planner')?.classList.add('active');
-        for (let i = 1; i <= 3; i++) {
-            const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
-            if (!sb || !sp) continue;
-            sb.classList.remove('active', 'done'); sp.classList.remove('active');
-            if (i < step) sb.classList.add('done');
-            if (i === step) { sb.classList.add('active'); sp.classList.add('active'); }
-          }
-        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-        document.getElementById('navPlannerBtn')?.classList.add('on');
-        return;
+  const step = e.state?.step;
+  // 커뮤니티 복귀 시 탭이 비어있으면 게시글 재로드
+  if (p === 'community') {
+    setTimeout(function() {
+      var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
+      var tabEl = document.getElementById('tab-' + tab);
+      if (!tabEl || !tabEl.querySelector('.comm-post-item')) {
+        if (['stay','food','tour','cafe'].indexOf(tab) !== -1) {
+          if (typeof window._loadPlaceCards === 'function') window._loadPlaceCards(tab, 0, true);
+        } else {
+          if (typeof window.loadCommunityPosts === 'function') window.loadCommunityPosts(0, true);
+        }
       }
+    }, 50);
+  }
 
-      document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+  // 플래너 내 스텝 뒤로가기
+  if (p === 'planner' && step) {
+    document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+    document.getElementById('page-planner')?.classList.add('active');
+    for (let i = 1; i <= 3; i++) {
+      const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+      if (!sb || !sp) continue;
+      sb.classList.remove('active', 'done'); sp.classList.remove('active');
+      if (i < step) sb.classList.add('done');
+      if (i === step) { sb.classList.add('active'); sp.classList.add('active'); }
+    }
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+    document.getElementById('navPlannerBtn')?.classList.add('on');
+    return;
+  }
+
+  document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
   const pg = document.getElementById('page-' + p);
   if (pg) pg.classList.add('active');
   // nav-link .on 동기화
-        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
-    const navLinks = document.querySelectorAll('.nav-link');
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
+  const navLinks = document.querySelectorAll('.nav-link');
   // 순서: 0=홈, 1=커뮤니티, 2=날씨, 3=플랜(navPlannerBtn)
-        const navIdxMap = { main: 0, community: 1, weather: 2, planner: 3 };
-    const idx = navIdxMap[p];
-    if (idx !== undefined && navLinks[idx]) navLinks[idx].classList.add('on');
-    // wf-item 동기화
-        const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
-    const wfi = document.querySelectorAll('.wf-item');
-    if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
+  const navIdxMap = { main: 0, community: 1, weather: 2, planner: 3 };
+  const idx = navIdxMap[p];
+  if (idx !== undefined && navLinks[idx]) navLinks[idx].classList.add('on');
+  // wf-item 동기화
+  const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
+  const wfi = document.querySelectorAll('.wf-item');
+  if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
 });
 
 /* ───────────────────────────────────────────────
@@ -3214,10 +3342,6 @@ window.addEventListener('popstate', e => {
 
     // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
     if (location.pathname.includes('/plan/view')) {
-
-      Token.clear();
-      _loggedIn = false;
-      _currentUser = null;
 
       // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
       const style = document.createElement('style');
@@ -3282,9 +3406,11 @@ window.addEventListener('popstate', e => {
   if (savedToken) {
     const meRes = await api.get('/api/users/me');
     if (meRes.success && meRes.data) {
-      _currentUser = meRes.data;
-      _isSuspended = (_currentUser.status === 'SUSPENDED');
-      _loggedIn    = true;
+      _currentUser           = meRes.data;
+      window._currentUser    = _currentUser;
+      window._isAdmin        = (_currentUser.role === 'ADMIN');
+      _isSuspended           = (_currentUser.role === 'SUSPENDED' || _currentUser.status === 'SUSPENDED');
+      _loggedIn              = true;
       await updateMyPageUI();
       await _loadNotifications();
     } else {
@@ -3393,4 +3519,3 @@ function initWithdrawSection() {
     if (pwBox)     pwBox.style.display     = 'block';
   }
 }
-

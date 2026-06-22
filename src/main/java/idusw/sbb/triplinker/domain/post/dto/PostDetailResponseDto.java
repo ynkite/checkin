@@ -11,6 +11,7 @@ public record PostDetailResponseDto(
         Long postId,
         Long userId,
         String writerName,
+        String writerRole,       // ADMIN / USER
 
         String category,        //ROUTE, STAY, FOOD, TOUR, CAFE
         String catLabel,        //화면 표시용 카테고리 라벨
@@ -50,6 +51,7 @@ public record PostDetailResponseDto(
         String writerName = "DELETED".equals(String.valueOf(post.getUser().getStatus()))
                 ? "탈퇴한 사용자"
                 : post.getUser().getName();
+        String writerRole = post.getUser().getRole();  // 현재 역할 (ADMIN/USER)
 
         String category = normalizeCategory(post.getCategory());
 
@@ -57,6 +59,7 @@ public record PostDetailResponseDto(
                 post.getId(),
                 post.getUser().getId(),
                 writerName,
+                writerRole,
 
                 category,
                 getCatLabel(category),
@@ -141,6 +144,7 @@ public record PostDetailResponseDto(
             Long commentId,          // 댓글 ID
             Long userId,             // 댓글 작성자 ID
             String writerName,       // 댓글 작성자명
+            String writerRole,       // 댓글 작성자 역할 (ADMIN/USER)
             String content,          // 댓글 내용
             String status,           // 댓글 상태
             LocalDateTime createdAt, // 작성 일시
@@ -150,11 +154,13 @@ public record PostDetailResponseDto(
             String writerName = "DELETED".equals(String.valueOf(comment.getUser().getStatus()))
                     ? "탈퇴한 사용자"
                     : comment.getUser().getName();
+            String writerRole = comment.getUser().getRole();
 
             return new CommentInfo(
                     comment.getId(),
                     comment.getUser().getId(),
                     writerName,
+                    writerRole,
                     comment.getContent(),
                     comment.getStatus(),
                     comment.getCreatedAt(),

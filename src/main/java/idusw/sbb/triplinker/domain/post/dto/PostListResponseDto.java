@@ -19,7 +19,10 @@ public record PostListResponseDto(
         int likes,
         int scraps,
         int views,
-        String thumbnailUrl          // 첫 번째 이미지 URL (없으면 null)
+        String thumbnailUrl,         // 첫 번째 이미지 URL (없으면 null)
+        boolean hidden,              // HIDDEN 상태 여부
+        String writerRole,           // ADMIN / USER
+        Long writerId                // 게시글 작성자 ID (본인 숨김 글 접근용)
 ) {
     public static PostListResponseDto from(Post post) {
         return from(post, 0, null);
@@ -45,7 +48,10 @@ public record PostListResponseDto(
                 post.getLikeCount(),
                 scraps,
                 post.getViewCount(),
-                thumbnailUrl
+                thumbnailUrl,
+                "HIDDEN".equals(post.getStatus()),
+                post.getUser() != null ? post.getUser().getRole() : "USER",
+                post.getUser() != null ? post.getUser().getId() : null
         );
     }
 

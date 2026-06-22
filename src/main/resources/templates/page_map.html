@@ -70,11 +70,23 @@
     async function initMapPage() {
       var routeData = null;
 
+      const params = new URLSearchParams(location.search);
+      const shareToken = params.get('token');
+      let parsedTripId = null;
+      if (shareToken) {
+        try {
+          const parsedHex = parseInt(shareToken, 16);
+          parsedTripId = (parsedHex ^ 0x5A3C9B7D2E).toString();
+        } catch (e) {
+          console.error("유효하지 않은 토큰 포맷입니다.");
+        }
+      }
+
       // 🎯 [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
       if (!window._currentTripId) {
-        window._currentTripId = sessionStorage.getItem('plannerDraftId');
+        window._currentTripId = parsedTripId || sessionStorage.getItem('plannerDraftId');
       }
-      var tripId = window._currentTripId;
+      var tripId = parsedTripId || window._currentTripId;
 
       window._q = [];
       if (typeof renderQ === 'function') renderQ();

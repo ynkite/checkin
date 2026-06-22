@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PostService {
 
+    private static final List<String> STATUS_VISIBLE = List.of("ACTIVE", "HIDDEN");
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostCommentRepository postCommentRepository;
@@ -75,7 +76,7 @@ public class PostService {
             // Post 엔티티에 scrapCount 컬럼이 없어 DB 정렬이 불가능 → 실제 스크랩 수를 집계해 메모리에서 정렬
             posts = getPostsSortedByScrapCount(pageable, category);
         } else if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
-            posts = postRepository.findByStatus("ACTIVE", pageable);
+            posts = postRepository.findByStatusInOrderByCreatedAtDesc(STATUS_VISIBLE, pageable);
         } else {
             String categoryCode = toCategoryCode(category);
 
@@ -159,6 +160,10 @@ public class PostService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
 
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 후기를 작성할 수 없습니다.");
+        }
+
         TravelPlan plan = null;
 
         if (dto.getPlanId() != null) {
@@ -203,7 +208,7 @@ public class PostService {
         post.increaseViewCount();
 
         List<PostComment> comments = postCommentRepository
-                .findByPostIdAndStatusOrderByCreatedAtAsc(postId, "ACTIVE", Pageable.unpaged())
+                .findByPostIdAndStatusInOrderByCreatedAtAsc(postId, List.of("ACTIVE","HIDDEN"), Pageable.unpaged())
                 .getContent();
 
         List<PostImage> images = postImageRepository.findByPostIdOrderByImageOrderAsc(postId);
@@ -287,6 +292,10 @@ public class PostService {
     public Long addComment(Long userId, Long postId, PostWriteDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다."));
+
+        if ("SUSPENDED".equals(user.getStatus())) {
+            throw new IllegalStateException("정지된 계정은 댓글을 작성할 수 없습니다.");
+        }
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
@@ -422,7 +431,7 @@ public class PostService {
     // 커뮤니티 - 댓글 목록 조회
     public List<PostDetailResponseDto.CommentInfo> getComments(Long postId) {
         return postCommentRepository
-                .findByPostIdAndStatusOrderByCreatedAtAsc(postId, "ACTIVE", Pageable.unpaged())
+                .findByPostIdAndStatusInOrderByCreatedAtAsc(postId, List.of("ACTIVE","HIDDEN"), Pageable.unpaged())
                 .getContent()
                 .stream()
                 .map(PostDetailResponseDto.CommentInfo::from)
