@@ -806,7 +806,7 @@
                         currentStage++;
                         sessionStorage.setItem('autoHealingRetries', currentStage.toString());
 
-                        btn.innerHTML = `🤖 정밀 보정 진행 중... (${currentStage} / 2 회차)`;
+                        btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
 
                         fetch(`/api/trips/${tripId}/routes/replace`, {
                             method: 'POST',
@@ -834,7 +834,7 @@
                             .catch(() => _finalizePlannerRoute(routeData, btn));
 
                     } else {
-                        console.log("✅ 정밀 보정 프로세스 마감. 최종 지도로 이동합니다.");
+                        console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
                         _finalizePlannerRoute(routeData, btn);
                     }
                 }
