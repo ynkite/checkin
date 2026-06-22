@@ -257,7 +257,7 @@ public class DataInitializer implements CommandLineRunner {
         for (int i = 0; i < 20; i++) {
             users[i] = userRepository.save(User.builder()
                     .username(userData[i][0])
-                    .passwordHash(passwordEncoder.encode("Test1234!"))
+                    .passwordHash(passwordEncoder.encode("1234"))
                     .name(userData[i][1])
                     .email(userData[i][2])
                     .region(regions[i])
