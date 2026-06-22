@@ -2319,36 +2319,103 @@ window._handleWriteImageSelect = function(input) {
 
     const { escapeHtml, extractPosts, getAccessToken, authHeaders, requestJson } = window._commUtil;
 
-    // ── 목록 조회 / 삭제 ───────────────────────────────────────────────
+    /* ── 마이페이지 커뮤니티 활동 탭별 페이징 공통 유틸 ────────────────
+     * 각 탭의 리스트 컨테이너 내부에만 페이징을 붙인다.
+     * 다른 탭이나 다른 팀원 기능에 영향이 가지 않도록 page_mypage.html 구조는 건드리지 않는다.
+     */
+    const MY_COMMUNITY_PAGE_SIZE = 5;
+    window._myCommunityPagingState = window._myCommunityPagingState || {};
 
-    window._renderMyReviews = async function () {
-        const listEl = document.getElementById('my-reviews-list');
+    function getMyCommunityPagingState(key) {
+        window._myCommunityPagingState[key] = window._myCommunityPagingState[key] || { page: 0 };
+        return window._myCommunityPagingState[key];
+    }
+
+    function escapeJsString(value) {
+        return String(value ?? '')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/\r?\n/g, ' ');
+    }
+
+    function emptyMyPageMessage(message) {
+        return '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">' +
+            escapeHtml(message) +
+            '</div>';
+    }
+
+    function renderMyCommunityPager(listEl, key, totalCount, currentPage, loadPageFn) {
         if (!listEl) return;
-        listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
 
-        let posts = [];
-        try {
-            const res = await requestJson('/api/users/me/posts', { method: 'GET', headers: authHeaders(false) });
-            posts = extractPosts(res);
-        } catch (e) {
-            listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기를 불러오지 못했습니다.</p>';
-            if (typeof toast === 'function') toast(e.message || '작성한 후기를 불러오지 못했습니다.');
+        listEl.querySelectorAll('.my-community-pagination').forEach(el => el.remove());
+
+        if (totalCount <= 0) return;
+        const totalPages = Math.max(1, Math.ceil(totalCount / MY_COMMUNITY_PAGE_SIZE));
+
+        const pager = document.createElement('div');
+        pager.className = 'community-v2-pagination my-community-pagination';
+        pager.dataset.myPagerFor = key;
+
+        let html = '';
+        for (let i = 0; i < totalPages; i++) {
+            html += '<button type="button" class="community-v2-page-btn my-community-page-btn' +
+                (i === currentPage ? ' on' : '') +
+                '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+        pager.innerHTML = html;
+
+        pager.querySelectorAll('.my-community-page-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const nextPage = Number(this.dataset.page || 0);
+                getMyCommunityPagingState(key).page = nextPage;
+                loadPageFn(nextPage);
+            });
+        });
+
+        listEl.appendChild(pager);
+    }
+
+    function renderMyCommunityPagedList(listEl, key, list, emptyText, renderItem, loadPageFn, requestedPage) {
+        if (!listEl) return;
+
+        const items = Array.isArray(list) ? list : [];
+        if (!items.length) {
+            listEl.innerHTML = emptyMyPageMessage(emptyText);
             return;
         }
 
-        if (!posts.length) {
-            listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기가 없습니다.</p>';
-            return;
-        }
+        const totalPages = Math.max(1, Math.ceil(items.length / MY_COMMUNITY_PAGE_SIZE));
+        const state = getMyCommunityPagingState(key);
+        let pageNo = Number(requestedPage ?? state.page ?? 0);
 
-        listEl.innerHTML = posts.map(function (post) {
-            const postId   = post.postId || post.id;
-            const title    = post.title || '제목 없음';
-            const likes    = post.likes ?? post.likeCount ?? 0;
-            const views    = post.views ?? post.viewCount ?? 0;
-            const category = post.catLabel || post.category || '후기';
-            const catClass = post.catClass || '';
-            return `
+        if (Number.isNaN(pageNo) || pageNo < 0) pageNo = 0;
+        if (pageNo >= totalPages) pageNo = totalPages - 1;
+        state.page = pageNo;
+
+        const start = pageNo * MY_COMMUNITY_PAGE_SIZE;
+        const pageItems = items.slice(start, start + MY_COMMUNITY_PAGE_SIZE);
+
+        listEl.innerHTML = pageItems.map(renderItem).join('');
+        renderMyCommunityPager(listEl, key, items.length, pageNo, loadPageFn);
+    }
+
+    function normalizeMyPageListResponse(res) {
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.data?.content)) return res.data.content;
+        if (Array.isArray(res?.content)) return res.content;
+        return [];
+    }
+
+    function renderMyReviewCard(post) {
+        const postId   = post.postId || post.id;
+        const title    = post.title || '제목 없음';
+        const likes    = post.likes ?? post.likeCount ?? 0;
+        const views    = post.views ?? post.viewCount ?? 0;
+        const category = post.catLabel || post.category || '후기';
+        const catClass = post.catClass || '';
+
+        return `
                 <div class="post-card" data-my-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
                     <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(category)}</span>
                     <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
@@ -2364,8 +2431,85 @@ window._handleWriteImageSelect = function(input) {
                     </div>
                 </div>
             `;
-        }).join('');
+    }
+
+    function renderMyLikedReviewCard(post) {
+        const postId   = post.postId || post.id;
+        const title    = post.title || '제목 없음';
+        const likes    = post.likes ?? post.likeCount ?? 0;
+        const views    = post.views ?? post.viewCount ?? 0;
+        const category = post.catLabel || post.category || '후기';
+        const catClass = post.catClass || '';
+
+        return `
+                <div class="post-card" data-my-liked-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
+                    <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(category)}</span>
+                    <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
+                    <div class="post-foot">
+                        <div class="post-stats">
+                            <span class="post-stat">❤️ ${escapeHtml(likes)}</span>
+                            ${views ? `<span class="post-stat">👁 ${escapeHtml(views)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+    }
+
+
+    // ── 목록 조회 / 삭제 ───────────────────────────────────────────────
+
+    window._renderMyReviews = async function (page) {
+        const listEl = document.getElementById('my-reviews-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
+
+        let posts = [];
+        try {
+            const res = await requestJson('/api/users/me/posts', { method: 'GET', headers: authHeaders(false) });
+            posts = extractPosts(res);
+        } catch (e) {
+            listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기를 불러오지 못했습니다.</p>';
+            if (typeof toast === 'function') toast(e.message || '작성한 후기를 불러오지 못했습니다.');
+            return;
+        }
+
+        renderMyCommunityPagedList(
+            listEl,
+            'reviews',
+            posts,
+            '작성한 후기가 없습니다.',
+            renderMyReviewCard,
+            window._renderMyReviews,
+            page
+        );
     };
+
+    window._renderMyLikedPosts = async function (page) {
+        const listEl = document.getElementById('my-likes-list');
+        if (!listEl) return;
+        listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+
+        let liked = [];
+        try {
+            const res = await requestJson('/api/users/me/liked-posts', { method: 'GET', headers: authHeaders(false) });
+            liked = normalizeMyPageListResponse(res);
+        } catch (e) {
+            listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기를 불러오지 못했습니다.</p>';
+            if (typeof toast === 'function') toast(e.message || '좋아요한 후기를 불러오지 못했습니다.');
+            return;
+        }
+
+        renderMyCommunityPagedList(
+            listEl,
+            'likes',
+            liked,
+            '좋아요한 후기가 없습니다.',
+            renderMyLikedReviewCard,
+            window._renderMyLikedPosts,
+            page
+        );
+    };
+
 
     window.deleteMyPost = async function (postId) {
         if (!postId) { if (typeof toast === 'function') toast('게시글 정보를 찾을 수 없습니다.'); return; }
@@ -2405,6 +2549,7 @@ window._handleWriteImageSelect = function(input) {
             }
         }, 700);
     });
+
 
     // ── 좋아요 / 스크랩 상태 유지 ─────────────────────────────────────
 
@@ -2840,7 +2985,38 @@ window._handleWriteImageSelect = function(input) {
      * community v2 — loadMyScrap override (마이페이지 장소 스크랩 탭)
      * app_community.js의 게시글 스크랩 버전을 장소 스크랩으로 교체
      * ============================================================================= */
-    window.loadMyScrap = async function loadMyScrap(category) {
+    function renderMyPlaceScrapCard(s, category, iconMap, labelMap) {
+        const placeId = Number(s.placeId || 0);
+        const placeName = s.placeName || '장소';
+        const safeNameForJs = escapeJsString(placeName);
+        const safeCategoryForJs = escapeJsString(s.category || '');
+        const avgRatingForJs = s.avgRating ? Number(s.avgRating) : 'null';
+
+        const starHtml = function (avg) {
+            if (!avg) return '';
+            const filled = Math.round(avg);
+            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + Number(avg).toFixed(1) + '</b>';
+        };
+
+        return '<div class="place-card" style="cursor:pointer" ' +
+            'data-my-place-scrap-category="' + escapeHtml(category) + '" ' +
+            'onclick="window.goToScrapPlace(' + placeId + ',\'' + safeNameForJs + '\',\'' + safeCategoryForJs + '\',' + avgRatingForJs + ')">' +
+            '<div class="pc-hd">' +
+            '<div class="pc-icon">' + (iconMap[s.category] || '📍') + '</div>' +
+            '<div style="flex:1;min-width:0">' +
+            '<div class="pc-name">' + escapeHtml(placeName) + '</div>' +
+            '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
+            (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
+            '</div>' +
+            '<button onclick="event.stopPropagation();window.deleteMyPlaceScrap(' + s.scrapId + ',this,\'' + escapeHtml(category) + '\')" ' +
+            'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+            '🗑️ 삭제' +
+            '</button>' +
+            '</div>' +
+            '</div>';
+    }
+
+    window.loadMyScrap = async function loadMyScrap(category, page) {
         const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
         const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
         const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
@@ -2849,41 +3025,28 @@ window._handleWriteImageSelect = function(input) {
         const el = document.getElementById(listId[category]);
         if (!el) return;
 
+        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+
         const res = await api.get('/api/scraps');
         if (!res || !res.success || !Array.isArray(res.data)) {
-            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
+            el.innerHTML = emptyMyPageMessage('스크랩한 장소가 없습니다.');
             return;
         }
 
         const dbCat = catMap[category] || category.toUpperCase();
         const list  = res.data.filter(s => s.category === dbCat);
+        const emptyText = '스크랩한 ' + (labelMap[dbCat] || '장소') + '가 없습니다.';
 
-        const starHtml = (avg) => {
-            if (!avg) return '';
-            const filled = Math.round(avg);
-            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + avg.toFixed(1) + '</b>';
-        };
-
-        el.innerHTML = list.length
-            ? list.map(s =>
-                '<div class="place-card" style="cursor:pointer" ' +
-                'onclick="window.goToScrapPlace(' + s.placeId + ',\'' + escapeHtml(s.placeName || '장소').replace(/'/g, "\\'") + '\',\'' + (s.category || '') + '\',' + (s.avgRating || 'null') + ')">' +
-                '<div class="pc-hd">' +
-                '<div class="pc-icon">' + (iconMap[s.category] || '📍') + '</div>' +
-                '<div style="flex:1;min-width:0">' +
-                '<div class="pc-name">' + escapeHtml(s.placeName || '장소') + '</div>' +
-                '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
-                (s.avgRating ? '<div style="color:var(--warm);font-size:12px;margin-top:2px">' + starHtml(s.avgRating) + '</div>' : '') +
-                '</div>' +
-                '<button onclick="event.stopPropagation();window.deleteMyPlaceScrap(' + s.scrapId + ',this)" ' +
-                'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                '🗑️ 삭제' +
-                '</button>' +
-                '</div>' +
-                '</div>'
-            ).join('')
-            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 장소가 없습니다.</div>';
-    };
+        renderMyCommunityPagedList(
+            el,
+            'scrap-' + category,
+            list,
+            emptyText,
+            function (s) { return renderMyPlaceScrapCard(s, category, iconMap, labelMap); },
+            function (nextPage) { window.loadMyScrap(category, nextPage); },
+            page
+        );
+    };;
 
     window.goToScrapPlace = function(placeId, placeName, category, avgRating) {
         const catToType = { STAY: 'stay', FOOD: 'food', TOUR: 'tour', CAFE: 'cafe' };
@@ -2903,12 +3066,18 @@ window._handleWriteImageSelect = function(input) {
         }, 100);
     };
 
-    window.deleteMyPlaceScrap = async function(scrapId, btn) {
+    window.deleteMyPlaceScrap = async function(scrapId, btn, category) {
         const res = await api.del('/api/scraps/' + scrapId);
         if (res && res.success !== false) {
-            const card = btn.closest('.place-card');
-            if (card) card.remove();
             if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+
+            if (category && typeof window.loadMyScrap === 'function') {
+                const state = getMyCommunityPagingState('scrap-' + category);
+                await window.loadMyScrap(category, state.page || 0);
+            } else {
+                const card = btn && btn.closest ? btn.closest('.place-card') : null;
+                if (card) card.remove();
+            }
         } else {
             if (typeof toast === 'function') toast('삭제에 실패했습니다.');
         }
@@ -2955,43 +3124,58 @@ window._handleWriteImageSelect = function(input) {
     /* =============================================================================
      * community v2 — 여행 경로 스크랩 (마이페이지)
      * ============================================================================= */
-    window.loadMyRouteScrap = async function() {
+    function renderMyRouteScrapCard(p) {
+        const tags = Array.isArray(p.styleTags)
+            ? p.styleTags.slice(0, 4).map(function(t) {
+                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
+            }).join('')
+            : '';
+
+        const safeTitle  = escapeHtml(p.title  || '제목 없음');
+        const safeWriter = escapeHtml(p.writerName || '');
+        const postId = p.postId || p.id;
+
+        return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + postId + ')">' +
+            '<div class="pc-hd">' +
+            '<div class="pc-icon">🗺️</div>' +
+            '<div style="flex:1;min-width:0">' +
+            '<div class="pc-name">' + safeTitle + '</div>' +
+            '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
+            (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
+            '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
+            '</div>' +
+            '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + postId + ',this)" ' +
+            'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
+            '🗑️ 삭제' +
+            '</button>' +
+            '</div>' +
+            '</div>';
+    }
+
+
+    window.loadMyRouteScrap = async function(page) {
         const el = document.getElementById('my-scrap-route-list');
         if (!el) return;
         el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
 
         const res = await api.get('/api/posts/scrapped');
         if (!res || !res.success || !Array.isArray(res.data)) {
-            el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+            el.innerHTML = emptyMyPageMessage('스크랩한 여행 경로가 없습니다.');
             return;
         }
 
         const list = res.data;
-        el.innerHTML = list.length
-            ? list.map(function(p) {
-                const tags = (p.styleTags || []).slice(0, 4).map(function(t) {
-                    return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
-                }).join('');
-                const safeTitle  = escapeHtml(p.title  || '제목 없음');
-                const safeWriter = escapeHtml(p.writerName || '');
-                return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + p.postId + ')">' +
-                    '<div class="pc-hd">' +
-                    '<div class="pc-icon">🗺️</div>' +
-                    '<div style="flex:1;min-width:0">' +
-                    '<div class="pc-name">' + safeTitle + '</div>' +
-                    '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
-                    (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
-                    '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
-                    '</div>' +
-                    '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + p.postId + ',this)" ' +
-                    'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-                    '🗑️ 삭제' +
-                    '</button>' +
-                    '</div>' +
-                    '</div>';
-            }).join('')
-            : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">스크랩한 여행 경로가 없습니다.</div>';
+        renderMyCommunityPagedList(
+            el,
+            'scrap-route',
+            list,
+            '스크랩한 여행 경로가 없습니다.',
+            renderMyRouteScrapCard,
+            window.loadMyRouteScrap,
+            page
+        );
     };
+    ;
 
     window.goToScrapRoute = function(postId) {
         go('community');
@@ -3003,13 +3187,20 @@ window._handleWriteImageSelect = function(input) {
     window.deleteMyRouteScrap = async function(postId, btn) {
         const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
         if (res && res.success !== false) {
-            const card = btn.closest('.place-card');
-            if (card) card.remove();
             if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+
+            const state = getMyCommunityPagingState('scrap-route');
+            if (typeof window.loadMyRouteScrap === 'function') {
+                await window.loadMyRouteScrap(state.page || 0);
+            } else {
+                const card = btn && btn.closest ? btn.closest('.place-card') : null;
+                if (card) card.remove();
+            }
         } else {
             if (typeof toast === 'function') toast('삭제에 실패했습니다.');
         }
     };
+
     window.startPlanFromCommunityPost = function () {
         const token = localStorage.getItem('accessToken');
         const post = window._currentPostDetail;
