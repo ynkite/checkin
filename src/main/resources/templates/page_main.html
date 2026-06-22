@@ -414,7 +414,7 @@
           const chipsHtml = tags.length
                   ? tags.map(t => `<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(255,255,255,.7);color:var(--sage-d);border:1px solid var(--sage-l)">${_esc(t)}</span>`).join('')
                   : '';
-          const chips = chipsHtml ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">${chipsHtml}</div>` : '';
+          const chips = chipsHtml ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">${chipsHtml}</div>` : '';
 
           // 숙박일수 · 인원 · 이동수단 → subTitle
           const pref = en.preferences || {};
@@ -429,6 +429,36 @@
           const attractions = en.adminRecommendedAttractions || [];
           const spots = s.isMock ? s.spots
                   : (attractions.length ? attractions.slice(0,3).map(a=>_esc(a)).join(' · ') : _esc(s.destination || ''));
+
+          // ── 카드 본문을 채울 추가 요약 정보 (숙소·맛집·예산) ──
+          const accs = en.adminRecommendedAccommodations || [];
+          const rests = en.adminRecommendedRestaurants || [];
+          const allPlaces = (Array.isArray(days) ? days : []).reduce(
+                  (acc, d) => acc.concat(Array.isArray(d.places) ? d.places : []), []);
+          const totalBudget = allPlaces.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+          const infoRows = [];
+          if (accs.length) {
+            const stayTxt = accs.length === 1 ? _esc(accs[0]) : `${_esc(accs[0])} 외 ${accs.length - 1}곳`;
+            infoRows.push({ icon: '🏨', label: '숙소', value: stayTxt });
+          }
+          if (rests.length) {
+            const foodTxt = rests.length === 1 ? _esc(rests[0]) : `${_esc(rests[0])} 외 ${rests.length - 1}곳`;
+            infoRows.push({ icon: '🍽️', label: '맛집', value: foodTxt });
+          }
+          if (totalBudget > 0) {
+            infoRows.push({ icon: '💰', label: '예상 경비', value: '₩' + totalBudget.toLocaleString() + '~' });
+          }
+          const infoHtml = (!s.isMock && infoRows.length)
+                  ? `<div style="margin-top:16px;display:flex;flex-direction:column;gap:9px">` +
+                  infoRows.map(r => `
+                      <div style="display:flex;align-items:center;gap:9px;font-size:12.5px">
+                        <span style="width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--sage-pale);border-radius:8px;font-size:13px">${r.icon}</span>
+                        <span style="color:var(--text3);font-weight:600;flex-shrink:0;width:54px">${r.label}</span>
+                        <span style="color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.value}</span>
+                      </div>`).join('') +
+                  `</div>`
+                  : '';
 
           // ⭐ 배지: starBadges 배열 우선 → 없으면 "⭐ 추천 큐레이션" 기본값
           const _starBadges = en.starBadges && en.starBadges.length ? en.starBadges : null;
@@ -447,18 +477,17 @@
           div.className = 'slide' + (i === 0 ? ' on' : ''); div.id = 'sl-' + i;
           div.innerHTML = `
         <div style="height:10px;background:${grad};flex-shrink:0"></div>
-        <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:16px 48px 16px 20px;min-height:0">
-          <div>
-            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${badges}</div>
-            <div style="font-size:22px;font-weight:900;color:var(--text);line-height:1.15;margin-bottom:3px">${title}</div>
-            <div style="font-size:12px;color:var(--text3);margin-bottom:9px">${subTitle}</div>
-            ${chips}
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <span style="font-size:11px;color:var(--text2);background:var(--cream);padding:4px 9px;border-radius:7px;border:1px solid var(--border2)">📍 ${spots}</span>
-              ${budget}
-            </div>
+        <div style="flex:1;display:flex;flex-direction:column;padding:22px 26px 24px;min-height:0">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">${badges}</div>
+          <div style="font-size:23px;font-weight:900;color:var(--text);line-height:1.2;margin-bottom:6px">${title}</div>
+          <div style="font-size:12.5px;color:var(--text3);margin-bottom:14px">${subTitle}</div>
+          ${chips}
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px">
+            <span style="font-size:11.5px;color:var(--text2);background:var(--cream);padding:5px 10px;border-radius:8px;border:1px solid var(--border2);line-height:1.4">📍 ${spots}</span>
+            ${budget}
           </div>
-          <div style="display:flex;gap:8px;margin-top:12px">
+          ${infoHtml}
+          <div style="display:flex;gap:8px;margin-top:auto;padding-top:14px">
             <button class="btn-slide-prev" onclick="${onClickPrev}">🔍 미리보기</button>
             <button class="btn-slide-plan" onclick="${onClickPlan}">계획하기 →</button>
           </div>
