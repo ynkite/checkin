@@ -42,11 +42,10 @@ public class DataInitializer implements CommandLineRunner {
     private final PostRepository postRepository;
     private final PlaceRepository placeRepository;
     private final PlaceReviewRepository placeReviewRepository;
+    private final ExpenseRepository expenseRepository;
 
     private final PostCommentRepository postCommentRepository;
     private final ReportRepository reportRepository;
-
-    private final ExpenseRepository expenseRepository;
 
 
     @Override
