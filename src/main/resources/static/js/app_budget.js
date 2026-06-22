@@ -48,14 +48,23 @@ async function updateLedgerList() {
 function _drawMyLedgerPager(totalPages) {
     const el = document.getElementById('my-ledger-pager');
     if (!el) return;
-    if (totalPages <= 1) { el.innerHTML = ''; return; }
-    const prev = `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage - 1})" ${_myLedgerPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`;
-    const next = `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage + 1})" ${_myLedgerPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`;
+    if (totalPages <= 0) { el.innerHTML = ''; return; }
+
+    const prev = totalPages > 1
+        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage - 1})" ${_myLedgerPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`
+        : '';
+
+    const next = totalPages > 1
+        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage + 1})" ${_myLedgerPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`
+        : '';
+
     const nums = Array.from({ length: totalPages }, (_, i) => i + 1)
         .map(n => `<button class="pager-btn${n === _myLedgerPage ? ' on' : ''}" onclick="_setMyLedgerPage(${n})">${n}</button>`)
         .join('');
+
     el.innerHTML = `<div class="ledger-pager" style="margin-top:4px;margin-bottom:12px">${prev}${nums}${next}</div>`;
 }
+
 
 function _setMyLedgerPage(n) {
     const totalPages = Math.ceil((_myTrips || []).length / _LEDGER_CARD_PAGE_SIZE);
@@ -113,14 +122,23 @@ function _populateLedgerTripCards() {
 function _drawLedgerCardPager(totalPages) {
     const el = document.getElementById('ledger-card-pager');
     if (!el) return;
-    if (totalPages <= 1) { el.innerHTML = ''; return; }
-    const prev = `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage - 1})" ${_ledgerCardPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`;
-    const next = `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage + 1})" ${_ledgerCardPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`;
+    if (totalPages <= 0) { el.innerHTML = ''; return; }
+
+    const prev = totalPages > 1
+        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage - 1})" ${_ledgerCardPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`
+        : '';
+
+    const next = totalPages > 1
+        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage + 1})" ${_ledgerCardPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`
+        : '';
+
     const nums = Array.from({ length: totalPages }, (_, i) => i + 1)
         .map(n => `<button class="pager-btn${n === _ledgerCardPage ? ' on' : ''}" onclick="_setLedgerCardPage(${n})">${n}</button>`)
         .join('');
+
     el.innerHTML = `<div class="ledger-pager" style="margin-top:10px;margin-bottom:4px">${prev}${nums}${next}</div>`;
 }
+
 
 function _setLedgerCardPage(n) {
     const totalPages = Math.ceil((_myTrips || []).length / _LEDGER_CARD_PAGE_SIZE);
