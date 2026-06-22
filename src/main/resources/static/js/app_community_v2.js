@@ -1115,7 +1115,7 @@ window._handleWriteImageSelect = function(input) {
             });
         });
 
-        tabEl.insertAdjacentElement('afterend', pager);
+        tabEl.appendChild(pager);
     }
 
     window.loadCommunityPosts = async function (page = 0, reset = true) {
