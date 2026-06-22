@@ -1,0 +1,422 @@
+/* =============================================================================
+ * TripLinker - 반응형 스타일시트 (styles_responsive.css)
+ *
+ * 【파일 설명】
+ * - 기존 styles_main.css / styles_place.css / styles_community.css 를
+ *   "건드리지 않고" 위에 덮어쓰는(override) 방식의 반응형 전용 시트.
+ * - 반드시 다른 모든 CSS 파일 "뒤(마지막)"에 로드되어야 적용됩니다.
+ *   index.html <head> 의 link 태그 순서:
+ *     styles_main.css → styles_place.css → styles_community.css → styles_responsive.css
+ *
+ * 【설계 방침】
+ * - 모바일(폰) 최우선. 기본 데스크탑 디자인은 그대로 두고
+ *   화면 폭이 좁아질 때만 레이아웃을 재구성한다.
+ * - 브레이크포인트
+ *     1024px 이하 : 태블릿 (2~3열 → 축소, 사이드바 폭 줄임)
+ *     768px  이하 : 모바일 (멀티컬럼 → 1열, nav 햄버거 메뉴)
+ *     480px  이하 : 소형 폰 (폰트/패딩 추가 축소)
+ * - nav 는 기존 HTML/JS 수정 없이 CSS 토글(:target 대체로 체크박스 트릭 불가하므로
+ *   여기서는 "스크롤 가능한 가로 nav"를 기본으로 하고, 768px 이하에서는
+ *   세로 드롭다운으로 펼쳐지는 구조로 변경. JS 토글 버튼은 아래 권장사항 참고)
+ * ============================================================================= */
+
+/* =============================================================================
+ * 0. 전역 보정
+ * ========================================================================== */
+html, body {
+    max-width: 100%;
+}
+body {
+    overflow-x: hidden;
+}
+
+/* 이미지/미디어가 부모를 넘지 않도록 */
+img, video, canvas, iframe, svg {
+    max-width: 100%;
+}
+
+/* 가로로 넘치기 쉬운 표/코드 영역은 가로 스크롤 허용 */
+table {
+    max-width: 100%;
+}
+
+/* =============================================================================
+ * 1. 태블릿 이하 (≤1024px)
+ *    - 본문 좌우 패딩을 줄이고, 넓은 사이드바를 축소
+ * ========================================================================== */
+@media (max-width: 1024px) {
+
+    /* 본문 컨테이너 좌우 여백 축소 */
+    .sec,
+    .hero {
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+
+    /* 메인 히어로: 사이드 검색카드 폭 축소 */
+    .hero {
+        grid-template-columns: 1fr 320px;
+        gap: 24px;
+    }
+
+    /* 5열 통계 → 3열 */
+    .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    /* 마이페이지/관리자 사이드바 폭 축소 */
+    .my-layout {
+        grid-template-columns: 180px 1fr;
+    }
+    .admin-layout {
+        grid-template-columns: 170px 1fr;
+    }
+
+    /* 채팅/커뮤니티 사이드 폭 축소 */
+    .chat-layout {
+        grid-template-columns: 1fr 260px;
+    }
+    .comm-layout {
+        grid-template-columns: 1fr 220px;
+    }
+
+    /* 지도 좌측 패널 폭 축소 */
+    .map-wrap {
+        grid-template-columns: 260px 1fr;
+    }
+
+    /* nav 메뉴가 넘칠 경우 가로 스크롤 허용 */
+    .nav-links {
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .nav-links::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* =============================================================================
+ * 2. 모바일 (≤768px) — 핵심
+ *    - 모든 멀티컬럼 레이아웃을 1열로
+ *    - nav 를 세로 드롭다운형으로 전환
+ * ========================================================================== */
+@media (max-width: 768px) {
+
+    /* ---------- 2-1. NAV : 세로 메뉴 / 햄버거 토글 ---------- */
+    nav {
+        flex-wrap: wrap;
+        padding: 10px 14px;
+        row-gap: 8px;
+        align-items: center;
+    }
+
+    /* 로고는 항상 보이고, 햄버거 버튼을 위해 좌측 정렬 */
+    .nav-logo {
+        flex: 0 0 auto;
+        margin-right: auto;
+    }
+    .nav-logo .logo-img {
+        height: 44px;
+        margin: 0;
+    }
+
+    /*
+     * 햄버거 버튼:
+     * 기존 HTML 에는 햄버거 버튼이 없으므로, JS 한 줄로 nav 에
+     * class "nav-open" 을 토글하는 방식을 권장(아래 채팅 안내 참고).
+     * nav-open 클래스가 붙으면 메뉴가 펼쳐진다.
+     */
+    #navHamburger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        border-radius: var(--r-sm);
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+        flex: 0 0 auto;
+        order: 2;
+    }
+
+    /* 메뉴 링크들: 기본 접힘 → 전체폭 세로 스택 */
+    .nav-links {
+        order: 3;
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
+        overflow: visible;
+        max-height: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition: max-height .28s ease, opacity .2s ease;
+    }
+    .nav-btns {
+        order: 4;
+        flex-basis: 100%;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: none;
+        transition: max-height .28s ease, opacity .2s ease;
+    }
+
+    /* nav-open 토글 시 펼침 */
+    nav.nav-open .nav-links,
+    nav.nav-open .nav-btns {
+        max-height: 600px;
+        opacity: 1;
+        pointer-events: auto;
+    }
+    nav.nav-open .nav-btns {
+        padding-top: 4px;
+        border-top: 1px solid var(--border2);
+    }
+
+    .nav-link {
+        width: 100%;
+        text-align: left;
+        padding: 11px 12px;
+        font-size: 14px;
+        border-radius: var(--r-sm);
+    }
+
+    /* 플래너 단계 표시줄: 가로 스크롤로 */
+    .nav-planner-steps {
+        flex-basis: 100%;
+        order: 5;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-btns .btn-o,
+    .nav-btns .btn-f {
+        flex: 1 1 auto;
+        text-align: center;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    /* 알림 팝업이 화면을 넘지 않도록 */
+    #notifPopup {
+        width: 92vw !important;
+        right: 4vw !important;
+        left: auto !important;
+    }
+
+    /* 고정 nav 높이가 가변이므로 .page 상단 여백을 넉넉히 */
+    .page {
+        padding-top: 72px;
+    }
+
+    /* ---------- 2-2. 본문 패딩 축소 ---------- */
+    .sec,
+    .hero {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+    .sec {
+        padding-bottom: 36px;
+    }
+    .hero {
+        padding-top: 24px;
+        padding-bottom: 24px;
+    }
+    .info-wrap {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .sec-hd {
+        font-size: 22px;
+    }
+
+    /* ---------- 2-3. 멀티컬럼 → 1열 전환 ---------- */
+    .form-row,
+    .hero,
+    .pl-2col,
+    .loc-selector,
+    .chat-layout,
+    .budget-layout,
+    .comm-layout,
+    .my-layout,
+    .admin-layout {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    /* 카드 그리드: 3열·4열·5열 → 2열 */
+    .hsc-cards,
+    .top3-grid,
+    .popular-grid,
+    .chip-grid4,
+    .stats-grid,
+    .prev-stats-row {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    /* 날씨 7일: 가로 스크롤 유지하되 한 칸 최소폭 확보 */
+    .weather-grid {
+        grid-template-columns: repeat(7, minmax(64px, 1fr));
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* ---------- 2-4. 지도 페이지: 좌우 분할 → 상하 분할 ---------- */
+    .map-wrap {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 60vh;
+        height: auto;
+        min-height: calc(100vh - 72px);
+    }
+    .map-left {
+        border-right: none;
+        border-bottom: 1px solid var(--border2);
+        max-height: 42vh;
+    }
+
+    /* ---------- 2-5. 마이페이지/관리자 사이드바 → 상단 가로 스택 ---------- */
+    .my-layout > :first-child,
+    .admin-layout > :first-child {
+        /* 사이드 메뉴를 가로 스크롤 탭처럼 */
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* ---------- 2-6. 플래너 스텝바 ---------- */
+    .step-bar,
+    .step-bar.steps-4 {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    /* ---------- 2-7. 가계부 요약/내역 ---------- */
+    /* 인라인 style 로 3열 grid 가 박혀있는 요약카드 영역 보정 */
+    #ledger-main [style*="grid-template-columns:1fr 1fr 1fr"],
+    #ledger-main [style*="grid-template-columns: 1fr 1fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* 가계부 지출 추가 폼: 가로 정렬 → 세로 */
+    .ledger-add {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .ledger-add > * {
+        width: 100% !important;
+    }
+
+    /* PDF/Excel 내보내기 버튼 줄바꿈 */
+    .ledger-header-export {
+        flex-wrap: wrap;
+    }
+
+    /* ---------- 2-8. 모달 폭 ---------- */
+    #reportPostModal > div:last-child,
+    #reportCommentModal > div:last-child {
+        width: 90vw !important;
+        max-width: 340px;
+    }
+
+    /* 일반적인 고정폭 모달 보정 */
+    [style*="width:580px"],
+    [style*="width: 580px"],
+    [style*="width:500px"],
+    [style*="width: 500px"],
+    [style*="width:660px"],
+    [style*="width: 660px"] {
+        width: auto !important;
+        max-width: 94vw !important;
+    }
+
+    /* 토스트 */
+    .toast {
+        max-width: 92vw;
+        font-size: 12.5px;
+    }
+}
+
+/* =============================================================================
+ * 3. 소형 폰 (≤480px)
+ *    - 폰트/패딩 추가 축소, 일부 2열 → 1열
+ * ========================================================================== */
+@media (max-width: 480px) {
+
+    body {
+        font-size: 14px;
+    }
+
+    .sec,
+    .hero {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .sec-hd {
+        font-size: 19px;
+    }
+
+    /* 2열 카드 중 콘텐츠가 큰 것들은 1열로 */
+    .hsc-cards,
+    .top3-grid,
+    .popular-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* 통계 카드 2열 유지(작아도 한눈에) */
+    .stats-grid,
+    .prev-stats-row,
+    .chip-grid4 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    /* 버튼 간격/폰트 축소 */
+    .btn-o,
+    .btn-f {
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    .nav-logo .logo-img {
+        height: 38px;
+    }
+
+    /* 가계부 지출 내역 테이블 폰트 축소 */
+    #ledger-act-table {
+        font-size: 12px;
+    }
+}
+
+/* =============================================================================
+ * 4. 가로 모드 짧은 화면 (높이 ≤500px, 가로 폰)
+ * ========================================================================== */
+@media (max-height: 500px) and (orientation: landscape) {
+    nav.nav-open .nav-links,
+    nav.nav-open .nav-btns {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    .map-wrap {
+        grid-template-rows: auto 80vh;
+    }
+}
+
+/* =============================================================================
+ * 5. 데스크탑에서는 햄버거 숨김
+ * ========================================================================== */
+@media (min-width: 769px) {
+    #navHamburger {
+        display: none;
+    }
+}

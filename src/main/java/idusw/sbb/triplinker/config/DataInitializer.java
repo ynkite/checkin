@@ -96,47 +96,47 @@ public class DataInitializer implements CommandLineRunner {
 
         // ── 관리자 플랜 routeJson + 가계부 예상 비용 ──
         String jejuRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
-                "{\"name\":\"제주 오션뷰 펜션\",\"type\":\"stay\",\"sub\":\"숙소 · ₩180,000/박\",\"time\":\"15:00\"}," +
-                "{\"name\":\"협재 해물라면\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"18:30\"}]}," +
+                "{\"name\":\"세인트포 리조트\",\"type\":\"stay\",\"sub\":\"숙소 · ₩180,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"협재수우동\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"18:30\"}]}," +
                 "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
-                "{\"name\":\"성산일출봉\",\"type\":\"tour\",\"sub\":\"관광지 · ₩5,000\",\"time\":\"07:00\"}," +
-                "{\"name\":\"성산일출봉 전망카페\",\"type\":\"cafe\",\"sub\":\"카페 · ₩8,000\",\"time\":\"09:00\"}," +
-                "{\"name\":\"제주 흑돼지 명가\",\"type\":\"food\",\"sub\":\"맛집 · ₩35,000\",\"time\":\"19:00\"}]}," +
+                "{\"name\":\"수월봉\",\"type\":\"tour\",\"sub\":\"관광지 · ₩5,000\",\"time\":\"07:00\"}," +
+                "{\"name\":\"카페 더클리프\",\"type\":\"cafe\",\"sub\":\"카페 · ₩8,000\",\"time\":\"09:00\"}," +
+                "{\"name\":\"연리지가든\",\"type\":\"food\",\"sub\":\"맛집 · ₩35,000\",\"time\":\"19:00\"}]}," +
                 "{\"day\":3,\"label\":\"Day 3\",\"places\":[" +
-                "{\"name\":\"애월 카페거리\",\"type\":\"cafe\",\"sub\":\"카페 · ₩9,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"카페 봄날\",\"type\":\"cafe\",\"sub\":\"카페 · ₩9,000\",\"time\":\"10:00\"}," +
                 "{\"name\":\"한림공원\",\"type\":\"tour\",\"sub\":\"관광지 · ₩12,000\",\"time\":\"13:00\"}]}]";
         jejuPlan.setRouteJson(jejuRoute);
         travelPlanRepository.save(jejuPlan);
         saveEstimatedExpenses(jejuPlan, admin, new Object[][]{
-                {"STAY", "제주 오션뷰 펜션",      180_000L, 0},
-                {"FOOD", "협재 해물라면",          15_000L,  0},
-                {"TOUR", "성산일출봉",             5_000L,   1},
-                {"CAFE", "성산일출봉 전망카페",    8_000L,   1},
-                {"FOOD", "제주 흑돼지 명가",       35_000L,  1},
-                {"CAFE", "애월 카페거리",          9_000L,   2},
+                {"STAY", "세인트포 리조트",      180_000L, 0},
+                {"FOOD", "협재수우동",          15_000L,  0},
+                {"TOUR", "수월봉",             5_000L,   1},
+                {"CAFE", "카페 더클리프",    8_000L,   1},
+                {"FOOD", "연리지가든",       35_000L,  1},
+                {"CAFE", "카페 봄날",          9_000L,   2},
                 {"TOUR", "한림공원",              12_000L,  2},
         });
 
         String busanRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
-                "{\"name\":\"해운대 오션뷰 호텔\",\"type\":\"stay\",\"sub\":\"숙소 · ₩220,000/박\",\"time\":\"15:00\"}," +
-                "{\"name\":\"해운대 회센터\",\"type\":\"food\",\"sub\":\"맛집 · ₩40,000\",\"time\":\"19:00\"}]}," +
+                "{\"name\":\"파라다이스 호텔 부산\",\"type\":\"stay\",\"sub\":\"숙소 · ₩220,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"해운대암소갈비집\",\"type\":\"food\",\"sub\":\"맛집 · ₩40,000\",\"time\":\"19:00\"}]}," +
                 "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
-                "{\"name\":\"광안리 서핑 스쿨\",\"type\":\"tour\",\"sub\":\"액티비티 · ₩50,000\",\"time\":\"10:00\"}," +
-                "{\"name\":\"광안리 카페거리\",\"type\":\"cafe\",\"sub\":\"카페 · ₩7,000\",\"time\":\"17:00\"}," +
-                "{\"name\":\"광안리 곱창골목\",\"type\":\"food\",\"sub\":\"맛집 · ₩25,000\",\"time\":\"20:00\"}]}]";
+                "{\"name\":\"광안리해수욕장\",\"type\":\"tour\",\"sub\":\"액티비티 · ₩50,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"더베이101\",\"type\":\"cafe\",\"sub\":\"카페 · ₩7,000\",\"time\":\"17:00\"}," +
+                "{\"name\":\"광안리 조개구이거리\",\"type\":\"food\",\"sub\":\"맛집 · ₩25,000\",\"time\":\"20:00\"}]}]";
         busanPlan.setRouteJson(busanRoute);
         travelPlanRepository.save(busanPlan);
         saveEstimatedExpenses(busanPlan, admin, new Object[][]{
-                {"STAY", "해운대 오션뷰 호텔",    220_000L, 0},
-                {"FOOD", "해운대 회센터",          40_000L,  0},
-                {"TOUR", "광안리 서핑 스쿨",       50_000L,  1},
-                {"CAFE", "광안리 카페거리",         7_000L,  1},
-                {"FOOD", "광안리 곱창골목",        25_000L,  1},
+                {"STAY", "파라다이스 호텔 부산",    220_000L, 0},
+                {"FOOD", "해운대암소갈비집",          40_000L,  0},
+                {"TOUR", "광안리해수욕장",       50_000L,  1},
+                {"CAFE", "더베이101",         7_000L,  1},
+                {"FOOD", "광안리 조개구이거리",        25_000L,  1},
         });
 
         String gyeongjuRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
-                "{\"name\":\"경주 한옥 스테이\",\"type\":\"stay\",\"sub\":\"숙소 · ₩150,000/박\",\"time\":\"15:00\"}," +
-                "{\"name\":\"황리단길 한정식\",\"type\":\"food\",\"sub\":\"맛집 · ₩45,000\",\"time\":\"19:00\"}]}," +
+                "{\"name\":\"라궁 한옥호텔\",\"type\":\"stay\",\"sub\":\"숙소 · ₩150,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"황남밀면\",\"type\":\"food\",\"sub\":\"맛집 · ₩45,000\",\"time\":\"19:00\"}]}," +
                 "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
                 "{\"name\":\"불국사\",\"type\":\"tour\",\"sub\":\"관광지 · ₩6,000\",\"time\":\"09:00\"}," +
                 "{\"name\":\"석굴암\",\"type\":\"tour\",\"sub\":\"관광지 · ₩6,000\",\"time\":\"11:00\"}," +
@@ -144,36 +144,36 @@ public class DataInitializer implements CommandLineRunner {
         gyeongjuPlan.setRouteJson(gyeongjuRoute);
         travelPlanRepository.save(gyeongjuPlan);
         saveEstimatedExpenses(gyeongjuPlan, admin, new Object[][]{
-                {"STAY", "경주 한옥 스테이",      150_000L, 0},
-                {"FOOD", "황리단길 한정식",         45_000L, 0},
+                {"STAY", "라궁 한옥호텔",      150_000L, 0},
+                {"FOOD", "황남밀면",         45_000L, 0},
                 {"TOUR", "불국사",                  6_000L,  1},
                 {"TOUR", "석굴암",                  6_000L,  1},
                 {"FOOD", "경주 교리김밥",            8_000L,  1},
         });
 
         String gangwonRoute = "[{\"day\":1,\"label\":\"Day 1\",\"places\":[" +
-                "{\"name\":\"속초 오션뷰 펜션\",\"type\":\"stay\",\"sub\":\"숙소 · ₩130,000/박\",\"time\":\"15:00\"}," +
-                "{\"name\":\"속초 만석닭강정\",\"type\":\"food\",\"sub\":\"맛집 · ₩20,000\",\"time\":\"18:00\"}]}," +
+                "{\"name\":\"롯데리조트 속초\",\"type\":\"stay\",\"sub\":\"숙소 · ₩130,000/박\",\"time\":\"15:00\"}," +
+                "{\"name\":\"만석닭강정\",\"type\":\"food\",\"sub\":\"맛집 · ₩20,000\",\"time\":\"18:00\"}]}," +
                 "{\"day\":2,\"label\":\"Day 2\",\"places\":[" +
-                "{\"name\":\"권금성 케이블카\",\"type\":\"tour\",\"sub\":\"관광지 · ₩14,000\",\"time\":\"10:00\"}," +
-                "{\"name\":\"양양 물치항 대게\",\"type\":\"food\",\"sub\":\"맛집 · ₩55,000\",\"time\":\"13:00\"}]}," +
+                "{\"name\":\"설악산 케이블카\",\"type\":\"tour\",\"sub\":\"관광지 · ₩14,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"물치항\",\"type\":\"food\",\"sub\":\"맛집 · ₩55,000\",\"time\":\"13:00\"}]}," +
                 "{\"day\":3,\"label\":\"Day 3\",\"places\":[" +
-                "{\"name\":\"남이섬\",\"type\":\"tour\",\"sub\":\"관광지 · ₩16,000\",\"time\":\"10:00\"}," +
-                "{\"name\":\"춘천 닭갈비 골목\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"13:00\"}]}]";
+                "{\"name\":\"낙산사\",\"type\":\"tour\",\"sub\":\"관광지 · ₩16,000\",\"time\":\"10:00\"}," +
+                "{\"name\":\"속초관광수산시장\",\"type\":\"food\",\"sub\":\"맛집 · ₩15,000\",\"time\":\"13:00\"}]}]";
         gangwonPlan.setRouteJson(gangwonRoute);
         travelPlanRepository.save(gangwonPlan);
         saveEstimatedExpenses(gangwonPlan, admin, new Object[][]{
-                {"STAY", "속초 오션뷰 펜션",      130_000L, 0},
-                {"FOOD", "속초 만석닭강정",         20_000L, 0},
-                {"TOUR", "권금성 케이블카",         14_000L, 1},
-                {"FOOD", "양양 물치항 대게",        55_000L, 1},
-                {"TOUR", "남이섬",                  16_000L, 2},
-                {"FOOD", "춘천 닭갈비 골목",        15_000L, 2},
+                {"STAY", "롯데리조트 속초",      130_000L, 0},
+                {"FOOD", "만석닭강정",         20_000L, 0},
+                {"TOUR", "설악산 케이블카",         14_000L, 1},
+                {"FOOD", "물치항",        55_000L, 1},
+                {"TOUR", "낙산사",                  16_000L, 2},
+                {"FOOD", "속초관광수산시장",        15_000L, 2},
         });
         log.info("관리자 플랜 가계부 예상 비용이 생성되었습니다.");
 
         // ── Curation 4건 ──
-        String jejuExtraNotes = "{\"cardColor\":\"#E0F7FA\",\"tags\":[\"초여름\",\"힐링\",\"오션뷰\"],\"adminRecommendedAccommodations\":[\"제주 오션뷰 펜션\",\"제주 애월 감성 게스트하우스\"],\"adminRecommendedRestaurants\":[\"협재 해물라면\",\"제주 흑돼지 명가\"],\"adminRecommendedAttractions\":[\"협재해변\",\"성산일출봉\",\"한림공원\"],\"adminRecommendedCafes\":[\"성산일출봉 전망카페\",\"애월 카페거리\"],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"펜션\",\"companion\":\"커플\",\"style\":[\"힐링\",\"오션뷰\"],\"diet\":[\"해산물 선호\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"오션뷰\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"제주 오션뷰 펜션\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":180000},{\"name\":\"협재 해물라면\",\"type\":\"🍽️ 맛집\",\"time\":\"12:30\",\"amount\":15000},{\"name\":\"협재해변\",\"type\":\"📍 관광지\",\"time\":\"17:00\",\"amount\":0}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"성산일출봉\",\"type\":\"📍 관광지\",\"time\":\"07:00\",\"amount\":5000},{\"name\":\"성산일출봉 전망카페\",\"type\":\"☕ 카페\",\"time\":\"09:00\",\"amount\":8000},{\"name\":\"제주 흑돼지 명가\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":35000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"애월 카페거리\",\"type\":\"☕ 카페\",\"time\":\"10:00\",\"amount\":9000},{\"name\":\"한림공원\",\"type\":\"📍 관광지\",\"time\":\"13:00\",\"amount\":12000}]}]}";
+        String jejuExtraNotes = "{\"cardColor\":\"#E0F7FA\",\"tags\":[\"초여름\",\"힐링\",\"오션뷰\"],\"adminRecommendedAccommodations\":[\"세인트포 리조트\",\"제주 애월 한담게스트하우스\"],\"adminRecommendedRestaurants\":[\"협재수우동\",\"연리지가든\"],\"adminRecommendedAttractions\":[\"협재해변\",\"수월봉\",\"한림공원\"],\"adminRecommendedCafes\":[\"카페 더클리프\",\"카페 봄날\"],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"펜션\",\"companion\":\"커플\",\"style\":[\"힐링\",\"오션뷰\"],\"diet\":[\"해산물 선호\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"오션뷰\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"세인트포 리조트\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":180000},{\"name\":\"협재수우동\",\"type\":\"🍽️ 맛집\",\"time\":\"12:30\",\"amount\":15000},{\"name\":\"협재해변\",\"type\":\"📍 관광지\",\"time\":\"17:00\",\"amount\":0}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"수월봉\",\"type\":\"📍 관광지\",\"time\":\"07:00\",\"amount\":5000},{\"name\":\"카페 더클리프\",\"type\":\"☕ 카페\",\"time\":\"09:00\",\"amount\":8000},{\"name\":\"연리지가든\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":35000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"카페 봄날\",\"type\":\"☕ 카페\",\"time\":\"10:00\",\"amount\":9000},{\"name\":\"한림공원\",\"type\":\"📍 관광지\",\"time\":\"13:00\",\"amount\":12000}]}]}";
         curationRepository.save(Curation.builder()
                 .admin(admin).plan(jejuPlan)
                 .title("🌊 제주 에메랄드 해안")
@@ -182,7 +182,7 @@ public class DataInitializer implements CommandLineRunner {
                 .displayOrder(1).isDefault(true)
                 .extraNotes(jejuExtraNotes).build());
 
-        String busanExtraNotes = "{\"cardColor\":\"#E3F2FD\",\"tags\":[\"여름\",\"액티비티\",\"서핑\"],\"adminRecommendedAccommodations\":[\"해운대 오션뷰 호텔\",\"광안리 비치 호텔\"],\"adminRecommendedRestaurants\":[\"해운대 회센터\",\"광안리 곱창골목\"],\"adminRecommendedAttractions\":[\"해운대 해수욕장\",\"광안리 서핑 스쿨\"],\"adminRecommendedCafes\":[\"광안리 카페거리\"],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚌 대중교통\",\"accommodation\":\"호텔\",\"companion\":\"친구\",\"style\":[\"액티비티\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"빼곡하게\",\"accOptions\":[\"오션뷰\",\"수영장\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"해운대 오션뷰 호텔\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":220000},{\"name\":\"해운대 해수욕장\",\"type\":\"📍 관광지\",\"time\":\"16:00\",\"amount\":0},{\"name\":\"해운대 회센터\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":40000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"광안리 서핑 스쿨\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":50000},{\"name\":\"광안리 카페거리\",\"type\":\"☕ 카페\",\"time\":\"17:00\",\"amount\":7000},{\"name\":\"광안리 곱창골목\",\"type\":\"🍽️ 맛집\",\"time\":\"20:00\",\"amount\":25000}]}]}";
+        String busanExtraNotes = "{\"cardColor\":\"#E3F2FD\",\"tags\":[\"여름\",\"액티비티\",\"서핑\"],\"adminRecommendedAccommodations\":[\"파라다이스 호텔 부산\",\"호메르스 호텔\"],\"adminRecommendedRestaurants\":[\"해운대암소갈비집\",\"광안리 조개구이거리\"],\"adminRecommendedAttractions\":[\"해운대 해수욕장\",\"광안리해수욕장\"],\"adminRecommendedCafes\":[\"더베이101\"],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚌 대중교통\",\"accommodation\":\"호텔\",\"companion\":\"친구\",\"style\":[\"액티비티\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"빼곡하게\",\"accOptions\":[\"오션뷰\",\"수영장\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"파라다이스 호텔 부산\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":220000},{\"name\":\"해운대 해수욕장\",\"type\":\"📍 관광지\",\"time\":\"16:00\",\"amount\":0},{\"name\":\"해운대암소갈비집\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":40000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"광안리해수욕장\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":50000},{\"name\":\"더베이101\",\"type\":\"☕ 카페\",\"time\":\"17:00\",\"amount\":7000},{\"name\":\"광안리 조개구이거리\",\"type\":\"🍽️ 맛집\",\"time\":\"20:00\",\"amount\":25000}]}]}";
         curationRepository.save(Curation.builder()
                 .admin(admin).plan(busanPlan)
                 .title("🏄 부산 해운대 서핑 투어")
@@ -191,7 +191,7 @@ public class DataInitializer implements CommandLineRunner {
                 .displayOrder(2).isDefault(true)
                 .extraNotes(busanExtraNotes).build());
 
-        String gyeongjuExtraNotes = "{\"cardColor\":\"#FFF8E1\",\"tags\":[\"문화·역사\",\"가족\",\"힐링\"],\"adminRecommendedAccommodations\":[\"경주 한옥 스테이\",\"경주 보문 리조트\"],\"adminRecommendedRestaurants\":[\"경주 교리김밥\",\"황리단길 한정식\"],\"adminRecommendedAttractions\":[\"황리단길\",\"불국사\",\"석굴암\",\"첨성대\"],\"adminRecommendedCafes\":[],\"adminRecommendedCultures\":[\"국립경주박물관\"],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"호텔\",\"companion\":\"가족\",\"style\":[\"문화·역사\",\"힐링\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"조식 포함\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"경주 한옥 스테이\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":150000},{\"name\":\"황리단길\",\"type\":\"📍 관광지\",\"time\":\"17:00\",\"amount\":0},{\"name\":\"황리단길 한정식\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":45000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"불국사\",\"type\":\"📍 관광지\",\"time\":\"09:00\",\"amount\":6000},{\"name\":\"석굴암\",\"type\":\"📍 관광지\",\"time\":\"11:00\",\"amount\":6000},{\"name\":\"경주 교리김밥\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":8000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"국립경주박물관\",\"type\":\"🎭 문화\",\"time\":\"10:00\",\"amount\":0},{\"name\":\"첨성대\",\"type\":\"📍 관광지\",\"time\":\"13:00\",\"amount\":0}]}]}";
+        String gyeongjuExtraNotes = "{\"cardColor\":\"#FFF8E1\",\"tags\":[\"문화·역사\",\"가족\",\"힐링\"],\"adminRecommendedAccommodations\":[\"라궁 한옥호텔\",\"경주 힐튼호텔\"],\"adminRecommendedRestaurants\":[\"경주 교리김밥\",\"황남밀면\"],\"adminRecommendedAttractions\":[\"황리단길\",\"불국사\",\"석굴암\",\"첨성대\"],\"adminRecommendedCafes\":[],\"adminRecommendedCultures\":[\"국립경주박물관\"],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"호텔\",\"companion\":\"가족\",\"style\":[\"문화·역사\",\"힐링\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"조식 포함\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"라궁 한옥호텔\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":150000},{\"name\":\"황리단길\",\"type\":\"📍 관광지\",\"time\":\"17:00\",\"amount\":0},{\"name\":\"황남밀면\",\"type\":\"🍽️ 맛집\",\"time\":\"19:00\",\"amount\":45000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"불국사\",\"type\":\"📍 관광지\",\"time\":\"09:00\",\"amount\":6000},{\"name\":\"석굴암\",\"type\":\"📍 관광지\",\"time\":\"11:00\",\"amount\":6000},{\"name\":\"경주 교리김밥\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":8000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"국립경주박물관\",\"type\":\"🎭 문화\",\"time\":\"10:00\",\"amount\":0},{\"name\":\"첨성대\",\"type\":\"📍 관광지\",\"time\":\"13:00\",\"amount\":0}]}]}";
         curationRepository.save(Curation.builder()
                 .admin(admin).plan(gyeongjuPlan)
                 .title("🏛️ 경주 역사 문화 기행")
@@ -200,7 +200,7 @@ public class DataInitializer implements CommandLineRunner {
                 .displayOrder(3).isDefault(true)
                 .extraNotes(gyeongjuExtraNotes).build());
 
-        String gangwonExtraNotes = "{\"cardColor\":\"#E8F5E9\",\"tags\":[\"자연\",\"트레킹\",\"힐링\"],\"adminRecommendedAccommodations\":[\"속초 오션뷰 펜션\",\"평창 산장 펜션\"],\"adminRecommendedRestaurants\":[\"속초 만석닭강정\",\"양양 물치항 대게\",\"춘천 닭갈비 골목\"],\"adminRecommendedAttractions\":[\"속초 해수욕장\",\"설악산 국립공원\",\"권금성 케이블카\",\"남이섬\"],\"adminRecommendedCafes\":[],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"펜션\",\"companion\":\"친구\",\"style\":[\"힐링\",\"액티비티\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"취사 가능\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"속초 오션뷰 펜션\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":130000},{\"name\":\"속초 해수욕장\",\"type\":\"📍 관광지\",\"time\":\"16:30\",\"amount\":0},{\"name\":\"속초 만석닭강정\",\"type\":\"🍽️ 맛집\",\"time\":\"18:00\",\"amount\":20000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"설악산 국립공원\",\"type\":\"📍 관광지\",\"time\":\"08:00\",\"amount\":0},{\"name\":\"권금성 케이블카\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":14000},{\"name\":\"양양 물치항 대게\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":55000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"남이섬\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":16000},{\"name\":\"춘천 닭갈비 골목\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":15000}]}]}";
+        String gangwonExtraNotes = "{\"cardColor\":\"#E8F5E9\",\"tags\":[\"자연\",\"트레킹\",\"힐링\"],\"adminRecommendedAccommodations\":[\"롯데리조트 속초\",\"설악 켄싱턴호텔\"],\"adminRecommendedRestaurants\":[\"만석닭강정\",\"물치항\",\"속초관광수산시장\"],\"adminRecommendedAttractions\":[\"속초 해수욕장\",\"설악산 국립공원\",\"설악산 케이블카\",\"낙산사\"],\"adminRecommendedCafes\":[],\"adminRecommendedCultures\":[],\"preferences\":{\"transport\":\"🚗 자차\",\"accommodation\":\"펜션\",\"companion\":\"친구\",\"style\":[\"힐링\",\"액티비티\"],\"diet\":[\"무관\"],\"special\":[],\"density\":\"여유롭게\",\"accOptions\":[\"취사 가능\"]},\"days\":[{\"day\":1,\"label\":\"Day 1\",\"places\":[{\"name\":\"롯데리조트 속초\",\"type\":\"🏨 숙소\",\"time\":\"15:00\",\"amount\":130000},{\"name\":\"속초 해수욕장\",\"type\":\"📍 관광지\",\"time\":\"16:30\",\"amount\":0},{\"name\":\"만석닭강정\",\"type\":\"🍽️ 맛집\",\"time\":\"18:00\",\"amount\":20000}]},{\"day\":2,\"label\":\"Day 2\",\"places\":[{\"name\":\"설악산 국립공원\",\"type\":\"📍 관광지\",\"time\":\"08:00\",\"amount\":0},{\"name\":\"설악산 케이블카\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":14000},{\"name\":\"물치항\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":55000}]},{\"day\":3,\"label\":\"Day 3\",\"places\":[{\"name\":\"낙산사\",\"type\":\"📍 관광지\",\"time\":\"10:00\",\"amount\":16000},{\"name\":\"속초관광수산시장\",\"type\":\"🍽️ 맛집\",\"time\":\"13:00\",\"amount\":15000}]}]}";
         curationRepository.save(Curation.builder()
                 .admin(admin).plan(gangwonPlan)
                 .title("🌿 강원 자연 힐링 트레킹")
@@ -214,7 +214,7 @@ public class DataInitializer implements CommandLineRunner {
         Post adminPost1 = postRepository.save(Post.builder()
                 .user(admin).plan(jejuPlan)
                 .title("제주 여름 바캉스, 협재해변에서 보낸 3박4일")
-                .content("에메랄드빛 협재해변과 성산일출봉을 둘러볼 수 있는 여름 휴가 후기입니다.")
+                .content("에메랄드빛 협재해변과 수월봉을 둘러볼 수 있는 여름 휴가 후기입니다.")
                 .styleTags("여름,힐링,오션뷰").isPublic(true).build());
 
         Post adminPost2 = postRepository.save(Post.builder()
@@ -231,8 +231,8 @@ public class DataInitializer implements CommandLineRunner {
 
         Post adminPost4 = postRepository.save(Post.builder()
                 .user(admin).plan(gangwonPlan)
-                .title("강원 힐링 트레킹, 설악산에서 남이섬까지")
-                .content("속초·양양·춘천을 잇는 강원 자연 힐링 코스입니다.")
+                .title("강원 힐링 트레킹, 설악산에서 낙산사까지")
+                .content("속초·양양 설악권을 잇는 강원 자연 힐링 코스입니다.")
                 .styleTags("자연,트레킹,힐링").isPublic(true).build());
         log.info("게시물(Post) 4건이 생성되었습니다.");
         // ── 일반 유저 20명 ──
@@ -286,11 +286,11 @@ public class DataInitializer implements CommandLineRunner {
                 {"부산 맛집 투어",          "부산"},
                 {"설악산 등산 1박2일",       "강원"},
                 {"경주 황리단길 카페 투어",   "경주"},
-                {"제주 성산 일출 여행",      "제주"},
-                {"남이섬 단풍 당일치기",     "강원"},
+                {"제주 한경 노을 여행",      "제주"},
+                {"낙산사 단풍 당일치기",     "강원"},
                 {"제주 애월 카페 여행",      "제주"},
                 {"강릉 안목해변 커피 여행",   "강원"},
-                {"제주 성산 오션뷰 여행",    "제주"},
+                {"제주 애월 오션뷰 여행",    "제주"},
                 {"부산 광안리 야경 여행",    "부산"},
         };
         TravelPlan[] userPlans = new TravelPlan[20];
@@ -308,8 +308,8 @@ public class DataInitializer implements CommandLineRunner {
         // ── Post 20건 (카테고리별 4건씩) ──
         // ROUTE 4건
         Post postRoute1 = postRepository.save(Post.builder().user(users[0]).plan(userPlans[0])
-                .title("제주 3박4일 완벽 코스, 협재부터 성산까지")
-                .content("제주 여행의 정석 코스를 소개합니다. 1일차는 협재해변에서 에메랄드빛 바다를 감상하고 오설록 티뮤지엄을 들렀어요. 2일차에는 성산일출봉 일출을 보고 섭지코지 산책, 저녁엔 제주시 흑돼지 거리에서 식사했습니다. 렌터카 이동이라 편했고 도로도 잘 되어있어요.")
+                .title("제주 서부 3박4일 완벽 코스, 협재부터 수월봉까지")
+                .content("제주 여행의 정석 코스를 소개합니다. 1일차는 협재해변에서 에메랄드빛 바다를 감상하고 오설록 티뮤지엄을 들렀어요. 2일차에는 수월봉 일출을 보고 섭지코지 산책, 저녁엔 제주시 흑돼지 거리에서 식사했습니다. 렌터카 이동이라 편했고 도로도 잘 되어있어요.")
                 .styleTags("여름,힐링,오션뷰").category("ROUTE").isPublic(true).build());
 
         Post postRoute2 = postRepository.save(Post.builder().user(users[2]).plan(userPlans[2])
@@ -329,12 +329,12 @@ public class DataInitializer implements CommandLineRunner {
 
         // STAY 4건
         Post postStay1 = postRepository.save(Post.builder().user(users[1]).plan(userPlans[1])
-                .title("해운대 오션뷰 호텔, 뷰가 진짜 미쳤어요")
+                .title("파라다이스 호텔 부산, 뷰가 진짜 미쳤어요")
                 .content("해운대 바로 앞 오션뷰 룸을 예약했는데 창문 열면 바다가 눈앞에 펼쳐져요. 아침에 일어나서 바다 보면서 커피 한 잔 하는 게 꿈같은 시간이었어요. 조식도 뷔페로 운영되는데 종류가 다양하고 맛있었어요.")
                 .styleTags("여름,오션뷰,럭셔리").category("STAY").isPublic(true).build());
 
         Post postStay2 = postRepository.save(Post.builder().user(users[3]).plan(userPlans[3])
-                .title("속초 오션뷰 펜션 — 조용하고 아늑한 힐링 숙소")
+                .title("롯데리조트 속초 — 조용하고 아늑한 힐링 숙소")
                 .content("속초 해변 근처 작은 펜션인데 정말 마음에 들었어요. 사장님이 직접 만들어주신 조식이 너무 맛있었고 바베큐 시설도 잘 되어있었어요. 방에서 바다 소리가 들려서 잠들기도 좋았어요.")
                 .styleTags("자연,힐링,오션뷰").category("STAY").isPublic(true).build());
 
@@ -344,7 +344,7 @@ public class DataInitializer implements CommandLineRunner {
                 .styleTags("문화·역사,가성비,힐링").category("STAY").isPublic(true).build());
 
         Post postStay4 = postRepository.save(Post.builder().user(users[10]).plan(userPlans[10])
-                .title("제주 애월 감성 게스트하우스 — 혼행자에게 딱이에요")
+                .title("제주 애월 한담게스트하우스 — 혼행자에게 딱이에요")
                 .content("혼자 제주 여행 가서 게스트하우스에 묵었는데 여기서 만난 여행자들이랑 같이 밥도 먹고 드라이브도 했어요. 호스트가 제주 로컬 맛집을 직접 추천해줘서 관광객이 잘 모르는 곳을 많이 다녔어요.")
                 .styleTags("혼행,가성비,힐링").category("STAY").isPublic(true).build());
 
@@ -377,17 +377,17 @@ public class DataInitializer implements CommandLineRunner {
 
         Post postTour2 = postRepository.save(Post.builder().user(users[12]).plan(userPlans[12])
                 .title("설악산 국립공원 당일 등산 — 권금성 코스 추천")
-                .content("설악산 권금성 케이블카 타고 올라가서 주변 산책로 걸었어요. 케이블카 안에서 보이는 울산바위가 진짜 장관이에요. 내려와서 비룡폭포까지 걸어갔는데 왕복 2시간 정도 걸렸어요.")
+                .content("설악산 설악산 케이블카 타고 올라가서 주변 산책로 걸었어요. 케이블카 안에서 보이는 울산바위가 진짜 장관이에요. 내려와서 비룡폭포까지 걸어갔는데 왕복 2시간 정도 걸렸어요.")
                 .styleTags("자연,트레킹,힐링").category("TOUR").isPublic(true).build());
 
         Post postTour3 = postRepository.save(Post.builder().user(users[14]).plan(userPlans[14])
-                .title("성산일출봉 일출 후기 — 새벽 5시에 올라간 보람")
+                .title("수월봉 일출 후기 — 새벽 5시에 올라간 보람")
                 .content("새벽 4시 반에 일어나서 5시에 입장했어요. 올라가는 길이 생각보다 가파르지 않아서 30분이면 정상이에요. 일출이 시작되는 순간 정말 눈물이 날 것 같았어요.")
                 .styleTags("자연,힐링,오션뷰").category("TOUR").isPublic(true).build());
 
         Post postTour4 = postRepository.save(Post.builder().user(users[15]).plan(userPlans[15])
-                .title("남이섬 사계절 중 가을이 최고 — 단풍 명소 추천")
-                .content("남이섬은 봄에도 예쁘지만 가을 단풍이 진짜 예술이에요. 메타세쿼이아길이 빨갛고 노랗게 물들면 사진이 저절로 찍혀요. 자전거 대여해서 섬 한 바퀴 도는 것도 추천해요.")
+                .title("낙산사 사계절 중 가을이 최고 — 단풍 명소 추천")
+                .content("낙산사은 봄에도 예쁘지만 가을 단풍이 진짜 예술이에요. 메타세쿼이아길이 빨갛고 노랗게 물들면 사진이 저절로 찍혀요. 자전거 대여해서 섬 한 바퀴 도는 것도 추천해요.")
                 .styleTags("자연,힐링,가성비").category("TOUR").isPublic(true).build());
 
         // CAFE 4건
@@ -402,13 +402,13 @@ public class DataInitializer implements CommandLineRunner {
                 .styleTags("힐링,음식 탐방,가성비").category("CAFE").isPublic(true).build());
 
         Post postCafe3 = postRepository.save(Post.builder().user(users[18]).plan(userPlans[18])
-                .title("성산일출봉 전망 카페 — 카페에서 일출봉이 보여요")
-                .content("성산일출봉 입구 근처 전망 카페에 갔는데 창밖으로 일출봉이 딱 보여요. 아메리카노 한 잔 하면서 일출봉 바라보는 시간이 너무 좋았어요. 제주 말차 라테도 유명한데 색감이 예쁘고 맛도 좋아요.")
+                .title("수월봉 전망 카페 — 카페에서 노을이 보여요")
+                .content("수월봉 입구 근처 전망 카페에 갔는데 창밖으로 노을 지는 바다가 딱 보여요. 아메리카노 한 잔 하면서 수평선 바라보는 시간이 너무 좋았어요. 제주 말차 라테도 유명한데 색감이 예쁘고 맛도 좋아요.")
                 .styleTags("힐링,오션뷰,여름").category("CAFE").isPublic(true).build());
 
         Post postCafe4 = postRepository.save(Post.builder().user(users[19]).plan(userPlans[19])
-                .title("광안리 카페거리 — 야경 보면서 디저트 먹는 꿈의 코스")
-                .content("부산 광안리 카페거리는 밤에 가야 제맛이에요. 광안대교 야경이 빛나는 시간에 오션뷰 카페에 앉아서 디저트 먹으면 진짜 행복해요. 부산 특유의 감성 카페들이 많아서 인스타 사진 찍기도 좋아요.")
+                .title("더베이101 — 야경 보면서 디저트 먹는 꿈의 코스")
+                .content("부산 더베이101는 밤에 가야 제맛이에요. 광안대교 야경이 빛나는 시간에 오션뷰 카페에 앉아서 디저트 먹으면 진짜 행복해요. 부산 특유의 감성 카페들이 많아서 인스타 사진 찍기도 좋아요.")
                 .styleTags("여름,액티비티,오션뷰").category("CAFE").isPublic(true).build());
 
         log.info("유저 Post 20건이 생성되었습니다.");
@@ -512,23 +512,23 @@ public class DataInitializer implements CommandLineRunner {
         // ── Place 26건 생성 (PlaceReview에서 참조하기 위해 먼저 생성) ──
         // 숙소(ACCOMMODATION) 6건
         Place placeJejuPension = placeRepository.save(Place.builder()
-                .name("제주 오션뷰 펜션").category(PlaceCategory.ACCOMMODATION)
+                .name("세인트포 리조트").category(PlaceCategory.ACCOMMODATION)
                 .address("제주특별자치도 제주시 한림읍 협재리").avgPrice(180000)
                 .externalRating(new BigDecimal("4.8")).savedCount(312).build());
 
         Place placeHaeundaeHotel = placeRepository.save(Place.builder()
-                .name("해운대 오션뷰 호텔").category(PlaceCategory.ACCOMMODATION)
+                .name("파라다이스 호텔 부산").category(PlaceCategory.ACCOMMODATION)
                 .address("부산광역시 해운대구 해운대해변로").avgPrice(220000)
                 .externalRating(new BigDecimal("4.6")).savedCount(458).build());
 
         Place placeSokchoJejuPension = placeRepository.save(Place.builder()
-                .name("속초 오션뷰 펜션").category(PlaceCategory.ACCOMMODATION)
+                .name("롯데리조트 속초").category(PlaceCategory.ACCOMMODATION)
                 .address("강원도 속초시 해안가").avgPrice(130000)
                 .externalRating(new BigDecimal("4.7")).savedCount(198).build());
 
         Place placeGyeongjuHanok = placeRepository.save(Place.builder()
-                .name("경주 한옥 스테이").category(PlaceCategory.ACCOMMODATION)
-                .address("경상북도 경주시 황리단길 인근").avgPrice(150000)
+                .name("라궁 한옥호텔").category(PlaceCategory.ACCOMMODATION)
+                .address("경상북도 경주시 보문로 보문관광단지").avgPrice(150000)
                 .externalRating(new BigDecimal("4.7")).savedCount(221).build());
 
         Place placeJeonjuHanok = placeRepository.save(Place.builder()
@@ -537,28 +537,28 @@ public class DataInitializer implements CommandLineRunner {
                 .externalRating(new BigDecimal("4.6")).savedCount(176).build());
 
         Place placeAewolGuesthouse = placeRepository.save(Place.builder()
-                .name("제주 애월 감성 게스트하우스").category(PlaceCategory.ACCOMMODATION)
+                .name("제주 애월 한담게스트하우스").category(PlaceCategory.ACCOMMODATION)
                 .address("제주특별자치도 제주시 애월읍").avgPrice(60000)
                 .externalRating(new BigDecimal("4.5")).savedCount(143).build());
 
         // 맛집(RESTAURANT) 8건
         Place placeHaemulRamen = placeRepository.save(Place.builder()
-                .name("협재 해물라면").category(PlaceCategory.RESTAURANT)
+                .name("협재수우동").category(PlaceCategory.RESTAURANT)
                 .address("제주특별자치도 제주시 한림읍 협재리").avgPrice(15000)
                 .externalRating(new BigDecimal("4.6")).savedCount(289).build());
 
         Place placeBlackPig = placeRepository.save(Place.builder()
-                .name("제주 흑돼지 명가").category(PlaceCategory.RESTAURANT)
-                .address("제주특별자치도 제주시").avgPrice(35000)
+                .name("연리지가든").category(PlaceCategory.RESTAURANT)
+                .address("제주특별자치도 제주시 한림읍").avgPrice(35000)
                 .externalRating(new BigDecimal("4.7")).savedCount(334).build());
 
         Place placeHaeundaeHoe = placeRepository.save(Place.builder()
-                .name("해운대 회센터").category(PlaceCategory.RESTAURANT)
+                .name("해운대암소갈비집").category(PlaceCategory.RESTAURANT)
                 .address("부산광역시 해운대구").avgPrice(40000)
                 .externalRating(new BigDecimal("4.5")).savedCount(256).build());
 
         Place placeGwangalliGopchang = placeRepository.save(Place.builder()
-                .name("광안리 곱창골목").category(PlaceCategory.RESTAURANT)
+                .name("광안리 조개구이거리").category(PlaceCategory.RESTAURANT)
                 .address("부산광역시 수영구 광안리").avgPrice(25000)
                 .externalRating(new BigDecimal("4.6")).savedCount(198).build());
 
@@ -573,23 +573,23 @@ public class DataInitializer implements CommandLineRunner {
                 .externalRating(new BigDecimal("4.7")).savedCount(167).build());
 
         Place placeSokchoChicken = placeRepository.save(Place.builder()
-                .name("속초 만석닭강정").category(PlaceCategory.RESTAURANT)
+                .name("만석닭강정").category(PlaceCategory.RESTAURANT)
                 .address("강원도 속초시 중앙시장").avgPrice(20000)
                 .externalRating(new BigDecimal("4.6")).savedCount(245).build());
 
         Place placeGangneungDakgalbi = placeRepository.save(Place.builder()
-                .name("춘천 닭갈비 골목").category(PlaceCategory.RESTAURANT)
-                .address("강원도 춘천시").avgPrice(15000)
+                .name("속초관광수산시장").category(PlaceCategory.RESTAURANT)
+                .address("강원도 속초시 중앙로").avgPrice(15000)
                 .externalRating(new BigDecimal("4.5")).savedCount(189).build());
 
         // 카페(CAFE) 4건
         Place placeSangsanCafe = placeRepository.save(Place.builder()
-                .name("성산일출봉 전망카페").category(PlaceCategory.CAFE)
-                .address("제주특별자치도 서귀포시 성산읍").avgPrice(8000)
+                .name("카페 더클리프").category(PlaceCategory.CAFE)
+                .address("제주특별자치도 제주시 한림읍").avgPrice(8000)
                 .externalRating(new BigDecimal("4.6")).savedCount(221).build());
 
         Place placeAewolCafe = placeRepository.save(Place.builder()
-                .name("애월 카페거리").category(PlaceCategory.CAFE)
+                .name("카페 봄날").category(PlaceCategory.CAFE)
                 .address("제주특별자치도 제주시 애월읍").avgPrice(9000)
                 .externalRating(new BigDecimal("4.7")).savedCount(298).build());
 
@@ -599,8 +599,8 @@ public class DataInitializer implements CommandLineRunner {
                 .externalRating(new BigDecimal("4.9")).savedCount(521).build());
 
         Place placeGwangalliCafe = placeRepository.save(Place.builder()
-                .name("광안리 카페거리").category(PlaceCategory.CAFE)
-                .address("부산광역시 수영구 광안리").avgPrice(9000)
+                .name("더베이101").category(PlaceCategory.CAFE)
+                .address("부산광역시 해운대구 동백섬로").avgPrice(9000)
                 .externalRating(new BigDecimal("4.6")).savedCount(267).build());
 
         // 관광지(ATTRACTION) 8건
@@ -610,8 +610,8 @@ public class DataInitializer implements CommandLineRunner {
                 .externalRating(new BigDecimal("4.9")).savedCount(612).build());
 
         Place placeSangsanIlchulbong = placeRepository.save(Place.builder()
-                .name("성산일출봉").category(PlaceCategory.ATTRACTION)
-                .address("제주특별자치도 서귀포시 성산읍").avgPrice(5000)
+                .name("수월봉").category(PlaceCategory.ATTRACTION)
+                .address("제주특별자치도 제주시 한경면 고산리").avgPrice(5000)
                 .externalRating(new BigDecimal("4.9")).savedCount(745).build());
 
         Place placeHallimPark = placeRepository.save(Place.builder()
@@ -640,8 +640,8 @@ public class DataInitializer implements CommandLineRunner {
                 .externalRating(new BigDecimal("4.8")).savedCount(423).build());
 
         Place placeNamiIsland = placeRepository.save(Place.builder()
-                .name("남이섬").category(PlaceCategory.ATTRACTION)
-                .address("강원도 춘천시").avgPrice(16000)
+                .name("낙산사").category(PlaceCategory.ATTRACTION)
+                .address("강원도 양양군 강현면").avgPrice(16000)
                 .externalRating(new BigDecimal("4.7")).savedCount(356).build());
 
         log.info("Place 26건이 생성되었습니다.");
@@ -681,12 +681,12 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeBlackPig).post(postRoute1).user(users[0]).rating(5).comment("제주 흑돼지는 육지 돼지고기랑 달라요. 꼭 드세요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeBlackPig).post(postRoute1).user(users[16]).rating(4).comment("가격이 좀 있지만 퀄리티가 달라요").build());
 
-        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postRoute4).user(users[1]).rating(5).comment("신선도가 달라요. 부산 회는 여기서").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postRoute4).user(users[11]).rating(4).comment("자갈치보다 이쪽이 더 좋았어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postRoute4).user(users[1]).rating(5).comment("숯불 향이 살아있어요. 부산 갈비는 여기서").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postRoute4).user(users[11]).rating(4).comment("고기 질이 정말 좋아요. 또 가고 싶어요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postRoute4).user(users[2]).rating(4).comment("양도 많고 신선해요. 가성비 좋아요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postRoute4).user(users[11]).rating(5).comment("부산 야식의 정석이에요. 소주 한 잔이랑 완벽").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postRoute4).user(users[19]).rating(4).comment("야경 보면서 먹는 곱창 진짜 맛있어요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postRoute4).user(users[19]).rating(4).comment("야경 보면서 먹는 조개구이 진짜 맛있어요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postRoute2).user(users[2]).rating(5).comment("줄 서서 먹을 가치 100%예요. 경주 가면 필수").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postRoute2).user(users[13]).rating(5).comment("간이 딱 맞고 재료가 신선해요").build());
@@ -698,12 +698,12 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeSokchoChicken).post(postRoute4).user(users[12]).rating(4).comment("속초 오면 무조건 닭강정! 포장해서 해변에서 먹어요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeSokchoChicken).post(postRoute4).user(users[3]).rating(5).comment("달콤하고 바삭해요. 속초 대표 간식").build());
 
-        placeReviewRepository.save(PlaceReview.builder().place(placeGangneungDakgalbi).post(postRoute4).user(users[15]).rating(4).comment("남이섬 다녀오다 춘천 닭갈비 필수코스").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGangneungDakgalbi).post(postRoute4).user(users[15]).rating(4).comment("낙산사 다녀오다 들른 춘천 닭갈비, 별미예요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGangneungDakgalbi).post(postRoute3).user(users[6]).rating(5).comment("치즈 추가 강추! 볶음밥도 맛있어요").build());
 
         // 카페 후기 → 여행경로 Post에 연결
-        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postRoute1).user(users[18]).rating(5).comment("창문으로 일출봉 보이는 뷰 진짜 최고예요").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postRoute1).user(users[14]).rating(5).comment("일출봉 올라갔다 내려와서 마신 커피 최고").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postRoute1).user(users[18]).rating(5).comment("창문으로 노을 지는 바다 보이는 뷰 진짜 최고예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postRoute1).user(users[14]).rating(5).comment("수월봉 둘레길 걷고 마신 커피 최고").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postRoute1).user(users[0]).rating(4).comment("말차라테 색감도 예쁘고 맛도 좋아요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeAewolCafe).post(postRoute1).user(users[16]).rating(5).comment("애월 오션뷰 카페 중 여기가 최고예요").build());
@@ -775,10 +775,10 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeYeosuDolgejang).post(postFood2).user(users[17]).rating(5).comment("갓김치랑 같이 먹으면 더 맛있어요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postFood3).user(users[11]).rating(5).comment("부산 야식의 정석이에요. 야경과 함께 먹으면 최고").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postFood3).user(users[15]).rating(4).comment("소주 한 잔이랑 곱창, 부산에서만 느낄 수 있는 맛").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(postFood3).user(users[15]).rating(4).comment("소주 한 잔이랑 조개구이, 광안리에서만 느낄 수 있는 맛").build());
 
-        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[11]).rating(5).comment("자갈치보다 여기가 더 신선하고 맛있어요").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[19]).rating(4).comment("양도 많고 신선도가 달라요. 부산 회는 여기서").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[11]).rating(5).comment("육질이 부드럽고 양념이 일품이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(postFood3).user(users[19]).rating(4).comment("양도 많고 숯불 향이 살아있어요. 부산 갈비는 여기서").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postFood4).user(users[13]).rating(5).comment("줄 서서 먹을 가치가 100% 있어요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(postFood4).user(users[16]).rating(5).comment("간이 딱 맞고 재료가 신선해서 계속 먹고 싶어요").build());
@@ -804,8 +804,8 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postCafe2).user(users[17]).rating(5).comment("커피 성지 순례 완료! 드립커피가 정말 맛있어요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeTerraRosa).post(postCafe2).user(users[18]).rating(5).comment("공장형 인테리어가 인상적이고 커피 향이 진짜 좋아요").build());
 
-        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[18]).rating(5).comment("창문으로 일출봉 보이는 뷰가 진짜 최고예요").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[14]).rating(4).comment("일출봉 올라갔다 내려와서 마신 커피가 꿀맛이에요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[18]).rating(5).comment("창문으로 노을 지는 바다 보이는 뷰가 진짜 최고예요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[14]).rating(4).comment("수월봉 둘레길 걷고 마신 커피가 꿀맛이에요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeSangsanCafe).post(postCafe3).user(users[16]).rating(5).comment("말차라테 색감도 예쁘고 맛도 너무 좋아요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postCafe4).user(users[19]).rating(5).comment("광안대교 야경 보면서 디저트 먹는 게 꿈같아요").build());
@@ -825,7 +825,7 @@ public class DataInitializer implements CommandLineRunner {
         placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHoe).post(adminPost2).user(admin).rating(5).comment("부산 오면 꼭 먹어야 할 횟집, 신선도가 정말 달라요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(adminPost2).user(admin).rating(4).comment("광안대교 야경 보면서 마시는 커피, 부산의 밤이 아름다웠어요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeHaeundaeHotel).post(adminPost2).user(admin).rating(5).comment("오션뷰 룸에서 아침 바다 보며 커피 한 잔, 완벽한 숙소였어요").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(adminPost2).user(admin).rating(4).comment("부산 야식으로 곱창과 소주, 광안리 밤이 그리워요").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliGopchang).post(adminPost2).user(admin).rating(4).comment("부산 야식으로 조개구이와 소주, 광안리 밤이 그리워요").build());
 
         placeReviewRepository.save(PlaceReview.builder().place(placeBulguksa).post(adminPost3).user(admin).rating(5).comment("야경이 압도적이에요. 경주 방문 시 저녁에 꼭 오세요").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGyeongjuKimbap).post(adminPost3).user(admin).rating(5).comment("줄이 길어도 기다릴 가치 100%, 경주 대표 맛집 인증").build());
@@ -840,7 +840,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // postTour1 (users[9] = 오예린, 통영) - 본인 리뷰 없음 → 추가
         placeReviewRepository.save(PlaceReview.builder().place(placeSeoraksan).post(postTour1).user(users[9]).rating(5).comment("케이블카에서 내려다보는 경치가 정말 대단해요. 통영 다음에 들렀어요").build());
-        placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postTour1).user(users[9]).rating(4).comment("남이섬 자전거 타고 한 바퀴, 통영 여행 끝나고 들른 힐링 코스").build());
+        placeReviewRepository.save(PlaceReview.builder().place(placeNamiIsland).post(postTour1).user(users[9]).rating(4).comment("낙산사 자전거 타고 한 바퀴, 통영 여행 끝나고 들른 힐링 코스").build());
         placeReviewRepository.save(PlaceReview.builder().place(placeGwangalliCafe).post(postTour1).user(users[9]).rating(4).comment("통영에서 부산 거쳐 서울 올라오는 길에 광안리 카페 들렀어요").build());
 
         // postRoute3 (users[4] = 정우진, 서울 당일치기) - 리뷰 1개뿐 → 추가

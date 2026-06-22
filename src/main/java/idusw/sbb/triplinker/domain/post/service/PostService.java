@@ -78,21 +78,10 @@ public class PostService {
         } else if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
             posts = postRepository.findByStatusInOrderByCreatedAtDesc(STATUS_VISIBLE, pageable);
         } else {
+            // 카테고리별 조회도 ACTIVE + HIDDEN 포함 (관리자/작성자가 숨김 글 볼 수 있도록)
             String categoryCode = toCategoryCode(category);
-
-            if ("ROUTE".equals(categoryCode)) {
-                posts = postRepository.findRoutePostsIncludingNullCategory(
-                        "ACTIVE",
-                        "ROUTE",
-                        pageable
-                );
-            } else {
-                posts = postRepository.findByCategoryAndStatus(
-                        categoryCode,
-                        "ACTIVE",
-                        pageable
-                );
-            }
+            posts = postRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(
+                    STATUS_VISIBLE, categoryCode, pageable);
         }
 
         return posts.map(post -> {
@@ -107,12 +96,11 @@ public class PostService {
     private Page<Post> getPostsSortedByScrapCount(Pageable pageable, String category) {
         List<Post> all;
         if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
-            all = postRepository.findByStatus("ACTIVE", Pageable.unpaged()).getContent();
+            all = postRepository.findByStatusInOrderByCreatedAtDesc(STATUS_VISIBLE, Pageable.unpaged()).getContent();
         } else {
             String categoryCode = toCategoryCode(category);
-            all = "ROUTE".equals(categoryCode)
-                    ? postRepository.findRoutePostsIncludingNullCategory("ACTIVE", "ROUTE", Pageable.unpaged()).getContent()
-                    : postRepository.findByCategoryAndStatus(categoryCode, "ACTIVE", Pageable.unpaged()).getContent();
+            all = postRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(
+                    STATUS_VISIBLE, categoryCode, Pageable.unpaged()).getContent();
         }
 
         List<Post> sorted = all.stream()
