@@ -120,6 +120,24 @@
         return [];
     };
 
+    /* ── 5개 단위 슬라이딩 페이징 범위 계산 ───────────────────────
+     * currentPage: 0부터 시작하는 현재 페이지 번호
+     * totalPages : 전체 페이지 수
+     * 반환값     : 화면에 보여줄 0-based 페이지 번호 배열
+     * 예) 7번 페이지(0-based 6) 선택, totalPages 충분 → [4,5,6,7,8]
+     */
+    window._commUtil.getPagerWindow = function getPagerWindow(currentPage, totalPages, windowSize) {
+        const total = Math.max(1, Number(totalPages) || 1);
+        const size = Math.min(Number(windowSize) || 5, total);
+        const current = Math.min(Math.max(Number(currentPage) || 0, 0), total - 1);
+
+        let start = current - Math.floor(size / 2);
+        if (start < 0) start = 0;
+        if (start + size > total) start = Math.max(0, total - size);
+
+        return Array.from({ length: size }, function (_, idx) { return start + idx; });
+    };
+
     /* ── 로그인 확인 ──────────────────────────────────────────────  */
     window._commUtil.requireLogin = function requireLogin() {
         if (typeof Token === 'undefined' || !Token.getAccess || !Token.getAccess()) {
@@ -1098,26 +1116,40 @@ window._handleWriteImageSelect = function(input) {
     function renderCommunityV2Pager(tab, pageNumber, totalPages) {
         removeCommunityV2Pager();
         const tabEl = document.getElementById('tab-' + tab);
-        if (!tabEl || !totalPages || totalPages <= 1) return;
+        if (!tabEl || !totalPages || totalPages <= 0) return;
 
         const pager = document.createElement('div');
         pager.id = 'community-v2-pagination';
         pager.className = 'community-v2-pagination';
 
+        const current = Math.min(Math.max(Number(pageNumber) || 0, 0), Number(totalPages) - 1);
+        const pageIndexes = window._commUtil.getPagerWindow(current, totalPages, 5);
+
         let html = '';
-        for (let i = 0; i < totalPages; i++) {
-            html += `<button type="button" class="community-v2-page-btn ${i === pageNumber ? 'on' : ''}" data-page="${i}">${i + 1}</button>`;
+        if (totalPages > 1) {
+            html += `<button type="button" class="community-v2-page-btn" data-page="${Math.max(0, current - 1)}" ${current === 0 ? 'disabled' : ''}>&lt;</button>`;
         }
+
+        pageIndexes.forEach(function (i) {
+            html += `<button type="button" class="community-v2-page-btn ${i === current ? 'on' : ''}" data-page="${i}">${i + 1}</button>`;
+        });
+
+        if (totalPages > 1) {
+            html += `<button type="button" class="community-v2-page-btn" data-page="${Math.min(Number(totalPages) - 1, current + 1)}" ${current >= Number(totalPages) - 1 ? 'disabled' : ''}>&gt;</button>`;
+        }
+
         pager.innerHTML = html;
 
         pager.querySelectorAll('.community-v2-page-btn').forEach(btn => {
             btn.addEventListener('click', function () {
+                if (this.disabled) return;
                 window.loadCommunityPosts(Number(this.dataset.page || 0), true);
             });
         });
 
         tabEl.appendChild(pager);
     }
+
 
     window.loadCommunityPosts = async function (page = 0, reset = true) {
         const tab = getCurrentTabKey();
@@ -1961,20 +1993,30 @@ window._handleWriteImageSelect = function(input) {
         pager.className = 'community-v2-pagination place-v2-pagination';
         pager.dataset.placePagerFor = type;
 
+        const current = Math.min(Math.max(Number(currentPage) || 0, 0), Number(totalPages) - 1);
+        const pageIndexes = window._commUtil.getPagerWindow(current, totalPages, 5);
+
         let html = '';
-        for (let i = 0; i < totalPages; i++) {
-            html += `<button type="button" class="community-v2-page-btn place-v2-page-btn ${i === currentPage ? 'on' : ''}" data-page="${i}">${i + 1}</button>`;
-        }
+        html += `<button type="button" class="community-v2-page-btn place-v2-page-btn" data-page="${Math.max(0, current - 1)}" ${current === 0 ? 'disabled' : ''}>&lt;</button>`;
+
+        pageIndexes.forEach(function (i) {
+            html += `<button type="button" class="community-v2-page-btn place-v2-page-btn ${i === current ? 'on' : ''}" data-page="${i}">${i + 1}</button>`;
+        });
+
+        html += `<button type="button" class="community-v2-page-btn place-v2-page-btn" data-page="${Math.min(Number(totalPages) - 1, current + 1)}" ${current >= Number(totalPages) - 1 ? 'disabled' : ''}>&gt;</button>`;
+
         pager.innerHTML = html;
 
         pager.querySelectorAll('.place-v2-page-btn').forEach(btn => {
             btn.addEventListener('click', function () {
+                if (this.disabled) return;
                 window._loadPlaceCards(type, Number(this.dataset.page || 0), true);
             });
         });
 
         tabEl.appendChild(pager);
     }
+
 
     window._loadPlaceCards = async function loadPlaceCards(type, page, reset) {
         const pageNo = Number(page || 0);
@@ -2351,21 +2393,33 @@ window._handleWriteImageSelect = function(input) {
 
         if (totalCount <= 0) return;
         const totalPages = Math.max(1, Math.ceil(totalCount / MY_COMMUNITY_PAGE_SIZE));
+        const current = Math.min(Math.max(Number(currentPage) || 0, 0), totalPages - 1);
+        const pageIndexes = window._commUtil.getPagerWindow(current, totalPages, 5);
 
         const pager = document.createElement('div');
         pager.className = 'community-v2-pagination my-community-pagination';
         pager.dataset.myPagerFor = key;
 
         let html = '';
-        for (let i = 0; i < totalPages; i++) {
-            html += '<button type="button" class="community-v2-page-btn my-community-page-btn' +
-                (i === currentPage ? ' on' : '') +
-                '" data-page="' + i + '">' + (i + 1) + '</button>';
+        if (totalPages > 1) {
+            html += '<button type="button" class="community-v2-page-btn my-community-page-btn" data-page="' + Math.max(0, current - 1) + '" ' + (current === 0 ? 'disabled' : '') + '>&lt;</button>';
         }
+
+        pageIndexes.forEach(function (i) {
+            html += '<button type="button" class="community-v2-page-btn my-community-page-btn' +
+                (i === current ? ' on' : '') +
+                '" data-page="' + i + '">' + (i + 1) + '</button>';
+        });
+
+        if (totalPages > 1) {
+            html += '<button type="button" class="community-v2-page-btn my-community-page-btn" data-page="' + Math.min(totalPages - 1, current + 1) + '" ' + (current >= totalPages - 1 ? 'disabled' : '') + '>&gt;</button>';
+        }
+
         pager.innerHTML = html;
 
         pager.querySelectorAll('.my-community-page-btn').forEach(btn => {
             btn.addEventListener('click', function () {
+                if (this.disabled) return;
                 const nextPage = Number(this.dataset.page || 0);
                 getMyCommunityPagingState(key).page = nextPage;
                 loadPageFn(nextPage);
@@ -2374,6 +2428,7 @@ window._handleWriteImageSelect = function(input) {
 
         listEl.appendChild(pager);
     }
+
 
     function renderMyCommunityPagedList(listEl, key, list, emptyText, renderItem, loadPageFn, requestedPage) {
         if (!listEl) return;
