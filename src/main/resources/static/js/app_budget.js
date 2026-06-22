@@ -5,7 +5,7 @@ async function updateLedgerList() {
     if (!listEl) return;
 
     if (!_budgetSelectedTripId && _myTrips.length > 0) {
-        _budgetSelectedTripId = _myTrips[0].tripId;
+        _budgetSelectedTripId = _myTrips[0].id;
     }
 
     if (!_myTrips.length) {
@@ -21,9 +21,9 @@ async function updateLedgerList() {
     const pageTrips = _myTrips.slice(start, start + _LEDGER_CARD_PAGE_SIZE);
 
     listEl.innerHTML = pageTrips.map(l => {
-        const isSel = (_budgetSelectedTripId === l.tripId);
+        const isSel = (_budgetSelectedTripId === l.id);
         return `
-        <div onclick="selLedger(${l.tripId})"
+        <div onclick="selLedger(${l.id})"
              style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);
                     border:2px solid ${isSel ? 'var(--sage)' : 'var(--border)'};
                     background:${isSel ? 'var(--sage-pale)' : 'var(--surface)'};
@@ -91,9 +91,9 @@ function _populateLedgerTripCards() {
     const pageTrips = _myTrips.slice(start, start + _LEDGER_CARD_PAGE_SIZE);
 
     container.innerHTML = pageTrips.map(t => {
-        const isSel = (_budgetSelectedTripId === t.tripId);
+        const isSel = (_budgetSelectedTripId === t.id);
         return `
-      <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.tripId})">
+      <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
         <div class="ts-thumb">🗺️</div>
         <div class="ts-info">
           <div class="ts-name">${t.title || '여행 플랜'}</div>

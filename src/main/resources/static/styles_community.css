@@ -1525,3 +1525,27 @@
     border-radius: 4px;
     padding: 1px 5px;
 }
+
+/* ============================================================
+   커뮤니티 상세페이지: 작성자 본인 전용 수정 버튼
+   - page-review 내부의 수정 버튼에만 적용
+   ============================================================ */
+#page-review .community-owner-edit-btn {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 1.2;
+    background: #47B39F;
+    border: 1px solid #47B39F;
+    color: #fff;
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+#page-review .community-owner-edit-btn:hover {
+    background: #fff;
+    border-color: #47B39F;
+    color: #47B39F;
+}

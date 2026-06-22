@@ -158,6 +158,219 @@
         return data;
     };
 
+    /* ── 본문 이미지 삽입/저장/렌더링 유틸 ─────────────────────────
+     * 새 이미지는 작성/수정 중에는 URL 문자열이 아니라 실제 이미지 미리보기로 보인다.
+     * 이때 src는 브라우저 임시 미리보기용 data:image URL이고,
+     * 등록/수정 버튼을 누르는 순간 /api/posts/images 로 업로드한 뒤 실제 서버 URL로 교체해서 저장한다.
+     */
+    window._commUtil.saveEditorSelection = function saveEditorSelection(editor, key) {
+        if (!editor || !key) return;
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+
+        const range = sel.getRangeAt(0);
+        const node = range.commonAncestorContainer;
+        if (node === editor || editor.contains(node)) {
+            window[key] = range.cloneRange();
+        }
+    };
+
+    window._commUtil.restoreEditorSelection = function restoreEditorSelection(editor, key) {
+        if (!editor || !key || !window[key]) return false;
+
+        const range = window[key].cloneRange();
+        const node = range.commonAncestorContainer;
+        if (!(node === editor || editor.contains(node))) return false;
+
+        const sel = window.getSelection();
+        if (!sel) return false;
+        editor.focus();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return true;
+    };
+
+    window._commUtil.bindEditorSelectionMemory = function bindEditorSelectionMemory(editor, key) {
+        if (!editor || !key || editor.dataset.selectionMemoryBound === key) return;
+        editor.dataset.selectionMemoryBound = key;
+
+        ['keyup', 'mouseup', 'focus', 'input'].forEach(eventName => {
+            editor.addEventListener(eventName, function () {
+                window._commUtil.saveEditorSelection(editor, key);
+            });
+        });
+    };
+
+    window._commUtil.insertImagesIntoEditor = function insertImagesIntoEditor(editor, files, selectedImages, selectionKey) {
+        if (!editor) return;
+        selectedImages = selectedImages || [];
+
+        const validFiles = Array.from(files || []).filter(file => {
+            if (!file.type || !file.type.startsWith('image/')) {
+                if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
+                return false;
+            }
+            return true;
+        });
+
+        validFiles.forEach(file => {
+            const itemId = 'inline-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+            selectedImages.push({ id: itemId, file: file });
+
+            const reader = new FileReader();
+            reader.onload = function (ev) {
+                const img = document.createElement('img');
+                img.src = ev.target.result;
+                img.alt = file.name || '첨부 이미지';
+                img.dataset.inlineImageId = itemId;
+                img.style.cssText = 'max-width:100%;border-radius:10px;margin:10px 0;display:block;';
+
+                const br = document.createElement('br');
+                let inserted = false;
+
+                if (selectionKey) {
+                    inserted = window._commUtil.restoreEditorSelection(editor, selectionKey);
+                }
+
+                const sel = window.getSelection();
+                if (sel && sel.rangeCount && (editor.contains(sel.anchorNode) || sel.anchorNode === editor)) {
+                    const range = sel.getRangeAt(0);
+                    range.deleteContents();
+
+                    // range.insertNode는 뒤에 넣은 노드가 앞에 오기 때문에 br을 먼저 넣고 img를 넣는다.
+                    range.insertNode(br);
+                    range.insertNode(img);
+
+                    range.setStartAfter(br);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    inserted = true;
+                }
+
+                if (!inserted) {
+                    editor.appendChild(img);
+                    editor.appendChild(br);
+                }
+
+                editor.focus();
+                if (selectionKey) window._commUtil.saveEditorSelection(editor, selectionKey);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        if (validFiles.length && typeof toast === 'function') {
+            toast('본문에 이미지가 삽입되었습니다.');
+        }
+    };
+
+    window._commUtil.uploadPostImages = async function uploadPostImages(selectedImages) {
+        const items = Array.from(selectedImages || []);
+        if (!items.length) return [];
+
+        const formData = new FormData();
+        items.forEach(item => formData.append('files', item.file));
+
+        const token = window._commUtil.getAccessToken();
+        const uploadRes = await fetch('/api/posts/images', {
+            method: 'POST',
+            headers: token ? { Authorization: 'Bearer ' + token } : {},
+            body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
+        return await uploadRes.json();
+    };
+
+    window._commUtil.finalizeInlineEditorImages = async function finalizeInlineEditorImages(editor, selectedImages) {
+        if (!editor) return { content: '', imageUrls: [] };
+
+        const pendingImgs = Array.from(editor.querySelectorAll('img[data-inline-image-id]'));
+        const usedItems = Array.from(selectedImages || []).filter(item =>
+            pendingImgs.some(img => img.dataset.inlineImageId === item.id)
+        );
+
+        const uploadedUrls = await window._commUtil.uploadPostImages(usedItems);
+
+        usedItems.forEach((item, index) => {
+            const img = pendingImgs.find(el => el.dataset.inlineImageId === item.id);
+            if (!img) return;
+            img.src = uploadedUrls[index];
+            img.removeAttribute('data-inline-image-id');
+        });
+
+        const content = window._commUtil.sanitizePostContent(editor.innerHTML).trim();
+        const imageUrls = window._commUtil.extractImageUrlsFromHtml(content)
+            .filter(src => src && !src.startsWith('data:image/'));
+
+        return { content, imageUrls };
+    };
+
+    window._commUtil.editorHasContent = function editorHasContent(editor) {
+        if (!editor) return false;
+        const text = (editor.textContent || '').replace(/\u00a0/g, ' ').trim();
+        return !!text || !!editor.querySelector('img');
+    };
+
+    window._commUtil.sanitizePostContent = function sanitizePostContent(html) {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+
+        const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'DIV', 'P', 'SPAN', 'IMG']);
+
+        function clean(node) {
+            Array.from(node.childNodes).forEach(child => clean(child));
+
+            if (node.nodeType !== Node.ELEMENT_NODE) return;
+            const tag = node.tagName.toUpperCase();
+
+            if (!allowedTags.has(tag)) {
+                node.replaceWith(document.createTextNode(node.textContent || ''));
+                return;
+            }
+
+            const originalSrc = tag === 'IMG' ? (node.getAttribute('src') || '') : '';
+            Array.from(node.attributes).forEach(attr => node.removeAttribute(attr.name));
+
+            if (tag === 'IMG') {
+                const src = originalSrc;
+                const allowedSrc = src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:image/');
+                if (!allowedSrc) {
+                    node.remove();
+                    return;
+                }
+                node.setAttribute('src', src);
+                node.setAttribute('alt', '첨부 이미지');
+                node.setAttribute('style', 'max-width:100%;border-radius:10px;margin:10px 0;display:block;');
+            }
+        }
+
+        clean(template.content);
+        return template.innerHTML;
+    };
+
+    window._commUtil.extractImageUrlsFromHtml = function extractImageUrlsFromHtml(html) {
+        const template = document.createElement('template');
+        template.innerHTML = String(html || '');
+        return Array.from(template.content.querySelectorAll('img[src]'))
+            .map(img => img.getAttribute('src'))
+            .filter(Boolean);
+    };
+
+    window._commUtil.buildEditableContentWithImages = function buildEditableContentWithImages(post) {
+        const baseContent = window._commUtil.sanitizePostContent(post?.content || '');
+        const inlineUrls = new Set(window._commUtil.extractImageUrlsFromHtml(baseContent));
+        const detachedImages = Array.isArray(post?.imageUrls) ? post.imageUrls : [];
+
+        const detachedImageHtml = detachedImages
+            .filter(url => url && !inlineUrls.has(url))
+            .map(url => '<p><img src="' + window._commUtil.escapeHtml(url) + '" alt="첨부 이미지" style="max-width:100%;border-radius:10px;margin:10px 0;display:block;"></p>')
+            .join('');
+
+        return (baseContent + detachedImageHtml).trim();
+    };
+
+
 })();
 
 
@@ -458,6 +671,60 @@
         }
     }
 
+    function getLoggedInUserIdForReviewEdit() {
+        const user = (typeof window._currentUser !== 'undefined' && window._currentUser)
+            ? window._currentUser
+            : (typeof _currentUser !== 'undefined' ? _currentUser : null);
+
+        return user?.userId ?? user?.id ?? null;
+    }
+
+    function isCurrentUserPostOwnerForReviewEdit(post) {
+        if (!post) return false;
+
+        // 백엔드에서 본인 여부를 내려주는 경우 우선 사용
+        if (post.isMine === true || post.mine === true) return true;
+
+        const loginUserId = getLoggedInUserIdForReviewEdit();
+        const writerId = post.userId ?? post.writerId ?? post.authorId ?? null;
+
+        if (!loginUserId || !writerId) return false;
+        return String(loginUserId) === String(writerId);
+    }
+
+    function updateReviewEditButtonForModal(post) {
+        const editBtn = document.getElementById('btn-review-edit');
+        if (!editBtn) return;
+
+        const postId = post?.postId ?? post?.id ?? window._currentPostId ?? window._openedPostId;
+        const canEdit = !!postId && isCurrentUserPostOwnerForReviewEdit(post);
+
+        editBtn.style.display = canEdit ? 'inline-flex' : 'none';
+        editBtn.dataset.postId = canEdit ? String(postId) : '';
+    }
+
+    window.openCurrentPostEditModal = async function openCurrentPostEditModal() {
+        const editBtn = document.getElementById('btn-review-edit');
+        const postId = editBtn?.dataset.postId
+            || window._currentPostId
+            || window._openedPostId
+            || window._currentPostDetail?.postId
+            || window._currentPostDetail?.id;
+
+        if (!postId) {
+            if (typeof toast === 'function') toast('게시글 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        if (typeof window.editMyPost !== 'function') {
+            if (typeof toast === 'function') toast('수정 기능을 준비하지 못했습니다.');
+            return;
+        }
+
+        await window.editMyPost(postId);
+    };
+
+
     function renderPostDetail(post) {
         if (!post) return;
 
@@ -526,9 +793,15 @@
                </div>`
             : '';
 
-        const imageHtml = (post.imageUrls && post.imageUrls.length)
+        const safeContent = window._commUtil.sanitizePostContent(post.content || '');
+        const inlineImageUrls = new Set(window._commUtil.extractImageUrlsFromHtml(safeContent));
+        const fallbackImageUrls = Array.isArray(post.imageUrls)
+            ? post.imageUrls.filter(url => url && !inlineImageUrls.has(url))
+            : [];
+
+        const imageHtml = fallbackImageUrls.length
             ? `<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
-                ${post.imageUrls.map(url =>
+                ${fallbackImageUrls.map(url =>
                 `<img src="${escapeHtml(url)}" alt="첨부 이미지"
                           style="max-width:100%;border-radius:10px;display:block"
                           onerror="this.style.display='none'">`
@@ -539,7 +812,7 @@
         setHtml('pr-body', `
             ${tagHtml}
             <div style="white-space:pre-wrap;line-height:1.8;color:var(--text2);font-size:15px">
-                ${escapeHtml(post.content || '')}
+                ${safeContent}
             </div>
             ${imageHtml}
         `);
@@ -551,11 +824,9 @@
         if (ctaSub) ctaSub.textContent = post.planTitle
             ? `${post.planTitle} 플랜을 기반으로 새 여행을 계획할 수 있습니다.` : '';
 
-        const editBtn = document.getElementById('btn-review-edit');
-        if (editBtn && typeof _currentUser !== 'undefined' && _currentUser && _currentUser.userId === post.userId) {
-            editBtn.style.display = 'inline-flex';
-        }
+        updateReviewEditButtonForModal(post);
     }
+
 
     window.openPostDetail = async function (postId) {
         if (!postId) {
@@ -642,13 +913,12 @@
         const publicEl  = document.getElementById('writePublic');
 
         const title   = titleEl ? titleEl.value.trim() : '';
-        const content = editorEl ? (editorEl.innerHTML || '').trim() : '';
         const tagText = tagsEl ? tagsEl.value.trim() : '';
 
         const styleTags = tagText.split(/[\s,]+/).map(v => v.trim()).filter(Boolean).join(',');
         const isPublic  = publicEl ? !!publicEl.checked : true;
 
-        if (!title || !content) {
+        if (!title || !window._commUtil.editorHasContent(editorEl)) {
             if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
             return;
         }
@@ -656,32 +926,26 @@
         const categoryCode = getCategoryFromCurrentTabButton();
         window._communityWriteCategory = categoryCode;
 
-        // 이미지 업로드
-        let imageUrls = [];
-        const selectedImages = window._communityWriteImages || window._communitySelectedImages || [];
-
-        if (selectedImages.length > 0) {
-            const formData = new FormData();
-            selectedImages.forEach(item => formData.append('files', item.file));
-
-            const token = window._commUtil.getAccessToken();
-            const uploadRes = await fetch('/api/posts/images', {
-                method: 'POST',
-                headers: token ? { Authorization: 'Bearer ' + token } : {},
-                body: formData
-            });
-
-            if (!uploadRes.ok) {
-                if (typeof toast === 'function') toast('이미지 업로드에 실패했습니다.');
-                return;
-            }
-            imageUrls = await uploadRes.json();
+        let finalized;
+        try {
+            finalized = await window._commUtil.finalizeInlineEditorImages(
+                editorEl,
+                window._communityWriteImages || []
+            );
+        } catch (e) {
+            if (typeof toast === 'function') toast(e.message || '이미지 업로드에 실패했습니다.');
+            return;
         }
 
         const body = {
             planId: document.getElementById('writePlanId')?.value
                 ? Number(document.getElementById('writePlanId').value) : null,
-            title, content, styleTags, category: categoryCode, isPublic, imageUrls
+            title,
+            content: finalized.content,
+            styleTags,
+            category: categoryCode,
+            isPublic,
+            imageUrls: finalized.imageUrls
         };
 
         const res = await api.post('/api/posts', body);
@@ -690,6 +954,10 @@
 
         if (success) {
             window._communitySelectedImages = [];
+            window._communityWriteImages = [];
+            if (editorEl) editorEl.innerHTML = '';
+            const preview = document.getElementById('writeImagePreview');
+            if (preview) preview.innerHTML = '';
             if (typeof closeWrite === 'function') closeWrite();
             if (typeof toast === 'function') toast('후기가 등록되었습니다! 🎉');
             if (typeof loadCommunityPosts === 'function') await loadCommunityPosts(0, true);
@@ -699,6 +967,7 @@
 
         if (typeof toast === 'function') toast(res?.message || '게시글 등록에 실패했습니다.');
     };
+
 
 })();
 
@@ -803,6 +1072,23 @@
 
     window._communitySelectedImages = window._communitySelectedImages || [];
 
+    window.openWriteImagePicker = function openWriteImagePicker() {
+        const editor = document.getElementById('blogEditor');
+
+        if (editor && window._commUtil) {
+            window._commUtil.bindEditorSelectionMemory(editor, '_communityWriteEditorRange');
+            window._commUtil.saveEditorSelection(editor, '_communityWriteEditorRange');
+        }
+
+        const input = document.getElementById('writeImageInput');
+
+        if (input) {
+            input.click();
+        } else if (typeof toast === 'function') {
+            toast('이미지 입력창을 찾을 수 없습니다.');
+        }
+    };
+
     function findImageButton() {
         return [...document.querySelectorAll('button')]
             .find(btn => btn.innerText && btn.innerText.includes('사진 첨부'));
@@ -822,35 +1108,24 @@
     }
 
     function handleImageSelect(e) {
-        const files  = [...(e.target.files || [])];
+        const files = [...(e.target.files || [])];
         if (!files.length) return;
 
         const editor = document.getElementById('blogEditor');
         if (!editor) {
             if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+            e.target.value = '';
             return;
         }
 
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) {
-                if (typeof toast === 'function') toast('이미지 파일만 첨부할 수 있습니다.');
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const dataUrl = event.target.result;
-                window._communitySelectedImages.push({ file, name: file.name, type: file.type, size: file.size, dataUrl });
+        window._communityWriteImages = window._communityWriteImages || [];
+        window._commUtil.insertImagesIntoEditor(
+            editor,
+            files,
+            window._communityWriteImages,
+            '_communityWriteEditorRange'
+        );
 
-                const img = document.createElement('img');
-                img.src = dataUrl; img.alt = file.name;
-                img.style.cssText = 'max-width:100%;border-radius:10px;margin:10px 0;display:block';
-                editor.appendChild(img);
-                editor.appendChild(document.createElement('br'));
-            };
-            reader.readAsDataURL(file);
-        });
-
-        if (typeof toast === 'function') toast('이미지를 첨부했습니다.');
         e.target.value = '';
     }
 
@@ -888,33 +1163,17 @@ window._communityWriteImages = window._communityWriteImages || [];
 window._handleWriteImageSelect = function(input) {
     var files = Array.prototype.slice.call(input.files || []);
     if (!files.length) return;
-    var preview = document.getElementById('writeImagePreview');
-    files.forEach(function(file) {
-        if (!file.type.startsWith('image/')) {
-            if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
-            return;
-        }
-        var itemId = 'write-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-        window._communityWriteImages.push({ id: itemId, file: file });
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            var card = document.createElement('div');
-            card.id = itemId;
-            card.style.cssText = 'border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff';
-            card.innerHTML =
-                '<img src="' + ev.target.result + '" alt="새 이미지" style="width:100%;height:110px;object-fit:cover;display:block">' +
-                '<button type="button" style="width:100%;border:none;border-top:1px solid var(--border);background:#F8FAF9;color:var(--text2);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer">추가 취소</button>';
-            card.querySelector('button').onclick = function() {
-                window._communityWriteImages = window._communityWriteImages.filter(function(img) { return img.id !== itemId; });
-                card.remove();
-            };
-            if (preview) preview.appendChild(card);
-        };
-        reader.readAsDataURL(file);
-    });
+
+    var editor = document.getElementById('blogEditor');
+    if (!editor) {
+        if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+        input.value = '';
+        return;
+    }
+
+    window._commUtil.insertImagesIntoEditor(editor, files, window._communityWriteImages, '_communityWriteEditorRange');
     input.value = '';
 };
-
 
 /* =============================================================================
  * community v2 — 목록 카드 렌더링
@@ -2425,7 +2684,14 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label class="form-label">내용</label>
-                    <textarea id="communityEditContent" class="form-input" placeholder="내용을 입력하세요" style="width:100%;min-height:180px;resize:vertical;line-height:1.7"></textarea>
+                    <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:220px">
+                        <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700" onclick="document.getElementById('communityEditContent').focus();document.execCommand('bold')">B</button>
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic" onclick="document.getElementById('communityEditContent').focus();document.execCommand('italic')">I</button>
+                            <button type="button" style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline" onclick="document.getElementById('communityEditContent').focus();document.execCommand('underline')">U</button>
+                        </div>
+                        <div id="communityEditContent" contenteditable="true" data-placeholder="내용을 입력하세요" style="min-height:220px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto"></div>
+                    </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px" id="communityEditPlaceReviewsSection" style="display:none">
                     <label class="form-label">📍 장소별 별점 &amp; 한줄평</label>
@@ -2438,13 +2704,8 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="form-group" style="margin-bottom:18px">
                     <label class="form-label">첨부 이미지</label>
-                    <div id="communityEditImages" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px"></div>
-                    <p id="communityEditImageEmpty" style="display:none;color:var(--text3);font-size:13px;margin:8px 0 0">첨부된 이미지가 없습니다.</p>
-                    <div style="margin-top:10px">
-                        <button type="button" id="communityEditAddImageBtn" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px">새 이미지 추가</button>
-                        <input id="communityEditImageInput" type="file" accept="image/*" multiple style="display:none">
-                    </div>
-                    <div id="communityEditNewImagePreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:10px"></div>
+                    <button type="button" id="communityEditAddImageBtn" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px">새 이미지 추가</button>
+                    <input id="communityEditImageInput" type="file" accept="image/*" multiple style="display:none">
                 </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end">
                     <button type="button" id="communityEditCancelBtn" class="btn-prev-step" style="padding:11px 18px;border-radius:var(--r)">취소</button>
@@ -2454,6 +2715,9 @@ window._handleWriteImageSelect = function(input) {
         `;
         document.body.appendChild(overlay);
 
+        const editEditor = document.getElementById('communityEditContent');
+        if (editEditor) window._commUtil.bindEditorSelectionMemory(editEditor, '_communityEditEditorRange');
+
         overlay.addEventListener('click', e => { if (e.target === overlay) closeEditModal(); });
         document.getElementById('communityEditCloseBtn').onclick  = closeEditModal;
         document.getElementById('communityEditCancelBtn').onclick = closeEditModal;
@@ -2461,126 +2725,110 @@ window._handleWriteImageSelect = function(input) {
 
         const btn   = document.getElementById('communityEditAddImageBtn');
         const input = document.getElementById('communityEditImageInput');
-        if (btn && input) { btn.onclick = () => input.click(); input.onchange = handleEditImageSelect; }
+        if (btn && input) {
+            btn.onmousedown = function () {
+                const editor = document.getElementById('communityEditContent');
+                if (editor) window._commUtil.saveEditorSelection(editor, '_communityEditEditorRange');
+            };
+            btn.onclick = function () { input.click(); };
+            input.onchange = handleEditImageSelect;
+        }
 
         return overlay;
     }
+
 
     function closeEditModal() {
         const overlay = document.getElementById('communityEditPostOverlay');
         if (overlay) overlay.style.display = 'none';
     }
 
+    // 기존 이미지는 본문 에디터 안에만 표시하고, POST_IMAGES 데이터는 썸네일/하위 호환용으로 유지한다.
     function renderEditImages(postId, imageUrls) {
-        const box   = document.getElementById('communityEditImages');
-        const empty = document.getElementById('communityEditImageEmpty');
-        if (!box || !empty) return;
-
-        const urls = Array.isArray(imageUrls) ? imageUrls : [];
-        if (!urls.length) { box.innerHTML = ''; empty.style.display = 'block'; return; }
-
-        empty.style.display = 'none';
-        box.innerHTML = urls.map(url => `
-            <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff">
-                <img src="${escapeHtml(url)}" alt="첨부 이미지" style="width:100%;height:110px;object-fit:cover;display:block" onerror="this.style.display='none'">
-                <button type="button" class="community-edit-image-delete"
-                        data-post-id="${escapeHtml(postId)}" data-image-url="${escapeHtml(url)}"
-                        style="width:100%;border:none;border-top:1px solid var(--border);background:#FEF3F2;color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
-            </div>
-        `).join('');
-
-        box.querySelectorAll('.community-edit-image-delete').forEach(btn => {
-            btn.onclick = async function () {
-                const targetPostId = this.getAttribute('data-post-id');
-                const imageUrl     = this.getAttribute('data-image-url');
-                if (!targetPostId || !imageUrl) return;
-                if (!confirm('이 이미지를 삭제하시겠습니까? 삭제하면 복구할 수 없습니다.')) return;
-
-                try {
-                    await requestJson(`/api/posts/${targetPostId}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
-                        method: 'DELETE', headers: authHeaders(false)
-                    });
-                    const item = this.closest('.community-edit-image-item');
-                    if (item) item.remove();
-                    if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
-                    if (typeof toast === 'function') toast('이미지가 삭제되었습니다.');
-                } catch (e) {
-                    if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
-                }
-            };
-        });
+        // const box   = document.getElementById('communityEditImages');
+        // const empty = document.getElementById('communityEditImageEmpty');
+        // if (!box || !empty) return;
+        //
+        // const urls = Array.isArray(imageUrls) ? imageUrls : [];
+        // if (!urls.length) { box.innerHTML = ''; empty.style.display = 'block'; return; }
+        //
+        // empty.style.display = 'none';
+        // box.innerHTML = urls.map(url => `
+        //     <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff">
+        //         <img src="${escapeHtml(url)}" alt="첨부 이미지" style="width:100%;height:110px;object-fit:cover;display:block" onerror="this.style.display='none'">
+        //         <button type="button" class="community-edit-image-delete"
+        //                 data-post-id="${escapeHtml(postId)}" data-image-url="${escapeHtml(url)}"
+        //                 style="width:100%;border:none;border-top:1px solid var(--border);background:#FEF3F2;color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
+        //     </div>
+        // `).join('');
+        //
+        // box.querySelectorAll('.community-edit-image-delete').forEach(btn => {
+        //     btn.onclick = async function () {
+        //         const targetPostId = this.getAttribute('data-post-id');
+        //         const imageUrl     = this.getAttribute('data-image-url');
+        //         if (!targetPostId || !imageUrl) return;
+        //         if (!confirm('이 이미지를 삭제하시겠습니까? 삭제하면 복구할 수 없습니다.')) return;
+        //
+        //         try {
+        //             await requestJson(`/api/posts/${targetPostId}/images?imageUrl=${encodeURIComponent(imageUrl)}`, {
+        //                 method: 'DELETE', headers: authHeaders(false)
+        //             });
+        //             const item = this.closest('.community-edit-image-item');
+        //             if (item) item.remove();
+        //             if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
+        //             if (typeof toast === 'function') toast('이미지가 삭제되었습니다.');
+        //         } catch (e) {
+        //             if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
+        //         }
+        //     };
+        // });
     }
 
     function handleEditImageSelect(e) {
-        const files   = [...(e.target.files || [])];
+        const files = [...(e.target.files || [])];
         if (!files.length) return;
-        const preview = document.getElementById('communityEditNewImagePreview');
-        if (!preview) return;
 
-        files.forEach(file => {
-            if (!file.type.startsWith('image/')) {
-                if (typeof toast === 'function') toast('이미지 파일만 추가할 수 있습니다.');
-                return;
-            }
-            const itemId = 'edit-img-' + Date.now() + '-' + Math.random().toString(16).slice(2);
-            editSelectedImages.push({ id: itemId, file });
+        const editor = document.getElementById('communityEditContent');
+        if (!editor) {
+            if (typeof toast === 'function') toast('본문 입력창을 찾을 수 없습니다.');
+            e.target.value = '';
+            return;
+        }
 
-            const reader = new FileReader();
-            reader.onload = function (event) {
-                const card = document.createElement('div');
-                card.id = itemId;
-                card.style.cssText = 'border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;';
-                card.innerHTML = `
-                    <img src="${event.target.result}" alt="새 이미지" style="width:100%;height:110px;object-fit:cover;display:block">
-                    <button type="button" style="width:100%;border:none;border-top:1px solid var(--border);background:#F8FAF9;color:var(--text2);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">추가 취소</button>
-                `;
-                card.querySelector('button').onclick = function () {
-                    editSelectedImages = editSelectedImages.filter(img => img.id !== itemId);
-                    card.remove();
-                };
-                preview.appendChild(card);
-            };
-            reader.readAsDataURL(file);
-        });
+        window._commUtil.insertImagesIntoEditor(editor, files, editSelectedImages, '_communityEditEditorRange');
         e.target.value = '';
     }
 
     async function uploadEditImages() {
-        if (!editSelectedImages.length) return [];
-        const formData = new FormData();
-        editSelectedImages.forEach(item => formData.append('files', item.file));
-
-        const token = getAccessToken();
-        const res   = await fetch('/api/posts/images', {
-            method: 'POST',
-            headers: token ? { Authorization: 'Bearer ' + token } : {},
-            body: formData
-        });
-        if (!res.ok) throw new Error('이미지 업로드에 실패했습니다.');
-        return await res.json();
+        const editor = document.getElementById('communityEditContent');
+        return await window._commUtil.finalizeInlineEditorImages(editor, editSelectedImages);
     }
 
     async function submitEditPost() {
         const postId   = document.getElementById('communityEditPostId')?.value;
         const title    = document.getElementById('communityEditTitle')?.value.trim();
-        const content  = document.getElementById('communityEditContent')?.value.trim();
+        const editor   = document.getElementById('communityEditContent');
         const tags     = document.getElementById('communityEditTags')?.value || '';
         const isPublic = !!document.getElementById('communityEditPublic')?.checked;
         const category = window._communityEditOriginalPost?.category || 'ROUTE';
 
-        if (!postId || !title || !content) {
+        if (!postId || !title || !window._commUtil.editorHasContent(editor)) {
             if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
             return;
         }
 
-        let uploadedImageUrls = [];
-        try { uploadedImageUrls = await uploadEditImages(); }
+        let finalized;
+        try { finalized = await uploadEditImages(); }
         catch (e) { if (typeof toast === 'function') toast(e.message || '이미지 업로드에 실패했습니다.'); return; }
 
         const body = {
-            title, content, styleTags: inputToStyleTags(tags), category, isPublic,
+            title,
+            content: finalized.content,
+            styleTags: inputToStyleTags(tags),
+            category,
+            isPublic,
             planId: window._communityEditOriginalPost?.planId || null,
-            imageUrls: uploadedImageUrls
+            imageUrls: finalized.imageUrls
         };
 
         try {
@@ -2629,6 +2877,7 @@ window._handleWriteImageSelect = function(input) {
         }
     }
 
+
     window.editMyPost = async function (postId) {
         if (!postId) return;
         if (!window._commUtil.requireLogin()) return;
@@ -2644,8 +2893,13 @@ window._handleWriteImageSelect = function(input) {
         const post = postRes?.data || postRes;
         if (!post || !post.postId) return;
 
-        if (typeof _currentUser !== 'undefined' && _currentUser?.userId && post.userId &&
-            Number(_currentUser.userId) !== Number(post.userId)) {
+        const loginUserId = (typeof window._currentUser !== 'undefined' && window._currentUser)
+            ? (window._currentUser.userId ?? window._currentUser.id)
+            : (typeof _currentUser !== 'undefined' && _currentUser ? (_currentUser.userId ?? _currentUser.id) : null);
+
+        const writerId = post.userId ?? post.writerId ?? post.authorId ?? null;
+
+        if (loginUserId && writerId && String(loginUserId) !== String(writerId)) {
             if (typeof toast === 'function') toast('본인이 작성한 글만 수정할 수 있습니다.');
             return;
         }
@@ -2655,7 +2909,12 @@ window._handleWriteImageSelect = function(input) {
 
         document.getElementById('communityEditPostId').value  = post.postId;
         document.getElementById('communityEditTitle').value   = post.title || '';
-        document.getElementById('communityEditContent').value = post.content || '';
+        const editor = document.getElementById('communityEditContent');
+        if (editor) {
+            editor.innerHTML = window._commUtil.buildEditableContentWithImages(post);
+            window._commUtil.bindEditorSelectionMemory(editor, '_communityEditEditorRange');
+            window._communityEditEditorRange = null;
+        }
         document.getElementById('communityEditTags').value    = styleTagsToInput(post.styleTags);
         document.getElementById('communityEditPublic').checked = post.isPublic !== false;
 
@@ -2670,10 +2929,9 @@ window._handleWriteImageSelect = function(input) {
         renderEditImages(post.postId, post.imageUrls || []);
         editSelectedImages = [];
 
-        const preview    = document.getElementById('communityEditNewImagePreview');
-        if (preview) preview.innerHTML = '';
         const imageInput = document.getElementById('communityEditImageInput');
         if (imageInput) imageInput.value = '';
+
 
         // 장소 리뷰 로드 (planRouteJson 파싱 + 기존 리뷰 매핑)
         const plrSection = document.getElementById('communityEditPlaceReviewsSection');

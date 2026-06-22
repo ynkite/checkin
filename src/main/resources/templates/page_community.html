@@ -291,9 +291,10 @@
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">첨부 이미지</label>
-          <div id="writeImagePreview" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:10px"></div>
+          <div id="writeImagePreview" style="display:none"></div>
           <button type="button" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px"
-                  onclick="document.getElementById('writeImageInput').click()">새 이미지 추가</button>
+                  onmousedown="window._commUtil && window._commUtil.saveEditorSelection(document.getElementById('blogEditor'), '_communityWriteEditorRange')"
+                  onclick="window.openWriteImagePicker && window.openWriteImagePicker()">새 이미지 추가</button>
           <input id="writeImageInput" type="file" accept="image/*" multiple style="display:none"
                  onchange="window._handleWriteImageSelect && window._handleWriteImageSelect(this)">
         </div>
