@@ -30,9 +30,37 @@ body {
     overflow-x: hidden;
 }
 
+/* 주의: 카카오 지도는 폴리라인(경로 선)을 지도 영역보다 큰 내부 레이어에
+ *       절대위치로 얹어 그린다. 조상 요소에 overflow:hidden 이 걸리면 이 레이어가
+ *       잘려 경로 선이 화면에서 사라진다(마커는 뷰포트 안쪽이라 살아남음).
+ *       따라서 지도 컨테이너와 그 조상에서는 overflow 클리핑을 해제한다. */
+#page-map,
+#page-map .map-wrap,
+#page-map #mapView,
+#prevKakaoMap {
+    overflow: visible !important;
+}
+
 /* 이미지/미디어가 부모를 넘지 않도록 */
-img, video, canvas, iframe, svg {
+/* 주의: canvas, svg 는 카카오 지도가 폴리라인(경로 선)을 그리는 데 사용하므로
+ *       전역 max-width 제약에서 제외한다. 포함시키면 지도 위 경로 선이
+ *       클리핑되어 화면에서 사라진다. */
+img, video, iframe {
     max-width: 100%;
+}
+
+/* 지도 컨테이너 내부의 svg/canvas/img 는 어떤 크기 제약도 받지 않도록 해제 */
+#page-map img,
+#page-map svg,
+#page-map canvas,
+.map-wrap img,
+.map-wrap svg,
+.map-wrap canvas,
+#prevKakaoMap img,
+#prevKakaoMap svg,
+#prevKakaoMap canvas {
+    max-width: none !important;
+    max-height: none !important;
 }
 
 /* 가로로 넘치기 쉬운 표/코드 영역은 가로 스크롤 허용 */
@@ -282,6 +310,10 @@ table {
         border-right: none;
         border-bottom: 1px solid var(--border2);
         max-height: 42vh;
+    }
+    /* 지도 뷰 영역이 높이 0으로 초기화되어 경로 선이 안 그려지는 것 방지 */
+    #page-map #mapView {
+        min-height: 55vh;
     }
 
     /* ---------- 2-5. 마이페이지/관리자 사이드바 → 상단 가로 스택 ---------- */
