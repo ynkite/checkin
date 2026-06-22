@@ -47,8 +47,8 @@
                         onclick="doReviewScrap()">★ 스크랩</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)"
                         onclick="doReviewReport()">🚨 신고</button>
-                <button class="btn-o community-owner-edit-btn"
-                        id="btn-review-edit" onclick="openCurrentPostEditModal()">✏️ 수정</button>
+                <button class="btn-o" style="padding:4px 10px;font-size:11px;margin-left:auto;display:none"
+                        id="btn-review-edit" onclick="goEditReview()">✏️ 수정</button>
             </div>
 
             <div class="review-plan-badge" id="pr-plan-badge"></div>
@@ -439,22 +439,22 @@
                     const isHidden = c.status === 'HIDDEN';
                     if (isHidden) return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
-        <div class="comm-av" style="opacity:0.4;background:#FFEBEE;color:#E53935">${(c.authorName||'?')[0]}</div>
+        <div class="comm-av" style="opacity:0.5;background:#FFEBEE;color:#E53935">${(c.writerName||c.authorName||'?')[0]}</div>
         <div class="comm-bubble" style="background:#FFF3F3;border-color:#FFCDD2;flex:1">
-          <div class="comm-hd" style="display:flex;align-items:center;gap:6px">
-            <span class="comm-author" style="color:#9E9E9E">${c.authorName||''}</span>
+          <div class="comm-hd">
+            <span class="comm-author" style="color:#9E9E9E">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
             <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
           </div>
-          <div class="comm-text" style="color:#BDBDBD;font-style:italic">(운영 정책 위반으로 숨김 처리된 댓글입니다)</div>
+          <div class="comm-text" style="color:#9E9E9E">${c.content||''}</div>
         </div>
       </div>`;
                     return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
-        <div class="comm-av">${(c.authorName||'?')[0]}</div>
+        <div class="comm-av">${(c.writerName||c.authorName||'?')[0]}</div>
         <div class="comm-bubble">
           <div class="comm-hd">
-            <span class="comm-author">${c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
+            <span class="comm-author">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
           </div>
           <div class="comm-text">${c.content||''}</div>

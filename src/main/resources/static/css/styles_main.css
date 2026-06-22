@@ -648,7 +648,7 @@ nav {
     display: grid;
     grid-template-columns: 1fr 380px;
     gap: 36px;
-    align-items: start
+    align-items: stretch
 }
 
 /* hero search card */
@@ -831,7 +831,8 @@ nav {
 /* ── curation slider ── */
 .curation-panel {
     border-radius: 20px;
-    height: 300px;
+    height: 100%;
+    min-height: 300px;
     position: relative;
     overflow: visible;
     box-shadow: 0 6px 24px rgba(0, 0, 0, .09)
@@ -839,7 +840,8 @@ nav {
 
 .slide {
     display: none;
-    height: 300px;
+    height: 100%;
+    min-height: 300px;
     border-radius: 20px;
     overflow: hidden;
     flex-direction: column;
@@ -4713,7 +4715,7 @@ nav {
 }
 
 .curation-panel .slide.on {
-    position: relative !important; /* 부모 컨테이너 높이 유지용 */
+    position: absolute !important; /* 패널 높이를 꽉 채우도록 inset:0 유지 */
     opacity: 1;
     visibility: visible;
     transform: translateX(0); /* 원래 자리로 스르륵 안착 */
