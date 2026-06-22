@@ -119,7 +119,7 @@ let _expensePage          = 1;
 const _EXP_PAGE_SIZE      = 8;
 let _ledgerCardPage       = 1;
 let _myLedgerPage         = 1;
-const _LEDGER_CARD_PAGE_SIZE = 6;
+const _LEDGER_CARD_PAGE_SIZE = 5;
 let _activeTags           = new Set();
 let _loginFailCount       = 0;
 let _loginLockedUntil     = null;
@@ -734,7 +734,7 @@ async function updateMyPageUI() {
 
 window._invitedTripsData = [];
 window._invitedTripsCurrentPage = 1;
-const INVITED_PER_PAGE = 6;
+const INVITED_PER_PAGE = 5;
 window._invitedDeleteMode = false;
 
 function _renderMyInvitedTrips(trips = null, page = 1) {
@@ -862,7 +862,7 @@ async function execInvitedBulkDelete() {
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 window._myTripsData = [];
 window._myTripsCurrentPage = 1;
-const TRIPS_PER_PAGE = 6; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+const TRIPS_PER_PAGE = 5; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
 window._myTripsDeleteMode = false;
 
 function _renderMyTrips(trips = null, page = 1) {
