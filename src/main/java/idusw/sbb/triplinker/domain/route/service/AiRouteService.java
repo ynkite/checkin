@@ -19,6 +19,28 @@ import java.time.LocalDate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/*
+ * ============================================================================
+ *  경로 생성 AI 파이프라인 안내
+ * ----------------------------------------------------------------------------
+ *  [신규 동작]
+ *   1) Groq 가 1차 여행 경로(JSON)를 생성한다.            ← generateAiRoute()
+ *   2) Claude 가 그 결과를 검증하고 오류(가짜 장소·예산 불일치·동선 파괴 등)를
+ *      바로잡아 최종 일정을 만든다.                        ← validateAndFixWithClaude()
+ *   3) 지도에서 장소를 교체할 때는 기존처럼 Groq 가 처리한다. ← replaceAiRoutePlaces()
+ *
+ *  ※ 엔진 전환은 아래 3가지 주석 표시를 기준으로 한다.
+ *    // 클로드 API 사용할 때          → Anthropic 정식 SDK(anthropicChatModel)
+ *    // open api 사용할 때            → Claude를 OpenAI 호환 엔드포인트로 사용 (선택)
+ *    // 기존 API(그록 재미나이)사용할 때 → Claude 검증 단계를 끄고 Groq 결과를 그대로 사용
+ *
+ *  ▶ Claude가 안 될 때(키 미발급/장애 등):
+ *    generateAiRoute() 안의 "Claude 검증" 호출부를 주석 처리하면
+ *    Groq(+Gemini 폴백)만으로 예전과 동일하게 경로가 생성된다.
+ *    (validateAndFixWithClaude() 내부에도 Claude 실패 시 원본 그대로 반환하는
+ *     안전장치가 있어 코드 수정 없이도 자동으로 기존 결과가 유지된다.)
+ * ============================================================================
+ */
 @Service
 @Transactional(readOnly = true)
 public class AiRouteService {
@@ -27,23 +49,50 @@ public class AiRouteService {
     private final ExpenseRepository expenseRepository;
     private final PlaceService placeService;
     private final ObjectMapper objectMapper;
-    private final ChatClient primaryClient;   // Groq
-    private final ChatClient fallbackClient;  // Gemini
+
+    // ── AI 클라이언트 ─────────────────────────────────────────────
+    private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
+    private final ChatClient primaryClient;   // Groq (1차 생성 / 장소 교체)
+    private final ChatClient fallbackClient;  // Gemini (폴백)
 
     public AiRouteService(
             TravelPlanRepository planRepository,
             ExpenseRepository expenseRepository,
             PlaceService placeService,
             ObjectMapper objectMapper,
+
+            // ===== // 클로드 API 사용할 때 (Anthropic 정식 SDK) =====
+            @Qualifier("anthropicChatModel") ChatModel claudeModel,
+            // ===== // 클로드 API 사용할 때 끝 =====
+
+            // ===== // open api 사용할 때 (Claude를 OpenAI 호환 엔드포인트로) =====
+            //  application.yml 에서 OpenAI starter base-url 을 Anthropic 으로 돌린 뒤,
+            //  아래 빈을 claudeModel 대신 주입해 사용한다.
+            // @Qualifier("openAiChatModel") ChatModel claudeOpenAiModel,
+            // ===== // open api 사용할 때 끝 =====
+
+            // ===== // 기존 API(그록 재미나이)사용할 때 =====
             @Qualifier("openAiChatModel") ChatModel groqModel,
             @Qualifier("googleGenAiChatModel") ChatModel geminiModel) {
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
 
         this.planRepository = planRepository;
         this.expenseRepository = expenseRepository;
         this.placeService = placeService;
         this.objectMapper = objectMapper;
+
+        // ===== // 클로드 API 사용할 때 =====
+        this.claudeClient   = ChatClient.builder(claudeModel).build();
+        // ===== // 클로드 API 사용할 때 끝 =====
+
+        // ===== // open api 사용할 때 =====
+        // this.claudeClient   = ChatClient.builder(claudeOpenAiModel).build();
+        // ===== // open api 사용할 때 끝 =====
+
+        // ===== // 기존 API(그록 재미나이)사용할 때 =====
         this.primaryClient  = ChatClient.builder(groqModel).build();
         this.fallbackClient = ChatClient.builder(geminiModel).build();
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
     }
 
     public String generateAiRoute(Long tripId) {
@@ -76,6 +125,9 @@ public class AiRouteService {
             
             3. 지역 일관성 및 동선 그룹화 (이동 최소화):
                - 모든 장소는 제공된 '여행지' 행정구역 내에 있어야 합니다.
+               - ★절대 금지★: '여행지'가 "제주도"이면 제주도 밖(서울·대전·부산·강릉 등 타지역)의
+                 장소를 단 하나도 넣지 마십시오. 모든 Day의 모든 장소는 반드시 '여행지' 시/도 경계 안에만
+                 존재해야 합니다. 타지역 장소가 섞이면 시스템 오류로 간주합니다.
                - 일별 코스를 짤 때, 지그재그 동선이 되지 않도록 같은 동네/권역 위주로 묶어서 배치하세요.
                - 직전 장소로부터 지정된 '이동 수단' 기준 너무 먼 거리(편도 30분 이상, 20km 이상)는 배치를 금지하며, 거리가 멀 경우 반경 5~10km 이내의 다른 장소로 내부 재검색(Re-search)을 수행해 일정을 재구성하세요.
             
@@ -201,7 +253,111 @@ public class AiRouteService {
             aiRouteJson = aiRouteJson.substring(aiRouteJson.indexOf("["), aiRouteJson.lastIndexOf("]") + 1);
         }
 
-        return aiRouteJson != null ? aiRouteJson.trim() : "[]";
+        String groqResultJson = (aiRouteJson != null) ? aiRouteJson.trim() : "[]";
+
+        // ─────────────────────────────────────────────────────────────
+        //  2단계: Claude 가 Groq 결과를 검증하고 오류를 교정
+        // ===== // 클로드 API 사용할 때 =====
+        //   ▶ Claude를 끄고 Groq 결과를 그대로 쓰려면(=기존 방식 유지) 아래 한 줄을
+        //     주석 처리하면 된다. 그러면 곧바로 'return groqResultJson;' 으로 떨어진다.
+        String finalRouteJson = validateAndFixWithClaude(plan, form, groqResultJson);
+        return finalRouteJson;
+        // ===== // 클로드 API 사용할 때 끝 =====
+
+        // ===== // 기존 API(그록 재미나이)사용할 때 =====
+        //   위 Claude 검증 블록(두 줄)을 주석 처리하고 아래 한 줄을 살리면
+        //   Groq(+Gemini 폴백) 결과를 검증 없이 그대로 사용한다.
+        // return groqResultJson;
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
+    }
+
+    /*
+     * Claude 검증·교정 단계
+     *  - Groq 가 만든 경로 JSON을 받아 [데이터 무결성 / 예산 수학 / 동선 / 가짜 장소]를
+     *    점검하고 문제가 있으면 고쳐서 같은 구조의 JSON으로 되돌려준다.
+     *  - Claude 호출이 실패하면(키 없음/장애 등) 원본(Groq 결과)을 그대로 반환하므로,
+     *    이 메서드를 살려둬도 Claude가 죽으면 자동으로 기존 결과가 유지된다.
+     */
+    private String validateAndFixWithClaude(TravelPlan plan, PlanInputForm form, String groqRouteJson) {
+        if (groqRouteJson == null || groqRouteJson.isBlank() || !groqRouteJson.contains("[")) {
+            return groqRouteJson;
+        }
+        // Groq·Gemini 둘 다 실패해 방어용 더미가 들어온 경우엔 검증하지 않고 그대로 반환
+        if (groqRouteJson.contains("fallback_d1_") || groqRouteJson.contains("서버 지연 임시")) {
+            return groqRouteJson;
+        }
+
+        String prompt = String.format("""
+            당신은 'TripLinker'의 여행 일정 검수(QA) 전문 AI입니다.
+            다른 AI가 1차로 생성한 [원본 여행 동선 JSON]을 받아, 아래 [검증 항목]을 기준으로
+            오류가 있는 부분만 정확히 수정한 뒤, 동일한 구조의 완성된 JSON 배열만 출력하세요.
+            오류가 전혀 없다면 원본을 그대로(구조 변경 없이) 다시 출력하세요.
+
+            [여행 기본 정보]
+            - 여행지: %s / 일정: %s ~ %s / 예산: %d원 / 인원: %s (%d명)
+            - 이동 수단: %s / 숙소 유형: %s / 스타일: %s / 식이: %s / 밀도: %s
+            - 유아 동반: %s / 반려동물 동반: %s
+            - 유저 요청 사항: %s
+
+            [검증 항목 - 발견 시 반드시 교정]
+            1. 가짜 장소 차단: 카카오맵에 실존하지 않거나 모호한 명칭("OO먹자골목", "XX 맛집"),
+               폐업/가상의 장소, '체크인/방문/식사' 같은 임의 접미사가 붙은 장소는
+               같은 권역의 실존하는 대중적 장소로 교체하세요.
+            2. 지역 일관성: 모든 장소가 '여행지' 행정구역 안에 있어야 합니다. 벗어난 장소는 교체.
+            3. 동선 무결성: 편도 30분/20km 이상 멀리 튀는 지그재그 동선이면 반경 5~10km 내
+               장소로 교체하고, 직전/직후 'transit'(거리·시간·비용)을 현실적으로 재계산하세요.
+            4. 숙소 규칙: 'stay'는 각 Day 마지막에 하루 한 번만. 아침 일정에 숙소가 있으면 제거/이동.
+            5. 예산 수학 검증(가장 중요): 각 Day의 'budget' 은 그 Day의 모든 'sub' 금액과
+               'transit' 금액의 합과 정확히 일치해야 합니다. 틀리면 budget을 올바르게 다시 계산하세요.
+               숙박비가 비현실적(1박 70만원 등)이면 일반 시세(10~20만원)로 보정하세요.
+            6. 타입 규칙: 'type' 은 "stay","food","cafe","tour" 4가지만 허용. 그 외 값은 알맞게 교정.
+
+            [원본 여행 동선 JSON]
+            %s
+
+            [출력 규칙 - 매우 중요]
+            1. 'type' 은 반드시 "stay","food","cafe","tour" 중 하나.
+            2. 장소와 장소 사이에는 반드시 이동 정보('transit') 객체를 포함.
+            3. 인사말·설명·마크다운 코드블럭(```json 등) 금지. 오직 원본과 동일한 구조의
+               순수 JSON 배열(Array) 텍스트만 출력하세요.
+            """,
+                plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
+                form.getBudget(), form.getCompanionType(), form.getCompanionCount(),
+                form.getTransportType(), form.getAccommodationType(),
+                form.getTravelStyles(), form.getDietaryInfo(), form.getScheduleDensity(),
+                form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X",
+                parseExtraNotesToPrompt(form.getExtraNotes()),
+                groqRouteJson
+        );
+
+        String fixedJson;
+        try {
+            System.out.println("🔎 Claude 일정 검증·교정 기동 중...");
+            fixedJson = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            // Claude 실패 시 → 검증 생략하고 Groq 원본을 그대로 사용 (기존 방식 유지)
+            System.out.println("⚠️ Claude 검증 실패, Groq 원본 그대로 사용: " + e.getMessage());
+            return groqRouteJson;
+        }
+
+        if (fixedJson == null || !fixedJson.contains("[")) {
+            return groqRouteJson;
+        }
+
+        // 마크다운 잔해 제거
+        fixedJson = fixedJson.substring(fixedJson.indexOf("["), fixedJson.lastIndexOf("]") + 1).trim();
+
+        // 교정 결과가 유효한 JSON 배열인지 한 번 더 방어 (깨졌으면 원본 사용)
+        try {
+            JsonNode parsed = objectMapper.readTree(fixedJson);
+            if (!parsed.isArray() || parsed.isEmpty()) {
+                return groqRouteJson;
+            }
+        } catch (Exception e) {
+            return groqRouteJson;
+        }
+
+        return fixedJson;
     }
 
     @Transactional
@@ -351,6 +507,10 @@ public class AiRouteService {
             %s
             
             [부분 교체 필수 준수 사항 - 위반 시 시스템 오류 발생]
+            0. ★지역 절대 잠금★: 교체로 새로 넣는 모든 장소는 반드시 여행지 "%s" 행정구역 안에 실존해야 합니다.
+               여행지가 "경북 청송군"이면 청송군(또는 인접 30km 이내) 밖의 장소(서울·대전·부산·제주 등)는
+               절대 넣지 마십시오. 교체 요청에 "권역을 벗어났다"는 사유가 있으면, 그 장소를 반드시
+               여행지 권역 안의 다른 실존 장소로 바꿔야 합니다. 이 규칙은 다른 모든 규칙보다 우선합니다.
             1. 원본 보존의 원칙: 교체를 요청받은 타겟 장소를 제외한 다른 일차, 다른 장소, 시간, 배열 구조는 단 한 글자도 건드리지 말고 100%% 똑같이 유지하십시오.
             2. 주변 동선(Transit) 자동 업데이트: 장소가 교체되어 위치가 바뀌었으므로, 교체된 장소의 직전과 직후에 있는 'transit' 블록(거리, 소요 시간, 비용 등)도 새로운 위치 간의 실제 거리에 맞게 현실적으로 재계산해서 수정해 주세요.
             3. 장소명 절대 규칙 (Hallucination 원천 차단):
@@ -377,14 +537,24 @@ public class AiRouteService {
                 form.getTravelStyles(), form.getDietaryInfo(),
                 form.getTransportType(), form.getAccommodationType(),
                 parseExtraNotesToPrompt(form.getExtraNotes()),
-                reqStr.toString(), originalJson
+                reqStr.toString(), originalJson,
+                plan.getDestination()   // 규칙 0의 ★지역 절대 잠금★ 자리
         );
 
         String updatedJson = "[]";
         try {
             System.out.println("🔄 Groq 부분 교체 기동 중...");
+            // [지도 장소 교체] 요구사항에 따라 이 단계는 Groq 가 담당한다.
+            // ===== // 기존 API(그록 재미나이)사용할 때 =====
             // 메인 Groq API 호출 시도
             updatedJson = primaryClient.prompt().user(prompt).call().content();
+            // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
+
+            // ===== // 클로드 API 사용할 때 (장소 교체도 Claude로 돌리고 싶다면) =====
+            //   위 Groq 호출을 주석 처리하고 아래 한 줄을 살리면 교체도 Claude가 수행한다.
+            //   (현재 요구사항은 '교체는 Groq' 이므로 기본은 주석 처리 상태)
+            // updatedJson = claudeClient.prompt().user(prompt).call().content();
+            // ===== // 클로드 API 사용할 때 끝 =====
         } catch (Exception e) {
             System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
             try {

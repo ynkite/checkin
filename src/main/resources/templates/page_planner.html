@@ -688,10 +688,29 @@
             }
 
             const ps = new kakao.maps.services.Places();
+            const geocoder = (kakao.maps.services && kakao.maps.services.Geocoder)
+                ? new kakao.maps.services.Geocoder() : null;
 
             const destProv = document.getElementById('dest-prov') ? document.getElementById('dest-prov').value : '';
             const destCity = document.getElementById('dest-city') ? document.getElementById('dest-city').value : '';
             const destRegion = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
+
+            // 🎯 [추가] 여행지 중심 좌표 + 허용 반경.
+            //   모든 장소는 이 중심에서 maxRadiusKm 안에 있어야 한다(타지역 장소 원천 차단용).
+            //   시/군/구까지 지정되면 좁게(40km), 시/도만이면 넓게(80km) 잡는다.
+            const hasCity = !!(destCity && destCity !== '전체' && destCity !== '시/군/구 선택');
+            const maxRadiusKm = destProv && destProv.includes('제주') ? 60 : (hasCity ? 40 : 80);
+            let regionCenter = null; // { lat, lng }
+
+            const _haversineKm = (lat1, lng1, lat2, lng2) => {
+                const R = 6371;
+                const dLat = (lat2 - lat1) * (Math.PI / 180);
+                const dLng = (lng2 - lng1) * (Math.PI / 180);
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
+                    Math.sin(dLng/2) * Math.sin(dLng/2);
+                return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            };
 
             let currentStage = parseInt(sessionStorage.getItem('autoHealingRetries') || '0');
 
@@ -722,84 +741,114 @@
             let searchCount = 0;
             const totalPlaces = allPins.length;
 
-            // 🎯 비동기 카카오 검색 기동 루프
-            allPins.forEach(pin => {
-                const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
-
-                ps.keywordSearch(searchQuery, function(data, status) {
-                    if (status === kakao.maps.services.Status.OK) {
-                        pin.lat = parseFloat(data[0].y);
-                        pin.lng = parseFloat(data[0].x);
-                        pin.isFound = true;
-                        finalizeSearch();
+            // 🎯 [추가] 여행지 중심 좌표를 먼저 구한 뒤(geocode/keyword), 검색 루프를 시작한다.
+            function _runSearchLoopAfterCenter() {
+                _startPinSearchLoop();
+            }
+            if (geocoder && destRegion) {
+                geocoder.addressSearch(destRegion, function(result, status) {
+                    if (status === kakao.maps.services.Status.OK && result[0]) {
+                        regionCenter = { lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) };
+                        _runSearchLoopAfterCenter();
                     } else {
-                        ps.keywordSearch(pin.label, function(fallbackData, fallbackStatus) {
-                            if (fallbackStatus === kakao.maps.services.Status.OK) {
-                                pin.lat = parseFloat(fallbackData[0].y);
-                                pin.lng = parseFloat(fallbackData[0].x);
-                                pin.isFound = true;
-                            } else {
-                                console.error(`❌ [검증 탈락] 지도에 없는 장소 원천 배제: ${pin.label}`);
-                                pin.isFound = false;
+                        // 주소 검색 실패 시 키워드 검색으로 중심 좌표 재시도
+                        ps.keywordSearch(destRegion, function(d2, s2) {
+                            if (s2 === kakao.maps.services.Status.OK && d2[0]) {
+                                regionCenter = { lat: parseFloat(d2[0].y), lng: parseFloat(d2[0].x) };
                             }
-                            finalizeSearch();
+                            _runSearchLoopAfterCenter();
                         });
                     }
                 });
+            } else if (destRegion) {
+                ps.keywordSearch(destRegion, function(d2, s2) {
+                    if (s2 === kakao.maps.services.Status.OK && d2[0]) {
+                        regionCenter = { lat: parseFloat(d2[0].y), lng: parseFloat(d2[0].x) };
+                    }
+                    _runSearchLoopAfterCenter();
+                });
+            } else {
+                _runSearchLoopAfterCenter();
+            }
 
-                // 🎯 모든 장소의 검색이 끝난 후 실행되는 검수 핵심 제어 함수
-                function finalizeSearch() {
-                    searchCount++;
-                    if (searchCount !== totalPlaces) return;
+            // 🎯 비동기 카카오 검색 기동 루프
+            function _startPinSearchLoop() {
+                allPins.forEach(pin => {
+                    const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
 
-                    const autoFixRequests = [];
-
-                    // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
-                    allPins.forEach(pin => {
-                        if (!pin.isFound) {
-                            if (!autoFixRequests.some(r => r.place === pin.label)) {
-                                autoFixRequests.push({
-                                    place: pin.label,
-                                    req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
-                                });
+                    // 검색 결과 중 '여행지 반경 안'에 있는 첫 후보를 채택. 없으면 미발견 처리.
+                    const _pickInRegion = (list) => {
+                        if (!list || list.length === 0) return null;
+                        if (!regionCenter) return list[0]; // 중심 좌표를 못 구했으면 종전처럼 첫 결과
+                        for (const c of list) {
+                            const la = parseFloat(c.y), ln = parseFloat(c.x);
+                            if (_haversineKm(regionCenter.lat, regionCenter.lng, la, ln) <= maxRadiusKm) {
+                                return c;
                             }
+                        }
+                        return null; // 반경 안 후보가 하나도 없음 → 타지역 장소로 간주
+                    };
+
+                    ps.keywordSearch(searchQuery, function(data, status) {
+                        let hit = (status === kakao.maps.services.Status.OK) ? _pickInRegion(data) : null;
+                        if (hit) {
+                            pin.lat = parseFloat(hit.y);
+                            pin.lng = parseFloat(hit.x);
+                            pin.isFound = true;
+                            finalizeSearch();
+                        } else {
+                            // 지역 포함 검색이 실패/반경밖이면, 지역명만으로 한번 더(여전히 반경 검사)
+                            ps.keywordSearch(pin.label, function(fallbackData, fallbackStatus) {
+                                const fb = (fallbackStatus === kakao.maps.services.Status.OK)
+                                    ? _pickInRegion(fallbackData) : null;
+                                if (fb) {
+                                    pin.lat = parseFloat(fb.y);
+                                    pin.lng = parseFloat(fb.x);
+                                    pin.isFound = true;
+                                } else {
+                                    console.error(`❌ [검증 탈락] 지도에 없거나 여행지(${destRegion}) 반경 밖 장소 배제: ${pin.label}`);
+                                    pin.isFound = false;
+                                }
+                                finalizeSearch();
+                            });
                         }
                     });
 
-                    // [검수 2단계] 지도에 있는 실존 장소들 간의 20km 반경 하바신 거리 측정 진행
-                    const dayKeys = [...new Set(allPins.map(p => p.day))];
+                    // 🎯 모든 장소의 검색이 끝난 후 실행되는 검수 핵심 제어 함수
+                    function finalizeSearch() {
+                        searchCount++;
+                        if (searchCount !== totalPlaces) return;
 
-                    dayKeys.forEach(dNum => {
-                        // 정상적으로 좌표가 찾아진 실존 장소들만 필터링
-                        const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+                        const autoFixRequests = [];
 
-                        for (let i = 1; i < dayPins.length; i++) {
-                            const prev = dayPins[i - 1];
-                            const curr = dayPins[i];
-
-                            if (prev.lat && curr.lat) {
-                                const R = 6371;
-                                const dLat = (curr.lat - prev.lat) * (Math.PI / 180);
-                                const dLng = (curr.lng - prev.lng) * (Math.PI / 180);
-                                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                                    Math.cos(prev.lat * (Math.PI / 180)) * Math.cos(curr.lat * (Math.PI / 180)) *
-                                    Math.sin(dLng/2) * Math.sin(dLng/2);
-                                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                                const dist = R * c;
-
-                                // 🎯 기준 거리를 20km로 단축 제한
-                                if (dist > 20) {
-                                    console.warn(`🚨 [동선 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
-                                    if (!autoFixRequests.some(r => r.place === curr.label)) {
-                                        autoFixRequests.push({
-                                            place: curr.label,
-                                            req: `직전 장소(${prev.label})에서 동선이 ${dist.toFixed(1)}km 떨어져 너무 멉니다. 20km 이내의 근거리 장소로 교체해 주세요.`
-                                        });
+                        // [검수 0단계] 좌표는 찾았지만 '여행지 중심 반경'을 벗어난 타지역 장소 색출
+                        //   (예: 대전 여행인데 제주/강릉/부산 동명 장소가 잡힌 경우)
+                        if (regionCenter) {
+                            allPins.forEach(pin => {
+                                if (pin.isFound && pin.lat && pin.lng) {
+                                    const distFromCenter = _haversineKm(regionCenter.lat, regionCenter.lng, pin.lat, pin.lng);
+                                    if (distFromCenter > maxRadiusKm) {
+                                        console.warn(`🚨 [여행지 이탈] ${pin.label} : 중심에서 ${distFromCenter.toFixed(1)}km (허용 ${maxRadiusKm}km)`);
+                                        if (!autoFixRequests.some(r => r.place === pin.label)) {
+                                            autoFixRequests.push({
+                                                place: pin.label,
+                                                req: `이 장소는 여행지(${destRegion}) 권역을 벗어난 다른 지역에 있습니다. 반드시 ${destRegion} 안에 실존하는 유명 장소로 교체해 주세요.`
+                                            });
+                                        }
                                     }
                                 }
-                            }
+                            });
                         }
-                    });
+
+
+                        // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
+                        allPins.forEach(pin => {
+                            if (!pin.isFound) {
+                                if (!autoFixRequests.some(r => r.place === pin.label)) {
+                                    autoFixRequests.push({
+                                        place: pin.label,
+                                        req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
+                                    });
 
                     // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
                     if (autoFixRequests.length > 0 && currentStage < 2) {
@@ -829,16 +878,120 @@
                                     validateAndHealingRoute(tripId, cleanData, btn);
                                 } else {
                                     _finalizePlannerRoute(routeData, btn);
+
                                 }
+                            }
+                        });
+
+
+                        // [검수 2단계] 지도에 있는 실존 장소들 간의 20km 반경 하바신 거리 측정 진행
+                        const dayKeys = [...new Set(allPins.map(p => p.day))];
+
+                        dayKeys.forEach(dNum => {
+                            // 정상적으로 좌표가 찾아진 실존 장소들만 필터링
+                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+
+                            for (let i = 1; i < dayPins.length; i++) {
+                                const prev = dayPins[i - 1];
+                                const curr = dayPins[i];
+
+                                if (prev.lat && curr.lat) {
+                                    const R = 6371;
+                                    const dLat = (curr.lat - prev.lat) * (Math.PI / 180);
+                                    const dLng = (curr.lng - prev.lng) * (Math.PI / 180);
+                                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                        Math.cos(prev.lat * (Math.PI / 180)) * Math.cos(curr.lat * (Math.PI / 180)) *
+                                        Math.sin(dLng/2) * Math.sin(dLng/2);
+                                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                                    const dist = R * c;
+
+                                    // 🎯 기준 거리를 20km로 단축 제한
+                                    if (dist > 20) {
+                                        console.warn(`🚨 [동선 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
+                                        if (!autoFixRequests.some(r => r.place === curr.label)) {
+                                            autoFixRequests.push({
+                                                place: curr.label,
+                                                req: `직전 장소(${prev.label})에서 동선이 ${dist.toFixed(1)}km 떨어져 너무 멉니다. 20km 이내의 근거리 장소로 교체해 주세요.`
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
+                        if (autoFixRequests.length > 0 && currentStage < 2) {
+                            currentStage++;
+                            sessionStorage.setItem('autoHealingRetries', currentStage.toString());
+
+                            btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
+
+                            fetch(`/api/trips/${tripId}/routes/replace`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': 'Bearer ' + (Token.getAccess() || '')
+                                },
+                                body: JSON.stringify({ requests: autoFixRequests })
                             })
-                            .catch(() => _finalizePlannerRoute(routeData, btn));
+                                .then(res => res.json())
+                                .then(res => {
+                                    if (res.success && res.data) {
+                                        let nextJson = res.data;
+                                        if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
+
+                                        const cleanData = JSON.parse(nextJson);
+                                        sessionStorage.setItem('ai_generated_route', nextJson);
+
+                                        // 🔄 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
+                                        validateAndHealingRoute(tripId, cleanData, btn);
+                                    } else {
+                                        _finalizePlannerRoute(routeData, btn);
+                                    }
+                                })
+                                .catch(() => _finalizePlannerRoute(routeData, btn));
+
+                        } else if (autoFixRequests.length > 0) {
+                            // 🎯 [최종 방어] 2회 교체를 다 썼는데도 여행지 밖/가짜 장소가 남았다면,
+                            //   그 장소를 일정에서 제거해 전국으로 퍼진 동선이 그대로 그려지는 것을 막는다.
+                            const badNames = new Set(autoFixRequests.map(r => r.place));
+                            const cleaned = routeData.map(d => {
+                                if (!d.places) return d;
+                                const kept = [];
+                                d.places.forEach(p => {
+                                    // transit(이동) 블록은 일단 보류했다가 아래에서 정리
+                                    if (p.transit) { kept.push(p); return; }
+                                    if (!badNames.has(p.name)) kept.push(p);
+                                });
+                                // 장소가 빠지면서 앞뒤로 붕 뜬 transit을 정리(연속 transit/맨앞·맨뒤 transit 제거)
+                                const tidy = [];
+                                kept.forEach((p, i) => {
+                                    if (p.transit) {
+                                        const prevReal = tidy.length > 0 && !tidy[tidy.length - 1].transit;
+                                        const nextReal = kept.slice(i + 1).some(q => !q.transit);
+                                        if (prevReal && nextReal) tidy.push(p);
+                                    } else {
+                                        tidy.push(p);
+                                    }
+                                });
+                                return { ...d, places: tidy };
+                            });
+                            console.warn('⚠️ 2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
+                            toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
+                            sessionStorage.setItem('ai_generated_route', JSON.stringify(cleaned));
+                            _finalizePlannerRoute(cleaned, btn);
+                        } else {
+                            console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
+                            _finalizePlannerRoute(routeData, btn);
+                        }
 
                     } else {
                         console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
                         _finalizePlannerRoute(routeData, btn);
+
                     }
-                }
-            });
+                });
+            } // end _startPinSearchLoop
         }
 
         function _finalizePlannerRoute(routeData, btn) {
