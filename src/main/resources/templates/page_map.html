@@ -1,9 +1,9 @@
 <div th:fragment="map" xmlns:th="http://www.thymeleaf.org">
-<!-- ===================================================
- * 파일명: page_map.html
- * 도메인: 동선(Route)
- * 기능:   여행 동선 지도, 장소 추가/삭제/정렬
- =================================================== -->
+  <!-- ===================================================
+   * 파일명: page_map.html
+   * 도메인: 동선(Route)
+   * 기능:   여행 동선 지도, 장소 추가/삭제/정렬
+   =================================================== -->
   <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
   <script>
     /* ============================================================
@@ -563,81 +563,160 @@
           return;
         }
 
-        MAP_PINS.forEach(function(pin) {
-          ps.keywordSearch(pin.label, function(data, status, pagination) {
-            if (status === kakao.maps.services.Status.OK) {
-              console.log("✅ 카카오 API 검색 성공: [" + pin.label + "] -> ", data[0]);
-              var place = data[0];
-              var realLat = parseFloat(place.y);
-              var realLng = parseFloat(place.x);
+        // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
+        //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
+        function _haversineKm(lat1, lng1, lat2, lng2) {
+          var R = 6371;
+          var dLat = (lat2 - lat1) * (Math.PI / 180);
+          var dLng = (lng2 - lng1) * (Math.PI / 180);
+          var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
 
-              pin.lat = realLat;
-              pin.lng = realLng;
-              pin.placeUrl = place.place_url;
-              pin.category = place.category_name.split(' > ').pop();
+        // 검색 성공(반경 내) 시 마커 렌더링 — 기존 로직 그대로
+        function _onResolved(pin, place) {
+          var realLat = parseFloat(place.y);
+          var realLng = parseFloat(place.x);
+          pin.lat = realLat;
+          pin.lng = realLng;
+          pin.placeUrl = place.place_url;
+          pin.category = place.category_name ? place.category_name.split(' > ').pop() : null;
 
-              var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
-                      + 'style="cursor:pointer; position:relative; width:0; height:0;">'
-                      + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
-                      + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
-                      + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
-                      + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
-                      + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
-                      + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div></div>';
+          var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
+                  + 'style="cursor:pointer; position:relative; width:0; height:0;">'
+                  + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
+                  + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
+                  + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
+                  + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
+                  + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
+                  + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div></div>';
 
-              var overlay = new kakao.maps.CustomOverlay({
-                position: new kakao.maps.LatLng(realLat, realLng), content: content, xAnchor: 0, yAnchor: 0
-              });
+          var overlay = new kakao.maps.CustomOverlay({
+            position: new kakao.maps.LatLng(realLat, realLng), content: content, xAnchor: 0, yAnchor: 0
+          });
+          overlay.setMap(window._kakaoMap);
+          var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
+          window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
+          bounds.extend(new kakao.maps.LatLng(realLat, realLng));
+          pin.isFound = true;
+        }
 
-              overlay.setMap(window._kakaoMap);
-              var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
-              window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
-              bounds.extend(new kakao.maps.LatLng(realLat, realLng));
-              pin.isFound = true;
-            } else {
-              console.warn("⚠️ 카카오 장소 검색 실패: " + pin.label);
-              pin.isFound = false;
+        // 미발견(또는 반경 밖) 시 교체 큐로 — 기존 로직 그대로
+        function _onNotFound(pin) {
+          console.error("❌ [지도 배제] 미존재/타지역 장소: " + pin.label);
+          pin.isFound = false;
+          var isAlreadyInQueue = window._q.some(function(item) { return item.place === pin.label; });
+          if (!isAlreadyInQueue) {
+            _q.push({
+              place: pin.label,
+              req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
+            });
+          }
+        }
 
-              var isAlreadyInQueue = window._q.some(function(item) {
-                return item.place === pin.label;
-              });
+        // 모든 검색이 끝난 뒤 한 번만 실행 — 기존 finalize 로직 그대로
+        function _finalizeMap() {
+          searchCount++;
+          if (searchCount !== totalPlaces) return;
 
-              if (!isAlreadyInQueue) {
-                _q.push({
-                  place: pin.label,
-                  req: "지도에 없는 장소입니다. 실존하는 다른 곳으로 교체해 주세요."
+          window._isKakaoMapInitRunning = false;
+          sessionStorage.removeItem('autoHealingRetries');
+
+          if (typeof renderQ === 'function') renderQ();
+
+          if (window._q.length > 0) {
+            var qBox = document.getElementById('queueBox');
+            var qToggle = document.getElementById('queueToggle');
+            if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
+            if (qToggle) qToggle.style.display = 'none';
+          }
+
+          if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
+            window._kakaoMap.setBounds(bounds);
+          }
+
+          setTimeout(function() {
+            drawLivePolylines();
+            checkActualWeatherAlert(window._currentTripId);
+          }, 100);
+        }
+
+        // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
+        function _startPinSearch(destRegion, regionCenter, maxRadiusKm) {
+          MAP_PINS.forEach(function(pin) {
+            var query = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
+
+            function _pickInRegion(list) {
+              if (!list || list.length === 0) return null;
+              if (!regionCenter) return list[0];
+              for (var i = 0; i < list.length; i++) {
+                var la = parseFloat(list[i].y), ln = parseFloat(list[i].x);
+                if (_haversineKm(regionCenter.lat, regionCenter.lng, la, ln) <= maxRadiusKm) return list[i];
+              }
+              return null;
+            }
+
+            ps.keywordSearch(query, function(data, status) {
+              var hit = (status === kakao.maps.services.Status.OK) ? _pickInRegion(data) : null;
+              if (hit) {
+                _onResolved(pin, hit);
+                _finalizeMap();
+              } else {
+                // 지역 포함 검색이 실패/반경 밖이면 장소명만으로 한 번 더(여전히 반경 검사)
+                ps.keywordSearch(pin.label, function(fb, fbStatus) {
+                  var h2 = (fbStatus === kakao.maps.services.Status.OK) ? _pickInRegion(fb) : null;
+                  if (h2) _onResolved(pin, h2); else _onNotFound(pin);
+                  _finalizeMap();
                 });
               }
-            }
-
-            searchCount++;
-            if (searchCount === totalPlaces) {
-              window._isKakaoMapInitRunning = false;
-              sessionStorage.removeItem('autoHealingRetries');
-
-              // 🎯 큐에 넣은 걸 왼쪽 사이드바(사진 위치)에 렌더링
-              if (typeof renderQ === 'function') renderQ();
-
-              // 큐에 항목이 있으면 큐 박스 열어주기
-              if (window._q.length > 0) {
-                var qBox = document.getElementById('queueBox');
-                var qToggle = document.getElementById('queueToggle');
-                if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
-                if (qToggle) qToggle.style.display = 'none';
-              }
-
-              // 🎯 선 깨짐 보정: 카메라 시점 이동을 먼저 락(Lock) 해두고 선을 그립니다.
-              if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
-                window._kakaoMap.setBounds(bounds);
-              }
-
-              setTimeout(function() {
-                drawLivePolylines();
-                checkActualWeatherAlert(window._currentTripId);
-              }, 100);
-            }
+            });
           });
-        });
+        }
+
+        // 여행지 중심 좌표 확보 후 검색 루프 기동
+        function _runWithRegion(destRegion) {
+          var hasCity = !!(destRegion && destRegion.trim().split(/\s+/).length >= 2);
+          var maxRadiusKm = (destRegion && destRegion.indexOf('제주') >= 0) ? 60 : (hasCity ? 40 : 80);
+          var geocoder = (kakao.maps.services && kakao.maps.services.Geocoder)
+                  ? new kakao.maps.services.Geocoder() : null;
+
+          if (geocoder && destRegion) {
+            geocoder.addressSearch(destRegion, function(result, status) {
+              if (status === kakao.maps.services.Status.OK && result[0]) {
+                _startPinSearch(destRegion, { lat: parseFloat(result[0].y), lng: parseFloat(result[0].x) }, maxRadiusKm);
+              } else {
+                ps.keywordSearch(destRegion, function(d2, s2) {
+                  var rc = (s2 === kakao.maps.services.Status.OK && d2[0])
+                          ? { lat: parseFloat(d2[0].y), lng: parseFloat(d2[0].x) } : null;
+                  _startPinSearch(destRegion, rc, maxRadiusKm);
+                });
+              }
+            });
+          } else if (destRegion) {
+            ps.keywordSearch(destRegion, function(d2, s2) {
+              var rc = (s2 === kakao.maps.services.Status.OK && d2[0])
+                      ? { lat: parseFloat(d2[0].y), lng: parseFloat(d2[0].x) } : null;
+              _startPinSearch(destRegion, rc, maxRadiusKm);
+            });
+          } else {
+            _startPinSearch('', null, maxRadiusKm);
+          }
+        }
+
+        // 여행지(목적지) 문자열 확보: 캐시 우선, 없으면 trip API에서 1회 조회
+        if (window._mapDestRegion) {
+          _runWithRegion(window._mapDestRegion);
+        } else if (window._currentTripId) {
+          api.get('/api/trips/' + window._currentTripId).then(function(r) {
+            var dr = (r && r.success && r.data && r.data.destination) ? r.data.destination : '';
+            window._mapDestRegion = dr;
+            _runWithRegion(dr);
+          }).catch(function() { _runWithRegion(''); });
+        } else {
+          _runWithRegion('');
+        }
       });
     }
     async function checkActualWeatherAlert(tripId) {
@@ -736,52 +815,8 @@
       }
     }
 
-    // ── 드래그 및 확대/축소 시 동선 다시 그리기 (구형 점선 찌꺼기 완벽 박멸 완료) ──
-    function redrawDayRoute(dayNum) {
-      if (!window._kakaoMap || !window._kakaoPolylines) return;
-      window._kakaoPolylines.forEach(function(p) { if (p.day == dayNum) p.line.setMap(null); });
-      window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
-
-      var pinByKey = {};
-      MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
-
-      var section = document.querySelector('.day-section[data-day="' + dayNum + '"]');
-      if (!section) return;
-      var keys = Array.from(section.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
-      var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
-
-      var path = keys.map(function(k) {
-        var p = pinByKey[k];
-        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
-      }).filter(Boolean);
-      if (path.length < 2) return;
-
-      var lineColor = route ? route.color : '#2D9E8A';
-
-      // 🎯 [보정 1] 검은색 실선 배경화 (두께 10)
-      var bgPolyline = new kakao.maps.Polyline({
-        path: path,
-        strokeWeight: 10,
-        strokeColor: '#000000',
-        strokeOpacity: 0.6,
-        strokeStyle: 'solid'
-      });
-      bgPolyline.setMap(window._kakaoMap);
-      window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
-
-      // 🎯 [보정 2] 메인 고유 컬러 실선 상단 적층 (두께 6)
-      var mainPolyline = new kakao.maps.Polyline({
-        path: path,
-        strokeWeight: 6,
-        strokeColor: lineColor,
-        strokeOpacity: 1.0,
-        strokeStyle: 'solid'
-      });
-      mainPolyline.setMap(window._kakaoMap);
-      window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
-
-      setTimeout(renderArrows, 50);
-    }
+    // ── (구) redrawDayRoute 1차 정의는 아래 2차 정의(좌표 재검색·relayout 보강판)로 통합되어 제거됨 ──
+    //    동일 이름 함수가 두 번 선언되면 뒤의 것이 앞을 덮어써 디버깅이 어려우므로 단일화한다.
 
     // ── 🎯 화면 픽셀 기준으로 화살표를 완벽하게 정렬하는 함수 ──
     function renderArrows() {
@@ -870,52 +905,83 @@
       window._kakaoMap.setBounds(bounds);
     }
 
-    // ── 드래그 후 해당 Day 동선 다시 그리기 ──
+    // ── 드래그/교체 후 해당 Day 동선 다시 그리기 (좌표 누락 시 재검색·relayout 보강판) ──
     function redrawDayRoute(dayNum) {
       if (!window._kakaoMap || !window._kakaoPolylines) return;
-      window._kakaoPolylines.forEach(function(p) { if (p.day == dayNum) p.line.setMap(null); });
-      window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
-
-      var pinByKey = {};
-      MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
 
       var section = document.querySelector('.day-section[data-day="' + dayNum + '"]');
       if (!section) return;
       var keys = Array.from(section.querySelectorAll('.place-row[data-key]')).map(function(r) { return r.dataset.key; });
-      var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
 
-      var path = keys.map(function(k) {
-        var p = pinByKey[k];
-        return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
-      }).filter(Boolean);
-      if (path.length < 2) return;
+      var pinByKey = {};
+      MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
 
-      var lineColor = route ? route.color : '#2D9E8A';
+      // 🩹 [핵심 수정] 이 날 경로에 '좌표가 아직 없는' 핀이 있으면, 그것부터 카카오 검색으로
+      //    좌표를 채운 뒤에 그린다. (좌표 누락으로 path가 비어 지도가 깨지고 새로고침해야 하던 버그 차단)
+      var needResolve = keys
+              .map(function(k) { return pinByKey[k]; })
+              .filter(function(p) { return p && (!p.isFound || !p.lat || !p.lng); });
 
-      // 🎯 [현재 스타일 1] 검은색 실선 배경 (두께 10)
-      var bgPolyline = new kakao.maps.Polyline({
-        path: path,
-        strokeWeight: 10,
-        strokeColor: '#000000',
-        strokeOpacity: 0.6,
-        strokeStyle: 'solid'
+      function _draw() {
+        // 기존 폴리라인 제거
+        window._kakaoPolylines.forEach(function(p) { if (p.day == dayNum) p.line.setMap(null); });
+        window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
+
+        var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
+        var path = keys.map(function(k) {
+          var p = pinByKey[k];
+          return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
+        }).filter(Boolean);
+
+        // 🩹 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
+        if (window._kakaoMap) {
+          window._kakaoMap.relayout();
+          var dayPins = keys.map(function(k) { return pinByKey[k]; })
+                  .filter(function(p) { return p && p.lat && p.lng && p.isFound; });
+          if (dayPins.length > 0) {
+            var b = new kakao.maps.LatLngBounds();
+            dayPins.forEach(function(p) { b.extend(new kakao.maps.LatLng(p.lat, p.lng)); });
+            window._kakaoMap.setBounds(b);
+          }
+        }
+        if (path.length < 2) { setTimeout(renderArrows, 50); return; }
+
+        var lineColor = route ? route.color : '#2D9E8A';
+
+        var bgPolyline = new kakao.maps.Polyline({
+          path: path, strokeWeight: 10, strokeColor: '#000000', strokeOpacity: 0.6, strokeStyle: 'solid'
+        });
+        bgPolyline.setMap(window._kakaoMap);
+        window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
+
+        var mainPolyline = new kakao.maps.Polyline({
+          path: path, strokeWeight: 6, strokeColor: lineColor, strokeOpacity: 1.0, strokeStyle: 'solid'
+        });
+        mainPolyline.setMap(window._kakaoMap);
+        window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
+
+        setTimeout(renderArrows, 50);
+      }
+
+      if (needResolve.length === 0 || typeof kakao === 'undefined' || !kakao.maps.services) {
+        _draw();
+        return;
+      }
+
+      // 좌표 누락 핀 재검색
+      var ps = new kakao.maps.services.Places();
+      var pending = needResolve.length;
+      needResolve.forEach(function(pin) {
+        var q = pin.label || pin.name || '';
+        ps.keywordSearch(q, function(data, status) {
+          if (status === kakao.maps.services.Status.OK && data && data.length) {
+            pin.lat = parseFloat(data[0].y);
+            pin.lng = parseFloat(data[0].x);
+            pin.isFound = true;
+          }
+          if (--pending <= 0) _draw();
+        });
       });
-      bgPolyline.setMap(window._kakaoMap);
-      window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
-
-      // 🎯 [현재 스타일 2] 컬러 실선 상단 적층 (두께 6)
-      var mainPolyline = new kakao.maps.Polyline({
-        path: path,
-        strokeWeight: 6,
-        strokeColor: lineColor,
-        strokeOpacity: 1.0,
-        strokeStyle: 'solid'
-      });
-      mainPolyline.setMap(window._kakaoMap);
-      // 🎯 화살표 렌더링을 위해 path 데이터 필수 전달
-      window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
-
-      setTimeout(renderArrows, 50);
     }
 
     // ── 드래그 재정렬 초기화 ──
@@ -1442,7 +1508,7 @@
           <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)" style="font-size:11px">🗺 지도</button>
           <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)" style="font-size:11px">💰 예산</button>
           <button class="btn-map-act" onclick="openShareModal()" style="font-size:11px">🔗 공유</button>
-<!--          <button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>-->
+          <!--          <button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>-->
         </div>
       </div>
       <!-- MAP RIGHT -->
@@ -1464,81 +1530,81 @@
             <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">BUDGET · EXPENSE REPORT</div>
             <h3 style="font-size:16px;font-weight:800;margin-bottom:14px">가계부</h3>
 
-          <!-- 💡 기존 1fr 1fr 분할을 위아래 수직 나열(flex-column)로 변경했습니다 -->
-          <div style="display:flex; flex-direction:column; gap:24px;">
+            <!-- 💡 기존 1fr 1fr 분할을 위아래 수직 나열(flex-column)로 변경했습니다 -->
+            <div style="display:flex; flex-direction:column; gap:24px;">
 
-            <!-- 상단: 항목별 바 차트 및 총액/잔여예산 -->
-            <div>
-              <div id="map-budget-items"></div>
-              <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
-                <div id="map-budget-total-label" style="font-size:13px;font-weight:700">예상 총액</div>
-                <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩0</div>
-              </div>
-              <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
-                예산 계산 중...
-              </div>
-            </div>
-
-            <!-- 하단: 파이차트 및 저장 버튼 -->
-            <div style="padding-top:10px;">
-              <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">카테고리별 지출 비중</div>
-              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-                <div class="pie-ring" style="width:90px;height:90px"></div>
-                <div class="pie-legend">
+              <!-- 상단: 항목별 바 차트 및 총액/잔여예산 -->
+              <div>
+                <div id="map-budget-items"></div>
+                <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
+                  <div id="map-budget-total-label" style="font-size:13px;font-weight:700">예상 총액</div>
+                  <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩0</div>
+                </div>
+                <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
+                  예산 계산 중...
                 </div>
               </div>
 
-              <button onclick="goToLedgerFromMap()"
-                      style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
-                             background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
-                📝 실제 지출 입력 / 수정하기
-              </button>
-            </div>
+              <!-- 하단: 파이차트 및 저장 버튼 -->
+              <div style="padding-top:10px;">
+                <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">카테고리별 지출 비중</div>
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+                  <div class="pie-ring" style="width:90px;height:90px"></div>
+                  <div class="pie-legend">
+                  </div>
+                </div>
 
+                <button onclick="goToLedgerFromMap()"
+                        style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
+                             background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
+                  📝 실제 지출 입력 / 수정하기
+                </button>
+              </div>
+
+            </div>
           </div>
         </div>
-    </div>
-  </div>
-
-  <!-- ===================== PAGE 07 BUDGET ===================== -->
-
-<!-- 지도 장소 후기 팝업 -->
-<div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:500px">
-    <div class="modal-hd">
-      <div>
-        <div class="modal-ttl" id="mpPlace">장소명</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
       </div>
-      <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-bd">
-      <div id="mpNavi"></div>
-      <div id="mpReviews"></div>
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
-        <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
-        <div style="display:flex;gap:8px" id="mpLinks"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- 후기 전체보기 팝업 -->
-<div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:460px">
-    <div class="modal-hd">
-      <div>
-        <div class="modal-ttl" id="rdPlace"></div>
-        <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+      <!-- ===================== PAGE 07 BUDGET ===================== -->
+
+      <!-- 지도 장소 후기 팝업 -->
+      <div class="overlay" id="mapPlaceModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal" style="width:500px">
+          <div class="modal-hd">
+            <div>
+              <div class="modal-ttl" id="mpPlace">장소명</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
+            </div>
+            <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
+          </div>
+          <div class="modal-bd">
+            <div id="mpNavi"></div>
+            <div id="mpReviews"></div>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
+              <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
+              <div style="display:flex;gap:8px" id="mpLinks"></div>
+            </div>
+          </div>
+        </div>
       </div>
-      <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
-    </div>
-    <div class="modal-bd">
-      <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
-      <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8"></p>
-    </div>
-       </div>
-     </div>
+
+      <!-- 후기 전체보기 팝업 -->
+      <div class="overlay" id="reviewDetailModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal" style="width:460px">
+          <div class="modal-hd">
+            <div>
+              <div class="modal-ttl" id="rdPlace"></div>
+              <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+            </div>
+            <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
+          </div>
+          <div class="modal-bd">
+            <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
+            <p id="rdText" style="font-size:14px;color:var(--text2);line-height:1.8"></p>
+          </div>
+        </div>
+      </div>
 
 
       <!-- page_map.html 맨 아래 후기 팝업들 옆에 추가 -->

@@ -1525,7 +1525,11 @@ async function sendMsg() {
 
 // 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
     const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
-    if (overseasKeywords.some(k => txt.includes(k))) {
+    // 국내 브랜드/상호명에 해외 키워드가 부분 일치하는 오탐 방지 (예: "파리바게뜨" → "파리")
+    const overseasFalsePositives = ['파리바게뜨','파리바게트'];
+    let _overseasCheckTxt = txt;
+    overseasFalsePositives.forEach(fp => { _overseasCheckTxt = _overseasCheckTxt.split(fp).join(''); });
+    if (overseasKeywords.some(k => _overseasCheckTxt.includes(k))) {
         addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
         inp.disabled = false;
         inp.focus();

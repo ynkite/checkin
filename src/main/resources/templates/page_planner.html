@@ -661,10 +661,28 @@
                     if (cleanJson.includes('[')) {
                         cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
                     }
+                    const draftRoute = JSON.parse(cleanJson);
 
-                    // 가상 검증 프로세스 카운터 초기화 및 가동
-                    sessionStorage.setItem('autoHealingRetries', '0');
-                    validateAndHealingRoute(tripId, JSON.parse(cleanJson), btn);
+                    // 🚦 [생성 전 확인 게이트] 지도에 없는 장소 / 예산 부족을 먼저 점검하고,
+                    //    문제가 있으면 사용자가 '확인하고 생성'을 눌러야만 진행한다.
+                    btn.innerHTML = '🔎 생성 전 점검 중...';
+                    const issues = await _preGenerateAudit(tripId, draftRoute);
+
+                    const _proceed = () => {
+                        btn.innerHTML = 'AI가 일정을 생성중입니다..';
+                        sessionStorage.setItem('autoHealingRetries', '0');
+                        validateAndHealingRoute(tripId, draftRoute, btn);
+                    };
+
+                    if (issues && (issues.missing.length > 0 || issues.budgetShort)) {
+                        // 게이트 표시 → 확인 시에만 _proceed(), 취소 시 버튼 원상복구
+                        _showPreGenGate(issues, _proceed, () => {
+                            btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                            btn.disabled = false;
+                        });
+                    } else {
+                        _proceed();
+                    }
 
                 } else {
                     toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
@@ -678,6 +696,186 @@
                 btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
+        }
+
+        /* ─────────────────────────────────────────────────────────
+         * 🚦 생성 전 점검(Audit): ① 지도에 없는 장소  ② 예산 부족
+         *   - 챗봇 지정(잠금) 장소는 '없는 장소'여도 제거 대상이 아니므로 안내에서 제외
+         *   - 반환: { missing: [장소명...], budgetShort: bool, budget, estimated }
+         * ───────────────────────────────────────────────────────── */
+        async function _preGenerateAudit(tripId, routeData) {
+            const result = { missing: [], budgetShort: false, budget: 0, estimated: 0 };
+            if (!Array.isArray(routeData)) return result;
+
+            // ── 예산 점검: 입력 예산 vs 초안 경로의 교통/식비/숙박 추정 합산 ──
+            const budget = parseInt((document.getElementById('s1-budget')?.value || '0').replace(/,/g, '')) || 0;
+            const pax = parseInt(document.getElementById('s1-pax')?.value || '1') || 1;
+            let est = 0;
+            routeData.forEach(d => {
+                (d.places || []).forEach(p => {
+                    if (p.transit) {
+                        const m = String(p.transit).match(/₩([\d,]+)/);
+                        if (m) est += (parseInt(m[1].replace(/,/g, '')) || 0);
+                    } else if (p.name) {
+                        // 종류별 1인 평균 추정 단가(보수적). 실제 EXPENSES 산출과 별개의 사전 경고용.
+                        const unit = p.type === 'stay' ? 80000
+                            : p.type === 'food' ? 12000
+                                : p.type === 'cafe' ? 6000
+                                    : 8000; // tour 등 입장료 평균
+                        est += unit * (p.type === 'stay' ? 1 : pax);
+                    }
+                });
+            });
+            result.budget = budget;
+            result.estimated = est;
+            if (budget > 0 && est > 0 && est > budget) result.budgetShort = true;
+
+            // ── 장소 존재 점검: 카카오 keywordSearch (잠금 장소는 제외) ──
+            if (typeof kakao === 'undefined' || !kakao.maps || !kakao.maps.services) return result;
+
+            const destProv = document.getElementById('dest-prov')?.value || '';
+            const destCity = document.getElementById('dest-city')?.value || '';
+            const hasCity = !!(destCity && destCity !== '전체' && destCity !== '시/군/구 선택');
+            const destRegion = destProv + (hasCity ? ' ' + destCity : '');
+
+            // 잠금(챗봇 지정) 장소 집합 — 검증 함수와 동일한 정규화 규칙 사용
+            const userChatText = Array.from(document.querySelectorAll('#chatMsgs .cmsg.user'))
+                .map(el => (el.textContent || '').trim()).join('  ');
+            const norm = (s) => String(s || '').replace(/\s+/g, '').replace(/(집|점|식당|카페|호텔|펜션|게스트하우스|리조트)$/g, '');
+            const userChatNorm = norm(userChatText);
+            const regionTokens = [destProv, destCity]
+                .filter(v => v && v !== '전체' && v !== '시/군/구 선택')
+                .flatMap(v => String(v).split(/\s+/))
+                .map(v => v.replace(/(특별시|광역시|특별자치도|특별자치시|도|시|군|구)$/g, ''));
+            const isLocked = (label) => {
+                if (!label || label.length < 2) return false;
+                if (userChatText.includes(label)) return true;
+                let key = norm(label);
+                regionTokens.forEach(rt => { if (rt && key.startsWith(rt)) key = key.slice(rt.length); });
+                return key.length >= 2 && userChatNorm.includes(key);
+            };
+
+            // 🎯 AI가 자체 추천한(=잠금 안 된) 장소가 지도에 없으면 생성 직후
+            //   validateAndHealingRoute()가 자동으로 조용히 교체하므로 여기서 물을 필요 없음.
+            //   사용자가 직접 요청(잠금)한 장소는 자동 교체 대상에서 제외되므로, 그 장소가
+            //   지도에 없을 때만 게이트로 알리고 변경 여부를 물어야 함.
+            const names = [];
+            routeData.forEach(d => (d.places || []).forEach(p => {
+                if (!p.transit && p.name && isLocked(p.name)) names.push(p.name);
+            }));
+            const uniqueNames = [...new Set(names)];
+            if (uniqueNames.length === 0) return result;
+
+            const ps = new kakao.maps.services.Places();
+            const checkOne = (label) => new Promise(resolve => {
+                const q = destRegion ? (destRegion + ' ' + label) : label;
+                ps.keywordSearch(q, function(data, status) {
+                    if (status === kakao.maps.services.Status.OK && data && data.length) { resolve(true); return; }
+                    // 지역명 없이 한 번 더
+                    ps.keywordSearch(label, function(d2, s2) {
+                        resolve(s2 === kakao.maps.services.Status.OK && d2 && d2.length > 0);
+                    });
+                });
+            });
+            const found = await Promise.all(uniqueNames.map(checkOne));
+            uniqueNames.forEach((nm, i) => { if (!found[i]) result.missing.push(nm); });
+            return result;
+        }
+
+        /* 🚦 확인 게이트 모달
+ *   취소          → 모달 닫고 버튼 원복
+ *   변경          → 이슈별 자동 메시지를 챗봇 입력창에 넣고 sendMsg() 호출 → AI가 수정
+ *   무시하고 생성  → 검증 무시하고 바로 생성 진행
+ */
+        function _showPreGenGate(issues, onConfirm, onCancel) {
+            const old = document.getElementById('preGenGate');
+            if (old) old.remove();
+
+            const won = (n) => '₩' + (Number(n) || 0).toLocaleString();
+            let bodyHtml = '';
+
+            if (issues.missing.length > 0) {
+                bodyHtml += '<div style="margin-bottom:14px">'
+                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">🗺️ 요청하신 장소를 지도에서 찾을 수 없어요</div>'
+                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
+            }
+            if (issues.closed && issues.closed.length > 0) {
+                bodyHtml += '<div style="margin-bottom:14px">'
+                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">🚫 해당 날짜에 이용할 수 없는 장소</div>'
+                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
+                    + '<div style="display:flex;flex-direction:column;gap:6px">'
+                    + issues.closed.map(c => '<div style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:#a04">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
+                    + '</div></div>';
+            }
+            if (issues.budgetShort) {
+                bodyHtml += '<div style="margin-bottom:6px">'
+                    + '<div style="font-weight:800;color:#b9770e;margin-bottom:6px">💰 예산이 부족할 수 있어요</div>'
+                    + '<div style="font-size:12px;color:#555;line-height:1.6">'
+                    + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
+                    + '이 일정의 예상 최소 비용은 약 <b style="color:#b9770e">' + won(issues.estimated) + '</b>입니다.<br>'
+                    + '예산을 올리지 않으면 <b style="color:#c0392b">일정 생성에 오류가 발생할 수 있습니다.</b><br>'
+                    + '<span style="color:#888;font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
+                    + '</div></div>';
+            }
+
+            const wrap = document.createElement('div');
+            wrap.id = 'preGenGate';
+            wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
+            wrap.innerHTML =
+                '<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+                + '<div style="font-size:17px;font-weight:800;margin-bottom:4px">생성 전 확인이 필요해요</div>'
+                + '<div style="font-size:12px;color:#888;margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
+                + bodyHtml
+                + '<div style="display:flex;gap:8px;margin-top:20px">'
+                + '<button id="preGenCancel" style="flex:1;padding:11px 6px;border-radius:10px;border:1px solid #ddd;background:#fff;font-size:13px;font-weight:700;cursor:pointer">취소</button>'
+                + '<button id="preGenChange" style="flex:1.4;padding:11px 6px;border-radius:10px;border:none;background:#2D9E8A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">변경</button>'
+                + '<button id="preGenIgnore" style="flex:1.5;padding:11px 6px;border-radius:10px;border:1px solid #bbb;background:#f5f5f5;color:#333;font-size:11px;font-weight:700;cursor:pointer">무시하고 생성</button>'
+                + '</div></div>';
+            document.body.appendChild(wrap);
+
+            const close = () => wrap.remove();
+
+            // ── 취소: 모달 닫고 버튼 원복 ──
+            document.getElementById('preGenCancel').onclick = () => { close(); onCancel && onCancel(); };
+
+            // ── 무시하고 생성: 검증 무시, 그대로 진행 ──
+            document.getElementById('preGenIgnore').onclick = () => { close(); onConfirm && onConfirm(); };
+
+            // ── 변경: 이슈별 자동 메시지 조립 → 챗봇 입력창에 주입 → sendMsg() ──
+            document.getElementById('preGenChange').onclick = () => {
+                close();
+                onCancel && onCancel(); // 생성 버튼 원복
+
+                const parts = [];
+                if (issues.closed && issues.closed.length > 0) {
+                    const names = issues.closed.map(c => c.name).join(', ');
+                    parts.push(names + ' 장소를 변경해줘. 여행 날짜에 휴무이거나 이용이 어려운 것 같아서 같은 종류의 다른 장소로 바꿔줘.');
+                }
+                if (issues.budgetShort) {
+                    parts.push('예산을 ' + won(issues.estimated) + ' 으로 변경할게. 그에 맞게 일정을 최적으로 다시 구성해줘.');
+                }
+                if (issues.missing.length > 0) {
+                    const names = issues.missing.join(', ');
+                    parts.push(names + ' 장소를 변경해줘. 카카오지도에 없는 장소야. 같은 종류의 실존하는 인근 장소로 바꿔줘.');
+                }
+
+                const autoMsg = parts.join(' ');
+                if (!autoMsg) return;
+
+                const inp = document.getElementById('chatInp');
+                if (inp) {
+                    inp.value = autoMsg;
+                    inp.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (typeof sendMsg === 'function') {
+                        setTimeout(sendMsg, 80);
+                    } else {
+                        inp.dispatchEvent(new KeyboardEvent('keydown',
+                            { key: 'Enter', bubbles: true, cancelable: true }));
+                    }
+                }
+            };
+
+            wrap.onclick = (e) => { if (e.target === wrap) { close(); onCancel && onCancel(); } };
         }
 
         // ── 🤖 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
@@ -737,6 +935,49 @@
                 _finalizePlannerRoute(routeData, btn);
                 return;
             }
+
+            // 🔒 [챗봇 1순위] 유저가 챗봇에서 '상호명을 직접 언급'한 장소는 잠금(교체·이동·삭제 금지).
+            //   유저 발화에 place.name이 (정규화 후 부분일치로) 등장하면 잠근다.
+            //   → "사상 합천 돼지국밥" 발화 ↔ 경로의 "합천 돼지국밥집"이 매칭되도록,
+            //     공백·지역접두어("사상"·"부산" 등)·흔한 접미어("집","점","식당") 차이를 흡수한다.
+            const _userChatText = Array.from(document.querySelectorAll('#chatMsgs .cmsg.user'))
+                .map(el => (el.textContent || '').trim()).join('  ');
+
+            // 장소명 정규화: 공백 제거 + 흔한 접미어/지역접두어 제거 후 비교용 키 생성
+            const _normalizePlaceName = (s) => {
+                if (!s) return '';
+                let t = String(s).replace(/\s+/g, '');                 // 모든 공백 제거
+                t = t.replace(/(집|점|식당|카페|호텔|펜션|게스트하우스|리조트)$/g, ''); // 흔한 접미어 제거
+                return t;
+            };
+            // 발화에서 떼어낼 지역 접두어(여행지 시/도·시군구 이름) 모음
+            const _regionTokens = [destProv, destCity]
+                .filter(v => v && v !== '전체' && v !== '시/군/구 선택')
+                .flatMap(v => String(v).split(/\s+/))
+                .map(v => v.replace(/(특별시|광역시|특별자치도|특별자치시|도|시|군|구)$/g, ''))
+                .filter(v => v.length >= 1);
+
+            const _userChatNorm = _normalizePlaceName(_userChatText);
+            const _lockedNames = new Set();
+            allPins.forEach(pin => {
+                if (!pin.label || pin.label.length < 2) return;
+                // 1) 종전 방식: 발화에 상호명 전체가 그대로 등장
+                if (_userChatText.includes(pin.label)) { _lockedNames.add(pin.label); return; }
+                // 2) 정규화 부분일치: 접미어/공백 차이를 흡수
+                let key = _normalizePlaceName(pin.label);
+                // 장소명 앞에 붙은 지역 접두어 제거("사상합천돼지국밥" → "합천돼지국밥")
+                _regionTokens.forEach(rt => { if (key.startsWith(rt)) key = key.slice(rt.length); });
+                if (key.length >= 2 && _userChatNorm.includes(key)) {
+                    _lockedNames.add(pin.label);
+                }
+            });
+            if (_lockedNames.size > 0) {
+                console.log('🔒 [챗봇 지정 장소 잠금] 교체/이동 금지:', [..._lockedNames]);
+            }
+
+            // 🏠 하루 단위 동선 클러스터 허용 반경(숙소 기준). 지역 반경(maxRadiusKm)보다 훨씬 좁게.
+            const dayClusterKm = (destProv && destProv.includes('제주')) ? 15 : (hasCity ? 8 : 12);
+            const _typeKor = { stay: '숙소', food: '맛집', cafe: '카페', tour: '관광지' };
 
             let searchCount = 0;
             const totalPlaces = allPins.length;
@@ -825,6 +1066,7 @@
                         //   (예: 대전 여행인데 제주/강릉/부산 동명 장소가 잡힌 경우)
                         if (regionCenter) {
                             allPins.forEach(pin => {
+                                if (_lockedNames.has(pin.label)) return; // 🔒 챗봇 지정 장소는 건드리지 않음
                                 if (pin.isFound && pin.lat && pin.lng) {
                                     const distFromCenter = _haversineKm(regionCenter.lat, regionCenter.lng, pin.lat, pin.lng);
                                     if (distFromCenter > maxRadiusKm) {
@@ -840,83 +1082,50 @@
                             });
                         }
 
-
                         // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
                         allPins.forEach(pin => {
+                            if (_lockedNames.has(pin.label)) return; // 🔒 챗봇 지정 장소는 유지(설령 검색 실패라도 교체/삭제 안 함)
                             if (!pin.isFound) {
                                 if (!autoFixRequests.some(r => r.place === pin.label)) {
                                     autoFixRequests.push({
                                         place: pin.label,
                                         req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
                                     });
-
-                    // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
-                    if (autoFixRequests.length > 0 && currentStage < 2) {
-                        currentStage++;
-                        sessionStorage.setItem('autoHealingRetries', currentStage.toString());
-
-                        btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
-
-                        fetch(`/api/trips/${tripId}/routes/replace`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': 'Bearer ' + (Token.getAccess() || '')
-                            },
-                            body: JSON.stringify({ requests: autoFixRequests })
-                        })
-                            .then(res => res.json())
-                            .then(res => {
-                                if (res.success && res.data) {
-                                    let nextJson = res.data;
-                                    if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
-
-                                    const cleanData = JSON.parse(nextJson);
-                                    sessionStorage.setItem('ai_generated_route', nextJson);
-
-                                    // 🔄 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
-                                    validateAndHealingRoute(tripId, cleanData, btn);
-                                } else {
-                                    _finalizePlannerRoute(routeData, btn);
-
                                 }
                             }
                         });
 
-
-                        // [검수 2단계] 지도에 있는 실존 장소들 간의 20km 반경 하바신 거리 측정 진행
+                        // [검수 2단계] 🏠 숙소 기준 'outlier' 탐지 — 그 날 숙소 권역에서 멀리 벗어난 장소를
+                        //   같은 종류·같은 식사 시간대로 '숙소 근처' 실존 장소로 교체 요청한다(지그재그 원천 차단).
                         const dayKeys = [...new Set(allPins.map(p => p.day))];
 
                         dayKeys.forEach(dNum => {
-                            // 정상적으로 좌표가 찾아진 실존 장소들만 필터링
-                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound);
+                            const dayPins = allPins.filter(p => p.day == dNum && p.isFound && p.lat && p.lng);
+                            if (dayPins.length < 2) return;
 
-                            for (let i = 1; i < dayPins.length; i++) {
-                                const prev = dayPins[i - 1];
-                                const curr = dayPins[i];
+                            // 그 날의 기준점: 숙소(stay) 좌표 우선, 없으면 그 날 장소들의 평균(중심)
+                            let anchor = dayPins.find(p => p.type === 'stay');
+                            if (!anchor) {
+                                const avgLat = dayPins.reduce((s, p) => s + p.lat, 0) / dayPins.length;
+                                const avgLng = dayPins.reduce((s, p) => s + p.lng, 0) / dayPins.length;
+                                anchor = { lat: avgLat, lng: avgLng };
+                            }
 
-                                if (prev.lat && curr.lat) {
-                                    const R = 6371;
-                                    const dLat = (curr.lat - prev.lat) * (Math.PI / 180);
-                                    const dLng = (curr.lng - prev.lng) * (Math.PI / 180);
-                                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                                        Math.cos(prev.lat * (Math.PI / 180)) * Math.cos(curr.lat * (Math.PI / 180)) *
-                                        Math.sin(dLng/2) * Math.sin(dLng/2);
-                                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-                                    const dist = R * c;
-
-                                    // 🎯 기준 거리를 20km로 단축 제한
-                                    if (dist > 20) {
-                                        console.warn(`🚨 [동선 초과 발견] Day ${dNum} | ${prev.label} ↔ ${curr.label} : ${dist.toFixed(1)}km`);
-                                        if (!autoFixRequests.some(r => r.place === curr.label)) {
-                                            autoFixRequests.push({
-                                                place: curr.label,
-                                                req: `직전 장소(${prev.label})에서 동선이 ${dist.toFixed(1)}km 떨어져 너무 멉니다. 20km 이내의 근거리 장소로 교체해 주세요.`
-                                            });
-                                        }
+                            dayPins.forEach(pin => {
+                                if (_lockedNames.has(pin.label)) return;  // 🔒 챗봇 지정 장소는 절대 교체 안 함
+                                if (pin.type === 'stay') return;           // 숙소 자체는 기준점이므로 제외
+                                const dist = _haversineKm(anchor.lat, anchor.lng, pin.lat, pin.lng);
+                                if (dist > dayClusterKm) {
+                                    console.warn(`🚨 [동선 이탈] Day ${dNum} | ${pin.label}(${_typeKor[pin.type] || pin.type}) : 숙소권역에서 ${dist.toFixed(1)}km (허용 ${dayClusterKm}km)`);
+                                    if (!autoFixRequests.some(r => r.place === pin.label)) {
+                                        const kind = _typeKor[pin.type] || '장소';
+                                        autoFixRequests.push({
+                                            place: pin.label,
+                                            req: `이 장소는 그 날 숙소 권역에서 ${dist.toFixed(1)}km 벗어나 동선이 비효율적입니다. 같은 종류(${kind})를 유지하면서 숙소 반경 ${dayClusterKm}km 이내의 실존하는 유명 장소로 교체해 주세요. 점심·저녁 등 식사 시간대와 일정 순서는 그대로 유지하세요.`
+                                        });
                                     }
                                 }
-                            }
+                            });
                         });
 
                         // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
@@ -978,20 +1187,120 @@
                             });
                             console.warn('⚠️ 2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
                             toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
-                            sessionStorage.setItem('ai_generated_route', JSON.stringify(cleaned));
-                            _finalizePlannerRoute(cleaned, btn);
+                            const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
+                            sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
+                            _finalizePlannerRoute(cleanedReordered, btn);
                         } else {
-                            console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
-                            _finalizePlannerRoute(routeData, btn);
+                            console.log("✅ 정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
+                            const finalRoute = _reorderRouteByProximity(routeData, allPins, _lockedNames);
+                            sessionStorage.setItem('ai_generated_route', JSON.stringify(finalRoute));
+                            _finalizePlannerRoute(finalRoute, btn);
                         }
-
-                    } else {
-                        console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
-                        _finalizePlannerRoute(routeData, btn);
-
                     }
                 });
             } // end _startPinSearchLoop
+        }
+
+        /**
+         * 🧭 숙소 기준 동선 정렬.
+         *  - 맛집(food)·숙소(stay)·챗봇 지정 장소(locked)는 위치 고정 → 식사 시간 흐름·1순위 보존
+         *  - 관광지(tour)·카페(cafe)만 숙소 기준 최근접 이웃(NN) 순서로 재배치
+         *  - 시간 슬롯은 원래 순서 그대로 재배정, transit(이동)은 좌표로 재계산
+         *  - 하루 단위로만 동작(다른 날 이동·빼기·추가 없음)
+         */
+        function _reorderRouteByProximity(routeData, allPins, lockedNames) {
+            try {
+                if (!Array.isArray(routeData)) return routeData;
+
+                const coord = {};
+                (allPins || []).forEach(p => {
+                    if (p.isFound && p.lat && p.lng) coord[p.label] = { lat: p.lat, lng: p.lng };
+                });
+                const locked = lockedNames || new Set();
+
+                const hv = (a, b) => {
+                    const R = 6371;
+                    const dLat = (b.lat - a.lat) * Math.PI / 180;
+                    const dLng = (b.lng - a.lng) * Math.PI / 180;
+                    const x = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                        Math.cos(a.lat * Math.PI/180) * Math.cos(b.lat * Math.PI/180) *
+                        Math.sin(dLng/2) * Math.sin(dLng/2);
+                    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+                };
+
+                // 관광지·카페이면서 잠금 아님 = 자유롭게 순서 바꿀 수 있는 장소
+                const isFree = (p) => (p.type === 'tour' || p.type === 'cafe') && !locked.has(p.name);
+
+                return routeData.map(day => {
+                    if (!day || !Array.isArray(day.places)) return day;
+
+                    const slots = day.places.filter(p => !p.transit && p.name);
+                    if (slots.length < 3) return day;
+
+                    const freeItems = slots.filter(p => isFree(p) && coord[p.name]);
+                    if (freeItems.length < 2) return day; // 정렬할 자유 장소가 부족하면 원본 유지
+
+                    // 기준점: 숙소 좌표 → 없으면 첫 고정 장소 → 없으면 첫 자유 장소
+                    let anchorPin = slots.find(p => p.type === 'stay' && coord[p.name]);
+                    let anchor = anchorPin ? coord[anchorPin.name] : null;
+                    if (!anchor) {
+                        const firstFixed = slots.find(p => !isFree(p) && coord[p.name]);
+                        anchor = firstFixed ? coord[firstFixed.name] : coord[freeItems[0].name];
+                    }
+
+                    // 최근접 이웃 체인 정렬
+                    const remaining = freeItems.slice();
+                    const ordered = [];
+                    let cur = anchor;
+                    while (remaining.length) {
+                        let bi = 0, bd = Infinity;
+                        for (let i = 0; i < remaining.length; i++) {
+                            const d = hv(cur, coord[remaining[i].name]);
+                            if (d < bd) { bd = d; bi = i; }
+                        }
+                        const nx = remaining.splice(bi, 1)[0];
+                        ordered.push(nx);
+                        cur = coord[nx.name];
+                    }
+
+                    // 자유 슬롯 위치에만 NN 결과를 끼워 넣음(고정 슬롯은 그대로)
+                    let fi = 0;
+                    const newSlots = slots.map(p => (isFree(p) && coord[p.name]) ? ordered[fi++] : p);
+
+                    // 시간 슬롯은 원래 위치 순서대로 재배정
+                    const times = slots.map(p => p.time);
+                    newSlots.forEach((p, i) => { if (times[i] != null && p) p.time = times[i]; });
+
+                    // 이동수단 추출(기존 transit에서) 후 transit 재계산
+                    const sample = (day.places.find(p => p.transit) || {}).transit || '🚗 자차';
+                    let mode = '🚗 자차', perKmMin = 2.5, perKmCost = 300;
+                    if (sample.includes('대중교통') || sample.includes('🚌') || sample.includes('🚇')) {
+                        mode = '🚌 대중교통'; perKmMin = 4; perKmCost = 250;
+                    } else if (sample.includes('도보') || sample.includes('🚶')) {
+                        mode = '🚶 도보'; perKmMin = 13; perKmCost = 0;
+                    }
+
+                    const rebuilt = [];
+                    for (let i = 0; i < newSlots.length; i++) {
+                        rebuilt.push(newSlots[i]);
+                        if (i < newSlots.length - 1) {
+                            const a = coord[newSlots[i].name], b = coord[newSlots[i + 1].name];
+                            if (a && b) {
+                                const km = Math.max(1, Math.round(hv(a, b)));
+                                const min = Math.max(5, Math.round(km * perKmMin));
+                                const cost = Math.round((km * perKmCost) / 100) * 100;
+                                rebuilt.push({ transit: `${mode} · ${km}km · 약 ${min}분 · ₩${cost.toLocaleString()}` });
+                            } else {
+                                rebuilt.push({ transit: `${mode} · 이동` });
+                            }
+                        }
+                    }
+                    return { ...day, places: rebuilt };
+                });
+            } catch (e) {
+                console.error('[reorder] 동선 정렬 실패, 원본 유지:', e);
+                return routeData;
+            }
         }
 
         function _finalizePlannerRoute(routeData, btn) {
