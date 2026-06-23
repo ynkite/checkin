@@ -277,16 +277,29 @@
           <label class="form-label">내용</label>
           <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
             <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
-              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700"
-                      onclick="document.getElementById('blogEditor').focus();document.execCommand('bold')">B</button>
-              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic"
-                      onclick="document.getElementById('blogEditor').focus();document.execCommand('italic')">I</button>
-              <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline"
-                      onclick="document.getElementById('blogEditor').focus();document.execCommand('underline')">U</button>
+              <button type="button"
+                      data-editor-id="blogEditor"
+                      data-editor-command="bold"
+                      style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:700;color:var(--text1)"
+                      onmousedown="event.preventDefault(); window._commUtil && window._commUtil.saveEditorSelection(document.getElementById('blogEditor'), '_communityWriteEditorRange')"
+                      onclick="window._commUtil && window._commUtil.applyEditorCommand(document.getElementById('blogEditor'), 'bold', '_communityWriteEditorRange')">B</button>
+              <button type="button"
+                      data-editor-id="blogEditor"
+                      data-editor-command="italic"
+                      style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;font-style:italic;color:var(--text1)"
+                      onmousedown="event.preventDefault(); window._commUtil && window._commUtil.saveEditorSelection(document.getElementById('blogEditor'), '_communityWriteEditorRange')"
+                      onclick="window._commUtil && window._commUtil.applyEditorCommand(document.getElementById('blogEditor'), 'italic', '_communityWriteEditorRange')">I</button>
+              <button type="button"
+                      data-editor-id="blogEditor"
+                      data-editor-command="underline"
+                      style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline;color:var(--text1)"
+                      onmousedown="event.preventDefault(); window._commUtil && window._commUtil.saveEditorSelection(document.getElementById('blogEditor'), '_communityWriteEditorRange')"
+                      onclick="window._commUtil && window._commUtil.applyEditorCommand(document.getElementById('blogEditor'), 'underline', '_communityWriteEditorRange')">U</button>
+
             </div>
             <div id="blogEditor" contenteditable="true"
                  data-placeholder="후기를 상세히 공유해주세요..."
-                 style="min-height:200px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto"></div>
+                 style="min-height:200px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-width:100%;box-sizing:border-box"></div>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:12px">
