@@ -1,0 +1,111 @@
+/* =============================================================================
+ * TripLinker - 지도 반응형 (styles_responsive_map.css)
+ * ============================================================================= */
+
+/* 카카오 폴리라인 클리핑 방지
+ * 폴리라인은 지도 영역보다 큰 내부 레이어에 절대위치로 그려지므로
+ * 조상 요소에 overflow:hidden 이 걸리면 경로 선이 잘린다. */
+#page-map,
+#page-map .map-wrap,
+#page-map .map-right,
+#page-map #mapView,
+#prevKakaoMap {
+    overflow: visible !important;
+}
+
+/* 지도 내 svg/canvas/img 는 크기 제약 없이 그려져야 함 */
+#page-map img, #page-map svg, #page-map canvas,
+.map-wrap img, .map-wrap svg, .map-wrap canvas,
+#prevKakaoMap img, #prevKakaoMap svg, #prevKakaoMap canvas {
+    max-width: none !important;
+    max-height: none !important;
+}
+
+/* 모바일 탭 바 - 데스크탑에서는 숨김 */
+.map-mobile-tabs { display: none; }
+
+/* ≤1024px */
+@media (max-width: 1024px) {
+    .map-wrap { grid-template-columns: 260px 1fr; }
+}
+
+/* ≤768px */
+@media (max-width: 768px) {
+
+    /* 전체 래퍼: flex 세로 스택, 전체 높이 고정 */
+    .map-wrap {
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        height: calc(100vh - var(--nav-h, 72px));
+    }
+
+    /* 모바일 탭 바 표시 */
+    .map-mobile-tabs {
+        display: flex;
+        flex-shrink: 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border2);
+    }
+
+    .map-mob-tab {
+        flex: 1;
+        padding: 11px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text3);
+        cursor: pointer;
+        transition: color .15s;
+    }
+
+    .map-mob-tab.on {
+        color: var(--sage-d);
+        border-bottom-color: var(--sage);
+    }
+
+    /* 각 패널: 남은 높이 전체 차지 */
+    .map-left {
+        flex: 1;
+        max-height: none;
+        border-right: none;
+        border-bottom: none;
+        overflow-y: auto;
+    }
+
+    .map-right {
+        flex: 1;
+    }
+
+    /* 일정 패널 숨김: display:none OK (카카오맵 없음) */
+    .map-left.mob-hidden {
+        display: none;
+    }
+
+    /* 지도 패널 숨김: display:none 쓰면 카카오맵이 0크기로 초기화되어
+       폴리라인이 깨짐 → position:absolute로 영역 유지하면서 시각적으로만 숨김 */
+    .map-right.mob-hidden {
+        position: absolute;
+        inset: 0;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    /* 하단 지도/예산 버튼 숨기고 공유만 전체 너비 */
+    #mapTabMap,
+    #mapTabBudget {
+        display: none;
+    }
+
+    .map-acts .btn-map-act:last-child {
+        flex: 1;
+    }
+}
+
+/* 가로 모드 짧은 화면 (가로 폰) */
+@media (max-height: 500px) and (orientation: landscape) {
+    .map-wrap { height: 80vh; }
+}

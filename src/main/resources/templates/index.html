@@ -10,6 +10,10 @@
   <link rel="stylesheet" th:href="@{/css/styles_place.css}">
   <link rel="stylesheet" th:href="@{/css/styles_community.css}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css}">
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=86e39dda6b2928c50783086448d212b8&autoload=false&libraries=services"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -167,6 +171,28 @@
     });
   }());
 </script>
+
+<!-- ===== BOTTOM NAV (모바일 전용) — 제거 시 이 블록과 styles_responsive.css 6번 섹션 삭제 ===== -->
+<div id="bottomNav" class="bnav" role="navigation">
+  <div class="bnav-bar">
+    <button class="bnav-item" data-page="main"      onclick="goHomeRefresh()">
+      <span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span>
+    </button>
+    <button class="bnav-item" data-page="community" onclick="goRefresh('community')">
+      <span class="bnav-icon">👥</span><span class="bnav-lbl">커뮤니티</span>
+    </button>
+    <button class="bnav-item" data-page="weather"   onclick="go('weather')">
+      <span class="bnav-icon">🌤️</span><span class="bnav-lbl">날씨</span>
+    </button>
+    <button class="bnav-item" data-page="planner"   onclick="navPlannerClick()">
+      <span class="bnav-icon">✈️</span><span class="bnav-lbl">플랜</span>
+    </button>
+    <button class="bnav-item" data-page="mypage"    onclick="go(_loggedIn?'mypage':'login')">
+      <span class="bnav-icon">👤</span><span class="bnav-lbl">마이페이지</span>
+    </button>
+  </div>
+</div>
+<!-- ===== /BOTTOM NAV ===== -->
 
 </body>
 </html>

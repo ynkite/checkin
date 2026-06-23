@@ -1,0 +1,89 @@
+/* =============================================================================
+ * TripLinker - 홈페이지 반응형 (styles_responsive_main.css)
+ * ============================================================================= */
+
+/* ≤1024px: 히어로 2열 유지, 폭만 축소 */
+@media (max-width: 1024px) {
+    .hero { grid-template-columns: 1fr 320px; gap: 24px; }
+}
+
+/* ≤768px */
+@media (max-width: 768px) {
+
+    .hero {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding-top: 24px;
+        padding-bottom: 24px;
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    /* HERO FEATURE CARDS: 3열 → 1열 */
+    .hsc-cards {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    /* 큐레이션: 모바일에서 애니메이션 제거, 높이 자동 */
+    .curation-panel {
+        height: auto !important;
+        min-height: 0 !important;
+        align-self: start !important;
+        overflow: hidden;
+    }
+    .curation-panel .slide {
+        display: none !important;
+        position: relative !important;
+        top: auto !important; left: auto !important;
+        right: auto !important; bottom: auto !important;
+        height: auto !important;
+        min-height: 420px !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transition: none !important;
+        transform: none !important;
+    }
+    .curation-panel .slide.on {
+        display: flex !important;
+        position: relative !important;
+        top: auto !important; left: auto !important;
+        right: auto !important; bottom: auto !important;
+        height: auto !important;
+        min-height: 420px !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* 큐레이션 내용 여백: 양쪽 패딩 늘려서 중앙으로 */
+    .curation-panel .slide.on > div:nth-child(2) {
+        padding-left: 80px !important;
+        padding-right: 80px !important;
+    }
+
+    /* 큐레이션 버튼: 하단 가득 채우기 */
+    .curation-panel .slide.on .btn-slide-prev,
+    .curation-panel .slide.on .btn-slide-plan {
+        flex: 1;
+    }
+
+    /* 인기 경로 / 맛집 / 숙소 / 관광지 / 카페: 3열 → 1열 */
+    .top3-grid,
+    .popular-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+}
+
+/* ≤480px */
+@media (max-width: 480px) {
+    .hero {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+    .hsc-cards,
+    .top3-grid,
+    .popular-grid {
+        grid-template-columns: 1fr;
+    }
+}

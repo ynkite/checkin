@@ -66,6 +66,59 @@
     const MAP_TOTAL_BUDGET_DISPLAY = '₩ 404,000';
 
 
+    // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
+    // DOMContentLoaded 한 번만으론 부족 — nav 내용이 JS로 나중에 주입되므로
+    // ResizeObserver로 nav 크기 변화를 실시간 감지해서 갱신
+    function syncNavHeight() {
+      var nav = document.querySelector('nav');
+      if (nav) {
+        document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      syncNavHeight();
+      var nav = document.querySelector('nav');
+      if (nav && window.ResizeObserver) {
+        new ResizeObserver(syncNavHeight).observe(nav);
+      }
+    });
+    window.addEventListener('resize', syncNavHeight);
+
+    // ── 모바일 탭 전환 ──
+    function switchMobileMapTab(tab) {
+      var left = document.querySelector('.map-left');
+      var right = document.getElementById('mapRightArea');
+      var mapView = document.getElementById('mapView');
+      var budgetView = document.getElementById('budgetView');
+      var btns = ['mobTabItinerary', 'mobTabMap', 'mobTabBudget'];
+      btns.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('on');
+      });
+
+      if (tab === 'itinerary') {
+        left.classList.remove('mob-hidden');
+        right.classList.add('mob-hidden');
+        document.getElementById('mobTabItinerary').classList.add('on');
+      } else if (tab === 'map') {
+        left.classList.add('mob-hidden');
+        right.classList.remove('mob-hidden');
+        if (mapView) mapView.style.display = 'block';
+        if (budgetView) budgetView.style.display = 'none';
+        document.getElementById('mobTabMap').classList.add('on');
+        setTimeout(function() {
+          if (window._kakaoMap) window._kakaoMap.relayout();
+        }, 50);
+      } else if (tab === 'budget') {
+        left.classList.add('mob-hidden');
+        right.classList.remove('mob-hidden');
+        if (mapView) mapView.style.display = 'none';
+        if (budgetView) budgetView.style.display = 'block';
+        if (typeof _loadMapBudget === 'function') _loadMapBudget();
+        document.getElementById('mobTabBudget').classList.add('on');
+      }
+    }
+
     // ── DOM 렌더링 ──
     async function initMapPage() {
       var routeData = null;
@@ -1351,6 +1404,12 @@
 
   <div class="page" id="page-map">
     <div class="map-wrap">
+      <!-- 모바일 전용 탭 바 -->
+      <div class="map-mobile-tabs">
+        <button class="map-mob-tab on" id="mobTabItinerary" onclick="switchMobileMapTab('itinerary')">📋 일정</button>
+        <button class="map-mob-tab" id="mobTabMap" onclick="switchMobileMapTab('map')">🗺️ 지도</button>
+        <button class="map-mob-tab" id="mobTabBudget" onclick="switchMobileMapTab('budget')">💰 예산</button>
+      </div>
       <div class="map-left">
         <div class="ml-hd">
           <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
@@ -1387,7 +1446,7 @@
         </div>
       </div>
       <!-- MAP RIGHT -->
-      <div class="map-right" id="mapRightArea">
+      <div class="map-right mob-hidden" id="mapRightArea">
         <!-- Map view -->
         <div id="mapView" style="position:absolute;inset:0">
           <div id="kakaoMap" style="width:100%;height:100%"></div>

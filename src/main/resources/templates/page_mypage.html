@@ -153,6 +153,13 @@
   }
 
   document.addEventListener('DOMContentLoaded', initMyPageData);
+
+  function toggleMyMenu() {
+    const collapse = document.getElementById('myMenuCollapse');
+    const toggle = document.getElementById('myMenuToggle');
+    const isCollapsed = collapse.classList.toggle('collapsed');
+    toggle.textContent = isCollapsed ? '메뉴 펼치기 ▼' : '메뉴 접기 ▲';
+  }
 </script>
 
 <div class="page" id="page-mypage">
@@ -162,20 +169,24 @@
       <div class="my-name" id="myName"></div>
       <div class="my-email" id="myEmail"></div>
 
-      <div class="my-menu-sep">내 활동</div>
-      <button class="my-menu on" onclick="showMySection('trips',this)">📋 내 여행 기록</button>
-      <button class="my-menu" onclick="showMySection('invited',this)">🤝 초대받은 일정</button>
-      <button class="my-menu" onclick="showMySection('reviews',this)">✍️ 작성한 후기</button>
-      <button class="my-menu" onclick="showMySection('likes',this)">❤️ 좋아요한 후기</button>
-      <button class="my-menu" onclick="showMySection('scrap-stay',this)">🏨 스크랩한 숙소</button>
-      <button class="my-menu" onclick="showMySection('scrap-food',this)">🍽️ 스크랩한 맛집</button>
-      <button class="my-menu" onclick="showMySection('scrap-tour',this)">🗺️ 스크랩한 관광지</button>
-      <button class="my-menu" onclick="showMySection('scrap-cafe',this)">☕ 스크랩한 카페</button>
-      <button class="my-menu" onclick="showMySection('scrap-route',this)">🗺️ 스크랩한 여행 경로</button>
-      <button class="my-menu" onclick="showMySection('ledger',this)">💰 가계부</button>
-      <div class="my-menu-sep">설정</div>
-      <button class="my-menu" onclick="showMySection('info',this)">👤 회원정보 수정</button>
-      <button class="my-menu" onclick="showMySection('withdraw',this)">🗑️ 회원 탈퇴</button>
+      <button class="my-menu-toggle" id="myMenuToggle" onclick="toggleMyMenu()">메뉴 접기 ▲</button>
+
+      <div class="my-menu-collapse" id="myMenuCollapse">
+        <div class="my-menu-sep">내 활동</div>
+        <button class="my-menu on" onclick="showMySection('trips',this)">📋 내 여행 기록</button>
+        <button class="my-menu" onclick="showMySection('invited',this)">🤝 초대받은 일정</button>
+        <button class="my-menu" onclick="showMySection('reviews',this)">✍️ 작성한 후기</button>
+        <button class="my-menu" onclick="showMySection('likes',this)">❤️ 좋아요한 후기</button>
+        <button class="my-menu" onclick="showMySection('scrap-stay',this)">🏨 스크랩한 숙소</button>
+        <button class="my-menu" onclick="showMySection('scrap-food',this)">🍽️ 스크랩한 맛집</button>
+        <button class="my-menu" onclick="showMySection('scrap-tour',this)">🗺️ 스크랩한 관광지</button>
+        <button class="my-menu" onclick="showMySection('scrap-cafe',this)">☕ 스크랩한 카페</button>
+        <button class="my-menu" onclick="showMySection('scrap-route',this)">🗺️ 스크랩한 여행 경로</button>
+        <button class="my-menu" onclick="showMySection('ledger',this)">💰 가계부</button>
+        <div class="my-menu-sep">설정</div>
+        <button class="my-menu" onclick="showMySection('info',this)">👤 회원정보 수정</button>
+        <button class="my-menu" onclick="showMySection('withdraw',this)">🗑️ 회원 탈퇴</button>
+      </div>
     </div>
 
     <div class="my-content">

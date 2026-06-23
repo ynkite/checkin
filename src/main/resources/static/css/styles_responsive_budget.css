@@ -1,0 +1,36 @@
+/* =============================================================================
+ * TripLinker - 가계부 반응형 (styles_responsive_budget.css)
+ * ============================================================================= */
+
+/* ≤1024px: 56px → 28px */
+@media (max-width: 1024px) {
+    .ledger-selector-outer,
+    .ledger-hero-inner,
+    .ledger-body {
+        padding-left: 28px;
+        padding-right: 28px;
+    }
+}
+
+/* ≤768px */
+@media (max-width: 768px) {
+
+    .ledger-selector-outer {
+        padding: 24px 16px;
+    }
+
+    .ledger-hero-inner {
+        padding: 0 16px;
+    }
+
+    .ledger-body {
+        padding: 20px 16px 32px;
+    }
+
+    /* 헤더 타이틀 + 내보내기 버튼: 줄바꿈 허용 */
+    .ledger-hero-row {
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-start;
+    }
+}
