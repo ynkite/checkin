@@ -45,25 +45,43 @@ async function updateLedgerList() {
     _drawMyLedgerPager(totalPages);
 }
 
+/* ── 가계부 페이저: 5개 숫자만 노출 + 현재 페이지 중앙 정렬 ── */
+function _getBudgetPagerWindow(currentPage, totalPages, windowSize = 5) {
+    const total = Math.max(1, Number(totalPages) || 1);
+    const size = Math.min(Number(windowSize) || 5, total);
+    const current = Math.min(Math.max(Number(currentPage) || 1, 1), total);
+
+    let start = current - Math.floor(size / 2);
+    if (start < 1) start = 1;
+    if (start + size - 1 > total) start = Math.max(1, total - size + 1);
+
+    return Array.from({ length: size }, function (_, idx) { return start + idx; });
+}
+
+
 function _drawMyLedgerPager(totalPages) {
     const el = document.getElementById('my-ledger-pager');
     if (!el) return;
     if (totalPages <= 0) { el.innerHTML = ''; return; }
 
+    const current = Math.min(Math.max(Number(_myLedgerPage) || 1, 1), Number(totalPages));
+    const pages = _getBudgetPagerWindow(current, totalPages, 5);
+
     const prev = totalPages > 1
-        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage - 1})" ${_myLedgerPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`
+        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${Math.max(1, current - 1)})" ${current === 1 ? 'disabled' : ''}>&lt;</button>`
         : '';
 
     const next = totalPages > 1
-        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${_myLedgerPage + 1})" ${_myLedgerPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`
+        ? `<button class="pager-btn" onclick="_setMyLedgerPage(${Math.min(Number(totalPages), current + 1)})" ${current === Number(totalPages) ? 'disabled' : ''}>&gt;</button>`
         : '';
 
-    const nums = Array.from({ length: totalPages }, (_, i) => i + 1)
-        .map(n => `<button class="pager-btn${n === _myLedgerPage ? ' on' : ''}" onclick="_setMyLedgerPage(${n})">${n}</button>`)
+    const nums = pages
+        .map(n => `<button class="pager-btn${n === current ? ' on' : ''}" onclick="_setMyLedgerPage(${n})">${n}</button>`)
         .join('');
 
     el.innerHTML = `<div class="ledger-pager" style="margin-top:4px;margin-bottom:12px">${prev}${nums}${next}</div>`;
 }
+
 
 
 function _setMyLedgerPage(n) {
@@ -124,20 +142,24 @@ function _drawLedgerCardPager(totalPages) {
     if (!el) return;
     if (totalPages <= 0) { el.innerHTML = ''; return; }
 
+    const current = Math.min(Math.max(Number(_ledgerCardPage) || 1, 1), Number(totalPages));
+    const pages = _getBudgetPagerWindow(current, totalPages, 5);
+
     const prev = totalPages > 1
-        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage - 1})" ${_ledgerCardPage === 1 ? 'disabled style="opacity:.4;cursor:default"' : ''}>‹</button>`
+        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${Math.max(1, current - 1)})" ${current === 1 ? 'disabled' : ''}>&lt;</button>`
         : '';
 
     const next = totalPages > 1
-        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${_ledgerCardPage + 1})" ${_ledgerCardPage === totalPages ? 'disabled style="opacity:.4;cursor:default"' : ''}>›</button>`
+        ? `<button class="pager-btn" onclick="_setLedgerCardPage(${Math.min(Number(totalPages), current + 1)})" ${current === Number(totalPages) ? 'disabled' : ''}>&gt;</button>`
         : '';
 
-    const nums = Array.from({ length: totalPages }, (_, i) => i + 1)
-        .map(n => `<button class="pager-btn${n === _ledgerCardPage ? ' on' : ''}" onclick="_setLedgerCardPage(${n})">${n}</button>`)
+    const nums = pages
+        .map(n => `<button class="pager-btn${n === current ? ' on' : ''}" onclick="_setLedgerCardPage(${n})">${n}</button>`)
         .join('');
 
     el.innerHTML = `<div class="ledger-pager" style="margin-top:10px;margin-bottom:4px">${prev}${nums}${next}</div>`;
 }
+
 
 
 function _setLedgerCardPage(n) {
