@@ -21,27 +21,78 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/*
+ * ============================================================================
+ *  챗봇 AI 엔진 전환 가이드 (Groq/Gemini → Claude)
+ * ----------------------------------------------------------------------------
+ *  이 클래스는 챗봇 대화를 처리한다. 현재는 Claude(Anthropic)를 메인으로 사용하고,
+ *  Claude 호출 실패 시 기존 Groq → Gemini 순서로 자동 폴백한다.
+ *
+ *  ※ 코드 안에서 아래 3가지 주석 표시를 찾아서, 쓰고 싶은 블록만 살리고
+ *    나머지는 주석 처리하면 손쉽게 엔진을 갈아끼울 수 있다.
+ *
+ *    // 클로드 API 사용할 때          → Anthropic 정식 SDK(anthropicChatModel) 사용
+ *    // open api 사용할 때            → Claude를 OpenAI 호환 엔드포인트로 사용 (선택)
+ *    // 기존 API(그록 재미나이)사용할 때 → 원래 코드 그대로(Groq 메인 + Gemini 폴백)
+ *
+ *  ▶ Claude가 아예 안 될 때(키 미발급/장애 등):
+ *    "// 클로드 API 사용할 때" 와 "// open api 사용할 때" 블록을 전부 주석 처리하고,
+ *    "// 기존 API(그록 재미나이)사용할 때" 블록만 살리면 지금까지 쓰던 방식 그대로 동작한다.
+ * ============================================================================
+ */
 @Service
 public class ChatbotServiceImpl implements ChatbotService {
 
     private final ChatSessionRepository sessionRepository;
     private final ChatMessageRepository messageRepository;
     private final TravelPlanRepository planRepository;
-    private final ChatClient primaryClient;   // Groq (메인)
-    private final ChatClient fallbackClient;  // Gemini (폴백)
+
+    // ── AI 클라이언트 ─────────────────────────────────────────────
+    private final ChatClient claudeClient;    // Claude (메인)  ★ NEW
+    private final ChatClient primaryClient;    // Groq (기존 메인 / 현재는 폴백)
+    private final ChatClient fallbackClient;   // Gemini (기존 폴백)
 
     public ChatbotServiceImpl(
             ChatSessionRepository sessionRepository,
             ChatMessageRepository messageRepository,
             TravelPlanRepository planRepository,
-            @Qualifier("openAiChatModel") ChatModel groqModel,
+
+            // ===== // 클로드 API 사용할 때 (Anthropic 정식 SDK) =====
+            // build.gradle 의 spring-ai-starter-model-anthropic 가 자동 생성하는 빈.
+            // application.yml 에 spring.ai.anthropic.api-key / chat.options.model 설정 필요.
+            @Qualifier("anthropicChatModel") ChatModel claudeModel,
+            // ===== // 클로드 API 사용할 때 끝 =====
+
+            // ===== // open api 사용할 때 (Claude를 OpenAI 호환 엔드포인트로 쓰는 경우) =====
+            //  - 이 방식을 쓰려면 application.yml 에서 OpenAI starter 의 base-url 을
+            //    https://api.anthropic.com/v1/ 로 바꾸고 model 을 claude-* 로 지정한 뒤,
+            //    아래 @Qualifier("openAiChatModel") 빈을 claudeModel 대신 주입해 사용한다.
+            //  - 별도의 OpenAI 호환 빈을 따로 등록했다면 그 빈 이름으로 바꿔 주입하면 된다.
+            // @Qualifier("openAiChatModel") ChatModel claudeOpenAiModel,
+            // ===== // open api 사용할 때 끝 =====
+
+            // ===== // 기존 API(그록 재미나이)사용할 때 =====
+            @Qualifier("openAiChatModel") ChatModel groqModel,      // Groq (OpenAI 호환)
             @Qualifier("googleGenAiChatModel") ChatModel geminiModel) {
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
 
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.planRepository    = planRepository;
-        this.primaryClient     = ChatClient.builder(groqModel).build();
-        this.fallbackClient    = ChatClient.builder(geminiModel).build();
+
+        // ===== // 클로드 API 사용할 때 =====
+        this.claudeClient   = ChatClient.builder(claudeModel).build();
+        // ===== // 클로드 API 사용할 때 끝 =====
+
+        // ===== // open api 사용할 때 =====
+        // (위 생성자 파라미터의 claudeOpenAiModel 주석을 풀고 아래 한 줄로 교체)
+        // this.claudeClient   = ChatClient.builder(claudeOpenAiModel).build();
+        // ===== // open api 사용할 때 끝 =====
+
+        // ===== // 기존 API(그록 재미나이)사용할 때 =====
+        this.primaryClient  = ChatClient.builder(groqModel).build();
+        this.fallbackClient = ChatClient.builder(geminiModel).build();
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
     }
 
     // API 명세: 세션 생성
@@ -172,20 +223,46 @@ public class ChatbotServiceImpl implements ChatbotService {
             }
         }
 
-        // AI 호출 (Groq 메인 → 실패 시 Gemini 자동 폴백)
-        String aiReply;
+        // ─────────────────────────────────────────────────────────────
+        //  AI 호출
+        //  현재 동작: Claude(메인) → 실패 시 Groq → 그래도 실패 시 Gemini 순서로 폴백
+        // ─────────────────────────────────────────────────────────────
+        String aiReply = null;
+
+        // ===== // 클로드 API 사용할 때 (메인) =====
+        //   open api 방식을 쓰는 경우에도 claudeClient 가 OpenAI 호환 빈으로
+        //   주입되어 있으므로 이 블록을 그대로 사용하면 된다.
         try {
-            aiReply = primaryClient.prompt()
+            System.out.println("🤖 Claude 챗봇 응답 생성 중...");
+            aiReply = claudeClient.prompt()
                     .messages(promptMessages)
                     .call()
                     .content();
         } catch (Exception e) {
-            // Groq 실패(할당량 초과, 장애 등) → Gemini로 자동 전환
-            aiReply = fallbackClient.prompt()
-                    .messages(promptMessages)
-                    .call()
-                    .content();
+            System.out.println("⚠️ Claude 호출 실패, 기존 엔진(Groq→Gemini)으로 폴백: " + e.getMessage());
+            aiReply = null;
         }
+        // ===== // 클로드 API 사용할 때 끝 =====
+
+        // ===== // 기존 API(그록 재미나이)사용할 때 (폴백 / 또는 단독 사용) =====
+        //   ▶ Claude를 완전히 끄고 예전 방식만 쓰고 싶으면:
+        //     위 "// 클로드 API 사용할 때" 블록을 통째로 주석 처리하고
+        //     아래 try/catch 만 남기면 (Groq 메인 → Gemini 폴백) 원래대로 동작한다.
+        if (aiReply == null) {
+            try {
+                aiReply = primaryClient.prompt()      // Groq
+                        .messages(promptMessages)
+                        .call()
+                        .content();
+            } catch (Exception e) {
+                // Groq 실패(할당량 초과, 장애 등) → Gemini로 자동 전환
+                aiReply = fallbackClient.prompt()     // Gemini
+                        .messages(promptMessages)
+                        .call()
+                        .content();
+            }
+        }
+        // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
 
         // AI 답변 DB 저장
         ChatMessage aiChat = new ChatMessage();

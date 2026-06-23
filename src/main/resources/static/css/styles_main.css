@@ -2107,6 +2107,18 @@ nav {
     border-radius: 12px 3px 12px 12px
 }
 
+/* 🎯 [신규] 챗봇 답변 마크다운 렌더링 스타일 (가독성 개선) */
+.cbubble.bot strong { font-weight: 700; }
+.cbubble.bot em { font-style: italic; }
+.cbubble.bot .cb-line { margin: 2px 0; }
+.cbubble.bot .cb-line + .cb-list { margin-top: 4px; }
+.cbubble.bot .cb-list {
+    margin: 4px 0;
+    padding-left: 18px;
+    list-style: disc;
+}
+.cbubble.bot .cb-list li { margin: 2px 0; }
+
 .qr-row {
     display: flex;
     gap: 6px;

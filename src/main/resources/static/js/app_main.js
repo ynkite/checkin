@@ -200,9 +200,14 @@ function go(id, addToHistory) {
     if (pg) pg.classList.add('active');
 
     if (id === 'map') {
-        // 🎯 강제 새로고침(location.reload)으로 인해 링크를 두 번 엔터쳐야 했던 버그 완벽 제거!
+        // 🎯 [수정] SPA 이동 시에도 경로 데이터를 다시 불러와 렌더링 → 새로고침 불필요
+        //   기존엔 relayout()만 호출해서 빈 지도가 남았고, 새로고침(DOMContentLoaded)을
+        //   해야 initMapPage()가 돌아 경로가 보였음. 여기서 직접 initMapPage()를 호출한다.
         setTimeout(function() {
-            if (window._kakaoMap) {
+            if (typeof initMapPage === 'function') {
+                // initMapPage 내부에서 DB/sessionStorage 경로를 읽어 마커·동선을 다시 그림
+                initMapPage();
+            } else if (window._kakaoMap) {
                 window._kakaoMap.relayout();
                 if (typeof updateBoundsForDay === 'function') updateBoundsForDay('all');
             } else if (typeof initKakaoMap === 'function') {
@@ -299,15 +304,6 @@ function go(id, addToHistory) {
             setTimeout(() => _applyCurationPreferences(c), 160);
         }
 
-    }
-    if (id === 'map') {
-        setTimeout(function() {
-            if (window._kakaoMap) {
-                window._kakaoMap.relayout();
-            } else if (typeof initKakaoMap === 'function') {
-                initKakaoMap();
-            }
-        }, 100);
     }
     if (typeof _syncPlannerTopbar === 'function') setTimeout(_syncPlannerTopbar, 60);
 
@@ -737,6 +733,44 @@ window._invitedTripsCurrentPage = 1;
 const INVITED_PER_PAGE = 5;
 window._invitedDeleteMode = false;
 
+/* ── 마이페이지 공통 페이저: 5개 숫자만 노출 + 현재 페이지 중앙 정렬 ── */
+function _getMyPageWindow(currentPage, totalPages, windowSize = 5) {
+    const total = Math.max(1, Number(totalPages) || 1);
+    const size = Math.min(Number(windowSize) || 5, total);
+    const current = Math.min(Math.max(Number(currentPage) || 1, 1), total);
+
+    let start = current - Math.floor(size / 2);
+    if (start < 1) start = 1;
+    if (start + size - 1 > total) start = Math.max(1, total - size + 1);
+
+    return Array.from({ length: size }, function (_, idx) { return start + idx; });
+}
+
+function _renderMyPagePagerHtml(currentPage, totalPages, callBuilder) {
+    if (!totalPages || totalPages <= 0) return '';
+
+    const current = Math.min(Math.max(Number(currentPage) || 1, 1), Number(totalPages));
+    const pages = _getMyPageWindow(current, totalPages, 5);
+
+    let html = '<div class="community-v2-pagination mypage-section-pagination" style="margin-top:24px;padding-bottom:20px;">';
+
+    if (totalPages > 1) {
+        html += '<button type="button" class="community-v2-page-btn" onclick="' + callBuilder(Math.max(1, current - 1)) + '" ' + (current === 1 ? 'disabled' : '') + '>&lt;</button>';
+    }
+
+    pages.forEach(function (p) {
+        html += '<button type="button" class="community-v2-page-btn ' + (p === current ? 'on' : '') + '" onclick="' + callBuilder(p) + '">' + p + '</button>';
+    });
+
+    if (totalPages > 1) {
+        html += '<button type="button" class="community-v2-page-btn" onclick="' + callBuilder(Math.min(Number(totalPages), current + 1)) + '" ' + (current === Number(totalPages) ? 'disabled' : '') + '>&gt;</button>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+
 function _renderMyInvitedTrips(trips = null, page = 1) {
     const container = document.getElementById('my-invited-list');
     if (!container) return;
@@ -797,30 +831,9 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
         html += `</div>`; // .trip-list 닫기
 
-        html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
-
-        if (currentPage > 1) {
-            html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);"><</button>`;
-        }
-
-        const pageGroup = Math.ceil(currentPage / 10);
-        let startP = (pageGroup - 1) * 10 + 1;
-        let endP = Math.min(totalPages, pageGroup * 10);
-
-        for (let p = startP; p <= endP; p++) {
-            const isCurrent = (p === currentPage);
-            const bg = isCurrent ? 'var(--sage)' : '#fff';
-            const color = isCurrent ? '#fff' : 'var(--text2)';
-            const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
-            const fw = isCurrent ? '800' : '500';
-
-            html += '<button onclick="_renderMyInvitedTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
-        }
-
-        if (currentPage < totalPages) {
-            html += `<button onclick="_renderMyInvitedTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);">></button>`;
-        }
-        html += `</div>`;
+        html += _renderMyPagePagerHtml(currentPage, totalPages, function (p) {
+            return '_renderMyInvitedTrips(null, ' + p + ')';
+        });
 
     } else {
         html += `</div>`;
@@ -941,35 +954,10 @@ function _renderMyTrips(trips = null, page = 1) {
       </div>`;
         }).join('');
 
-        // 4. 리스트 하단에 사진과 동일한 디자인의 페이지네이션 버튼 추가
-        html += `<div style="display:flex; justify-content:center; align-items:center; gap:6px; margin-top:24px; padding-bottom:20px;">`;
-
-        // [이전] 화살표
-        if (currentPage > 1) {
-            html += `<button onclick="_renderMyTrips(null, ${currentPage - 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&lt;</button>`;
-        }
-
-        // [숫자 버튼]
-        const pageGroup = Math.ceil(currentPage / 10); // 현재 페이지가 속한 10개 단위 그룹 (1그룹: 1~10, 2그룹: 11~20)
-        let startP = (pageGroup - 1) * 10 + 1;
-        let endP = Math.min(totalPages, pageGroup * 10);
-
-        for (let p = startP; p <= endP; p++) {
-            const isCurrent = (p === currentPage);
-            const bg = isCurrent ? 'var(--sage)' : '#fff';
-            const color = isCurrent ? '#fff' : 'var(--text2)';
-            const border = isCurrent ? 'var(--sage)' : 'var(--border2)';
-            const fw = isCurrent ? '800' : '500';
-
-            html += '<button onclick="_renderMyTrips(null, ' + p + ')" style="width:28px;height:28px;padding:0;background:' + bg + ';border:1px solid ' + border + ';border-radius:6px;cursor:pointer;color:' + color + ';font-weight:' + fw + ';font-size:12px;">' + p + '</button>';
-        }
-
-        // [다음] 화살표
-        if (currentPage < totalPages) {
-            html += `<button onclick="_renderMyTrips(null, ${currentPage + 1})" style="width:28px;height:28px;padding:0;background:#fff;border:1px solid var(--border2);border-radius:6px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.2s;" onmouseover="this.style.background='var(--cream)'" onmouseout="this.style.background='#fff'">&gt;</button>`;
-        }
-
-        html += `</div>`;
+        // 4. 리스트 하단에 통일된 페이지네이션 버튼 추가
+        html += _renderMyPagePagerHtml(currentPage, totalPages, function (p) {
+            return '_renderMyTrips(null, ' + p + ')';
+        });
 
     } else {
         html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>';
@@ -1508,7 +1496,8 @@ async function startChatWithSummary() {
     addBubble(
         `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
         'bot',
-        ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요']
+        ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요'],
+        true
     );
 }
 
@@ -1516,7 +1505,7 @@ function startChat() {
     const msgs = document.getElementById('chatMsgs');
     if (!msgs) return;
     msgs.innerHTML = '';
-    addBubble('안녕하세요! AI 여행 플래너입니다 ✈<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','🐕 강아지','일정 생성']);
+    addBubble('안녕하세요! AI 여행 플래너입니다 ✈<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','🐕 강아지','일정 생성'], true);
 }
 
 /* ───────────────────────────────────────────────
@@ -1845,23 +1834,70 @@ async function openSummaryEdit(field, domId, label) {
     toast(`✅ ${label} 수정 완료`);
 }
 
-function addBubble(txt, role, qrs) {
+function addBubble(txt, role, qrs, isHtml) {
     const msgs = document.getElementById('chatMsgs');
     const d = document.createElement('div');
     d.className = 'cmsg' + (role === 'user' ? ' user' : '');
     if (role === 'bot') {
-        // 마침표/물음표 뒤 줄바꿈 처리
-        const formatted = txt
-            .replace(/\. ([가-힣A-Za-z0-9])/g, '.<br>$1')
-            .replace(/\? ([가-힣A-Za-z0-9])/g, '?<br>$1');
-        d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${formatted}</div>`
+        // isHtml=true 면 코드가 직접 만든 안전한 HTML이므로 그대로 사용,
+        // 아니면 AI 응답이므로 마크다운 변환 + 이스케이프 처리
+        const inner = isHtml ? txt : formatBotReply(txt);
+        d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${inner}</div>`
             + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
             + '</div>';
     } else {
-        d.innerHTML = `<div class="cav user">나</div><div><div class="cbubble user">${txt}</div></div>`;
+        d.innerHTML = `<div class="cav user">나</div><div><div class="cbubble user">${escapeHtmlBubble(txt)}</div></div>`;
     }
     msgs.appendChild(d);
     msgs.scrollTop = msgs.scrollHeight;
+}
+
+/* 🎯 [신규] 챗봇 답변 포맷터 — XSS 방지 + 마크다운 → HTML 변환
+ *  - 먼저 HTML 특수문자를 이스케이프해 스크립트 주입을 막고,
+ *  - 그 다음 **굵게**, *기울임*, - 목록, 줄바꿈 등을 안전한 태그로 바꾼다. */
+function escapeHtmlBubble(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatBotReply(raw) {
+    let s = escapeHtmlBubble(raw);
+
+    // 1) **굵게** → <strong>
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    // 2) 남은 *기울임* → <em> (양쪽이 공백이 아닌 단일 별표 쌍만)
+    s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+
+    // 3) 줄 단위로 끊어 목록(- , • , 숫자.)을 항목으로 변환
+    const lines = s.split(/\r?\n/);
+    let html = '';
+    let inList = false;
+    const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+
+    lines.forEach(line => {
+        const t = line.trim();
+        if (t === '') { closeList(); return; }
+
+        // "- 항목", "• 항목", "* 항목", "1. 항목" 형태를 목록으로
+        const m = t.match(/^(?:[-•*]|\d+\.)\s+(.*)$/);
+        if (m) {
+            if (!inList) { html += '<ul class="cb-list">'; inList = true; }
+            html += '<li>' + m[1] + '</li>';
+        } else {
+            closeList();
+            html += '<div class="cb-line">' + t + '</div>';
+        }
+    });
+    closeList();
+
+    // 4) 문장 안에 " - " 로 나열된 인라인 항목도 줄바꿈으로 분리 (AI가 한 줄에 몰아쓴 경우)
+    html = html.replace(/\s+-\s+(?=[가-힣A-Za-z0-9])/g, '<br>· ');
+
+    return html;
 }
 /* ───────────────────────────────────────────────
  * 12. 회원가입 유효성 검사 (실시간 API 중복확인)
