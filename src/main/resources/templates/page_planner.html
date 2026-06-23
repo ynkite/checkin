@@ -840,6 +840,7 @@
                             });
                         }
 
+
                         // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
                         allPins.forEach(pin => {
                             if (!pin.isFound) {
@@ -848,9 +849,40 @@
                                         place: pin.label,
                                         req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
                                     });
+
+                    // [검수 3단계] 오차(미존재 장소 + 20km 초과) 발견 시 백엔드 AI 2회 연쇄 교체 처리 분기
+                    if (autoFixRequests.length > 0 && currentStage < 2) {
+                        currentStage++;
+                        sessionStorage.setItem('autoHealingRetries', currentStage.toString());
+
+                        btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
+
+                        fetch(`/api/trips/${tripId}/routes/replace`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + (Token.getAccess() || '')
+                            },
+                            body: JSON.stringify({ requests: autoFixRequests })
+                        })
+                            .then(res => res.json())
+                            .then(res => {
+                                if (res.success && res.data) {
+                                    let nextJson = res.data;
+                                    if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
+
+                                    const cleanData = JSON.parse(nextJson);
+                                    sessionStorage.setItem('ai_generated_route', nextJson);
+
+                                    // 🔄 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
+                                    validateAndHealingRoute(tripId, cleanData, btn);
+                                } else {
+                                    _finalizePlannerRoute(routeData, btn);
+
                                 }
                             }
                         });
+
 
                         // [검수 2단계] 지도에 있는 실존 장소들 간의 20km 반경 하바신 거리 측정 진행
                         const dayKeys = [...new Set(allPins.map(p => p.day))];
@@ -952,6 +984,11 @@
                             console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
                             _finalizePlannerRoute(routeData, btn);
                         }
+
+                    } else {
+                        console.log("✅ 정밀 보정 완료. 최종 지도로 이동합니다.");
+                        _finalizePlannerRoute(routeData, btn);
+
                     }
                 });
             } // end _startPinSearchLoop
