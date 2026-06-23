@@ -109,12 +109,12 @@ nav {
 }
 
 .nav-logo .logo-img {
-    height: 60px;
+    height: 40px;
     /* 원하는 로고 크기 마음대로 지정 가능 */
     width: auto;
     object-fit: contain;
     margin-left: -6px;
-    margin-right: 26px;
+    margin-right: 10px;
     margin-top: -9px;
     margin-bottom: -13px;
 }
