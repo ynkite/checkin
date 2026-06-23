@@ -41,6 +41,12 @@ body {
     overflow: visible !important;
 }
 
+/* ★중요★ 모바일 전용 탭 바(.map-mobile-tabs)는 데스크탑에서 숨긴다.
+ * 숨기지 않으면 .map-wrap(grid 2칸: 310px 1fr) 안의 자식이 3개
+ * (.map-mobile-tabs / .map-left / .map-right)가 되어, 세 번째 자식인
+ * .map-right(지도)가 다음 줄로 밀려 화면 밖으로 나가 지도가 보이지 않는다. */
+.map-mobile-tabs { display: none; }
+
 /* 이미지/미디어가 부모를 넘지 않도록 */
 /* 주의: canvas, svg 는 카카오 지도가 폴리라인(경로 선)을 그리는 데 사용하므로
  *       전역 max-width 제약에서 제외한다. 포함시키면 지도 위 경로 선이
@@ -300,16 +306,54 @@ table {
     }
 
     /* ---------- 2-4. 지도 페이지: 좌우 분할 → 상하 분할 ---------- */
+    /* 모바일 탭 바 표시 (데스크탑에서는 위에서 display:none 처리됨) */
+    .map-mobile-tabs {
+        display: flex;
+        flex-shrink: 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border2);
+    }
+    .map-mob-tab {
+        flex: 1;
+        padding: 11px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: none;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text3);
+        cursor: pointer;
+    }
+    .map-mob-tab.on {
+        color: var(--sage-d);
+        border-bottom-color: var(--sage);
+    }
+    /* grid(2칸) → flex 세로 스택: 자식 3개(탭바·일정·지도)가 순서대로 쌓이고,
+       일정/지도는 mob-hidden 토글로 하나씩만 보인다. */
     .map-wrap {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 60vh;
+        display: flex;
+        flex-direction: column;
         height: auto;
         min-height: calc(100vh - 72px);
     }
     .map-left {
+        flex: 1;
         border-right: none;
         border-bottom: 1px solid var(--border2);
-        max-height: 42vh;
+        max-height: none;
+        overflow-y: auto;
+    }
+    .map-right {
+        flex: 1;
+    }
+    /* 모바일 패널 토글: 일정 숨김은 display:none, 지도 숨김은 카카오맵 0크기 방지를 위해 visibility */
+    .map-left.mob-hidden { display: none; }
+    .map-right.mob-hidden {
+        position: absolute;
+        inset: 0;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: -1;
     }
     /* 지도 뷰 영역이 높이 0으로 초기화되어 경로 선이 안 그려지는 것 방지 */
     #page-map #mapView {

@@ -66,8 +66,71 @@
     const MAP_TOTAL_BUDGET_DISPLAY = '₩ 404,000';
 
 
+    // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
+    // DOMContentLoaded 한 번만으론 부족 — nav 내용이 JS로 나중에 주입되므로
+    // ResizeObserver로 nav 크기 변화를 실시간 감지해서 갱신
+    function syncNavHeight() {
+      var nav = document.querySelector('nav');
+      if (nav) {
+        document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+      syncNavHeight();
+      var nav = document.querySelector('nav');
+      if (nav && window.ResizeObserver) {
+        new ResizeObserver(syncNavHeight).observe(nav);
+      }
+    });
+    window.addEventListener('resize', syncNavHeight);
+
+    // ── 모바일 탭 전환 ──
+    function switchMobileMapTab(tab) {
+      var left = document.querySelector('.map-left');
+      var right = document.getElementById('mapRightArea');
+      var mapView = document.getElementById('mapView');
+      var budgetView = document.getElementById('budgetView');
+      var btns = ['mobTabItinerary', 'mobTabMap', 'mobTabBudget'];
+      btns.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('on');
+      });
+
+      if (tab === 'itinerary') {
+        left.classList.remove('mob-hidden');
+        right.classList.add('mob-hidden');
+        document.getElementById('mobTabItinerary').classList.add('on');
+      } else if (tab === 'map') {
+        left.classList.add('mob-hidden');
+        right.classList.remove('mob-hidden');
+        if (mapView) mapView.style.display = 'block';
+        if (budgetView) budgetView.style.display = 'none';
+        document.getElementById('mobTabMap').classList.add('on');
+        setTimeout(function() {
+          if (window._kakaoMap) window._kakaoMap.relayout();
+        }, 50);
+      } else if (tab === 'budget') {
+        left.classList.add('mob-hidden');
+        right.classList.remove('mob-hidden');
+        if (mapView) mapView.style.display = 'none';
+        if (budgetView) budgetView.style.display = 'block';
+        if (typeof _loadMapBudget === 'function') _loadMapBudget();
+        document.getElementById('mobTabBudget').classList.add('on');
+      }
+    }
+
     // ── DOM 렌더링 ──
     async function initMapPage() {
+      // 모바일(≤768px)에서만 지도 패널 초기 숨김 — 데스크탑에서는 mob-hidden 제거
+      var _right = document.getElementById('mapRightArea');
+      if (_right) {
+        if (window.innerWidth <= 768) {
+          _right.classList.add('mob-hidden');    // 모바일: 일정 탭 먼저 보임
+        } else {
+          _right.classList.remove('mob-hidden'); // 데스크탑: 지도 항상 표시
+        }
+      }
+
       var routeData = null;
 
       const params = new URLSearchParams(location.search);
@@ -480,10 +543,32 @@
         // 지도가 겹쳐서 깨지는 현상 방지 껍데기 청소
         container.innerHTML = '';
 
-        // 기본 지도 기동 (제주 중심점)
+        // 기본 지도 기동 — 여행지(MAP_PINS)가 있으면 첫 핀 좌표, 없으면 한반도 중심으로 초기화
+        // (이전: 제주도 하드코딩 → 합안군 여행인데 제주도가 뜨던 버그 수정)
+        var _initLat = 36.5, _initLng = 127.8, _initLevel = 8; // 한반도 중심(기본)
+        if (MAP_PINS && MAP_PINS.length > 0 && typeof kakao !== 'undefined') {
+          // 여행지 이름으로 대략 중심을 잡기 위해 첫 장소명을 미리 검색
+          var _destKeyword = '';
+          try {
+            var _si = sessionStorage.getItem('plannerDraftState');
+            if (_si) {
+              var _sd = JSON.parse(_si);
+              _destKeyword = (_sd['s1-dest-city'] || _sd['s1-dest-prov'] || '').replace(/시\/군\/구 선택/g,'').trim();
+            }
+          } catch(e) {}
+          if (_destKeyword) {
+            var _ps0 = new kakao.maps.services.Places();
+            _ps0.keywordSearch(_destKeyword, function(data, status) {
+              if (status === kakao.maps.services.Status.OK && data && data.length) {
+                window._kakaoMap.setCenter(new kakao.maps.LatLng(parseFloat(data[0].y), parseFloat(data[0].x)));
+                window._kakaoMap.setLevel(8);
+              }
+            });
+          }
+        }
         window._kakaoMap = new kakao.maps.Map(container, {
-          center: new kakao.maps.LatLng(33.3846, 126.5535),
-          level: 10
+          center: new kakao.maps.LatLng(_initLat, _initLng),
+          level: _initLevel
         });
 
         // 보험용 리레이아웃
@@ -1417,6 +1502,12 @@
 
   <div class="page" id="page-map">
     <div class="map-wrap">
+      <!-- 모바일 전용 탭 바 -->
+      <div class="map-mobile-tabs">
+        <button class="map-mob-tab on" id="mobTabItinerary" onclick="switchMobileMapTab('itinerary')">📋 일정</button>
+        <button class="map-mob-tab" id="mobTabMap" onclick="switchMobileMapTab('map')">🗺️ 지도</button>
+        <button class="map-mob-tab" id="mobTabBudget" onclick="switchMobileMapTab('budget')">💰 예산</button>
+      </div>
       <div class="map-left">
         <div class="ml-hd">
           <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
