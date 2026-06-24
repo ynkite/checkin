@@ -116,11 +116,13 @@ public class AiRouteService {
             
             [필수 준수 사항 - 데이터 무결성 (위반 시 시스템 오류 발생)]
             1. 장소명 절대 규칙 (Hallucination 원천 차단):
-               - 정보가 부족하더라도 장소를 임의로 지어내거나 합성하지 마십시오. (예: "OO먹자골목", "홍대 맛집" 등 모호한 명칭 금지)
+               - 정보가 부족하더라도 절대 장소를 임의로 지어내거나 합성하지 마십시오. (예: "OO먹자골목", "홍대 맛집" 등 모호한 명칭 절대 금지)
                - 반드시 카카오맵(KakaoMap)에 공식적으로 등록되어 고유 식별이 가능한 [실존하는 대중적인 랜드마크, 상호명, 숙박업소명]만 정확히 기입하세요. (예: "제주신라호텔", "연돈")
                - ★숙박업소 이름 규칙★: 숙소명은 반드시 카카오맵에 등록된 공식 상호명 전체를 그대로 쓰세요.
                  "함안호텔"처럼 지역명+업종만 붙인 임의 합성 명칭은 절대 금지입니다.
                  실존하는 호텔·펜션·게스트하우스의 고유 상호명(예: "함안아라가야호텔", "함안문화게스트하우스")을 사용하세요.
+                 - ★숙소 업종 일치★: '숙소 유형'이 "호텔"이면 정식 호텔만 배치하고 모텔·여관·게스트하우스를
+                                              호텔 대신 넣지 마세요. "펜션"이면 펜션만, "리조트"면 리조트만 배치하세요.
                - 장소명 뒤에 '체크인', '방문', '식사' 같은 임의의 서술형 접미사를 절대 붙이지 마십시오. 이미 폐업했거나 가상의 장소는 내부 재검색을 통해 원천 배제하세요.
             
             2. 유저 요청 사항 최우선 반영:
@@ -136,6 +138,12 @@ public class AiRouteService {
                  단, [유저 요청 사항]에서 사용자가 특정 장소·지역을 명시적으로 요청한 경우에만 10km 제약을 예외로 허용합니다.
                - 일별 코스를 짤 때, 지그재그 동선이 되지 않도록 같은 동네/권역 위주로 묶어서 배치하세요.
                - 직전 장소로부터 지정된 '이동 수단' 기준 너무 먼 거리(편도 30분 이상, 20km 이상)는 배치를 금지하며, 거리가 멀 경우 반경 5~10km 이내의 다른 장소로 내부 재검색(Re-search)을 수행해 일정을 재구성하세요.
+               - ★이동 시간 상한(매우 중요 최종 점검도 한번 더 할 것 절대적으로 효율적인 동선 배치 지그재그로 왔다갔다 동선 금지)★: 
+               같은 날 장소 간 이동은 지정된 '이동 수단' 기준 편도 30분 이내가 되도록 배치하세요.
+                (자차는 약 15~20km, 대중교통은 약 8~10km 이내). 사용자가 특정 장소를 콕 집어 요청한 경우에만 예외.
+                단, 그 날 마지막에 숙소로 복귀하는 구간은 30분을 다소 넘겨도 허용합니다.
+              - ★★★숙소 연속성★★★★: 2일 이상 여행이면, 둘째 날부터는 전날 묵은 숙소(동일 stay)에서 하루를 시작하고
+                (마지막 날 제외) 같은 숙소에서 취침하도록 각 Day에 그 숙소를 배치하세요.
             
             3-1. ★장소 중복 금지★ (사용자가 별도 요청하지 않은 경우):
                - 같은 장소(동일 상호명)는 전체 일정에서 단 한 번만 등장해야 합니다.
@@ -166,7 +174,10 @@ public class AiRouteService {
             2. 'budget'은 해당 일차 총액(예: ₩182,000), 'stars'는 별점(예: ★★★★★ 4.8) 포맷을 지키세요.
             3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함해야 합니다. (예: "🚗 자차 · 12km · 약 20분 · ₩2,000")
             4. 부가적인 설명, 인사말, 마크다운 코드블럭 기호(```json 등)를 일절 포함하지 말고, 오직 아래 형식의 순수 JSON 배열(Array) 텍스트만 출력하세요.
-            
+            5. ★★★★★매우 중요 최종 점검도 한번 더 할 것 절대적으로 효율적인 동선 배치 지그재그로 왔다갔다 동선 금지 실제로 사용자가 여행하기 좋게 경로를 효율적으로 생성 절대적으로 중요 최우선★★★★ 실제로 여행 경로처럼 가능하도록 이것만 보고도 실제 여행이 가능하게 절대로 왔다갔다하면서 시간을 낭비하지 않게
+            최대로 효율적인 동선을 생성할것
+            6.★★★숙소 연속성★★★★: 2일 이상 여행이면, 둘째 날부터는 전날 묵은 숙소(동일 stay)에서 하루를 시작하고(마지막날은 해당 숙소에서 체크아웃되는걸로)
+                (마지막 날 제외) 같은 숙소에서 취침하도록 각 Day에 그 숙소를 배치하세요. 필수사항 경로를 다 끝내고 숙소로 돌아올때는 숙소에서 20km까지 돌아오는것 허용 경로가 삼각형이 되지않게 최대한 효율적으로 나오도록
             [
               {
                 "day": 1,
@@ -192,12 +203,17 @@ public class AiRouteService {
         try {
             System.out.println("🔄 Groq 일정 생성 기동 중...");
             // 메인 Groq API 호출 시도
-            aiRouteJson = primaryClient.prompt().user(prompt).call().content();
+//            aiRouteJson = primaryClient.prompt().user(prompt).call().content();
+            // 메인을 클로드로 변경
+            aiRouteJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+//            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+            System.out.println("⚠️ claude 호출 실패, Groq 기동 시작: " + e.getMessage());
             try {
                 // 실패 시 제미나이 작동
-                aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
+//                aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
+                // 실패 시 그록 작동
+                aiRouteJson = primaryClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
                 // 둘 다 터졌을 때 방어용 더미 데이터 반환
                 System.out.println("🚨 모든 LLM이 터져 방어용 데이터를 리턴합니다.");
@@ -272,8 +288,9 @@ public class AiRouteService {
         // ===== // 클로드 API 사용할 때 =====
         //   ▶ Claude를 끄고 Groq 결과를 그대로 쓰려면(=기존 방식 유지) 아래 한 줄을
         //     주석 처리하면 된다. 그러면 곧바로 'return groqResultJson;' 으로 떨어진다.
-        String finalRouteJson = validateAndFixWithClaude(plan, form, groqResultJson);
-        return finalRouteJson;
+        // String finalRouteJson = validateAndFixWithClaude(plan, form, groqResultJson);
+        // return finalRouteJson;
+        return groqResultJson;   // 실제로는 위의 Claude 1차 결과
         // ===== // 클로드 API 사용할 때 끝 =====
 
         // ===== // 기존 API(그록 재미나이)사용할 때 =====
@@ -562,33 +579,47 @@ public class AiRouteService {
                 reqStr.toString(), originalJson,
                 plan.getDestination()   // 규칙 0의 ★지역 절대 잠금★ 자리
         );
-
+        // groq 사용할때 지금은 전체 주석처리하고 아래 구문 사용
+//        String updatedJson = "[]";
+//        try {
+//            System.out.println("🔄 Groq 부분 교체 기동 중...");
+//            // [지도 장소 교체] 요구사항에 따라 이 단계는 Groq 가 담당한다.
+//            // ===== // 기존 API(그록 재미나이)사용할 때 =====
+//            // 메인 Groq API 호출 시도
+//            updatedJson = primaryClient.prompt().user(prompt).call().content();
+//            // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
+//
+//            // ===== // 클로드 API 사용할 때 (장소 교체도 Claude로 돌리고 싶다면) =====
+//            //   위 Groq 호출을 주석 처리하고 아래 한 줄을 살리면 교체도 Claude가 수행한다.
+//            //   (현재 요구사항은 '교체는 Groq' 이므로 기본은 주석 처리 상태)
+//            // updatedJson = claudeClient.prompt().user(prompt).call().content();
+//            // ===== // 클로드 API 사용할 때 끝 =====
+//        } catch (Exception e) {
+//            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+//            try {
+//                // 실패 시 제미나이 작동
+//                updatedJson = fallbackClient.prompt().user(prompt).call().content();
+//            } catch (Exception ex) {
+//                // 둘 다 터졌을 때 방어용 더미 데이터 반환
+//                System.out.println("🚨 모델 전체 셧다운. 부분 교체를 취소하고 원본을 반환합니다.");
+//                return originalJson;
+//            }
+//        }
         String updatedJson = "[]";
         try {
-            System.out.println("🔄 Groq 부분 교체 기동 중...");
-            // [지도 장소 교체] 요구사항에 따라 이 단계는 Groq 가 담당한다.
-            // ===== // 기존 API(그록 재미나이)사용할 때 =====
-            // 메인 Groq API 호출 시도
-            updatedJson = primaryClient.prompt().user(prompt).call().content();
-            // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
-
-            // ===== // 클로드 API 사용할 때 (장소 교체도 Claude로 돌리고 싶다면) =====
-            //   위 Groq 호출을 주석 처리하고 아래 한 줄을 살리면 교체도 Claude가 수행한다.
-            //   (현재 요구사항은 '교체는 Groq' 이므로 기본은 주석 처리 상태)
-            // updatedJson = claudeClient.prompt().user(prompt).call().content();
-            // ===== // 클로드 API 사용할 때 끝 =====
+            // [지도 장소 교체] 교체는 Claude 단독으로 수행한다.
+            //   Groq/Gemini는 분당 토큰 한도(429)·과부하(503)가 잦아 교체 루프에서 원본이
+            //   그대로 통과하는 사고가 있었으므로, 교체는 Claude만 사용한다.
+            System.out.println("🤖 Claude 부분 교체 기동 중...");
+            updatedJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
-            try {
-                // 실패 시 제미나이 작동
-                updatedJson = fallbackClient.prompt().user(prompt).call().content();
-            } catch (Exception ex) {
-                // 둘 다 터졌을 때 방어용 더미 데이터 반환
-                System.out.println("🚨 모델 전체 셧다운. 부분 교체를 취소하고 원본을 반환합니다.");
-                return originalJson;
-            }
+            // Claude까지 실패하면 원본을 그대로 두지 말고, 검증에서 걸린 '가짜·타지역 장소'를
+            // 일정에서 제거한 버전을 반환한다(가짜가 지도까지 새는 것을 막는 최종 안전장치).
+            System.out.println("🚨 Claude 부분 교체 실패. 오류 장소를 일정에서 제외하고 반환합니다: " + e.getMessage());
+            String stripped = stripBadPlaces(originalJson, requests);
+            if (!stripped.equals(originalJson)) saveAiRouteToDb(tripId, stripped);
+            return stripped;
         }
-
         if (updatedJson != null && updatedJson.contains("[")) {
             updatedJson = updatedJson.substring(updatedJson.indexOf("["), updatedJson.lastIndexOf("]") + 1);
         }
@@ -601,7 +632,45 @@ public class AiRouteService {
 
         return finalJson;
     }
+    // 모든 모델이 실패했을 때, 검증에서 걸린 장소(requests의 place)를 일정에서 제거한다.
+    // 가짜·타지역 장소가 그대로 지도까지 흘러가는 것을 막는 최종 안전장치.
+    private String stripBadPlaces(String json, java.util.List<java.util.Map<String, String>> requests) {
+        try {
+            java.util.Set<String> bad = new java.util.HashSet<>();
+            for (java.util.Map<String, String> r : requests) {
+                String p = r.get("place");
+                if (p != null && !p.isBlank()) bad.add(p.trim());
+            }
+            if (bad.isEmpty()) return json;
 
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+                com.fasterxml.jackson.databind.node.ArrayNode places =
+                        (com.fasterxml.jackson.databind.node.ArrayNode) placesNode;
+
+                // 1) 가짜/타지역 장소 제거
+                for (int i = places.size() - 1; i >= 0; i--) {
+                    String name = places.get(i).path("name").asText("");
+                    if (!name.isBlank() && bad.contains(name.trim())) places.remove(i);
+                }
+                // 2) 장소가 빠지며 붕 뜬 transit 정리(맨앞·맨뒤·연속 transit 제거)
+                for (int i = places.size() - 1; i >= 0; i--) {
+                    if (!places.get(i).has("transit")) continue;
+                    boolean prevReal = i > 0 && places.get(i - 1).has("type");
+                    boolean nextReal = i < places.size() - 1 && places.get(i + 1).has("type");
+                    if (!(prevReal && nextReal)) places.remove(i);
+                }
+            }
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            System.err.println("[stripBadPlaces] 실패: " + e.getMessage());
+            return json;
+        }
+    }
     // 기상 악화 특정 일차 실내 일정 전면 교체
     @Transactional
     public String replaceDayWithIndoor(Long tripId, int targetDay) {
@@ -663,12 +732,17 @@ public class AiRouteService {
         try {
             System.out.println("☔ 우천 대비 실내 일정 교체 (Day " + targetDay + ") 기동 중...");
             // 메인 Groq API 호출 시도
-            updatedJson = primaryClient.prompt().user(prompt).call().content();
+//            updatedJson = primaryClient.prompt().user(prompt).call().content();
+            // 메인 클로드 API 호출 시도
+            updatedJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+//            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+            System.out.println("⚠️ claude 호출 실패, Groq 기동 시작: " + e.getMessage());
             try {
                 // 실패 시 제미나이 작동
-                updatedJson = fallbackClient.prompt().user(prompt).call().content();
+//                updatedJson = fallbackClient.prompt().user(prompt).call().content();
+                // 실패 시 그록 작동
+                updatedJson = primaryClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
                 // 둘 다 터졌을 때 방어용 더미 데이터 반환
                 System.out.println("🚨 모델 전체 셧다운. 부분 교체를 취소하고 원본을 반환합니다.");

@@ -2714,6 +2714,12 @@ nav {
     font-size: 12px;
     flex-shrink: 0
 }
+#qItems {
+    max-height: 46vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+}
 
 .btn-all {
     width: 100%;
