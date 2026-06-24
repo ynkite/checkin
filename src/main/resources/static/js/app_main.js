@@ -395,7 +395,7 @@ function updateNav() {
                 saveInviteBtn.style.opacity = '0.7';
                 saveInviteBtn.style.pointerEvents = 'none';
 
-                const obscureToken = (parseInt(tid) ^ 0x5A3C9B7D2E).toString(16);
+                const obscureToken = (BigInt(tid) ^ 0x5A3C9B7D2En).toString(16);
                 const basePath = window._isInvitedEditView ? '/plan' : '/plan/view';
                 const exactInviteUrl = window.location.origin + basePath + '?token=' + obscureToken;
                 const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
@@ -813,7 +813,8 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
             // 🎯 [DB 꼬임 방어]: 과거에 이미 '/' 로 잘못 저장되어 먹통이 된 링크를 눌렀을 때 내 여행 기록으로 튕기는 버그를 런타임에서 즉시 복구(힐링)합니다.
             let safeUrl = x.url;
             if (safeUrl && !safeUrl.includes('token=') && x.originalTripId) {
-                const obscureToken = (parseInt(x.originalTripId) ^ 0x5A3C9B7D2E).toString(16);
+                // 🎯 BigInt 적용으로 5a 토큰 유실 차단
+                const obscureToken = (BigInt(x.originalTripId) ^ 0x5A3C9B7D2En).toString(16);
                 safeUrl = window.location.origin + '/plan/view?token=' + obscureToken;
             }
 
@@ -2807,8 +2808,7 @@ function openShareModal() {
     const linkEl = document.getElementById('share-link-val');
 
     if (linkEl && tripId) {
-        // 🎯 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
-        const obscureToken = (tripId ^ 0x5A3C9B7D2E).toString(16);
+        const obscureToken = (BigInt(tripId) ^ 0x5A3C9B7D2En).toString(16);
         linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     }
 
@@ -3529,9 +3529,8 @@ window.addEventListener('popstate', e => {
     let sharedId = null;
     if (shareToken) {
         try {
-            // 16진수 난수를 다시 원본 숫자 ID로 안전하게 역연산 해독
-            const parsedHex = parseInt(shareToken, 16);
-            sharedId = (parsedHex ^ 0x5A3C9B7D2E).toString();
+            // 🎯 BigInt 적용으로 진입점 토큰 복호화 매핑 일치 처리
+            sharedId = (BigInt('0x' + shareToken) ^ 0x5A3C9B7D2En).toString();
         } catch (e) {
             console.error("유효하지 않은 토큰 포맷입니다.");
         }
