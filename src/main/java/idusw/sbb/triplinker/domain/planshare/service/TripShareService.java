@@ -86,6 +86,28 @@ public class TripShareService {
         sendInviteEmail(invitee.getEmail(), invitee.getName(), plan.getTitle(), tripId);
     }
 
+
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private jakarta.servlet.http.HttpServletRequest request;
+
+    private String getDynamicHost() {
+        try {
+            String scheme = request.getScheme();
+            String serverName = request.getServerName();
+            int serverPort = request.getServerPort();
+
+            // 기본 HTTP(80) 및 HTTPS(443) 포트가 아닐 때만 주소 뒤에 포트를 동적 결합
+            if ((scheme.equals("http") && serverPort == 80) || (scheme.equals("https") && serverPort == 443)) {
+                return scheme + "://" + serverName;
+            }
+            return scheme + "://" + serverName + ":" + serverPort;
+        } catch (Exception e) {
+            // 예외 발생 시 AWS 서버 주소를 반환
+            return "http://52.78.185.138:8081";
+        }
+    }
+
     // 읽기 전용 공유 링크 생성
     @Transactional
     public Map<String, String> generateShareLink(Long tripId) {
@@ -98,7 +120,8 @@ public class TripShareService {
         }
 
         //난수 주소 생성
-        String readOnlyLink = "http://localhost:8080/plan/view?token=" + hexToken;
+        String currentHost = getDynamicHost();
+        String readOnlyLink = currentHost + "/plan/view?token=" + hexToken;
         return Map.of("shareLink", readOnlyLink);
     }
 
@@ -114,8 +137,9 @@ public class TripShareService {
             hexToken = String.valueOf(tripId);
         }
 
-        // 🎯 편집 링크 주소 뒤에 id=숫자 대신 token=난수 형태로 암호화하여 발송!
-        String inviteLink = "http://localhost:8080/plan?token=" + hexToken;
+        // 편집 링크 주소 뒤에 id=숫자 대신 token=난수 형태로 암호화하여 발송
+        String currentHost = getDynamicHost();
+        String inviteLink = currentHost + "/plan?token=" + hexToken;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
