@@ -395,7 +395,9 @@ function updateNav() {
                 saveInviteBtn.style.opacity = '0.7';
                 saveInviteBtn.style.pointerEvents = 'none';
 
-                const exactInviteUrl = window.location.href;
+                const obscureToken = (parseInt(tid) ^ 0x5A3C9B7D2E).toString(16);
+                const basePath = window._isInvitedEditView ? '/plan' : '/plan/view';
+                const exactInviteUrl = window.location.origin + basePath + '?token=' + obscureToken;
                 const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
                 const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
 
@@ -808,10 +810,17 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
     if (paginated.length > 0) {
         html += paginated.map(x => {
-            // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
+            // 🎯 [DB 꼬임 방어]: 과거에 이미 '/' 로 잘못 저장되어 먹통이 된 링크를 눌렀을 때 내 여행 기록으로 튕기는 버그를 런타임에서 즉시 복구(힐링)합니다.
+            let safeUrl = x.url;
+            if (safeUrl && !safeUrl.includes('token=') && x.originalTripId) {
+                const obscureToken = (parseInt(x.originalTripId) ^ 0x5A3C9B7D2E).toString(16);
+                safeUrl = window.location.origin + '/plan/view?token=' + obscureToken;
+            }
+
+            // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 안전하게 복구된 링크로 이동
             const cardClickAction = window._invitedDeleteMode
                 ? `const chk = document.getElementById('chk-invited-${x.id}'); if(chk) chk.checked = !chk.checked;`
-                : `window.location.href='${x.url}'`;
+                : `window.location.href='${safeUrl}'`;
 
             return `
       <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
