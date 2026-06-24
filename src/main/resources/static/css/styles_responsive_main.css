@@ -9,7 +9,6 @@
 
 /* ≤768px */
 @media (max-width: 768px) {
-
     .hero {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -54,24 +53,99 @@
         opacity: 1 !important;
         visibility: visible !important;
     }
-
     /* 큐레이션 내용 여백: 양쪽 패딩 늘려서 중앙으로 */
     .curation-panel .slide.on > div:nth-child(2) {
         padding-left: 80px !important;
         padding-right: 80px !important;
     }
-
     /* 큐레이션 버튼: 하단 가득 채우기 */
     .curation-panel .slide.on .btn-slide-prev,
     .curation-panel .slide.on .btn-slide-plan {
         flex: 1;
     }
 
-    /* 인기 경로 / 맛집 / 숙소 / 관광지 / 카페: 3열 → 1열 */
+    /* ════════════════════════════════════════════════════════════
+     * 모바일 캐러셀: 인기 경로 / 맛집 / 숙소 / 관광지 / 카페 공통
+     *   - 가로 스와이프(scroll-snap) + 좌우 화살표(겹침) + 하단 점
+     *   - JS(initMobCarousels)가 .top3-grid / .popular-grid 를 감싸 생성
+     * ════════════════════════════════════════════════════════════ */
+
+    /* 캐러셀 래퍼: 화살표를 좌우에 겹쳐 띄우기 위한 기준 */
+    .mob-carousel-wrap {
+        position: relative;
+    }
+
+    /* 트랙(=기존 그리드): 가로 스크롤 + 스냅 */
     .top3-grid,
     .popular-grid {
-        grid-template-columns: 1fr;
-        gap: 10px;
+        display: flex !important;
+        grid-template-columns: none !important;
+        flex-wrap: nowrap;
+        gap: 12px;
+        overflow-x: auto;
+        overflow-y: visible;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 4px 16px 8px;
+        scroll-padding: 0 16px;
+    }
+    .top3-grid::-webkit-scrollbar,
+    .popular-grid::-webkit-scrollbar { display: none; }
+
+    /* 카드 한 장 = 화면 85% → 옆 카드 살짝 보임 */
+    .top3-grid > .top3-card,
+    .popular-grid > .pop-card {
+        flex: 0 0 85%;
+        max-width: 85%;
+        scroll-snap-align: center;
+        margin: 0;
+    }
+
+    /* 좌우 화살표 (큐레이션 .slide-arr 와 동일 톤) */
+    .mob-carousel-arr {
+        position: absolute;
+        top: 38%;
+        transform: translateY(-50%);
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: rgba(255,255,255,.95);
+        border: 1px solid var(--border2);
+        color: var(--text);
+        font-size: 17px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0,0,0,.16);
+        cursor: pointer;
+        z-index: 6;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .mob-carousel-arr.prev { left: 4px; }
+    .mob-carousel-arr.next { right: 4px; }
+    .mob-carousel-arr:disabled { opacity: .35; cursor: default; }
+
+    /* 하단 점 */
+    .mob-carousel-dots {
+        display: flex;
+        justify-content: center;
+        gap: 7px;
+        margin-top: 6px;
+    }
+    .mob-carousel-dots .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--border2);
+        cursor: pointer;
+        transition: all .18s;
+    }
+    .mob-carousel-dots .dot.on {
+        background: var(--sage);
+        width: 20px;
+        border-radius: 4px;
     }
 }
 
@@ -81,9 +155,7 @@
         padding-left: 12px;
         padding-right: 12px;
     }
-    .hsc-cards,
-    .top3-grid,
-    .popular-grid {
+    .hsc-cards {
         grid-template-columns: 1fr;
     }
 }

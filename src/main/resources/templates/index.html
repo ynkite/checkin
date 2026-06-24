@@ -24,7 +24,8 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
-    <img th:src="@{/img/logo1.png}" alt="TripLinker" class="logo-img" />
+    <img th:src="@{/img/logo.png}" alt="TripLinker" class="logo-img logo-full" />
+    <img th:src="@{/img/logo2.png}" alt="TripLinker" class="logo-img logo-symbol" />
   </div>
   <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')">☰</button>
   <div class="nav-links">
@@ -35,22 +36,22 @@
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
         <span class="nps-num">1</span>
-        <span class="nps-lbl">기본 정보</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">기본 정보</span><span class="nps-lbl-short">기본</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-2" onclick="goPlanStep(2)">
         <span class="nps-num">2</span>
-        <span class="nps-lbl">취향 설정</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">취향 설정</span><span class="nps-lbl-short">취향</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
         <span class="nps-num">3</span>
-        <span class="nps-lbl">AI 챗봇</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">AI</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
         <span class="nps-num">4</span>
-        <span class="nps-lbl">경로 생성</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">경로 생성</span><span class="nps-lbl-short">경로</span></span>
       </button>
     </div>
   </div>

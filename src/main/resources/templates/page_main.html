@@ -610,6 +610,127 @@
 
 
 
+    /* ════════════════════════════════════════════════════════════
+     * 모바일 캐러셀 (인기 경로/맛집/숙소/관광지/카페)
+     *   - 큐레이션과 동일: 좌우 화살표(겹침) + 하단 점
+     *   - 동작: 스와이프(scroll-snap) + 화살표·점 클릭 시 해당 카드로 스크롤
+     *   - 모바일(≤768px)에서만 활성, 카드가 렌더된 뒤 자동 구성
+     * ════════════════════════════════════════════════════════════ */
+    var _mobCarouselMQ = window.matchMedia('(max-width: 768px)');
+
+    function _buildOneCarousel(grid) {
+      // 이미 구성됐거나 카드가 없으면 skip
+      if (!grid || grid.dataset.carousel === '1') return;
+      var cards = grid.children;
+      if (!cards || cards.length === 0) return;
+      // .no-data 한 장만 있는 경우는 캐러셀 불필요
+      if (cards.length === 1 && cards[0].className && cards[0].className.indexOf('no-data') !== -1) return;
+
+      grid.dataset.carousel = '1';
+
+      // 래퍼로 감싸기
+      var wrap = document.createElement('div');
+      wrap.className = 'mob-carousel-wrap';
+      grid.parentNode.insertBefore(wrap, grid);
+      wrap.appendChild(grid);
+
+      // 화살표
+      var prev = document.createElement('button');
+      prev.className = 'mob-carousel-arr prev';
+      prev.type = 'button';
+      prev.innerHTML = '&#8249;';
+      var next = document.createElement('button');
+      next.className = 'mob-carousel-arr next';
+      next.type = 'button';
+      next.innerHTML = '&#8250;';
+      wrap.appendChild(prev);
+      wrap.appendChild(next);
+
+      // 점
+      var dotsWrap = document.createElement('div');
+      dotsWrap.className = 'mob-carousel-dots';
+      var n = cards.length;
+      for (var i = 0; i < n; i++) {
+        var d = document.createElement('div');
+        d.className = 'dot' + (i === 0 ? ' on' : '');
+        (function (idx) {
+          d.addEventListener('click', function () { _scrollToCard(grid, idx); });
+        })(i);
+        dotsWrap.appendChild(d);
+      }
+      wrap.appendChild(dotsWrap);
+
+      function _currentIndex() {
+        // 가장 가까운 카드 인덱스 계산 (카드 중심과 뷰포트 중심 비교)
+        var center = grid.scrollLeft + grid.clientWidth / 2;
+        var best = 0, bestDist = Infinity;
+        for (var k = 0; k < grid.children.length; k++) {
+          var c = grid.children[k];
+          var cc = c.offsetLeft + c.offsetWidth / 2;
+          var dist = Math.abs(cc - center);
+          if (dist < bestDist) { bestDist = dist; best = k; }
+        }
+        return best;
+      }
+
+      function _sync() {
+        var idx = _currentIndex();
+        var dots = dotsWrap.children;
+        for (var k = 0; k < dots.length; k++) dots[k].classList.toggle('on', k === idx);
+        prev.disabled = (idx === 0);
+        next.disabled = (idx === grid.children.length - 1);
+      }
+
+      // 스크롤 시 점/화살표 상태 동기화 (rAF 스로틀)
+      var ticking = false;
+      grid.addEventListener('scroll', function () {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function () { _sync(); ticking = false; });
+      });
+
+      prev.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() - 1); });
+      next.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() + 1); });
+
+      _sync();
+    }
+
+    function _scrollToCard(grid, idx) {
+      if (idx < 0 || idx >= grid.children.length) return;
+      var card = grid.children[idx];
+      // 카드를 트랙 가운데로 스크롤
+      var target = card.offsetLeft - (grid.clientWidth - card.offsetWidth) / 2;
+      grid.scrollTo({ left: target, behavior: 'smooth' });
+    }
+
+    function initMobCarousels() {
+      if (!_mobCarouselMQ.matches) return;  // 모바일에서만
+      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
+      grids.forEach(function (g) { _buildOneCarousel(g); });
+    }
+
+    // 카드가 비동기로 채워지므로, 각 그리드에 자식이 들어오면 자동 구성
+    function _watchCarouselGrids() {
+      if (!_mobCarouselMQ.matches) return;
+      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
+      grids.forEach(function (g) {
+        if (g.dataset.carouselWatch === '1') return;
+        g.dataset.carouselWatch = '1';
+        var mo = new MutationObserver(function () {
+          if (g.children.length > 0) { _buildOneCarousel(g); }
+        });
+        mo.observe(g, { childList: true });
+        if (g.children.length > 0) _buildOneCarousel(g);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      // 카드 렌더 타이밍을 모두 커버: 감시 시작 + 약간의 지연 후 일괄 시도
+      _watchCarouselGrids();
+      setTimeout(initMobCarousels, 400);
+      setTimeout(initMobCarousels, 1200);
+    });
+
     document.addEventListener('DOMContentLoaded', initMainPage);
 
 

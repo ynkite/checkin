@@ -938,14 +938,18 @@ function _renderMyTrips(trips = null, page = 1) {
                 : `openMyTrip(${x.id || x.tripId})`;
 
             return `
-      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+      <div class="trip-card" onclick="${cardClickAction}"
+           style="cursor:pointer; position:relative; display:flex; align-items:center; gap:14px;
+                  padding:14px 16px; border-radius:var(--r); border:2px solid var(--border);
+                  background:var(--surface); margin-bottom:10px; transition:all .2s;">
         ${window._myTripsDeleteMode ? `
           <input type="checkbox" class="mytrip-del-chk" id="chk-mytrip-${x.id || x.tripId}" value="${x.id || x.tripId}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
         ` : ''}
-        <div class="trip-thumb">🗺️</div>
+        <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
+                    display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🗺️</div>
         <div class="trip-info" style="flex:1;">
-          <div class="trip-ttl">${x.title || '여행 플랜'}</div>
-          <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
+          <div class="trip-ttl" style="font-weight:700;font-size:14px;">${x.title || '여행 플랜'}</div>
+          <div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
         </div>
         <div class="trip-budget" style="color:var(--text3); font-size:11px; text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
             <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">최종 수정</span>
@@ -1525,11 +1529,19 @@ async function sendMsg() {
 
 // 2_1. 해외 여행지 1차 차단 (프론트) - 로딩 띄우기 전에 먼저 체크
     const overseasKeywords = ['일본','도쿄','오사카','미국','뉴욕','파리','유럽','방콕','베트남','싱가포르','홍콩','대만','중국'];
-    // 국내 브랜드/상호명에 해외 키워드가 부분 일치하는 오탐 방지 (예: "파리바게뜨" → "파리")
-    const overseasFalsePositives = ['파리바게뜨','파리바게트'];
-    let _overseasCheckTxt = txt;
-    overseasFalsePositives.forEach(fp => { _overseasCheckTxt = _overseasCheckTxt.split(fp).join(''); });
-    if (overseasKeywords.some(k => _overseasCheckTxt.includes(k))) {
+    // 음식·식당·일정 맥락이 있으면 해외 여행지가 아님 (예: "중국집", "2일차 점심", "일식당")
+    const foodCtxKeywords = ['집','식당','음식','요리','라멘','쌀국수','카레','일식','양식','중식','한식','분식','맛집','먹','점심','저녁','아침','식사','메뉴'];
+    const dayCtxKeywords  = ['일차','day','날','번째날','1일','2일','3일','첫날','마지막날'];
+    // 실제 여행 목적 표현이 있을 때만 차단 (단순 음식 표현 "중국집"은 여행 의도 없음)
+    const travelIntentKeywords = ['여행','가고싶','가자','갈게','갈거야','방문','출발','떠나고싶'];
+
+    const _m = txt.replace(/\s/g, '');
+    const _hasOverseas     = overseasKeywords.some(k => _m.includes(k));
+    const _hasTravelIntent = travelIntentKeywords.some(k => _m.includes(k));
+    const _hasFoodCtx      = foodCtxKeywords.some(k => _m.includes(k));
+    const _hasDayCtx       = dayCtxKeywords.some(k => _m.includes(k));
+
+    if (_hasOverseas && _hasTravelIntent && !_hasFoodCtx && !_hasDayCtx) {
         addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
         inp.disabled = false;
         inp.focus();
@@ -2586,8 +2598,17 @@ async function execAllReplace() {
 function showAdmin(sec, btn) {
     ['dashboard','users','reports','curation'].forEach(s => { const e=document.getElementById('ad-'+s); if(e) e.style.display='none'; });
     const t=document.getElementById('ad-'+sec); if(t) t.style.display='block';
-    btn.closest('.admin-nav').querySelectorAll('.admin-link').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
+    // btn이 null인 경우(새로고침 복원, 직접 호출 등) 안전하게 처리
+    const nav = document.querySelector('.admin-nav');
+    if (nav) nav.querySelectorAll('.admin-link').forEach(b => b.classList.remove('on'));
+    if (btn) btn.classList.add('on');
+    else if (nav) {
+        // btn이 없으면 sec 순서에 맞는 링크를 직접 찾아서 활성화
+        const order = ['dashboard','users','reports','curation'];
+        const idx = order.indexOf(sec);
+        const links = nav.querySelectorAll('.admin-link');
+        if (idx !== -1 && links[idx]) links[idx].classList.add('on');
+    }
     if(sec==='users')    loadAdminUsers();
     if(sec==='reports')  loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
     if(sec==='curation') { if(typeof loadAdminCurations==='function') loadAdminCurations(); }

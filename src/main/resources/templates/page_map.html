@@ -533,10 +533,32 @@
         // 지도가 겹쳐서 깨지는 현상 방지 껍데기 청소
         container.innerHTML = '';
 
-        // 기본 지도 기동 (제주 중심점)
+        // 기본 지도 기동 — 여행지(MAP_PINS)가 있으면 첫 핀 좌표, 없으면 한반도 중심으로 초기화
+        // (이전: 제주도 하드코딩 → 합안군 여행인데 제주도가 뜨던 버그 수정)
+        var _initLat = 36.5, _initLng = 127.8, _initLevel = 8; // 한반도 중심(기본)
+        if (MAP_PINS && MAP_PINS.length > 0 && typeof kakao !== 'undefined') {
+          // 여행지 이름으로 대략 중심을 잡기 위해 첫 장소명을 미리 검색
+          var _destKeyword = '';
+          try {
+            var _si = sessionStorage.getItem('plannerDraftState');
+            if (_si) {
+              var _sd = JSON.parse(_si);
+              _destKeyword = (_sd['s1-dest-city'] || _sd['s1-dest-prov'] || '').replace(/시\/군\/구 선택/g,'').trim();
+            }
+          } catch(e) {}
+          if (_destKeyword) {
+            var _ps0 = new kakao.maps.services.Places();
+            _ps0.keywordSearch(_destKeyword, function(data, status) {
+              if (status === kakao.maps.services.Status.OK && data && data.length) {
+                window._kakaoMap.setCenter(new kakao.maps.LatLng(parseFloat(data[0].y), parseFloat(data[0].x)));
+                window._kakaoMap.setLevel(8);
+              }
+            });
+          }
+        }
         window._kakaoMap = new kakao.maps.Map(container, {
-          center: new kakao.maps.LatLng(33.3846, 126.5535),
-          level: 10
+          center: new kakao.maps.LatLng(_initLat, _initLng),
+          level: _initLevel
         });
 
         // 보험용 리레이아웃
@@ -1557,7 +1579,7 @@
                 <button onclick="goToLedgerFromMap()"
                         style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
                              background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
-                  📝 실제 지출 입력 / 수정하기
+                  📝 실제 지출 입력 / 자세히 보기
                 </button>
               </div>
 

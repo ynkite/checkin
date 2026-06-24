@@ -13,18 +13,15 @@
 
 /* ≤768px */
 @media (max-width: 768px) {
-
     .my-layout {
         grid-template-columns: 1fr;
         gap: 16px;
     }
-
     /* 사이드바: 세로 블록으로 전환, sticky 해제 */
     .my-sidebar {
         display: block;
         position: static;
     }
-
     /* 토글 버튼 표시 */
     .my-menu-toggle {
         display: flex;
@@ -42,7 +39,6 @@
         margin-top: 12px;
         box-sizing: border-box;
     }
-
     /* 메뉴 영역: 2컬럼 그리드 */
     .my-menu-collapse {
         display: grid;
@@ -50,18 +46,15 @@
         gap: 6px;
         margin-top: 8px;
     }
-
     /* 접힌 상태 */
     .my-menu-collapse.collapsed {
         display: none;
     }
-
     /* 구분선은 전체 너비 차지 */
     .my-menu-collapse .my-menu-sep {
         grid-column: 1 / -1;
         margin-top: 4px;
     }
-
     .chip-grid4,
     .stats-grid,
     .prev-stats-row {

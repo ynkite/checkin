@@ -2,22 +2,13 @@
  * TripLinker - 반응형 스타일시트 (styles_responsive.css)
  *
  * 【파일 설명】
- * - 기존 styles_main.css / styles_place.css / styles_community.css 를
- *   "건드리지 않고" 위에 덮어쓰는(override) 방식의 반응형 전용 시트.
- * - 반드시 다른 모든 CSS 파일 "뒤(마지막)"에 로드되어야 적용됩니다.
- *   index.html <head> 의 link 태그 순서:
- *     styles_main.css → styles_place.css → styles_community.css → styles_responsive.css
- *
- * 【설계 방침】
- * - 모바일(폰) 최우선. 기본 데스크탑 디자인은 그대로 두고
- *   화면 폭이 좁아질 때만 레이아웃을 재구성한다.
- * - 브레이크포인트
- *     1024px 이하 : 태블릿 (2~3열 → 축소, 사이드바 폭 줄임)
- *     768px  이하 : 모바일 (멀티컬럼 → 1열, nav 햄버거 메뉴)
- *     480px  이하 : 소형 폰 (폰트/패딩 추가 축소)
- * - nav 는 기존 HTML/JS 수정 없이 CSS 토글(:target 대체로 체크박스 트릭 불가하므로
- *   여기서는 "스크롤 가능한 가로 nav"를 기본으로 하고, 768px 이하에서는
- *   세로 드롭다운으로 펼쳐지는 구조로 변경. JS 토글 버튼은 아래 권장사항 참고)
+ * - 전역 공통 반응형: nav, 전역 패딩, 멀티컬럼→1열, 하단 바텀 네비게이션
+ * - 페이지 전용 반응형은 분리:
+ *     홈      → styles_responsive_main.css
+ *     마이    → styles_responsive_mypage.css
+ *     지도    → styles_responsive_map.css
+ *     가계부  → styles_responsive_budget.css
+ * - index.html <head> 에서 styles_responsive.css 를 먼저, 페이지별 파일을 뒤에 로드
  * ============================================================================= */
 
 /* =============================================================================
@@ -39,6 +30,11 @@ img, video, iframe {
     max-width: 100%;
 }
 
+/* 로고: 기본(데스크탑)은 전체 로고만, 심볼 로고는 숨김 */
+.nav-logo .logo-symbol { display: none; }
+/* 스텝 라벨: 기본(데스크탑)은 전체 라벨만, 축약 라벨은 숨김 */
+.nps-lbl-short { display: none; }
+
 /* 가로로 넘치기 쉬운 표/코드 영역은 가로 스크롤 허용 */
 table {
     max-width: 100%;
@@ -46,7 +42,6 @@ table {
 
 /* =============================================================================
  * 1. 태블릿 이하 (≤1024px)
- *    - 본문 좌우 패딩을 줄이고, 넓은 사이드바를 축소
  * ========================================================================== */
 @media (max-width: 1024px) {
 
@@ -85,12 +80,10 @@ table {
 
 /* =============================================================================
  * 2. 모바일 (≤768px) — 핵심
- *    - 모든 멀티컬럼 레이아웃을 1열로
- *    - nav 를 세로 드롭다운형으로 전환
  * ========================================================================== */
 @media (max-width: 768px) {
 
-    /* ---------- 2-1. NAV : 세로 메뉴 / 햄버거 토글 ---------- */
+    /* ---------- 2-1. NAV ---------- */
     nav {
         flex-wrap: wrap;
         padding: 10px 14px;
@@ -98,7 +91,7 @@ table {
         align-items: center;
     }
 
-    /* 로고는 항상 보이고, 햄버거 버튼을 위해 좌측 정렬 */
+    /* 로고는 항상 보이고 좌측 정렬 */
     .nav-logo {
         flex: 0 0 auto;
         margin-right: auto;
@@ -177,6 +170,31 @@ table {
     body:has(#navPlannerSteps[style*="flex"]) .nps-btn { font-size: 11px; padding: 3px 5px; gap: 3px; }
     body:has(#navPlannerSteps[style*="flex"]) .nps-num  { width: 14px; height: 14px; font-size: 8px; }
 
+    /* ── 플래너 진입 시 nav 한 줄 만들기 ── */
+    /* 1) 로고: 전체 로고 숨기고 비행기 심볼만 표시 (가로 공간 확보) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-full { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-symbol {
+        display: block;
+        height: 30px;
+    }
+    /* 2) 스텝 라벨: 전체 라벨 숨기고 축약 라벨("기본/취향/AI/경로") 표시 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-full  { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-short { display: inline; }
+    /* 3) 칩이 줄바꿈되지 않도록 + 더 압축 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-btn {
+        white-space: nowrap;
+        flex: 0 0 auto;
+        padding: 3px 6px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl { white-space: nowrap; font-size: 11px; }
+    /* 4) 화살표 간격 축소 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
+    /* 5) 스텝 영역은 가로 스크롤 없이 내용에 맞게 (줄바꿈만 방지) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
+        overflow-x: visible;
+        flex-wrap: nowrap;
+    }
+
     .nav-btns .btn-o,
     .nav-btns .btn-f {
         flex: 0 0 auto;
@@ -184,6 +202,13 @@ table {
         padding: 6px 10px;
         font-size: 12px;
     }
+
+    /* 플래너 진입 시 로그아웃·알림 압축 (한 줄 확보) */
+    body:has(#navPlannerSteps[style*="flex"]) #navLogoutBtn {
+        font-size: 11px;
+        padding: 5px 8px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) #navBellBtn { font-size: 19px; }
 
     /* 알림 팝업이 화면을 넘지 않도록 */
     #notifPopup {
@@ -238,6 +263,7 @@ table {
 
     /* ---------- 2-4. 관리자 사이드바 → 상단 가로 스택 ---------- */
     .admin-layout > :first-child {
+        /* 사이드 메뉴를 가로 스크롤 탭처럼 */
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
@@ -251,13 +277,10 @@ table {
     }
 
     /* ---------- 2-7. 가계부 요약/내역 ---------- */
-    /* 인라인 style 로 3열 grid 가 박혀있는 요약카드 영역 보정 */
     #ledger-main [style*="grid-template-columns:1fr 1fr 1fr"],
     #ledger-main [style*="grid-template-columns: 1fr 1fr 1fr"] {
         grid-template-columns: 1fr !important;
     }
-
-    /* 가계부 지출 추가 폼: 가로 정렬 → 세로 */
     .ledger-add {
         flex-direction: column;
         align-items: stretch;
@@ -265,8 +288,6 @@ table {
     .ledger-add > * {
         width: 100% !important;
     }
-
-    /* PDF/Excel 내보내기 버튼 줄바꿈 */
     .ledger-header-export {
         flex-wrap: wrap;
     }
@@ -277,8 +298,6 @@ table {
         width: 90vw !important;
         max-width: 340px;
     }
-
-    /* 일반적인 고정폭 모달 보정 */
     [style*="width:580px"],
     [style*="width: 580px"],
     [style*="width:500px"],
@@ -298,7 +317,6 @@ table {
 
 /* =============================================================================
  * 3. 소형 폰 (≤480px)
- *    - 폰트/패딩 추가 축소, 일부 2열 → 1열
  * ========================================================================== */
 @media (max-width: 480px) {
 
@@ -318,7 +336,6 @@ table {
     /* hsc-cards / top3-grid / popular-grid → styles_responsive_main.css */
     /* stats-grid / prev-stats-row / chip-grid4 → styles_responsive_mypage.css */
 
-    /* 버튼 간격/폰트 축소 */
     .btn-o,
     .btn-f {
         font-size: 12px;
@@ -329,7 +346,6 @@ table {
         height: 38px;
     }
 
-    /* 가계부 지출 내역 테이블 폰트 축소 */
     #ledger-act-table {
         font-size: 12px;
     }
@@ -377,7 +393,6 @@ table {
         background: var(--surface);
         border-top: 1px solid var(--border2);
         box-shadow: 0 -2px 12px rgba(0,0,0,.08);
-        /* 노치(홈 인디케이터) 대응 */
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -424,14 +439,12 @@ table {
         transform: translateY(-1px);
     }
 
-    /* --- 6-6. 본문이 bottom nav 뒤에 가리지 않도록 하단 여백 추가 --- */
+    /* --- 6-6. 본문이 bottom nav 뒤에 가리지 않도록 하단 여백 --- */
     .page {
         padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     }
 
-    /* --- 6-7. B안: 비로그인 시 마이페이지 탭 → 로그인 아이콘으로 변경 ---
-     *  navUserNameBtn 이 display:none(비로그인) 이면 🔑 로그인으로 표시
-     * ------------------------------------------------------------------ */
+    /* --- 6-7. 비로그인 시 마이페이지 탭 → 로그인 아이콘 --- */
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { font-size: 0; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "🔑"; font-size: 20px; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
