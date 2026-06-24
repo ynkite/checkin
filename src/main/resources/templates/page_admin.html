@@ -155,7 +155,7 @@
       if(navEl){
         const logoEl=navEl.querySelector('.admin-logo');
         navEl.innerHTML=(logoEl?logoEl.outerHTML:'<div class="admin-logo">⚙️ Admin</div>')+
-                ADMIN_MENUS.map(m=>`<button class="admin-link${m.default?' on':''}" onclick="goAdminRefresh('${m.sec}')">${m.icon} ${m.label}</button>`).join('')+
+                ADMIN_MENUS.map(m=>`<button class="admin-link${m.default?' on':''}" onclick="showAdmin('${m.sec}',this)">${m.icon} ${m.label}</button>`).join('')+
                 `<div style="margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding-top:10px"><button class="admin-link" onclick="go('main')">← 메인으로</button></div>`;
       }
 
@@ -213,6 +213,11 @@
         const t=document.getElementById('ad-'+sec); if(t) t.style.display='block';
         document.querySelector('.admin-nav').querySelectorAll('.admin-link').forEach(b=>b.classList.remove('on'));
         if(btn) btn.classList.add('on');
+        if(sec==='dashboard'){
+          // 대시보드로 (재)진입할 때마다 통계·도넛·인기글·차트를 다시 그린다.
+          if(typeof renderDynamicMockData==='function') renderDynamicMockData();
+          else if(typeof loadAdminStatistics==='function') loadAdminStatistics();
+        }
         if(sec==='users')    loadAdminUsers();
         if(sec==='reports')  loadAdminReports('PENDING');
         if(sec==='curation') loadAdminCurations();

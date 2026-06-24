@@ -37,17 +37,7 @@
     let MAP_ITINERARY = [];
     let MAP_PINS = [];
     let DAY_ROUTES = [];
-    // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
-    //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
-    function _haversineKm(lat1, lng1, lat2, lng2) {
-      var R = 6371;
-      var dLat = (lat2 - lat1) * (Math.PI / 180);
-      var dLng = (lng2 - lng1) * (Math.PI / 180);
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
+
     // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
     const MAP_BUDGET_ITEMS = [
       { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000', color: 'var(--sage)',  barPct: 78 },
@@ -383,39 +373,36 @@
           remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : '#FECACA';
           remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
         }
-        window._rerenderMapList = function() {
-          var listEl = document.getElementById('mapDayList');
-          if (!listEl) return;
-          listEl.innerHTML = (MAP_ITINERARY || []).map(day => `
-  <div class="day-section" data-day="${day.day}">
-    <div class="ds-hd">
-      <span class="ds-label">${day.label || `📅 Day ${day.day}`}</span>
-      <div class="ds-budget"><span>${day.budget || ''}</span></div>
-    </div>
-    ${day.places ? day.places.map(p => p.transit ? `<div class="transit-map-row">${p.transit}</div>` : `
-      <div class="place-row" data-key="${p.key}">
-        <div class="pr-drag">⋮⋮</div>
-        <div class="pr-icon pr-${p.type}">${p.icon || '📍'}</div>
-        <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
-          <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
-          <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
-          <div class="pr-stars" style="color:#F5A623; font-size:11px; margin-top:4px; font-weight:600;">${p.stars || ''}</div>
+
+        // 원본 마크업 구조 100% 동일하게 동적 주입 (불필요한 팝업 제거)
+        listEl.innerHTML = routeData.map(day => `
+      <div class="day-section" data-day="${day.day}">
+        <div class="ds-hd">
+          <span class="ds-label">${day.label || `📅 Day ${day.day}`}</span>
+          <div class="ds-budget"><span>${day.budget || ''}</span></div>
         </div>
-        <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time || ''}</div>
-        <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
+        ${day.places ? day.places.map(p => p.transit ? `<div class="transit-map-row">${p.transit}</div>` : `
+          <div class="place-row" data-key="${p.key}">
+            <div class="pr-drag">⋮⋮</div>
+            <div class="pr-icon pr-${p.type}">${p.icon || '📍'}</div>
+            <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
+              <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
+              <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
+              <div class="pr-stars" style="color:#F5A623; font-size:11px; margin-top:4px; font-weight:600;">${p.stars || ''}</div>
+            </div>
+            <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time || ''}</div>
+            <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
+          </div>
+          <div class="replace-area" id="ri-${p.key}" style="display:none;">
+            <div class="replace-label">AI에게 교체 요구사항 입력</div>
+            <div class="replace-row">
+              <input class="replace-inp" id="rt-${p.key}" type="text" placeholder="${p.replacePh || '교체 요구사항 입력'}">
+              <button class="btn-queue-add" onclick="addQueue('${p.key}')">등록</button>
+            </div>
+          </div>
+        `).join('') : ''}
       </div>
-      <div class="replace-area" id="ri-${p.key}" style="display:none;">
-        <div class="replace-label">AI에게 교체 요구사항 입력</div>
-        <div class="replace-row">
-          <input class="replace-inp" id="rt-${p.key}" type="text" placeholder="${p.replacePh || '교체 요구사항 입력'}">
-          <button class="btn-queue-add" onclick="addQueue('${p.key}')">등록</button>
-        </div>
-      </div>
-    `).join('') : ''}
-  </div>
-`).join('');
-        };
-        window._rerenderMapList();
+    `).join('');
 
         MAP_PINS = [];
         DAY_ROUTES = [];
@@ -598,6 +585,18 @@
           return;
         }
 
+        // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
+        //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
+        function _haversineKm(lat1, lng1, lat2, lng2) {
+          var R = 6371;
+          var dLat = (lat2 - lat1) * (Math.PI / 180);
+          var dLng = (lng2 - lng1) * (Math.PI / 180);
+          var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
         // 검색 성공(반경 내) 시 마커 렌더링 — 기존 로직 그대로
         function _onResolved(pin, place) {
           var realLat = parseFloat(place.y);
@@ -607,7 +606,7 @@
           pin.placeUrl = place.place_url;
           pin.category = place.category_name ? place.category_name.split(' > ').pop() : null;
 
-          var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
+          var content = '<div onclick="highlightItineraryPlace(\'' + String(pin.key).replace(/'/g, "\\'") + '\')" '
                   + 'style="cursor:pointer; position:relative; width:0; height:0;">'
                   + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
                   + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
@@ -656,30 +655,14 @@
             if (qToggle) qToggle.style.display = 'none';
           }
 
-          // 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
-          //   bounds·폴리라인이 0px 기준으로 계산되어 안 보이는 사고가 있었다.
-          //   relayout 후 한 박자 늦춰 setBounds·폴리라인을 적용하면 첫 진입에도 정상 동작한다.
-          var _applyBoundsAndLines = function() {
-            if (window._kakaoMap) window._kakaoMap.relayout();
-            if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
-              window._kakaoMap.setBounds(bounds);
-            }
-            _optimizeAllRoutes();
+          if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
+            window._kakaoMap.setBounds(bounds);
+          }
+
+          setTimeout(function() {
             drawLivePolylines();
             checkActualWeatherAlert(window._currentTripId);
-          };
-          var _tries = 0;
-          var _waitContainer = function() {
-            var c = document.getElementById('kakaoMap');
-            if (c && c.clientWidth > 0 && c.clientHeight > 0) {
-              _applyBoundsAndLines();
-            } else if (_tries++ < 10) {
-              setTimeout(_waitContainer, 100);
-            } else {
-              _applyBoundsAndLines(); // 끝내 0이어도 한 번은 시도
-            }
-          };
-          setTimeout(_waitContainer, 100);
+          }, 100);
         }
 
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
@@ -807,106 +790,9 @@
         console.warn('[WeatherAlert] 실시간 날씨 데이터 바인딩 실패:', err);
       }
     }
-    // 전체 일정을 한 번에 최적화한다.
-    // - 같은 숙소(stay)는 전 일정 공유 / 그 외 장소는 전 일정에서 1회만 사용(cross-day 중복 제거)
-    // - 각 Day: (첫날 제외)숙소에서 출발 → 최근접 이웃 → 숙소 복귀
-    function _optimizeAllRoutes() {
-      var pinByKey = {};
-      MAP_PINS.forEach(function(p){ if(p.lat&&p.lng) pinByKey[p.key]=p; });
 
-      // 1) 전 일정 공용 숙소 1곳 확정(처음 등장한 stay)
-      var stayPin = null;
-      for (var d=0; d<DAY_ROUTES.length && !stayPin; d++) {
-        DAY_ROUTES[d].keys.forEach(function(k){
-          var p=pinByKey[k]; if(p && p.type==='stay' && !stayPin) stayPin=p;
-        });
-      }
-
-      var usedCoord = {}; // 전 일정 좌표 중복 추적(숙소 제외)
-
-      DAY_ROUTES.forEach(function(route, idx){
-        var pts = route.keys.map(function(k){return pinByKey[k];})
-                .filter(function(p){return p && p.lat && p.lng;});
-        // 비숙소만 추리고 cross-day 좌표 중복 제거
-        var rest = [];
-        pts.forEach(function(p){
-          if (p.type==='stay') return; // 숙소는 따로 처리
-          var id = p.lat.toFixed(5)+','+p.lng.toFixed(5);
-          if (usedCoord[id]) return;    // 이미 다른 날 사용 → 제외
-          usedCoord[id]=true; rest.push(p);
-        });
-
-        // 최근접 이웃 (첫날 제외 시 숙소에서 출발)
-        var ordered=[];
-        var startRef = (idx>0 && stayPin) ? stayPin : (rest[0]||null);
-        var pool = rest.slice();
-        if (idx===0 && pool.length) { ordered.push(pool.shift()); startRef=ordered[0]; }
-        var cur = startRef;
-        while (pool.length && cur) {
-          var bi=0,bd=Infinity;
-          for (var i=0;i<pool.length;i++){
-            var dist=_haversineKm(cur.lat,cur.lng,pool[i].lat,pool[i].lng);
-            if(dist<bd){bd=dist;bi=i;}
-          }
-          cur=pool.splice(bi,1)[0]; ordered.push(cur);
-        }
-
-        // 키 재구성: (첫날 제외)숙소 출발 + 코스 + 숙소 복귀
-        var newKeys=[];
-        if (idx>0 && stayPin) newKeys.push(stayPin.key);          // 숙소 출발
-        ordered.forEach(function(p){ newKeys.push(p.key); });
-        if (stayPin && idx < DAY_ROUTES.length) newKeys.push(stayPin.key); // 숙소 복귀
-        route.keys = newKeys;
-      });
-      // ★ 리스트(MAP_ITINERARY)도 동일 순서로 재구성 + transit 사이 채우기
-      DAY_ROUTES.forEach(function(route, idx){
-        var day = (MAP_ITINERARY || []).find(function(d){ return d.day === route.day; });
-        if (!day || !day.places) return;
-        // key→place(원본) 맵 (transit 제외)
-        var byKey = {};
-        day.places.forEach(function(p){ if(!p.transit && p.key) byKey[p.key] = p; });
-        // 전 일정 공용 숙소를 이 Day에도 사용할 수 있도록 보강 (출발·복귀용)
-        if (stayPin) {
-          var stayPlace = null;
-          (MAP_ITINERARY || []).some(function(dd){
-            return (dd.places || []).some(function(p){
-              if (!p.transit && p.key === stayPin.key) { stayPlace = p; return true; }
-              return false;
-            });
-          });
-          if (stayPlace) byKey[stayPin.key] = stayPlace;
-        }
-        // 원본 transit들(이동수단 표기 재사용용) 모아두기
-        var transits = day.places.filter(function(p){ return p.transit; });
-        // route.keys 순서대로 place 재배열, 사이사이 transit 끼우기
-        var newPlaces = [];
-        route.keys.forEach(function(k, i){
-          var pl = byKey[k];
-          if (!pl) return;
-          if (newPlaces.length > 0) {
-            var t = transits.shift() || day.places.find(function(p){return p.transit;});
-            if (t) newPlaces.push({ transit: t.transit });
-          }
-          newPlaces.push(pl);
-        });
-        day.places = newPlaces;
-      });
-
-// 리스트 DOM 다시 그리기
-      if (typeof window._rerenderMapList === 'function') window._rerenderMapList();
-      // 둘째 날부터 숙소 핀을 그 Day에도 복제 등록 (리스트·지도에 숙소 줄이 보이도록)
-      DAY_ROUTES.forEach(function(route, idx){
-        if (idx === 0 || !stayPin) return;
-        var exists = MAP_PINS.some(function(p){ return p.key===stayPin.key && p.day===route.day; });
-        if (!exists) {
-          MAP_PINS.push(Object.assign({}, stayPin, { day: route.day }));
-        }
-      });
-    }
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
     function drawLivePolylines() {
-      if (!window._kakaoMap) return;
-      if (!window._kakaoPolylines) window._kakaoPolylines = [];
       var pinByKey = {};
       MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
 
