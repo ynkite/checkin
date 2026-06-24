@@ -246,8 +246,7 @@
       body: JSON.stringify(requestData),
     }).then(async response => {
       if (response.ok) {
-        toast(AUTH_VALID_MSG.signupSuccess);
-        setTimeout(() => go('login'), 1000);
+        document.getElementById('signupSuccessModal').style.display = 'flex';
       } else {
         const errData = await response.json().catch(() => null);
         const msg = errData?.errors?.[0]?.defaultMessage
@@ -567,7 +566,7 @@
      비밀번호 재설정 모달
 ══════════════════════════════════════════════════ -->
 <style>
-  #pw-reset-modal {
+  #pw-reset-modal, #signupSuccessModal {
     display: none;
     position: fixed;
     inset: 0;
@@ -717,6 +716,16 @@
     </div>
   </div>
 </div>
+
+  <div id="signupSuccessModal">
+    <div class="pr-card" style="text-align: center; padding: 36px 24px 28px;">
+      <div class="pr-title" style="font-size: 20px; margin-bottom: 8px;">회원가입 완료!</div>
+      <p class="pr-sub" style="margin-bottom: 24px; line-height: 1.5;">
+        TripLinker 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
+      </p>
+      <button class="pr-btn" style="margin-top: 0;" onclick="document.getElementById('signupSuccessModal').style.display='none'; go('login');">확인</button>
+    </div>
+  </div>
 
 <script>
   // prShowStep 오버라이드 → 스텝 인디케이터 동기화
