@@ -3517,12 +3517,14 @@ window.addEventListener('popstate', e => {
  * 26. 초기화
  * ─────────────────────────────────────────────── */
 (async () => {
-    // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
-    _handleOAuthCallback();
+
 
     // ✨ 공유 링크 접속 시 URL에서 token(난수) 추출 후 원본 id 복원 및 읽기 전용 UI 처리
     const params = new URLSearchParams(location.search);
     const shareToken = params.get('token'); // 🎯 token 난수 파라미터 읽기
+
+    // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
+    _handleOAuthCallback();
     const token = Token.getAccess();
 
     // 난수 토큰이 존재하면 역으로 디코딩하여 원본 숫자로 복원

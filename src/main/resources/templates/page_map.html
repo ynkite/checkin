@@ -138,7 +138,8 @@
       let parsedTripId = null;
       if (shareToken) {
         try {
-          z
+          const parsedHex = parseInt(shareToken, 16);
+          parsedTripId = (parsedHex ^ 0x5A3C9B7D2E).toString();
         } catch (e) {
           console.error("유효하지 않은 토큰 포맷입니다.");
         }
