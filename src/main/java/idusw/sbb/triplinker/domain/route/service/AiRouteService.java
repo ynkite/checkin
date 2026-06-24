@@ -201,14 +201,15 @@ public class AiRouteService {
 
         String aiRouteJson = "[]";
         try {
-            System.out.println("🔄 Groq 일정 생성 기동 중...");
+//            System.out.println("🔄 Groq 일정 생성 기동 중...");
+            System.out.println("🔄 Claude 일정 생성 기동 중...");
             // 메인 Groq API 호출 시도
 //            aiRouteJson = primaryClient.prompt().user(prompt).call().content();
             // 메인을 클로드로 변경
             aiRouteJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
 //            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
-            System.out.println("⚠️ claude 호출 실패, Groq 기동 시작: " + e.getMessage());
+            System.out.println("⚠️ Claude 호출 실패, Groq 기동 시작: " + e.getMessage());
             try {
                 // 실패 시 제미나이 작동
 //                aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
