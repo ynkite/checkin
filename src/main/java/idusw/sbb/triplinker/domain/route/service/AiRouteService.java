@@ -203,12 +203,17 @@ public class AiRouteService {
         try {
             System.out.println("🔄 Groq 일정 생성 기동 중...");
             // 메인 Groq API 호출 시도
-            aiRouteJson = primaryClient.prompt().user(prompt).call().content();
+//            aiRouteJson = primaryClient.prompt().user(prompt).call().content();
+            // 메인을 클로드로 변경
+            aiRouteJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+//            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+            System.out.println("⚠️ claude 호출 실패, Groq 기동 시작: " + e.getMessage());
             try {
                 // 실패 시 제미나이 작동
-                aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
+//                aiRouteJson = fallbackClient.prompt().user(prompt).call().content();
+                // 실패 시 그록 작동
+                aiRouteJson = primaryClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
                 // 둘 다 터졌을 때 방어용 더미 데이터 반환
                 System.out.println("🚨 모든 LLM이 터져 방어용 데이터를 리턴합니다.");
@@ -283,8 +288,9 @@ public class AiRouteService {
         // ===== // 클로드 API 사용할 때 =====
         //   ▶ Claude를 끄고 Groq 결과를 그대로 쓰려면(=기존 방식 유지) 아래 한 줄을
         //     주석 처리하면 된다. 그러면 곧바로 'return groqResultJson;' 으로 떨어진다.
-        String finalRouteJson = validateAndFixWithClaude(plan, form, groqResultJson);
-        return finalRouteJson;
+        // String finalRouteJson = validateAndFixWithClaude(plan, form, groqResultJson);
+        // return finalRouteJson;
+        return groqResultJson;   // 실제로는 위의 Claude 1차 결과
         // ===== // 클로드 API 사용할 때 끝 =====
 
         // ===== // 기존 API(그록 재미나이)사용할 때 =====
@@ -726,12 +732,17 @@ public class AiRouteService {
         try {
             System.out.println("☔ 우천 대비 실내 일정 교체 (Day " + targetDay + ") 기동 중...");
             // 메인 Groq API 호출 시도
-            updatedJson = primaryClient.prompt().user(prompt).call().content();
+//            updatedJson = primaryClient.prompt().user(prompt).call().content();
+            // 메인 클로드 API 호출 시도
+            updatedJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+//            System.out.println("⚠️ Groq 호출 실패, 제미나이(Gemini) 기동 시작: " + e.getMessage());
+            System.out.println("⚠️ claude 호출 실패, Groq 기동 시작: " + e.getMessage());
             try {
                 // 실패 시 제미나이 작동
-                updatedJson = fallbackClient.prompt().user(prompt).call().content();
+//                updatedJson = fallbackClient.prompt().user(prompt).call().content();
+                // 실패 시 그록 작동
+                updatedJson = primaryClient.prompt().user(prompt).call().content();
             } catch (Exception ex) {
                 // 둘 다 터졌을 때 방어용 더미 데이터 반환
                 System.out.println("🚨 모델 전체 셧다운. 부분 교체를 취소하고 원본을 반환합니다.");
