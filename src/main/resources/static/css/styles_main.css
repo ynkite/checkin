@@ -4715,21 +4715,23 @@ nav {
     overflow: hidden;
 }
 
+/* 슬라이드 전환: 모션(페이드·슬라이드) 제거 → 잔상 없이 즉시 전환 */
 .curation-panel .slide {
-    display: flex !important; /* 기존 display:none 강제 해제 */
+    display: none !important;
     position: absolute !important;
     top: 0; left: 0; right: 0; bottom: 0;
-    opacity: 0;
-    visibility: hidden;
-    transform: translateX(30px); /* 오른쪽 30px 위치에서 대기 */
-    transition: opacity 0.5s ease-out, transform 0.5s ease-out, visibility 0.5s; /* 0.5초 동안 부드럽게 */
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition: none;
     z-index: 0;
 }
 
 .curation-panel .slide.on {
-    position: absolute !important; /* 패널 높이를 꽉 채우도록 inset:0 유지 */
+    display: flex !important;
+    position: absolute !important;
     opacity: 1;
     visibility: visible;
-    transform: translateX(0); /* 원래 자리로 스르륵 안착 */
+    transform: none;
     z-index: 1;
 }

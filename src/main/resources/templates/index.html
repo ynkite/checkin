@@ -10,6 +10,10 @@
   <link rel="stylesheet" th:href="@{/css/styles_place.css}">
   <link rel="stylesheet" th:href="@{/css/styles_community.css}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css}">
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=86e39dda6b2928c50783086448d212b8&autoload=false&libraries=services"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -20,7 +24,8 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
-    <img th:src="@{/img/logo1.png}" alt="TripLinker" class="logo-img" />
+    <img th:src="@{/img/logo.png}" alt="TripLinker" class="logo-img logo-full" />
+    <img th:src="@{/img/logo2.png}" alt="TripLinker" class="logo-img logo-symbol" />
   </div>
   <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')">☰</button>
   <div class="nav-links">
@@ -31,22 +36,22 @@
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
         <span class="nps-num">1</span>
-        <span class="nps-lbl">기본 정보</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">기본 정보</span><span class="nps-lbl-short">기본</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-2" onclick="goPlanStep(2)">
         <span class="nps-num">2</span>
-        <span class="nps-lbl">취향 설정</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">취향 설정</span><span class="nps-lbl-short">취향</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
         <span class="nps-num">3</span>
-        <span class="nps-lbl">AI 챗봇</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">AI</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
         <span class="nps-num">4</span>
-        <span class="nps-lbl">경로 생성</span>
+        <span class="nps-lbl"><span class="nps-lbl-full">경로 생성</span><span class="nps-lbl-short">경로</span></span>
       </button>
     </div>
   </div>
@@ -167,6 +172,28 @@
     });
   }());
 </script>
+
+<!-- ===== BOTTOM NAV (모바일 전용) — 제거 시 이 블록과 styles_responsive.css 6번 섹션 삭제 ===== -->
+<div id="bottomNav" class="bnav" role="navigation">
+  <div class="bnav-bar">
+    <button class="bnav-item" data-page="main"      onclick="goHomeRefresh()">
+      <span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span>
+    </button>
+    <button class="bnav-item" data-page="community" onclick="goRefresh('community')">
+      <span class="bnav-icon">👥</span><span class="bnav-lbl">커뮤니티</span>
+    </button>
+    <button class="bnav-item" data-page="weather"   onclick="go('weather')">
+      <span class="bnav-icon">🌤️</span><span class="bnav-lbl">날씨</span>
+    </button>
+    <button class="bnav-item" data-page="planner"   onclick="navPlannerClick()">
+      <span class="bnav-icon">✈️</span><span class="bnav-lbl">플랜</span>
+    </button>
+    <button class="bnav-item" data-page="mypage"    onclick="go(_loggedIn?'mypage':'login')">
+      <span class="bnav-icon">👤</span><span class="bnav-lbl">마이페이지</span>
+    </button>
+  </div>
+</div>
+<!-- ===== /BOTTOM NAV ===== -->
 
 </body>
 </html>

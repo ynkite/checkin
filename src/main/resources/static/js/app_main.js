@@ -938,14 +938,18 @@ function _renderMyTrips(trips = null, page = 1) {
                 : `openMyTrip(${x.id || x.tripId})`;
 
             return `
-      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+      <div class="trip-card" onclick="${cardClickAction}"
+           style="cursor:pointer; position:relative; display:flex; align-items:center; gap:14px;
+                  padding:14px 16px; border-radius:var(--r); border:2px solid var(--border);
+                  background:var(--surface); margin-bottom:10px; transition:all .2s;">
         ${window._myTripsDeleteMode ? `
           <input type="checkbox" class="mytrip-del-chk" id="chk-mytrip-${x.id || x.tripId}" value="${x.id || x.tripId}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
         ` : ''}
-        <div class="trip-thumb">🗺️</div>
+        <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
+                    display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🗺️</div>
         <div class="trip-info" style="flex:1;">
-          <div class="trip-ttl">${x.title || '여행 플랜'}</div>
-          <div class="trip-meta">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
+          <div class="trip-ttl" style="font-weight:700;font-size:14px;">${x.title || '여행 플랜'}</div>
+          <div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
         </div>
         <div class="trip-budget" style="color:var(--text3); font-size:11px; text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
             <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">최종 수정</span>

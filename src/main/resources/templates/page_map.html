@@ -121,16 +121,6 @@
 
     // ── DOM 렌더링 ──
     async function initMapPage() {
-      // 모바일(≤768px)에서만 지도 패널 초기 숨김 — 데스크탑에서는 mob-hidden 제거
-      var _right = document.getElementById('mapRightArea');
-      if (_right) {
-        if (window.innerWidth <= 768) {
-          _right.classList.add('mob-hidden');    // 모바일: 일정 탭 먼저 보임
-        } else {
-          _right.classList.remove('mob-hidden'); // 데스크탑: 지도 항상 표시
-        }
-      }
-
       var routeData = null;
 
       const params = new URLSearchParams(location.search);
@@ -1544,7 +1534,7 @@
         </div>
       </div>
       <!-- MAP RIGHT -->
-      <div class="map-right" id="mapRightArea">
+      <div class="map-right mob-hidden" id="mapRightArea">
         <!-- Map view -->
         <div id="mapView" style="position:absolute;inset:0">
           <div id="kakaoMap" style="width:100%;height:100%"></div>
@@ -1589,7 +1579,7 @@
                 <button onclick="goToLedgerFromMap()"
                         style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
                              background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
-                  📝 실제 지출 입력 / 수정하기
+                  📝 실제 지출 입력 / 자세히 보기
                 </button>
               </div>
 

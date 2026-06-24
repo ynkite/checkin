@@ -2,27 +2,22 @@
  * TripLinker - 반응형 스타일시트 (styles_responsive.css)
  *
  * 【파일 설명】
- * - 기존 styles_main.css / styles_place.css / styles_community.css 를
- *   "건드리지 않고" 위에 덮어쓰는(override) 방식의 반응형 전용 시트.
- * - 반드시 다른 모든 CSS 파일 "뒤(마지막)"에 로드되어야 적용됩니다.
- *   index.html <head> 의 link 태그 순서:
- *     styles_main.css → styles_place.css → styles_community.css → styles_responsive.css
- *
- * 【설계 방침】
- * - 모바일(폰) 최우선. 기본 데스크탑 디자인은 그대로 두고
- *   화면 폭이 좁아질 때만 레이아웃을 재구성한다.
- * - 브레이크포인트
- *     1024px 이하 : 태블릿 (2~3열 → 축소, 사이드바 폭 줄임)
- *     768px  이하 : 모바일 (멀티컬럼 → 1열, nav 햄버거 메뉴)
- *     480px  이하 : 소형 폰 (폰트/패딩 추가 축소)
- * - nav 는 기존 HTML/JS 수정 없이 CSS 토글(:target 대체로 체크박스 트릭 불가하므로
- *   여기서는 "스크롤 가능한 가로 nav"를 기본으로 하고, 768px 이하에서는
- *   세로 드롭다운으로 펼쳐지는 구조로 변경. JS 토글 버튼은 아래 권장사항 참고)
+ * - 전역 공통 반응형: nav, 전역 패딩, 멀티컬럼→1열, 하단 바텀 네비게이션
+ * - 페이지 전용 반응형은 분리:
+ *     홈      → styles_responsive_main.css
+ *     마이    → styles_responsive_mypage.css
+ *     지도    → styles_responsive_map.css
+ *     가계부  → styles_responsive_budget.css
+ * - index.html <head> 에서 styles_responsive.css 를 먼저, 페이지별 파일을 뒤에 로드
  * ============================================================================= */
 
 /* =============================================================================
  * 0. 전역 보정
  * ========================================================================== */
+
+/* nav 실제 높이를 JS가 측정해서 덮어씀 (기본값 72px) */
+:root { --nav-h: 72px; }
+
 html, body {
     max-width: 100%;
 }
@@ -30,44 +25,15 @@ body {
     overflow-x: hidden;
 }
 
-/* 주의: 카카오 지도는 폴리라인(경로 선)을 지도 영역보다 큰 내부 레이어에
- *       절대위치로 얹어 그린다. 조상 요소에 overflow:hidden 이 걸리면 이 레이어가
- *       잘려 경로 선이 화면에서 사라진다(마커는 뷰포트 안쪽이라 살아남음).
- *       따라서 지도 컨테이너와 그 조상에서는 overflow 클리핑을 해제한다. */
-#page-map,
-#page-map .map-wrap,
-#page-map #mapView,
-#prevKakaoMap {
-    overflow: visible !important;
-}
-
-/* ★중요★ 모바일 전용 탭 바(.map-mobile-tabs)는 데스크탑에서 숨긴다.
- * 숨기지 않으면 .map-wrap(grid 2칸: 310px 1fr) 안의 자식이 3개
- * (.map-mobile-tabs / .map-left / .map-right)가 되어, 세 번째 자식인
- * .map-right(지도)가 다음 줄로 밀려 화면 밖으로 나가 지도가 보이지 않는다. */
-.map-mobile-tabs { display: none; }
-
 /* 이미지/미디어가 부모를 넘지 않도록 */
-/* 주의: canvas, svg 는 카카오 지도가 폴리라인(경로 선)을 그리는 데 사용하므로
- *       전역 max-width 제약에서 제외한다. 포함시키면 지도 위 경로 선이
- *       클리핑되어 화면에서 사라진다. */
 img, video, iframe {
     max-width: 100%;
 }
 
-/* 지도 컨테이너 내부의 svg/canvas/img 는 어떤 크기 제약도 받지 않도록 해제 */
-#page-map img,
-#page-map svg,
-#page-map canvas,
-.map-wrap img,
-.map-wrap svg,
-.map-wrap canvas,
-#prevKakaoMap img,
-#prevKakaoMap svg,
-#prevKakaoMap canvas {
-    max-width: none !important;
-    max-height: none !important;
-}
+/* 로고: 기본(데스크탑)은 전체 로고만, 심볼 로고는 숨김 */
+.nav-logo .logo-symbol { display: none; }
+/* 스텝 라벨: 기본(데스크탑)은 전체 라벨만, 축약 라벨은 숨김 */
+.nps-lbl-short { display: none; }
 
 /* 가로로 넘치기 쉬운 표/코드 영역은 가로 스크롤 허용 */
 table {
@@ -76,32 +42,16 @@ table {
 
 /* =============================================================================
  * 1. 태블릿 이하 (≤1024px)
- *    - 본문 좌우 패딩을 줄이고, 넓은 사이드바를 축소
  * ========================================================================== */
 @media (max-width: 1024px) {
 
     /* 본문 컨테이너 좌우 여백 축소 */
-    .sec,
-    .hero {
+    .sec {
         padding-left: 28px;
         padding-right: 28px;
     }
 
-    /* 메인 히어로: 사이드 검색카드 폭 축소 */
-    .hero {
-        grid-template-columns: 1fr 320px;
-        gap: 24px;
-    }
-
-    /* 5열 통계 → 3열 */
-    .stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-
-    /* 마이페이지/관리자 사이드바 폭 축소 */
-    .my-layout {
-        grid-template-columns: 180px 1fr;
-    }
+    /* 관리자 사이드바 폭 축소 */
     .admin-layout {
         grid-template-columns: 170px 1fr;
     }
@@ -114,10 +64,7 @@ table {
         grid-template-columns: 1fr 220px;
     }
 
-    /* 지도 좌측 패널 폭 축소 */
-    .map-wrap {
-        grid-template-columns: 260px 1fr;
-    }
+    /* hero / stats-grid / my-layout / map-wrap → 각 page 반응형 파일로 이동 */
 
     /* nav 메뉴가 넘칠 경우 가로 스크롤 허용 */
     .nav-links {
@@ -133,12 +80,10 @@ table {
 
 /* =============================================================================
  * 2. 모바일 (≤768px) — 핵심
- *    - 모든 멀티컬럼 레이아웃을 1열로
- *    - nav 를 세로 드롭다운형으로 전환
  * ========================================================================== */
 @media (max-width: 768px) {
 
-    /* ---------- 2-1. NAV : 세로 메뉴 / 햄버거 토글 ---------- */
+    /* ---------- 2-1. NAV ---------- */
     nav {
         flex-wrap: wrap;
         padding: 10px 14px;
@@ -146,7 +91,7 @@ table {
         align-items: center;
     }
 
-    /* 로고는 항상 보이고, 햄버거 버튼을 위해 좌측 정렬 */
+    /* 로고는 항상 보이고 좌측 정렬 */
     .nav-logo {
         flex: 0 0 auto;
         margin-right: auto;
@@ -156,29 +101,10 @@ table {
         margin: 0;
     }
 
-    /*
-     * 햄버거 버튼:
-     * 기존 HTML 에는 햄버거 버튼이 없으므로, JS 한 줄로 nav 에
-     * class "nav-open" 을 토글하는 방식을 권장(아래 채팅 안내 참고).
-     * nav-open 클래스가 붙으면 메뉴가 펼쳐진다.
-     */
-    #navHamburger {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        border-radius: var(--r-sm);
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
-        flex: 0 0 auto;
-        order: 2;
-    }
+    /* 햄버거 버튼 숨김 — 하단 bottom nav 로 메뉴 대체 */
+    #navHamburger { display: none !important; }
 
-    /* 메뉴 링크들: 기본 접힘 → 전체폭 세로 스택 */
+    /* 메뉴 링크: 기본 숨김 유지 (플래너 단계만 선택적으로 표시) */
     .nav-links {
         order: 3;
         flex-basis: 100%;
@@ -191,53 +117,98 @@ table {
         pointer-events: none;
         transition: max-height .28s ease, opacity .2s ease;
     }
-    .nav-btns {
-        order: 4;
-        flex-basis: 100%;
-        flex-wrap: wrap;
-        gap: 6px;
-        max-height: 0;
-        overflow: hidden;
-        opacity: 0;
-        pointer-events: none;
-        transition: max-height .28s ease, opacity .2s ease;
-    }
 
-    /* nav-open 토글 시 펼침 */
-    nav.nav-open .nav-links,
-    nav.nav-open .nav-btns {
-        max-height: 600px;
+    /* nav-btns: 항상 표시 / 로고 오른쪽에 배치 */
+    .nav-btns {
+        order: 2;
+        flex-basis: auto;
+        flex-wrap: nowrap;
+        gap: 4px;
+        max-height: none;
+        overflow: visible;
         opacity: 1;
         pointer-events: auto;
-    }
-    nav.nav-open .nav-btns {
-        padding-top: 4px;
-        border-top: 1px solid var(--border2);
-    }
-
-    .nav-link {
-        width: 100%;
-        text-align: left;
-        padding: 11px 12px;
-        font-size: 14px;
-        border-radius: var(--r-sm);
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        padding-top: 0 !important;
+        border-top: none !important;
     }
 
-    /* 플래너 단계 표시줄: 가로 스크롤로 */
-    .nav-planner-steps {
-        flex-basis: 100%;
-        order: 5;
+    /* 모바일에서 불필요한 버튼 숨김 (로그인·회원가입·관리자·마이페이지명) */
+    #navLoginBtn, #navSignupBtn, #navAdminLink, #navUserNameBtn { display: none !important; }
+
+    /* 로그아웃 버튼: 알림 왼쪽, 작게 */
+    #navLogoutBtn {
+        order: 1;
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    #navBellWrapper { order: 2; margin-right: 0; }
+
+    /* 플래너·지도 진입 시: 단계를 로고-버튼 사이 같은 행에 표시 */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo { margin-right: 0; }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
+        order: 1;           /* 로고(auto=0) 다음, nav-btns(2) 이전 */
+        flex: 1;
+        min-width: 0;
+        flex-basis: auto;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        max-height: 60px;
+        opacity: 1;
+        pointer-events: auto;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 0 4px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links::-webkit-scrollbar { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links .nav-link { display: none; }
+    /* 단계 버튼 크기 축소 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-btn { font-size: 11px; padding: 3px 5px; gap: 3px; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-num  { width: 14px; height: 14px; font-size: 8px; }
+
+    /* ── 플래너 진입 시 nav 한 줄 만들기 ── */
+    /* 1) 로고: 전체 로고 숨기고 비행기 심볼만 표시 (가로 공간 확보) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-full { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-symbol {
+        display: block;
+        height: 30px;
+    }
+    /* 2) 스텝 라벨: 전체 라벨 숨기고 축약 라벨("기본/취향/AI/경로") 표시 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-full  { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-short { display: inline; }
+    /* 3) 칩이 줄바꿈되지 않도록 + 더 압축 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-btn {
+        white-space: nowrap;
+        flex: 0 0 auto;
+        padding: 3px 6px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl { white-space: nowrap; font-size: 11px; }
+    /* 4) 화살표 간격 축소 */
+    body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
+    /* 5) 스텝 영역은 가로 스크롤 없이 내용에 맞게 (줄바꿈만 방지) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
+        overflow-x: visible;
+        flex-wrap: nowrap;
     }
 
     .nav-btns .btn-o,
     .nav-btns .btn-f {
-        flex: 1 1 auto;
+        flex: 0 0 auto;
         text-align: center;
-        padding: 10px 12px;
-        font-size: 13px;
+        padding: 6px 10px;
+        font-size: 12px;
     }
+
+    /* 플래너 진입 시 로그아웃·알림 압축 (한 줄 확보) */
+    body:has(#navPlannerSteps[style*="flex"]) #navLogoutBtn {
+        font-size: 11px;
+        padding: 5px 8px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) #navBellBtn { font-size: 19px; }
 
     /* 알림 팝업이 화면을 넘지 않도록 */
     #notifPopup {
@@ -246,24 +217,18 @@ table {
         left: auto !important;
     }
 
-    /* 고정 nav 높이가 가변이므로 .page 상단 여백을 넉넉히 */
+    /* nav 실제 높이를 --nav-h 변수로 반영 (JS가 측정해서 갱신) */
     .page {
-        padding-top: 72px;
+        padding-top: var(--nav-h, 72px);
     }
 
     /* ---------- 2-2. 본문 패딩 축소 ---------- */
-    .sec,
-    .hero {
+    .sec {
         padding-left: 16px;
         padding-right: 16px;
-    }
-    .sec {
         padding-bottom: 36px;
     }
-    .hero {
-        padding-top: 24px;
-        padding-bottom: 24px;
-    }
+    /* .hero 패딩/레이아웃 → styles_responsive_main.css */
     .info-wrap {
         padding-left: 14px;
         padding-right: 14px;
@@ -274,29 +239,20 @@ table {
     }
 
     /* ---------- 2-3. 멀티컬럼 → 1열 전환 ---------- */
+    /* hero / my-layout → 각 page 반응형 파일로 이동 */
     .form-row,
-    .hero,
     .pl-2col,
     .loc-selector,
     .chat-layout,
     .budget-layout,
     .comm-layout,
-    .my-layout,
     .admin-layout {
         grid-template-columns: 1fr;
         gap: 16px;
     }
 
-    /* 카드 그리드: 3열·4열·5열 → 2열 */
-    .hsc-cards,
-    .top3-grid,
-    .popular-grid,
-    .chip-grid4,
-    .stats-grid,
-    .prev-stats-row {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
-    }
+    /* hsc-cards / top3-grid / popular-grid → styles_responsive_main.css */
+    /* chip-grid4 / stats-grid / prev-stats-row → styles_responsive_mypage.css */
 
     /* 날씨 7일: 가로 스크롤 유지하되 한 칸 최소폭 확보 */
     .weather-grid {
@@ -305,63 +261,7 @@ table {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* ---------- 2-4. 지도 페이지: 좌우 분할 → 상하 분할 ---------- */
-    /* 모바일 탭 바 표시 (데스크탑에서는 위에서 display:none 처리됨) */
-    .map-mobile-tabs {
-        display: flex;
-        flex-shrink: 0;
-        background: var(--surface);
-        border-bottom: 1px solid var(--border2);
-    }
-    .map-mob-tab {
-        flex: 1;
-        padding: 11px;
-        border: none;
-        border-bottom: 2px solid transparent;
-        background: none;
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text3);
-        cursor: pointer;
-    }
-    .map-mob-tab.on {
-        color: var(--sage-d);
-        border-bottom-color: var(--sage);
-    }
-    /* grid(2칸) → flex 세로 스택: 자식 3개(탭바·일정·지도)가 순서대로 쌓이고,
-       일정/지도는 mob-hidden 토글로 하나씩만 보인다. */
-    .map-wrap {
-        display: flex;
-        flex-direction: column;
-        height: auto;
-        min-height: calc(100vh - 72px);
-    }
-    .map-left {
-        flex: 1;
-        border-right: none;
-        border-bottom: 1px solid var(--border2);
-        max-height: none;
-        overflow-y: auto;
-    }
-    .map-right {
-        flex: 1;
-    }
-    /* 모바일 패널 토글: 일정 숨김은 display:none, 지도 숨김은 카카오맵 0크기 방지를 위해 visibility */
-    .map-left.mob-hidden { display: none; }
-    .map-right.mob-hidden {
-        position: absolute;
-        inset: 0;
-        visibility: hidden;
-        pointer-events: none;
-        z-index: -1;
-    }
-    /* 지도 뷰 영역이 높이 0으로 초기화되어 경로 선이 안 그려지는 것 방지 */
-    #page-map #mapView {
-        min-height: 55vh;
-    }
-
-    /* ---------- 2-5. 마이페이지/관리자 사이드바 → 상단 가로 스택 ---------- */
-    .my-layout > :first-child,
+    /* ---------- 2-4. 관리자 사이드바 → 상단 가로 스택 ---------- */
     .admin-layout > :first-child {
         /* 사이드 메뉴를 가로 스크롤 탭처럼 */
         display: flex;
@@ -377,13 +277,10 @@ table {
     }
 
     /* ---------- 2-7. 가계부 요약/내역 ---------- */
-    /* 인라인 style 로 3열 grid 가 박혀있는 요약카드 영역 보정 */
     #ledger-main [style*="grid-template-columns:1fr 1fr 1fr"],
     #ledger-main [style*="grid-template-columns: 1fr 1fr 1fr"] {
         grid-template-columns: 1fr !important;
     }
-
-    /* 가계부 지출 추가 폼: 가로 정렬 → 세로 */
     .ledger-add {
         flex-direction: column;
         align-items: stretch;
@@ -391,8 +288,6 @@ table {
     .ledger-add > * {
         width: 100% !important;
     }
-
-    /* PDF/Excel 내보내기 버튼 줄바꿈 */
     .ledger-header-export {
         flex-wrap: wrap;
     }
@@ -403,8 +298,6 @@ table {
         width: 90vw !important;
         max-width: 340px;
     }
-
-    /* 일반적인 고정폭 모달 보정 */
     [style*="width:580px"],
     [style*="width: 580px"],
     [style*="width:500px"],
@@ -424,7 +317,6 @@ table {
 
 /* =============================================================================
  * 3. 소형 폰 (≤480px)
- *    - 폰트/패딩 추가 축소, 일부 2열 → 1열
  * ========================================================================== */
 @media (max-width: 480px) {
 
@@ -432,8 +324,7 @@ table {
         font-size: 14px;
     }
 
-    .sec,
-    .hero {
+    .sec {
         padding-left: 12px;
         padding-right: 12px;
     }
@@ -442,22 +333,9 @@ table {
         font-size: 19px;
     }
 
-    /* 2열 카드 중 콘텐츠가 큰 것들은 1열로 */
-    .hsc-cards,
-    .top3-grid,
-    .popular-grid {
-        grid-template-columns: 1fr;
-    }
+    /* hsc-cards / top3-grid / popular-grid → styles_responsive_main.css */
+    /* stats-grid / prev-stats-row / chip-grid4 → styles_responsive_mypage.css */
 
-    /* 통계 카드 2열 유지(작아도 한눈에) */
-    .stats-grid,
-    .prev-stats-row,
-    .chip-grid4 {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-
-    /* 버튼 간격/폰트 축소 */
     .btn-o,
     .btn-f {
         font-size: 12px;
@@ -468,7 +346,6 @@ table {
         height: 38px;
     }
 
-    /* 가계부 지출 내역 테이블 폰트 축소 */
     #ledger-act-table {
         font-size: 12px;
     }
@@ -483,9 +360,6 @@ table {
         max-height: 70vh;
         overflow-y: auto;
     }
-    .map-wrap {
-        grid-template-rows: auto 80vh;
-    }
 }
 
 /* =============================================================================
@@ -495,4 +369,84 @@ table {
     #navHamburger {
         display: none;
     }
+}
+
+/* =============================================================================
+ * 6. 모바일 하단 고정 네비게이션 (Bottom Navigation)
+ *    제거 방법: 이 섹션 전체 + index.html 의 #bottomNav 블록 삭제
+ * ========================================================================== */
+
+/* 데스크탑·태블릿에서 완전히 숨김 */
+.bnav { display: none; }
+
+@media (max-width: 768px) {
+
+    /* --- 6-1. 컨테이너 --- */
+    .bnav {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1200;
+        background: var(--surface);
+        border-top: 1px solid var(--border2);
+        box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* --- 6-2. 메인 탭 바 --- */
+    .bnav-bar {
+        display: flex;
+        align-items: stretch;
+    }
+
+    /* --- 6-5. 탭 버튼 --- */
+    .bnav-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 8px 2px 10px;
+        border: none;
+        background: transparent;
+        color: var(--text3);
+        cursor: pointer;
+        transition: color .15s;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .bnav-icon { font-size: 20px; line-height: 1; transition: transform .15s; }
+    .bnav-lbl  { font-size: 10px; font-weight: 500; white-space: nowrap; }
+
+    /* 활성 탭 강조 */
+    body:has(#page-main.active)      .bnav-item[data-page="main"],
+    body:has(#page-community.active) .bnav-item[data-page="community"],
+    body:has(#page-weather.active)   .bnav-item[data-page="weather"],
+    body:has(#page-planner.active)   .bnav-item[data-page="planner"],
+    body:has(#page-map.active)       .bnav-item[data-page="planner"],
+    body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] {
+        color: var(--sage);
+    }
+    body:has(#page-main.active)      .bnav-item[data-page="main"] .bnav-icon,
+    body:has(#page-community.active) .bnav-item[data-page="community"] .bnav-icon,
+    body:has(#page-weather.active)   .bnav-item[data-page="weather"] .bnav-icon,
+    body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-icon,
+    body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-icon,
+    body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-icon {
+        transform: translateY(-1px);
+    }
+
+    /* --- 6-6. 본문이 bottom nav 뒤에 가리지 않도록 하단 여백 --- */
+    .page {
+        padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* --- 6-7. 비로그인 시 마이페이지 탭 → 로그인 아이콘 --- */
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { font-size: 0; }
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "🔑"; font-size: 20px; }
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl::before   { content: "로그인"; font-size: 10px; font-weight: 500; }
 }

@@ -23,7 +23,7 @@ async function updateLedgerList() {
     listEl.innerHTML = pageTrips.map(l => {
         const isSel = (_budgetSelectedTripId === l.id);
         return `
-        <div onclick="selLedger(${l.id})"
+        <div onclick="selLedger(${l.id});goLedger2()"
              style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);
                     border:2px solid ${isSel ? 'var(--sage)' : 'var(--border)'};
                     background:${isSel ? 'var(--sage-pale)' : 'var(--surface)'};
@@ -35,9 +35,6 @@ async function updateLedgerList() {
             <div style="font-size:11px;color:var(--text3);margin-top:2px">
               ${l.startDate || ''} ~ ${l.endDate || ''} · ${l.destination || ''}
             </div>
-          </div>
-          <div style="font-size:13px;font-weight:700;color:var(--sage)">
-            ${l.status === 'CONFIRMED' ? '✅' : '📝'}
           </div>
         </div>`;
     }).join('');
@@ -176,12 +173,20 @@ function _selLedgerCard(el, tripId) {
     sessionStorage.setItem('budgetSelectedTripId', tripId);  // [v2] 새로고침 복원용
 }
 
-/** page_budget.html의 returnToLedgerSelector() 오버라이드 — 실제 데이터 사용 */
+/** '← 다른 여행 선택' — 가계부 확인 셀렉터(page_budget) 대신 마이페이지 가계부 탭으로 복귀 */
 function returnToLedgerSelector() {
-    document.getElementById('ledger-main').style.display = 'none';
-    const selEl = document.querySelector('.ledger-selector-outer');
-    if (selEl) selEl.style.display = 'block';
-    _populateLedgerTripCards();
+    // page_budget 의 자체 셀렉터 화면은 더 이상 쓰지 않고, 마이페이지 가계부 탭으로 돌아간다.
+    if (typeof go === 'function') {
+        go('mypage');
+        // 마이페이지 진입 후 가계부 탭 활성화 + 목록 갱신
+        setTimeout(function () {
+            if (typeof showMySection === 'function') {
+                var btn = document.querySelector('.my-menu[onclick*="ledger"]');
+                showMySection('ledger', btn || null);
+            }
+            if (typeof updateLedgerList === 'function') updateLedgerList();
+        }, 60);
+    }
 }
 
 const _CATEGORY_MAP = {
