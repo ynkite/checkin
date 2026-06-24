@@ -37,17 +37,7 @@
     let MAP_ITINERARY = [];
     let MAP_PINS = [];
     let DAY_ROUTES = [];
-    // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
-    //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
-    function _haversineKm(lat1, lng1, lat2, lng2) {
-      var R = 6371;
-      var dLat = (lat2 - lat1) * (Math.PI / 180);
-      var dLng = (lng2 - lng1) * (Math.PI / 180);
-      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
-              Math.sin(dLng/2) * Math.sin(dLng/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
+
     // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
     const MAP_BUDGET_ITEMS = [
       { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000', color: 'var(--sage)',  barPct: 78 },
@@ -595,6 +585,18 @@
           return;
         }
 
+        // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
+        //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
+        function _haversineKm(lat1, lng1, lat2, lng2) {
+          var R = 6371;
+          var dLat = (lat2 - lat1) * (Math.PI / 180);
+          var dLng = (lng2 - lng1) * (Math.PI / 180);
+          var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * (Math.PI/180)) * Math.cos(lat2 * (Math.PI/180)) *
+                  Math.sin(dLng/2) * Math.sin(dLng/2);
+          return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
         // 검색 성공(반경 내) 시 마커 렌더링 — 기존 로직 그대로
         function _onResolved(pin, place) {
           var realLat = parseFloat(place.y);
@@ -604,7 +606,7 @@
           pin.placeUrl = place.place_url;
           pin.category = place.category_name ? place.category_name.split(' > ').pop() : null;
 
-          var content = '<div onclick="showMapPlacePopup(\'' + pin.label.replace(/'/g, "\\'") + '\',\'' + pin.type + '\')" '
+          var content = '<div onclick="highlightItineraryPlace(\'' + String(pin.key).replace(/'/g, "\\'") + '\')" '
                   + 'style="cursor:pointer; position:relative; width:0; height:0;">'
                   + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
                   + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
@@ -653,7 +655,7 @@
             if (qToggle) qToggle.style.display = 'none';
           }
 
-          // 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
+// 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
           //   bounds·폴리라인이 0px 기준으로 계산되어 안 보이는 사고가 있었다.
           //   relayout 후 한 박자 늦춰 setBounds·폴리라인을 적용하면 첫 진입에도 정상 동작한다.
           var _applyBoundsAndLines = function() {
@@ -664,18 +666,7 @@
             drawLivePolylines();
             checkActualWeatherAlert(window._currentTripId);
           };
-          var _tries = 0;
-          var _waitContainer = function() {
-            var c = document.getElementById('kakaoMap');
-            if (c && c.clientWidth > 0 && c.clientHeight > 0) {
-              _applyBoundsAndLines();
-            } else if (_tries++ < 10) {
-              setTimeout(_waitContainer, 100);
-            } else {
-              _applyBoundsAndLines(); // 끝내 0이어도 한 번은 시도
-            }
-          };
-          setTimeout(_waitContainer, 100);
+          setTimeout(_applyBoundsAndLines, 100);
         }
 
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
@@ -803,6 +794,8 @@
         console.warn('[WeatherAlert] 실시간 날씨 데이터 바인딩 실패:', err);
       }
     }
+
+
     // 같은 날 좌표 기준으로 동선을 효율적으로 재정렬한다.
     // - stay(숙소)는 무조건 그 날의 '마지막' 노드로 고정
     // - 나머지는 첫 장소에서 시작하는 최근접 이웃(nearest-neighbor)으로 정렬
@@ -845,10 +838,9 @@
       if (stay) ordered.push(stay); // 숙소는 항상 마지막
       return ordered.map(function(p){ return p.key; });
     }
+
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
     function drawLivePolylines() {
-      if (!window._kakaoMap) return;
-      if (!window._kakaoPolylines) window._kakaoPolylines = [];
       var pinByKey = {};
       MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
 
