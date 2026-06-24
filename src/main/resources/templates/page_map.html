@@ -138,8 +138,7 @@
       let parsedTripId = null;
       if (shareToken) {
         try {
-          const parsedHex = parseInt(shareToken, 16);
-          parsedTripId = (parsedHex ^ 0x5A3C9B7D2E).toString();
+          parsedTripId = (BigInt('0x' + shareToken) ^ 0x5A3C9B7D2En).toString();
         } catch (e) {
           console.error("유효하지 않은 토큰 포맷입니다.");
         }
@@ -661,7 +660,6 @@
             if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
               window._kakaoMap.setBounds(bounds);
             }
-            DAY_ROUTES.forEach(function(r){ r.keys = _optimizeDayKeys(r.keys); }); // ★ 한 번만 확정
             drawLivePolylines();
             checkActualWeatherAlert(window._currentTripId);
           };
@@ -854,7 +852,6 @@
       MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
 
       DAY_ROUTES.forEach(function(route) {
-        route.keys = _optimizeDayKeys(route.keys);   // ★ 좌표 확정 후 효율 동선 재정렬
         var path = route.keys.map(function(k) {
           var p = pinByKey[k];
           return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
