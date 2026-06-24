@@ -2808,13 +2808,14 @@ function openShareModal() {
     const linkEl = document.getElementById('share-link-val');
 
     if (linkEl && tripId) {
-        // 🎯 [UI 노출 버그 수정]: BigInt(n) 연산자를 적용하여 32비트 연산 한계를 해제합니다.
-        // 이 처리를 통해 복사 버튼을 누르기 전, 모달이 처음 켜지는 순간부터 5a가 유실되지 않은 정품 링크가 완벽하게 노출됩니다.
         const obscureToken = (BigInt(tripId) ^ 0x5A3C9B7D2En).toString(16);
         linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     }
 
     modal.classList.add('open');
+    loadShareMembersData();
+
+    // 🎯 꼬여있던 내부 호출용 함수명을 아래 실제 구현된 함수명과 일치시킵니다.
     loadShareMembersData();
 }
 
