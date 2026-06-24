@@ -90,13 +90,24 @@
         z-index: -1;
     }
 
-    /* 하단 지도/예산 버튼 숨기고 공유만 전체 너비 */
-    #mapTabMap,
-    #mapTabBudget {
-        display: none;
+    /* 하단 액션 바(지도/예산/공유)는 상단 탭으로 대체 → 모바일에서 전체 숨김 */
+    .map-acts {
+        display: none !important;
     }
-    .map-acts .btn-map-act:last-child {
-        flex: 1;
+
+    /* =========================================================================
+     * [수정] 지도 '날씨 악화 예보 감지' 박스 — 하단 네비에 가려 잘리던 문제
+     *   - position:absolute(지도 내부) → position:fixed 로 바꿔 화면 기준 고정
+     *   - 하단 바텀 네비(약 60px) + 안전영역 위로 올려 항상 전체가 보이게 함
+     *   - 스크롤하지 않아도 제목/본문/CTA 가 모두 노출되며 바로 누를 수 있음
+     * ====================================================================== */
+    #page-map .weather-alert {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 12px);
+        z-index: 1150;   /* 바텀 네비(1200)보다 아래, 지도 위 */
     }
 }
 

@@ -135,8 +135,16 @@ table {
         border-top: none !important;
     }
 
-    /* 모바일에서 불필요한 버튼 숨김 (로그인·회원가입·관리자·마이페이지명) */
-    #navLoginBtn, #navSignupBtn, #navAdminLink, #navUserNameBtn { display: none !important; }
+    /* 모바일에서 불필요한 버튼 숨김 (로그인·회원가입·마이페이지명) */
+    #navLoginBtn, #navSignupBtn, #navUserNameBtn { display: none !important; }
+
+    /* 관리자 버튼: 모바일에서는 관리자 계정일 때만 로그아웃 옆에 표시
+     *  (display 는 JS updateNav 이 admin 일 때만 ''로 풀어줌 → 일반 유저는 숨김 유지) */
+    #navAdminLink {
+        order: 0;                 /* 로그아웃(order:1) 바로 왼쪽 */
+        font-size: 12px;
+        padding: 6px 10px;
+    }
 
     /* 로그아웃 버튼: 알림 왼쪽, 작게 */
     #navLogoutBtn {
@@ -449,4 +457,61 @@ table {
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "🔑"; font-size: 20px; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl::before   { content: "로그인"; font-size: 10px; font-weight: 500; }
+}
+
+/* =============================================================================
+ * [수정] 플래너 STEP1 상단 버튼 — 모바일에서 글씨 한 줄 유지 + 최적 배치
+ *   - 날씨 미리보기 / 이전 플랜 불러오기 버튼이 모바일에서 줄바꿈되던 문제 해결
+ *   - 두 버튼을 한 줄(전체폭 2분할)로 배치하고 텍스트 줄바꿈 금지
+ * ========================================================================== */
+@media (max-width: 768px) {
+    /* 카드 타이틀 영역: 제목은 한 줄, 버튼 묶음은 아래로 떨어져 전체 폭 사용 */
+    .pl-card-ttl {
+        flex-wrap: wrap;
+    }
+    .pl-card-ttl > span:first-child {
+        flex: 1 1 100%;
+    }
+    /* 버튼 묶음(weather-btn-wrap + btn-load-pref)을 한 줄 전체 폭 2분할 */
+    .pl-card-ttl > div:last-child {
+        flex: 1 1 100%;
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+    #weather-btn-wrap {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    .weather-date-btn,
+    .btn-load-pref {
+        width: 100%;
+        justify-content: center;
+        white-space: nowrap;       /* 글씨 줄바꿈 금지 → 한 줄 */
+        padding: 9px 6px;
+        font-size: 12px;
+    }
+    .btn-load-pref {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    /* weather-btn-wrap이 숨겨진(display:none) 경우 이전 플랜 버튼이 전체 폭 */
+    .pl-card-ttl > div:last-child > #weather-btn-wrap[style*="none"] + .btn-load-pref {
+        flex: 1 1 100%;
+    }
+}
+
+/* =============================================================================
+ * [수정] 지도 화면 날씨 악화 예보 박스 — 모바일에서 잘림 방지
+ *   - 하단 바텀 네비게이션과 겹쳐 박스 하단이 잘리던 문제 해결
+ *   - 위치를 네비 높이만큼 올리고, 좌우 폭을 화면에 맞게 제한
+ * ========================================================================== */
+@media (max-width: 768px) {
+    #page-map .weather-alert {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+        z-index: 30;
+    }
 }

@@ -2714,12 +2714,6 @@ nav {
     font-size: 12px;
     flex-shrink: 0
 }
-#qItems {
-    max-height: 46vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding-right: 4px;
-}
 
 .btn-all {
     width: 100%;
@@ -2818,6 +2812,18 @@ nav {
 .place-row:hover {
     border-color: var(--sage-l);
     background: var(--sage-pale)
+}
+
+.place-row.place-row-active {
+    border-color: var(--sage-d);
+    background: var(--sage);
+    box-shadow: 0 2px 10px rgba(45, 158, 138, .35)
+}
+
+.place-row.place-row-active .pr-name,
+.place-row.place-row-active .pr-sub,
+.place-row.place-row-active .pr-stars {
+    color: #fff !important
 }
 
 .pr-icon {

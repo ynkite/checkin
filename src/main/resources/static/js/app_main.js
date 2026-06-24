@@ -1413,6 +1413,20 @@ async function deleteNotif(notifId) {
  * 10. 지도 장소 팝업 (GET /api/maps/places)
  * ─────────────────────────────────────────────── */
 
+/** 지도 마커 클릭 시: 후기 팝업 대신 왼쪽 일정 리스트에서 해당 장소를 강조한다.
+ *  (일정 리스트 항목 클릭은 기존대로 showMapPlacePopup 후기 팝업 유지) */
+function highlightItineraryPlace(key) {
+    const rows = document.querySelectorAll('.place-row[data-key]');
+    let target = null;
+    rows.forEach(r => {
+        if (r.dataset.key === String(key)) { r.classList.add('place-row-active'); target = r; }
+        else r.classList.remove('place-row-active');
+    });
+    if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
 /** GET /api/maps/places?keyword={key} */
 async function showMapPlacePopup(key, type) {
     const modal = document.getElementById('mapPlaceModal');
@@ -2441,7 +2455,11 @@ function goPlanStep(n) {
     _syncPlannerTopbar();
     _syncNavStepHighlight();
 
-    if(n===3) startChatWithSummary();
+    if(n===3){
+        // 챗봇에 이미 대화가 있으면 보존한다. 비어있을 때(최초 진입)만 요약 메시지를 띄운다.
+        const _cm = document.getElementById('chatMsgs');
+        if(!_cm || _cm.children.length === 0) startChatWithSummary();
+    }
     history.pushState({ page: 'planner', step: n }, '', '/');
     if (window._currentTripId) _savePlannerDraft();
 }

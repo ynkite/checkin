@@ -641,35 +641,7 @@
             if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
             toast('폼이 초기화되었습니다. 경로를 다시 생성하려면 1번부터 입력해주세요.');
         }
-        // ── 🌀 생성/보정 로딩 스피너 오버레이 ──
-        function _showGenLoading(text) {
-            let ov = document.getElementById('genLoadOverlay');
-            if (!ov) {
-                if (!document.getElementById('genLoadStyle')) {
-                    const st = document.createElement('style');
-                    st.id = 'genLoadStyle';
-                    st.textContent =
-                        '@keyframes genSpin{to{transform:rotate(360deg)}}'
-                        + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
-                        + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
-                        + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
-                        + 'border-top-color:#2D9E8A;border-radius:50%;animation:genSpin .8s linear infinite}'
-                        + '#genLoadOverlay .gl-txt{color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}';
-                    document.head.appendChild(st);
-                }
-                ov = document.createElement('div');
-                ov.id = 'genLoadOverlay';
-                ov.innerHTML = '<div class="gl-ring"></div><div class="gl-txt" id="genLoadTxt"></div>';
-                document.body.appendChild(ov);
-            }
-            ov.style.display = 'flex';
-            const t = document.getElementById('genLoadTxt');
-            if (t) t.textContent = text || 'AI가 일정을 생성 중입니다…';
-        }
-        function _hideGenLoading() {
-            const ov = document.getElementById('genLoadOverlay');
-            if (ov) ov.style.display = 'none';
-        }
+
         /* ─────────────────────────────────────────────────────────
          * AI 일정 생성 요청
          * POST /api/trips/{tripId}/routes/generate
@@ -681,7 +653,6 @@
             // 1. 버튼 자체의 텍스트를 바꾸고 비활성화 (오버레이 창 제거)
             btn.innerHTML = 'AI가 일정을 생성중입니다..';
             btn.disabled = true;
-            _showGenLoading('AI가 일정을 생성 중입니다…');
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
@@ -699,13 +670,11 @@
 
                     const _proceed = () => {
                         btn.innerHTML = 'AI가 일정을 생성중입니다..';
-                        _showGenLoading('AI가 일정을 생성 중입니다…');
                         sessionStorage.setItem('autoHealingRetries', '0');
                         validateAndHealingRoute(tripId, draftRoute, btn);
                     };
 
                     if (issues && (issues.missing.length > 0 || issues.budgetShort)) {
-                        _hideGenLoading();
                         // 게이트 표시 → 확인 시에만 _proceed(), 취소 시 버튼 원상복구
                         _showPreGenGate(issues, _proceed, () => {
                             btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
@@ -1007,12 +976,7 @@
             }
 
             // 🏠 하루 단위 동선 클러스터 허용 반경(숙소 기준). 지역 반경(maxRadiusKm)보다 훨씬 좁게.
-            // 🚗 이동수단별 '30분 이내' 환산 반경 — 자차는 넉넉히, 대중교통은 타이트하게
-            const _transChip = document.querySelector('#chip-trans .chip.on');
-            const _isCar = _transChip ? !_transChip.textContent.includes('대중교통') : true;
-            const dayClusterKm = (destProv && destProv.includes('제주'))
-                ? (_isCar ? 20 : 12)
-                : hasCity ? (_isCar ? 15 : 8) : (_isCar ? 20 : 12);
+            const dayClusterKm = (destProv && destProv.includes('제주')) ? 15 : (hasCity ? 8 : 12);
             const _typeKor = { stay: '숙소', food: '맛집', cafe: '카페', tour: '관광지' };
 
             let searchCount = 0;
@@ -1170,7 +1134,6 @@
                             sessionStorage.setItem('autoHealingRetries', currentStage.toString());
 
                             btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
-                            _showGenLoading(`정밀 보정 진행 중… (${currentStage} / 2)`);
 
                             fetch(`/api/trips/${tripId}/routes/replace`, {
                                 method: 'POST',
@@ -1195,26 +1158,7 @@
                                         _finalizePlannerRoute(routeData, btn);
                                     }
                                 })
-                                .catch(() => {
-                                    // 교체 호출이 통째로 실패해도 가짜·타지역 장소는 일정에서 빼고 마무리
-                                    const badNames = new Set(autoFixRequests.map(r => r.place));
-                                    const cleaned = routeData.map(d => {
-                                        if (!d.places) return d;
-                                        const kept = d.places.filter(p => p.transit || !badNames.has(p.name));
-                                        const tidy = [];
-                                        kept.forEach((p, i) => {
-                                            if (p.transit) {
-                                                const prevReal = tidy.length > 0 && !tidy[tidy.length - 1].transit;
-                                                const nextReal = kept.slice(i + 1).some(q => !q.transit);
-                                                if (prevReal && nextReal) tidy.push(p);
-                                            } else tidy.push(p);
-                                        });
-                                        return { ...d, places: tidy };
-                                    });
-                                    const reordered = _ensureStayContinuity(_reorderRouteByProximity(cleaned, allPins, _lockedNames))
-                                    sessionStorage.setItem('ai_generated_route', JSON.stringify(reordered));
-                                    _finalizePlannerRoute(reordered, btn);
-                                });
+                                .catch(() => _finalizePlannerRoute(routeData, btn));
 
                         } else if (autoFixRequests.length > 0) {
                             // 🎯 [최종 방어] 2회 교체를 다 썼는데도 여행지 밖/가짜 장소가 남았다면,
@@ -1243,12 +1187,12 @@
                             });
                             console.warn('⚠️ 2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
                             toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
-                            const cleanedReordered = _ensureStayContinuity(_reorderRouteByProximity(cleaned, allPins, _lockedNames))
+                            const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
                             _finalizePlannerRoute(cleanedReordered, btn);
                         } else {
-                            console.log(" 정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
-                            const finalRoute = _ensureStayContinuity(_reorderRouteByProximity(routeData, allPins, _lockedNames));
+                            console.log("✅ 정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
+                            const finalRoute = _reorderRouteByProximity(routeData, allPins, _lockedNames);
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(finalRoute));
                             _finalizePlannerRoute(finalRoute, btn);
                         }
@@ -1256,75 +1200,7 @@
                 });
             } // end _startPinSearchLoop
         }
-        // 🏨 숙소 연속성 강제: 멀티데이 여행에서 각 Day를 '전날 묵은 숙소'로 잇는다.
-        //   - 가장 이른 Day의 숙소(stay)를 기준 숙소로 잡는다.
-        //   - 중간 Day: 시작(아침 출발)과 끝(취침)에 기준 숙소를 강제 배치.
-        //   - 마지막 Day: 체크아웃이므로 시작에만 배치(끝 숙소 없음).
-        //   - 그 날에 이미 숙소가 있으면(사용자/AI가 다른 숙소 지정) 그것을 새 기준으로 삼고 유지.
-        function _ensureStayContinuity(routeData) {
-            if (!Array.isArray(routeData)) return routeData;
 
-            // 🔁 [중복 방문 제거] 숙소를 제외한 동일 상호명은 전체 일정에서 한 번만 허용.
-            //   순서상 두 번째 등장부터 제거(첫 등장 보존). 끼니가 비더라도 중복 방문은 금지.
-            const _seen = new Set();
-            routeData = routeData.map(day => {
-                if (!Array.isArray(day.places)) return day;
-                const kept = [];
-                day.places.forEach(p => {
-                    if (p.transit)            { kept.push(p); return; }
-                    if (p.type === 'stay')    { kept.push(p); return; } // 숙소는 연박 허용
-                    if (p.name && _seen.has(p.name)) return;            // 중복 → 제거
-                    if (p.name) _seen.add(p.name);
-                    kept.push(p);
-                });
-                // 장소가 빠지며 붕 뜬 transit 정리(맨앞·맨뒤·연속 transit 제거)
-                const tidy = [];
-                kept.forEach((p, i) => {
-                    if (p.transit) {
-                        const prevReal = tidy.length > 0 && !tidy[tidy.length - 1].transit;
-                        const nextReal = kept.slice(i + 1).some(q => !q.transit);
-                        if (prevReal && nextReal) tidy.push(p);
-                    } else tidy.push(p);
-                });
-                return { ...day, places: tidy };
-            });
-
-            if (routeData.length < 2) return routeData;
-
-            let baseStay = null;
-            for (const d of routeData) {
-                const s = (d.places || []).find(p => !p.transit && p.type === 'stay');
-                if (s) { baseStay = s; break; }
-            }
-            if (!baseStay) return routeData; // 숙소가 아예 없으면 손대지 않음
-
-            const cloneStay = (src, time) => ({
-                type: 'stay', icon: src.icon || '🏨', name: src.name,
-                sub: src.sub, stars: src.stars,
-                key: 'stay_' + Math.random().toString(36).slice(2, 8),
-                time: time, replacePh: src.replacePh || '예: 다른 숙소로 교체해줘'
-            });
-
-            const lastIdx = routeData.length - 1;
-            return routeData.map((day, di) => {
-                if (!Array.isArray(day.places)) return day;
-
-                const dayStay = day.places.find(p => !p.transit && p.type === 'stay');
-                if (dayStay) baseStay = dayStay; // 이 날 지정 숙소가 있으면 기준 갱신
-                if (di === 0) return day;        // Day 1은 그대로
-
-                const reals = day.places.filter(p => !p.transit);
-                const hasStart = reals.length > 0 && reals[0].type === 'stay';
-                const hasEnd   = reals.length > 0 && reals[reals.length - 1].type === 'stay';
-
-                const newReals = reals.slice();
-                if (!hasStart) newReals.unshift(cloneStay(baseStay, '09:00'));        // 출발
-                if (di !== lastIdx && !hasEnd) newReals.push(cloneStay(baseStay, '21:00')); // 취침
-
-                // transit은 아래 reorder에서 좌표 기반으로 재계산되므로 장소만 재조립
-                return { ...day, places: newReals };
-            });
-        }
         /**
          * 🧭 숙소 기준 동선 정렬.
          *  - 맛집(food)·숙소(stay)·챗봇 지정 장소(locked)는 위치 고정 → 식사 시간 흐름·1순위 보존
@@ -1428,7 +1304,6 @@
         }
 
         function _finalizePlannerRoute(routeData, btn) {
-            _hideGenLoading();
             if (btn) {
                 btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
@@ -1713,6 +1588,7 @@
                         <div class="chat-inp-area">
                             <div class="chat-inp-row">
                 <textarea class="chat-inp" id="chatInp" rows="1" placeholder="메시지 입력..."
+                          oninput="if(typeof _saveChatState==='function')_saveChatState()"
                           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
                                 <button class="btn-send" onclick="sendMsg()">↑</button>
                             </div>
