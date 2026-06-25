@@ -2115,7 +2115,7 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="community-plan-preview-actions">
                     <button type="button" class="cpp-main-btn" id="cpp-go-planner-btn">→ 해당 경로로 여행 계획하기</button>
-                    <button type="button" class="cpp-sub-btn" onclick="scrapCurrentPreviewPlan()">📌 스크랩</button>
+                    <button type="button" class="cpp-sub-btn" id="cpp-preview-scrap-btn">📌 스크랩</button>
                 </div>
             </div>
         `;
@@ -2168,6 +2168,13 @@ window._handleWriteImageSelect = function(input) {
                 }
             }, 0);
         };
+
+        const scrapBtn = document.getElementById('cpp-preview-scrap-btn');
+        if (scrapBtn) {
+            scrapBtn.onclick = function () { window.scrapCurrentPreviewPlan(); };
+            scrapBtn.onmouseenter = function () { setPreviewScrapButtonHover(true); };
+            scrapBtn.onmouseleave = function () { setPreviewScrapButtonHover(false); };
+        }
 
         return overlay;
     }
@@ -2270,6 +2277,74 @@ window._handleWriteImageSelect = function(input) {
         });
     }
 
+    function extractPreviewScrapList(res) {
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.data?.content)) return res.data.content;
+        if (Array.isArray(res?.content)) return res.content;
+        return [];
+    }
+
+    function getPreviewScrapPostId(item) {
+        return item?.postId || item?.id || item?.post?.postId || item?.post?.id || null;
+    }
+
+    function setPreviewScrapButtonState(scrapped) {
+        const btn = document.getElementById('cpp-preview-scrap-btn');
+        if (!btn) return;
+
+        const activeColor = '#4CA693';
+        const active = !!scrapped;
+        btn.dataset.scrapped = active ? 'true' : 'false';
+        btn.textContent = active ? '📌 스크랩됨' : '📌 스크랩';
+        btn.style.background = active ? activeColor : '#fff';
+        btn.style.borderColor = activeColor;
+        btn.style.color = active ? '#fff' : activeColor;
+    }
+
+    function setPreviewScrapButtonHover(hovered) {
+        const btn = document.getElementById('cpp-preview-scrap-btn');
+        if (!btn) return;
+
+        const activeColor = '#4CA693';
+        const active = btn.dataset.scrapped === 'true';
+
+        if (active || hovered) {
+            btn.style.background = activeColor;
+            btn.style.borderColor = activeColor;
+            btn.style.color = '#fff';
+        } else {
+            btn.style.background = '#fff';
+            btn.style.borderColor = activeColor;
+            btn.style.color = activeColor;
+        }
+    }
+
+    async function syncPreviewScrapButtonState(postId) {
+        if (!postId) {
+            setPreviewScrapButtonState(false);
+            return;
+        }
+
+        const token = window._commUtil?.getAccessToken ? window._commUtil.getAccessToken() : null;
+        if (!token) {
+            setPreviewScrapButtonState(false);
+            return;
+        }
+
+        try {
+            const res = await requestJson('/api/posts/scrapped', { method: 'GET', headers: authHeaders(false) });
+            const list = extractPreviewScrapList(res);
+            const isScrapped = list.some(function (item) {
+                return String(getPreviewScrapPostId(item)) === String(postId);
+            });
+            setPreviewScrapButtonState(isScrapped);
+        } catch (e) {
+            console.warn('[community-v2] 미리보기 스크랩 상태 조회 실패:', e);
+            setPreviewScrapButtonState(false);
+        }
+    }
+
     window.openCommunityPlanPreview = async function () {
         const postId = window._commUtil.getCurrentPostId();
         if (!postId) { if (typeof toast === 'function') toast('연동된 플랜 정보를 찾을 수 없습니다.'); return; }
@@ -2279,18 +2354,69 @@ window._handleWriteImageSelect = function(input) {
 
         if (!post || !post.planId) { if (typeof toast === 'function') toast('연동된 플랜 정보를 찾을 수 없습니다.'); return; }
 
+        window._currentPostDetail = post;
+
         const overlay   = ensurePreviewModal();
         overlay.classList.add('open');
+        setPreviewScrapButtonState(false);
 
         const routeData = await getRouteData(post);
         renderPreviewInfo(post, routeData);
         renderPreviewList(routeData);
         renderActualKakaoMap(routeData);
+        await syncPreviewScrapButtonState(post.postId || post.id || postId);
     };
 
     window.closeCommunityPlanPreview = function () {
         const overlay = document.getElementById('communityPlanPreviewOverlay');
         if (overlay) overlay.classList.remove('open');
+    };
+
+    window.scrapCurrentPreviewPlan = async function () {
+        if (!window._commUtil || !window._commUtil.requireLogin()) return;
+
+        const post = window._currentPostDetail || {};
+        const postId = post.postId || post.id || window._currentPostId || window._openedPostId;
+
+        if (!postId) {
+            if (typeof toast === 'function') toast('스크랩할 여행 경로 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        const btn = document.getElementById('cpp-preview-scrap-btn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
+            if (!res || res.success === false) {
+                if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
+                return;
+            }
+
+            const scrapped = res.data === true;
+            setPreviewScrapButtonState(scrapped);
+
+            if (scrapped) {
+                if (typeof toast === 'function') toast('마이페이지 → 스크랩한 여행 경로에 추가되었습니다.');
+            } else {
+                if (typeof toast === 'function') toast('스크랩이 취소되었습니다.');
+            }
+
+            if (window._myCommunityPagingState && window._myCommunityPagingState['scrap-route']) {
+                window._myCommunityPagingState['scrap-route'].page = 0;
+            }
+            if (typeof window.loadMyRouteScrap === 'function') {
+                const routeSection = document.getElementById('my-scrap-route');
+                if (routeSection && routeSection.style.display !== 'none') {
+                    await window.loadMyRouteScrap(0);
+                }
+            }
+        } catch (e) {
+            console.error('[community-v2] 미리보기 플랜 스크랩 처리 실패:', e);
+            if (typeof toast === 'function') toast(e.message || '스크랩 처리에 실패했습니다.');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     };
 
 })();
@@ -3887,49 +4013,91 @@ window._handleWriteImageSelect = function(input) {
     /* =============================================================================
      * community v2 — 여행 경로 스크랩 (마이페이지)
      * ============================================================================= */
-    function renderMyRouteScrapCard(p) {
-        const tags = Array.isArray(p.styleTags)
-            ? p.styleTags.slice(0, 4).map(function(t) {
-                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(t) + '</span>';
+    window._myRouteScrapDeleteMode = window._myRouteScrapDeleteMode || false;
+
+    function formatMyRouteScrapDate(value) {
+        if (!value) return '—';
+        try {
+            const text = String(value).replace('T', ' ');
+            const datePart = text.substring(0, 10).replaceAll('-', '.');
+            const timePart = text.length >= 16 ? text.substring(11, 16) : '';
+            return timePart ? datePart + '<br>' + timePart : datePart;
+        } catch (e) {
+            return '—';
+        }
+    }
+
+    function renderMyRouteScrapActions() {
+        const actionBox = document.getElementById('my-scrap-route-actions');
+        if (!actionBox) return;
+
+        if (window._myRouteScrapDeleteMode) {
+            actionBox.innerHTML =
+                '<button type="button" onclick="execMyRouteScrapBulkDelete()" ' +
+                'style="padding:4px 10px;background:var(--coral);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">선택 삭제 실행</button>' +
+                '<button type="button" onclick="toggleMyRouteScrapDeleteMode(false)" ' +
+                'style="padding:4px 10px;background:var(--cream);color:var(--text2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">취소</button>';
+            return;
+        }
+
+        actionBox.innerHTML =
+            '<button type="button" onclick="toggleMyRouteScrapDeleteMode(true)" ' +
+            'style="padding:4px 10px;background:var(--cream);color:var(--text2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">삭제하기</button>';
+    }
+
+    function renderMyRouteScrapCard(post) {
+        const postId = post.postId || post.id;
+        const title = post.title || '스크랩한 여행 경로';
+        const writer = post.writerName || '작성자';
+        const createdAt = formatMyRouteScrapDate(post.createdAt);
+        const tags = Array.isArray(post.styleTags)
+            ? post.styleTags.slice(0, 3).map(function (tag) {
+                return '<span style="font-size:11px;background:var(--sage-pale);color:var(--sage-d);border-radius:4px;padding:1px 6px;margin-right:3px">#' + escapeHtml(tag) + '</span>';
             }).join('')
             : '';
 
-        const safeTitle  = escapeHtml(p.title  || '제목 없음');
-        const safeWriter = escapeHtml(p.writerName || '');
-        const postId = p.postId || p.id;
+        const cardClickAction = window._myRouteScrapDeleteMode
+            ? "const chk = document.getElementById('chk-route-scrap-" + postId + "'); if(chk) chk.checked = !chk.checked;"
+            : 'window.goToScrapRoute(' + postId + ')';
 
-        return '<div class="place-card" style="cursor:pointer" onclick="window.goToScrapRoute(' + postId + ')">' +
-            '<div class="pc-hd">' +
-            '<div class="pc-icon">🗺️</div>' +
-            '<div style="flex:1;min-width:0">' +
-            '<div class="pc-name">' + safeTitle + '</div>' +
-            '<div class="pc-meta">' + (safeWriter ? safeWriter + ' · ' : '') + '여행 경로</div>' +
+        return '' +
+            '<div class="trip-card" onclick="' + cardClickAction + '" ' +
+            'style="cursor:pointer;position:relative;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:2px solid var(--border);background:var(--surface);margin-bottom:10px;transition:all .2s;">' +
+            (window._myRouteScrapDeleteMode
+                ? '<input type="checkbox" class="route-scrap-del-chk" id="chk-route-scrap-' + escapeHtml(postId) + '" value="' + escapeHtml(postId) + '" onclick="event.stopPropagation();" style="width:16px;height:16px;cursor:pointer;margin-left:4px;">'
+                : '') +
+            '<div style="width:42px;height:42px;border-radius:10px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;">🗺️</div>' +
+            '<div class="trip-info" style="flex:1;min-width:0;">' +
+            '<div class="trip-ttl" style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(title) + '</div>' +
+            '<div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">' + escapeHtml(writer) + ' · 여행 경로</div>' +
             (tags ? '<div style="margin-top:4px">' + tags + '</div>' : '') +
-            '<div style="font-size:11px;color:var(--text3);margin-top:3px">❤️ ' + (p.likes || 0) + ' &nbsp; 👁 ' + (p.views || 0) + '</div>' +
             '</div>' +
-            '<button onclick="event.stopPropagation();window.deleteMyRouteScrap(' + postId + ',this)" ' +
-            'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-            '🗑️ 삭제' +
-            '</button>' +
+            '<div class="trip-budget" style="color:var(--text3);font-size:11px;text-align:right;line-height:1.4;min-width:80px;flex-shrink:0;">' +
+            '<span style="display:block;font-size:10px;color:var(--text3);font-weight:700;margin-bottom:2px;">스크랩 일시</span>' +
+            '<span style="color:var(--text2);font-weight:500;">' + createdAt + '</span>' +
             '</div>' +
             '</div>';
     }
 
-
     window.loadMyRouteScrap = async function(page) {
-        const el = document.getElementById('my-scrap-route-list');
-        if (!el) return;
-        el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+        const listEl = document.getElementById('my-scrap-route-list');
+        if (!listEl) return;
 
-        const res = await api.get('/api/posts/scrapped');
-        if (!res || !res.success || !Array.isArray(res.data)) {
-            el.innerHTML = emptyMyPageMessage('스크랩한 여행 경로가 없습니다.');
+        renderMyRouteScrapActions();
+        listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
+
+        let list = [];
+        try {
+            const res = await requestJson('/api/posts/scrapped', { method: 'GET', headers: authHeaders(false) });
+            list = normalizeMyPageListResponse(res);
+        } catch (e) {
+            listEl.innerHTML = emptyMyPageMessage('스크랩한 여행 경로를 불러오지 못했습니다.');
+            if (typeof toast === 'function') toast(e.message || '스크랩한 여행 경로를 불러오지 못했습니다.');
             return;
         }
 
-        const list = res.data;
         renderMyCommunityPagedList(
-            el,
+            listEl,
             'scrap-route',
             list,
             '스크랩한 여행 경로가 없습니다.',
@@ -3938,27 +4106,62 @@ window._handleWriteImageSelect = function(input) {
             page
         );
     };
-    ;
+
+    window.toggleMyRouteScrapDeleteMode = function(isDeleteMode) {
+        window._myRouteScrapDeleteMode = !!isDeleteMode;
+        const state = getMyCommunityPagingState('scrap-route');
+        if (typeof window.loadMyRouteScrap === 'function') {
+            window.loadMyRouteScrap(state.page || 0);
+        }
+    };
+
+    window.execMyRouteScrapBulkDelete = async function() {
+        const checked = document.querySelectorAll('.route-scrap-del-chk:checked');
+        if (!checked.length) {
+            if (typeof toast === 'function') toast('삭제할 스크랩 여행 경로를 선택해주세요.');
+            return;
+        }
+
+        if (!confirm('선택한 ' + checked.length + '개의 스크랩 여행 경로를 삭제하시겠습니까?')) return;
+
+        let successCount = 0;
+        for (const chk of checked) {
+            const postId = chk.value;
+            try {
+                const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
+                if (res && res.success !== false) successCount++;
+            } catch (e) {
+                console.warn('[community-v2] 스크랩 여행 경로 삭제 실패:', postId, e);
+            }
+        }
+
+        if (successCount > 0) {
+            if (typeof toast === 'function') toast('선택한 스크랩 여행 경로가 삭제되었습니다.');
+            window._myRouteScrapDeleteMode = false;
+            const state = getMyCommunityPagingState('scrap-route');
+            await window.loadMyRouteScrap(state.page || 0);
+        } else {
+            if (typeof toast === 'function') toast('삭제 처리에 실패했습니다.');
+        }
+    };
 
     window.goToScrapRoute = function(postId) {
+        if (!postId) return;
         go('community');
         setTimeout(function() {
             if (typeof openPostDetail === 'function') openPostDetail(postId);
         }, 150);
     };
 
-    window.deleteMyRouteScrap = async function(postId, btn) {
+    window.deleteMyRouteScrap = async function(postId) {
+        if (!postId) return;
+        if (!confirm('이 스크랩 여행 경로를 삭제하시겠습니까?')) return;
+
         const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
         if (res && res.success !== false) {
             if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
-
             const state = getMyCommunityPagingState('scrap-route');
-            if (typeof window.loadMyRouteScrap === 'function') {
-                await window.loadMyRouteScrap(state.page || 0);
-            } else {
-                const card = btn && btn.closest ? btn.closest('.place-card') : null;
-                if (card) card.remove();
-            }
+            await window.loadMyRouteScrap(state.page || 0);
         } else {
             if (typeof toast === 'function') toast('삭제에 실패했습니다.');
         }
