@@ -619,12 +619,35 @@
     var _mobCarouselMQ = window.matchMedia('(max-width: 1024px)');
 
     function _buildOneCarousel(grid) {
-      // 이미 구성됐거나 카드가 없으면 skip
-      if (!grid || grid.dataset.carousel === '1') return;
+      if (!grid) return;
       var cards = grid.children;
-      if (!cards || cards.length === 0) return;
       // .no-data 한 장만 있는 경우는 캐러셀 불필요
-      if (cards.length === 1 && cards[0].className && cards[0].className.indexOf('no-data') !== -1) return;
+      var onlyNoData = (cards.length === 1 && cards[0].className && cards[0].className.indexOf('no-data') !== -1);
+
+      // 이미 구성된 경우: 카드 개수가 바뀌었으면 점/화살표를 다시 만든다(탭 전환·비동기 재렌더 대응)
+      if (grid.dataset.carousel === '1') {
+        var existingWrap = grid.parentNode;
+        if (existingWrap && existingWrap.classList.contains('mob-carousel-wrap')) {
+          var existingDots = existingWrap.querySelector('.mob-carousel-dots');
+          var dotCount = existingDots ? existingDots.children.length : -1;
+          if (!onlyNoData && cards.length > 0 && dotCount !== cards.length) {
+            // 개수가 달라졌으니 래퍼를 해제하고 처음부터 다시 구성
+            grid.dataset.carousel = '';
+            var arrs = existingWrap.querySelectorAll('.mob-carousel-arr');
+            arrs.forEach(function (a) { a.remove(); });
+            if (existingDots) existingDots.remove();
+            existingWrap.parentNode.insertBefore(grid, existingWrap);
+            existingWrap.remove();
+          } else {
+            return; // 동일하면 그대로 둠
+          }
+        } else {
+          return;
+        }
+      }
+
+      if (!cards || cards.length === 0) return;
+      if (onlyNoData) return;
 
       grid.dataset.carousel = '1';
 
@@ -695,6 +718,30 @@
       _sync();
     }
 
+    // 🧹 데스크톱(>768px)로 커지면 캐러셀 래퍼/점/화살표를 모두 해제해 원래 그리드로 복귀
+    function _teardownOneCarousel(grid) {
+      if (!grid) return;
+      var wrap = grid.parentNode;
+      if (!wrap || !wrap.classList || !wrap.classList.contains('mob-carousel-wrap')) {
+        grid.dataset.carousel = '';
+        return;
+      }
+      var arrs = wrap.querySelectorAll('.mob-carousel-arr');
+      arrs.forEach(function (a) { a.remove(); });
+      var dots = wrap.querySelector('.mob-carousel-dots');
+      if (dots) dots.remove();
+      // 그리드를 래퍼 밖(원래 위치)으로 되돌리고 래퍼 제거
+      wrap.parentNode.insertBefore(grid, wrap);
+      wrap.remove();
+      grid.dataset.carousel = '';
+      grid.scrollLeft = 0;
+    }
+
+    function _teardownCarousels() {
+      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
+      grids.forEach(function (g) { _teardownOneCarousel(g); });
+    }
+
     function _scrollToCard(grid, idx) {
       if (idx < 0 || idx >= grid.children.length) return;
       var card = grid.children[idx];
@@ -717,7 +764,7 @@
         if (g.dataset.carouselWatch === '1') return;
         g.dataset.carouselWatch = '1';
         var mo = new MutationObserver(function () {
-          if (g.children.length > 0) { _buildOneCarousel(g); }
+          if (_mobCarouselMQ.matches && g.children.length > 0) { _buildOneCarousel(g); }
         });
         mo.observe(g, { childList: true });
         if (g.children.length > 0) _buildOneCarousel(g);
@@ -729,6 +776,30 @@
       _watchCarouselGrids();
       setTimeout(initMobCarousels, 400);
       setTimeout(initMobCarousels, 1200);
+      setTimeout(initMobCarousels, 2500);
+    });
+
+    // 📱 화면 크기가 모바일/태블릿(≤768px)로 들어올 때도 캐러셀을 구성한다.
+    //    (데스크톱에서 열었다가 창을 줄이거나, 기기 회전 시 화살표·점이 안 나오던 문제 방지)
+    function _onMobMQChange() {
+      if (_mobCarouselMQ.matches) {
+        // 모바일/태블릿: 캐러셀 구성 (이미 있으면 카드수 변화에 맞춰 재구성됨)
+        _watchCarouselGrids();
+        initMobCarousels();
+        setTimeout(initMobCarousels, 300);
+      } else {
+        // 데스크톱: 캐러셀 잔재(점·화살표·래퍼) 완전 제거
+        _teardownCarousels();
+      }
+    }
+    if (_mobCarouselMQ.addEventListener) {
+      _mobCarouselMQ.addEventListener('change', _onMobMQChange);
+    } else if (_mobCarouselMQ.addListener) {
+      _mobCarouselMQ.addListener(_onMobMQChange);
+    }
+    window.addEventListener('resize', function () {
+      clearTimeout(window._mobCarouselResizeT);
+      window._mobCarouselResizeT = setTimeout(_onMobMQChange, 200);
     });
 
     document.addEventListener('DOMContentLoaded', initMainPage);
