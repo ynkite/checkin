@@ -214,6 +214,30 @@ public class PostController {
         );
     }
 
+    // 커뮤니티 - 게시글 스크랩 추가 전용
+    // 미리보기 모달의 "스크랩" 버튼에서 사용한다.
+    // 기존 /scraps 는 토글 방식이라 이미 스크랩된 글을 다시 누르면 취소될 수 있으므로,
+    // 이 API는 이미 스크랩되어 있어도 취소하지 않고 성공으로 처리한다.
+    @PostMapping("/{postId}/scraps/add")
+    public ResponseEntity<ApiResponse<Boolean>> addScrapPost(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @RequestParam(required = false, defaultValue = "ROUTE") String category
+    ) {
+        postService.scrapPost(
+                userDetails.getUserId(),
+                postId,
+                category
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success(
+                        "마이페이지 → 스크랩한 여행 경로에 추가되었습니다.",
+                        true
+                )
+        );
+    }
+
     // 커뮤니티 - 게시글/댓글 신고 접수
     @PostMapping("/{postId}/reports")
     public ResponseEntity<ApiResponse<Long>> reportPost(
