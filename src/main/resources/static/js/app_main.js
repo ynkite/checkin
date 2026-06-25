@@ -2929,6 +2929,7 @@ function openShareModal() {
 
     modal.classList.add('open');
     loadShareMembersData();
+
 }
 
 function shareInviteToKakaoTalk() {
