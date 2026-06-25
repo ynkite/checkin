@@ -2917,9 +2917,6 @@ function openShareModal() {
 
     modal.classList.add('open');
     loadShareMembersData();
-
-    // 🎯 꼬여있던 내부 호출용 함수명을 아래 실제 구현된 함수명과 일치시킵니다.
-    loadShareMembersData();
 }
 
 function shareInviteToKakaoTalk() {
@@ -2932,7 +2929,16 @@ function shareInviteToKakaoTalk() {
         }
 
         // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
-        const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+        let obscureToken;
+        try {
+            const bigTripId = BigInt(tripId);
+            const mask = BigInt("0x5A3C9B7D2E");
+            const obscure = bigTripId ^ mask;
+            obscureToken = obscure.toString(16);
+        } catch (e) {
+            console.error("카카오 토큰 암호화 실패:", e);
+            obscureToken = parseInt(tripId).toString(16);
+        }
 
         // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성하여 도메인 충돌을 원천 차단합니다.
         const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
@@ -3038,12 +3044,33 @@ async function inviteShareMember(btn) {
     }
 }
 
+// 복사 헬퍼 함수 (HTTPS/HTTP 모두 대응)
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(text);
+    }
+    return new Promise((resolve, reject) => {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.style.position = 'fixed';
+        el.style.opacity = '0';
+        document.body.appendChild(el);
+        el.focus();
+        el.select();
+        try {
+            document.execCommand('copy') ? resolve() : reject();
+        } catch (e) {
+            reject(e);
+        }
+        document.body.removeChild(el);
+    });
+}
+
 async function copyShareLink() {
     const tripId = window._currentTripId;
     if (!tripId) { toast('여행 플랜 정보가 올바르지 않습니다.'); return; }
 
     try {
-        // 1. 백엔드 난수 링크 생성 API 호출
         const response = await fetch(`/api/trips/${tripId}/share`, {
             method: 'POST',
             headers: {
@@ -3053,13 +3080,11 @@ async function copyShareLink() {
         });
         const res = await response.json();
 
-        // 2. 백엔드에서 생성해 준 안전한 난수 주소(?token=...)가 넘어왔을 때
         if (res && res.success && res.data && res.data.shareLink) {
             const linkEl = document.getElementById('share-link-val');
-            if (linkEl) {
-                linkEl.value = res.data.shareLink;
-            }
-            await navigator.clipboard.writeText(res.data.shareLink);
+            if (linkEl) linkEl.value = res.data.shareLink;
+
+            await copyToClipboard(res.data.shareLink);
             toast('읽기 전용 링크가 클립보드에 복사되었습니다!');
         } else {
             throw new Error("API 반환 오류");
@@ -3068,15 +3093,13 @@ async function copyShareLink() {
     } catch (error) {
         console.error("공유 링크 생성 실패:", error);
 
-        // 3. 백엔드 통신 실패 시 프론트 자체 방어막 가드
         const fallbackObscure = (tripId ^ 0x5A3C9B7D2E).toString(16);
-        // 🎯 동적 origin을 사용하여 로컬/서버 어디서든 정상 복사되도록 함
         const fallbackLink = `${window.location.origin}/plan/view?token=${fallbackObscure}`;
 
         const linkEl = document.getElementById('share-link-val');
         if (linkEl) linkEl.value = fallbackLink;
 
-        await navigator.clipboard.writeText(fallbackLink);
+        await copyToClipboard(fallbackLink);
         toast('링크가 복사되었습니다.');
     }
 }
