@@ -2934,7 +2934,7 @@ function shareInviteToKakaoTalk() {
         // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
         const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
 
-        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성
+        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성하여 도메인 충돌을 원천 차단합니다.
         const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
 
         // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
@@ -2944,11 +2944,9 @@ function shareInviteToKakaoTalk() {
                 title: '✈️ TripLinker 여행 플랜 공유',
                 description: `🔗 플랜 열람 링크: ${inviteUrl}`,
                 imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
-                // 🎯 [버그 수정]: 카카오 말풍선 이미지 자체나 카드 영역을 터치했을 때 이동할 도메인 주소 동적 연동
                 link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
             },
             buttons: [
-                // 🎯 [버그 수정]: 하단 "여행 일정 열람하기" 버튼을 눌렀을 때 이동할 주소도 똑같이 inviteUrl로 변경
                 { title: '🗺️ 여행 일정 열람하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
             ]
         });
@@ -3061,21 +3059,7 @@ async function copyShareLink() {
             if (linkEl) {
                 linkEl.value = res.data.shareLink;
             }
-
-            // 🎯 [보안 방어막]: 최신 브라우저가 보안 가드로 navigator.clipboard를 막았을 때의 분기 처리
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(res.data.shareLink);
-            } else {
-                // HTTP IP 서버(AWS 환경) 전용 폴백 강제 복사 집행
-                const textArea = document.createElement("textarea");
-                textArea.value = res.data.shareLink;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textArea);
-            }
+            await navigator.clipboard.writeText(res.data.shareLink);
             toast('읽기 전용 링크가 클립보드에 복사되었습니다!');
         } else {
             throw new Error("API 반환 오류");
@@ -3092,19 +3076,7 @@ async function copyShareLink() {
         const linkEl = document.getElementById('share-link-val');
         if (linkEl) linkEl.value = fallbackLink;
 
-        // 🎯 [보안 방어막]: Catch절 에러 가드 구역도 동일하게 폴백 엔진 적용
-        if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(fallbackLink);
-        } else {
-            const textArea = document.createElement("textarea");
-            textArea.value = fallbackLink;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-999999px";
-            document.body.appendChild(textArea);
-            textArea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textArea);
-        }
+        await navigator.clipboard.writeText(fallbackLink);
         toast('링크가 복사되었습니다.');
     }
 }
