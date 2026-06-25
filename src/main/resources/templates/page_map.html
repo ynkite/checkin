@@ -843,7 +843,7 @@
         bgPolyline.setMap(window._kakaoMap);
         window._kakaoPolylines.push({ day: route.day, line: bgPolyline, path: null });
 
-        // 🎯 [내부 컬러 선] 검은색 선 위에 얹어지는 고유 컬러 선 (두께 6)
+        // 🎯 [내부 컬러 선] 검은색 선 위에 얹어지는 고유 컬러 선
         var mainPolyline = new kakao.maps.Polyline({
           path: path,
           strokeWeight: 6,
