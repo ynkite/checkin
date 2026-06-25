@@ -663,6 +663,7 @@
             if (qToggle) qToggle.style.display = 'none';
           }
 
+
           if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
             window._kakaoMap.setBounds(bounds);
           }
@@ -671,6 +672,25 @@
             drawLivePolylines();
             checkActualWeatherAlert(window._currentTripId);
           }, 100);
+
+// 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
+          //   bounds·폴리라인이 0px 기준으로 계산되어 안 보이는 사고가 있었다.
+          //   relayout 후 한 박자 늦춰 setBounds·폴리라인을 적용하면 첫 진입에도 정상 동작한다.
+          var _applyBoundsAndLines = function() {
+            if (window._kakaoMap) {
+              window._kakaoMap.relayout();
+              if (window._kakaoOverlays && window._kakaoOverlays.length > 0) {
+                window._kakaoMap.setBounds(bounds);
+              }
+
+              setTimeout(() => {
+                drawLivePolylines();
+                if (typeof renderQ === 'function') renderQ(); // 묻혀있던 검색 에러 큐 갱신
+                checkActualWeatherAlert(window._currentTripId);
+              }, 200);
+            }
+          };
+          setTimeout(_applyBoundsAndLines, 100);
         }
 
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택

@@ -2934,8 +2934,8 @@ function shareInviteToKakaoTalk() {
         // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
         const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
 
-        // 🎯 [핵심 버그 수정]: 도메인 충돌 방지를 위해 카카오에 등록된 정품 로컬 주소를 명시적으로 강제 박기
-        const inviteUrl = `http://localhost:8080/plan/view?token=${obscureToken}`;
+        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성하여 도메인 충돌을 원천 차단합니다.
+        const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
 
         // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
         Kakao.Share.sendDefault({
@@ -3070,7 +3070,8 @@ async function copyShareLink() {
 
         // 3. 백엔드 통신 실패 시 프론트 자체 방어막 가드
         const fallbackObscure = (tripId ^ 0x5A3C9B7D2E).toString(16);
-        const fallbackLink = `http://localhost:8080/plan/view?token=${fallbackObscure}`;
+        // 🎯 동적 origin을 사용하여 로컬/서버 어디서든 정상 복사되도록 함
+        const fallbackLink = `${window.location.origin}/plan/view?token=${fallbackObscure}`;
 
         const linkEl = document.getElementById('share-link-val');
         if (linkEl) linkEl.value = fallbackLink;
@@ -3699,7 +3700,7 @@ window.addEventListener('popstate', e => {
                     if (!document.getElementById('tryTripLinkerBtn')) {
                         const tryBtn = document.createElement('a');
                         tryBtn.id = 'tryTripLinkerBtn';
-                        tryBtn.href = 'http://localhost:8080'; // 🚀 클릭 시 이동할 타겟 메인 주소
+                        tryBtn.href = window.location.origin; // 🚀 클릭 시 이동할 타겟 메인 주소
                         tryBtn.target = '_blank';              // 🚀 무조건 새 창으로 열기
                         tryBtn.style.textDecoration = 'none';
                         tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
