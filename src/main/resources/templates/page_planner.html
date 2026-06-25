@@ -96,281 +96,295 @@
                     return;
                 }
                 const d = json.data;
-
-                // ── 여행지 ──
-                if (d.destination) {
-                    const destProv = document.getElementById('dest-prov');
-                    if (destProv) {
-                        const parts = d.destination.split(' ');
-                        const provVal = parts[0];
-                        for (let i = 0; i < destProv.options.length; i++) {
-                            if (destProv.options[i].value === provVal || destProv.options[i].text === provVal) {
-                                destProv.selectedIndex = i;
-                                if (typeof updateCityDest === 'function') updateCityDest(destProv);
-                                break;
-                            }
-                        }
-                        if (parts[1]) {
-                            setTimeout(() => {
-                                const destCity = document.getElementById('dest-city');
-                                if (!destCity) return;
-                                for (let i = 0; i < destCity.options.length; i++) {
-                                    if (destCity.options[i].value === parts[1] || destCity.options[i].text === parts[1]) {
-                                        destCity.selectedIndex = i;
-                                        break;
-                                    }
-                                }
-                            }, 50);
-                        }
-                    }
-                }
-
-                // ── 출발일 / 귀환일 (오늘 이후인 경우만 채움) ──
-                const today = new Date().toISOString().split('T')[0];
-                if (d.startDate && d.startDate >= today) {
-                    const startEl = document.getElementById('s1-date-start');
-                    if (startEl) {
-                        startEl.value = d.startDate;
-                        startEl.dispatchEvent(new Event('change'));
-                    }
-                }
-                if (d.endDate && d.endDate >= today) {
-                    const endEl = document.getElementById('s1-date-end');
-                    if (endEl) {
-                        endEl.value = d.endDate;
-                        endEl.dispatchEvent(new Event('change'));
-                    }
-                }
-
-                // ── 출발지 ──
-                if (d.departure) {
-                    const parts = d.departure.split(' ');
-                    const depProv = document.getElementById('dep-prov');
-                    if (depProv && parts[0]) {
-                        for (let i = 0; i < depProv.options.length; i++) {
-                            if (depProv.options[i].value === parts[0] || depProv.options[i].text === parts[0]) {
-                                depProv.selectedIndex = i;
-                                if (typeof updateCityDep === 'function') updateCityDep(depProv);
-                                break;
-                            }
-                        }
-                        if (parts[1]) {
-                            setTimeout(() => {
-                                const depCity = document.getElementById('dep-city');
-                                if (!depCity) return;
-                                for (let i = 0; i < depCity.options.length; i++) {
-                                    if (depCity.options[i].value === parts[1] || depCity.options[i].text === parts[1]) {
-                                        depCity.selectedIndex = i;
-                                        break;
-                                    }
-                                }
-                            }, 50);
-                        }
-                    }
-                }
-
-                // ── 이동 수단 chip (단일, 기타( 처리 포함) ──
-                if (d.transportType) {
-                    const isOther = d.transportType.startsWith('기타(');
-                    const matchLabel = isOther ? '기타' : d.transportType;
-                    document.querySelectorAll('#chip-trans .chip').forEach(c => {
-                        c.classList.toggle('on', c.textContent.trim() === matchLabel);
-                    });
-                    if (isOther) {
-                        const el = document.getElementById('other-trans');
-                        if (el) { el.value = d.transportType.slice(3, -1); el.classList.add('show'); }
-                    }
-                }
-
-                // ── 숙소 형태 chip (단일, 기타( 처리 포함) ──
-                if (d.accommodationType) {
-                    const isOther = d.accommodationType.startsWith('기타(');
-                    const matchLabel = isOther ? '기타' : d.accommodationType;
-                    document.querySelectorAll('#chip-acc .chip').forEach(c => {
-                        c.classList.toggle('on', c.textContent.trim() === matchLabel);
-                    });
-                    if (isOther) {
-                        const el = document.getElementById('other-acc');
-                        if (el) { el.value = d.accommodationType.slice(3, -1); el.classList.add('show'); }
-                    }
-                }
-
-                // ── 동행자 유형 chip (단일, 기타( 처리 포함) ──
-                if (d.companionType) {
-                    const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
-                    const rawLabel = compMap[d.companionType] || d.companionType;
-                    const isOther = rawLabel.startsWith('기타');
-                    const matchLabel = isOther ? '기타' : rawLabel;
-                    document.querySelectorAll('#chip-comp .chip').forEach(c => {
-                        c.classList.toggle('on', c.textContent.trim() === matchLabel);
-                    });
-                    if (isOther && rawLabel.startsWith('기타(')) {
-                        const el = document.getElementById('other-comp');
-                        if (el) { el.value = rawLabel.slice(3, -1); el.classList.add('show'); }
-                    }
-                }
-
-                // ── 인원 수 ──
-                if (d.companionCount) {
-                    const paxEl = document.getElementById('s1-pax');
-                    if (paxEl) paxEl.value = d.companionCount;
-                }
-
-                // ── 예산 ──
-                if (d.budget != null) {
-                    const budgetEl = document.getElementById('s1-budget');
-                    if (budgetEl) budgetEl.value = Number(d.budget).toLocaleString();
-                }
-
-                // ── 여행 스타일 (다중, JSON 배열) ──
-                if (d.travelStyles) {
-                    let styles = [];
-                    try { styles = JSON.parse(d.travelStyles); } catch(e) {}
-                    document.querySelectorAll('#chip-style .chip').forEach(c => c.classList.remove('on'));
-                    styles.forEach(s => {
-                        const chip = [...document.querySelectorAll('#chip-style .chip')]
-                            .find(c => c.textContent.trim() === s || (s.startsWith('기타') && c.textContent.trim() === '기타'));
-                        if (chip) {
-                            chip.classList.add('on');
-                            if (chip.textContent.trim() === '기타') {
-                                const otherEl = document.getElementById('other-style');
-                                if (otherEl && s.startsWith('기타(')) {
-                                    otherEl.value = s.slice(3, -1);
-                                    otherEl.classList.add('show');
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // ── 식이 정보 (다중, JSON 배열) ──
-                if (d.dietaryInfo) {
-                    let foods = [];
-                    try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
-                    document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
-                    foods.forEach(f => {
-                        const isAllergy = f.startsWith('알러지(') || f === '알러지 있음';
-                        if (isAllergy) {
-                            const chip = [...document.querySelectorAll('#chip-food .chip')]
-                                .find(c => c.textContent.trim() === '알러지 있음');
-                            if (chip) {
-                                chip.classList.add('on');
-                                const otherEl = document.getElementById('other-allergy');
-                                if (otherEl && f.startsWith('알러지(')) {
-                                    otherEl.value = f.slice(4, -1);
-                                    otherEl.classList.add('show');
-                                    otherEl.style.display = '';
-                                }
-                            }
-                            return;
-                        }
-                        const chip = [...document.querySelectorAll('#chip-food .chip')]
-                            .find(c => c.textContent.trim() === f || (f.startsWith('기타') && c.textContent.trim() === '기타'));
-                        if (chip) {
-                            chip.classList.add('on');
-                            if (chip.textContent.trim() === '기타') {
-                                const otherEl = document.getElementById('other-food');
-                                if (otherEl && f.startsWith('기타(')) {
-                                    otherEl.value = f.slice(3, -1);
-                                    otherEl.classList.add('show');
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // ── 특수 조건 chip (다중) — hasInfant / hasPet / extraNotes(노인, 기타) ──
-                document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
-                if (d.hasInfant === 1) {
-                    const chip = [...document.querySelectorAll('#chip-special .chip')]
-                        .find(c => c.textContent.trim() === '유아 동반');
-                    if (chip) chip.classList.add('on');
-                }
-                if (d.hasPet === 1) {
-                    const chip = [...document.querySelectorAll('#chip-special .chip')]
-                        .find(c => c.textContent.trim() === '반려동물 동반');
-                    if (chip) chip.classList.add('on');
-                }
-
-                const otherSpecialEl = document.getElementById('other-special');
-                if (otherSpecialEl) {
-                    otherSpecialEl.value = '';
-                    otherSpecialEl.classList.remove('show');
-                }
-                if (d.extraNotes) {
-                    try {
-                        const extras = JSON.parse(d.extraNotes);
-                        const hasOlderly = extras.some(e => e.label === '노인 동반');
-                        if (hasOlderly) {
-                            const chip = [...document.querySelectorAll('#chip-special .chip')]
-                                .find(c => c.textContent.trim() === '노인 동반');
-                            if (chip) chip.classList.add('on');
-                        }
-                        const specialOther = extras.find(e => e.label === '특수 조건');
-                        if (specialOther) {
-                            const chip = [...document.querySelectorAll('#chip-special .chip')]
-                                .find(c => c.textContent.trim() === '기타');
-                            if (chip) chip.classList.add('on');
-                            if (otherSpecialEl) {
-                                otherSpecialEl.value = specialOther.value;
-                                otherSpecialEl.classList.add('show');
-                            }
-                        }
-                    } catch(e) {}
-                }
-
-                // ── 일정 밀도 chip (단일) ──
-                if (d.scheduleDensity) {
-                    document.querySelectorAll('#chip-density .chip').forEach(c => {
-                        c.classList.toggle('on', c.textContent.trim() === d.scheduleDensity);
-                    });
-                }
-
-                // ── 숙소 세부 옵션 (다중, JSON 배열) ──
-                if (d.accommodationOptions) {
-                    let opts = [];
-                    try { opts = JSON.parse(d.accommodationOptions); } catch(e) {}
-                    document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
-                    opts.forEach(o => {
-                        const chip = [...document.querySelectorAll('#chip-accopts .chip')]
-                            .find(c => c.textContent.trim() === o || (o.startsWith('기타') && c.textContent.trim() === '기타'));
-                        if (chip) {
-                            chip.classList.add('on');
-                            if (chip.textContent.trim() === '기타') {
-                                const otherEl = document.getElementById('other-accopts');
-                                if (otherEl && o.startsWith('기타(')) {
-                                    otherEl.value = o.slice(3, -1);
-                                    otherEl.classList.add('show');
-                                }
-                            }
-                        }
-                    });
-                }
-
-                // ── sum-extra-rows 복원 (삭제 버튼 포함) ──
-                const extraContainer = document.getElementById('sum-extra-rows');
-                if (extraContainer && d.extraNotes) {
-                    try {
-                        const extras = JSON.parse(d.extraNotes);
-                        extraContainer.innerHTML = '';
-                        extras.forEach(item => {
-                            if (!item.label || !item.value) return;
-                            const row = document.createElement('div');
-                            row.id = 'sum-extra-' + item.label;
-                            row.className = 'asc-row';
-                            row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
-                            extraContainer.appendChild(row);
-                        });
-                        const emptyMsg = document.getElementById('extra-empty-msg');
-                        if (emptyMsg && extras.length > 0) emptyMsg.style.display = 'none';
-                    } catch(e) {}
-                }
-
+                _applyPlanPrefToForm(d);
                 updateSummaryCard();
                 toast('이전 플랜을 불러왔습니다 ✓');
             } catch (e) {
                 toast('플랜 불러오기 중 오류가 발생했습니다.');
             }
+        }
+
+        /* ─────────────────────────────────────────────────────────
+         * 입력 정보(기본+취향) 객체 d 를 STEP1/STEP2 폼에 그대로 채움
+         *  - '이전 플랜 불러오기' 및 '내 여행 기록에서 플랜 복원' 두 곳에서 공용 사용
+         * ───────────────────────────────────────────────────────── */
+        function _applyPlanPrefToForm(d, allowPastDates) {
+            if (!d) return;
+
+            // ── 여행지 ──
+            if (d.destination) {
+                const destProv = document.getElementById('dest-prov');
+                if (destProv) {
+                    const parts = d.destination.split(' ');
+                    const provVal = parts[0];
+                    for (let i = 0; i < destProv.options.length; i++) {
+                        if (destProv.options[i].value === provVal || destProv.options[i].text === provVal) {
+                            destProv.selectedIndex = i;
+                            if (typeof updateCityDest === 'function') updateCityDest(destProv);
+                            break;
+                        }
+                    }
+                    if (parts[1]) {
+                        setTimeout(() => {
+                            const destCity = document.getElementById('dest-city');
+                            if (!destCity) return;
+                            for (let i = 0; i < destCity.options.length; i++) {
+                                if (destCity.options[i].value === parts[1] || destCity.options[i].text === parts[1]) {
+                                    destCity.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }, 50);
+                    }
+                }
+            }
+
+            // ── 출발일 / 귀환일 ──
+            //  · 이전 플랜 불러오기: 오늘 이후만
+            //  · 여행 기록 복원(allowPastDates): 저장된 날짜 그대로 표시
+            const today = new Date().toISOString().split('T')[0];
+            if (d.startDate && (allowPastDates || d.startDate >= today)) {
+                const startEl = document.getElementById('s1-date-start');
+                if (startEl) {
+                    if (allowPastDates && d.startDate < today) startEl.min = d.startDate;
+                    startEl.value = d.startDate;
+                    startEl.dispatchEvent(new Event('change'));
+                }
+            }
+            if (d.endDate && (allowPastDates || d.endDate >= today)) {
+                const endEl = document.getElementById('s1-date-end');
+                if (endEl) {
+                    if (allowPastDates && d.endDate < today) endEl.min = d.endDate;
+                    endEl.value = d.endDate;
+                    endEl.dispatchEvent(new Event('change'));
+                }
+            }
+
+            // ── 출발지 ──
+            if (d.departure) {
+                const parts = d.departure.split(' ');
+                const depProv = document.getElementById('dep-prov');
+                if (depProv && parts[0]) {
+                    for (let i = 0; i < depProv.options.length; i++) {
+                        if (depProv.options[i].value === parts[0] || depProv.options[i].text === parts[0]) {
+                            depProv.selectedIndex = i;
+                            if (typeof updateCityDep === 'function') updateCityDep(depProv);
+                            break;
+                        }
+                    }
+                    if (parts[1]) {
+                        setTimeout(() => {
+                            const depCity = document.getElementById('dep-city');
+                            if (!depCity) return;
+                            for (let i = 0; i < depCity.options.length; i++) {
+                                if (depCity.options[i].value === parts[1] || depCity.options[i].text === parts[1]) {
+                                    depCity.selectedIndex = i;
+                                    break;
+                                }
+                            }
+                        }, 50);
+                    }
+                }
+            }
+
+            // ── 이동 수단 chip (단일, 기타( 처리 포함) ──
+            if (d.transportType) {
+                const isOther = d.transportType.startsWith('기타(');
+                const matchLabel = isOther ? '기타' : d.transportType;
+                document.querySelectorAll('#chip-trans .chip').forEach(c => {
+                    c.classList.toggle('on', c.textContent.trim() === matchLabel);
+                });
+                if (isOther) {
+                    const el = document.getElementById('other-trans');
+                    if (el) { el.value = d.transportType.slice(3, -1); el.classList.add('show'); }
+                }
+            }
+
+            // ── 숙소 형태 chip (단일, 기타( 처리 포함) ──
+            if (d.accommodationType) {
+                const isOther = d.accommodationType.startsWith('기타(');
+                const matchLabel = isOther ? '기타' : d.accommodationType;
+                document.querySelectorAll('#chip-acc .chip').forEach(c => {
+                    c.classList.toggle('on', c.textContent.trim() === matchLabel);
+                });
+                if (isOther) {
+                    const el = document.getElementById('other-acc');
+                    if (el) { el.value = d.accommodationType.slice(3, -1); el.classList.add('show'); }
+                }
+            }
+
+            // ── 동행자 유형 chip (단일, 기타( 처리 포함) ──
+            if (d.companionType) {
+                const compMap = { 'SOLO': '혼자', 'COUPLE': '커플', 'FAMILY': '가족', 'FRIENDS': '친구' };
+                const rawLabel = compMap[d.companionType] || d.companionType;
+                const isOther = rawLabel.startsWith('기타');
+                const matchLabel = isOther ? '기타' : rawLabel;
+                document.querySelectorAll('#chip-comp .chip').forEach(c => {
+                    c.classList.toggle('on', c.textContent.trim() === matchLabel);
+                });
+                if (isOther && rawLabel.startsWith('기타(')) {
+                    const el = document.getElementById('other-comp');
+                    if (el) { el.value = rawLabel.slice(3, -1); el.classList.add('show'); }
+                }
+            }
+
+            // ── 인원 수 ──
+            if (d.companionCount) {
+                const paxEl = document.getElementById('s1-pax');
+                if (paxEl) paxEl.value = d.companionCount;
+            }
+
+            // ── 예산 ──
+            if (d.budget != null) {
+                const budgetEl = document.getElementById('s1-budget');
+                if (budgetEl) budgetEl.value = Number(d.budget).toLocaleString();
+            }
+
+            // ── 여행 스타일 (다중, JSON 배열) ──
+            if (d.travelStyles) {
+                let styles = [];
+                try { styles = JSON.parse(d.travelStyles); } catch(e) {}
+                document.querySelectorAll('#chip-style .chip').forEach(c => c.classList.remove('on'));
+                styles.forEach(s => {
+                    const chip = [...document.querySelectorAll('#chip-style .chip')]
+                        .find(c => c.textContent.trim() === s || (s.startsWith('기타') && c.textContent.trim() === '기타'));
+                    if (chip) {
+                        chip.classList.add('on');
+                        if (chip.textContent.trim() === '기타') {
+                            const otherEl = document.getElementById('other-style');
+                            if (otherEl && s.startsWith('기타(')) {
+                                otherEl.value = s.slice(3, -1);
+                                otherEl.classList.add('show');
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ── 식이 정보 (다중, JSON 배열) ──
+            if (d.dietaryInfo) {
+                let foods = [];
+                try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
+                document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
+                foods.forEach(f => {
+                    const isAllergy = f.startsWith('알러지(') || f === '알러지 있음';
+                    if (isAllergy) {
+                        const chip = [...document.querySelectorAll('#chip-food .chip')]
+                            .find(c => c.textContent.trim() === '알러지 있음');
+                        if (chip) {
+                            chip.classList.add('on');
+                            const otherEl = document.getElementById('other-allergy');
+                            if (otherEl && f.startsWith('알러지(')) {
+                                otherEl.value = f.slice(4, -1);
+                                otherEl.classList.add('show');
+                                otherEl.style.display = '';
+                            }
+                        }
+                        return;
+                    }
+                    const chip = [...document.querySelectorAll('#chip-food .chip')]
+                        .find(c => c.textContent.trim() === f || (f.startsWith('기타') && c.textContent.trim() === '기타'));
+                    if (chip) {
+                        chip.classList.add('on');
+                        if (chip.textContent.trim() === '기타') {
+                            const otherEl = document.getElementById('other-food');
+                            if (otherEl && f.startsWith('기타(')) {
+                                otherEl.value = f.slice(3, -1);
+                                otherEl.classList.add('show');
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ── 특수 조건 chip (다중) — hasInfant / hasPet / extraNotes(노인, 기타) ──
+            document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
+            if (d.hasInfant === 1) {
+                const chip = [...document.querySelectorAll('#chip-special .chip')]
+                    .find(c => c.textContent.trim() === '유아 동반');
+                if (chip) chip.classList.add('on');
+            }
+            if (d.hasPet === 1) {
+                const chip = [...document.querySelectorAll('#chip-special .chip')]
+                    .find(c => c.textContent.trim() === '반려동물 동반');
+                if (chip) chip.classList.add('on');
+            }
+
+            const otherSpecialEl = document.getElementById('other-special');
+            if (otherSpecialEl) {
+                otherSpecialEl.value = '';
+                otherSpecialEl.classList.remove('show');
+            }
+            if (d.extraNotes) {
+                try {
+                    const extras = JSON.parse(d.extraNotes);
+                    const hasOlderly = extras.some(e => e.label === '노인 동반');
+                    if (hasOlderly) {
+                        const chip = [...document.querySelectorAll('#chip-special .chip')]
+                            .find(c => c.textContent.trim() === '노인 동반');
+                        if (chip) chip.classList.add('on');
+                    }
+                    const specialOther = extras.find(e => e.label === '특수 조건');
+                    if (specialOther) {
+                        const chip = [...document.querySelectorAll('#chip-special .chip')]
+                            .find(c => c.textContent.trim() === '기타');
+                        if (chip) chip.classList.add('on');
+                        if (otherSpecialEl) {
+                            otherSpecialEl.value = specialOther.value;
+                            otherSpecialEl.classList.add('show');
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            // ── 일정 밀도 chip (단일) ──
+            if (d.scheduleDensity) {
+                document.querySelectorAll('#chip-density .chip').forEach(c => {
+                    c.classList.toggle('on', c.textContent.trim() === d.scheduleDensity);
+                });
+            }
+
+            // ── 숙소 세부 옵션 (다중, JSON 배열) ──
+            if (d.accommodationOptions) {
+                let opts = [];
+                try { opts = JSON.parse(d.accommodationOptions); } catch(e) {}
+                document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+                opts.forEach(o => {
+                    const chip = [...document.querySelectorAll('#chip-accopts .chip')]
+                        .find(c => c.textContent.trim() === o || (o.startsWith('기타') && c.textContent.trim() === '기타'));
+                    if (chip) {
+                        chip.classList.add('on');
+                        if (chip.textContent.trim() === '기타') {
+                            const otherEl = document.getElementById('other-accopts');
+                            if (otherEl && o.startsWith('기타(')) {
+                                otherEl.value = o.slice(3, -1);
+                                otherEl.classList.add('show');
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ── sum-extra-rows 복원 (삭제 버튼 포함) ──
+            const extraContainer = document.getElementById('sum-extra-rows');
+            if (extraContainer && d.extraNotes) {
+                try {
+                    const extras = JSON.parse(d.extraNotes);
+                    extraContainer.innerHTML = '';
+                    extras.forEach(item => {
+                        if (!item.label || !item.value) return;
+                        const row = document.createElement('div');
+                        row.id = 'sum-extra-' + item.label;
+                        row.className = 'asc-row';
+                        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
+                        extraContainer.appendChild(row);
+                    });
+                    const emptyMsg = document.getElementById('extra-empty-msg');
+                    if (emptyMsg && extras.length > 0) emptyMsg.style.display = 'none';
+                } catch(e) {}
+            }
+
+            updateSummaryCard();
         }
 
         /* ─────────────────────────────────────────────────────────
@@ -621,6 +635,9 @@
                 sessionStorage.removeItem('ai_generated_route');
                 window._planDirty = true;
             }
+            window._chatRestored = false;
+            window._planLoadedTripId = null;
+            window._planHydrateTripId = null;
 
             if (typeof resetPlannerForm === 'function') resetPlannerForm();
 
@@ -642,6 +659,49 @@
             toast('폼이 초기화되었습니다. 경로를 다시 생성하려면 1번부터 입력해주세요.');
         }
 
+        // ── 🌀 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
+        function _showGenLoading(text) {
+            window._genCancelled = false;
+            let ov = document.getElementById('genLoadOverlay');
+            if (!ov) {
+                if (!document.getElementById('genLoadStyle')) {
+                    const st = document.createElement('style');
+                    st.id = 'genLoadStyle';
+                    st.textContent =
+                        '@keyframes genSpin{to{transform:rotate(360deg)}}'
+                        + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
+                        + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
+                        + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
+                        + 'border-top-color:#2D9E8A;border-radius:50%;animation:genSpin .8s linear infinite}'
+                        + '#genLoadOverlay .gl-txt{color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+                        + '#genLoadOverlay .gl-cancel{margin-top:6px;padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.5);'
+                        + 'background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:700;cursor:pointer}'
+                        + '#genLoadOverlay .gl-cancel:hover{background:rgba(255,255,255,.22)}';
+                    document.head.appendChild(st);
+                }
+                ov = document.createElement('div');
+                ov.id = 'genLoadOverlay';
+                ov.innerHTML = '<div class="gl-ring"></div><div class="gl-txt" id="genLoadTxt"></div>'
+                    + '<button class="gl-cancel" id="genLoadCancel" onclick="_cancelGenLoading()">취소</button>';
+                document.body.appendChild(ov);
+            }
+            ov.style.display = 'flex';
+            const t = document.getElementById('genLoadTxt');
+            if (t) t.textContent = text || 'AI가 일정을 생성 중입니다…';
+        }
+        function _hideGenLoading() {
+            const ov = document.getElementById('genLoadOverlay');
+            if (ov) ov.style.display = 'none';
+        }
+        // 취소: 진행 중인 생성/보정을 무시 플래그로 중단하고 버튼·오버레이 원상복구
+        function _cancelGenLoading() {
+            window._genCancelled = true;
+            _hideGenLoading();
+            const btn = document.querySelector('#sp-3 .btn-gen');
+            if (btn) { btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+            toast('일정 생성을 취소했습니다.');
+        }
+
         /* ─────────────────────────────────────────────────────────
          * AI 일정 생성 요청
          * POST /api/trips/{tripId}/routes/generate
@@ -650,9 +710,13 @@
             const tripId = window._currentTripId;
             if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-            // 1. 버튼 자체의 텍스트를 바꾸고 비활성화 (오버레이 창 제거)
+            // 🛟 [예산 보존] 생성 중 예산칸이 비워지는 문제 방지용 스냅샷
+            window._budgetSnapshot = (document.getElementById('s1-budget')?.value || '').trim();
+
+            // 1. 버튼 비활성화 + 반투명 로딩 오버레이 표시
             btn.innerHTML = 'AI가 일정을 생성중입니다..';
             btn.disabled = true;
+            _showGenLoading('AI가 일정을 생성 중입니다…');
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
@@ -669,12 +733,15 @@
                     const issues = await _preGenerateAudit(tripId, draftRoute);
 
                     const _proceed = () => {
+                        if (window._genCancelled) return;
                         btn.innerHTML = 'AI가 일정을 생성중입니다..';
+                        _showGenLoading('AI가 일정을 생성 중입니다…');
                         sessionStorage.setItem('autoHealingRetries', '0');
                         validateAndHealingRoute(tripId, draftRoute, btn);
                     };
 
                     if (issues && (issues.missing.length > 0 || issues.budgetShort)) {
+                        _hideGenLoading();
                         // 게이트 표시 → 확인 시에만 _proceed(), 취소 시 버튼 원상복구
                         _showPreGenGate(issues, _proceed, () => {
                             btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
@@ -685,12 +752,14 @@
                     }
 
                 } else {
+                    _hideGenLoading();
                     toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
                     // 실패 시 버튼 즉시 원상복구
                     btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                     btn.disabled = false;
                 }
             } catch (e) {
+                _hideGenLoading();
                 toast('⚠️ AI 서버 연결에 실패했습니다.');
                 // 에러 발생 시 버튼 즉시 원상복구
                 btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
@@ -880,6 +949,7 @@
 
         // ── 🤖 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
         function validateAndHealingRoute(tripId, routeData, btn) {
+            if (window._genCancelled) { _hideGenLoading(); return; }
             if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || !kakao.maps.services) {
                 _finalizePlannerRoute(routeData, btn);
                 return;
@@ -1134,6 +1204,7 @@
                             sessionStorage.setItem('autoHealingRetries', currentStage.toString());
 
                             btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
+                            _showGenLoading(`정밀 보정 진행 중… (${currentStage} / 2)`);
 
                             fetch(`/api/trips/${tripId}/routes/replace`, {
                                 method: 'POST',
@@ -1304,6 +1375,14 @@
         }
 
         function _finalizePlannerRoute(routeData, btn) {
+            _hideGenLoading();
+            // 🛟 [예산 복구] 생성 과정에서 예산칸이 비워졌다면 스냅샷 값으로 되돌린다.
+            const _bEl = document.getElementById('s1-budget');
+            if (_bEl && (!_bEl.value || !_bEl.value.trim()) && window._budgetSnapshot) {
+                _bEl.value = window._budgetSnapshot;
+                if (typeof updateSummaryCard === 'function') updateSummaryCard();
+            }
+            if (window._genCancelled) { return; }
             if (btn) {
                 btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
@@ -1588,7 +1667,6 @@
                         <div class="chat-inp-area">
                             <div class="chat-inp-row">
                 <textarea class="chat-inp" id="chatInp" rows="1" placeholder="메시지 입력..."
-                          oninput="if(typeof _saveChatState==='function')_saveChatState()"
                           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"></textarea>
                                 <button class="btn-send" onclick="sendMsg()">↑</button>
                             </div>

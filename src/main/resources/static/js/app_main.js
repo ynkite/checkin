@@ -395,9 +395,7 @@ function updateNav() {
                 saveInviteBtn.style.opacity = '0.7';
                 saveInviteBtn.style.pointerEvents = 'none';
 
-                const obscureToken = (BigInt(tid) ^ 0x5A3C9B7D2En).toString(16);
-                const basePath = window._isInvitedEditView ? '/plan' : '/plan/view';
-                const exactInviteUrl = window.location.origin + basePath + '?token=' + obscureToken;
+                const exactInviteUrl = window.location.href;
                 const titleText = document.querySelector('.ml-plan-ttl')?.textContent || '초대받은 여행 플랜';
                 const metaText = document.querySelector('.ml-plan-meta')?.textContent?.split('·')[0]?.trim() || '공유받은 지역';
 
@@ -682,7 +680,7 @@ async function doSocialSignup() {
             _currentUser.mbti = mbti;
         }
         toast('✅ 소셜 계정으로 회원가입이 완료되었습니다!');
-        setTimeout(function() { go('mypage'); }, 1000);
+        setTimeout(function() { go('main'); }, 1000);
     } else {
         toast('⚠️ ' + (res.message || '가입 처리 중 오류가 발생했습니다.'));
     }
@@ -810,18 +808,10 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
     if (paginated.length > 0) {
         html += paginated.map(x => {
-            // 🎯 [DB 꼬임 방어]: 과거에 이미 '/' 로 잘못 저장되어 먹통이 된 링크를 눌렀을 때 내 여행 기록으로 튕기는 버그를 런타임에서 즉시 복구(힐링)합니다.
-            let safeUrl = x.url;
-            if (safeUrl && !safeUrl.includes('token=') && x.originalTripId) {
-                // 🎯 BigInt 적용으로 5a 토큰 유실 차단
-                const obscureToken = (BigInt(x.originalTripId) ^ 0x5A3C9B7D2En).toString(16);
-                safeUrl = window.location.origin + '/plan/view?token=' + obscureToken;
-            }
-
-            // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 안전하게 복구된 링크로 이동
+            // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
             const cardClickAction = window._invitedDeleteMode
                 ? `const chk = document.getElementById('chk-invited-${x.id}'); if(chk) chk.checked = !chk.checked;`
-                : `window.location.href='${safeUrl}'`;
+                : `window.location.href='${x.url}'`;
 
             return `
       <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
@@ -1013,6 +1003,12 @@ function openMyTrip(tripId) {
     // ✨ 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
     window._currentTripId = tripId;
     sessionStorage.setItem('plannerDraftId', tripId);
+
+    // 🔁 내 여행 기록에서 진입 → 1·2·3 단계 폼/대화를 백엔드 기준으로 다시 채워야 함을 표시.
+    window._planHydrateTripId = tripId;
+    window._chatRestored      = false;
+    sessionStorage.removeItem('plannerDraftStep');
+    sessionStorage.removeItem('plannerDraftState');
 
     // 맵 전환 시 이전 데이터 잔상이 보이지 않도록 화면 백지화
     const listEl = document.getElementById('mapDayList');
@@ -1413,20 +1409,6 @@ async function deleteNotif(notifId) {
  * 10. 지도 장소 팝업 (GET /api/maps/places)
  * ─────────────────────────────────────────────── */
 
-/** 지도 마커 클릭 시: 후기 팝업 대신 왼쪽 일정 리스트에서 해당 장소를 강조한다.
- *  (일정 리스트 항목 클릭은 기존대로 showMapPlacePopup 후기 팝업 유지) */
-function highlightItineraryPlace(key) {
-    const rows = document.querySelectorAll('.place-row[data-key]');
-    let target = null;
-    rows.forEach(r => {
-        if (r.dataset.key === String(key)) { r.classList.add('place-row-active'); target = r; }
-        else r.classList.remove('place-row-active');
-    });
-    if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-}
-
 /** GET /api/maps/places?keyword={key} */
 async function showMapPlacePopup(key, type) {
     const modal = document.getElementById('mapPlaceModal');
@@ -1507,6 +1489,11 @@ function showReviewDetail(place, type, stars, text) {
 
 /** POST /api/chat/sessions : 플래너 입력 후 챗봇 세션 생성 */
 async function startChatWithSummary() {
+    // 🔁 복원된(기존 여행 기록에서 불러온) 대화가 이미 떠 있으면 새 세션으로 덮어쓰지 않는다.
+    if (window._chatRestored) {
+        if (typeof updateSummaryCard === 'function') updateSummaryCard();
+        return;
+    }
     if (typeof updateSummaryCard === 'function') updateSummaryCard();
     const dest   = (document.getElementById('sum-dest')   || {}).textContent || '-';
     const ppl    = (document.getElementById('sum-people') || {}).textContent || '-';
@@ -2351,6 +2338,7 @@ function _currentPlanStep() {
 }
 
 function markPlanDirty() {
+    if (window._restoringPlan) return;   // 복원 중 자동 발생한 change/input 은 dirty 로 치지 않음
     if (!sessionStorage.getItem('ai_generated_route')) return;
     _planDirty = true;
     _syncStep4State();
@@ -2406,6 +2394,97 @@ function _syncNavStepHighlight() {
     }
 }
 
+/* ───────────────────────────────────────────────
+ * 내 여행 기록 → 플래너 1·2·3 단계 복원
+ * ─────────────────────────────────────────────── */
+async function restorePlannerFromTrip(tripId) {
+    if (!tripId) return;
+    try {
+        const [tripRes, formRes] = await Promise.all([
+            api.get(`/api/trips/${tripId}`),
+            api.get(`/api/trips/${tripId}/input-form`)
+        ]);
+
+        const t = (tripRes && tripRes.success) ? (tripRes.data || {}) : {};
+        const f = (formRes && formRes.success) ? (formRes.data || {}) : {};
+
+        // GET /api/trips/{tripId} (PlanDetailResponseDto) 는 budget·travelStyles·dietaryInfo·
+        // transportType·accommodationType·companionType 등 취향 전체 필드를 이미 포함한다.
+        // input-form(getInputFormMap)은 일부 필드만 주므로, 트립 상세(t)를 기준으로 하고
+        // 비어 있는 값만 input-form(f)으로 보충한다.
+        const merged = {
+            destination:         t.destination        ?? f.destination,
+            startDate:           t.startDate           ?? f.startDate,
+            endDate:             t.endDate             ?? f.endDate,
+            departure:           t.departure           ?? f.departure,
+            transportType:       t.transportType       ?? f.transportType,
+            accommodationType:   t.accommodationType   ?? f.accommodationType,
+            accommodationOptions:t.accommodationOptions?? f.accommodationOptions,
+            companionType:       t.companionType       ?? f.companionType,
+            companionCount:      (t.companionCount != null ? t.companionCount : f.companionCount),
+            travelStyles:        t.travelStyles        ?? f.travelStyles,
+            dietaryInfo:         t.dietaryInfo         ?? f.dietaryInfo,
+            scheduleDensity:     t.scheduleDensity     ?? f.scheduleDensity,
+            hasInfant:           (t.hasInfant != null ? t.hasInfant : f.hasInfant),
+            hasPet:              (t.hasPet != null ? t.hasPet : f.hasPet),
+            budget:              (t.budget != null ? t.budget : f.budget),
+            extraNotes:          t.extraNotes          ?? f.extraNotes
+        };
+
+        if (typeof _applyPlanPrefToForm === 'function') {
+            window._restoringPlan = true;
+            _applyPlanPrefToForm(merged, true);
+            // 복원 중 발생하는 지연 change/input(도시 select, summary) 까지 끝난 뒤 플래그 해제
+            setTimeout(() => { window._restoringPlan = false; }, 300);
+        }
+        setTimeout(() => { if (typeof updateSummaryCard === 'function') updateSummaryCard(); }, 80);
+
+        await _restoreChatForTrip(tripId);
+
+        window._planHydrateTripId = null;
+        window._planLoadedTripId  = tripId;
+        // 복원 직후엔 사용자가 바꾼 게 없으므로 dirty 아님 → 4번(경로 생성) 접근 가능
+        window._planDirty = false;
+        if (typeof _syncStep4State === 'function') _syncStep4State();
+    } catch (e) {
+        console.warn('[planner] 여행 기록 복원 실패', e);
+    }
+}
+
+async function _restoreChatForTrip(tripId) {
+    const msgs = document.getElementById('chatMsgs');
+    if (!msgs) return;
+    try {
+        const listRes = await api.get('/api/chat/sessions');
+        const sessions = (listRes && listRes.success && Array.isArray(listRes.data)) ? listRes.data : [];
+
+        let target = sessions.find(s => String(s.planId) === String(tripId));
+        if (!target && sessions.length) target = sessions[sessions.length - 1];
+        if (!target) { window._chatRestored = false; return; }
+
+        const sid = target.sessionId;
+        const detail = await api.get(`/api/chat/sessions/${sid}`);
+        const messages = (detail && detail.success && detail.data && Array.isArray(detail.data.messages))
+            ? detail.data.messages : [];
+
+        if (!messages.length) { window._chatRestored = false; return; }
+
+        _chatSessionId = sid;
+        msgs.innerHTML = '';
+        messages.forEach(m => {
+            const role = (String(m.role).toUpperCase() === 'USER') ? 'user' : 'bot';
+            let txt = String(m.content == null ? '' : m.content);
+            txt = txt.replace(/\[UPDATE:[A-Za-z가-힣0-9]+:[^\]]*\]/g, '').trim();
+            txt = txt.replace(/\[EXTRA:[^\]]+\]/g, '').trim();
+            if (txt) addBubble(txt, role);
+        });
+        window._chatRestored = true;
+    } catch (e) {
+        console.warn('[planner] 대화 복원 실패', e);
+        window._chatRestored = false;
+    }
+}
+
 function goPlanStep(n) {
     if (!_loggedIn) {
         toast('⚠️ 로그인이 필요합니다. 로그인 후 이용해주세요.');
@@ -2436,6 +2515,15 @@ function goPlanStep(n) {
         document.getElementById('navPlannerBtn')?.classList.add('on');
     }
 
+    // 🔁 내 여행 기록에서 진입(openMyTrip) 했고 아직 폼을 안 채웠다면,
+    //    백엔드에서 1·2·3 단계(기본/취향/대화)를 먼저 복원한 뒤 같은 단계로 다시 진입.
+    if (n <= 3 && window._planHydrateTripId && String(window._planHydrateTripId) === String(window._currentTripId)) {
+        const _tid = window._planHydrateTripId;
+        window._planHydrateTripId = null;
+        restorePlannerFromTrip(_tid).then(() => { goPlanStep(n); });
+        return;
+    }
+
     const current = _currentPlanStep();
 
     if (n > current) {
@@ -2455,11 +2543,7 @@ function goPlanStep(n) {
     _syncPlannerTopbar();
     _syncNavStepHighlight();
 
-    if(n===3){
-        // 챗봇에 이미 대화가 있으면 보존한다. 비어있을 때(최초 진입)만 요약 메시지를 띄운다.
-        const _cm = document.getElementById('chatMsgs');
-        if(!_cm || _cm.children.length === 0) startChatWithSummary();
-    }
+    if(n===3) startChatWithSummary();
     history.pushState({ page: 'planner', step: n }, '', '/');
     if (window._currentTripId) _savePlannerDraft();
 }
@@ -2826,7 +2910,8 @@ function openShareModal() {
     const linkEl = document.getElementById('share-link-val');
 
     if (linkEl && tripId) {
-        const obscureToken = (BigInt(tripId) ^ 0x5A3C9B7D2En).toString(16);
+        // 🎯 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
+        const obscureToken = (tripId ^ 0x5A3C9B7D2E).toString(16);
         linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     }
 
@@ -3028,6 +3113,9 @@ function goNewPlanner() {
     if (!_loggedIn) { toast('⚠️ 로그인이 필요합니다.'); go('login'); return; }
     resetPlannerForm();
     window._currentTripId = null;
+    window._chatRestored = false;
+    window._planHydrateTripId = null;
+    window._planLoadedTripId = null;
     sessionStorage.removeItem('plannerDraftId');
     sessionStorage.removeItem('plannerDraftStep');
     sessionStorage.removeItem('plannerDraftState');
@@ -3536,22 +3624,21 @@ window.addEventListener('popstate', e => {
  * 26. 초기화
  * ─────────────────────────────────────────────── */
 (async () => {
-
+    // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
+    _handleOAuthCallback();
 
     // ✨ 공유 링크 접속 시 URL에서 token(난수) 추출 후 원본 id 복원 및 읽기 전용 UI 처리
     const params = new URLSearchParams(location.search);
     const shareToken = params.get('token'); // 🎯 token 난수 파라미터 읽기
-
-    // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
-    _handleOAuthCallback();
     const token = Token.getAccess();
 
     // 난수 토큰이 존재하면 역으로 디코딩하여 원본 숫자로 복원
     let sharedId = null;
     if (shareToken) {
         try {
-            // 🎯 BigInt 적용으로 진입점 토큰 복호화 매핑 일치 처리
-            sharedId = (BigInt('0x' + shareToken) ^ 0x5A3C9B7D2En).toString();
+            // 16진수 난수를 다시 원본 숫자 ID로 안전하게 역연산 해독
+            const parsedHex = parseInt(shareToken, 16);
+            sharedId = (parsedHex ^ 0x5A3C9B7D2E).toString();
         } catch (e) {
             console.error("유효하지 않은 토큰 포맷입니다.");
         }
