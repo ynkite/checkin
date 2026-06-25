@@ -2940,7 +2940,7 @@ function shareInviteToKakaoTalk() {
             obscureToken = parseInt(tripId).toString(16);
         }
 
-        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성하여 도메인 충돌을 원천 차단합니다.
+        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성
         const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
 
         // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.

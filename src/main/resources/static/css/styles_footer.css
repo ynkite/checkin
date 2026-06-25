@@ -27,7 +27,6 @@
     margin-top: 64px;
     background: var(--foot-bg);
     color: var(--foot-text);
-    border-top: 3px solid var(--foot-accent);
     font-family: 'Pretendard', system-ui, sans-serif;
 }
 
