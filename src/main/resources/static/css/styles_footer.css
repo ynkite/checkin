@@ -1,0 +1,176 @@
+/* =========================================================
+   TripLinker — Site Footer  (Deep Teal 테마)
+   신규 추가 파일 · 다른 css 파일은 수정하지 않음
+   브레이크포인트: 1024px(태블릿) / 768px(모바일) / 480px(소형)
+
+   +-----------------------------------------------------+
+   |  색상 변경은 아래 [색상 설정] 블록의 값만 바꾸세요.    |
+   |  나머지 코드는 건드릴 필요 없습니다.                  |
+   +-----------------------------------------------------+
+   ========================================================= */
+
+.site-footer {
+    /* ===== [색상 설정] - 여기 값만 바꾸면 됩니다 ===== */
+    --foot-bg:        #14403A;   /* 푸터 배경 (딥틸) */
+    --foot-accent:    #2D9E8A;   /* 상단 경계선 / 포인트 */
+    --foot-heading:   #4DB8A4;   /* 컬럼 제목(바로가기·고객지원 등) */
+    --foot-text:      #CDE0DB;   /* 일반 본문 글자 / 링크 */
+    --foot-text-bold: #FFFFFF;   /* 강조 글자(슬로건·팀장·팀원) */
+    --foot-muted:     #9FBAB4;   /* 보조 설명 글자(소속 등) */
+    --foot-credits:   #7FA39C;   /* 하단 출처·저작권 글자 */
+    --foot-line:      rgba(255,255,255,.10);  /* 하단 구분선 */
+    --foot-divider:   rgba(255,255,255,.25);  /* 출처 사이 | 기호 */
+    /* 로고 반전: 어두운 배경이면 1, 밝은 배경으로 바꾸면 0 으로 */
+    --foot-logo-invert: 1;
+    /* ================================================ */
+
+    margin-top: 64px;
+    background: var(--foot-bg);
+    color: var(--foot-text);
+    border-top: 3px solid var(--foot-accent);
+    font-family: 'Pretendard', system-ui, sans-serif;
+}
+
+.site-footer a {
+    color: var(--foot-text);
+    text-decoration: none;
+    transition: color .15s;
+}
+.site-footer a:hover { color: var(--foot-heading); }
+
+/* ---- 상단 영역 ---- */
+.foot-top {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 28px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 36px 56px;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+
+/* 브랜드 블록 */
+.foot-brand { max-width: 360px; }
+.foot-brand .foot-logo {
+    height: 30px;
+    width: auto;
+    margin-bottom: 12px;
+    filter: brightness(0) invert(var(--foot-logo-invert));
+}
+.foot-slogan {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--foot-text-bold);
+    margin: 0 0 8px;
+    line-height: 1.45;
+}
+.foot-desc {
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--foot-muted);
+    margin: 0;
+}
+
+/* 정보 컬럼 */
+.foot-col { min-width: 150px; }
+.foot-col h4 {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--foot-heading);
+    margin: 0 0 14px;
+}
+.foot-col ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+.foot-col li { font-size: 13px; line-height: 1.4; }
+.foot-col .foot-muted { color: var(--foot-muted); }
+
+/* 팀 정보 줄 */
+.foot-team-line {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--foot-text);
+}
+.foot-team-line strong { color: var(--foot-text-bold); font-weight: 600; }
+
+/* ---- 하단 바 ---- */
+.foot-bottom {
+    border-top: 1px solid var(--foot-line);
+}
+.foot-bottom-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 18px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 20px;
+}
+.foot-credits {
+    font-size: 11.5px;
+    line-height: 1.7;
+    color: var(--foot-credits);
+}
+.foot-credits span { white-space: nowrap; }
+.foot-divider { color: var(--foot-divider); margin: 0 8px; }
+.foot-copy {
+    font-size: 11.5px;
+    color: var(--foot-credits);
+    white-space: nowrap;
+}
+
+/* =========================================================
+   태블릿: 1024px 이하
+   ========================================================= */
+@media (max-width: 1024px) {
+    .foot-top {
+        gap: 32px 40px;
+        padding: 36px 24px 24px;
+    }
+    .foot-brand { max-width: 100%; flex: 1 1 100%; }
+}
+
+/* =========================================================
+   모바일: 768px 이하
+   하단 고정 bottomNav에 가리지 않도록 여백 확보
+   ========================================================= */
+@media (max-width: 768px) {
+    .site-footer { margin-top: 40px; }
+    .foot-top {
+        flex-direction: column;
+        gap: 28px;
+        padding: 32px 20px 22px;
+        text-align: center;
+        align-items: center;
+    }
+    .foot-brand { text-align: center; }
+    .foot-col { min-width: 0; width: 100%; }
+    .foot-col ul { align-items: center; }
+    .foot-bottom-inner {
+        flex-direction: column;
+        text-align: center;
+        padding: 16px 20px;
+        padding-bottom: calc(16px + 64px + env(safe-area-inset-bottom, 0px));
+    }
+    .foot-credits, .foot-copy { white-space: normal; }
+    .foot-credits span { white-space: normal; }
+}
+
+/* =========================================================
+   소형: 480px 이하
+   ========================================================= */
+@media (max-width: 480px) {
+    .foot-top { padding: 28px 16px 20px; }
+    .foot-slogan { font-size: 13px; }
+    .foot-desc { font-size: 12px; }
+    .foot-bottom-inner { padding-left: 16px; padding-right: 16px; }
+}
