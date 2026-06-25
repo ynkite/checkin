@@ -1010,6 +1010,18 @@ function openMyTrip(tripId) {
     sessionStorage.removeItem('plannerDraftStep');
     sessionStorage.removeItem('plannerDraftState');
 
+    // 🎯 [핵심 버그 수정]: 다른 일정으로 바꿀 때 기존에 쌓여있던 교체 요청 대기열을 완전히 박멸(초기화)합니다.
+    window._q = [];
+    if (typeof _q !== 'undefined') _q = [];
+
+    // 🎯 교체 요청 레이아웃 바 및 접혀있던 토글 안내판도 깨끗하게 초기 상태로 원상복구합니다.
+    const rb = document.getElementById('recalcBar');
+    if (rb) rb.style.display = 'none';
+    const qBox = document.getElementById('queueBox');
+    if (qBox) { qBox.classList.remove('has'); qBox.style.display = 'none'; }
+    const qToggle = document.getElementById('queueToggle');
+    if (qToggle) qToggle.style.display = 'none';
+
     // 맵 전환 시 이전 데이터 잔상이 보이지 않도록 화면 백지화
     const listEl = document.getElementById('mapDayList');
     if (listEl) listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--sage-d);font-weight:700;">✨ 여행 정보를 불러오는 중...</div>';
