@@ -2918,8 +2918,6 @@ function openShareModal() {
     modal.classList.add('open');
     loadShareMembersData();
 
-    // 🎯 꼬여있던 내부 호출용 함수명을 아래 실제 구현된 함수명과 일치시킵니다.
-    loadShareMembersData();
 }
 
 function shareInviteToKakaoTalk() {
