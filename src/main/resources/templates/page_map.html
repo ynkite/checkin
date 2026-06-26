@@ -590,6 +590,14 @@
 
         if (totalPlaces === 0) {
           window._isKakaoMapInitRunning = false;
+          // 🩹 [빈 지도 보정] 마커가 0개여도 회색 빈 화면이 되지 않도록 한반도 중심으로 타일을 깔아준다
+          setTimeout(function() {
+            if (window._kakaoMap) {
+              window._kakaoMap.relayout();
+              window._kakaoMap.setCenter(new kakao.maps.LatLng(_initLat, _initLng));
+              window._kakaoMap.setLevel(_initLevel);
+            }
+          }, 150);
           return;
         }
 
@@ -630,6 +638,7 @@
           var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
           window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
           bounds.extend(new kakao.maps.LatLng(realLat, realLng));
+          window._kakaoBounds = bounds; // 🩹 선 깜빡임 보정용 — relayout 후 재적용에 사용
           pin.isFound = true;
         }
 
@@ -728,7 +737,8 @@
         // 여행지 중심 좌표 확보 후 검색 루프 기동
         function _runWithRegion(destRegion) {
           var hasCity = !!(destRegion && destRegion.trim().split(/\s+/).length >= 2);
-          var maxRadiusKm = (destRegion && destRegion.indexOf('제주') >= 0) ? 60 : (hasCity ? 40 : 80);
+          // 🩹 [반경 완화] 인접 시·군(예: 속초↔양양↔고성) 장소가 경계에서 배제되지 않도록 여유를 둔다
+          var maxRadiusKm = (destRegion && destRegion.indexOf('제주') >= 0) ? 60 : (hasCity ? 60 : 90);
           var geocoder = (kakao.maps.services && kakao.maps.services.Geocoder)
                   ? new kakao.maps.services.Geocoder() : null;
 
@@ -1298,8 +1308,8 @@
 
       if (!box || !items) return;
 
-      // 목록이 길어지면 스크롤 생성
-      items.style.maxHeight = '240px';
+// 목록이 길어지면 스크롤 생성 (패널을 넘지 않도록 화면 비율로 제한)
+      items.style.maxHeight = 'min(240px, 32vh)';
       items.style.overflowY = 'auto';
       items.style.paddingRight = '5px';
 
