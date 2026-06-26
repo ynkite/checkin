@@ -77,5 +77,5 @@ tasks.named('test') {
 }
 
 tasks.named('bootJar') {
-    archiveFileName = 'trip-linker.jar'
+    archiveFileName = 'triplinker.jar'
 }
