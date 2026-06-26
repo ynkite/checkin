@@ -43,7 +43,7 @@ table {
 /* =============================================================================
  * 1. 태블릿 이하 (≤1024px)
  * ========================================================================== */
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
 
     /* 본문 컨테이너 좌우 여백 축소 */
     .sec {
@@ -514,4 +514,38 @@ table {
         bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
         z-index: 30;
     }
+}
+
+/* =============================================================================
+ * 태블릿(769~1100px): 상단 네비는 유지하되, 플래너 스텝·로고만 축약 표시
+ * ========================================================================== */
+@media (min-width: 769px) and (max-width: 1100px) {
+    /* 스텝 표시 중: 메뉴+스텝이 잘리지 않도록 nav-links 오버플로 해제 + 가로 스크롤 허용 */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-links::-webkit-scrollbar { display: none; }
+    /* 메뉴 링크 라벨 압축(공간 확보용) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-link { padding: 5px 7px; font-size: 11px; }
+    /* 스텝바 좌우 여백 축소 */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-planner-steps { margin: 0 8px; }
+
+    /* 플래너 진입 시: 로고 심볼만 + 스텝 축약 라벨 (한 줄 확보) */
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-full { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-symbol {
+        display: block;
+        height: 30px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-full  { display: none; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-short { display: inline; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-btn {
+        white-space: nowrap;
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-num { width: 14px; height: 14px; font-size: 8px; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl { white-space: nowrap; font-size: 11px; }
+    body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
 }

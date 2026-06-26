@@ -130,7 +130,7 @@
 /* =========================================================
    태블릿: 1024px 이하
    ========================================================= */
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
     .foot-top {
         gap: 32px 40px;
         padding: 36px 24px 24px;
@@ -172,4 +172,9 @@
     .foot-slogan { font-size: 13px; }
     .foot-desc { font-size: 12px; }
     .foot-bottom-inner { padding-left: 16px; padding-right: 16px; }
+}
+
+/* 지도 페이지에서는 푸터 숨김 (전체화면 지도 아래 회색 영역 방지) */
+body:has(#page-map.active) .site-footer {
+    display: none;
 }

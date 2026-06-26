@@ -25,7 +25,7 @@
 .map-mobile-tabs { display: none; }
 
 /* ≤1024px */
-@media (max-width: 1024px) {
+@media (max-width: 1100px) {
     .map-wrap { grid-template-columns: 260px 1fr; }
 }
 
@@ -62,6 +62,20 @@
     .map-mob-tab.on {
         color: var(--sage-d);
         border-bottom-color: var(--sage);
+    }
+    /* Day 탭: 좁은 화면에서 가로 스크롤 없이 한 줄 균등 배치 */
+    .day-tabs {
+        overflow-x: hidden;
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 8px 8px;
+    }
+    .day-tabs .day-tab {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+        padding: 4px 2px;
+        font-size: 10px;
     }
 
     /* 각 패널: 남은 높이 전체 차지 */
@@ -114,4 +128,21 @@
 /* 가로 모드 짧은 화면 (가로 폰) */
 @media (max-height: 500px) and (orientation: landscape) {
     .map-wrap { height: 80vh; }
+}
+
+/* 태블릿: 지도는 좌우 분할 유지하되 Day 탭만 한 줄 균등 배치 */
+@media (min-width: 769px) and (max-width: 1100px) {
+    .day-tabs {
+        overflow-x: hidden;
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 8px 8px;
+    }
+    .day-tabs .day-tab {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+        padding: 4px 2px;
+        font-size: 10px;
+    }
 }
