@@ -114,8 +114,8 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
 
-                // 내 여행 기록에는 초대받은 일정(INVITED)이 노출되지 않도록 필터링
-                .filter(plan -> !"INVITED".equals(plan.getStatus()))
+                // 내 여행 기록에는 '확정(FIXED)'된 일정만 노출 (DRAFT·INVITED 등은 제외)
+                .filter(plan -> "FIXED".equals(plan.getStatus()))
 
                 .map(plan -> {
                     String startStr = plan.getStartDate() != null ? plan.getStartDate().toString().replace("-", ".") : "";
@@ -340,6 +340,23 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     }
 
 
+
+    @Override
+    @Transactional
+    public void updatePlanStatus(Long userId, Long tripId, String status) {
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        if (!plan.getUser().getId().equals(userId)) {
+            throw new IllegalStateException("접근 권한이 없습니다.");
+        }
+        // 확정(FIXED) / 수정 중(DRAFT) 두 가지만 허용
+        if (!"FIXED".equals(status) && !"DRAFT".equals(status)) {
+            throw new IllegalArgumentException("허용되지 않은 상태값입니다.");
+        }
+        plan.setStatus(status);
+        plan.setUpdatedAt(java.time.LocalDateTime.now());
+        travelPlanRepository.save(plan);
+    }
 
     @Override
     @Transactional

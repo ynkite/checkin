@@ -1501,7 +1501,7 @@
                             <div style="font-size:11px;color:var(--text3);margin-top:4px">📅 오늘 이후 날짜만 선택 가능합니다</div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">귀환일</label>
+                            <label class="form-label">귀환일(최대 3박 4일까지 가능합니다)</label>
                             <input class="form-input" type="date" id="s1-date-end" onchange="onEndDateChange()">
                             <div style="font-size:11px;color:var(--text3);margin-top:4px">🏠 출발일 이후 날짜 선택 (당일 여행 가능)</div>
                         </div>
@@ -1510,8 +1510,8 @@
                         <div class="form-group">
                             <label class="form-label">인원</label>
                             <div style="display:flex; align-items:center; gap:8px">
-                                <input class="form-input" id="s1-pax" type="number" min="1" max="99" placeholder="예: 3"
-                                       oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                                <input class="form-input" id="s1-pax" type="number" min="1" max="10" placeholder="예: 3"
+                                       oninput="this.value=this.value.replace(/[^0-9]/g,''); if(parseInt(this.value)>10) this.value='10';"
                                        style="width:100px; flex-shrink:0">
                                 <span style="font-size:14px; color:var(--text2); white-space:nowrap">명</span>
                             </div>
@@ -1855,9 +1855,16 @@
                 return;
             }
             endInput.min = val;
+            // 최대 3박 4일: 귀환일 max = 출발일 + 3일
+            const maxEnd = new Date(val);
+            maxEnd.setDate(maxEnd.getDate() + 3);
+            endInput.max = maxEnd.toISOString().split('T')[0];
             if (endInput.value && endInput.value < val) {
                 endInput.value = '';
                 toast('⚠️ 귀환일이 출발일보다 이전이어서 초기화되었습니다.');
+            } else if (endInput.value && endInput.value > endInput.max) {
+                endInput.value = '';
+                toast('⚠️ 최대 3박 4일까지만 선택할 수 있습니다.');
             }
             updateWeatherBtn();
         }
@@ -1873,6 +1880,16 @@
                 endEl.value = '';
                 updateWeatherBtn();
                 return;
+            }
+            if (start) {
+                const maxEnd = new Date(start);
+                maxEnd.setDate(maxEnd.getDate() + 3);
+                if (end > maxEnd.toISOString().split('T')[0]) {
+                    toast('⚠️ 최대 3박 4일까지만 선택할 수 있습니다.');
+                    endEl.value = '';
+                    updateWeatherBtn();
+                    return;
+                }
             }
             updateWeatherBtn();
         }

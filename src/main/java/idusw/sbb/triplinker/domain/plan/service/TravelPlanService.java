@@ -43,6 +43,9 @@ public interface TravelPlanService {
 
     void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);
 
+    // 플랜 확정/수정 상태 변경 (FIXED = 확정, DRAFT = 수정 중)
+    void updatePlanStatus(Long userId, Long tripId, String status);
+
     Map<String, Object> getLatestPreference(Long userId);
 
     Map<String, Object> getInputFormMap(Long tripId);

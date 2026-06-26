@@ -338,6 +338,11 @@ nav {
     background: var(--surface)
 }
 
+.form-input::placeholder {
+    color: var(--text3);
+    opacity: 0.45;
+}
+
 .form-input.err {
     border-color: var(--coral)
 }

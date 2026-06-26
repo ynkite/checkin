@@ -119,9 +119,62 @@
       }
     }
 
+    // ── 확정/수정 상태 관리 ──────────────────────────────────
+    // window._planConfirmed: true=확정(잠금) / false=수정 중(편집 가능)
+
+    // 화면(배지·버튼·잠금)을 상태에 맞게 그려주는 함수
+    function applyPlanConfirmState(isConfirmed) {
+      window._planConfirmed = !!isConfirmed;
+
+      const badge = document.getElementById('planStatusBadge');
+      const btn   = document.getElementById('btnConfirmToggle');
+      const left  = document.querySelector('.map-left');
+
+      if (badge) {
+        badge.innerHTML = isConfirmed ? '✅ 확정됨' : '✏️ 수정 중';
+        badge.style.background = isConfirmed ? '#E8F5E9' : 'var(--sage-pale)';
+        badge.style.color      = isConfirmed ? '#2E7D32' : 'var(--sage-d)';
+      }
+      if (btn) {
+        btn.innerHTML = isConfirmed ? '✏️ 수정' : '✅ 확정';
+        btn.style.background = isConfirmed ? 'var(--coral)' : 'var(--sage)';
+      }
+      // 확정 상태면 일정 영역(드래그·교체·추가)을 잠금 처리
+      if (left) left.classList.toggle('plan-locked', isConfirmed);
+    }
+
+    // 확정 ↔ 수정 토글 버튼 핸들러
+    async function togglePlanConfirm() {
+      const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+
+      // 현재 수정 중 → '확정'으로 전환 / 현재 확정 → '수정'으로 전환
+      const nextStatus = window._planConfirmed ? 'DRAFT' : 'FIXED';
+
+      try {
+        const res = await api.patch(`/api/trips/${tripId}/status`, { status: nextStatus });
+        if (!res.success) { toast(res.message || '상태 변경에 실패했습니다.'); return; }
+
+        applyPlanConfirmState(nextStatus === 'FIXED');
+
+        if (nextStatus === 'FIXED') {
+          // 확정 시 모달 노출
+          const modal = document.getElementById('confirmDoneModal');
+          if (modal) modal.classList.add('open');
+        } else {
+          toast('수정 모드로 전환되었습니다.');
+        }
+      } catch (e) {
+        toast('서버 오류가 발생했습니다.');
+      }
+    }
+
     // ── DOM 렌더링 ──
     async function initMapPage() {
       var routeData = null;
+
+      // 기본은 '수정 중' 상태로 시작 (DB 상세 로드 시 FIXED면 applyPlanConfirmState로 덮어씀)
+      if (typeof applyPlanConfirmState === 'function') applyPlanConfirmState(false);
 
       const params = new URLSearchParams(location.search);
       const shareToken = params.get('token');
@@ -188,6 +241,10 @@
           // ── 이하 재민님의 오리지널 순정 코드 100% 보존 및 화면 주입 버그 완전 정정 ──
           const t = r.data;
           if (titleEl) titleEl.textContent = t.title || '여행 플랜';
+          // 🔒 플랜 상태(FIXED=확정 / 그 외=수정 중)를 버튼·배지·잠금에 반영
+          if (typeof applyPlanConfirmState === 'function') {
+            applyPlanConfirmState(t.status === 'FIXED');
+          }
           if (metaEl) {
             const fmt = d => d ? d.replace(/-/g,'.') : '';
             const dow = ['일','월','화','수','목','금','토'];
@@ -1065,7 +1122,9 @@
       document.querySelectorAll('.place-row[data-key]').forEach(function(row) {
         row.setAttribute('draggable', 'true');
 
-        row.addEventListener('dragstart', function() {
+        row.addEventListener('dragstart', function(e) {
+          // 확정(잠금) 상태에서는 순서 변경 불가
+          if (window._planConfirmed) { e.preventDefault(); return false; }
           dragSrc = this;
           setTimeout(function() { row.style.opacity = '0.4'; }, 0);
         });
@@ -1585,19 +1644,42 @@
   </script>
 
   <div class="page" id="page-map">
+    <style>
+      /* 확정(FIXED) 상태일 때 일정 영역의 편집 조작을 잠금 */
+      .map-left.plan-locked .pr-drag,
+      .map-left.plan-locked .btn-replace,
+      .map-left.plan-locked .replace-area,
+      .map-left.plan-locked .queue-box,
+      .map-left.plan-locked #queueToggle {
+        display: none !important;
+      }
+      .map-left.plan-locked .place-row {
+        cursor: default !important;
+      }
+      .map-left.plan-locked .place-row[draggable] {
+        pointer-events: auto;
+      }
+    </style>
     <div class="map-wrap">
       <!-- 모바일 전용 탭 바 -->
       <div class="map-mobile-tabs">
         <button class="map-mob-tab on" id="mobTabItinerary" onclick="switchMobileMapTab('itinerary')">📋 일정</button>
         <button class="map-mob-tab" id="mobTabMap" onclick="switchMobileMapTab('map')">🗺️ 지도</button>
         <button class="map-mob-tab" id="mobTabBudget" onclick="switchMobileMapTab('budget')">💰 예산</button>
+        <button class="map-mob-tab" id="mobTabShare" onclick="openShareModal()">🔗 공유</button>
       </div>
       <div class="map-left">
         <div class="ml-hd">
           <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
           <div class="ml-plan-meta" id="mapPlanMeta">2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차</div>
-          <div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:var(--sage-pale);color:var(--sage-d);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">
-            ✏️ 수정 중
+          <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div id="planStatusBadge" style="display:inline-flex;align-items:center;gap:4px;background:var(--sage-pale);color:var(--sage-d);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">
+              ✏️ 수정 중
+            </div>
+            <button id="btnConfirmToggle" onclick="togglePlanConfirm()"
+                    style="padding:5px 14px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
+              ✅ 확정
+            </button>
           </div>
         </div>
         <!-- 필터 칩: JS initMapPage() 로 동적 주입 -->
@@ -1849,7 +1931,7 @@
                     style="padding:10px 24px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
               지도 더 보기
             </button>
-            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open'); go('mypage');"
+            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open'); go('mypage'); setTimeout(function(){ if(typeof showMySection==='function') showMySection('trips', document.querySelector('.my-menu')); }, 150);"
                     style="padding:10px 24px; background:var(--sage); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
               마이페이지로 이동
             </button>

@@ -51,6 +51,17 @@ public class TravelPlanController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
+    // 플랜 확정/수정 상태 변경 (status = "FIXED" 확정 / "DRAFT" 수정 중)
+    @PatchMapping("/{tripId}/status")
+    public ResponseEntity<ApiResponse<Void>> updatePlanStatus(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId,
+            @RequestBody Map<String, String> body) {
+
+        travelPlanService.updatePlanStatus(userDetails.getUserId(), tripId, body.get("status"));
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @GetMapping("/{tripId}/input-form")
     public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getInputForm(
             @AuthenticationPrincipal CustomUserDetails userDetails,
