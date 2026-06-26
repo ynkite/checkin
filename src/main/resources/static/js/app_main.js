@@ -2947,7 +2947,7 @@ function openShareModal() {
 
     if (linkEl && tripId) {
         // 🎯 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
-        const obscureToken = (tripId ^ 0x5A3C9B7D2E).toString(16);
+        const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
         linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     }
 
@@ -2962,7 +2962,7 @@ function shareInviteToKakaoTalk() {
 
     if (typeof Kakao !== 'undefined') {
         if (!Kakao.isInitialized()) {
-            Kakao.init('50a304fa42a0bd2d294ac871e3acae14');
+            Kakao.init('cb534606e630ecbec186e4ebd2917b04');
         }
 
         // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
@@ -3012,7 +3012,7 @@ async function loadShareMembersData() {
     }
 
     // 🎯 화면 로드 시에도 링크 창에 완벽한 난수 주소가 유지되도록 체결
-    const obscureToken = (parseInt(tripId) ^ 0x5A3C9B7D2E).toString(16);
+    const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
     if(linkEl) linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
 
