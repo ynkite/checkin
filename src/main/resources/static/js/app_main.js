@@ -193,6 +193,11 @@ function goAdminRefresh(sec) {
 }
 
 function go(id, addToHistory) {
+    if (id !== 'map') {
+        window._isInvitedEditView = false;
+        if (typeof updateNav === 'function') updateNav();
+    }
+
     sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
     if (addToHistory !== false) history.pushState({page: id}, '', '/');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -450,6 +455,8 @@ function updateNav() {
 
     // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
     if (saveInviteBtn) {
+        const isMapPageActive = document.getElementById('page-map')?.classList.contains('active');
+
         if (_loggedIn && window._isInvitedEditView) {
             api.get('/api/trips/invited').then(r => {
                 if (r.success && r.data) {
@@ -3671,6 +3678,11 @@ window.addEventListener('popstate', e => {
     const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
     const wfi = document.querySelectorAll('.wf-item');
     if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
+
+    // 🎯 [추가] 뒤로가기로 페이지 복구 시 상단바(네비게이션 버튼 등) UI도 최신화
+    if (typeof updateNav === 'function') {
+        updateNav();
+    }
 });
 
 /* ───────────────────────────────────────────────

@@ -32,7 +32,7 @@
   <div class="nav-links">
     <button class="nav-link on" onclick="goHomeRefresh()">🏠 홈</button>
     <button class="nav-link" onclick="goRefresh('community')">👥 커뮤니티</button>
-    <button class="nav-link" onclick="go('weather');setNav(this)">🌤️ 날씨</button>
+    <button class="nav-link" onclick="goRefresh('weather')">🌤️ 날씨</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">✈ 플랜</button>
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
@@ -69,7 +69,7 @@
         padding:0 3px;pointer-events:none;box-sizing:border-box;border:2px solid #fff;"></span>
     </div>
     <a class="btn-o" id="navAdminLink" onclick="go('admin')" style="display:none;cursor:pointer;color:var(--sage);font-weight:700">관리자</a>
-    <button class="btn-o" id="navUserNameBtn" onclick="go('mypage')" style="display:none">마이페이지</button>
+    <button class="btn-o" id="navUserNameBtn" onclick="goRefresh('mypage')" style="display:none">마이페이지</button>
     <button class="btn-o" id="navLogoutBtn" onclick="doLogout()" style="display:none">로그아웃</button>
   </div>
 </nav>
