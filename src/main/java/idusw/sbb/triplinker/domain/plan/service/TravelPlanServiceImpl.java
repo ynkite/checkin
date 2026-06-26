@@ -14,6 +14,7 @@ import idusw.sbb.triplinker.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import idusw.sbb.triplinker.domain.planshare.entity.PlanRole;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -58,7 +59,9 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         TravelPlan plan = travelPlanRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
 
-        if (!plan.getUser().getId().equals(userId)) {
+        boolean isOwner = plan.getUser().getId().equals(userId);
+        boolean isEditor = tripMemberRepository.existsByTravelPlanIdAndUserIdAndRole(tripId, userId, PlanRole.EDITOR);
+        if (!isOwner && !isEditor) {
             throw new IllegalStateException("접근 권한이 없습니다.");
         }
 
@@ -346,7 +349,9 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     public void updatePlanStatus(Long userId, Long tripId, String status) {
         TravelPlan plan = travelPlanRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
-        if (!plan.getUser().getId().equals(userId)) {
+        boolean isOwner = plan.getUser().getId().equals(userId);
+        boolean isEditor = tripMemberRepository.existsByTravelPlanIdAndUserIdAndRole(tripId, userId, PlanRole.EDITOR);
+        if (!isOwner && !isEditor) {
             throw new IllegalStateException("접근 권한이 없습니다.");
         }
         // 확정(FIXED) / 수정 중(DRAFT) 두 가지만 허용

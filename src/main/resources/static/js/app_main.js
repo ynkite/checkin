@@ -2962,7 +2962,7 @@ function shareInviteToKakaoTalk() {
 
     if (typeof Kakao !== 'undefined') {
         if (!Kakao.isInitialized()) {
-            Kakao.init('cb534606e630ecbec186e4ebd2917b04');
+            Kakao.init('50a304fa42a0bd2d294ac871e3acae14');
         }
 
         // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
