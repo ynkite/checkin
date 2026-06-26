@@ -359,6 +359,14 @@ async function _initSession(accessToken, refreshToken) {
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
     Token.clear();
+    // 🎯 [캐시 박멸] 세션 만료로 강제 로그아웃 시에도 플랜 캐시 전부 제거
+    window._currentTripId = null; window._mapDestRegion = null;
+    window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
+    sessionStorage.removeItem('ai_generated_route');
+    sessionStorage.removeItem('plannerDraftId');
+    sessionStorage.removeItem('plannerDraftStep');
+    sessionStorage.removeItem('plannerDraftState');
+    sessionStorage.removeItem('map_fallback_queue');
     _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
     _userNotifs = []; _myTrips = [];
     updateNav();
@@ -634,6 +642,14 @@ function _handleOAuthCallback() {
 async function doLogout() {
     await api.post('/api/auth/logout', {});
     Token.clear();
+    // 🎯 [캐시 박멸] 다른 계정 로그인 시 이전 플랜이 남지 않도록 플랜 관련 캐시 전부 제거
+    window._currentTripId = null; window._mapDestRegion = null;
+    window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
+    sessionStorage.removeItem('ai_generated_route');
+    sessionStorage.removeItem('plannerDraftId');
+    sessionStorage.removeItem('plannerDraftStep');
+    sessionStorage.removeItem('plannerDraftState');
+    sessionStorage.removeItem('map_fallback_queue');
     _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
     _userNotifs = []; _myTrips = [];
     updateNav();
@@ -1013,7 +1029,8 @@ function openMyTrip(tripId) {
     // 🎯 [핵심 버그 수정]: 다른 일정으로 바꿀 때 기존에 쌓여있던 교체 요청 대기열을 완전히 박멸(초기화)합니다.
     window._q = [];
     if (typeof _q !== 'undefined') _q = [];
-
+    // 🎯 [지역 캐시 박멸]: 이전 플랜의 목적지가 남아 엉뚱한 지역 지도가 뜨는 것을 방지
+    window._mapDestRegion = null;
     // 🎯 교체 요청 레이아웃 바 및 접혀있던 토글 안내판도 깨끗하게 초기 상태로 원상복구합니다.
     const rb = document.getElementById('recalcBar');
     if (rb) rb.style.display = 'none';
