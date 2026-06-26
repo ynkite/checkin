@@ -462,7 +462,7 @@
 
 .community-plan-preview-actions {
     display: grid;
-    grid-template-columns: 1fr 110px;
+    grid-template-columns: minmax(0, 1fr) 124px;
     gap: 10px;
     margin-top: 24px;
 }
@@ -486,6 +486,12 @@
     border: 1.5px solid var(--sage);
     background: #fff;
     color: var(--sage);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-width: 118px;
 }
 
 @media (max-width: 640px) {
@@ -1543,14 +1549,14 @@
     padding: 4px 10px;
     font-size: 11px;
     line-height: 1.2;
-    background: #47B39F;
+    background: #fff;
     border: 1px solid #47B39F;
-    color: #fff;
+    color: #47B39F;
     transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
 
 #page-review .community-owner-edit-btn:hover {
-    background: #fff;
+    background: #47B39F;
     border-color: #47B39F;
-    color: #47B39F;
+    color: #fff;
 }

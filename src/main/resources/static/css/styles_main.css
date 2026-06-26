@@ -2630,8 +2630,12 @@ nav {
     gap: 3px;
     padding: 8px 13px;
     border-bottom: 1px solid var(--border2);
-    overflow-x: auto
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: thin;
 }
+.day-tabs::-webkit-scrollbar { height: 4px; }
+.day-tabs::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
 .day-tab {
     padding: 4px 11px;
@@ -2652,17 +2656,28 @@ nav {
     color: #fff
 }
 
-/* queue */
 .queue-box {
     margin: 7px 10px;
     border-radius: 9px;
     border: 1.5px dashed var(--border);
     padding: 10px;
-    display: none
+    display: none;
+    flex-shrink: 0;
+    max-height: 45vh;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.queue-box #qItems {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: min(240px, 32vh);
+    overflow-y: auto;
 }
 
 .queue-box.has {
-    display: block;
+    display: flex;
+    flex-direction: column;
     border-color: var(--sage);
     background: var(--sage-pale)
 }
@@ -2767,6 +2782,7 @@ nav {
 /* place list */
 .map-list {
     flex: 1;
+    min-height: 120px;
     overflow-y: auto;
     padding: 5px
 }
