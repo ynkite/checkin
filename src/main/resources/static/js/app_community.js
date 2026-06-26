@@ -61,7 +61,7 @@ const _commState = {
   currentPage:   0,
   pageSize:      10,
   totalPages:    0,
-  sortOrder:    'scrap',   // 경로 기본=스크랩순 / 장소 기본=담긴순 (탭 전환 시 재설정)
+  sortOrder:    'latest',  // 경로 기본=최신순 / 장소 기본=담긴순 (탭 전환 시 재설정)
   isLoading:    false
 };
 
@@ -88,11 +88,11 @@ function setCommTab(btn, cat) {
   if (s) {
     if (cat === 'route') {
       s.innerHTML =
-          '<option value="scrap" selected>스크랩순</option>' +
+          '<option value="latest" selected>최신순</option>' +
+          '<option value="scrap">스크랩순</option>' +
           '<option value="views">조회수순</option>' +
-          '<option value="likes">좋아요순</option>' +
-          '<option value="latest">최신순</option>';
-      _commState.sortOrder = 'scrap';
+          '<option value="likes">좋아요순</option>';
+      _commState.sortOrder = 'latest';
     } else {
       s.innerHTML =
           '<option value="saved" selected>담긴순</option>' +
@@ -1230,7 +1230,7 @@ function renderDestBars(dests) {
   async function initCommunityPage() {
     _commState.currentTab = 'route';
     _commState.currentPage = 0;
-    _commState.sortOrder = 'scrap';   // 경로 탭 기본 = 스크랩순
+    _commState.sortOrder = 'latest';  // 경로 탭 기본 = 최신순
     _activeTags.clear();
 
     /* 탭 초기 상태 */

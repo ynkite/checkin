@@ -102,6 +102,301 @@
         return places;
     };
 
+    /*
+     * ── 커뮤니티 원본 플랜 → 플래너 초기값 반영 유틸 ───────────────
+     * 백엔드 수정 없이 GET /api/trips/{planId} 응답에 이미 포함된 값을 사용한다.
+     * 인원/예산은 요구사항에 따라 원본에서 가져오지 않는다.
+     */
+    function getCommunityPlannerApiData(res) {
+        if (!res) return null;
+        if (res.success === true && res.data !== undefined) return res.data;
+        if (res.data && res.data.success === true && res.data.data !== undefined) return res.data.data;
+        if (res.data !== undefined && (res.data.tripId || res.data.destination || res.data.formId)) return res.data;
+        return res;
+    }
+
+    function cloneCommunityPlannerSeed(seed) {
+        try { return JSON.parse(JSON.stringify(seed || {})); }
+        catch (e) { return Object.assign({}, seed || {}); }
+    }
+
+    function parseJsonArraySafe(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) return value;
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function normalizeCommunityExtraNotes(value) {
+        // 추가사항 탭에는 챗봇 [EXTRA:...] 또는 원본 플랜의 실제 extraNotes만 표시한다.
+        // 단, 과거 저장 구조에서 특수 조건을 extraNotes에 넣은 경우는 추가사항 탭에서 제외한다.
+        return parseJsonArraySafe(value)
+            .filter(function (item) {
+                const label = String(item?.label || '').trim();
+                const val = String(item?.value || '').trim();
+                if (!label || !val) return false;
+                if (label === '노인 동반') return false;
+                if (label === '특수 조건') return false;
+                if (label === '유아 동반') return false;
+                if (label === '반려동물 동반') return false;
+                return true;
+            })
+            .map(function (item) {
+                return { label: String(item.label).trim(), value: String(item.value).trim() };
+            });
+    }
+
+    async function loadCommunitySourcePlanDetail(post) {
+        const planId = post?.planId || post?.tripId || post?.plan?.id || null;
+        if (!planId) return null;
+
+        try {
+            if (typeof api !== 'undefined' && typeof api.get === 'function') {
+                const res = await api.get('/api/trips/' + planId);
+                const data = getCommunityPlannerApiData(res);
+                return data && (data.tripId || data.destination || data.formId) ? data : null;
+            }
+
+            const token = localStorage.getItem('accessToken') || '';
+            const res = await fetch('/api/trips/' + planId, {
+                headers: token ? { Authorization: 'Bearer ' + token } : {}
+            });
+            const json = await res.json();
+            const data = getCommunityPlannerApiData(json);
+            return data && (data.tripId || data.destination || data.formId) ? data : null;
+        } catch (e) {
+            console.warn('[community-v2] 커뮤니티 원본 플랜 상세 조회 실패:', e);
+            return null;
+        }
+    }
+
+    function normalizeCommunityPlannerDestination(value) {
+        return String(value || '')
+            .replace(/[|/,_]+/g, ' ')
+            .replace(/여행\s*플랜/g, '')
+            .replace(/여행/g, '')
+            .replace(/플랜/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    window._commUtil.resolveCommunityPlannerDestination = function resolveCommunityPlannerDestination(post) {
+        const provAlias = {
+            '서울특별시': '서울', '서울시': '서울', '서울': '서울',
+            '경기도': '경기', '경기': '경기',
+            '인천광역시': '인천', '인천시': '인천', '인천': '인천',
+            '강원특별자치도': '강원', '강원도': '강원', '강원': '강원',
+            '충청북도': '충북', '충북': '충북',
+            '충청남도': '충남', '충남': '충남',
+            '대전광역시': '대전', '대전시': '대전', '대전': '대전',
+            '세종특별자치시': '세종', '세종시': '세종', '세종': '세종',
+            '전라북도': '전북', '전북특별자치도': '전북', '전북': '전북',
+            '전라남도': '전남', '전남': '전남',
+            '광주광역시': '광주', '광주시': '광주', '광주': '광주',
+            '경상북도': '경북', '경북': '경북',
+            '경상남도': '경남', '경남': '경남',
+            '대구광역시': '대구', '대구시': '대구', '대구': '대구',
+            '울산광역시': '울산', '울산시': '울산', '울산': '울산',
+            '부산광역시': '부산', '부산시': '부산', '부산': '부산',
+            '제주특별자치도': '제주', '제주도': '제주', '제주': '제주'
+        };
+
+        const provKeys = ['서울','경기','인천','강원','충북','충남','대전','세종','전북','전남','광주','경북','경남','대구','울산','부산','제주'];
+        const raw = post?.destination || post?.planDestination || post?.planTitle || post?.title || '';
+        const text = normalizeCommunityPlannerDestination(raw);
+        if (!text) return { prov: '', city: '' };
+
+        const tokens = text.split(' ').filter(Boolean);
+        let prov = '';
+        let city = '';
+
+        if (tokens.length) {
+            const first = provAlias[tokens[0]] || tokens[0];
+            if (provKeys.includes(first)) {
+                prov = first;
+                city = tokens.slice(1).join(' ').trim();
+            }
+        }
+
+        if (!prov) {
+            const matchedAlias = Object.keys(provAlias)
+                .sort(function (a, b) { return b.length - a.length; })
+                .find(function (alias) { return text.startsWith(alias); });
+            if (matchedAlias) {
+                prov = provAlias[matchedAlias];
+                city = text.slice(matchedAlias.length).trim();
+            }
+        }
+
+        if (!prov) {
+            const matchedProv = provKeys.find(function (p) { return text === p || text.startsWith(p + ' ') || text.startsWith(p); });
+            if (matchedProv) {
+                prov = matchedProv;
+                city = text.slice(matchedProv.length).trim();
+            }
+        }
+
+        if (city === '전체' || city === '도/시 선택' || city === '시/군/구 선택') city = '';
+        return { prov: prov || '', city: city || '' };
+    };
+
+    function buildCommunityPlannerSeed(post, detail) {
+        const base = Object.assign({}, detail || {});
+
+        base.tripId = base.tripId || post?.planId || post?.tripId || null;
+        base.destination = base.destination || post?.planDestination || post?.destination || post?.planTitle || '';
+        base.title = base.title || post?.planTitle || post?.title || '';
+
+        // 요구사항: 원본 작성자의 인원/예산은 가져오지 않는다.
+        delete base.companionCount;
+        delete base.budget;
+        delete base.pax;
+
+        // 추가사항 탭에는 챗봇 추가사항만 유지한다.
+        const sourceExtras = normalizeCommunityExtraNotes(base.extraNotes);
+        base.extraNotes = JSON.stringify(sourceExtras);
+        base._communitySourceExtraNotes = sourceExtras;
+
+        base._communitySource = true;
+        base._communitySourcePostId = post?.postId || post?.id || null;
+        base._communitySourcePlanId = post?.planId || base.tripId || null;
+        base._communitySourceTitle = post?.planTitle || post?.title || base.title || '커뮤니티 원본 플랜';
+
+        return base;
+    }
+
+    window._commUtil.applyCommunityDestinationToPlanner = function applyCommunityDestinationToPlanner(dest, retryCount) {
+        const pending = dest || {};
+        const retry = Number(retryCount || 0);
+        if (!pending.prov) return false;
+
+        const provSel = document.getElementById('dest-prov');
+        const citySel = document.getElementById('dest-city');
+
+        if (!provSel || !citySel) {
+            if (retry < 12) {
+                setTimeout(function () { window._commUtil.applyCommunityDestinationToPlanner(pending, retry + 1); }, 80);
+            }
+            return false;
+        }
+
+        const provMatch = Array.from(provSel.options || []).find(function (o) {
+            return o.value === pending.prov || o.text === pending.prov;
+        });
+        if (provMatch) provSel.value = provMatch.value;
+        else provSel.value = pending.prov;
+
+        if (typeof updateCityDest === 'function') updateCityDest(provSel);
+
+        setTimeout(function () {
+            const cityEl = document.getElementById('dest-city');
+            if (!cityEl) return;
+
+            if (pending.city) {
+                const normalize = function (v) { return String(v || '').replace(/\s+/g, '').trim(); };
+                const target = normalize(pending.city);
+                const cityMatch = Array.from(cityEl.options || []).find(function (o) {
+                    return normalize(o.value) === target || normalize(o.text) === target;
+                }) || Array.from(cityEl.options || []).find(function (o) {
+                    const v = normalize(o.value);
+                    const t = normalize(o.text);
+                    return v.includes(target) || t.includes(target) || target.includes(v) || target.includes(t);
+                });
+                if (cityMatch) cityEl.value = cityMatch.value;
+            } else {
+                const allOpt = Array.from(cityEl.options || []).find(function (o) { return o.value === '전체' || o.text === '전체'; });
+                if (allOpt) cityEl.value = allOpt.value;
+            }
+
+            cityEl.dispatchEvent(new Event('change', { bubbles: true }));
+            if (typeof updateSummaryCard === 'function') updateSummaryCard();
+            if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+        }, 120);
+
+        return true;
+    };
+
+    window._commUtil.applyCommunityPlannerSeedToPlanner = function applyCommunityPlannerSeedToPlanner(seed, retryCount) {
+        const pending = seed || {};
+        const retry = Number(retryCount || 0);
+
+        const destProv = document.getElementById('dest-prov');
+        const destCity = document.getElementById('dest-city');
+
+        if (!destProv || !destCity) {
+            if (retry < 12) {
+                setTimeout(function () { window._commUtil.applyCommunityPlannerSeedToPlanner(pending, retry + 1); }, 80);
+            }
+            return false;
+        }
+
+        window._communityPlannerOriginalPreference = cloneCommunityPlannerSeed(pending);
+
+        // 원본 인원/예산/날짜/출발지는 새 사용자가 직접 입력한다.
+        const formSeed = Object.assign({}, pending, {
+            companionCount: null,
+            budget: null,
+            pax: null,
+            startDate: null,
+            endDate: null,
+            departure: null
+        });
+
+        if (typeof _applyPlanPrefToForm === 'function') {
+            _applyPlanPrefToForm(formSeed, false);
+        }
+
+        const dest = window._commUtil.resolveCommunityPlannerDestination(formSeed);
+        if (dest && dest.prov) {
+            window._commUtil.applyCommunityDestinationToPlanner(dest);
+        }
+
+        setTimeout(function () {
+            if (typeof updateSummaryCard === 'function') updateSummaryCard();
+            if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+            if (typeof updateNav === 'function') updateNav();
+        }, 240);
+
+        return true;
+    };
+
+    window._commUtil.startPlannerFromCommunityPostObject = async function startPlannerFromCommunityPostObject(post) {
+        const sourcePost = post || window._currentPostDetail || {};
+        const token = localStorage.getItem('accessToken');
+
+        const detail = await loadCommunitySourcePlanDetail(sourcePost);
+        const seed = buildCommunityPlannerSeed(sourcePost, detail);
+
+        if (!token) {
+            if (typeof openModal === 'function') openModal('modal-auth');
+            window._pendingLoginThenPlanner = seed;
+            return;
+        }
+
+        window._pendingCommunityDest = window._commUtil.resolveCommunityPlannerDestination(seed);
+        window._communityPlannerOriginalPreference = cloneCommunityPlannerSeed(seed);
+
+        if (typeof resetPlannerForm === 'function') resetPlannerForm();
+        window._currentTripId = null;
+        window._chatRestored = false;
+        window._planHydrateTripId = null;
+        window._planLoadedTripId = null;
+
+        sessionStorage.removeItem('plannerDraftId');
+        sessionStorage.removeItem('plannerDraftStep');
+        sessionStorage.removeItem('plannerDraftState');
+        sessionStorage.removeItem('ai_generated_route');
+
+        if (typeof go === 'function') go('planner', false);
+        if (typeof goPlanStep === 'function') goPlanStep(1);
+
+        setTimeout(function () { window._commUtil.applyCommunityPlannerSeedToPlanner(seed); }, 180);
+    };
+
     /* ── 현재 게시글 ID ─────────────────────────────────────────── */
     window._commUtil.getCurrentPostId = function getCurrentPostId() {
         return window._currentPostId
@@ -1942,7 +2237,7 @@ window._handleWriteImageSelect = function(input) {
         }
 
         try {
-            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'scrap';
+            const sortVal = (typeof _commState !== 'undefined' && _commState.sortOrder) ? _commState.sortOrder : 'latest';
             const res      = await api.get(`/api/posts?page=${page}&size=10&sort=${sortVal}&category=${tab}`);
             const pageData = extractPage(res);
 
@@ -2232,50 +2527,15 @@ window._handleWriteImageSelect = function(input) {
         // onclick은 최초 생성 시 단 한 번만 등록
         const goBtn = document.getElementById('cpp-go-planner-btn');
         if (goBtn) goBtn.onclick = function () {
-            const token = localStorage.getItem('accessToken');
-            if (!token) {
-                closeCommunityPlanPreview();
-                if (typeof openModal === 'function') openModal('modal-auth');
-                const post = window._currentPostDetail;
-                const dest = post?.planDestination || '';
-                const parts = dest ? dest.split('|') : [];
-                window._pendingLoginThenPlanner = { prov: parts[0]||'', city: parts[1]||'' };
+            closeCommunityPlanPreview();
+
+            if (window._commUtil && typeof window._commUtil.startPlannerFromCommunityPostObject === 'function') {
+                window._commUtil.startPlannerFromCommunityPostObject(window._currentPostDetail);
                 return;
             }
 
-            closeCommunityPlanPreview();
-            const post = window._currentPostDetail;
-            const dest = post?.planDestination || '';
-            const parts = dest ? dest.split('|') : [];
-            const prov = parts[0] || '';
-            const city = parts[1] || '';
-
-            window._pendingCommunityDest = { prov, city };
-            if (typeof resetPlannerForm === 'function') resetPlannerForm();
-            window._currentTripId = null;
             if (typeof go === 'function') go('planner', false);
             if (typeof goPlanStep === 'function') goPlanStep(1);
-
-            setTimeout(function () {
-                const pending = window._pendingCommunityDest;
-                if (!pending || !pending.prov) return;
-                const provSel = document.getElementById('dest-prov');
-                if (!provSel) return;
-                provSel.value = pending.prov;
-                if (typeof updateCityDest === 'function') updateCityDest(provSel);
-                if (pending.city) {
-                    setTimeout(function () {
-                        const cityEl = document.getElementById('dest-city');
-                        if (!cityEl) return;
-                        const cityOpts = Array.from(cityEl.options);
-                        const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
-                        if (cityMatch) cityEl.value = cityMatch.value;
-                        window._pendingCommunityDest = null;
-                    }, 50);
-                } else {
-                    window._pendingCommunityDest = null;
-                }
-            }, 0);
         };
 
         const scrapBtn = document.getElementById('cpp-preview-scrap-btn');
@@ -4347,44 +4607,12 @@ window._handleWriteImageSelect = function(input) {
     };
 
     window.startPlanFromCommunityPost = function () {
-        const token = localStorage.getItem('accessToken');
-        const post = window._currentPostDetail;
-        const dest = post?.planDestination || '';
-        const parts = dest ? dest.split('|') : [];
-        const prov = parts[0] || '';
-        const city = parts[1] || '';
-
-        if (!token) {
-            if (typeof openModal === 'function') openModal('modal-auth');
-            window._pendingLoginThenPlanner = { prov, city };
+        if (window._commUtil && typeof window._commUtil.startPlannerFromCommunityPostObject === 'function') {
+            window._commUtil.startPlannerFromCommunityPostObject(window._currentPostDetail);
             return;
         }
 
-        window._pendingCommunityDest = { prov, city };
-        if (typeof resetPlannerForm === 'function') resetPlannerForm();
-        window._currentTripId = null;
         if (typeof go === 'function') go('planner', false);
         if (typeof goPlanStep === 'function') goPlanStep(1);
-
-        setTimeout(function () {
-            const pending = window._pendingCommunityDest;
-            if (!pending || !pending.prov) return;
-            const provSel = document.getElementById('dest-prov');
-            if (!provSel) return;
-            provSel.value = pending.prov;
-            if (typeof updateCityDest === 'function') updateCityDest(provSel);
-            if (pending.city) {
-                setTimeout(function () {
-                    const cityEl = document.getElementById('dest-city');
-                    if (!cityEl) return;
-                    const cityOpts = Array.from(cityEl.options);
-                    const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
-                    if (cityMatch) cityEl.value = cityMatch.value;
-                    window._pendingCommunityDest = null;
-                }, 50);
-            } else {
-                window._pendingCommunityDest = null;
-            }
-        }, 0);
     };
 })();

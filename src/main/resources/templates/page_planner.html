@@ -366,21 +366,34 @@
             }
 
             // ── sum-extra-rows 복원 (삭제 버튼 포함) ──
+            // 추가사항 탭에는 AI 챗봇 [EXTRA:...] 또는 원본 플랜의 실제 extraNotes만 표시한다.
+            // 노인 동반/특수 조건 기타처럼 2단계 특수조건 선택값은 추가사항 탭에 표시하지 않는다.
             const extraContainer = document.getElementById('sum-extra-rows');
             if (extraContainer && d.extraNotes) {
                 try {
                     const extras = JSON.parse(d.extraNotes);
+                    const visibleExtras = (Array.isArray(extras) ? extras : []).filter(item => {
+                        const label = String(item?.label || '').trim();
+                        const value = String(item?.value || '').trim();
+                        if (!label || !value) return false;
+                        if (label === '노인 동반') return false;
+                        if (label === '특수 조건') return false;
+                        if (label === '유아 동반') return false;
+                        if (label === '반려동물 동반') return false;
+                        return true;
+                    });
+
                     extraContainer.innerHTML = '';
-                    extras.forEach(item => {
-                        if (!item.label || !item.value) return;
+                    visibleExtras.forEach(item => {
                         const row = document.createElement('div');
                         row.id = 'sum-extra-' + item.label;
                         row.className = 'asc-row';
                         row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
                         extraContainer.appendChild(row);
                     });
+
                     const emptyMsg = document.getElementById('extra-empty-msg');
-                    if (emptyMsg && extras.length > 0) emptyMsg.style.display = 'none';
+                    if (emptyMsg) emptyMsg.style.display = visibleExtras.length > 0 ? 'none' : '';
                 } catch(e) {}
             }
 
@@ -399,6 +412,24 @@
                 return;
             }
 
+            // app_main.js의 검증 함수를 먼저 사용한다.
+            // 출발지 도/시, 출발지 시/군/구, 여행지 도/시, 여행지 시/군/구, 날짜, 인원, 예산, 이동수단까지 확인한다.
+            if (typeof _validatePlanStep1 === 'function' && !_validatePlanStep1()) {
+                return;
+            }
+
+            // 이미 생성된 DRAFT가 있으면 같은 플랜을 다시 POST하지 않고 2단계로 이동한다.
+            // 경로가 계속 복사되는 문제를 막기 위한 보호 장치다.
+            const existingTripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+            if (existingTripId) {
+                window._currentTripId = existingTripId;
+                sessionStorage.setItem('plannerDraftId', existingTripId);
+                goPlanStep(2);
+                if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+                if (typeof updateNav === 'function') updateNav();
+                return;
+            }
+
             const destProv  = document.getElementById('dest-prov').value;
             const destCity  = document.getElementById('dest-city').value;
             const startDate = document.getElementById('s1-date-start').value;
@@ -406,12 +437,7 @@
             const pax       = parseInt(document.getElementById('s1-pax').value) || 1;
             const budget    = parseInt(document.getElementById('s1-budget').value.replace(/,/g, '')) || 0;
 
-            if (!destProv || !startDate || !endDate) {
-                toast('여행지와 날짜를 입력해주세요.');
-                return;
-            }
-
-            const destination = destProv + (destCity && destCity !== '전체' ? ' ' + destCity : '');
+            const destination = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
             const title = destination + ' 여행';
 
             try {
@@ -587,14 +613,13 @@
             const special    = [...document.querySelectorAll('#chip-special .chip.on')].map(c => mapChipWithOther(c, 'other-special'));
             const hasInfant  = special.some(s => s.includes('유아')) ? 1 : 0;
             const hasPet     = special.some(s => s.includes('반려동물')) ? 1 : 0;
-            const hasOlderly = special.some(s => s.includes('노인')) ? 1 : 0;
-            const extraNotes = [
-                ...special
-                    .filter(s => s.startsWith('기타('))
-                    .map(s => ({ label: '특수 조건', value: s.slice(3, -1) })),
-                ...(hasOlderly ? [{ label: '노인 동반', value: '동반' }] : []),
-                ...(window._curationRecommendations || [])
-            ];
+            // 추가사항 탭은 AI 챗봇 [EXTRA:...] 또는 원본 플랜의 extraNotes로 들어온 항목만 저장한다.
+            // 노인 동반/특수 조건 기타는 2단계 특수조건 값으로만 유지하고 extraNotes에는 넣지 않는다.
+            const extraRows = Array.from(document.querySelectorAll('#sum-extra-rows .asc-row'));
+            const extraNotes = extraRows.map(row => ({
+                label: row.querySelector('.asc-label')?.textContent?.trim() || '',
+                value: row.querySelector('.asc-val')?.textContent?.trim() || ''
+            })).filter(item => item.label && item.value);
 
             const depProv   = document.getElementById('dep-prov')?.value || '';
             const depCity   = document.getElementById('dep-city')?.value  || '';

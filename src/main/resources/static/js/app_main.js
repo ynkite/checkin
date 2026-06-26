@@ -559,27 +559,32 @@ async function tryLogin() {
     if (window._pendingLoginThenPlanner) {
         const pending = window._pendingLoginThenPlanner;
         window._pendingLoginThenPlanner = null;
+
         if (typeof resetPlannerForm === 'function') resetPlannerForm();
+
         window._currentTripId = null;
+        window._chatRestored = false;
+        window._planHydrateTripId = null;
+        window._planLoadedTripId = null;
+        window._communityPlannerOriginalPreference = pending;
+
+        sessionStorage.removeItem('plannerDraftId');
+        sessionStorage.removeItem('plannerDraftStep');
+        sessionStorage.removeItem('plannerDraftState');
+        sessionStorage.removeItem('ai_generated_route');
+
         go('planner', false);
         if (typeof goPlanStep === 'function') goPlanStep(1);
-        if (pending.prov) {
-            setTimeout(function () {
-                const provSel = document.getElementById('dest-prov');
-                if (!provSel) return;
-                provSel.value = pending.prov;
-                if (typeof updateCityDest === 'function') updateCityDest(provSel);
-                if (pending.city) {
-                    setTimeout(function () {
-                        const cityEl = document.getElementById('dest-city');
-                        if (!cityEl) return;
-                        const cityOpts = Array.from(cityEl.options);
-                        const cityMatch = cityOpts.find(o => o.value === pending.city || o.text === pending.city);
-                        if (cityMatch) cityEl.value = cityMatch.value;
-                    }, 50);
-                }
-            }, 0);
-        }
+
+        setTimeout(function () {
+            if (window._commUtil && typeof window._commUtil.applyCommunityPlannerSeedToPlanner === 'function') {
+                window._commUtil.applyCommunityPlannerSeedToPlanner(pending);
+                return;
+            }
+            if (window._commUtil && typeof window._commUtil.applyCommunityDestinationToPlanner === 'function') {
+                window._commUtil.applyCommunityDestinationToPlanner(pending);
+            }
+        }, 180);
         return;
     }
 
@@ -1530,11 +1535,106 @@ async function startChatWithSummary() {
         if (typeof updateSummaryCard === 'function') updateSummaryCard();
         return;
     }
+
     if (typeof updateSummaryCard === 'function') updateSummaryCard();
-    const dest   = (document.getElementById('sum-dest')   || {}).textContent || '-';
-    const ppl    = (document.getElementById('sum-people') || {}).textContent || '-';
-    const budget = (document.getElementById('sum-budget') || {}).textContent || '-';
-    const msgs   = document.getElementById('chatMsgs');
+
+    const textOf = function (id) {
+        const el = document.getElementById(id);
+        return (el && el.textContent ? el.textContent.trim() : '') || '—';
+    };
+
+    const safe = function (value) {
+        if (typeof escapeHtmlBubble === 'function') return escapeHtmlBubble(value);
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    };
+
+    const parseArrayText = function (value) {
+        if (!value) return '—';
+        if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
+        const str = String(value || '').trim();
+        if (!str) return '—';
+        try {
+            const arr = JSON.parse(str);
+            if (Array.isArray(arr)) return arr.length ? arr.join(', ') : '—';
+        } catch (e) {}
+        return str;
+    };
+
+    const formatCompanionText = function (value) {
+        const map = { SOLO: '혼자', COUPLE: '커플', FAMILY: '가족', FRIENDS: '친구' };
+        return map[value] || value || '—';
+    };
+
+    const formatSpecialText = function (source) {
+        if (!source) return '—';
+        const arr = [];
+        if (Number(source.hasInfant) === 1) arr.push('유아 동반');
+        if (Number(source.hasPet) === 1) arr.push('반려동물 동반');
+        return arr.length ? arr.join(', ') : '—';
+    };
+
+    const formatExtraText = function (value) {
+        let arr = [];
+        try { arr = JSON.parse(value || '[]'); } catch (e) { arr = []; }
+        if (!Array.isArray(arr) || !arr.length) return '—';
+        return arr
+            .filter(item => item && item.label && item.value)
+            .map(item => item.label + ': ' + item.value)
+            .join(', ') || '—';
+    };
+
+    const currentRows = [
+        ['출발지', textOf('sum-dep')],
+        ['여행지', textOf('sum-dest')],
+        ['날짜', textOf('sum-date')],
+        ['인원', textOf('sum-people')],
+        ['동행자', textOf('sum-comp')],
+        ['예산', textOf('sum-budget')],
+        ['이동수단', textOf('sum-trans')],
+        ['숙소형태', textOf('sum-acc')],
+        ['숙소옵션', textOf('sum-accopts')],
+        ['여행 스타일', textOf('sum-style')],
+        ['식이 정보', textOf('sum-food')],
+        ['일정 밀도', textOf('sum-density')],
+        ['특수 조건', textOf('sum-special')],
+        ['반려동물', textOf('sum-pet')]
+    ];
+
+    const currentHtml = currentRows
+        .map(function (row) { return safe(row[0]) + ': <strong>' + safe(row[1]) + '</strong>'; })
+        .join('<br>');
+
+    const source = window._communityPlannerOriginalPreference || null;
+    let sourceHtml = '';
+
+    if (source && source._communitySource) {
+        const sourceRows = [
+            ['원본 플랜', source._communitySourceTitle || source.title || '커뮤니티 원본 플랜'],
+            ['여행지', source.destination || '—'],
+            ['동행자', formatCompanionText(source.companionType)],
+            ['이동수단', source.transportType || '—'],
+            ['숙소형태', source.accommodationType || '—'],
+            ['숙소옵션', parseArrayText(source.accommodationOptions)],
+            ['여행 스타일', parseArrayText(source.travelStyles)],
+            ['식이 정보', parseArrayText(source.dietaryInfo)],
+            ['일정 밀도', source.scheduleDensity || '—'],
+            ['특수 조건', formatSpecialText(source)],
+            ['원본 추가사항', formatExtraText(source.extraNotes)]
+        ];
+
+        sourceHtml = '<br><br><hr style="border:none;border-top:1px solid rgba(0,0,0,.08);margin:10px 0">'
+            + '📌 <strong>커뮤니티 원본 플랜에서 반영된 값</strong><br>'
+            + sourceRows
+                .map(function (row) { return safe(row[0]) + ': <strong>' + safe(row[1]) + '</strong>'; })
+                .join('<br>');
+    }
+
+    const msgs = document.getElementById('chatMsgs');
     if (!msgs) return;
     msgs.innerHTML = '';
 
@@ -1545,7 +1645,11 @@ async function startChatWithSummary() {
     }
 
     addBubble(
-        `입력 정보를 정리해드릴게요 📋<br><br>📍 <strong>여행지:</strong> ${dest}<br>👥 <strong>인원:</strong> ${ppl}<br>💰 <strong>예산:</strong> ${budget}<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!`,
+        '입력 정보를 정리해드릴게요 📋<br><br>'
+        + '✅ <strong>현재 여행 계획에 반영된 값</strong><br>'
+        + currentHtml
+        + sourceHtml
+        + '<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!',
         'bot',
         ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요'],
         true
@@ -2313,18 +2417,32 @@ function _applyCurationPreferences(c) {
 }
 
 function _validatePlanStep1() {
+    const depProv   = document.getElementById('dep-prov');
+    const depCity   = document.getElementById('dep-city');
     const destProv  = document.getElementById('dest-prov');
+    const destCity  = document.getElementById('dest-city');
     const dateStart = document.getElementById('s1-date-start');
     const dateEnd   = document.getElementById('s1-date-end');
     const pax       = document.getElementById('s1-pax');
     const budget    = document.getElementById('s1-budget');
 
-    if (!destProv  || !destProv.value)               { toast('⚠️ 여행지(도/시)를 선택해주세요.');     return false; }
-    if (!dateStart || !dateStart.value)               { toast('⚠️ 출발일을 입력해주세요.');           return false; }
-    if (!dateEnd   || !dateEnd.value)                 { toast('⚠️ 귀환일을 입력해주세요.');           return false; }
-    if (dateStart.value > dateEnd.value)              { toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
-    if (!pax    || !pax.value    || +pax.value < 1)   { toast('⚠️ 인원을 1명 이상 입력해주세요.');    return false; }
-    if (!budget || !budget.value || +budget.value < 1){ toast('⚠️ 총 예산을 입력해주세요.');          return false; }
+    const isEmptySelect = function (el) {
+        if (!el) return true;
+        const value = String(el.value || '').trim();
+        return !value || value === '전체' || value === '도/시 선택' || value === '시/군/구 선택';
+    };
+
+    if (isEmptySelect(depProv))  { toast('⚠️ 출발지 도/시를 선택해주세요.'); return false; }
+    if (isEmptySelect(depCity))  { toast('⚠️ 출발지 시/군/구를 선택해주세요.'); return false; }
+    if (isEmptySelect(destProv)) { toast('⚠️ 여행지 도/시를 선택해주세요.'); return false; }
+    if (isEmptySelect(destCity)) { toast('⚠️ 여행지 시/군/구를 선택해주세요.'); return false; }
+
+    if (!dateStart || !dateStart.value) { toast('⚠️ 출발일을 입력해주세요.'); return false; }
+    if (!dateEnd   || !dateEnd.value)   { toast('⚠️ 귀환일을 입력해주세요.'); return false; }
+    if (dateStart.value > dateEnd.value){ toast('⚠️ 귀환일은 출발일 이후여야 합니다.'); return false; }
+
+    if (!pax    || !pax.value    || +pax.value < 1) { toast('⚠️ 인원을 1명 이상 입력해주세요.'); return false; }
+    if (!budget || !budget.value || +String(budget.value).replace(/,/g, '') < 1) { toast('⚠️ 총 예산을 입력해주세요.'); return false; }
 
     const transChips = document.querySelectorAll('#chip-trans .chip.on');
     if (transChips.length === 0) { toast('⚠️ 이동 수단을 선택해주세요.'); return false; }
@@ -2333,13 +2451,23 @@ function _validatePlanStep1() {
             toast('⚠️ 이동 수단(기타)을 입력해주세요.'); return false;
         }
     }
-    // 동행자 기타 미입력 체크
+
+    const accChip = document.querySelector('#chip-acc .chip.on');
+    if (!accChip) { toast('⚠️ 숙소 형태를 선택해주세요.'); return false; }
+    if (accChip.textContent.includes('기타')) {
+        if (!document.getElementById('other-acc')?.value.trim()) {
+            toast('⚠️ 숙소 형태(기타)를 입력해주세요.'); return false;
+        }
+    }
+
     const compChip = document.querySelector('#chip-comp .chip.on');
-    if (compChip && compChip.textContent.includes('기타')) {
+    if (!compChip) { toast('⚠️ 동행자 유형을 선택해주세요.'); return false; }
+    if (compChip.textContent.includes('기타')) {
         if (!document.getElementById('other-comp')?.value.trim()) {
             toast('⚠️ 동행자 유형(기타)을 입력해주세요.'); return false;
         }
     }
+
     return true;
 }
 
