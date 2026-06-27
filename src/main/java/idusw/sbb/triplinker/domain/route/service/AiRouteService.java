@@ -457,7 +457,7 @@ public class AiRouteService {
 
         // ★카카오 API로 거리/시간/통행료를 실제값으로 보정 (저장 직전 1회)
         PlanInputForm form = plan.getForm();
-        json = recalcTransitWithKakao(json, form != null ? form.getTransportType() : null);
+        json = recalcTransitWithKakao(json, form != null ? form.getTransportType() : null, plan.getDestination());
 
         // ★당일치기(0박)면 숙소(stay)를 강제 제거 (AI가 규칙 어겨도 최종 차단)
         if (plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate())) {
@@ -1055,9 +1055,9 @@ public class AiRouteService {
     //   AI가 지어낸 부정확한 km 대신 카카오맵 길찾기와 동일한 값을 채운다.
     //   (AI는 장소·순서만 책임지고, 숫자는 카카오가 책임 → 정확도↑·토큰↓)
     // ─────────────────────────────────────────────────────────────
-    private String recalcTransitWithKakao(String json, String transportType) {
+    private String recalcTransitWithKakao(String json, String transportType, String destination) {
         try {
-            System.out.println("🗺️ [카카오 보정 시작] 이동수단=" + transportType
+            System.out.println("🗺️ [카카오 보정 시작] 이동수단=" + transportType + " / 여행지=" + destination
                     + " / 키 길이=" + (kakaoRestKey == null ? "null" : kakaoRestKey.length()));
             JsonNode root = objectMapper.readTree(json);
             if (!root.isArray()) return json;
@@ -1073,47 +1073,53 @@ public class AiRouteService {
                 com.fasterxml.jackson.databind.node.ArrayNode places =
                         (com.fasterxml.jackson.databind.node.ArrayNode) placesNode;
 
+                // 1) 모든 실제 장소에 좌표(lat/lng)를 박는다 → 프론트가 이 좌표로 마커·동선을 그린다
+                for (int i = 0; i < places.size(); i++) {
+                    JsonNode pl = places.get(i);
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    String nm = pl.path("name").asText("");
+                    double[] c = geocodeCached(withRegion(destination, nm), geoCache);
+                    com.fasterxml.jackson.databind.node.ObjectNode plObj =
+                            (com.fasterxml.jackson.databind.node.ObjectNode) pl;
+                    if (c != null) {
+                        plObj.put("lat", c[0]);
+                        plObj.put("lng", c[1]);
+                        plObj.put("isFound", true);
+                    } else {
+                        plObj.put("isFound", false);
+                        System.out.println("⚠️ [좌표 실패] " + nm);
+                    }
+                }
+
+                // 2) transit 거리/시간/비용 계산 (위에서 박은 좌표 재사용 → 추가 API 호출 없음)
                 for (int i = 0; i < places.size(); i++) {
                     if (!places.get(i).has("transit")) continue;
-
                     JsonNode prev = i > 0 ? places.get(i - 1) : null;
                     JsonNode next = i < places.size() - 1 ? places.get(i + 1) : null;
-                    if (prev == null || next == null || !prev.has("name") || !next.has("name")) continue;
+                    if (prev == null || next == null) continue;
 
-                    String fromName = prev.path("name").asText("");
-                    String toName   = next.path("name").asText("");
-                    double[] from = geocodeCached(fromName, geoCache);
-                    double[] to   = geocodeCached(toName, geoCache);
-                    if (from == null || to == null) {
-                        System.out.println("⚠️ [좌표 실패] " + fromName + "=" + (from != null)
-                                + " / " + toName + "=" + (to != null));
-                        continue;
-                    }
-                    long[] r = carDirections(from, to); // [거리(m), 시간(초), 통행료(원)]
+                    double[] from = (prev.has("lat") && prev.has("lng"))
+                            ? new double[]{ prev.path("lat").asDouble(), prev.path("lng").asDouble() } : null;
+                    double[] to = (next.has("lat") && next.has("lng"))
+                            ? new double[]{ next.path("lat").asDouble(), next.path("lng").asDouble() } : null;
+                    if (from == null || to == null) continue;
+
+                    long[] r = carDirections(from, to);
                     if (r == null) {
-                        System.out.println("⚠️ [길찾기 실패] " + fromName + " → " + toName);
+                        System.out.println("⚠️ [길찾기 실패] " + prev.path("name").asText("") + " → " + next.path("name").asText(""));
                         continue;
                     }
-                    System.out.println("✅ [카카오] " + fromName + " → " + toName
-                            + " : " + String.format("%.1f", r[0] / 1000.0) + "km / "
-                            + Math.round(r[1] / 60.0) + "분");
-
                     double km = r[0] / 1000.0;
                     long min = Math.round(r[1] / 60.0);
                     long toll = r[2];
-
-                    String cost;
-                    if (isCar) {
-                        long fuel = Math.round(km / 10.0 * 2000.0); // 연비 10km/L · ₩2,000/L
-                        cost = String.format("₩%,d", fuel + toll);
-                    } else {
-                        cost = "대중교통 운임 별도";
-                    }
+                    String cost = isCar
+                            ? String.format("₩%,d", Math.round(km / 10.0 * 2000.0) + toll)
+                            : "대중교통 운임 별도";
                     String icon = isCar ? "🚗 자차" : "🚌 대중교통";
-                    String newTransit = String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost);
-
+                    System.out.println("✅ [카카오] " + prev.path("name").asText("") + " → "
+                            + next.path("name").asText("") + " : " + String.format("%.1f", km) + "km / " + min + "분");
                     ((com.fasterxml.jackson.databind.node.ObjectNode) places.get(i))
-                            .put("transit", newTransit);
+                            .put("transit", String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost));
                 }
 
                 // ★budget 재계산: 카카오가 채운 transit 금액 + 장소 sub 금액 합으로 그날 총액 갱신
@@ -1143,26 +1149,64 @@ public class AiRouteService {
         return geo;
     }
 
+    // 장소명 앞에 여행지(시/도)를 붙여 동명 타지역 오인식을 막는다.
+    //   "비산공원" → "대구 비산공원" (이미 여행지명이 들어있으면 그대로 둠)
+    private String withRegion(String destination, String placeName) {
+        if (placeName == null || placeName.isBlank()) return placeName;
+        if (destination == null || destination.isBlank()) return placeName;
+        String regionHead = destination.trim().split("\\s+")[0]
+                .replaceAll("(특별시|광역시|특별자치시|특별자치도|도)$", "");
+        if (regionHead.isBlank() || placeName.contains(regionHead)) return placeName;
+        return regionHead + " " + placeName;
+    }
+
     // 장소명 → [위도, 경도] (카카오 로컬 키워드 검색)
     private double[] geocode(String placeName) {
+        if (placeName == null || placeName.isBlank()) return null;
+
+        // 1차: 원본 그대로 시도
+        double[] r = geocodeOnce(placeName.trim());
+        if (r != null) return r;
+
+        // 2차: 카카오 query는 인코딩 후 100자 제한이 있어 긴 한글 장소명이 400으로 막힌다.
+        //      장소명을 '자르지 않고' 공백만 제거해 길이를 줄인다.
+        //      (카카오 키워드 검색은 "대구 서문시장" 과 "대구서문시장" 을 동일하게 처리)
+        String noSpace = placeName.trim().replaceAll("\\s+", "");
+        if (!noSpace.equals(placeName.trim())) {
+            r = geocodeOnce(noSpace);
+            if (r != null) return r;
+        }
+        return null;
+    }
+
+    // 단일 query로 카카오 키워드 검색. 인코딩 후 100자 초과면 호출하지 않는다(카카오가 400을 내므로).
+    private double[] geocodeOnce(String query) {
+        if (query == null || query.isBlank()) return null;
         try {
-            String url = "https://dapi.kakao.com/v2/local/search/keyword.json?query="
-                    + java.net.URLEncoder.encode(placeName, java.nio.charset.StandardCharsets.UTF_8);
+            // ★이중 인코딩 방지: 직접 encode 하지 않고, 인코딩된 URI 문자열로 URI 객체를 만들어
+            //   RestTemplate이 재인코딩하지 않도록 한다. (기존엔 RestTemplate이 % 를 또 인코딩해
+            //   카카오에 "%EC%..." 글자 그대로 검색돼 결과가 0개였음)
+            String enc = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+            String urlStr = "https://dapi.kakao.com/v2/local/search/keyword.json?query=" + enc;
+            java.net.URI uri = java.net.URI.create(urlStr); // 이미 인코딩된 문자열 → 재인코딩 안 함
+
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.set("Authorization", "KakaoAK " + kakaoRestKey);
             org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
+
             org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
-                    url, org.springframework.http.HttpMethod.GET, req, String.class);
+                    uri, org.springframework.http.HttpMethod.GET, req, String.class);
+
             JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
             if (!docs.isArray() || docs.isEmpty()) return null;
             JsonNode f = docs.get(0);
             return new double[]{ f.path("y").asDouble(), f.path("x").asDouble() }; // [위도, 경도]
         } catch (org.springframework.web.client.HttpStatusCodeException he) {
-            System.err.println("[geocode] HTTP " + he.getStatusCode() + " (" + placeName + ") : "
+            System.err.println("[geocode] HTTP " + he.getStatusCode() + " (" + query + ") : "
                     + he.getResponseBodyAsString());
             return null;
         } catch (Exception e) {
-            System.err.println("[geocode] 실패(" + placeName + "): " + e.getMessage());
+            System.err.println("[geocode] 실패(" + query + "): " + e.getMessage());
             return null;
         }
     }
