@@ -269,6 +269,14 @@
               let pax   = fr.data?.companionCount || t.pax || '';
               let trans = fr.data?.transportType  || '';
 
+              // ★숙소 딥링크용 여행 기본정보 전역 저장
+              window._stayBookingInfo = {
+                dest:  t.destination || '',
+                start: t.startDate || '',
+                end:   t.endDate || '',
+                pax:   parseInt(pax) || 2
+              };
+
               try {
                 const draft = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
                 if (!pax || pax === '2' || pax === 2) {
@@ -472,6 +480,14 @@
             <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time || ''}</div>
             <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
           </div>
+          ${p.type === 'stay' ? `
+          <div class="stay-action-row">
+            ${p.actualPrice
+              ? `<button class="btn-stay-book" onclick="openSiteModal('${p.key}')">예약하기</button>
+                 <button class="btn-stay-edit" onclick="openPriceModal('${p.key}')">금액 수정</button>`
+              : `<button class="btn-stay-check" onclick="openSiteModal('${p.key}')">금액확인 / 예약하기</button>`}
+          </div>
+          ` : ''}
           <div class="replace-area" id="ri-${p.key}" style="display:none;">
             <div class="replace-label">AI에게 교체 요구사항 입력</div>
             <div class="replace-row">
@@ -1654,7 +1670,165 @@
       }
     }
 
+    // ════════════════════════════════════════════════════════
+    //  ★숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·아고다·카카오)
+    // ════════════════════════════════════════════════════════
 
+    function findStayByKey(key) {
+      for (const day of (MAP_ITINERARY || [])) {
+        if (!day.places) continue;
+        const p = day.places.find(x => x.key === key);
+        if (p) return { day, place: p };
+      }
+      return null;
+    }
+
+    function extractAmount(str) {
+      const m = (str || '').match(/₩([\d,]+)(?:×(\d+))?/);
+      if (!m) return 0;
+      let amt = parseInt(m[1].replace(/,/g, ''));
+      if (m[2]) amt *= parseInt(m[2]);
+      return amt;
+    }
+
+    function recalcDayBudget(day) {
+      let total = 0;
+      (day.places || []).forEach(p => {
+        total += p.transit ? extractAmount(p.transit) : extractAmount(p.sub);
+      });
+      day.budget = '₩' + total.toLocaleString();
+    }
+
+    // ── 모달 1: 사이트 선택 ──
+    function openSiteModal(key) {
+      const found = findStayByKey(key);
+      if (!found) { toast('숙소 정보를 찾을 수 없습니다.'); return; }
+      const overlay = document.getElementById('staySiteOverlay');
+      overlay.dataset.key = key;
+      document.getElementById('staySiteName').textContent = found.place.name || '숙소';
+      overlay.style.display = 'flex';
+    }
+    function closeSiteModal() {
+      document.getElementById('staySiteOverlay').style.display = 'none';
+    }
+
+    function gotoSite(site) {
+      const overlay = document.getElementById('staySiteOverlay');
+      const key = overlay.dataset.key;
+      const found = findStayByKey(key);
+      if (!found) return;
+      const info = window._stayBookingInfo || {};
+      const kw = found.place.name || info.dest || '';
+
+      let url;
+      if (site === 'yeogi') {
+        url = `https://www.yeogi.com/domestic-accommodations`
+                + `?keyword=${encodeURIComponent(kw)}`
+                + `&checkIn=${info.start || ''}&checkOut=${info.end || ''}`
+                + `&personal=${info.pax || 2}&typoCorrect=true`;
+      } else if (site === 'agoda') {
+        url = `https://www.agoda.com/ko-kr/search`
+                + `?textToSearch=${encodeURIComponent(kw)}`
+                + `&checkIn=${info.start || ''}&checkOut=${info.end || ''}`
+                + `&adults=${info.pax || 2}&rooms=1`;
+      } else {
+        url = `https://booking.kakao.com/search/result`
+                + `?query=${encodeURIComponent(kw)}&from=user`;
+      }
+      window.open(url, '_blank');
+      closeSiteModal();
+      openPriceModal(key);
+    }
+
+    // ── 모달 2: 금액 입력 ──
+    function openPriceModal(key) {
+      const found = findStayByKey(key);
+      if (!found) { toast('숙소 정보를 찾을 수 없습니다.'); return; }
+      const overlay = document.getElementById('stayPriceOverlay');
+      overlay.dataset.key = key;
+      document.getElementById('stayPriceName').textContent = found.place.name || '숙소';
+
+      const cur = found.place.actualPrice || extractAmount(found.place.sub) || '';
+      document.getElementById('stayPriceInput').value = cur;
+
+      document.getElementById('otherStayName').value = '';
+      document.getElementById('otherStayPrice').value = '';
+      document.getElementById('otherStayBox').style.display = 'none';
+      document.getElementById('otherStayArrow').textContent = '▸';
+
+      overlay.style.display = 'flex';
+      setTimeout(() => document.getElementById('stayPriceInput').focus(), 50);
+    }
+    function closePriceModal() {
+      document.getElementById('stayPriceOverlay').style.display = 'none';
+    }
+
+    function onTopPriceInput() {
+      if (document.getElementById('stayPriceInput').value) {
+        document.getElementById('otherStayName').value = '';
+        document.getElementById('otherStayPrice').value = '';
+      }
+    }
+    function onOtherStayInput() {
+      const n = document.getElementById('otherStayName').value;
+      const p = document.getElementById('otherStayPrice').value;
+      if (n || p) document.getElementById('stayPriceInput').value = '';
+    }
+    function toggleOtherStay() {
+      const box = document.getElementById('otherStayBox');
+      const arrow = document.getElementById('otherStayArrow');
+      const open = box.style.display === 'none';
+      box.style.display = open ? 'block' : 'none';
+      arrow.textContent = open ? '▾' : '▸';
+    }
+
+    async function saveStayPrice() {
+      const overlay = document.getElementById('stayPriceOverlay');
+      const key = overlay.dataset.key;
+      const found = findStayByKey(key);
+      if (!found) return;
+
+      const topVal    = parseInt((document.getElementById('stayPriceInput').value || '').replace(/[^\d]/g, ''));
+      const otherName = (document.getElementById('otherStayName').value || '').trim();
+      const otherVal  = parseInt((document.getElementById('otherStayPrice').value || '').replace(/[^\d]/g, ''));
+
+      let finalName = found.place.name;
+      let finalVal;
+
+      if (otherName && otherVal > 0) {
+        const region = (window._stayBookingInfo && window._stayBookingInfo.dest) || '';
+        try {
+          const r = await api.get(`/api/kakao/place?query=${encodeURIComponent(otherName)}&region=${encodeURIComponent(region)}`);
+          finalName = (r.success && r.data && r.data.name) ? r.data.name : otherName;
+        } catch (e) {
+          finalName = otherName;
+        }
+        finalVal = otherVal;
+      } else if (topVal > 0) {
+        finalVal = topVal;
+      } else {
+        toast('금액 미입력 — AI 예상 비용으로 유지됩니다.');
+        closePriceModal();
+        return;
+      }
+
+      found.place.name = finalName;
+      found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
+      found.place.actualPrice = finalVal;
+      recalcDayBudget(found.day);
+
+      closePriceModal();
+
+      const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+      try {
+        await api.post(`/api/trips/${tripId}/routes/reorder`, MAP_ITINERARY);
+        sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
+        toast('저장되었습니다.');
+        if (typeof initMapPage === 'function') initMapPage();
+      } catch (e) {
+        toast('저장 실패: ' + e.message);
+      }
+    }
   </script>
 
   <div class="page" id="page-map">
@@ -1673,6 +1847,22 @@
       .map-left.plan-locked .place-row[draggable] {
         pointer-events: auto;
       }
+
+      /* ★숙소 카드 아래 액션 버튼 줄 */
+      .stay-action-row { display:flex; gap:6px; padding:6px 10px 10px 44px; }
+      .stay-action-row button {
+        flex:1; border:none; border-radius:6px; padding:7px 0;
+        font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+      .btn-stay-check, .btn-stay-book { background:#2D9E8A; color:#fff; }
+      .btn-stay-edit { background:#F5A623; color:#fff; }
+      .map-left.plan-locked .btn-stay-edit,
+      .map-left.plan-locked .btn-stay-check { display:none !important; }
+
+      /* ★모달 사이트 선택 버튼 */
+      .site-btn {
+        flex:1; border:1px solid #2D9E8A; background:#fff; color:#2D9E8A;
+        border-radius:8px; padding:10px 0; font-size:13px; font-weight:700; cursor:pointer; }
+      .site-btn:hover { background:#2D9E8A; color:#fff; }
     </style>
     <div class="map-wrap">
       <!-- 모바일 전용 탭 바 -->
@@ -1953,6 +2143,75 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ★모달 1: 예약 사이트 선택 -->
+    <div id="staySiteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;
+         background:rgba(0,0,0,0.5);align-items:center;justify-content:center;"
+         onclick="if(event.target===this)closeSiteModal()">
+      <div style="background:#fff;border-radius:16px;padding:24px;width:340px;max-width:90%;
+           box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+        <div style="font-weight:700;font-size:16px;margin-bottom:6px;">🏨 실제 금액 확인</div>
+        <div id="staySiteName" style="font-size:13px;color:#888;margin-bottom:10px;"></div>
+        <div style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.5;">
+          실제 사이트에서 해당 숙소와 금액을 확인하세요.
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button onclick="gotoSite('agoda')" class="site-btn">아고다</button>
+          <button onclick="gotoSite('yeogi')" class="site-btn">여기어때</button>
+          <button onclick="gotoSite('kakao')" class="site-btn">카카오</button>
+        </div>
+        <div style="font-size:11px;color:#E07A5F;background:#FDF1EE;border-radius:8px;
+             padding:8px 10px;line-height:1.5;">
+          ⚠ 카카오는 인원과 필터를 직접 설정해야 합니다.
+        </div>
+      </div>
+    </div>
+
+    <!-- ★모달 2: 실제 금액 입력 -->
+    <div id="stayPriceOverlay" style="display:none;position:fixed;inset:0;z-index:9999;
+         background:rgba(0,0,0,0.5);align-items:center;justify-content:center;"
+         onclick="if(event.target===this)closePriceModal()">
+      <div style="background:#fff;border-radius:16px;padding:24px;width:340px;max-width:90%;
+           box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+        <div style="font-weight:700;font-size:16px;margin-bottom:6px;">💰 실제 숙박 금액 입력</div>
+        <div id="stayPriceName" style="font-size:13px;color:#888;margin-bottom:12px;"></div>
+        <div style="font-size:11px;color:#E07A5F;background:#FDF1EE;border-radius:8px;
+             padding:8px 10px;line-height:1.5;margin-bottom:14px;">
+          ⚠ 금액을 입력하지 않으면 AI가 예상 비용을 작성합니다 (정확도 낮음).
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
+          <span style="font-weight:700;">₩</span>
+          <input id="stayPriceInput" type="number" min="1" placeholder="실제 금액 (예: 150000)"
+                 oninput="onTopPriceInput()"
+                 style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+        </div>
+        <div onclick="toggleOtherStay()" style="font-size:13px;color:#2D9E8A;
+             cursor:pointer;font-weight:600;margin-bottom:8px;user-select:none;">
+          <span id="otherStayArrow">▸</span> 혹시 다른 숙소가 마음에 드셨나요?
+        </div>
+        <div id="otherStayBox" style="display:none;background:#f7f7f7;border-radius:8px;
+             padding:12px;margin-bottom:14px;">
+          <div style="font-size:12px;color:#888;margin-bottom:8px;">
+            숙소명과 금액을 입력해주세요. (입력 시 위쪽 금액은 무시됩니다)
+          </div>
+          <input id="otherStayName" type="text" placeholder="숙소명 (예: 해운대 그랜드호텔)"
+                 oninput="onOtherStayInput()"
+                 style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;
+                 font-size:14px;margin-bottom:8px;box-sizing:border-box;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-weight:700;">₩</span>
+            <input id="otherStayPrice" type="number" min="1" placeholder="예: 180000"
+                   oninput="onOtherStayInput()"
+                   style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
+          </div>
+        </div>
+        <button onclick="saveStayPrice()"
+                style="width:100%;padding:12px;background:#2D9E8A;color:#fff;border:none;
+                border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;">
+          저장
+        </button>
+      </div>
     </div>
   </div>
 </div>
