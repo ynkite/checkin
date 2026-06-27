@@ -721,11 +721,20 @@
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
                 if (res.success && res.data) {
-                    let cleanJson = res.data;
+                    // ★방법1: data가 {route, over50} 객체. route는 기존처럼 JSON 문자열
+                    let cleanJson = res.data.route;
+                    const over50 = res.data.over50 || [];
                     if (cleanJson.includes('[')) {
                         cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
                     }
                     const draftRoute = JSON.parse(cleanJson);
+
+                    // ★50km 초과 장소 알림 (한 번에 모아서)
+                    if (over50.length > 0) {
+                        _hideGenLoading();
+                        _showOver50Gate(tripId, over50, draftRoute, btn);
+                        return; // 사용자 선택 전까지 진행 보류
+                    }
 
                     // 🚦 [생성 전 확인 게이트] 지도에 없는 장소 / 예산 부족을 먼저 점검하고,
                     //    문제가 있으면 사용자가 '확인하고 생성'을 눌러야만 진행한다.
@@ -765,6 +774,79 @@
                 btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
+        }
+        /* ─────────────────────────────────────────────────────────
+     * ★50km 초과 장소 알림 게이트
+     *   [무시하고 생성] 그대로 진행 / [변경] 해당 장소만 교체 / [취소] 중단
+     * ───────────────────────────────────────────────────────── */
+        function _showOver50Gate(tripId, over50, draftRoute, btn) {
+            const list = over50.map(n => '• ' + n).join('<br>');
+            const html = `
+          <div id="over50Overlay" style="position:fixed;inset:0;z-index:10000;
+               background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:16px;padding:24px;width:360px;max-width:90%;
+                 box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+              <div style="font-weight:700;font-size:16px;margin-bottom:8px;">🚗 너무 먼 장소가 있어요</div>
+              <div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:12px;">
+                아래 장소가 다른 일정과 50km 이상 떨어져 있습니다.<br>${list}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button id="over50Change" style="padding:11px;background:#F5A623;color:#fff;border:none;
+                        border-radius:8px;font-weight:700;cursor:pointer;">변경 (가까운 곳으로 교체)</button>
+                <button id="over50Ignore" style="padding:11px;background:#2D9E8A;color:#fff;border:none;
+                        border-radius:8px;font-weight:700;cursor:pointer;">무시하고 생성</button>
+                <button id="over50Cancel" style="padding:11px;background:#eee;color:#555;border:none;
+                        border-radius:8px;font-weight:700;cursor:pointer;">취소</button>
+              </div>
+            </div>
+          </div>`;
+            document.body.insertAdjacentHTML('beforeend', html);
+
+            const close = () => document.getElementById('over50Overlay')?.remove();
+            const restoreBtn = () => {
+                if (btn) { btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+            };
+
+            // [무시하고 생성] — draft 그대로 기존 파이프라인 진행
+            document.getElementById('over50Ignore').onclick = () => {
+                close();
+                _showGenLoading('AI가 일정을 생성 중입니다…');
+                sessionStorage.setItem('autoHealingRetries', '0');
+                validateAndHealingRoute(tripId, draftRoute, btn);
+            };
+
+            // [변경] — 먼 장소들만 교체 요청 후, 새 결과로 진행
+            document.getElementById('over50Change').onclick = async () => {
+                close();
+                _showGenLoading('먼 장소를 교체하는 중…');
+                try {
+                    const requests = over50.map(name => ({
+                        place: name,
+                        req: '이 장소가 다른 일정과 50km 이상 멀리 떨어져 있습니다. 같은 권역의 가까운 다른 실존 장소로 교체해 주세요.'
+                    }));
+                    const r = await api.post(`/api/trips/${tripId}/routes/replace`, { requests });
+                    let j = r.data;
+                    if (typeof j === 'string' && j.includes('[')) {
+                        j = j.substring(j.indexOf('['), j.lastIndexOf(']') + 1);
+                    }
+                    const newRoute = JSON.parse(j);
+                    _showGenLoading('AI가 일정을 생성 중입니다…');
+                    sessionStorage.setItem('autoHealingRetries', '0');
+                    validateAndHealingRoute(tripId, newRoute, btn);
+                } catch (e) {
+                    _hideGenLoading();
+                    toast('교체 실패: ' + e.message);
+                    restoreBtn();
+                }
+            };
+
+            // [취소] — 중단. 1차 결과는 DB에 남아있음 (이어서 진행 시 그 위에서 부분교체)
+            document.getElementById('over50Cancel').onclick = () => {
+                close();
+                _hideGenLoading();
+                toast('생성을 취소했습니다. (생성된 일정은 임시 저장되어 있어요)');
+                restoreBtn();
+            };
         }
 
         /* ─────────────────────────────────────────────────────────

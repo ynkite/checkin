@@ -50,6 +50,12 @@ public class AiRouteService {
     private final PlaceService placeService;
     private final ObjectMapper objectMapper;
 
+    // ★카카오 거리 계산용
+    private final org.springframework.web.client.RestTemplate restTemplate;
+
+    @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
+    private String kakaoRestKey;
+
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
     private final ChatClient primaryClient;   // Groq (1차 생성 / 장소 교체)
@@ -60,6 +66,7 @@ public class AiRouteService {
             ExpenseRepository expenseRepository,
             PlaceService placeService,
             ObjectMapper objectMapper,
+            org.springframework.web.client.RestTemplate restTemplate,
 
             // ===== // 클로드 API 사용할 때 (Anthropic 정식 SDK) =====
             @Qualifier("anthropicChatModel") ChatModel claudeModel,
@@ -80,6 +87,7 @@ public class AiRouteService {
         this.expenseRepository = expenseRepository;
         this.placeService = placeService;
         this.objectMapper = objectMapper;
+        this.restTemplate = restTemplate;
 
         // ===== // 클로드 API 사용할 때 =====
         this.claudeClient   = ChatClient.builder(claudeModel).build();
@@ -103,6 +111,22 @@ public class AiRouteService {
         if (form == null) {
             throw new IllegalStateException("해당 플랜의 취향 정보가 DB에 없습니다.");
         }
+
+        // ★당일치기 판별: 시작일==종료일(0박)이면 숙소를 절대 넣지 않는다
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        String stayRule = isDayTrip
+                ? """
+              ★★★당일치기 — 숙소 절대 금지★★★: 이 여행은 0박 당일치기입니다.
+              어떤 Day에도 "type":"stay"(숙소)를 단 하나도 넣지 마십시오. 숙소를 넣으면 시스템 오류로 간주합니다.
+              관광지·맛집·카페로만 하루 일정을 구성하고, 밤에 숙소 복귀도 넣지 마세요.
+              """
+                : """
+              숙소(stay) 배치 규칙:
+                 - 첫째 날(Day 1)과 마지막 날을 제외한 중간 날은, 전날 묵은 동일 숙소를 그 날 '맨 첫 일정(아침)'과 '맨 마지막 일정(밤)'에 모두 배치합니다.
+                 - 첫째 날(Day 1)은 아침에 숙소를 넣지 말고 관광지·식당으로 시작하고, 그 날 밤에 숙소를 배치합니다.
+                 - 마지막 날은 아침에 전날 숙소에서 출발(체크아웃)하되, 밤에는 새 숙소를 넣지 않습니다.
+                 - 같은 날 안에서 '서로 다른' 숙소를 두 개 이상 넣는 것은 금지합니다(동일 숙소를 출발/취침으로 두 번 넣는 것은 위 규칙대로 허용).
+              """;
 
         String prompt = String.format("""
             당신은 'TripLinker'의 동선 생성 전문 AI입니다.
@@ -129,7 +153,9 @@ public class AiRouteService {
                - [여행 기본 정보]의 '유저 요청 사항'에 특정 일자/메뉴/장소가 명시되어 있다면, AI의 자체적인 추천보다 이를 무조건 1순위로 강제 배치해야 합니다.
             
             3. 지역 일관성 및 동선 그룹화 (이동 최소화):
-                - 거리 계산할 때 정확하게 카카오맵 길찾기와 최대한 동일하게 km가 나와야합니다
+                - ★거리/시간/비용 계산 금지★: transit의 거리·소요시간·교통비는 절대 직접 계산하지 마세요.
+                  시스템이 카카오맵 길찾기 API로 실제값을 자동으로 채웁니다. 당신은 장소의 선택과 순서만 책임지세요.
+                  transit 객체는 항상 "transit": "이동" 한 가지로만 적으면 됩니다. (km·분·금액 적지 마세요)
                - 모든 장소는 제공된 '여행지' 행정구역 내에 있어야 합니다.
                - ★절대 금지★: '여행지'가 "제주도"이면 제주도 밖(서울·대전·부산·강릉 등 타지역)의
                  장소를 단 하나도 넣지 마십시오. 모든 Day의 모든 장소는 반드시 '여행지' 시/도 경계 안에만
@@ -186,21 +212,17 @@ public class AiRouteService {
                  더 비싼 장소로의 교체를 절대 하지 말고, 그 예산 안에서 가성비 좋은 실존 장소들로
                  알차게 동선을 구성하세요. 예산이 빠듯하면 무료·저가 관광지와 가성비 식당·숙소를 우선 배치합니다.
             
-                        6. 숙소(stay) 배치 규칙:
-                                       - 첫째 날(Day 1)과 마지막 날을 제외한 중간 날은, 전날 묵은 동일 숙소를 그 날 '맨 첫 일정(아침)'과 '맨 마지막 일정(밤)'에 모두 배치합니다.
-                                       - 첫째 날(Day 1)은 아침에 숙소를 넣지 말고 관광지·식당으로 시작하고, 그 날 밤에 숙소를 배치합니다.
-                                       - 마지막 날은 아침에 전날 숙소에서 출발(체크아웃)하되, 밤에는 새 숙소를 넣지 않습니다.
-                                       - 같은 날 안에서 '서로 다른' 숙소를 두 개 이상 넣는 것은 금지합니다(동일 숙소를 출발/취침으로 두 번 넣는 것은 위 규칙대로 허용).
+                        6. %s
             
-            7. 현실적인 단가 및 수학적 예산 검증:
-               - 숙박비에 1박 70만원 같은 터무니없는 바가지 요금을 적지 마세요. 일반적인 시세(10~20만 원 선)를 반영하세요.
-               - 각 일차의 'budget' 금액은 해당 일차의 모든 'sub' 금액과 'transit' 금액을 더한 값과 **수학적으로 완벽하게 일치**해야 합니다. 계산을 틀리지 마세요.
+                        7. 현실적인 단가:
+                                       - 숙박비·식비·입장료는 일반적인 시세를 반영하세요. 특히 숙박비에 1박 70만원 같은 터무니없는 바가지 요금을 적지 마세요 
+                                       (호텔 기준 10~20만 원 선).
             
             
             [출력 규칙 - 매우 중요]
             1. 장소의 'type' 필드는 반드시 "stay"(숙소), "food"(맛집), "cafe"(카페), "tour"(관광지) 4가지 고정된 문자열 중 하나만 사용해야 합니다. ('sight', 'attraction' 등으로 임의 조작 금지)
             2. 'budget'은 해당 일차 총액(예: ₩182,000), 'stars'는 별점(예: ★★★★★ 4.8) 포맷을 지키세요.
-            3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함해야 합니다. (예: "🚗 자차 · 12km · 약 20분 · ₩2,000")
+            3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함하되, 값은 항상 "이동"으로만 적으세요. (예: { "transit": "이동" }) 거리·시간·금액은 시스템이 채웁니다.
             4. 부가적인 설명, 인사말, 마크다운 코드블럭 기호(```json 등)를 일절 포함하지 말고, 오직 아래 형식의 순수 JSON 배열(Array) 텍스트만 출력하세요.
             [
               {
@@ -209,7 +231,7 @@ public class AiRouteService {
                 "budget": "₩184,000",
                 "places": [
                   { "type": "stay", "icon": "🏨", "name": "제주신라호텔", "sub": "숙소 · ₩180,000", "stars": "★★★★★ 4.8", "key": "uniq1", "time": "13:00", "replacePh": "예: 더 저렴한 펜션으로 교체해줘" },
-                  { "transit": "🚗 자차 · 12km · 약 20분 · ₩2,000" },
+                  { "transit": "이동" },
                   { "type": "food", "icon": "🍽️", "name": "동래할매파전", "sub": "맛집 · 점심 · ₩12,000×2", "stars": "★★★★☆ 4.2", "key": "uniq2", "time": "14:30", "replacePh": "예: 다른 맛집으로" }
                 ]
               }
@@ -221,7 +243,8 @@ public class AiRouteService {
                 form.getTravelStyles(), form.getDietaryInfo(), form.getScheduleDensity(),
                 form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X",
                 parseExtraNotesToPrompt(form.getExtraNotes()),
-                form.getBudget()
+                form.getBudget(),
+                stayRule
         );
 
         String aiRouteJson = "[]";
@@ -357,7 +380,6 @@ public class AiRouteService {
             - 유저 요청 사항: %s
 
             [검증 항목 - 발견 시 반드시 교정]
-            0. 이전에 나왔던 장소로 재교체하지 말것(사용자의 요청이 있을 경우 예외)
             1. 가짜 장소 차단: 카카오맵에 실존하지 않거나 모호한 명칭("OO먹자골목", "XX 맛집"),
                폐업/가상의 장소, '체크인/방문/식사' 같은 임의 접미사가 붙은 장소는
                같은 권역의 실존하는 대중적 장소로 교체하세요.
@@ -432,6 +454,15 @@ public class AiRouteService {
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+
+        // ★카카오 API로 거리/시간/통행료를 실제값으로 보정 (저장 직전 1회)
+        PlanInputForm form = plan.getForm();
+        json = recalcTransitWithKakao(json, form != null ? form.getTransportType() : null);
+
+        // ★당일치기(0박)면 숙소(stay)를 강제 제거 (AI가 규칙 어겨도 최종 차단)
+        if (plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate())) {
+            json = stripStayForDayTrip(json);
+        }
 
         plan.setRouteJson(json);
         plan.setRouteRecalcNeeded(0);
@@ -525,6 +556,16 @@ public class AiRouteService {
             originalJson = "[]";
         }
 
+        // ★거부 이력 수집: 이번에 교체 요청된 장소들(=이미 사용자가 거부한 장소)을
+        //   "다시 넣지 말라" 블랙리스트로 만들어 프롬프트에 전달한다.
+        StringBuilder rejectedStr = new StringBuilder();
+        for (java.util.Map<String, String> req : requests) {
+            String place = req.get("place");
+            if (place != null && !place.isBlank()) {
+                rejectedStr.append("- ").append(place.trim()).append("\n");
+            }
+        }
+
 
         // 🎯 [인텔리제이 콘솔 로그 정밀 분기] 무슨 오류인지 종류별로 모아서 상세 로깅
         System.out.println("======================== [동선 오차] ========================");
@@ -571,10 +612,19 @@ public class AiRouteService {
             [교체 요청 사항]
             %s
             
+            [★재교체 금지 장소(블랙리스트)★]
+            아래 장소들은 사용자가 이미 거부한 장소이므로 절대로 다시 추천하면 안 됩니다.
+            교체 결과에 아래 이름이 단 하나라도 다시 등장하면 시스템 오류로 간주합니다.
+            반드시 아래 목록에 없는, 같은 권역의 '다른' 실존 장소로 교체하세요.
+            %s
+            
             [원본 여행 동선 JSON]
             %s
             
             [부분 교체 필수 준수 사항 - 위반 시 시스템 오류 발생]
+            0-A. ★재교체 절대 금지★: 위 [재교체 금지 장소(블랙리스트)]에 있는 장소는 어떤 경우에도
+                 결과에 다시 넣지 마십시오. A를 거부해 B가 나왔고 B도 거부됐다면, A로 되돌아가지 말고
+                 반드시 A·B 둘 다 아닌 제3의 실존 장소를 찾으세요.
             0. ★지역 절대 잠금★: 교체로 새로 넣는 모든 장소는 반드시 여행지 "%s" 행정구역 안에 실존해야 합니다.
                여행지가 "경북 청송군"이면 청송군(또는 인접 30km 이내) 밖의 장소(서울·대전·부산·제주 등)는
                절대 넣지 마십시오. 교체 요청에 "권역을 벗어났다"는 사유가 있으면, 그 장소를 반드시
@@ -598,7 +648,7 @@ public class AiRouteService {
             [출력 규칙 - 매우 중요]
             1. 장소의 'type' 필드는 반드시 "stay"(숙소), "food"(맛집), "cafe"(카페), "tour"(관광지) 4가지 고정된 문자열 중 하나만 사용해야 합니다. ('sight', 'attraction' 등으로 임의 조작 금지)
             2. 'budget'은 해당 일차 총액(예: ₩182,000), 'stars'는 별점(예: ★★★★★ 4.8) 포맷을 지키세요.
-            3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함해야 합니다. (예: "🚗 자차 · 12km · 약 20분 · ₩2,000")
+            3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함하되, 값은 항상 "이동"으로만 적으세요. (예: { "transit": "이동" }) 거리·시간·금액은 시스템이 채웁니다.
             4. 부가적인 설명, 인사말, 마크다운 코드블럭 기호(```json 등)를 일절 포함하지 말고, 오직 아래 형식의 순수 JSON 배열(Array) 텍스트만 출력하세요.
             """,
                 plan.getDestination(),
@@ -608,7 +658,9 @@ public class AiRouteService {
                 form.getTravelStyles(), form.getDietaryInfo(),
                 form.getTransportType(), form.getAccommodationType(),
                 parseExtraNotesToPrompt(form.getExtraNotes()),
-                reqStr.toString(), originalJson,
+                reqStr.toString(),
+                rejectedStr.length() > 0 ? rejectedStr.toString() : "- (없음)",  // ★블랙리스트 자리
+                originalJson,
                 plan.getDestination()   // 규칙 0의 ★지역 절대 잠금★ 자리
         );
         // groq 사용할때 지금은 전체 주석처리하고 아래 구문 사용
@@ -700,6 +752,34 @@ public class AiRouteService {
             return objectMapper.writeValueAsString(root);
         } catch (Exception e) {
             System.err.println("[stripBadPlaces] 실패: " + e.getMessage());
+            return json;
+        }
+    }
+    // 당일치기(0박)일 때 숙소(stay) 객체와 붕 뜬 transit을 일정에서 제거
+    private String stripStayForDayTrip(String json) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+                com.fasterxml.jackson.databind.node.ArrayNode places =
+                        (com.fasterxml.jackson.databind.node.ArrayNode) placesNode;
+                // 1) 숙소 제거
+                for (int i = places.size() - 1; i >= 0; i--) {
+                    if ("stay".equals(places.get(i).path("type").asText(""))) places.remove(i);
+                }
+                // 2) 붕 뜬 transit 정리(맨앞·맨뒤·연속 transit 제거)
+                for (int i = places.size() - 1; i >= 0; i--) {
+                    if (!places.get(i).has("transit")) continue;
+                    boolean prevReal = i > 0 && places.get(i - 1).has("type");
+                    boolean nextReal = i < places.size() - 1 && places.get(i + 1).has("type");
+                    if (!(prevReal && nextReal)) places.remove(i);
+                }
+            }
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            System.err.println("[stripStayForDayTrip] 실패: " + e.getMessage());
             return json;
         }
     }
@@ -819,6 +899,300 @@ public class AiRouteService {
             return sj.length() > 0 ? sj.toString() : "없음"; // 결과 예시: "1일차저녁: 회"
         } catch (Exception e) {
             return "없음";
+        }
+    }
+    // ════════════════════════════════════════════════════════════════
+    //  ★카카오 실측 거리 기반 동선 교정
+    //   - 20/13km(숙소구간 35/25km) 초과 ~ 50km: '동떨어진 장소' 자동 교체(최대 2회)
+    //   - 50km 초과: 자동 교체 안 하고, 그 장소 목록을 돌려줘서 프론트가 알림창 띄움
+    //   - 사용자가 챗봇에서 직접 요청한 장소(extra_notes)는 교체 대상에서 제외(거리만 표시)
+    // ════════════════════════════════════════════════════════════════
+
+    /** 50km 초과 장소명 목록을 반환(없으면 빈 리스트). 동시에 50km 이하 초과 구간은 자동 교체한다. */
+    public java.util.List<String> enforceDistanceAndGetOver50(Long tripId, String json) {
+        TravelPlan plan = planRepository.findById(tripId).orElse(null);
+        if (plan == null) return java.util.Collections.emptyList();
+        PlanInputForm form = plan.getForm();
+        String transportType = form != null ? form.getTransportType() : null;
+        boolean isCar = transportType == null || !transportType.contains("대중교통");
+
+        double normalLimit = isCar ? 20_000 : 13_000;
+        double stayLimit   = isCar ? 35_000 : 25_000;
+        final double HARD_LIMIT = 50_000; // 50km
+
+        // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
+        java.util.Set<String> userRequested = extractUserRequestedNames(form);
+
+        // 1) 50km 초과 먼저 검사 (자동 교체 안 함)
+        java.util.List<String> over50 = new java.util.ArrayList<>();
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            java.util.Map<String, double[]> geo = new java.util.HashMap<>();
+            for (JsonNode dayNode : root) {
+                JsonNode places = dayNode.path("places");
+                if (!places.isArray()) continue;
+                String prevName = null; double[] prevCoord = null; boolean prevStay = false;
+                for (JsonNode pl : places) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    String nm = pl.path("name").asText("");
+                    boolean stay = "stay".equals(pl.path("type").asText(""));
+                    double[] c = geocodeCached(nm, geo);
+                    if (prevCoord != null && c != null) {
+                        long[] r = carDirections(prevCoord, c);
+                        if (r != null && r[0] > HARD_LIMIT) {
+                            // 사용자 요청 장소는 알림에서 제외
+                            if (!userRequested.contains(nm) && !over50.contains(nm)) over50.add(nm);
+                            else if (!userRequested.contains(prevName) && prevName != null && !over50.contains(prevName)) over50.add(prevName);
+                        }
+                    }
+                    prevName = nm; prevCoord = c; prevStay = stay;
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[over50 검사 실패] " + e.getMessage());
+        }
+        if (!over50.isEmpty()) return over50; // 50km 초과가 있으면 자동교체 보류, 프론트에 위임
+
+        // 2) 50km 이하의 초과 구간만 자동 교체 (최대 2회)
+        String current = json;
+        for (int attempt = 0; attempt < 2; attempt++) {
+            java.util.List<java.util.Map<String, String>> requests =
+                    findFarPlaces(current, normalLimit, stayLimit, userRequested);
+            if (requests.isEmpty()) break;
+            try {
+                // replaceAiRoutePlaces 내부에서 이미 saveAiRouteToDb까지 수행하므로 여기서 또 저장하지 않는다
+                current = replaceAiRoutePlaces(tripId, requests);
+            } catch (Exception e) {
+                System.err.println("[거리 자동교체 실패] " + e.getMessage());
+                break;
+            }
+        }
+        return java.util.Collections.emptyList();
+    }
+
+    /** 기준 초과 구간이 있으면, 그날 '다른 장소들과 평균거리가 가장 먼' 장소를 교체 대상으로 골라 반환 */
+    private java.util.List<java.util.Map<String, String>> findFarPlaces(
+            String json, double normalLimit, double stayLimit, java.util.Set<String> userRequested) {
+        java.util.List<java.util.Map<String, String>> result = new java.util.ArrayList<>();
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            java.util.Map<String, double[]> geo = new java.util.HashMap<>();
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+
+                java.util.List<String> names = new java.util.ArrayList<>();
+                java.util.List<double[]> coords = new java.util.ArrayList<>();
+                java.util.List<Boolean> stays = new java.util.ArrayList<>();
+                for (JsonNode pl : placesNode) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    String nm = pl.path("name").asText("");
+                    double[] c = geocodeCached(nm, geo);
+                    if (c == null) continue;
+                    names.add(nm); coords.add(c);
+                    stays.add("stay".equals(pl.path("type").asText("")));
+                }
+                int n = names.size();
+                if (n < 2) continue;
+
+                // 인접 구간이 기준을 넘는지 확인 (숙소 출발/복귀 구간은 더 너그럽게)
+                boolean exceeded = false;
+                for (int i = 0; i < n - 1; i++) {
+                    long[] r = carDirections(coords.get(i), coords.get(i + 1));
+                    if (r == null) continue;
+                    boolean stayEdge = stays.get(i) || stays.get(i + 1);
+                    double limit = stayEdge ? stayLimit : normalLimit;
+                    if (r[0] > limit) { exceeded = true; break; }
+                }
+                if (!exceeded) continue;
+
+                // 그날 장소 중 '다른 장소들과의 평균거리가 가장 먼' 비-숙소·비-사용자요청 장소 선정
+                int worstIdx = -1; double worstAvg = -1;
+                for (int i = 0; i < n; i++) {
+                    if (stays.get(i)) continue;                 // 숙소 제외
+                    if (userRequested.contains(names.get(i))) continue; // 사용자 요청 제외
+                    double sum = 0; int cnt = 0;
+                    for (int j = 0; j < n; j++) {
+                        if (i == j) continue;
+                        long[] r = carDirections(coords.get(i), coords.get(j));
+                        if (r != null) { sum += r[0]; cnt++; }
+                    }
+                    double avg = cnt > 0 ? sum / cnt : 0;
+                    if (avg > worstAvg) { worstAvg = avg; worstIdx = i; }
+                }
+                if (worstIdx >= 0) {
+                    java.util.Map<String, String> req = new java.util.HashMap<>();
+                    req.put("place", names.get(worstIdx));
+                    req.put("req", "이 장소가 다른 일정들과 너무 멀리 떨어져 있습니다. 같은 권역의 가까운 다른 장소로 교체해 주세요.");
+                    result.add(req);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[findFarPlaces 실패] " + e.getMessage());
+        }
+        return result;
+    }
+
+    /** extra_notes 등에서 사용자가 직접 요청한 장소명 추출 (교체 금지 목록) */
+    private java.util.Set<String> extractUserRequestedNames(PlanInputForm form) {
+        java.util.Set<String> set = new java.util.HashSet<>();
+        if (form == null || form.getExtraNotes() == null) return set;
+        try {
+            JsonNode arr = objectMapper.readTree(form.getExtraNotes());
+            if (arr.isArray()) {
+                for (JsonNode n : arr) {
+                    // EXTRA 태그 value에 장소명이 담기는 구조를 가정 (label/value 또는 문자열)
+                    String v = n.has("value") ? n.path("value").asText("") : n.asText("");
+                    if (v != null && !v.isBlank()) set.add(v.trim());
+                }
+            }
+        } catch (Exception ignore) {}
+        return set;
+    }
+    // ─────────────────────────────────────────────────────────────
+    //  ★카카오 API로 transit 거리/시간/비용을 실제값으로 덮어쓴다.
+    //   AI가 지어낸 부정확한 km 대신 카카오맵 길찾기와 동일한 값을 채운다.
+    //   (AI는 장소·순서만 책임지고, 숫자는 카카오가 책임 → 정확도↑·토큰↓)
+    // ─────────────────────────────────────────────────────────────
+    private String recalcTransitWithKakao(String json, String transportType) {
+        try {
+            System.out.println("🗺️ [카카오 보정 시작] 이동수단=" + transportType
+                    + " / 키 길이=" + (kakaoRestKey == null ? "null" : kakaoRestKey.length()));
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            boolean isCar = transportType == null || !transportType.contains("대중교통");
+
+            // 같은 장소명 좌표는 캐시해 중복 호출 방지(토큰·API콜 절약)
+            java.util.Map<String, double[]> geoCache = new java.util.HashMap<>();
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+                com.fasterxml.jackson.databind.node.ArrayNode places =
+                        (com.fasterxml.jackson.databind.node.ArrayNode) placesNode;
+
+                for (int i = 0; i < places.size(); i++) {
+                    if (!places.get(i).has("transit")) continue;
+
+                    JsonNode prev = i > 0 ? places.get(i - 1) : null;
+                    JsonNode next = i < places.size() - 1 ? places.get(i + 1) : null;
+                    if (prev == null || next == null || !prev.has("name") || !next.has("name")) continue;
+
+                    String fromName = prev.path("name").asText("");
+                    String toName   = next.path("name").asText("");
+                    double[] from = geocodeCached(fromName, geoCache);
+                    double[] to   = geocodeCached(toName, geoCache);
+                    if (from == null || to == null) {
+                        System.out.println("⚠️ [좌표 실패] " + fromName + "=" + (from != null)
+                                + " / " + toName + "=" + (to != null));
+                        continue;
+                    }
+                    long[] r = carDirections(from, to); // [거리(m), 시간(초), 통행료(원)]
+                    if (r == null) {
+                        System.out.println("⚠️ [길찾기 실패] " + fromName + " → " + toName);
+                        continue;
+                    }
+                    System.out.println("✅ [카카오] " + fromName + " → " + toName
+                            + " : " + String.format("%.1f", r[0] / 1000.0) + "km / "
+                            + Math.round(r[1] / 60.0) + "분");
+
+                    double km = r[0] / 1000.0;
+                    long min = Math.round(r[1] / 60.0);
+                    long toll = r[2];
+
+                    String cost;
+                    if (isCar) {
+                        long fuel = Math.round(km / 10.0 * 2000.0); // 연비 10km/L · ₩2,000/L
+                        cost = String.format("₩%,d", fuel + toll);
+                    } else {
+                        cost = "대중교통 운임 별도";
+                    }
+                    String icon = isCar ? "🚗 자차" : "🚌 대중교통";
+                    String newTransit = String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost);
+
+                    ((com.fasterxml.jackson.databind.node.ObjectNode) places.get(i))
+                            .put("transit", newTransit);
+                }
+
+                // ★budget 재계산: 카카오가 채운 transit 금액 + 장소 sub 금액 합으로 그날 총액 갱신
+                long dayTotal = 0;
+                for (JsonNode pl : places) {
+                    if (pl.has("transit")) {
+                        dayTotal += parseAmountFromSub(pl.path("transit").asText(""));
+                    } else {
+                        dayTotal += parseAmountFromSub(pl.path("sub").asText(""));
+                    }
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode)
+                        .put("budget", "₩" + String.format("%,d", dayTotal));
+            }
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            System.err.println("[recalcTransitWithKakao] 실패, 원본 유지: " + e.getMessage());
+            return json;
+        }
+    }
+
+    private double[] geocodeCached(String name, java.util.Map<String, double[]> cache) {
+        if (name == null || name.isBlank()) return null;
+        if (cache.containsKey(name)) return cache.get(name);
+        double[] geo = geocode(name);
+        cache.put(name, geo);
+        return geo;
+    }
+
+    // 장소명 → [위도, 경도] (카카오 로컬 키워드 검색)
+    private double[] geocode(String placeName) {
+        try {
+            String url = "https://dapi.kakao.com/v2/local/search/keyword.json?query="
+                    + java.net.URLEncoder.encode(placeName, java.nio.charset.StandardCharsets.UTF_8);
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
+            org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.GET, req, String.class);
+            JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
+            if (!docs.isArray() || docs.isEmpty()) return null;
+            JsonNode f = docs.get(0);
+            return new double[]{ f.path("y").asDouble(), f.path("x").asDouble() }; // [위도, 경도]
+        } catch (org.springframework.web.client.HttpStatusCodeException he) {
+            System.err.println("[geocode] HTTP " + he.getStatusCode() + " (" + placeName + ") : "
+                    + he.getResponseBodyAsString());
+            return null;
+        } catch (Exception e) {
+            System.err.println("[geocode] 실패(" + placeName + "): " + e.getMessage());
+            return null;
+        }
+    }
+
+    // 좌표 → [거리(m), 시간(초), 통행료(원)] (카카오 모빌리티 자차 길찾기)
+    private long[] carDirections(double[] from, double[] to) {
+        try {
+            String url = String.format(
+                    "https://apis-navi.kakaomobility.com/v1/directions?origin=%f,%f&destination=%f,%f",
+                    from[1], from[0], to[1], to[0]); // origin/destination = 경도,위도
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
+            org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.GET, req, String.class);
+            JsonNode routes = objectMapper.readTree(res.getBody()).path("routes");
+            if (!routes.isArray() || routes.isEmpty()) return null;
+            JsonNode s = routes.get(0).path("summary");
+            return new long[]{
+                    s.path("distance").asLong(0),
+                    s.path("duration").asLong(0),
+                    s.path("fare").path("toll").asLong(0)
+            };
+        } catch (org.springframework.web.client.HttpStatusCodeException he) {
+            System.err.println("[carDirections] HTTP " + he.getStatusCode() + " : "
+                    + he.getResponseBodyAsString());
+            return null;
+        } catch (Exception e) {
+            System.err.println("[carDirections] 실패: " + e.getMessage());
+            return null;
         }
     }
 }

@@ -15,13 +15,25 @@ public class AiRouteController {
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Object>> generateRoute(@PathVariable Long tripId) {
-        // AI에게 일정을 짜달라고 요청
+        // 1) AI에게 일정을 짜달라고 요청
         String aiRouteJson = aiRouteService.generateAiRoute(tripId);
 
-        // AI가 준 JSON을 DB에 저장하는 서비스 호출
+        // 2) AI가 준 JSON을 DB에 저장 (saveAiRouteToDb 안에서 카카오 거리 보정도 수행)
         aiRouteService.saveAiRouteToDb(tripId, aiRouteJson);
 
-        return ResponseEntity.ok(ApiResponse.success(aiRouteJson));
+        // 3) 카카오 실측 거리로 동선 교정: 20/13km 초과(~50km)는 자동 교체,
+        //    50km 초과 장소가 있으면 그 목록을 받아 프론트 알림창에 위임
+        java.util.List<String> over50 = aiRouteService.enforceDistanceAndGetOver50(tripId, aiRouteJson);
+
+        // 최종본을 다시 읽어서 반환 (자동 교체로 바뀌었을 수 있음)
+        Object finalRoute = aiRouteService.getRoutesByTripId(tripId);
+
+        java.util.Map<String, Object> data = new java.util.HashMap<>();
+        data.put("route", finalRoute);
+        data.put("over50", over50);          // 비어있으면 알림 없음
+        data.put("needConfirm", !over50.isEmpty());
+
+        return ResponseEntity.ok(ApiResponse.success(data));
     }
 
     // 컨트롤러에 추가해야 할 GET 매핑 (데이터 반환용)
