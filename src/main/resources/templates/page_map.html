@@ -1219,14 +1219,17 @@
           // 4. 세션 & DB 저장 호출
           sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
           if (window._currentTripId) {
-            // 🎯 순서 변경 시 저장하는 API 엔드포인트 호출
+            // 🎯 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
-                      if(!res.success) toast('⚠️ DB 저장 실패: ' + res.message); // 에러 나면 빨간 팝업 띄워줌
+                      if (!res.success) { toast('⚠️ DB 저장 실패: ' + res.message); return; }
+                      // 보정된 JSON으로 화면 전체 재렌더 (transit 거리·시간·비용 + 동선 갱신)
+                      if (typeof initMapPage === 'function') initMapPage();
                     })
                     .catch(function(err) { console.warn('DB 저장 에러:', err); });
+          } else {
+            redrawDayRoute(dayNum);
           }
-          redrawDayRoute(dayNum);
         });
       });
     }

@@ -83,8 +83,11 @@ public class AiRouteController {
             @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
         try {
             String json = routeData.toString();
+            // 저장(내부에서 카카오 거리/시간/비용 재계산 + budget 갱신 수행)
             aiRouteService.saveAiRouteToDb(tripId, json);
-            return ResponseEntity.ok(java.util.Map.of("success", true));
+            // 보정된 JSON을 돌려줘서 프론트가 새로고침 없이 화면을 다시 그릴 수 있게 한다
+            Object updated = aiRouteService.getRoutesByTripId(tripId);
+            return ResponseEntity.ok(java.util.Map.of("success", true, "data", updated));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(java.util.Map.of("success", false, "message", e.getMessage()));
