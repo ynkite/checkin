@@ -1575,13 +1575,157 @@ public class AiRouteService {
             JsonNode candidatesNode = objectMapper.readTree(candidatesJson);
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
                     geocodeAndFilterCandidates(candidatesNode, plan.getDestination(), geoCache);
-            java.util.Map<Integer, java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>> clusters =
-                    clusterByDay(filtered, plan, userRequested);
-            return buildDaySkeleton(clusters, plan, form, userRequested);
+            return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
             System.err.println("[assembleCandidates] 실패: " + e.getMessage());
             return "[]";
         }
+    }
+
+    /**
+     * 좌표 확인이 완료된 후보 목록을 AI에게 전달해 완성 일정 JSON을 받아온다.
+     * AI가 lat/lng를 보고 지리적으로 가까운 것끼리 묶어 일자별 동선을 조립한다.
+     * transit은 항상 {"transit":"이동"}만 출력하며, 실제 시간/거리는 saveAiRouteToDb에서 채운다.
+     */
+    private String buildRouteWithAI(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> geocodedCandidates,
+            TravelPlan plan, PlanInputForm form, java.util.Set<String> userRequested) {
+
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        long numNights = isDayTrip ? 0 : plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay();
+        long numDays = numNights + 1;
+        int cnt = form.getCompanionCount();
+        String density = form.getScheduleDensity();
+
+        // ── 후보 목록을 프롬프트용 문자열로 직렬화 ──
+        StringBuilder candidatesSb = new StringBuilder();
+        for (String type : new String[]{"stay", "food", "cafe", "tour"}) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> list =
+                    geocodedCandidates.getOrDefault(type, java.util.Collections.emptyList());
+            if (list.isEmpty()) continue;
+            candidatesSb.append("\n[").append(type.toUpperCase()).append(" — ").append(list.size()).append("개]\n");
+            for (int i = 0; i < list.size(); i++) {
+                com.fasterxml.jackson.databind.node.ObjectNode n = list.get(i);
+                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%n",
+                        i + 1,
+                        n.path("name").asText(""),
+                        n.path("sub").asText(""),
+                        n.path("lat").asDouble(),
+                        n.path("lng").asDouble()));
+            }
+        }
+
+        // ── 날짜별 라벨 힌트 ──
+        StringBuilder dayLabelsSb = new StringBuilder();
+        String[] DOW_KO = {"월", "화", "수", "목", "금", "토", "일"};
+        for (int d = 1; d <= numDays; d++) {
+            java.time.LocalDate date = plan.getStartDate().plusDays(d - 1);
+            String dow = DOW_KO[date.getDayOfWeek().getValue() - 1];
+            dayLabelsSb.append(String.format("  Day %d = %s (%s)%n", d,
+                    String.format("%02d/%02d", date.getMonthValue(), date.getDayOfMonth()), dow));
+        }
+
+        // ── 밀도 지침 ──
+        String densityGuide;
+        if ("빡빡하게".equals(density)) {
+            densityGuide = "빡빡하게: 하루 7~9개 장소. 아침 일찍 시작, 저녁 늦게 마무리.";
+        } else if ("여유롭게".equals(density)) {
+            densityGuide = "여유롭게: 하루 3~5개 장소. 이동 여유 확보, 느긋한 일정.";
+        } else {
+            densityGuide = "보통: 하루 5~6개 장소.";
+        }
+
+        // ── 숙소 규칙 ──
+        String stayRules = isDayTrip
+                ? "★당일치기(0박): type=stay 절대 금지. 관광지·맛집·카페로만 구성."
+                : "숙소 규칙:\n"
+                  + "  - Day1 마지막: stay 1개 배치(체크인). Day1 첫 장소는 관광/식당으로 시작.\n"
+                  + "  - Day2~마지막전날: 맨 처음(출발)과 맨 끝(취침)에 동일 숙소. 중간 날 없으면 해당 없음.\n"
+                  + "  - 마지막 날: 전날 숙소 출발(체크아웃)으로 시작. 밤 새 숙소 없음.\n"
+                  + "  - 중간 날 동일 숙소 2회 등장은 '중복 금지'의 예외.";
+
+        String userReqStr = userRequested.isEmpty() ? "없음" : String.join(", ", userRequested);
+
+        String prompt = "당신은 'TripLinker'의 최적 동선 생성 AI입니다.\n"
+                + "아래 [좌표 확인 완료 후보]를 보고, " + numNights + "박 " + numDays + "일 여행 일정을 완성하세요.\n\n"
+                + "[여행 기본 정보]\n"
+                + "- 여행지: " + plan.getDestination()
+                + " / 일정: " + plan.getStartDate() + " ~ " + plan.getEndDate()
+                + " (" + numNights + "박 " + numDays + "일) / 예산: " + form.getBudget() + "원\n"
+                + "- 인원: " + form.getCompanionType() + " (" + cnt + "명)"
+                + " / 이동 수단: " + form.getTransportType()
+                + " / 스타일: " + form.getTravelStyles()
+                + " / 밀도: " + density + "\n"
+                + "- 식이: " + form.getDietaryInfo()
+                + " / 유아: " + (form.getHasInfant() == 1 ? "O" : "X")
+                + " / 반려동물: " + (form.getHasPet() == 1 ? "O" : "X") + "\n"
+                + "- 유저 요청: " + parseExtraNotesToPrompt(form.getExtraNotes()) + "\n\n"
+                + "[날짜 정보]\n" + dayLabelsSb
+                + "\n[밀도 지침]\n" + densityGuide + "\n\n"
+                + "[좌표 확인 완료 후보 — 아래 후보만 사용, 이외 장소 임의 추가 절대 금지]\n"
+                + candidatesSb
+                + "\n[동선 생성 규칙]\n"
+                + "1. 지리적 군집화(최우선): lat/lng 좌표를 보고 가까운 후보끼리 같은 날로 묶으세요.\n"
+                + "   같은 날 장소들은 서로 15km 이내로 모아 지그재그 동선 금지.\n"
+                + "   Day마다 권역을 달리해 날짜 간 중복 이동 방지.\n"
+                + "2. 후보만 사용: 목록에 없는 장소 임의 추가 절대 금지.\n"
+                + "3. 시간 배치:\n"
+                + "   - 점심(lunch sub 포함) → 12:00 고정\n"
+                + "   - 저녁(dinner sub 포함) → 18:00 고정\n"
+                + "   - 오전 관광: 09:00~11:30 / 오후 관광: 13:30~17:30 / 카페: 틈새\n"
+                + "4. " + stayRules + "\n"
+                + "5. transit: 장소 사이 반드시 {\"transit\":\"이동\"} 삽입. 거리·시간·금액 숫자 절대 금지.\n"
+                + "6. sub·stars: 후보 목록 값을 그대로 복사. 임의 수정 금지.\n"
+                + "7. 장소 중복 금지: 전체 일정에서 동일 상호명 1회만. (숙소 연속성은 예외)\n"
+                + "8. icon: stay=🏨, food=🍽️, cafe=☕, tour=📍\n"
+                + "9. key: d{day}_{순번} 형식 (예: d1_1, d2_3)\n"
+                + "10. replacePh: \"장소 교체 요청\" 고정.\n"
+                + "11. budget: 그 날 sub 금액 합산, ₩ 표기.\n"
+                + "12. label: \"📅 Day {N} · MM/DD (요일)\" 형식.\n"
+                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n\n"
+                + "[출력 — 아래 JSON 배열만, 설명·마크다운 코드블럭 금지]\n"
+                + "[\n"
+                + "  {\n"
+                + "    \"day\": 1,\n"
+                + "    \"label\": \"📅 Day 1 · MM/DD (요일)\",\n"
+                + "    \"budget\": \"₩금액\",\n"
+                + "    \"places\": [\n"
+                + "      {\"type\":\"food\",\"icon\":\"🍽️\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_1\",\"time\":\"12:00\",\"replacePh\":\"장소 교체 요청\"},\n"
+                + "      {\"transit\":\"이동\"},\n"
+                + "      {\"type\":\"tour\",\"icon\":\"📍\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_2\",\"time\":\"14:00\",\"replacePh\":\"장소 교체 요청\"}\n"
+                + "    ]\n"
+                + "  }\n"
+                + "]";
+
+        String result;
+        try {
+            System.out.println("🗺️ AI 동선 조립 중 (buildRouteWithAI Claude)...");
+            result = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            System.out.println("⚠️ Claude 동선 조립 실패, Groq 기동: " + e.getMessage());
+            try {
+                result = primaryClient.prompt().user(prompt).call().content();
+            } catch (Exception ex) {
+                System.out.println("🚨 동선 조립 AI 전체 실패: " + ex.getMessage());
+                return "[]";
+            }
+        }
+
+        if (result == null || !result.contains("[")) return "[]";
+
+        int jsonStart = result.indexOf("[");
+        int jsonEnd = result.lastIndexOf("]");
+        if (jsonStart < 0 || jsonEnd <= jsonStart) return "[]";
+        result = result.substring(jsonStart, jsonEnd + 1).trim();
+
+        try {
+            JsonNode parsed = objectMapper.readTree(result);
+            if (!parsed.isArray() || parsed.isEmpty()) return "[]";
+        } catch (Exception e) {
+            return "[]";
+        }
+
+        return result;
     }
 
     // ════════════════════════════════════════════════════════════════
