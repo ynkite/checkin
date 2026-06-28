@@ -1049,11 +1049,6 @@ public class AiRouteService {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
         PlanInputForm form = plan.getForm();
-        String transportType = form != null ? form.getTransportType() : null;
-        boolean isCar = transportType == null || !transportType.contains("대중교통");
-
-        double normalLimit = isCar ? 20_000 : 13_000;
-        double stayLimit   = isCar ? 35_000 : 25_000;
         final double HARD_LIMIT = 50_000; // 50km
 
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
@@ -1123,23 +1118,6 @@ public class AiRouteService {
         // 사용자 요청 장소가 50km 초과면 자동교체하지 않고 프론트 알림에 위임
         if (!over50.isEmpty()) return over50;
 
-        // 2) 20/13km(숙소 35/25km) 초과 구간 자동 교체 (1회).
-        //    50km 자동교체로 LLM이 이미 돌았다면, 그 결과(DB 최신본)를 기준으로
-        //    거리 교체를 이어서 진행한다. (50km만 고치고 기장처럼 20~50km 떨어진
-        //    장소를 그대로 두는 사고를 막기 위해 건너뛰지 않는다)
-        String current = autoOver50.isEmpty() ? json : String.valueOf(getRoutesByTripId(tripId));
-        for (int attempt = 0; attempt < 2; attempt++) {
-            java.util.List<java.util.Map<String, String>> requests =
-                    findFarPlaces(current, normalLimit, stayLimit, userRequested, plan.getDestination());
-            if (requests.isEmpty()) break;
-            try {
-                // replaceAiRoutePlaces 내부에서 이미 saveAiRouteToDb까지 수행하므로 여기서 또 저장하지 않는다
-                current = replaceAiRoutePlaces(tripId, requests);
-            } catch (Exception e) {
-                System.err.println("[거리 자동교체 실패] " + e.getMessage());
-                break;
-            }
-        }
         return java.util.Collections.emptyList();
     }
     /** 50km 초과 장소를 사용자요청(알림) / AI장소(자동교체)로 분류 */
@@ -1555,6 +1533,30 @@ public class AiRouteService {
         }
         System.out.println("✅ [후보 생성 완료] " + plan.getDestination());
         return (raw != null) ? raw.trim() : "{}";
+    }
+
+    /**
+     * 후보 JSON → 좌표 확보 → 클러스터링 → 시간 골격 조립.
+     * saveAiRouteToDb 에 바로 넘길 수 있는 완성 일정 JSON 문자열을 반환한다.
+     * (커밋3: 컨트롤러 generateRoute 에서 generateCandidates 다음에 호출)
+     */
+    public String assembleCandidates(Long tripId, String candidatesJson) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        PlanInputForm form = plan.getForm();
+        java.util.Set<String> userRequested = extractUserRequestedNames(form);
+        java.util.Map<String, double[]> geoCache = new java.util.HashMap<>();
+        try {
+            JsonNode candidatesNode = objectMapper.readTree(candidatesJson);
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
+                    geocodeAndFilterCandidates(candidatesNode, plan.getDestination(), geoCache);
+            java.util.Map<Integer, java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>> clusters =
+                    clusterByDay(filtered, plan, userRequested);
+            return buildDaySkeleton(clusters, plan, form, userRequested);
+        } catch (Exception e) {
+            System.err.println("[assembleCandidates] 실패: " + e.getMessage());
+            return "[]";
+        }
     }
 
     // ════════════════════════════════════════════════════════════════
