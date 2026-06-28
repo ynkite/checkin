@@ -483,9 +483,9 @@
           ${p.type === 'stay' ? `
           <div class="stay-action-row">
             ${p.actualPrice
-              ? `<button class="btn-stay-book" onclick="openSiteModal('${p.key}')">예약하기</button>
+                ? `<button class="btn-stay-book" onclick="openSiteModal('${p.key}')">예약하기</button>
                  <button class="btn-stay-edit" onclick="openPriceModal('${p.key}')">금액 수정</button>`
-              : `<button class="btn-stay-check" onclick="openSiteModal('${p.key}')">금액확인 / 예약하기</button>`}
+                : `<button class="btn-stay-check" onclick="openSiteModal('${p.key}')">금액확인 / 예약하기</button>`}
           </div>
           ` : ''}
           <div class="replace-area" id="ri-${p.key}" style="display:none;">
@@ -1700,7 +1700,7 @@
     }
 
     // ════════════════════════════════════════════════════════
-    //  ★숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·아고다·카카오)
+    //  ★숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·카카오)
     // ════════════════════════════════════════════════════════
 
     function findStayByKey(key) {
@@ -1755,11 +1755,6 @@
                 + `?keyword=${encodeURIComponent(kw)}`
                 + `&checkIn=${info.start || ''}&checkOut=${info.end || ''}`
                 + `&personal=${info.pax || 2}&typoCorrect=true`;
-      } else if (site === 'agoda') {
-        url = `https://www.agoda.com/ko-kr/search`
-                + `?textToSearch=${encodeURIComponent(kw)}`
-                + `&checkIn=${info.start || ''}&checkOut=${info.end || ''}`
-                + `&adults=${info.pax || 2}&rooms=1`;
       } else {
         url = `https://booking.kakao.com/search/result`
                 + `?query=${encodeURIComponent(kw)}&from=user`;
@@ -1841,10 +1836,29 @@
         return;
       }
 
+      const oldName = found.place.name;   // 이름 변경 전 기준으로 동일 숙소를 찾기 위해 보관
+
       found.place.name = finalName;
       found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
+
+      // ★같은 숙소(이름 동일) 전체 동기화: Day1에서 예약/금액입력하면 Day2 등 동일 숙소도 같이 반영
+      MAP_ITINERARY.forEach((day, di) => {
+        if (!day.places) return;
+        day.places.forEach(pl => {
+          if (pl.type === 'stay' && pl !== found.place
+                  && (pl.name === oldName || pl.name === finalName)) {
+            pl.name = finalName;
+            pl.actualPrice = finalVal;
+            // 출발/조식 등 기존 sub 설명이 있으면 보존하고 금액만 교체
+            pl.sub = pl.sub && pl.sub.includes('·')
+                    ? pl.sub.replace(/₩[\d,]+/, `₩${finalVal.toLocaleString()}`)
+                    : `숙소 · ₩${finalVal.toLocaleString()}`;
+            recalcDayBudget(di);
+          }
+        });
+      });
 
       closePriceModal();
 
@@ -2186,7 +2200,6 @@
           실제 사이트에서 해당 숙소와 금액을 확인하세요.
         </div>
         <div style="display:flex;gap:8px;margin-bottom:14px;">
-          <button onclick="gotoSite('agoda')" class="site-btn">아고다</button>
           <button onclick="gotoSite('yeogi')" class="site-btn">여기어때</button>
           <button onclick="gotoSite('kakao')" class="site-btn">카카오</button>
         </div>

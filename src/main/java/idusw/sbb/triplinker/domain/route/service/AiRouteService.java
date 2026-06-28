@@ -170,6 +170,10 @@ public class AiRouteService {
                  배치하세요. 후보가 여러 곳이면 같은 날 다른 장소들과 가장 가까운 곳을 선택하십시오.
                  단, [유저 요청 사항]에서 사용자가 특정 장소·지역을 명시적으로 요청한 경우에만 10km 제약을 예외로 허용합니다.
                - 일별 코스를 짤 때, 지그재그 동선이 되지 않도록 같은 동네/권역 위주로 묶어서 배치하세요.
+               - ★날짜별 구역 분리(2일 이상)★: 숙소를 기준으로 날마다 노는 구역을 나누세요.
+                 예) 1일차는 숙소 기준 한쪽 방향(북/동 등)의 장소들로, 2일차는 반대 방향(남/서 등)의
+                 장소들로 묶어, 날짜가 바뀔 때마다 같은 지역을 왕복하지 않도록 하세요. 각 날의 장소들은
+                 그 날의 구역 안에서 서로 가깝게 모읍니다(숙소 복귀 구간 제외).
                - 직전 장소로부터 지정된 '이동 수단' 기준 너무 먼 거리(편도 30분 이상, 20km 이상)는 배치를 금지하며, 거리가 멀 경우 반경 5~10km 이내의 다른 장소로 내부 재검색(Re-search)을 수행해 일정을 재구성하세요.
                - ★이동 시간 상한(매우 중요 최종 점검도 한번 더 할 것 절대적으로 효율적인 동선 배치 지그재그로 왔다갔다 동선 금지)★: 
                같은 날 장소 간 이동은 지정된 '이동 수단' 기준 편도 30분 이내가 되도록 배치하세요.
@@ -936,6 +940,111 @@ public class AiRouteService {
     // ════════════════════════════════════════════════════════════════
 
     /** 50km 초과 장소명 목록을 반환(없으면 빈 리스트). 동시에 50km 이하 초과 구간은 자동 교체한다. */
+    /**
+     * ★시간대 보존 정렬: 끼니(food)/숙소(stay)/사용자요청 장소는 고정하고,
+     *   끼니 사이에 낀 tour·cafe만 거리순으로 미세 정렬해 지그재그를 줄인다.
+     *   - 점심→저녁 같은 끼니 순서, 숙소 출발/취침 자리는 보존된다.
+     *   - 단, 사용자가 직접 요청/입력한 장소(userRequested)는 stay/food가 아니어도 고정한다.
+     *   - 카카오 길찾기 호출 없이 직선거리(haversine)만 사용 → 빠르고 토큰 0.
+     *   반환: 재정렬 JSON (변화 없으면 원본).
+     */
+    private String reorderWithinTimeBlocks(String json, String destination,
+                                           java.util.Set<String> userRequested) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+            java.util.Map<String, double[]> geo = new java.util.HashMap<>();
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+
+                java.util.List<JsonNode> spots = new java.util.ArrayList<>();
+                for (JsonNode pl : placesNode) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    spots.add(pl);
+                }
+                int n = spots.size();
+                if (n < 4) continue;
+
+                java.util.Map<Integer, double[]> coord = new java.util.HashMap<>();
+                for (int i = 0; i < n; i++) {
+                    coord.put(i, geocodeCached(withRegion(destination, spots.get(i).path("name").asText("")), geo));
+                }
+
+                // 고정 = 숙소/끼니 또는 사용자가 직접 요청/입력한 장소
+                java.util.function.IntPredicate isFixed = i -> {
+                    String t = spots.get(i).path("type").asText("");
+                    String nm = spots.get(i).path("name").asText("");
+                    return "stay".equals(t) || "food".equals(t) || userRequested.contains(nm);
+                };
+
+                java.util.List<JsonNode> result = new java.util.ArrayList<>();
+                int i = 0;
+                while (i < n) {
+                    result.add(spots.get(i));
+                    if (!isFixed.test(i)) { i++; continue; }
+
+                    // 고정점 다음의 연속된 '비고정' tour/cafe 구간 수집
+                    int j = i + 1;
+                    java.util.List<Integer> flex = new java.util.ArrayList<>();
+                    while (j < n && !isFixed.test(j)) { flex.add(j); j++; }
+
+                    if (flex.size() >= 2 && coord.get(i) != null) {
+                        // 앞 고정점에서 최근접 이웃으로 정렬(좌표 없는 건 맨 뒤)
+                        java.util.List<Integer> ordered = new java.util.ArrayList<>();
+                        java.util.Set<Integer> used = new java.util.HashSet<>();
+                        double[] cur = coord.get(i);
+                        for (int k = 0; k < flex.size(); k++) {
+                            int best = -1; double bestD = Double.MAX_VALUE;
+                            for (int idx : flex) {
+                                if (used.contains(idx)) continue;
+                                double d = haversine(cur, coord.get(idx));
+                                if (d < bestD) { bestD = d; best = idx; }
+                            }
+                            if (best < 0) break;
+                            ordered.add(best); used.add(best); cur = coord.get(best);
+                        }
+                        for (int idx : flex) if (!used.contains(idx)) ordered.add(idx); // 좌표 null 잔여
+                        for (int idx : ordered) result.add(spots.get(idx));
+                    } else {
+                        // 정렬 의미 없으면 원래 순서대로
+                        for (int idx : flex) result.add(spots.get(idx));
+                    }
+                    i = j;
+                }
+
+                // 정렬된 장소 사이에 transit "이동" 재삽입(거리·시간은 카카오 보정이 채움)
+                com.fasterxml.jackson.databind.node.ArrayNode rebuilt = objectMapper.createArrayNode();
+                for (int k = 0; k < result.size(); k++) {
+                    if (k > 0) {
+                        com.fasterxml.jackson.databind.node.ObjectNode t = objectMapper.createObjectNode();
+                        t.put("transit", "이동");
+                        rebuilt.add(t);
+                    }
+                    rebuilt.add(result.get(k));
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode).set("places", rebuilt);
+            }
+            return objectMapper.writeValueAsString(root);
+        } catch (Exception e) {
+            System.err.println("[reorderWithinTimeBlocks] 실패, 원본 유지: " + e.getMessage());
+            return json;
+        }
+    }
+
+    /** 두 좌표[위도,경도] 간 직선거리(m). null이면 큰 값(맨 뒤로 밀림). */
+    private double haversine(double[] a, double[] b) {
+        if (a == null || b == null) return Double.MAX_VALUE / 2;
+        double R = 6371000.0;
+        double dLat = Math.toRadians(b[0] - a[0]);
+        double dLon = Math.toRadians(b[1] - a[1]);
+        double v = Math.sin(dLat/2)*Math.sin(dLat/2)
+                + Math.cos(Math.toRadians(a[0]))*Math.cos(Math.toRadians(b[0]))
+                * Math.sin(dLon/2)*Math.sin(dLon/2);
+        return 2 * R * Math.asin(Math.sqrt(v));
+    }
+
     public java.util.List<String> enforceDistanceAndGetOver50(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
@@ -949,6 +1058,15 @@ public class AiRouteService {
 
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
         java.util.Set<String> userRequested = extractUserRequestedNames(form);
+
+        // ★0) LLM 없이 코드로 먼저 동선 순서를 최적화(시간대 보존 정렬).
+        //    끼니/숙소/사용자요청 장소는 고정하고 tour·cafe만 끼니 사이에서 거리순 정렬.
+        //    카카오 길찾기 호출 없이 직선거리만 쓰므로 빠르고 토큰 0.
+        String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        if (!reordered.equals(json)) {
+            saveAiRouteToDb(tripId, reordered);   // 내부 카카오 보정이 transit 숫자 채움
+            json = String.valueOf(getRoutesByTripId(tripId));
+        }
 
         // 1) 50km 초과 검사
         //    - 사용자가 직접 요청한 장소(userRequested)가 50km 초과 → 알림(over50)으로 프론트에 위임
@@ -967,10 +1085,14 @@ public class AiRouteService {
                     String nm = pl.path("name").asText("");
                     boolean stay = "stay".equals(pl.path("type").asText(""));
                     double[] c = geocodeCached(withRegion(plan.getDestination(), nm), geo);
+                    // ★좌표를 못 찾은 장소(가짜·환각 의심)는 AI가 넣은 것이면 자동교체 대상에 포함
+                    //   (사용자 요청 장소는 건드리지 않음)
+                    if (c == null && !userRequested.contains(nm)) {
+                        autoOver50.add(nm);
+                    }
                     if (prevCoord != null && c != null) {
                         long[] r = carDirections(prevCoord, c);
                         if (r != null && r[0] > HARD_LIMIT) {
-                            // 50km 초과 구간의 두 장소 각각을, 사용자 요청 여부에 따라 분류
                             classifyOver50(nm, userRequested, over50, autoOver50);
                             if (prevName != null) classifyOver50(prevName, userRequested, over50, autoOver50);
                         }
@@ -1001,8 +1123,10 @@ public class AiRouteService {
         // 사용자 요청 장소가 50km 초과면 자동교체하지 않고 프론트 알림에 위임
         if (!over50.isEmpty()) return over50;
 
-        // 2) 50km 이하의 초과 구간만 자동 교체 (최대 2회)
-        //    위에서 50km 자동교체가 일어났을 수 있으므로 DB 최신본을 기준으로 시작한다.
+        // 2) 20/13km(숙소 35/25km) 초과 구간 자동 교체 (1회).
+        //    50km 자동교체로 LLM이 이미 돌았다면, 그 결과(DB 최신본)를 기준으로
+        //    거리 교체를 이어서 진행한다. (50km만 고치고 기장처럼 20~50km 떨어진
+        //    장소를 그대로 두는 사고를 막기 위해 건너뛰지 않는다)
         String current = autoOver50.isEmpty() ? json : String.valueOf(getRoutesByTripId(tripId));
         for (int attempt = 0; attempt < 2; attempt++) {
             java.util.List<java.util.Map<String, String>> requests =
@@ -1054,36 +1178,39 @@ public class AiRouteService {
                 int n = names.size();
                 if (n < 2) continue;
 
-                // 인접 구간이 기준을 넘는지 확인 (숙소 출발/복귀 구간은 더 너그럽게)
-                boolean exceeded = false;
-                for (int i = 0; i < n - 1; i++) {
-                    long[] r = carDirections(coords.get(i), coords.get(i + 1));
-                    if (r == null) continue;
-                    boolean stayEdge = stays.get(i) || stays.get(i + 1);
-                    double limit = stayEdge ? stayLimit : normalLimit;
-                    if (r[0] > limit) { exceeded = true; break; }
-                }
-                if (!exceeded) continue;
+                // ★'그날 장소들끼리 15km 안에 뭉침' 검사 (haversine 직선거리, 카카오 호출 0)
+                //   - 숙소를 뺀 비-숙소 장소들의 '중심점'을 구하고,
+                //   - 그 중심에서 15km(=CLUSTER_RADIUS) 넘게 떨어진 비-숙소·비-사용자요청 장소를
+                //     '흩어진 곳'으로 보고 모두 교체 대상에 넣는다(여러 개여도 한 번에).
+                final double CLUSTER_RADIUS = 15_000.0;
 
-                // 그날 장소 중 '다른 장소들과의 평균거리가 가장 먼' 비-숙소·비-사용자요청 장소 선정
-                int worstIdx = -1; double worstAvg = -1;
+                // ★중심은 '평균'이 아니라 '중앙값(median)'으로 잡는다.
+                //   geocode가 한두 곳을 엉뚱한 타지역(수백 km 밖)으로 찍어도, 중앙값은
+                //   그 이상치에 끌려가지 않아 '정상 장소들이 실제로 모인 지점'을 가리킨다.
+                //   (평균을 쓰면 이상치 1개가 중심을 끌고가 멀쩡한 장소까지 흩어졌다고 오판함)
+                java.util.List<Double> lats = new java.util.ArrayList<>();
+                java.util.List<Double> lngs = new java.util.ArrayList<>();
                 for (int i = 0; i < n; i++) {
-                    if (stays.get(i)) continue;                 // 숙소 제외
-                    if (userRequested.contains(names.get(i))) continue; // 사용자 요청 제외
-                    double sum = 0; int cnt = 0;
-                    for (int j = 0; j < n; j++) {
-                        if (i == j) continue;
-                        long[] r = carDirections(coords.get(i), coords.get(j));
-                        if (r != null) { sum += r[0]; cnt++; }
-                    }
-                    double avg = cnt > 0 ? sum / cnt : 0;
-                    if (avg > worstAvg) { worstAvg = avg; worstIdx = i; }
+                    if (stays.get(i)) continue;            // 숙소는 중심 계산에서 제외(외곽일 수 있음)
+                    lats.add(coords.get(i)[0]); lngs.add(coords.get(i)[1]);
                 }
-                if (worstIdx >= 0) {
-                    java.util.Map<String, String> req = new java.util.HashMap<>();
-                    req.put("place", names.get(worstIdx));
-                    req.put("req", "이 장소가 다른 일정들과 너무 멀리 떨어져 있습니다. 같은 권역의 가까운 다른 장소로 교체해 주세요.");
-                    result.add(req);
+                if (lats.size() < 2) continue;             // 비숙소 장소가 1개뿐이면 뭉침 판단 의미 없음
+                java.util.Collections.sort(lats);
+                java.util.Collections.sort(lngs);
+                double[] center = { lats.get(lats.size()/2), lngs.get(lngs.size()/2) };
+
+                for (int i = 0; i < n; i++) {
+                    if (stays.get(i)) continue;                          // 숙소 제외
+                    if (userRequested.contains(names.get(i))) continue;  // 사용자 요청 제외(50km 알림은 별도)
+                    double d = haversine(center, coords.get(i));
+                    if (d > CLUSTER_RADIUS) {
+                        java.util.Map<String, String> req = new java.util.HashMap<>();
+                        req.put("place", names.get(i));
+                        req.put("req", "이 장소가 그 날 다른 일정들의 중심에서 "
+                                + Math.round(d / 1000.0) + "km나 떨어져 동선이 흩어집니다. "
+                                + "그 날 다른 장소들과 15km 이내로 모이는, 같은 권역의 가까운 다른 실존 장소로 교체해 주세요.");
+                        result.add(req);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -1168,12 +1295,21 @@ public class AiRouteService {
                         continue;
                     }
                     double km = r[0] / 1000.0;
-                    long min = Math.round(r[1] / 60.0);
                     long toll = r[2];
-                    String cost = isCar
-                            ? String.format("₩%,d", Math.round(km / 10.0 * 2000.0) + toll)
-                            : "대중교통 운임 별도";
-                    String icon = isCar ? "🚗 자차" : "🚌 대중교통";
+                    long min;
+                    String cost;
+                    String icon;
+                    if (isCar) {
+                        min = Math.round(r[1] / 60.0);
+                        cost = String.format("₩%,d", Math.round(km / 10.0 * 2000.0) + toll);
+                        icon = "🚗 자차";
+                    } else {
+                        // 대중교통은 자차 도로거리/시간을 그대로 쓰면 안 됨.
+                        // 환승·대기 포함 평균 표정속도(약 22km/h)로 소요시간 보정.
+                        min = Math.round(km / 22.0 * 60.0);
+                        cost = "대중교통 운임 별도";
+                        icon = "🚌 대중교통";
+                    }
                     System.out.println("✅ [카카오] " + prev.path("name").asText("") + " → "
                             + next.path("name").asText("") + " : " + String.format("%.1f", km) + "km / " + min + "분");
                     ((com.fasterxml.jackson.databind.node.ObjectNode) places.get(i))
@@ -1199,39 +1335,60 @@ public class AiRouteService {
         }
     }
 
+    // 좌표 조회 결과를 호출 간 공유하는 인스턴스 캐시(중복 카카오 호출 방지)
+    private final java.util.Map<String, double[]> geoSharedCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private double[] geocodeCached(String name, java.util.Map<String, double[]> cache) {
         if (name == null || name.isBlank()) return null;
         if (cache.containsKey(name)) return cache.get(name);
+        // 공유 캐시에 있으면 카카오 재호출 없이 재사용
+        double[] shared = geoSharedCache.get(name);
+        if (shared != null) {
+            cache.put(name, shared);
+            return shared;
+        }
         double[] geo = geocode(name);
         cache.put(name, geo);
+        if (geo != null) geoSharedCache.put(name, geo);
         return geo;
     }
 
+
     // 장소명 앞에 여행지(시/도)를 붙여 동명 타지역 오인식을 막는다.
-    //   "비산공원" → "대구 비산공원" (이미 여행지명이 들어있으면 그대로 둠)
     private String withRegion(String destination, String placeName) {
         if (placeName == null || placeName.isBlank()) return placeName;
         if (destination == null || destination.isBlank()) return placeName;
-        String regionHead = destination.trim().split("\\s+")[0]
-                .replaceAll("(특별시|광역시|특별자치시|특별자치도|도)$", "");
-        if (regionHead.isBlank() || placeName.contains(regionHead)) return placeName;
-        return regionHead + " " + placeName;
+        // 여행지 전체(시/도 + 시/군/구)를 접두어로 사용해 동명 타지역 오인식을 막는다.
+        // 예) "부산 해운대구" → "부산 해운대구 부산복집" (기존엔 "부산"만 떼어 서울 결과가 잡혔음)
+        String region = destination.trim();
+        // 이미 장소명에 구/군 단위가 들어가 있으면 그대로 둔다(중복 방지)
+        String[] tokens = region.split("\\s+");
+        String lastToken = tokens[tokens.length - 1]; // 예: "해운대구"
+        if (placeName.contains(lastToken)) return placeName;
+        return region + " " + placeName;
     }
-
-    // 장소명 → [위도, 경도] (카카오 로컬 키워드 검색)
+    // 장소명 → [위도, 경도]. 여러 변형으로 시도해 좌표 실패를 최소화한다.
     private double[] geocode(String placeName) {
         if (placeName == null || placeName.isBlank()) return null;
+        String q = placeName.trim();
 
-        // 1차: 원본 그대로 시도
-        double[] r = geocodeOnce(placeName.trim());
+        double[] r = geocodeOnce(q);
         if (r != null) return r;
 
-        // 2차: 카카오 query는 인코딩 후 100자 제한이 있어 긴 한글 장소명이 400으로 막힌다.
-        //      장소명을 '자르지 않고' 공백만 제거해 길이를 줄인다.
-        //      (카카오 키워드 검색은 "대구 서문시장" 과 "대구서문시장" 을 동일하게 처리)
-        String noSpace = placeName.trim().replaceAll("\\s+", "");
-        if (!noSpace.equals(placeName.trim())) {
+        String noSpace = q.replaceAll("\\s+", "");
+        if (!noSpace.equals(q)) {
             r = geocodeOnce(noSpace);
+            if (r != null) return r;
+        }
+
+        String[] parts = q.split("\\s+");
+        for (int drop = 1; drop < parts.length; drop++) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = drop; i < parts.length; i++) {
+                if (sb.length() > 0) sb.append(" ");
+                sb.append(parts[i]);
+            }
+            r = geocodeOnce(sb.toString());
             if (r != null) return r;
         }
         return null;
@@ -1270,7 +1427,19 @@ public class AiRouteService {
     }
 
     // 좌표 → [거리(m), 시간(초), 통행료(원)] (카카오 모빌리티 자차 길찾기)
+    // 좌표쌍별 길찾기 결과 캐시(동일 구간 중복 카카오 호출 방지)
+    private final java.util.Map<String, long[]> dirCache = new java.util.concurrent.ConcurrentHashMap<>();
+
     private long[] carDirections(double[] from, double[] to) {
+        String key = from[0] + "," + from[1] + "_" + to[0] + "," + to[1];
+        long[] cached = dirCache.get(key);
+        if (cached != null) return cached;
+        long[] r = carDirectionsApi(from, to);
+        if (r != null) dirCache.put(key, r);
+        return r;
+    }
+
+    private long[] carDirectionsApi(double[] from, double[] to) {
         try {
             String url = String.format(
                     "https://apis-navi.kakaomobility.com/v1/directions?origin=%f,%f&destination=%f,%f",
