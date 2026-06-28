@@ -1468,6 +1468,96 @@ public class AiRouteService {
     }
 
     // ════════════════════════════════════════════════════════════════
+    //  ★ 신규 파이프라인 프롬프트 메서드 (커밋2: 추가만 — 커밋3에서 컨트롤러 연결)
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * AI에게 type별(stay/food/cafe/tour) 장소 후보 리스트만 생성하도록 요청한다.
+     * 좌표·순서·날짜·transit 은 일절 포함하지 않음.
+     * 커밋3에서 geocodeAndFilterCandidates → clusterByDay → buildDaySkeleton 에 연결된다.
+     *
+     * @return {"stay":[...],"food":[...],"cafe":[...],"tour":[...]} 형태의 JSON 문자열
+     */
+    public String generateCandidates(Long tripId) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        PlanInputForm form = plan.getForm();
+        if (form == null) throw new IllegalStateException("해당 플랜의 취향 정보가 DB에 없습니다.");
+
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        long numNights = isDayTrip ? 0
+                : plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay();
+        long numDays = numNights + 1;
+        int cnt = form.getCompanionCount();
+
+        String stayInstruction = isDayTrip
+                ? "\"stay\" 배열은 반드시 빈 배열([])로 출력하세요. 이 여행은 0박 당일치기입니다."
+                : "\"stay\" 배열에는 숙소 유형 \"" + form.getAccommodationType()
+                  + "\" 에 맞는 실존 업소명 후보 10~15개를 생성하세요. 옵션: " + form.getAccommodationOptions();
+
+        String prompt = "당신은 'TripLinker'의 여행 장소 조사 전문 AI입니다.\n"
+                + "아래 여행 조건에 맞는 실존 장소 후보 목록을 type별로 생성하세요.\n"
+                + "★일정 순서·날짜·시간·이동 정보는 절대 출력하지 마세요. 후보 목록만 출력합니다.★\n\n"
+                + "[여행 기본 정보]\n"
+                + "- 여행지: " + plan.getDestination()
+                + " / 일정: " + plan.getStartDate() + " ~ " + plan.getEndDate()
+                + " (" + numNights + "박 " + numDays + "일) / 총 예산: " + form.getBudget() + "원\n"
+                + "- 인원: " + form.getCompanionType() + " (" + cnt + "명)"
+                + " / 유아 동반: " + (form.getHasInfant() == 1 ? "O" : "X")
+                + " / 반려동물 동반: " + (form.getHasPet() == 1 ? "O" : "X") + "\n"
+                + "- 이동 수단: " + form.getTransportType()
+                + " / 스타일: " + form.getTravelStyles()
+                + " / 식이: " + form.getDietaryInfo() + "\n"
+                + "- 유저 요청 사항: " + parseExtraNotesToPrompt(form.getExtraNotes()) + "\n\n"
+                + "[후보 생성 규칙]\n"
+                + "1. 장소명 절대 규칙 (Hallucination 차단):\n"
+                + "   - 반드시 카카오맵(KakaoMap)에 공식 등록된 실존 상호명 전체를 정확히 기입하세요.\n"
+                + "   - \"OO 맛집\", \"OO 거리\", \"OO 먹자골목\" 등 포괄·집합 명칭 절대 금지.\n"
+                + "   - 폐업·가상 장소 금지. 이름 뒤에 '체크인', '방문' 등 접미사 금지.\n"
+                + "2. 수량: type별 10~20개씩 넉넉히 생성하세요 (서버가 선별해서 사용함).\n"
+                + "3. 지역 일관성: 모든 후보는 여행지(" + plan.getDestination() + ") 경계 안에 실존해야 합니다.\n"
+                + "4. sub 규격:\n"
+                + "   - stay : \"숙소 · ₩금액\" (1박 기준 실제 시세, 예: ₩120,000)\n"
+                + "   - food : \"맛집 · 점심 · ₩12,000×" + cnt + "\" 또는 \"맛집 · 저녁 · ₩15,000×" + cnt + "\" 형태\n"
+                + "   - cafe : \"카페 · ₩8,000×" + cnt + "\" 형태\n"
+                + "   - tour : \"관광지 · 1h · ₩5,000×" + cnt + "\" (무료면 ₩0×" + cnt + ")\n"
+                + "5. stars: 항상 \"평점 정보 없음\" 으로만 출력하세요. 숫자를 지어내는 것 절대 금지.\n"
+                + "6. " + stayInstruction + "\n"
+                + "7. 유저 요청 사항에 특정 장소·식당이 명시됐다면 해당 타입 배열의 첫 번째 항목으로 반드시 포함.\n"
+                + "8. 숙소 업종 일치: stay 배열에는 \"" + form.getAccommodationType() + "\" 유형만 포함하세요.\n"
+                + "9. 식이 옵션(" + form.getDietaryInfo() + ")이 있으면 food 후보에 반영하세요.\n\n"
+                + "[출력 형식 — 이 JSON 구조만 출력, 설명·마크다운 코드블럭 금지]\n"
+                + "{\n"
+                + "  \"stay\": [ {\"name\":\"실존 숙소명\", \"sub\":\"숙소 · ₩금액\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"food\": [ {\"name\":\"실존 식당명\", \"sub\":\"맛집 · 점심 · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"cafe\": [ {\"name\":\"실존 카페명\", \"sub\":\"카페 · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"tour\": [ {\"name\":\"실존 관광지명\", \"sub\":\"관광지 · 1h · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ]\n"
+                + "}";
+
+        String raw = "{}";
+        try {
+            System.out.println("🔍 [후보 생성] Claude 기동 중 (" + plan.getDestination() + " " + numDays + "일)...");
+            raw = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            System.out.println("⚠️ [후보 생성] Claude 실패, Groq 폴백: " + e.getMessage());
+            try {
+                raw = primaryClient.prompt().user(prompt).call().content();
+            } catch (Exception ex) {
+                System.err.println("🚨 [후보 생성] 모든 LLM 실패: " + ex.getMessage());
+            }
+        }
+
+        // 마크다운 잔해 제거 (```json ... ``` 등)
+        if (raw != null && raw.contains("{")) {
+            int start = raw.indexOf("{");
+            int end = raw.lastIndexOf("}");
+            if (start >= 0 && end > start) raw = raw.substring(start, end + 1);
+        }
+        System.out.println("✅ [후보 생성 완료] " + plan.getDestination());
+        return (raw != null) ? raw.trim() : "{}";
+    }
+
+    // ════════════════════════════════════════════════════════════════
     //  ★ 신규 파이프라인 조립 메서드 (커밋1: 추가만 — 커밋3에서 컨트롤러 연결)
     //   generateCandidates() 결과를 받아:
     //     geocodeAndFilterCandidates → clusterByDay → buildDaySkeleton
