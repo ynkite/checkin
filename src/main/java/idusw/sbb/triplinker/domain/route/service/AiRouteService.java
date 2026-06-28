@@ -1482,14 +1482,18 @@ public class AiRouteService {
         long numDays = numNights + 1;
         int cnt = form.getCompanionCount();
 
-        String stayInstruction = isDayTrip
-                ? "\"stay\" 배열은 반드시 빈 배열([])로 출력하세요. 이 여행은 0박 당일치기입니다."
-                : "\"stay\" 배열에는 숙소 유형 \"" + form.getAccommodationType()
-                  + "\" 에 맞는 실존 업소명 후보 10~15개를 생성하세요. 옵션: " + form.getAccommodationOptions();
+        // M×N 수량: food 3/일, tour 4/일, cafe 2/일 → 하루 약 9개 후보 (AI가 밀도에 맞게 선별)
+        int foodCnt = (int) numDays * 3;
+        int tourCnt = (int) numDays * 4;
+        int cafeCnt = (int) numDays * 2;
+        String stayLine = isDayTrip
+                ? "- stay  : 0개 (당일치기 — stay 배열은 반드시 빈 배열[]로 출력)"
+                : "- stay  : 3개 (옵션 비교용. 숙소 유형: \"" + form.getAccommodationType()
+                  + "\", 옵션: " + form.getAccommodationOptions() + ")";
 
         String prompt = "당신은 'TripLinker'의 여행 장소 조사 전문 AI입니다.\n"
                 + "아래 여행 조건에 맞는 실존 장소 후보 목록을 type별로 생성하세요.\n"
-                + "★일정 순서·날짜·시간·이동 정보는 절대 출력하지 마세요. 후보 목록만 출력합니다.★\n\n"
+                + "★순서·날짜·시간·이동 정보는 절대 출력하지 마세요. 이름과 기본 정보만 출력합니다.★\n\n"
                 + "[여행 기본 정보]\n"
                 + "- 여행지: " + plan.getDestination()
                 + " / 일정: " + plan.getStartDate() + " ~ " + plan.getEndDate()
@@ -1499,26 +1503,33 @@ public class AiRouteService {
                 + " / 반려동물 동반: " + (form.getHasPet() == 1 ? "O" : "X") + "\n"
                 + "- 이동 수단: " + form.getTransportType()
                 + " / 스타일: " + form.getTravelStyles()
+                + " / 밀도: " + form.getScheduleDensity()
                 + " / 식이: " + form.getDietaryInfo() + "\n"
                 + "- 유저 요청 사항: " + parseExtraNotesToPrompt(form.getExtraNotes()) + "\n\n"
+                + "[생성 수량 — 서버가 좌표 확인 후 AI가 선별해 최적 동선을 조립합니다]\n"
+                + "- food  : " + foodCnt + "개 (하루 3개 × " + numDays + "일)\n"
+                + "- tour  : " + tourCnt + "개 (하루 4개 × " + numDays + "일)\n"
+                + "- cafe  : " + cafeCnt + "개 (하루 2개 × " + numDays + "일)\n"
+                + stayLine + "\n\n"
                 + "[후보 생성 규칙]\n"
                 + "1. 장소명 절대 규칙 (Hallucination 차단):\n"
-                + "   - 반드시 카카오맵(KakaoMap)에 공식 등록된 실존 상호명 전체를 정확히 기입하세요.\n"
+                + "   - 반드시 카카오맵에 공식 등록된 실존 상호명 전체를 정확히 기입하세요.\n"
                 + "   - \"OO 맛집\", \"OO 거리\", \"OO 먹자골목\" 등 포괄·집합 명칭 절대 금지.\n"
-                + "   - 폐업·가상 장소 금지. 이름 뒤에 '체크인', '방문' 등 접미사 금지.\n"
-                + "2. 수량: type별 10~20개씩 넉넉히 생성하세요 (서버가 선별해서 사용함).\n"
-                + "3. 지역 일관성: 모든 후보는 여행지(" + plan.getDestination() + ") 경계 안에 실존해야 합니다.\n"
+                + "   - 폐업·가상 장소 금지. 이름 뒤에 서술형 접미사('체크인', '방문' 등) 금지.\n"
+                + "2. 지역 다양성: 여행지(" + plan.getDestination() + ") 안에서 다양한 권역에 분산된 후보를 생성하세요.\n"
+                + "   (서버가 좌표 확인 후, AI가 하루별로 지리적으로 가까운 것끼리 묶어 일정을 짭니다.)\n"
+                + "3. 지역 일관성: 모든 후보는 여행지(" + plan.getDestination() + ") 경계 안에만 존재해야 합니다.\n"
                 + "4. sub 규격:\n"
-                + "   - stay : \"숙소 · ₩금액\" (1박 기준 실제 시세, 예: ₩120,000)\n"
-                + "   - food : \"맛집 · 점심 · ₩12,000×" + cnt + "\" 또는 \"맛집 · 저녁 · ₩15,000×" + cnt + "\" 형태\n"
-                + "   - cafe : \"카페 · ₩8,000×" + cnt + "\" 형태\n"
-                + "   - tour : \"관광지 · 1h · ₩5,000×" + cnt + "\" (무료면 ₩0×" + cnt + ")\n"
-                + "5. stars: 항상 \"평점 정보 없음\" 으로만 출력하세요. 숫자를 지어내는 것 절대 금지.\n"
-                + "6. " + stayInstruction + "\n"
-                + "7. 유저 요청 사항에 특정 장소·식당이 명시됐다면 해당 타입 배열의 첫 번째 항목으로 반드시 포함.\n"
-                + "8. 숙소 업종 일치: stay 배열에는 \"" + form.getAccommodationType() + "\" 유형만 포함하세요.\n"
-                + "9. 식이 옵션(" + form.getDietaryInfo() + ")이 있으면 food 후보에 반영하세요.\n\n"
-                + "[출력 형식 — 이 JSON 구조만 출력, 설명·마크다운 코드블럭 금지]\n"
+                + "   - stay : \"숙소 · ₩금액\" (1박 기준 실제 시세)\n"
+                + "   - food : \"맛집 · 점심 · ₩금액×" + cnt + "\" 또는 \"맛집 · 저녁 · ₩금액×" + cnt + "\"\n"
+                + "   - cafe : \"카페 · ₩금액×" + cnt + "\"\n"
+                + "   - tour : \"관광지 · 1h · ₩금액×" + cnt + "\" (무료면 ₩0×" + cnt + ")\n"
+                + "5. stars: 항상 \"평점 정보 없음\" 고정. 숫자 지어내기 절대 금지.\n"
+                + "6. 숙소 업종: stay 배열에는 \"" + form.getAccommodationType() + "\" 유형만 포함.\n"
+                + "7. 유저 요청 사항에 특정 장소·식당이 명시됐다면 해당 타입 배열 맨 앞에 반드시 포함.\n"
+                + "8. 식이 옵션(" + form.getDietaryInfo() + ")이 있으면 food 후보에 반영.\n"
+                + "9. 예산(" + form.getBudget() + "원) 고려해 장소 단가를 현실적으로 책정.\n\n"
+                + "[출력 형식 — 이 JSON만 출력, 설명·마크다운 코드블럭 금지]\n"
                 + "{\n"
                 + "  \"stay\": [ {\"name\":\"실존 숙소명\", \"sub\":\"숙소 · ₩금액\", \"stars\":\"평점 정보 없음\"} ],\n"
                 + "  \"food\": [ {\"name\":\"실존 식당명\", \"sub\":\"맛집 · 점심 · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ],\n"
