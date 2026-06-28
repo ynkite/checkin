@@ -471,7 +471,7 @@
         ${day.places ? day.places.map(p => p.transit ? `<div class="transit-map-row">${p.transit}</div>` : `
           <div class="place-row" data-key="${p.key}">
             <div class="pr-drag">⋮⋮</div>
-            <div class="pr-icon pr-${p.type}">${p.icon || '📍'}</div>
+            <div class="pr-icon pr-${p.type}">${p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍')))}</div>
             <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
               <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
               <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
@@ -512,7 +512,7 @@
                 MAP_PINS.push({
                   key: p.key,
                   type: p.type,
-                  icon: p.icon || '📍',
+                  icon: p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍'))),
                   color: pinColor,
                   label: p.name,
                   day: d.day,
@@ -1631,6 +1631,12 @@
       }
     }
     async function requestMapIndoorAlternative(dayNum) {
+
+      if (window._planConfirmed) {
+        toast('🔒 일정이 확정되어 있습니다. 좌측 상단의 [수정] 버튼을 눌러 수정 모드로 전환한 뒤 진행해 주세요.');
+        return;
+      }
+
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
