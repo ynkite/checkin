@@ -1466,4 +1466,348 @@ public class AiRouteService {
             return null;
         }
     }
+
+    // ════════════════════════════════════════════════════════════════
+    //  ★ 신규 파이프라인 조립 메서드 (커밋1: 추가만 — 커밋3에서 컨트롤러 연결)
+    //   generateCandidates() 결과를 받아:
+    //     geocodeAndFilterCandidates → clusterByDay → buildDaySkeleton
+    //   순으로 호출해 기존 saveAiRouteToDb 가 바로 받을 수 있는 일정 JSON 을 만든다.
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * 후보 장소 JSON 전체를 geocoding 하고 좌표 실패·타지역 이상치를 제거한다.
+     * 입력: {"stay":[...],"food":[...],"cafe":[...],"tour":[...]} (generateCandidates 출력 구조)
+     * 출력: 각 항목에 "lat"/"lng" 추가, 좌표를 못 잡은 항목 제거, 타지역 이상치 제거
+     *
+     * §9: 여행지 중심 좌표 고정 반경 차단(권역 잠금) 재도입 금지.
+     *     타지역 판단은 '후보들끼리 뭉치는 중심(중앙값)' 기준 80km 초과만.
+     */
+    private java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>
+            geocodeAndFilterCandidates(
+                    JsonNode candidatesJson,
+                    String destination,
+                    java.util.Map<String, double[]> geoCache) {
+
+        String[] types = {"stay", "food", "cafe", "tour"};
+        java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result
+                = new java.util.LinkedHashMap<>();
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> all = new java.util.ArrayList<>();
+
+        for (String type : types) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> list = new java.util.ArrayList<>();
+            result.put(type, list);
+            JsonNode arr = candidatesJson.path(type);
+            if (!arr.isArray()) continue;
+            for (JsonNode item : arr) {
+                com.fasterxml.jackson.databind.node.ObjectNode node =
+                        (com.fasterxml.jackson.databind.node.ObjectNode) item.deepCopy();
+                String nm = node.path("name").asText("").trim();
+                if (nm.isEmpty()) continue;
+                double[] c = geocodeCached(withRegion(destination, nm), geoCache);
+                if (c == null) {
+                    System.out.println("[후보탈락-좌표없음] " + nm);
+                    continue;
+                }
+                node.put("lat", c[0]);
+                node.put("lng", c[1]);
+                list.add(node);
+                all.add(node);
+            }
+        }
+
+        // 전체 후보 중앙값 기준 80km 초과 → 타지역 이상치로 보고 제거
+        if (all.size() >= 3) {
+            java.util.List<Double> lats = new java.util.ArrayList<>();
+            java.util.List<Double> lngs = new java.util.ArrayList<>();
+            for (com.fasterxml.jackson.databind.node.ObjectNode n : all) {
+                lats.add(n.path("lat").asDouble());
+                lngs.add(n.path("lng").asDouble());
+            }
+            java.util.Collections.sort(lats);
+            java.util.Collections.sort(lngs);
+            double[] center = {lats.get(lats.size() / 2), lngs.get(lngs.size() / 2)};
+            final double OUTLIER_DIST = 80_000.0;
+            for (String type : types) {
+                result.get(type).removeIf(n -> {
+                    double[] c = {n.path("lat").asDouble(), n.path("lng").asDouble()};
+                    double dist = haversine(center, c);
+                    if (dist > OUTLIER_DIST) {
+                        System.out.println("[후보탈락-타지역] " + n.path("name").asText("")
+                                + " (" + Math.round(dist / 1000.0) + "km)");
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 좌표 확보된 후보를 일자별 클러스터에 배분한다.
+     * - tour/cafe: farthest-first K-means 씨앗 선택 후 1회 배정
+     * - food    : 라운드로빈으로 일자별 배정
+     * - stay    : 첫 번째 숙소 후보를 Day 1 ~ N-1 에 동일하게 배정 (연박 가정)
+     */
+    private java.util.Map<Integer, java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>>
+            clusterByDay(
+                    java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> geocodedCandidates,
+                    TravelPlan plan,
+                    java.util.Set<String> userRequested) {
+
+        int numDays = (int) Math.max(1,
+                plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay() + 1);
+
+        java.util.Map<Integer, java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>> result
+                = new java.util.LinkedHashMap<>();
+        for (int d = 1; d <= numDays; d++) {
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> dm
+                    = new java.util.LinkedHashMap<>();
+            for (String t : new String[]{"stay", "food", "cafe", "tour"}) dm.put(t, new java.util.ArrayList<>());
+            result.put(d, dm);
+        }
+
+        // tour + cafe 를 임시 _ct 마커와 함께 합쳐서 클러스터링
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> activities = new java.util.ArrayList<>();
+        for (com.fasterxml.jackson.databind.node.ObjectNode n
+                : geocodedCandidates.getOrDefault("tour", java.util.Collections.emptyList())) {
+            com.fasterxml.jackson.databind.node.ObjectNode copy = n.deepCopy();
+            copy.put("_ct", "tour");
+            activities.add(copy);
+        }
+        for (com.fasterxml.jackson.databind.node.ObjectNode n
+                : geocodedCandidates.getOrDefault("cafe", java.util.Collections.emptyList())) {
+            com.fasterxml.jackson.databind.node.ObjectNode copy = n.deepCopy();
+            copy.put("_ct", "cafe");
+            activities.add(copy);
+        }
+
+        // farthest-first 씨앗 선택 → 최근접 씨앗(=일자)에 배정
+        if (!activities.isEmpty()) {
+            java.util.List<double[]> seeds = buildClusterSeeds(activities, numDays);
+            for (com.fasterxml.jackson.databind.node.ObjectNode n : activities) {
+                double[] c = {n.path("lat").asDouble(), n.path("lng").asDouble()};
+                int bestDay = nearestSeedDay(c, seeds);
+                String ct = n.path("_ct").asText("tour");
+                n.put("type", ct);   // tagPlace 에서 읽을 type 필드로 승격
+                n.remove("_ct");
+                result.get(bestDay).get(ct).add(n);
+            }
+        }
+
+        // food: 라운드로빈
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> foods =
+                new java.util.ArrayList<>(geocodedCandidates.getOrDefault("food", java.util.Collections.emptyList()));
+        for (int i = 0; i < foods.size(); i++) {
+            result.get((i % numDays) + 1).get("food").add(foods.get(i));
+        }
+
+        // stay: 첫 번째 숙소를 Day 1~N-1 에 각각 복사 배정 (당일치기=N=1 이면 배정 없음)
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stays =
+                geocodedCandidates.getOrDefault("stay", java.util.Collections.emptyList());
+        if (!stays.isEmpty() && numDays > 1) {
+            com.fasterxml.jackson.databind.node.ObjectNode baseStay = stays.get(0);
+            for (int d = 1; d <= numDays - 1; d++) {
+                result.get(d).get("stay").add(baseStay.deepCopy());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 일자별 클러스터로 §7 시간 골격에 맞춘 완성 일정 JSON 문자열을 조립한다.
+     * - transit 은 {"transit":"이동"} 만 삽입 (recalcTransitWithKakao 가 숫자를 채운다)
+     * - 조립 후 reorderWithinTimeBlocks 로 끼니 사이 tour/cafe 순서를 거리순 최적화
+     */
+    private String buildDaySkeleton(
+            java.util.Map<Integer, java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>> dayClusters,
+            TravelPlan plan,
+            PlanInputForm form,
+            java.util.Set<String> userRequested) {
+
+        int numDays = dayClusters.size();
+        boolean isDayTrip = plan.getStartDate().equals(plan.getEndDate());
+        boolean lastDayDinner = hasLastDayDinnerRequest(
+                form != null ? form.getExtraNotes() : null, numDays);
+        java.time.LocalDate startDate = plan.getStartDate();
+
+        com.fasterxml.jackson.databind.node.ArrayNode root = objectMapper.createArrayNode();
+
+        for (int day = 1; day <= numDays; day++) {
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> bucket
+                    = dayClusters.get(day);
+            if (bucket == null) continue;
+
+            boolean isFirst = (day == 1);
+            boolean isLast  = (day == numDays);
+
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stayList =
+                    bucket.getOrDefault("stay", java.util.Collections.emptyList());
+            java.util.Deque<com.fasterxml.jackson.databind.node.ObjectNode> foodQ =
+                    new java.util.ArrayDeque<>(bucket.getOrDefault("food", java.util.Collections.emptyList()));
+            java.util.Deque<com.fasterxml.jackson.databind.node.ObjectNode> actQ = new java.util.ArrayDeque<>();
+            actQ.addAll(bucket.getOrDefault("tour", java.util.Collections.emptyList()));
+            actQ.addAll(bucket.getOrDefault("cafe", java.util.Collections.emptyList()));
+
+            com.fasterxml.jackson.databind.node.ObjectNode stayNode =
+                    stayList.isEmpty() ? null : stayList.get(0);
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> slots = new java.util.ArrayList<>();
+            int keySeq = 0;
+
+            // 1) 아침: 숙소 체크아웃 (1일차·당일치기 제외)
+            if (!isFirst && !isDayTrip && stayNode != null) {
+                slots.add(tagPlace(stayNode, "stay", "08:00", "d" + day + "_" + (++keySeq)));
+            }
+            // 2) 오전 활동 1개 (1일차 제외)
+            if (!isFirst && !actQ.isEmpty()) {
+                slots.add(tagPlace(actQ.poll(), null, "10:00", "d" + day + "_" + (++keySeq)));
+            }
+            // 3) 점심
+            if (!foodQ.isEmpty()) {
+                slots.add(tagPlace(foodQ.poll(), "food", "12:00", "d" + day + "_" + (++keySeq)));
+            }
+            // 4) 오후 활동 최대 2개
+            for (String t : new String[]{"14:00", "15:30"}) {
+                if (!actQ.isEmpty()) {
+                    slots.add(tagPlace(actQ.poll(), null, t, "d" + day + "_" + (++keySeq)));
+                }
+            }
+            // 5) 저녁 (마지막날은 사용자 요청 시에만)
+            if (!isLast || lastDayDinner) {
+                if (!foodQ.isEmpty()) {
+                    slots.add(tagPlace(foodQ.poll(), "food", "18:00", "d" + day + "_" + (++keySeq)));
+                }
+            }
+            // 6) 밤: 숙소 체크인 (마지막날·당일치기 제외)
+            if (!isLast && !isDayTrip && stayNode != null) {
+                slots.add(tagPlace(stayNode, "stay", "20:00", "d" + day + "_" + (++keySeq)));
+            }
+
+            // transit {"transit":"이동"} 삽입
+            com.fasterxml.jackson.databind.node.ArrayNode placesNode = objectMapper.createArrayNode();
+            for (int i = 0; i < slots.size(); i++) {
+                if (i > 0) {
+                    com.fasterxml.jackson.databind.node.ObjectNode tr = objectMapper.createObjectNode();
+                    tr.put("transit", "이동");
+                    placesNode.add(tr);
+                }
+                placesNode.add(slots.get(i));
+            }
+
+            java.time.LocalDate date = startDate.plusDays(day - 1);
+            String label = String.format("📅 Day %d · %02d/%02d (%s)",
+                    day, date.getMonthValue(), date.getDayOfMonth(),
+                    getDayOfWeekKorean(date.getDayOfWeek()));
+
+            com.fasterxml.jackson.databind.node.ObjectNode dayNode = objectMapper.createObjectNode();
+            dayNode.put("day", day);
+            dayNode.put("label", label);
+            dayNode.put("budget", "₩0"); // recalcTransitWithKakao 가 재계산
+            dayNode.set("places", placesNode);
+            root.add(dayNode);
+        }
+
+        try {
+            String json = objectMapper.writeValueAsString(root);
+            return reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        } catch (Exception e) {
+            System.err.println("[buildDaySkeleton] 직렬화 실패: " + e.getMessage());
+            return "[]";
+        }
+    }
+
+    // ── buildDaySkeleton / clusterByDay 헬퍼 ─────────────────────────
+
+    /** 후보 ObjectNode에 type·icon·time·key·replacePh 를 추가해 일정 place 노드로 만든다. */
+    private com.fasterxml.jackson.databind.node.ObjectNode tagPlace(
+            com.fasterxml.jackson.databind.node.ObjectNode candidate,
+            String typeOverride,
+            String time,
+            String key) {
+        com.fasterxml.jackson.databind.node.ObjectNode n = candidate.deepCopy();
+        String t = (typeOverride != null) ? typeOverride
+                : n.path("type").asText(n.path("_ct").asText("tour"));
+        n.put("type", t);
+        n.put("icon", typeIcon(t));
+        n.put("time", time);
+        n.put("key", key);
+        if (!n.has("replacePh")) n.put("replacePh", "다른 장소로 교체해줘");
+        n.remove("_ct");
+        return n;
+    }
+
+    private String typeIcon(String type) {
+        return switch (type) {
+            case "stay" -> "🏨";
+            case "food" -> "🍽️";
+            case "cafe" -> "☕";
+            default     -> "📍";
+        };
+    }
+
+    /** 활동 후보 목록에서 K개의 씨앗(farthest-first)을 선택한다. */
+    private java.util.List<double[]> buildClusterSeeds(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> activities, int k) {
+        java.util.List<double[]> seeds = new java.util.ArrayList<>();
+        if (activities.isEmpty()) return seeds;
+        seeds.add(new double[]{
+                activities.get(0).path("lat").asDouble(),
+                activities.get(0).path("lng").asDouble()
+        });
+        while (seeds.size() < k && seeds.size() < activities.size()) {
+            double[] farthest = null;
+            double maxMinDist = -1;
+            for (com.fasterxml.jackson.databind.node.ObjectNode n : activities) {
+                final double[] c = {n.path("lat").asDouble(), n.path("lng").asDouble()};
+                double minDist = seeds.stream().mapToDouble(s -> haversine(s, c)).min().orElse(0);
+                if (minDist > maxMinDist) { maxMinDist = minDist; farthest = c; }
+            }
+            if (farthest == null) break;
+            seeds.add(farthest);
+        }
+        return seeds;
+    }
+
+    /** 좌표에서 가장 가까운 씨앗의 1-based 인덱스(=일자)를 반환한다. */
+    private int nearestSeedDay(double[] coord, java.util.List<double[]> seeds) {
+        int best = 1;
+        double bestDist = Double.MAX_VALUE;
+        for (int i = 0; i < seeds.size(); i++) {
+            double d = haversine(seeds.get(i), coord);
+            if (d < bestDist) { bestDist = d; best = i + 1; }
+        }
+        return best;
+    }
+
+    /** DayOfWeek → 한국어 1글자 요일 */
+    private String getDayOfWeekKorean(java.time.DayOfWeek dow) {
+        return switch (dow) {
+            case MONDAY    -> "월";
+            case TUESDAY   -> "화";
+            case WEDNESDAY -> "수";
+            case THURSDAY  -> "목";
+            case FRIDAY    -> "금";
+            case SATURDAY  -> "토";
+            case SUNDAY    -> "일";
+        };
+    }
+
+    /** extra_notes 에 마지막 날 저녁 사용자 요청이 있는지 확인한다. */
+    private boolean hasLastDayDinnerRequest(String extraNotesJson, int numDays) {
+        if (extraNotesJson == null || extraNotesJson.isBlank()) return false;
+        try {
+            JsonNode arr = objectMapper.readTree(extraNotesJson);
+            if (!arr.isArray()) return false;
+            for (JsonNode n : arr) {
+                String label = n.path("label").asText("");
+                String value = n.path("value").asText("");
+                if (value.isBlank()) continue;
+                if (label.contains("저녁")
+                        && (label.contains(numDays + "일차") || label.contains("마지막"))) {
+                    return true;
+                }
+            }
+        } catch (Exception ignore) {}
+        return false;
+    }
 }
