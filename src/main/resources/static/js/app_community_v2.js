@@ -3008,97 +3008,602 @@ window._handleWriteImageSelect = function(input) {
 
 
 /* =============================================================================
- * community v2 — 검색
+ * community v2 — 검색/정렬/페이징 보정 v2
+ * - 백엔드 수정 없이 app_community_v2.js에서만 보정한다.
+ * - 여행 경로 검색 결과가 10개를 넘을 때도 검색 결과 기준 페이징을 다시 만든다.
+ * - 장소 탭 검색 기준을 제목/내용/작성자/태그로 분리한다.
+ *   제목: 장소명, 내용: 장소 후기 코멘트, 작성자: 장소 후기 작성자, 태그: 해당 장소와 연결된 후기 게시글 태그
  * ============================================================================= */
 (function () {
     'use strict';
+
+    const PAGE_SIZE = 10;
+    const FETCH_SIZE = 50;
+    const MAX_PAGE_PROBE = 50;
+    const PLACE_TABS = { stay: true, food: true, tour: true, cafe: true };
+
+    let _routeSearchMode = false;
+    let _placeSearchMode = false;
+    let _lastRouteItems = [];
+    let _lastPlaceItems = [];
+    const _placeMetaCache = new Map();
 
     function getCurrentTabKeyForSearch() {
         const activeTab = document.querySelector('#commTabs .comm-tab.on');
         if (activeTab) {
             const text = activeTab.textContent.trim();
-            if (text.includes('숙소'))    return 'stay';
-            if (text.includes('맛집'))    return 'food';
-            if (text.includes('관광지'))  return 'tour';
-            if (text.includes('카페'))    return 'cafe';
+            if (text.includes('숙소')) return 'stay';
+            if (text.includes('맛집')) return 'food';
+            if (text.includes('관광지')) return 'tour';
+            if (text.includes('카페')) return 'cafe';
             if (text.includes('여행 경로')) return 'route';
         }
         if (typeof _commState !== 'undefined' && _commState.currentTab) return _commState.currentTab;
         return 'route';
     }
 
-    function communityV2Search() {
-        const typeEl  = document.getElementById('searchType');
-        const inputEl = document.getElementById('searchInp');
-        const type    = typeEl ? typeEl.value : 'title';
-        const q       = inputEl ? inputEl.value.trim().toLowerCase() : '';
+    function getSearchKeyword() {
+        return String(document.getElementById('searchInp')?.value || '').trim().toLowerCase();
+    }
 
-        const tabEl = document.getElementById('tab-' + getCurrentTabKeyForSearch());
+    function getSearchType() {
+        return document.getElementById('searchType')?.value || 'title';
+    }
+
+    function getSortValue() {
+        if (typeof _commState !== 'undefined' && _commState.sortOrder) {
+            return _commState.sortOrder;
+        }
+
+        const sortSelect = document.getElementById('sortSelect');
+        if (sortSelect && sortSelect.value) {
+            return sortSelect.value;
+        }
+
+        const tab = getCurrentTabKeyForSearch();
+        return tab === 'route' ? 'latest' : 'saved';
+    }
+
+    function resetCommunityV2SearchToFullList() {
+        const tab = getCurrentTabKeyForSearch();
+
+        // 검색 모드가 아닌 상태라면 불필요하게 목록을 다시 불러오지 않는다.
+        if (!_routeSearchMode && !_placeSearchMode) return;
+
+        _routeSearchMode = false;
+        _placeSearchMode = false;
+        _lastRouteItems = [];
+        _lastPlaceItems = [];
+
+        if (typeof _commState !== 'undefined') {
+            _commState.currentPage = 0;
+            if (tab) _commState.currentTab = tab;
+        }
+
+        removeRouteSearchPager();
+        removeGlobalLegacyPager();
+
+        if (PLACE_TABS[tab]) {
+            removePlaceSearchPager(tab);
+            if (typeof window._loadPlaceCards === 'function') {
+                window._loadPlaceCards(tab, 0, true);
+                return;
+            }
+        }
+
+        if (typeof window.loadCommunityPosts === 'function') {
+            window.loadCommunityPosts(0, true);
+        }
+    }
+
+    function normalizeText(value) {
+        return String(value || '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+    }
+
+    function stripHash(value) {
+        return normalizeText(value).replace(/^#/, '');
+    }
+
+    function extractList(res) {
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.data?.content)) return res.data.content;
+        if (Array.isArray(res?.content)) return res.content;
+        if (Array.isArray(res)) return res;
+        return [];
+    }
+
+    function extractTotalPages(res, listLength) {
+        if (Number.isFinite(Number(res?.data?.totalPages))) return Number(res.data.totalPages);
+        if (Number.isFinite(Number(res?.totalPages))) return Number(res.totalPages);
+        return listLength >= FETCH_SIZE ? MAX_PAGE_PROBE : 1;
+    }
+
+    function parseTags(styleTags) {
+        if (window._commUtil && typeof window._commUtil.parseStyleTags === 'function') {
+            return window._commUtil.parseStyleTags(styleTags).map(stripHash);
+        }
+        if (Array.isArray(styleTags)) return styleTags.map(stripHash).filter(Boolean);
+        return String(styleTags || '')
+            .replace(/[\[\]"]/g, '')
+            .split(',')
+            .map(stripHash)
+            .filter(Boolean);
+    }
+
+    function getPostNumber(post, primary, fallback) {
+        const value = post?.[primary] ?? post?.[fallback] ?? 0;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function getPostDateValue(post) {
+        return new Date(post?.createdAt || 0).getTime() || 0;
+    }
+
+    function removeGlobalLegacyPager() {
+        const wrap = document.getElementById('commPagination');
+        if (wrap) {
+            wrap.innerHTML = '';
+            wrap.style.display = 'none';
+        }
+    }
+
+    function removeRouteSearchPager() {
+        const old = document.getElementById('community-v2-route-search-pagination');
+        if (old) old.remove();
+        const normalV2 = document.getElementById('community-v2-pagination');
+        if (normalV2) normalV2.remove();
+    }
+
+    function removePlaceSearchPager(type) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (!tabEl) return;
+        tabEl.querySelectorAll('.place-v2-pagination').forEach(function (el) { el.remove(); });
+    }
+
+    function sortRoutePosts(posts) {
+        const sort = getSortValue();
+        const arr = [...posts];
+        arr.sort(function (a, b) {
+            if (sort === 'scrap') {
+                const diff = getPostNumber(b, 'scraps', 'scrapCount') - getPostNumber(a, 'scraps', 'scrapCount');
+                if (diff !== 0) return diff;
+                return getPostDateValue(b) - getPostDateValue(a);
+            }
+            if (sort === 'likes') {
+                const diff = getPostNumber(b, 'likes', 'likeCount') - getPostNumber(a, 'likes', 'likeCount');
+                if (diff !== 0) return diff;
+                return getPostDateValue(b) - getPostDateValue(a);
+            }
+            if (sort === 'views' || sort === 'saved') {
+                const diff = getPostNumber(b, 'views', 'viewCount') - getPostNumber(a, 'views', 'viewCount');
+                if (diff !== 0) return diff;
+                return getPostDateValue(b) - getPostDateValue(a);
+            }
+            return getPostDateValue(b) - getPostDateValue(a);
+        });
+        return arr;
+    }
+
+    function filterRoutePosts(posts, keyword, searchType) {
+        const q = stripHash(keyword);
+        if (!q) return posts;
+
+        return posts.filter(function (post) {
+            const title = normalizeText(post?.title || '');
+            const content = normalizeText(post?.content || '');
+            const author = normalizeText(post?.writerName || post?.author?.name || post?.author?.username || '');
+            const tags = parseTags(post?.styleTags);
+
+            if (searchType === 'title') return title.includes(q);
+            if (searchType === 'content') return content.includes(q);
+            if (searchType === 'author') return author.includes(q);
+            if (searchType === 'tag') return tags.some(function (tag) { return tag.includes(q); });
+            return title.includes(q) || content.includes(q) || author.includes(q) || tags.some(function (tag) { return tag.includes(q); });
+        });
+    }
+
+    async function fetchAllRoutePosts() {
+        const result = [];
+        let expectedTotalPages = 1;
+
+        for (let page = 0; page < MAX_PAGE_PROBE; page++) {
+            const qs = new URLSearchParams({
+                page: String(page),
+                size: String(FETCH_SIZE),
+                sort: 'latest',
+                category: 'route'
+            });
+            const res = await api.get('/api/posts?' + qs.toString());
+            const list = window._commUtil.extractPosts(res);
+            if (page === 0) expectedTotalPages = extractTotalPages(res, list.length);
+            result.push(...list);
+            if (!list.length || list.length < FETCH_SIZE || page + 1 >= expectedTotalPages) break;
+        }
+
+        return result;
+    }
+
+    function renderRouteSearchPager(totalPages, currentPage) {
+        const tabEl = document.getElementById('tab-route');
         if (!tabEl) return;
 
-        if (!q) {
-            let count = 0;
-            tabEl.querySelectorAll('.comm-post-item').forEach(item => { item.style.display = ''; count++; });
-            const old = document.getElementById('community-search-empty');
-            if (old) old.remove();
-            if (typeof toast === 'function') toast(`전체 목록을 표시합니다. (${count}건)`);
+        removeRouteSearchPager();
+        removeGlobalLegacyPager();
+        if (!totalPages || totalPages <= 1) return;
+
+        const current = Math.min(Math.max(Number(currentPage) || 0, 0), Number(totalPages) - 1);
+        const pageIndexes = window._commUtil.getPagerWindow(current, totalPages, 5);
+        const pager = document.createElement('div');
+        pager.id = 'community-v2-route-search-pagination';
+        pager.className = 'community-v2-pagination route-search-pagination';
+
+        let html = '';
+        html += '<button type="button" class="community-v2-page-btn route-search-page-btn" data-page="' + Math.max(0, current - 1) + '" ' + (current === 0 ? 'disabled' : '') + '>&lt;</button>';
+        pageIndexes.forEach(function (i) {
+            html += '<button type="button" class="community-v2-page-btn route-search-page-btn ' + (i === current ? 'on' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        });
+        html += '<button type="button" class="community-v2-page-btn route-search-page-btn" data-page="' + Math.min(Number(totalPages) - 1, current + 1) + '" ' + (current >= Number(totalPages) - 1 ? 'disabled' : '') + '>&gt;</button>';
+        pager.innerHTML = html;
+
+        pager.querySelectorAll('.route-search-page-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (this.disabled) return;
+                renderRouteResultPage(Number(this.dataset.page || 0));
+            });
+        });
+
+        tabEl.appendChild(pager);
+    }
+
+    function renderRouteResultPage(pageNo) {
+        const tabEl = document.getElementById('tab-route');
+        if (!tabEl) return;
+
+        const sorted = sortRoutePosts(_lastRouteItems);
+        const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+        const page = Math.min(Math.max(Number(pageNo) || 0, 0), totalPages - 1);
+        const start = page * PAGE_SIZE;
+        const pageItems = sorted.slice(start, start + PAGE_SIZE);
+
+        if (typeof _commState !== 'undefined') {
+            _commState.currentTab = 'route';
+            _commState.currentPage = page;
+            _commState.totalPages = totalPages;
+        }
+
+        removeRouteSearchPager();
+        removeGlobalLegacyPager();
+
+        if (pageItems.length) {
+            if (typeof window._renderPostList === 'function') {
+                window._renderPostList(pageItems, true);
+            } else if (typeof _renderPostList === 'function') {
+                _renderPostList(pageItems, true);
+            }
+        } else {
+            tabEl.innerHTML = '<div class="comm-empty" style="padding:40px 20px;text-align:center;color:var(--text3);font-size:14px">검색 결과가 없습니다.</div>';
+        }
+
+        renderRouteSearchPager(totalPages, page);
+    }
+
+    async function loadRouteSearchOrSorted(pageNo) {
+        const tabEl = document.getElementById('tab-route');
+        if (tabEl) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
+
+        try {
+            const keyword = getSearchKeyword();
+            const searchType = getSearchType();
+            const allPosts = await fetchAllRoutePosts();
+            _lastRouteItems = filterRoutePosts(allPosts, keyword, searchType);
+            _routeSearchMode = true;
+            _placeSearchMode = false;
+            renderRouteResultPage(pageNo || 0);
+
+            if (typeof toast === 'function') {
+                const msg = keyword ? '"' + keyword + '" 검색 결과: ' + _lastRouteItems.length + '건' : '정렬을 적용했습니다.';
+                toast(msg);
+            }
+        } catch (e) {
+            console.error('[community-v2] 여행 경로 검색/정렬 실패:', e);
+            if (tabEl) tabEl.innerHTML = '<div class="comm-empty">검색 결과를 불러오지 못했습니다.</div>';
+        }
+    }
+
+    function getPlaceName(card) {
+        return normalizeText(card?.name || card?.placeName || '');
+    }
+
+    function getPlaceId(card) {
+        return card?.placeId ?? card?.id ?? null;
+    }
+
+    function renderStars(rating) {
+        const n = Math.round(Number(rating) || 0);
+        let s = '';
+        for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆';
+        return s;
+    }
+
+    async function fetchPlaceReviews(placeId) {
+        if (!placeId) return [];
+        const key = 'reviews:' + placeId;
+        if (_placeMetaCache.has(key)) return _placeMetaCache.get(key);
+        try {
+            const res = await api.get('/api/places/' + encodeURIComponent(placeId) + '/reviews');
+            const list = extractList(res);
+            _placeMetaCache.set(key, list);
+            return list;
+        } catch (e) {
+            console.warn('[community-v2] 장소 후기 조회 실패:', placeId, e);
+            _placeMetaCache.set(key, []);
+            return [];
+        }
+    }
+
+    async function fetchPlacePosts(placeId) {
+        if (!placeId) return [];
+        const key = 'posts:' + placeId;
+        if (_placeMetaCache.has(key)) return _placeMetaCache.get(key);
+        try {
+            const res = await api.get('/api/places/' + encodeURIComponent(placeId) + '/posts?page=0&size=100');
+            const list = extractList(res);
+            _placeMetaCache.set(key, list);
+            return list;
+        } catch (e) {
+            console.warn('[community-v2] 장소 연결 게시글 조회 실패:', placeId, e);
+            _placeMetaCache.set(key, []);
+            return [];
+        }
+    }
+
+    async function matchesPlaceBySearchType(card, keyword, searchType) {
+        const q = stripHash(keyword);
+        if (!q) return true;
+
+        const placeName = getPlaceName(card);
+        const placeId = getPlaceId(card);
+
+        if (searchType === 'title') {
+            return placeName.includes(q);
+        }
+
+        if (searchType === 'content') {
+            const reviews = await fetchPlaceReviews(placeId);
+            return reviews.some(function (r) {
+                return normalizeText(r?.comment || '').includes(q);
+            });
+        }
+
+        if (searchType === 'author') {
+            const reviews = await fetchPlaceReviews(placeId);
+            return reviews.some(function (r) {
+                return normalizeText(r?.writerName || '').includes(q);
+            });
+        }
+
+        if (searchType === 'tag') {
+            const posts = await fetchPlacePosts(placeId);
+            return posts.some(function (post) {
+                return parseTags(post?.styleTags).some(function (tag) { return tag.includes(q); });
+            });
+        }
+
+        const reviews = await fetchPlaceReviews(placeId);
+        const posts = await fetchPlacePosts(placeId);
+        return placeName.includes(q)
+            || reviews.some(function (r) {
+                return normalizeText(r?.comment || '').includes(q)
+                    || normalizeText(r?.writerName || '').includes(q);
+            })
+            || posts.some(function (post) {
+                return parseTags(post?.styleTags).some(function (tag) { return tag.includes(q); });
+            });
+    }
+
+    function renderPlaceCardsPage(type, pageNo) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (!tabEl) return;
+
+        removeGlobalLegacyPager();
+        removePlaceSearchPager(type);
+        tabEl.innerHTML = '';
+
+        const totalPages = Math.max(1, Math.ceil(_lastPlaceItems.length / PAGE_SIZE));
+        const page = Math.min(Math.max(Number(pageNo) || 0, 0), totalPages - 1);
+        const start = page * PAGE_SIZE;
+        const pageItems = _lastPlaceItems.slice(start, start + PAGE_SIZE);
+
+        if (!pageItems.length) {
+            tabEl.innerHTML = '<div class="comm-empty" style="padding:40px 20px;text-align:center;color:var(--text3);font-size:14px">검색 결과가 없습니다.</div>';
             return;
         }
 
-        const old = document.getElementById('community-search-empty');
-        if (old) old.remove();
-
-        let found = 0;
-        tabEl.querySelectorAll('.comm-post-item').forEach(item => {
-            const title   = (item.querySelector('.post-ttl')?.textContent || '').toLowerCase();
-            const content = (item.getAttribute('data-content') || '').toLowerCase();
-            const author  = (item.getAttribute('data-author') || '').toLowerCase();
-            const tags    = (item.getAttribute('data-tags') || '').toLowerCase();
-
-            const match = type === 'title'   ? title.includes(q)
-                : type === 'content' ? content.includes(q)
-                    : type === 'author'  ? author.includes(q)
-                        : type === 'tag'     ? tags.includes(q)
-                            : false;
-
-            item.style.display = match ? '' : 'none';
-            if (match) found++;
+        const frag = document.createDocumentFragment();
+        pageItems.forEach(function (card) {
+            const placeId = getPlaceId(card);
+            const placeName = card.name || card.placeName || '장소';
+            const el = document.createElement('div');
+            el.className = 'place-card-item';
+            el.innerHTML = [
+                '<div class="place-card-info">',
+                '  <span class="place-card-icon">📍</span>',
+                '  <span class="place-card-name">' + window._commUtil.escapeHtml(placeName) + '</span>',
+                '</div>',
+                '<div class="place-card-meta">',
+                '  <span class="place-card-stars">' + renderStars(card.avgRating || 0) + '</span>',
+                '  <span class="place-card-avg">' + (Number(card.avgRating || 0)).toFixed(1) + '</span>',
+                '  <span class="place-card-count">📌 ' + (card.reviewCount || 0) + '번 담김</span>',
+                '  <span class="place-card-scrap">🔖 ' + (card.scrapCount || 0) + '</span>',
+                '</div>'
+            ].join('');
+            el.addEventListener('click', function () {
+                if (typeof window._openPlaceReviews === 'function') {
+                    window._openPlaceReviews(placeId, placeName, type, card.avgRating, card.reviewCount);
+                }
+            });
+            frag.appendChild(el);
         });
-
-        if (found === 0) {
-            const empty = document.createElement('div');
-            empty.id = 'community-search-empty';
-            empty.style.cssText = 'padding:40px 20px;text-align:center;color:var(--text3);font-size:14px';
-            empty.textContent = '검색 결과가 없습니다.';
-            tabEl.appendChild(empty);
-        }
-
-        if (typeof toast === 'function') toast(`"${q}" 검색 결과: ${found}건`);
+        tabEl.appendChild(frag);
+        renderPlaceSearchPager(type, totalPages, page);
     }
 
-    function installCommunityV2Search() {
+    function renderPlaceSearchPager(type, totalPages, currentPage) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (!tabEl) return;
+        removePlaceSearchPager(type);
+        if (!totalPages || totalPages <= 1) return;
+
+        const current = Math.min(Math.max(Number(currentPage) || 0, 0), Number(totalPages) - 1);
+        const pageIndexes = window._commUtil.getPagerWindow(current, totalPages, 5);
+        const pager = document.createElement('div');
+        pager.className = 'community-v2-pagination place-v2-pagination';
+
+        let html = '';
+        html += '<button type="button" class="community-v2-page-btn place-v2-page-btn" data-page="' + Math.max(0, current - 1) + '" ' + (current === 0 ? 'disabled' : '') + '>&lt;</button>';
+        pageIndexes.forEach(function (i) {
+            html += '<button type="button" class="community-v2-page-btn place-v2-page-btn ' + (i === current ? 'on' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        });
+        html += '<button type="button" class="community-v2-page-btn place-v2-page-btn" data-page="' + Math.min(Number(totalPages) - 1, current + 1) + '" ' + (current >= Number(totalPages) - 1 ? 'disabled' : '') + '>&gt;</button>';
+        pager.innerHTML = html;
+        pager.querySelectorAll('.place-v2-page-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                if (this.disabled) return;
+                renderPlaceCardsPage(type, Number(this.dataset.page || 0));
+            });
+        });
+        tabEl.appendChild(pager);
+    }
+
+    async function fetchAllPlaceCards(type) {
+        const result = [];
+        const sortVal = getSortValue();
+        for (let page = 0; page < MAX_PAGE_PROBE; page++) {
+            const res = await api.get('/api/places?category=' + encodeURIComponent(type) + '&page=' + page + '&size=' + FETCH_SIZE + '&sort=' + encodeURIComponent(sortVal));
+            const list = extractList(res);
+            result.push(...list);
+            if (!list.length || list.length < FETCH_SIZE) break;
+        }
+        return result;
+    }
+
+    async function filterPlaceCards(cards, keyword, searchType) {
+        const q = stripHash(keyword);
+        if (!q) return cards;
+
+        const result = [];
+        for (const card of cards) {
+            if (await matchesPlaceBySearchType(card, q, searchType)) result.push(card);
+        }
+        return result;
+    }
+
+    async function loadPlaceSearch(type, pageNo) {
+        const tabEl = document.getElementById('tab-' + type);
+        if (tabEl) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
+
+        try {
+            const keyword = getSearchKeyword();
+            const searchType = getSearchType();
+            const allPlaces = await fetchAllPlaceCards(type);
+            _lastPlaceItems = await filterPlaceCards(allPlaces, keyword, searchType);
+            _placeSearchMode = true;
+            _routeSearchMode = false;
+            renderPlaceCardsPage(type, pageNo || 0);
+
+            if (typeof toast === 'function') toast('"' + keyword + '" 검색 결과: ' + _lastPlaceItems.length + '건');
+        } catch (e) {
+            console.error('[community-v2] 장소 검색 실패:', e);
+            if (tabEl) tabEl.innerHTML = '<div class="comm-empty">검색 결과를 불러오지 못했습니다.</div>';
+        }
+    }
+
+    function communityV2Search() {
+        const q = getSearchKeyword();
+
+        // 검색창이 비어 있으면 검색 오류로 보지 않고, 현재 탭의 전체 목록으로 복귀한다.
+        if (!q) {
+            resetCommunityV2SearchToFullList();
+            return;
+        }
+
+        const tab = getCurrentTabKeyForSearch();
+        if (PLACE_TABS[tab]) {
+            loadPlaceSearch(tab, 0);
+            return;
+        }
+        loadRouteSearchOrSorted(0);
+    }
+
+    function installCommunityV2SearchAndSort() {
         window.doSearch = communityV2Search;
 
         const searchBtn = document.querySelector('.btn-search');
         if (searchBtn) searchBtn.onclick = function (e) { if (e) e.preventDefault(); communityV2Search(); };
 
         const searchInput = document.getElementById('searchInp');
-        if (searchInput && !searchInput.__communityV2SearchBound) {
-            searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); communityV2Search(); } });
-            searchInput.__communityV2SearchBound = true;
+        if (searchInput && !searchInput.__communityV2SearchBoundFinal) {
+            searchInput.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    communityV2Search();
+                }
+            });
+
+            // 검색 결과 화면에서 검색어를 모두 지우면 현재 탭의 전체 목록으로 복귀한다.
+            searchInput.addEventListener('input', function () {
+                if (!String(this.value || '').trim()) {
+                    resetCommunityV2SearchToFullList();
+                }
+            });
+
+            searchInput.__communityV2SearchBoundFinal = true;
+        }
+
+        if (typeof window.sortPosts === 'function' && !window.sortPosts.__communitySearchPagingSortPatchedV2) {
+            const originalSortPosts = window.sortPosts;
+            window.sortPosts = function (val) {
+                if (typeof _commState !== 'undefined') {
+                    _commState.sortOrder = val;
+                    _commState.currentPage = 0;
+                }
+
+                const tab = getCurrentTabKeyForSearch();
+                const keyword = getSearchKeyword();
+
+                if (tab === 'route') {
+                    loadRouteSearchOrSorted(0);
+                    return;
+                }
+
+                if (PLACE_TABS[tab] && keyword) {
+                    loadPlaceSearch(tab, 0);
+                    return;
+                }
+
+                _routeSearchMode = false;
+                _placeSearchMode = false;
+                return originalSortPosts.apply(this, arguments);
+            };
+            window.sortPosts.__communitySearchPagingSortPatchedV2 = true;
         }
     }
 
-    installCommunityV2Search();
+    installCommunityV2SearchAndSort();
     document.addEventListener('DOMContentLoaded', function () {
-        setTimeout(installCommunityV2Search, 300);
-        setTimeout(installCommunityV2Search, 1000);
-        setTimeout(installCommunityV2Search, 2000);
+        setTimeout(installCommunityV2SearchAndSort, 300);
+        setTimeout(installCommunityV2SearchAndSort, 1000);
+        setTimeout(installCommunityV2SearchAndSort, 2000);
     });
-    window.addEventListener('load', () => setTimeout(installCommunityV2Search, 300));
+    window.addEventListener('load', function () { setTimeout(installCommunityV2SearchAndSort, 300); });
 
 })();
-
 
 /* =============================================================================
  * community v2 — 상세 CTA 카테고리별 표시
