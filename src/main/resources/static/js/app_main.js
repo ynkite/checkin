@@ -857,7 +857,7 @@ async function updateMyPageUI() {
     const em = document.getElementById('myEmail');
     if (av) av.textContent = _currentUser.name ? _currentUser.name[0] : '?';
     if (nm) nm.textContent = _currentUser.name  || '';
-    if (em) em.textContent = _currentUser.email || '';
+    if (em) em.textContent = _maskEmail(_currentUser.email);
 
     // ✨ 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
     const [tripsRes, invitedRes] = await Promise.all([
@@ -1299,7 +1299,7 @@ function buildEditHTML(u, isSocial) {
     const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">🟡 카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
     return socialNotice
         + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
-        + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.email||''}" disabled ${ds}></div>`
+        + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${_maskEmail(u.email||'')}" disabled ${ds}></div>`
         + `<div class="form-row"><div class="form-group"><label class="form-label">생년월일</label><input class="form-input" type="date" id="edit-birth" value="${u.birthDate||''}"></div><div class="form-group"><label class="form-label">성별</label><div class="chip-row" style="margin-top:4px"><button class="chip${u.gender==='M'?' on':''}" onclick="pick(this,'edit-gender')">남성</button><button class="chip${u.gender==='F'?' on':''}" onclick="pick(this,'edit-gender')">여성</button><button class="chip" onclick="pick(this,'edit-gender')">기타</button></div></div></div>`
         + regionHtml + mbtiHtml + pwHtml;
 }
@@ -3774,6 +3774,16 @@ function _escSafe(str) {
     return String(str == null ? '' : str)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function _maskEmail(email) {
+    if (!email) return '';
+    const at = email.indexOf('@');
+    if (at < 0) return email;
+    const local = email.slice(0, at);
+    const domain = email.slice(at);
+    const show = Math.min(2, local.length);
+    return local.slice(0, show) + '*'.repeat(7) + domain;
 }
 
 function closePrev() { const m = document.getElementById('prevModal'); if(m) m.classList.remove('open'); }

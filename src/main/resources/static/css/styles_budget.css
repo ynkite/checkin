@@ -73,6 +73,11 @@
     white-space: nowrap;
 }
 .btn-export-header:hover { background: rgba(255,255,255,.28); }
+.btn-export-header:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 
 /* ── 본문 래퍼 ── */
 .ledger-body {
