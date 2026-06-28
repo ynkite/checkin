@@ -404,6 +404,15 @@ nav {
     font-size: 12px
 }
 
+.community-side-tag {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    justify-content: center;
+    box-sizing: border-box
+}
+
 .chip-grid4 {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
