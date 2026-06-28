@@ -1,5 +1,6 @@
 /** _myTrips를 기반으로 가계부 여행 선택 UI 렌더링 (페이지네이션 포함) */
 async function updateLedgerList() {
+    _updateExportButtons();
     if (!_currentUser) return;
     const listEl = document.getElementById('my-ledger-list');
     if (!listEl) return;
@@ -207,6 +208,7 @@ async function _loadExpenses(tripId) {
     if (!res.success) return;
     const d = res.data;
     _lastExpenseData = d;
+    _updateExportButtons();
 
     const cats       = d.categoryBudgets  || [];
     const actualExps = d.actualExpenses   || [];
@@ -745,6 +747,17 @@ function switchLedgerTab(tab, btn) {
     btn.classList.add('on');
     document.getElementById('ledger-tab-charts').style.display  = tab === 'charts'  ? '' : 'none';
     document.getElementById('ledger-tab-history').style.display = tab === 'history' ? '' : 'none';
+}
+
+function _updateExportButtons() {
+    const hasData = _lastExpenseData
+        && (((_lastExpenseData.categoryBudgets || []).length > 0)
+            || ((_lastExpenseData.actualExpenses || []).length > 0));
+    const btns = document.querySelectorAll('.btn-export-header');
+    btns.forEach(btn => {
+        btn.disabled = !hasData;
+        btn.title = hasData ? '' : '내보낼 가계부 데이터가 없습니다.';
+    });
 }
 
 /** 가계부 PDF 자동 다운로드 (jsPDF + html2canvas) */
