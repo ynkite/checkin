@@ -547,6 +547,13 @@ async function tryLogin() {
     await _initSession(res.data.accessToken, res.data.refreshToken);
     toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
 
+    if (res.data.isPasswordChangeRecommended) {
+        setTimeout(() => {
+            const modal = document.getElementById('pw-change-recommend-modal');
+            if (modal) modal.style.display = 'flex';
+        }, 600);
+    }
+
     // 초대장 링크 처리
     const redirectUrl = sessionStorage.getItem('redirectUrl');
     if (redirectUrl) {

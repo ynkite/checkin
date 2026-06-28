@@ -316,7 +316,7 @@ async function openPostDetail(postId) {
   const meta = document.getElementById('reviewMeta');
 
   if (ttl)  ttl.textContent = post.title   || '';
-  if (body) body.innerHTML  = post.content || '';
+  if (body) body.innerHTML  = _esc(post.content || '').replace(/\n/g, '<br>');
   if (meta) meta.textContent =
       (post.author ? post.author.name : '') +
       ' · ' + (post.createdAt ? post.createdAt.substring(0, 10) : '');

@@ -28,4 +28,7 @@ public interface AuthService {
 
     //이메일 링크의 토큰으로 비밀번호 실제 변경
     void resetPassword(String token, String newPassword);
+
+    // "다음에 변경" 클릭 시 알림 시각 기록
+    void recordPwChangeNoti(Long userId);
 }

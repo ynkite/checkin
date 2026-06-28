@@ -1,4 +1,4 @@
-﻿<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
+<div th:fragment="auth" xmlns:th="http://www.thymeleaf.org">
 <script>
   /* ============================================================
    * [page_auth.html] 하드코딩 데이터 → 변수 분리
@@ -279,6 +279,25 @@
 
   function closePwResetModal() {
     document.getElementById('pw-reset-modal').style.display = 'none';
+  }
+
+  function closePwChangeRecommendModal() {
+    document.getElementById('pw-change-recommend-modal').style.display = 'none';
+  }
+
+  function snoozeAndClosePwChangeModal() {
+    closePwChangeRecommendModal();
+    if (typeof apiCall === 'function') {
+      apiCall('/api/auth/pw-noti-later', { method: 'POST' });
+    }
+  }
+
+  function goChangePw() {
+    closePwChangeRecommendModal();
+    if (typeof go === 'function') go('mypage');
+    setTimeout(() => {
+      if (typeof showMySection === 'function') showMySection('info', null);
+    }, 300);
   }
 
   function prShowStep(n) {
@@ -566,7 +585,7 @@
      비밀번호 재설정 모달
 ══════════════════════════════════════════════════ -->
 <style>
-  #pw-reset-modal, #signupSuccessModal {
+  #pw-reset-modal, #signupSuccessModal, #pw-change-recommend-modal {
     display: none;
     position: fixed;
     inset: 0;
@@ -741,5 +760,27 @@
     });
   };
 </script>
+
+<!-- 비밀번호 90일 변경 권장 모달 -->
+<div id="pw-change-recommend-modal" onclick="if(event.target===this)closePwChangeRecommendModal()">
+  <div class="pr-card" style="text-align:center">
+    <div style="font-size:36px;margin-bottom:12px">🔐</div>
+    <div class="pr-title" style="margin-bottom:8px">비밀번호 변경을 권장합니다</div>
+    <p style="font-size:13px;color:var(--text3);line-height:1.7;margin-bottom:24px">
+      마지막 비밀번호 변경 후 <strong>90일</strong>이 경과했습니다.<br>
+      보안을 위해 비밀번호를 변경해 주세요.
+    </p>
+    <div style="display:flex;gap:8px">
+      <button onclick="goChangePw()"
+              style="flex:1;padding:12px;border-radius:var(--r);background:var(--primary,#4f8cff);color:#fff;border:none;cursor:pointer;font-size:14px;font-weight:700">
+        지금 변경하기
+      </button>
+      <button onclick="snoozeAndClosePwChangeModal()"
+              style="flex:1;padding:12px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:14px;font-weight:600">
+        다음에 변경
+      </button>
+    </div>
+  </div>
+</div>
 
 </div>

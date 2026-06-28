@@ -67,6 +67,15 @@ public class AuthController {
         emailAuthService.sendEmailAuthCode(email, "signup");
         return ResponseEntity.ok("인증번호가 이메일로 발송되었습니다. 3분 안에 입력해 주세요");
     }
+    // "다음에 변경" 클릭 시 pwChangeNotiAt 기록 (30일 스누즈)
+    @PostMapping("/pw-noti-later")
+    public ResponseEntity<ApiResponse<Void>> pwNotiLater(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails != null) {
+            authService.recordPwChangeNoti(userDetails.getUserId());
+        }
+        return ResponseEntity.ok(ApiResponse.success("알림 시각이 기록되었습니다.", null));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userDetails != null) {

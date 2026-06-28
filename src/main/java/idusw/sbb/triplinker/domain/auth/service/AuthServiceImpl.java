@@ -85,10 +85,16 @@ public class AuthServiceImpl implements AuthService {
         refreshTokenRepository.save(tokenEntity);
 
         // 90일 비밀번호 변경 권장 체크
+        // - lastPwChangedAt 기준 90일 경과 AND
+        // - pwChangeNotiAt 가 없거나 30일 이상 지났을 때만 모달 표시 (스누즈 30일)
         boolean pwChangeRecommended = false;
         if (user.getLastPwChangedAt() != null) {
-            long days = ChronoUnit.DAYS.between(user.getLastPwChangedAt(), LocalDateTime.now());
-            pwChangeRecommended = days >= 90;
+            long daysSinceChange = ChronoUnit.DAYS.between(user.getLastPwChangedAt(), LocalDateTime.now());
+            if (daysSinceChange >= 90) {
+                boolean snoozed = user.getPwChangeNotiAt() != null
+                        && ChronoUnit.DAYS.between(user.getPwChangeNotiAt(), LocalDateTime.now()) < 30;
+                pwChangeRecommended = !snoozed;
+            }
         }
 
         // 최종 응답 반환
@@ -104,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public TokenResponseDto refresh(String refreshToken) {
-        RefreshToken saved = refreshTokenRepository.findByTokenHash(refreshToken)
+        RefreshToken saved = refreshTokenRepository.findByTokenHash(hashSha256(refreshToken))
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않은 토큰입니다."));
 
         if (saved.getExpiresAt().isBefore(LocalDateTime.now())) {
@@ -112,7 +118,11 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("토큰이 만료되었습니다. 다시 로그인해주세요.");
         }
 
-        return new TokenResponseDto("new-access-token-placeholder", refreshToken, false);
+        User user = userRepository.findById(saved.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+        String newAccessToken = jwtProvider.createAccessToken(saved.getUserId(), user.getRole());
+
+        return new TokenResponseDto(newAccessToken, refreshToken, false);
     }
 
     @Override
@@ -124,6 +134,15 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(Long userId) {
         refreshTokenRepository.deleteByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void recordPwChangeNoti(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("유저를 찾을 수 없습니다."));
+        user.recordPwChangeNotified();
+        userRepository.save(user);
     }
 
     @Override
