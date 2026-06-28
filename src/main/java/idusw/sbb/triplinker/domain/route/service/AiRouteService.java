@@ -1392,8 +1392,22 @@ public class AiRouteService {
 
             JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
             if (!docs.isArray() || docs.isEmpty()) return null;
-            JsonNode f = docs.get(0);
-            return new double[]{ f.path("y").asDouble(), f.path("x").asDouble() }; // [위도, 경도]
+
+            // ★ 지역 필터: query 첫 토큰(시/도)으로 address_name 검증 → 동명 타지역 오인식 차단
+            // "부산 해운대구 연돈" 검색 시 카카오가 서울 결과를 1순위로 올려도 부산 결과를 찾아서 반환
+            String regionKeyword = null;
+            String[] qTokens = query.split("\\s+");
+            if (qTokens.length >= 2) {
+                regionKeyword = qTokens[0];
+            }
+            for (JsonNode doc : docs) {
+                if (regionKeyword != null) {
+                    String addr = doc.path("address_name").asText("");
+                    if (!addr.contains(regionKeyword)) continue;
+                }
+                return new double[]{ doc.path("y").asDouble(), doc.path("x").asDouble() }; // [위도, 경도]
+            }
+            return null;
         } catch (org.springframework.web.client.HttpStatusCodeException he) {
             System.err.println("[geocode] HTTP " + he.getStatusCode() + " (" + query + ") : "
                     + he.getResponseBodyAsString());
