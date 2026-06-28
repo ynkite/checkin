@@ -256,5 +256,24 @@
 </footer>
 <!-- ===== /SITE FOOTER ===== -->
 
+<!-- 수정 중 이탈 경고 모달 -->
+<div id="unsavedChangesModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
+  <div onclick="closeUnsavedChangesModal()" style="position:absolute; inset:0; background:rgba(0,0,0,.45)"></div>
+  <div style="position:relative; background:var(--surface,#fff); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
+    <div style="font-size:32px; margin-bottom:12px;">✏️</div>
+    <div style="font-size:16px; font-weight:700; color:var(--text,#111); margin-bottom:10px;">저장되지 않은 변경사항</div>
+    <div style="font-size:13px; color:var(--text3,#888); line-height:1.5; margin-bottom:22px;">
+      수정 중인 내용이 아직 확정되지 않았습니다.<br>현재 상태로 저장하고 이동하시겠습니까?
+    </div>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button onclick="confirmLeaveAndSave()"
+              style="flex:1; padding:10px 14px; background:var(--sage); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; box-shadow:0 2px 4px rgba(0,0,0,0.08);">저장 후
+        이동</button>
+      <button onclick="closeUnsavedChangesModal()"
+              style="flex:1; padding:10px 14px; border:1px solid var(--border2,#e0e0e0); border-radius:8px; background:none; cursor:pointer; font-size:13px; color:var(--text2,#555);">취소</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

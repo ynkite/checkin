@@ -143,14 +143,110 @@ function loadPageCSS(href) {
 /* ───────────────────────────────────────────────
  * 3. NAV 라우팅
  * ─────────────────────────────────────────────── */
+window._isSavingAndLeaving = false; // 중복 실행 방지 플래그
+let _unsavedChangesPromiseResolve = null; // 모달 응답 처리를 위한 resolve 홀더
+
+/** 미저장 변경사항을 확정(FIXED) 상태로 변경하여 보존 */
+async function saveCurrentChanges() {
+    window._isSavingAndLeaving = true;
+    const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+    if (tripId) {
+        const token = Token.getAccess();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        try {
+            // 확정 버튼을 직접 눌렀을 때와 100% 동일한 status = FIXED 확정 전환 PATCH API 전송 (keepalive 보장)
+            await fetch(`/api/trips/${tripId}/status`, {
+                method: 'PATCH',
+                headers: headers,
+                body: JSON.stringify({ status: 'FIXED' }),
+                keepalive: true
+            });
+
+            // 전역 확정 상태 true 동기화
+            window._planConfirmed = true;
+        } catch (e) {
+            console.error('자동 확정 처리 실패:', e);
+        }
+    }
+}
+
+/** 이탈 시 모달 띄우고 승인 여부를 Promise로 반환 */
+function checkUnsavedChangesAndSave() {
+    return new Promise((resolve) => {
+        // 일정이 확정(FIXED = true) 상태가 아닌 경우 (DRAFT = false) 모달창 띄움
+        if (window._planConfirmed === false) {
+            const modal = document.getElementById('unsavedChangesModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+            _unsavedChangesPromiseResolve = resolve; // resolve 함수 백업
+        } else {
+            resolve(true); // 이미 확정 상태면 즉시 이동 승인
+        }
+    });
+}
+
+/** 모달에서 "저장 후 이동" 버튼 클릭 시 실행 */
+async function confirmLeaveAndSave() {
+    const modal = document.getElementById('unsavedChangesModal');
+    if (modal) modal.style.display = 'none';
+
+    await saveCurrentChanges(); // 확정 처리 API 완료까지 대기
+
+    if (_unsavedChangesPromiseResolve) {
+        _unsavedChangesPromiseResolve(true); // 이동 승인
+    }
+}
+
+/** 모달에서 "취소" 버튼 클릭 시 실행 */
+function closeUnsavedChangesModal() {
+    const modal = document.getElementById('unsavedChangesModal');
+    if (modal) modal.style.display = 'none';
+
+    if (_unsavedChangesPromiseResolve) {
+        _unsavedChangesPromiseResolve(false); // 이동 거부 (제자리 유지)
+    }
+}
+
+/** 브라우저 종료 및 새로고침 시 경고 메시지 노출 및 자동 확정 처리 */
+window.addEventListener('beforeunload', function (e) {
+    if (window._isSavingAndLeaving) return; // 이미 저장 절차가 진행 중이면 중복 실행 방지
+
+    const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
+    if (window._planConfirmed === false && tripId) {
+        const token = Token.getAccess();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+
+        // 브라우저 닫기/새로고침 시 확정 버튼을 누른 것과 동일하게 FIXED로 상태 변경
+        fetch(`/api/trips/${tripId}/status`, {
+            method: 'PATCH',
+            headers: headers,
+            body: JSON.stringify({ status: 'FIXED' }),
+            keepalive: true
+        });
+
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+});
+
 // 로고/홈 클릭 → 메인페이지로 이동하면서 강제 새로고침
-// (SPA라 URL이 이미 '/'여도 reload가 생략되지 않도록 sessionStorage를 main으로 맞추고 reload)
-function goHomeRefresh() {
+async function goHomeRefresh() {
+    if (sessionStorage.getItem('currentPage') === 'map') {
+        const canLeave = await checkUnsavedChangesAndSave();
+        if (!canLeave) {
+            if (typeof updateNav === 'function') updateNav();
+            return;
+        }
+    }
     try {
         sessionStorage.setItem('currentPage', 'main');
         sessionStorage.removeItem('map_refresh_lock');
     } catch (e) {}
-    // 경로가 '/'가 아니면 메인 경로로 이동(자동 새로고침), 이미 '/'면 강제 reload
     if (location.pathname !== '/') {
         location.href = '/';
     } else {
@@ -158,12 +254,16 @@ function goHomeRefresh() {
     }
 }
 
-/**
- * 지정한 페이지로 "새로고침하며" 진입한다.
- * sessionStorage에 목표 페이지를 저장한 뒤 reload → 로드 시 복원 로직이 해당 페이지를 연다.
- * (홈 탭과 동일하게, 클릭 시 실제 새로고침 후 해당 탭으로 들어가는 동작)
- */
-function goRefresh(id) {
+// 지정한 페이지로 "새로고침하며" 진입한다.
+async function goRefresh(id) {
+    const prevPage = sessionStorage.getItem('currentPage');
+    if (prevPage === 'map') {
+        const canLeave = await checkUnsavedChangesAndSave();
+        if (!canLeave) {
+            if (typeof updateNav === 'function') updateNav();
+            return;
+        }
+    }
     try {
         sessionStorage.setItem('currentPage', id);
         sessionStorage.removeItem('map_refresh_lock');
@@ -175,11 +275,16 @@ function goRefresh(id) {
     }
 }
 
-/**
- * 관리자 하위 섹션(대시보드/회원/신고/큐레이션)으로 새로고침하며 진입한다.
- * admin 페이지를 currentPage로 저장하고, 열어야 할 섹션을 따로 저장한 뒤 reload.
- */
-function goAdminRefresh(sec) {
+// 관리자 하위 섹션으로 새로고침하며 진입한다.
+async function goAdminRefresh(sec) {
+    const prevPage = sessionStorage.getItem('currentPage');
+    if (prevPage === 'map') {
+        const canLeave = await checkUnsavedChangesAndSave();
+        if (!canLeave) {
+            if (typeof updateNav === 'function') updateNav();
+            return;
+        }
+    }
     try {
         sessionStorage.setItem('currentPage', 'admin');
         sessionStorage.setItem('adminSection', sec);
@@ -192,25 +297,32 @@ function goAdminRefresh(sec) {
     }
 }
 
-function go(id, addToHistory) {
+// go 함수를 비동기(async)로 변경하여 저장이 완료된 후 안전하게 화면 전환하도록 처리
+async function go(id, addToHistory) {
+    // 지도 페이지에서 다른 페이지로 이동 시 경고창 띄우기
+    const prevPage = sessionStorage.getItem('currentPage');
+    if (prevPage === 'map' && id !== 'map') {
+        const canLeave = await checkUnsavedChangesAndSave();
+        if (!canLeave) {
+            if (typeof updateNav === 'function') updateNav();
+            return;
+        }
+    }
+
     if (id !== 'map') {
         window._isInvitedEditView = false;
         if (typeof updateNav === 'function') updateNav();
     }
 
-    sessionStorage.setItem('currentPage', id);  // [v2] 새로고침 복원용
+    sessionStorage.setItem('currentPage', id);
     if (addToHistory !== false) history.pushState({page: id}, '', '/');
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pg = document.getElementById('page-' + id);
     if (pg) pg.classList.add('active');
 
     if (id === 'map') {
-        // 🎯 [수정] SPA 이동 시에도 경로 데이터를 다시 불러와 렌더링 → 새로고침 불필요
-        //   기존엔 relayout()만 호출해서 빈 지도가 남았고, 새로고침(DOMContentLoaded)을
-        //   해야 initMapPage()가 돌아 경로가 보였음. 여기서 직접 initMapPage()를 호출한다.
         setTimeout(function() {
             if (typeof initMapPage === 'function') {
-                // initMapPage 내부에서 DB/sessionStorage 경로를 읽어 마커·동선을 다시 그림
                 initMapPage();
             } else if (window._kakaoMap) {
                 window._kakaoMap.relayout();
@@ -3765,10 +3877,32 @@ document.addEventListener('keydown', e => {
     }
 });
 
-window.addEventListener('popstate', e => {
+window.addEventListener('popstate', async e => {
     const p = e.state?.page || 'main';
     const step = e.state?.step;
-    // 커뮤니티 복귀 시 탭이 비어있으면 게시글 재로드
+
+    // 🎯 [뒤로가기 가드]: 이전 페이지가 지도였고, 현재 수정 중인 상태(확정하지 않은 상태)라면 뒤로가기 가드 실행
+    const prevPage = sessionStorage.getItem('currentPage');
+    if (prevPage === 'map' && p !== 'map' && window._planConfirmed === false) {
+        // 이미 히스토리는 넘어갔으므로 제자리 유지를 위해 히스토리를 임시로 map 상태로 강제 복구
+        history.pushState({ page: 'map' }, '', '/');
+
+        const canLeave = await checkUnsavedChangesAndSave();
+        if (!canLeave) {
+            // 이탈 취소 시: 지도 화면에 그대로 남겨두고 상태 동기화
+            document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
+            document.getElementById('page-map')?.classList.add('active');
+            sessionStorage.setItem('currentPage', 'map');
+            if (typeof updateNav === 'function') updateNav();
+            return;
+        }
+
+        // 이탈 승인 시: 자동 저장을 마친 후 원래 이동하려던 페이지(p)로 강제 화면 이동
+        go(p, false);
+        return;
+    }
+
+    // 커뮤니티 복귀 시 탭이 비어있으면 게시글 재로드 (기존 로직 그대로 유지)
     if (p === 'community') {
         setTimeout(function() {
             var tab = (typeof _commState !== 'undefined' && _commState.currentTab) ? _commState.currentTab : 'route';
@@ -3783,7 +3917,7 @@ window.addEventListener('popstate', e => {
         }, 50);
     }
 
-    // 플래너 내 스텝 뒤로가기
+    // 플래너 내 스텝 뒤로가기 (기존 로직 그대로 유지)
     if (p === 'planner' && step) {
         document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
         document.getElementById('page-planner')?.classList.add('active');
@@ -3802,21 +3936,14 @@ window.addEventListener('popstate', e => {
     document.querySelectorAll('.page').forEach(pg => pg.classList.remove('active'));
     const pg = document.getElementById('page-' + p);
     if (pg) pg.classList.add('active');
-    // nav-link .on 동기화
+
+    // nav-link .on 동기화 (기존 로직 그대로 유지)
     document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('on'));
     const navLinks = document.querySelectorAll('.nav-link');
-    // 순서: 0=홈, 1=커뮤니티, 2=날씨, 3=플랜(navPlannerBtn)
     const navIdxMap = { main: 0, community: 1, weather: 2, planner: 3 };
     const idx = navIdxMap[p];
-    if (idx !== undefined && navLinks[idx]) navLinks[idx].classList.add('on');
-    // wf-item 동기화
-    const wfiMap = { main: 0, community: 8, weather: 13, planner: 4 };
-    const wfi = document.querySelectorAll('.wf-item');
-    if (wfiMap[p] !== undefined && wfi[wfiMap[p]]) wfi[wfiMap[p]].classList.add('on');
-
-    // 🎯 [추가] 뒤로가기로 페이지 복구 시 상단바(네비게이션 버튼 등) UI도 최신화
-    if (typeof updateNav === 'function') {
-        updateNav();
+    if (idx !== undefined && navLinks[idx]) {
+        navLinks[idx].classList.add('on');
     }
 });
 
