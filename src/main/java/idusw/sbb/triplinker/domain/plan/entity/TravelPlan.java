@@ -93,6 +93,12 @@ public class TravelPlan {
     @Column(columnDefinition = "TEXT")
     private String routeJson; //여기에 AI가 생성한 JSON 문자열을 통째로 저장
 
+    // ★수정 중(draft) 일정 JSON. 마이페이지에서 확정본을 수정할 때는 여기에만 저장하고,
+    //   '확정(FIXED)'을 누를 때 routeJson(확정본)으로 승격한다.
+    //   미확정 상태로 종료/로그아웃해도 routeJson(직전 확정본)은 보존된다.
+    @Column(name = "draft_route_json", columnDefinition = "TEXT")
+    private String draftRouteJson;
+
 
     // 비즈니스 메서드
 
@@ -111,6 +117,20 @@ public class TravelPlan {
 
     public void clearRouteRecalcFlag() {
         this.routeRecalcNeeded = 0;
+    }
+
+    // ★확정(FIXED): draft가 있으면 그것을 확정본(routeJson)으로 승격하고 draft를 비운다.
+    public void confirmDraft() {
+        if (this.draftRouteJson != null && !this.draftRouteJson.isBlank()) {
+            this.routeJson = this.draftRouteJson;
+        }
+        this.draftRouteJson = null;
+        this.status = "FIXED";
+    }
+
+    // ★미확정 수정 폐기: draft를 버리고 직전 확정본(routeJson)을 유지한다.
+    public void discardDraft() {
+        this.draftRouteJson = null;
     }
 
 }

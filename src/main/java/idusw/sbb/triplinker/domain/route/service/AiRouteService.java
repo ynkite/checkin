@@ -153,9 +153,15 @@ public class AiRouteService {
                - [여행 기본 정보]의 '유저 요청 사항'에 특정 일자/메뉴/장소가 명시되어 있다면, AI의 자체적인 추천보다 이를 무조건 1순위로 강제 배치해야 합니다.
             
             3. 지역 일관성 및 동선 그룹화 (이동 최소화):
-                - ★거리/시간/비용 계산 금지★: transit의 거리·소요시간·교통비는 절대 직접 계산하지 마세요.
-                  시스템이 카카오맵 길찾기 API로 실제값을 자동으로 채웁니다. 당신은 장소의 선택과 순서만 책임지세요.
-                  transit 객체는 항상 "transit": "이동" 한 가지로만 적으면 됩니다. (km·분·금액 적지 마세요)
+                - ★거리 "수치 출력"만 금지 (위치 "판단"은 반드시 하라)★:
+                  ┌ [금지] transit의 거리(km)·소요시간(분)·교통비(원)를 JSON에 숫자로 적는 것. 시스템이
+                  │        카카오맵 길찾기 API로 실제값을 자동으로 채우므로, transit 객체는 항상
+                  │        "transit": "이동" 한 가지로만 출력하세요. (km·분·금액 절대 적지 마세요)
+                  └ [필수] 단, 출력만 하지 않을 뿐 "장소들이 지리적으로 어디 있는지" 머릿속 판단은
+                           반드시 하세요. 각 장소의 대략적 위치를 떠올려 가까운 순서로 정렬하는 사고
+                           과정은 동선 품질의 핵심입니다. "계산하지 말라"는 말은 "JSON에 숫자를 쓰지
+                           말라"는 뜻이지, "위치를 무시하고 아무 순서로나 나열하라"는 뜻이 절대 아닙니다.
+                           당신은 장소의 선택과 '지리적으로 올바른 순서'를 책임집니다.
                - 모든 장소는 제공된 '여행지' 행정구역 내에 있어야 합니다.
                - ★절대 금지★: '여행지'가 "제주도"이면 제주도 밖(서울·대전·부산·강릉 등 타지역)의
                  장소를 단 하나도 넣지 마십시오. 모든 Day의 모든 장소는 반드시 '여행지' 시/도 경계 안에만
@@ -177,8 +183,10 @@ public class AiRouteService {
                      끝까지 그 흐름을 유지하고, 다시 동쪽으로 튀어 올라가지 마라.(사용자가 교체나 정확하게 요청한 경우 제외)
                  (4) 장소 순서를 지리적으로 다 확정한 뒤에, 그 순서에 맞춰 아침→점심→오후→저녁 time을 배정하라.
                      (시간을 먼저 정하고 장소를 끼워 넣지 말 것)
-                 (5) 최종 출력 직전, 같은 날의 transit 거리 합을 머릿속으로 더해보고, 순서를 바꿔
-                     총 이동거리를 더 줄일 수 있으면 반드시 재배치하라.
+                 (5) 최종 출력 직전, 같은 날 장소들의 순서를 위치 기준으로 한 번 더 점검하라.
+                     (숫자를 적으라는 게 아니라, 머릿속으로 "이 순서로 가면 한 방향으로 흐르는가,
+                      되돌아가는 구간은 없는가"만 확인하는 것이다.) 역주행하거나 멀리 튀는 구간이
+                     보이면 순서를 바꿔 더 짧은 동선으로 재배치한 뒤 출력하라. (transit 값은 그래도 "이동"만 적는다)
               - ★★★숙소 연속성(최우선·중복금지 규칙보다 우선)★★★★: 2일 이상 여행이면, 둘째 날(Day 2)부터는
                                           전날 묵은 동일 숙소(같은 name의 stay)를 그 날의 '맨 첫 번째 일정(time 아침)'으로 배치해 그곳에서 하루를 시작하고,
                                           마지막 날을 제외한 각 Day는 그 동일 숙소를 '맨 마지막 일정'으로도 배치해 취침합니다.
@@ -196,10 +204,10 @@ public class AiRouteService {
                - '밀도' 설정(여유롭게/빼곡하게)을 반영하여 장소 간 체류 시간과 간격을 조절하세요.
             
             5. 예산 및 상세 정보(sub) 무결성:
-               - 별점(stars): "★★★★☆ 4.5" 형식으로 기입하세요. 평점 출처 우선순위는
-                 ① TripLinker 커뮤니티(자체 후기) 평균 평점이 있으면 그 값을 사용하고,
-                 ② 커뮤니티 평점이 없으면 카카오맵(KakaoMap) 평균 평점을 사용하세요.
-                 두 경우 모두 동일하게 "★★★★☆ 4.5"처럼 별 기호 + 숫자 형식으로 표기합니다.
+               - 별점(stars): ★절대 임의로 별점을 지어내지 마세요★. 실제 평점 데이터를 모르면
+                 반드시 "평점 정보 없음"이라고만 적으세요. 추측하거나 그럴듯한 숫자를 만들어내는 것은 금지입니다.
+                 (시스템이 TripLinker 커뮤니티/카카오맵 실제 평점이 있으면 그 값으로 덮어씁니다.)
+                 따라서 stars 필드는 항상 "평점 정보 없음"으로 출력하세요.
                - 상세 정보(sub): "숙소 · ₩180,000", "맛집 · 저녁 · ₩8,000×2", "관광지 · 1h · ₩2,000×2" 규격을 엄격히 지키세요.
                - 예산 동기화: 각 장소의 'sub' 금액과 'transit' 금액의 총합은 해당 일차의 'budget'과 정확히 일치해야 합니다. 전체 누적 금액 또한 주어진 총 예산에 최대한 맞춰야 합니다.
                - ★★★예산 최우선 준수 규칙★★★: 사용자가 입력한 총 예산(%d원)은 반드시 지켜야 하는 상한선입니다.
@@ -214,14 +222,21 @@ public class AiRouteService {
             
                         6. %s
             
-                        7. 현실적인 단가:
+                        7. ★식당·장소 명칭 구체화(포괄 명칭 금지)★:
+                                       - "○○시장", "○○ 먹자골목", "○○ 거리", "○○ 맛집촌" 같은 포괄·집합 명칭을 맛집(food)으로
+                                         넣지 마세요. 반드시 그 안에 실존하는 개별 식당의 정확한 상호명을 적고, 'sub' 필드에
+                                         대표 메뉴와 1인 가격을 함께 명시하세요. (예: "맛집 · 점심 · 돼지국밥 ₩9,000×2")
+                                       - 특정 식당을 확신할 수 없으면 시장/거리 명칭 대신 그 지역의 일반적인 실존 식당 한 곳을
+                                         골라 동일한 규격(상호명 + 대표메뉴 + 가격)으로 채우세요. 포괄 명칭으로 얼버무리지 마세요.
+
+                        8. 현실적인 단가:
                                        - 숙박비·식비·입장료는 일반적인 시세를 반영하세요. 특히 숙박비에 1박 70만원 같은 터무니없는 바가지 요금을 적지 마세요 
                                        (호텔 기준 10~20만 원 선).
             
             
             [출력 규칙 - 매우 중요]
             1. 장소의 'type' 필드는 반드시 "stay"(숙소), "food"(맛집), "cafe"(카페), "tour"(관광지) 4가지 고정된 문자열 중 하나만 사용해야 합니다. ('sight', 'attraction' 등으로 임의 조작 금지)
-            2. 'budget'은 해당 일차 총액(예: ₩182,000), 'stars'는 별점(예: ★★★★★ 4.8) 포맷을 지키세요.
+            2. 'budget'은 해당 일차 총액(예: ₩182,000)을 지키고, 'stars'는 임의로 만들지 말고 항상 "평점 정보 없음"으로 출력하세요.
             3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함하되, 값은 항상 "이동"으로만 적으세요. (예: { "transit": "이동" }) 거리·시간·금액은 시스템이 채웁니다.
             4. 부가적인 설명, 인사말, 마크다운 코드블럭 기호(```json 등)를 일절 포함하지 말고, 오직 아래 형식의 순수 JSON 배열(Array) 텍스트만 출력하세요.
             [
@@ -230,9 +245,9 @@ public class AiRouteService {
                 "label": "📅 Day 1 · 06/14 (토)",
                 "budget": "₩184,000",
                 "places": [
-                  { "type": "stay", "icon": "🏨", "name": "제주신라호텔", "sub": "숙소 · ₩180,000", "stars": "★★★★★ 4.8", "key": "uniq1", "time": "13:00", "replacePh": "예: 더 저렴한 펜션으로 교체해줘" },
+                  { "type": "stay", "icon": "🏨", "name": "제주신라호텔", "sub": "숙소 · ₩180,000", "stars": "평점 정보 없음", "key": "uniq1", "time": "13:00", "replacePh": "예: 더 저렴한 펜션으로 교체해줘" },
                   { "transit": "이동" },
-                  { "type": "food", "icon": "🍽️", "name": "동래할매파전", "sub": "맛집 · 점심 · ₩12,000×2", "stars": "★★★★☆ 4.2", "key": "uniq2", "time": "14:30", "replacePh": "예: 다른 맛집으로" }
+                  { "type": "food", "icon": "🍽️", "name": "동래할매파전", "sub": "맛집 · 점심 · ₩12,000×2", "stars": "평점 정보 없음", "key": "uniq2", "time": "14:30", "replacePh": "예: 다른 맛집으로" }
                 ]
               }
             ]
@@ -464,10 +479,19 @@ public class AiRouteService {
             json = stripStayForDayTrip(json);
         }
 
-        plan.setRouteJson(json);
+        // ★미확정 종료 시 직전 확정본 보존:
+        //   - 이미 확정(FIXED)된 플랜을 다시 저장 = '수정 중' → draft에만 저장(확정본 routeJson 유지)
+        //   - 아직 확정 전(DRAFT 등) = 신규 생성 흐름 → 확정본 routeJson에 바로 저장
+        boolean isEditingConfirmed = "FIXED".equals(plan.getStatus());
+        if (isEditingConfirmed) {
+            plan.setDraftRouteJson(json);   // 확정본(routeJson)은 건드리지 않는다
+        } else {
+            plan.setRouteJson(json);
+        }
         plan.setRouteRecalcNeeded(0);
         planRepository.save(plan);
 
+        // 예상비용·장소 미리보기는 현재 보고 있는 일정(draft 우선) 기준으로 갱신해도 무방하다.
         parseAndSaveEstimatedExpenses(plan, json);
         placeService.parseAndSavePlacesFromRouteJson(plan, json);
     }
@@ -537,6 +561,9 @@ public class AiRouteService {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
 
+        // 수정 중(draft)이 있으면 그걸 보여주고, 없으면 확정본을 보여준다.
+        String draft = plan.getDraftRouteJson();
+        if (draft != null && !draft.isBlank()) return draft;
         return plan.getRouteJson();
     }
 
@@ -636,7 +663,7 @@ public class AiRouteService {
                - 반드시 카카오맵(KakaoMap)에 공식적으로 등록되어 고유 식별이 가능한 [실존하는 대중적인 랜드마크, 상호명, 숙박업소명]만 정확히 기입하세요. (예: "제주신라호텔", "연돈")
                - 장소명 뒤에 '체크인', '방문', '식사' 같은 임의의 서술형 접미사를 절대 붙이지 마십시오. 폐업/가상의 장소는 원천 배제하세요.
             4. 예산 및 상세 정보(sub) 무결성:
-               - 별점(stars): 실제 인터넷 평균 평점을 반영하여 "★★★★☆ 4.5" 형식으로 기입하세요.
+               - 별점(stars): ★절대 임의로 별점을 지어내지 마세요★. 실제 평점을 모르면 반드시 "평점 정보 없음"으로만 적으세요. (시스템이 실제 평점이 있으면 덮어씁니다)
                - 교체된 장소의 금액('sub' 필드)은 "숙소 · ₩180,000", "맛집 · 저녁 · ₩8,000×2" 규격을 엄격히 지키세요.
                - 장소가 바뀌면서 비용이 달라졌다면, 해당 일차의 총액인 'budget' 값도 반드시 새롭게 재계산하여 업데이트 하세요.
             5. 유저 요청 사항 강제 반영: [교체 요청 사항] 및 [여행 기본 정보]에 명시된 유저의 요구는 당신의 자체 추천보다 무조건 1순위로 강제 반영해야 합니다.
@@ -647,7 +674,7 @@ public class AiRouteService {
             
             [출력 규칙 - 매우 중요]
             1. 장소의 'type' 필드는 반드시 "stay"(숙소), "food"(맛집), "cafe"(카페), "tour"(관광지) 4가지 고정된 문자열 중 하나만 사용해야 합니다. ('sight', 'attraction' 등으로 임의 조작 금지)
-            2. 'budget'은 해당 일차 총액(예: ₩182,000), 'stars'는 별점(예: ★★★★★ 4.8) 포맷을 지키세요.
+            2. 'budget'은 해당 일차 총액(예: ₩182,000)을 지키고, 'stars'는 임의로 만들지 말고 항상 "평점 정보 없음"으로 출력하세요.
             3. 장소와 장소 사이에는 반드시 이동 정보(`transit`) 객체를 포함하되, 값은 항상 "이동"으로만 적으세요. (예: { "transit": "이동" }) 거리·시간·금액은 시스템이 채웁니다.
             4. 부가적인 설명, 인사말, 마크다운 코드블럭 기호(```json 등)를 일절 포함하지 말고, 오직 아래 형식의 순수 JSON 배열(Array) 텍스트만 출력하세요.
             """,
@@ -817,7 +844,7 @@ public class AiRouteService {
                - 반드시 카카오맵(KakaoMap)에 공식적으로 등록되어 고유 식별이 가능한 [실존하는 대중적인 랜드마크, 상호명, 숙박업소명]만 정확히 기입하세요. (예: "아르떼뮤지엄 제주", "코엑스 아쿠아리움")
                - 장소명 뒤에 '체크인', '방문', '식사' 같은 임의의 서술형 접미사를 절대 붙이지 마십시오. 폐업/가상의 장소는 원천 배제하세요.
             5. 예산 및 상세 정보(sub) 무결성:
-               - 별점(stars): 실제 인터넷 평균 평점을 반영하여 "★★★★☆ 4.5" 형식으로 기입하세요.
+               - 별점(stars): ★절대 임의로 별점을 지어내지 마세요★. 실제 평점을 모르면 반드시 "평점 정보 없음"으로만 적으세요. (시스템이 실제 평점이 있으면 덮어씁니다)
                - 교체된 장소의 금액('sub' 필드)은 "숙소 · ₩180,000", "관광지 · 2h · ₩15,000×2" 규격을 엄격히 지키세요.
                - 장소가 바뀌면서 비용이 달라졌다면, 해당 일차의 총액인 'budget' 값도 반드시 새롭게 재계산하여 업데이트 하세요.
             
@@ -923,8 +950,11 @@ public class AiRouteService {
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
         java.util.Set<String> userRequested = extractUserRequestedNames(form);
 
-        // 1) 50km 초과 먼저 검사 (자동 교체 안 함)
+        // 1) 50km 초과 검사
+        //    - 사용자가 직접 요청한 장소(userRequested)가 50km 초과 → 알림(over50)으로 프론트에 위임
+        //    - AI가 넣은 장소가 50km 초과 → 알림 없이 자동 교체 대상(autoOver50)으로 분리
         java.util.List<String> over50 = new java.util.ArrayList<>();
+        java.util.Set<String> autoOver50 = new java.util.HashSet<>();
         try {
             JsonNode root = objectMapper.readTree(json);
             java.util.Map<String, double[]> geo = new java.util.HashMap<>();
@@ -936,13 +966,13 @@ public class AiRouteService {
                     if (pl.has("transit") || !pl.has("name")) continue;
                     String nm = pl.path("name").asText("");
                     boolean stay = "stay".equals(pl.path("type").asText(""));
-                    double[] c = geocodeCached(nm, geo);
+                    double[] c = geocodeCached(withRegion(plan.getDestination(), nm), geo);
                     if (prevCoord != null && c != null) {
                         long[] r = carDirections(prevCoord, c);
                         if (r != null && r[0] > HARD_LIMIT) {
-                            // 사용자 요청 장소는 알림에서 제외
-                            if (!userRequested.contains(nm) && !over50.contains(nm)) over50.add(nm);
-                            else if (!userRequested.contains(prevName) && prevName != null && !over50.contains(prevName)) over50.add(prevName);
+                            // 50km 초과 구간의 두 장소 각각을, 사용자 요청 여부에 따라 분류
+                            classifyOver50(nm, userRequested, over50, autoOver50);
+                            if (prevName != null) classifyOver50(prevName, userRequested, over50, autoOver50);
                         }
                     }
                     prevName = nm; prevCoord = c; prevStay = stay;
@@ -951,13 +981,32 @@ public class AiRouteService {
         } catch (Exception e) {
             System.err.println("[over50 검사 실패] " + e.getMessage());
         }
-        if (!over50.isEmpty()) return over50; // 50km 초과가 있으면 자동교체 보류, 프론트에 위임
+
+        // AI 장소가 50km 초과면 알림 없이 즉시 자동 교체
+        if (!autoOver50.isEmpty()) {
+            java.util.List<java.util.Map<String, String>> reqs = new java.util.ArrayList<>();
+            for (String nm : autoOver50) {
+                java.util.Map<String, String> req = new java.util.HashMap<>();
+                req.put("place", nm);
+                req.put("req", "이 장소가 다른 일정들과 50km 이상 너무 멀리 떨어져 있습니다. 같은 권역의 가까운 다른 실존 장소로 교체해 주세요.");
+                reqs.add(req);
+            }
+            try {
+                replaceAiRoutePlaces(tripId, reqs);
+            } catch (Exception e) {
+                System.err.println("[50km 자동교체 실패] " + e.getMessage());
+            }
+        }
+
+        // 사용자 요청 장소가 50km 초과면 자동교체하지 않고 프론트 알림에 위임
+        if (!over50.isEmpty()) return over50;
 
         // 2) 50km 이하의 초과 구간만 자동 교체 (최대 2회)
-        String current = json;
+        //    위에서 50km 자동교체가 일어났을 수 있으므로 DB 최신본을 기준으로 시작한다.
+        String current = autoOver50.isEmpty() ? json : String.valueOf(getRoutesByTripId(tripId));
         for (int attempt = 0; attempt < 2; attempt++) {
             java.util.List<java.util.Map<String, String>> requests =
-                    findFarPlaces(current, normalLimit, stayLimit, userRequested);
+                    findFarPlaces(current, normalLimit, stayLimit, userRequested, plan.getDestination());
             if (requests.isEmpty()) break;
             try {
                 // replaceAiRoutePlaces 내부에서 이미 saveAiRouteToDb까지 수행하므로 여기서 또 저장하지 않는다
@@ -969,10 +1018,19 @@ public class AiRouteService {
         }
         return java.util.Collections.emptyList();
     }
-
+    /** 50km 초과 장소를 사용자요청(알림) / AI장소(자동교체)로 분류 */
+    private void classifyOver50(String name, java.util.Set<String> userRequested,
+                                java.util.List<String> over50, java.util.Set<String> autoOver50) {
+        if (name == null || name.isBlank()) return;
+        if (userRequested.contains(name)) {
+            if (!over50.contains(name)) over50.add(name);   // 사용자 요청 → 알림
+        } else {
+            autoOver50.add(name);                            // AI 장소 → 자동 교체
+        }
+    }
     /** 기준 초과 구간이 있으면, 그날 '다른 장소들과 평균거리가 가장 먼' 장소를 교체 대상으로 골라 반환 */
     private java.util.List<java.util.Map<String, String>> findFarPlaces(
-            String json, double normalLimit, double stayLimit, java.util.Set<String> userRequested) {
+            String json, double normalLimit, double stayLimit, java.util.Set<String> userRequested, String destination) {
         java.util.List<java.util.Map<String, String>> result = new java.util.ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(json);
@@ -988,7 +1046,7 @@ public class AiRouteService {
                 for (JsonNode pl : placesNode) {
                     if (pl.has("transit") || !pl.has("name")) continue;
                     String nm = pl.path("name").asText("");
-                    double[] c = geocodeCached(nm, geo);
+                    double[] c = geocodeCached(withRegion(destination, nm), geo);
                     if (c == null) continue;
                     names.add(nm); coords.add(c);
                     stays.add("stay".equals(pl.path("type").asText("")));
