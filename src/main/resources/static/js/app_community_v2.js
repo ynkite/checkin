@@ -1705,7 +1705,6 @@
         const titleEl   = document.getElementById('writeTitle');
         const editorEl  = document.getElementById('blogEditor');
         const tagsEl    = document.getElementById('writeTags');
-        const publicEl  = document.getElementById('writePublic');
         const planEl    = document.getElementById('writePlanId') || document.getElementById('writePlanSelect');
 
         const title   = titleEl ? titleEl.value.trim() : '';
@@ -1722,7 +1721,7 @@
         }
 
         const styleTags = tagText.split(/[\s,]+/).map(v => v.trim()).filter(Boolean).join(',');
-        const isPublic  = publicEl ? !!publicEl.checked : true;
+        const isPublic  = true;
 
         if (!title || !window._commUtil.editorHasContent(editorEl)) {
             if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
@@ -4479,11 +4478,6 @@ window._handleWriteImageSelect = function(input) {
                     <label class="form-label">📍 장소별 별점 &amp; 한줄평</label>
                     <div id="communityEditPlaceReviewsBody" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"></div>
                 </div>
-                <div class="form-group" style="margin-bottom:14px">
-                    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer">
-                        <input id="communityEditPublic" type="checkbox"> 공개글로 설정
-                    </label>
-                </div>
                 <div class="form-group" style="margin-bottom:18px">
                     <label class="form-label">첨부 이미지</label>
                     <button type="button" id="communityEditAddImageBtn" class="btn-prev-step" style="padding:9px 14px;border-radius:10px;font-size:13px">새 이미지 추가</button>
@@ -4593,7 +4587,7 @@ window._handleWriteImageSelect = function(input) {
         const title    = document.getElementById('communityEditTitle')?.value.trim();
         const editor   = document.getElementById('communityEditContent');
         const tags     = document.getElementById('communityEditTags')?.value || '';
-        const isPublic = !!document.getElementById('communityEditPublic')?.checked;
+        const isPublic = true;
         const category = window._communityEditOriginalPost?.category || 'ROUTE';
 
         if (!postId || !title || !window._commUtil.editorHasContent(editor)) {
@@ -4727,7 +4721,6 @@ window._handleWriteImageSelect = function(input) {
             window._commUtil.resetEditorCommandState(editor, '_communityEditEditorRange');
         }
         document.getElementById('communityEditTags').value    = styleTagsToInput(post.styleTags);
-        document.getElementById('communityEditPublic').checked = post.isPublic !== false;
 
         // 플랜 정보 표시
         const planInfoEl = document.getElementById('communityEditPlanInfo');
