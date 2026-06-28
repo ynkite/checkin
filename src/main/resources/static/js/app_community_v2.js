@@ -1366,18 +1366,35 @@
                     <div class="comment-content" style="color:#9E9E9E">${escapeHtml(c.content || '')}</div>
                 </div>`;
                 }
+                const isMyComment = _myIdForComment && Number(c.userId) === Number(_myIdForComment);
+                const commentActionBtnStyle = 'font-size:10px;background:none;border:1px solid var(--border2);' +
+                    'border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3);line-height:1.4';
+
+                const actionButtons = isMyComment
+                    ? `
+                        <span style="margin-left:auto;display:inline-flex;gap:4px;align-items:center">
+                            <button onclick="openEditCommentModal(${c.commentId}, ${curPostId})"
+                                    style="${commentActionBtnStyle}"
+                                    title="댓글 수정">수정</button>
+                            <button onclick="deleteMyComment(${c.commentId}, ${curPostId})"
+                                    style="${commentActionBtnStyle}"
+                                    title="댓글 삭제">삭제</button>
+                        </span>`
+                    : `
+                        <button onclick="openReportCommentModal(${c.commentId}, ${curPostId})"
+                                style="margin-left:auto;${commentActionBtnStyle}"
+                                title="댓글 신고">🚨 신고</button>`;
+
                 return `
                 <div class="comment-item">
                     <div style="display:flex;align-items:center;gap:6px">
                         <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
-                        <button onclick="openReportCommentModal(${c.commentId}, ${curPostId})"
-                                style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);
-                                       border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)"
-                                title="댓글 신고">🚨 신고</button>
+                        ${actionButtons}
                     </div>
                     <div class="comment-content">${escapeHtml(c.content || '')}</div>
                 </div>`;
+
             }).join('')
             : `<div style="padding:12px 0;color:var(--text3);font-size:13px">아직 댓글이 없습니다.</div>`;
 
@@ -1667,6 +1684,148 @@
             await window.openPostDetail(postId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 등록에 실패했습니다.');
+        }
+    };
+
+    function findCurrentCommentById(commentId) {
+        const comments = Array.isArray(window._currentPostDetail?.comments)
+            ? window._currentPostDetail.comments
+            : [];
+        return comments.find(c => Number(c.commentId) === Number(commentId));
+    }
+
+    function ensureCommentEditModal() {
+        let modal = document.getElementById('commentEditModal');
+        if (modal) return modal;
+
+        modal = document.createElement('div');
+        modal.id = 'commentEditModal';
+        modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.42);z-index:9999;' +
+            'display:none;align-items:center;justify-content:center;padding:20px';
+
+        modal.innerHTML = `
+            <div style="width:min(520px,94vw);background:#fff;border-radius:18px;padding:22px 22px 18px;
+                        box-shadow:0 18px 45px rgba(0,0,0,.18);box-sizing:border-box">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <h3 style="margin:0;font-size:18px;font-weight:800;color:var(--text)">댓글 수정</h3>
+                    <button type="button" onclick="closeEditCommentModal()"
+                            style="width:30px;height:30px;border:none;border-radius:50%;background:var(--cream);
+                                   color:var(--text3);font-size:20px;line-height:1;cursor:pointer">×</button>
+                </div>
+
+                <input type="hidden" id="commentEditPostId">
+                <input type="hidden" id="commentEditCommentId">
+
+                <textarea id="commentEditContent" maxlength="500" placeholder="댓글을 입력하세요..."
+                          style="width:100%;height:120px;resize:none;border:1.5px solid var(--border2);
+                                 border-radius:12px;padding:12px;font-size:13px;line-height:1.6;
+                                 box-sizing:border-box;outline:none"></textarea>
+
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+                    <button type="button" class="btn-o" onclick="closeEditCommentModal()"
+                            style="padding:9px 16px;font-size:13px">취소</button>
+                    <button type="button" class="btn-f" onclick="submitEditComment()"
+                            style="padding:9px 22px;font-size:13px">등록</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        return modal;
+    }
+
+    window.openEditCommentModal = function (commentId, postId) {
+        if (!window._commUtil.requireLogin()) return;
+
+        const comment = findCurrentCommentById(commentId);
+        const myId = window._myUserId ? window._myUserId() : null;
+
+        if (!comment) {
+            if (typeof toast === 'function') toast('댓글 정보를 찾을 수 없습니다.');
+            return;
+        }
+        if (!myId || Number(comment.userId) !== Number(myId)) {
+            if (typeof toast === 'function') toast('본인이 작성한 댓글만 수정할 수 있습니다.');
+            return;
+        }
+
+        const modal = ensureCommentEditModal();
+        const postInput = document.getElementById('commentEditPostId');
+        const commentInput = document.getElementById('commentEditCommentId');
+        const contentInput = document.getElementById('commentEditContent');
+
+        if (postInput) postInput.value = postId || window._currentPostId || window._openedPostId || '';
+        if (commentInput) commentInput.value = commentId || '';
+        if (contentInput) {
+            contentInput.value = comment.content || '';
+            setTimeout(() => contentInput.focus(), 0);
+        }
+
+        modal.style.display = 'flex';
+    };
+
+    window.closeEditCommentModal = function () {
+        const modal = document.getElementById('commentEditModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.submitEditComment = async function () {
+        if (!window._commUtil.requireLogin()) return;
+
+        const postId = document.getElementById('commentEditPostId')?.value;
+        const commentId = document.getElementById('commentEditCommentId')?.value;
+        const content = document.getElementById('commentEditContent')?.value.trim();
+
+        if (!postId || !commentId) {
+            if (typeof toast === 'function') toast('댓글 정보를 찾을 수 없습니다.');
+            return;
+        }
+        if (!content) {
+            if (typeof toast === 'function') toast('댓글 내용을 입력해주세요.');
+            return;
+        }
+
+        const res = await api.patch(`/api/posts/${postId}/comments/${commentId}`, { content });
+
+        if (res && res.success !== false) {
+            window.closeEditCommentModal();
+            if (typeof toast === 'function') toast('댓글이 수정되었습니다.');
+            await window.openPostDetail(postId);
+        } else {
+            if (typeof toast === 'function') toast(res?.message || '댓글 수정에 실패했습니다.');
+        }
+    };
+
+    window.deleteMyComment = async function (commentId, postId) {
+        if (!window._commUtil.requireLogin()) return;
+
+        const comment = findCurrentCommentById(commentId);
+        const myId = window._myUserId ? window._myUserId() : null;
+
+        if (!comment) {
+            if (typeof toast === 'function') toast('댓글 정보를 찾을 수 없습니다.');
+            return;
+        }
+        if (!myId || Number(comment.userId) !== Number(myId)) {
+            if (typeof toast === 'function') toast('본인이 작성한 댓글만 삭제할 수 있습니다.');
+            return;
+        }
+
+        if (!confirm('댓글을 삭제하시겠습니까?')) return;
+
+        const targetPostId = postId || window._currentPostId || window._openedPostId;
+        if (!targetPostId) {
+            if (typeof toast === 'function') toast('게시글 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        const res = await api.del(`/api/posts/${targetPostId}/comments/${commentId}`);
+
+        if (res && res.success !== false) {
+            if (typeof toast === 'function') toast('댓글이 삭제되었습니다.');
+            await window.openPostDetail(targetPostId);
+        } else {
+            if (typeof toast === 'function') toast(res?.message || '댓글 삭제에 실패했습니다.');
         }
     };
 
