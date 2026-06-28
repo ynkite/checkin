@@ -167,32 +167,36 @@
  *     (히어로·큐레이션 모바일 규칙은 기존 ≤768px 블록 그대로 유지)
  * ========================================================================== */
 @media (min-width: 769px) and (max-width: 1024px) {
-    .mob-carousel-wrap { position: relative; }
+    .mob-carousel-wrap {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+    }
 
     .top3-grid,
     .popular-grid {
         display: flex !important;
         grid-template-columns: none !important;
         flex-wrap: nowrap;
-        gap: 14px;
-        overflow-x: auto;
-        overflow-y: visible;
+        gap: 0;
+        overflow-x: scroll;
         scroll-snap-type: x mandatory;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;
-        padding: 4px 24px 8px;
-        scroll-padding: 0 24px;
+        padding: 4px 0 8px;
     }
     .top3-grid::-webkit-scrollbar,
     .popular-grid::-webkit-scrollbar { display: none; }
 
-    /* 태블릿: 카드 한 장 = 화면 절반 정도 → 옆 카드가 살짝 보임 */
+    /* 태블릿: 카드 1개만 표시, 옆 카드 완전 숨김 */
     .top3-grid > .top3-card,
     .popular-grid > .pop-card {
-        flex: 0 0 60%;
-        max-width: 60%;
-        scroll-snap-align: center;
+        flex: 0 0 100%;
+        max-width: 100%;
+        scroll-snap-align: start;
         margin: 0;
+        min-height: 220px;
+        box-sizing: border-box;
     }
 
     .mob-carousel-arr {
