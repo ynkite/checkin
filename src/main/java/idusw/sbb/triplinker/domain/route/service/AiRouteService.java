@@ -377,93 +377,94 @@ public class AiRouteService {
      *  - Claude 호출이 실패하면(키 없음/장애 등) 원본(Groq 결과)을 그대로 반환하므로,
      *    이 메서드를 살려둬도 Claude가 죽으면 자동으로 기존 결과가 유지된다.
      */
-    private String validateAndFixWithClaude(TravelPlan plan, PlanInputForm form, String groqRouteJson) {
-        if (groqRouteJson == null || groqRouteJson.isBlank() || !groqRouteJson.contains("[")) {
-            return groqRouteJson;
+    /**
+     * 5단계: DB에 저장된 최신 일정을 읽어 동선 순서만 검증·교정 후 다시 저장.
+     * 장소명·개수는 절대 변경하지 않으며, 순서(order)와 time 값만 조정한다.
+     */
+    @Transactional
+    public void validateOrderWithClaude(Long tripId) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        String currentJson = plan.getRouteJson();
+        if (currentJson == null || currentJson.isBlank() || !currentJson.contains("[")) return;
+        PlanInputForm form = plan.getForm();
+        if (form == null) return;
+
+        String fixed = validateAndFixWithClaude(plan, form, currentJson);
+        if (fixed != null && !fixed.isBlank() && !fixed.equals(currentJson)) {
+            plan.setRouteJson(fixed);
+            planRepository.save(plan);
         }
-        // Groq·Gemini 둘 다 실패해 방어용 더미가 들어온 경우엔 검증하지 않고 그대로 반환
-        if (groqRouteJson.contains("fallback_d1_") || groqRouteJson.contains("서버 지연 임시")) {
-            return groqRouteJson;
+    }
+
+    private String validateAndFixWithClaude(TravelPlan plan, PlanInputForm form, String routeJson) {
+        if (routeJson == null || routeJson.isBlank() || !routeJson.contains("[")) {
+            return routeJson;
+        }
+        if (routeJson.contains("fallback_d1_") || routeJson.contains("서버 지연 임시")) {
+            return routeJson;
         }
 
         String prompt = String.format("""
-            당신은 'TripLinker'의 여행 일정 검수(QA) 전문 AI입니다.
-            다른 AI가 1차로 생성한 [원본 여행 동선 JSON]을 받아, 아래 [검증 항목]을 기준으로
-            오류가 있는 부분만 정확히 수정한 뒤, 동일한 구조의 완성된 JSON 배열만 출력하세요.
-            오류가 전혀 없다면 원본을 그대로(구조 변경 없이) 다시 출력하세요.
+            당신은 'TripLinker'의 동선 순서 검수(QA) AI입니다.
+            아래 [여행 동선 JSON]의 장소 순서와 시간 배치만 검증하고, 문제가 있으면 순서·time만 교정하세요.
+
+            ★★★ 절대 금지 사항 ★★★
+            - 장소명(name) 변경·추가·삭제 금지
+            - 장소 개수(하루 장소 수) 변경 금지
+            - sub·stars·type·icon·key·replacePh 값 변경 금지
+            - 새로운 장소를 목록에 없던 이름으로 만들어 넣는 것 금지
 
             [여행 기본 정보]
-            - 여행지: %s / 일정: %s ~ %s / 예산: %d원 / 인원: %s (%d명)
-            - 이동 수단: %s / 숙소 유형: %s / 스타일: %s / 식이: %s / 밀도: %s
-            - 유아 동반: %s / 반려동물 동반: %s
+            - 여행지: %s / 일정: %s ~ %s / 이동 수단: %s
             - 유저 요청 사항: %s
 
-            [검증 항목 - 발견 시 반드시 교정]
-            1. 가짜 장소 차단: 카카오맵에 실존하지 않거나 모호한 명칭("OO먹자골목", "XX 맛집"),
-               폐업/가상의 장소, '체크인/방문/식사' 같은 임의 접미사가 붙은 장소는
-               같은 권역의 실존하는 대중적 장소로 교체하세요.
-               ★숙박명 검증★: "함안호텔"처럼 지역명+업종만 붙인 임의 합성 명칭은 카카오맵에 없는
-               가짜 이름으로 간주하고, 해당 지역에 실제 등록된 숙박업소의 공식 상호명으로 교체하세요.
-            2. 지역 일관성: 모든 장소가 '여행지' 행정구역 안에 있어야 합니다. 벗어난 장소는 교체.
-            3. 동선 무결성: 편도 30분/20km 이상 멀리 튀는 지그재그 동선이면 반경 5~10km 내
-               장소로 교체하고, 직전/직후 'transit'(거리·시간·비용)을 현실적으로 재계산하세요.
-               ★클러스터링★: 같은 날 장소들이 10km 이상 흩어져 지그재그가 생기면,
-               다른 장소들과 가장 가까운 실존 장소로 교체하여 하루 동선을 한 권역으로 모으세요.
-               단, 유저 요청에 명시된 특정 장소는 교체 금지.
-                        4. ★장소 중복 제거★: 전체 일정에서 같은 장소(동일 상호명)가 2번 이상 등장하면,
-                                       두 번째 등장하는 것을 같은 권역의 다른 실존 장소로 교체하세요. 단, 유저가 재방문을 요청한 경우는 예외.
-                                       ★숙소 연속성 예외★: 전날 묵은 동일 숙소(stay)가 다음 날 '맨 첫 일정(출발)'으로 다시 등장하는 것은 정상적인 연속성이므로 절대 중복으로 간주해 교체·삭제하지 마세요.
-                                    5. ★숙소 연속성 검증★: 2일 이상 일정에서 중간 날(Day 2 ~ 마지막 전날)은 전날 숙소가 그 날 '맨 처음(아침 출발)'과 '맨 마지막(밤 취침)'에 모두 있어야 정상입니다.
-                                       - 빠져 있으면 전날과 동일한 숙소 stay 객체를 그 위치에 추가하세요.
-                                       - 단, 첫째 날(Day 1) 아침과 마지막 날 밤에는 숙소를 넣지 마세요. (Day 1은 관광/식당으로 시작, 마지막 날은 아침에 전날 숙소에서 출발 후 밤 숙소 없음)
-            6. 예산 수학 검증(가장 중요): 각 Day의 'budget' 은 그 Day의 모든 'sub' 금액과
-               'transit' 금액의 합과 정확히 일치해야 합니다. 틀리면 budget을 올바르게 다시 계산하세요.
-               숙박비가 비현실적(1박 70만원 등)이면 일반 시세(10~20만원)로 보정하세요.
-            7. 타입 규칙: 'type' 은 "stay","food","cafe","tour" 4가지만 허용. 그 외 값은 알맞게 교정.
+            [검증 항목 — 순서·시간만 조정]
+            1. 지그재그 동선 교정: 같은 날(Day) 장소들 중 지리적으로 역방향 이동(왔다갔다)이
+               발생하면, 기존 장소 집합 안에서 순서를 재배열해 한 방향 흐름이 되도록 하세요.
+               단, 유저 요청 장소(%s)는 순서 이동 금지.
+            2. 시간(time) 정렬: places 배열 내 time 값이 시간순으로 오름차순이 되도록 조정.
+               점심(sub에 '점심' 포함) → 12:00, 저녁(sub에 '저녁' 포함) → 18:00 고정.
+            3. transit 위치: 장소 객체와 장소 객체 사이에 {"transit":"이동"}이 반드시 있어야 합니다.
+               누락된 위치에만 삽입하고, 이미 있는 것은 건드리지 마세요.
+               transit의 값은 항상 "이동"만 허용 — 거리·시간·금액 숫자 절대 금지.
+            4. 숙소 연속성 위치 확인: 중간 날(Day 2 ~ 마지막 전날) 맨 처음과 맨 끝에 동일 숙소가
+               있어야 합니다. 이미 있으면 건드리지 말고, 없으면 같은 날 이미 있는 숙소 객체를
+               복사해 해당 위치에 삽입하세요. 새 숙소를 창작하는 것은 금지.
+            5. 문제가 없으면 원본 JSON을 그대로 반환.
 
-            [원본 여행 동선 JSON]
+            [여행 동선 JSON]
             %s
 
-            [출력 규칙 - 매우 중요]
-            1. 'type' 은 반드시 "stay","food","cafe","tour" 중 하나.
-            2. 장소와 장소 사이에는 반드시 이동 정보('transit') 객체를 포함.
-            3. 인사말·설명·마크다운 코드블럭(```json 등) 금지. 오직 원본과 동일한 구조의
-               순수 JSON 배열(Array) 텍스트만 출력하세요.
+            [출력 규칙]
+            - 인사말·설명·마크다운 코드블럭 금지.
+            - 원본과 동일한 구조의 순수 JSON 배열(Array)만 출력.
             """,
                 plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
-                form.getBudget(), form.getCompanionType(), form.getCompanionCount(),
-                form.getTransportType(), form.getAccommodationType(),
-                form.getTravelStyles(), form.getDietaryInfo(), form.getScheduleDensity(),
-                form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X",
+                form.getTransportType(),
                 parseExtraNotesToPrompt(form.getExtraNotes()),
-                groqRouteJson
+                parseExtraNotesToPrompt(form.getExtraNotes()),
+                routeJson
         );
 
         String fixedJson;
         try {
-            System.out.println("🔎 Claude 일정 검증·교정 기동 중...");
+            System.out.println("🔎 동선 순서 검증 중 (validateAndFixWithClaude)...");
             fixedJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            // Claude 실패 시 → 검증 생략하고 Groq 원본을 그대로 사용 (기존 방식 유지)
-            System.out.println("⚠️ Claude 검증 실패, Groq 원본 그대로 사용: " + e.getMessage());
-            return groqRouteJson;
+            System.out.println("⚠️ 순서 검증 실패, 원본 그대로 사용: " + e.getMessage());
+            return routeJson;
         }
 
-        if (fixedJson == null || !fixedJson.contains("[")) {
-            return groqRouteJson;
-        }
+        if (fixedJson == null || !fixedJson.contains("[")) return routeJson;
 
-        // 마크다운 잔해 제거
         fixedJson = fixedJson.substring(fixedJson.indexOf("["), fixedJson.lastIndexOf("]") + 1).trim();
 
-        // 교정 결과가 유효한 JSON 배열인지 한 번 더 방어 (깨졌으면 원본 사용)
         try {
             JsonNode parsed = objectMapper.readTree(fixedJson);
-            if (!parsed.isArray() || parsed.isEmpty()) {
-                return groqRouteJson;
-            }
+            if (!parsed.isArray() || parsed.isEmpty()) return routeJson;
         } catch (Exception e) {
-            return groqRouteJson;
+            return routeJson;
         }
 
         return fixedJson;

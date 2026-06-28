@@ -27,6 +27,9 @@ public class AiRouteController {
         // 4) 50km 초과 장소 검사: 사용자요청 장소는 알림(over50), AI 장소는 자동교체
         java.util.List<String> over50 = aiRouteService.enforceDistanceAndGetOver50(tripId, routeJson);
 
+        // 5) 동선 순서 검증·교정 (장소명·개수 변경 없이 순서·time만 조정)
+        aiRouteService.validateOrderWithClaude(tripId);
+
         // 최종본을 다시 읽어서 반환
         Object finalRoute = aiRouteService.getRoutesByTripId(tripId);
 
