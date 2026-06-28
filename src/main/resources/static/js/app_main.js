@@ -3867,7 +3867,7 @@ window.addEventListener('popstate', e => {
             // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
             const style = document.createElement('style');
             style.innerHTML = `
-        .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle { display: none !important; }
+        .pr-drag, .btn-replace, .btn-map-cfm, #queueToggle, #btnConfirmToggle, .btn-stay-edit { display: none !important; } 
         [onclick*=\"openShareModal\"] { display: none !important; } /* 공유 버튼 숨김 */
         #recalcBar, .recalc-bar, [id*=\"recalc\"] { display: none !important; } /* 교체 요청 바 원천 차단 */
         #queueBox, .queue-box { display: none !important; } /* 지도가 억지로 띄우는 자동 교체 박스 원천 차단 */
