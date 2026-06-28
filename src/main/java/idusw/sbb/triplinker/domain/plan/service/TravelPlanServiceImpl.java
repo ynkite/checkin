@@ -353,7 +353,12 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         if (!"FIXED".equals(status) && !"DRAFT".equals(status)) {
             throw new IllegalArgumentException("허용되지 않은 상태값입니다.");
         }
-        plan.setStatus(status);
+        if ("FIXED".equals(status)) {
+            // 확정: 수정 중(draft) 내용이 있으면 확정본으로 승격하고 draft를 비운다.
+            plan.confirmDraft();
+        } else {
+            plan.setStatus(status);
+        }
         plan.setUpdatedAt(java.time.LocalDateTime.now());
         travelPlanRepository.save(plan);
     }
