@@ -167,7 +167,7 @@ public class PostService {
                 .styleTags(dto.getStyleTags())
                 .category(normalizeCategory(dto.getCategory()))
                 .status("ACTIVE")
-                .isPublic(dto.isPublic())
+                .isPublic(true)
                 .build();
 
         postRepository.save(post);
@@ -244,7 +244,7 @@ public class PostService {
                 dto.getContent(),
                 dto.getStyleTags(),
                 normalizeCategory(dto.getCategory()),
-                dto.isPublic()
+                true
         );
 
         // 수정 화면에서 새로 추가한 이미지가 있으면 기존 이미지 뒤에 추가
