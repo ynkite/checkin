@@ -177,6 +177,45 @@ public class PostController {
         return ResponseEntity.ok(commentId);
     }
 
+    // 커뮤니티 - 댓글 수정
+    @PatchMapping("/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Long>> updateComment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            @RequestBody PostWriteDto dto
+    ) {
+        Long updatedCommentId = postService.updateComment(
+                userDetails.getUserId(),
+                postId,
+                commentId,
+                dto
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success("댓글이 수정되었습니다.", updatedCommentId)
+        );
+    }
+
+    // 커뮤니티 - 댓글 삭제
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long postId,
+            @PathVariable Long commentId
+    ) {
+        postService.deleteComment(
+                userDetails.getUserId(),
+                postId,
+                commentId
+        );
+
+        return ResponseEntity.ok(
+                ApiResponse.success("댓글이 삭제되었습니다.", null)
+        );
+    }
+
+
     // 커뮤니티 - 좋아요 토글
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<Boolean>> toggleLikePost(
