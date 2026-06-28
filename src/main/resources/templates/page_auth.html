@@ -57,6 +57,7 @@
     idDuplicate:   '❌ 이미 사용 중인 아이디입니다.',
     idOk:          '✅ 사용 가능한 아이디입니다!',
     emailEmpty:    '이메일을 입력해주세요.',
+    emailInvalid:  '올바른 이메일 형식이 아닙니다. (@가 포함된 이메일을 입력해주세요.)',
     emailDuplicate:'❌ 이미 가입된 이메일입니다. 다른 이메일을 사용해주세요.',
     emailSending:  '메일을 발송 중입니다. 잠시만 기다려주세요...',
     emailSent:     '✅ 인증 메일이 발송되었습니다! 메일함을 확인해주세요.',
@@ -155,6 +156,7 @@
   function sendAuthCode(btnElement) {
     const email = document.getElementById('email').value.trim();
     if (!email) { alert(AUTH_VALID_MSG.emailEmpty); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { alert(AUTH_VALID_MSG.emailInvalid); return; }
 
     // 1. HTML에서 넘겨준 버튼(this)이 있으면 쓰고, 없으면 쿼리로 찾습니다.
     const btn = btnElement || document.querySelector('button[onclick*="sendAuthCode"]');

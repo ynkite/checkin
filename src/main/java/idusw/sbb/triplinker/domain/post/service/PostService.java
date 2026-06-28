@@ -298,6 +298,62 @@ public class PostService {
         return postCommentRepository.save(comment).getId();
     }
 
+    // 커뮤니티 - 댓글 수정
+    @Transactional
+    public Long updateComment(Long userId, Long postId, Long commentId, PostWriteDto dto) {
+        if (userId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        PostComment comment = postCommentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("댓글을 찾을 수 없습니다."));
+
+        if (comment.getPost() == null || !Objects.equals(comment.getPost().getId(), postId)) {
+            throw new IllegalArgumentException("게시글과 댓글 정보가 일치하지 않습니다.");
+        }
+
+        if (comment.getUser() == null || !Objects.equals(comment.getUser().getId(), userId)) {
+            throw new IllegalArgumentException("본인이 작성한 댓글만 수정할 수 있습니다.");
+        }
+
+        if (!"ACTIVE".equals(comment.getStatus())) {
+            throw new IllegalArgumentException("수정할 수 없는 댓글입니다.");
+        }
+
+        String content = dto.getContent() == null ? "" : dto.getContent().trim();
+        if (content.isBlank()) {
+            throw new IllegalArgumentException("댓글 내용을 입력해주세요.");
+        }
+
+        comment.updateContent(content);
+        return comment.getId();
+    }
+
+    // 커뮤니티 - 댓글 삭제
+    @Transactional
+    public void deleteComment(Long userId, Long postId, Long commentId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("로그인이 필요합니다.");
+        }
+
+        PostComment comment = postCommentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("댓글을 찾을 수 없습니다."));
+
+        if (comment.getPost() == null || !Objects.equals(comment.getPost().getId(), postId)) {
+            throw new IllegalArgumentException("게시글과 댓글 정보가 일치하지 않습니다.");
+        }
+
+        if (comment.getUser() == null || !Objects.equals(comment.getUser().getId(), userId)) {
+            throw new IllegalArgumentException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+        }
+
+        if (!"ACTIVE".equals(comment.getStatus())) {
+            throw new IllegalArgumentException("삭제할 수 없는 댓글입니다.");
+        }
+
+        comment.delete();
+    }
+
     // 커뮤니티 - 좋아요 등록
     @Transactional
     public void likePost(Long userId, Long postId) {
