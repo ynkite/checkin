@@ -516,8 +516,11 @@
                   color: pinColor,
                   label: p.name,
                   day: d.day,
-                  lat: null,
-                  lng: null,
+                  // ★백엔드(recalcTransitWithKakao)가 이미 카카오 좌표를 박아줬으면 그대로 사용한다.
+                  //   (없을 때만 지도 init 단계에서 keywordSearch로 보조 검색)
+                  lat: (typeof p.lat === 'number') ? p.lat : null,
+                  lng: (typeof p.lng === 'number') ? p.lng : null,
+                  isFound: (p.isFound === true && typeof p.lat === 'number' && typeof p.lng === 'number'),
                   category: null,
                   placeUrl: null
                 });
@@ -632,6 +635,14 @@
         // (이전: 제주도 하드코딩 → 합안군 여행인데 제주도가 뜨던 버그 수정)
         var _initLat = 36.5, _initLng = 127.8, _initLevel = 8; // 한반도 중심(기본)
         if (MAP_PINS && MAP_PINS.length > 0 && typeof kakao !== 'undefined') {
+          // ★백엔드 좌표가 있는 첫 핀으로 초기 중심을 즉시 잡는다(검색 응답 전 한반도 중심이 잠깐 보이던 깜빡임 방지)
+          var _firstFixed = MAP_PINS.find(function(p) {
+            return p.isFound && typeof p.lat === 'number' && typeof p.lng === 'number';
+          });
+          if (_firstFixed) {
+            _initLat = _firstFixed.lat;
+            _initLng = _firstFixed.lng;
+          }
           // 여행지 이름으로 대략 중심을 잡기 위해 첫 장소명을 미리 검색
           var _destKeyword = '';
           try {
@@ -641,7 +652,8 @@
               _destKeyword = (_sd['s1-dest-city'] || _sd['s1-dest-prov'] || '').replace(/시\/군\/구 선택/g,'').trim();
             }
           } catch(e) {}
-          if (_destKeyword) {
+          // 백엔드 좌표가 없을 때만 키워드 검색으로 중심 보정(좌표가 이미 있으면 setBounds가 더 정확하므로 생략)
+          if (_destKeyword && !_firstFixed) {
             var _ps0 = new kakao.maps.services.Places();
             _ps0.keywordSearch(_destKeyword, function(data, status) {
               if (status === kakao.maps.services.Status.OK && data && data.length) {
@@ -792,6 +804,14 @@
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
         function _startPinSearch(destRegion, regionCenter, maxRadiusKm) {
           MAP_PINS.forEach(function(pin) {
+            // ★백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
+            //   (프론트 재검색이 백엔드와 다른 좌표를 잡아 시점이 튀던 문제 + 비동기 타이밍 문제 차단)
+            if (pin.isFound && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
+              _onResolved(pin, { y: pin.lat, x: pin.lng, place_url: pin.placeUrl, category_name: '' });
+              _finalizeMap();
+              return;
+            }
+
             var query = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
 
             function _pickInRegion(list) {
@@ -1219,14 +1239,17 @@
           // 4. 세션 & DB 저장 호출
           sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
           if (window._currentTripId) {
-            // 🎯 순서 변경 시 저장하는 API 엔드포인트 호출
+            // 🎯 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
-                      if(!res.success) toast('⚠️ DB 저장 실패: ' + res.message); // 에러 나면 빨간 팝업 띄워줌
+                      if (!res.success) { toast('⚠️ DB 저장 실패: ' + res.message); return; }
+                      // 보정된 JSON으로 화면 전체 재렌더 (transit 거리·시간·비용 + 동선 갱신)
+                      if (typeof initMapPage === 'function') initMapPage();
                     })
                     .catch(function(err) { console.warn('DB 저장 에러:', err); });
+          } else {
+            redrawDayRoute(dayNum);
           }
-          redrawDayRoute(dayNum);
         });
       });
     }
