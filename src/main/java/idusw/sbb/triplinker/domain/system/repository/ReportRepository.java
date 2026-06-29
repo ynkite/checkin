@@ -5,7 +5,22 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+
 public interface ReportRepository extends JpaRepository<Report, Long> {
+
+    List<Report> findByPostIdAndCommentIdAndStatus(Long postId, Long commentId, String status);
+    List<Report> findByPostIdAndCommentIdIsNullAndStatus(Long postId, String status);
+
+    @Query("SELECT COUNT(r) > 0 FROM Report r " +
+           "WHERE r.reporter.id = :reporterId AND r.post.id = :postId " +
+           "AND (:commentId IS NULL AND r.commentId IS NULL OR r.commentId = :commentId)")
+    boolean existsDuplicateReport(@Param("reporterId") Long reporterId,
+                                  @Param("postId") Long postId,
+                                  @Param("commentId") Long commentId);
 
     // 관리자 신고 목록 - 상태별(PENDING/REJECTED/RESOLVED) 필터링 + 페이징
     Page<Report> findByStatusOrderByIdDesc(String status, Pageable pageable);
