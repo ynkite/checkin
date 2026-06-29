@@ -125,9 +125,13 @@ public class PlanInputForm {
             case "destination"           -> {}  // TravelPlan 쪽 수정
             case "transportType"         -> this.transportType = value;
             case "accommodationType"     -> this.accommodationType = value;
+            case "accommodationOptions"  -> this.accommodationOptions = value;
+            case "travelStyles"          -> this.travelStyles = value;
+            case "dietaryInfo"           -> this.dietaryInfo = value;
             case "scheduleDensity"       -> this.scheduleDensity = value;
-            case "budget"         -> this.budget = Long.parseLong(value);
-            case "companionCount" -> this.companionCount = Integer.parseInt(value);
+            case "budget"         -> this.budget = Long.parseLong(value.isEmpty() ? "0" : value);
+            case "companionType"  -> this.companionType = value;
+            case "companionCount" -> { if (!value.isEmpty()) this.companionCount = Integer.parseInt(value); }
             case "hasPet"         -> this.hasPet = "동반".equals(value) ? 1 : 0;
             case "extraNotes"     -> this.extraNotes = value;
         }

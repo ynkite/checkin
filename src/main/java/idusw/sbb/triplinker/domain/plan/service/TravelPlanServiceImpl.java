@@ -213,8 +213,16 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             form.updateByChat("accommodationType", fields.get("accommodationType"));
         if (fields.containsKey("scheduleDensity"))
             form.updateByChat("scheduleDensity", fields.get("scheduleDensity"));
+        if (fields.containsKey("companionType"))
+            form.updateByChat("companionType", fields.get("companionType"));
         if (fields.containsKey("companionCount"))
             form.updateByChat("companionCount", fields.get("companionCount"));
+        if (fields.containsKey("accommodationOptions"))
+            form.updateByChat("accommodationOptions", fields.get("accommodationOptions"));
+        if (fields.containsKey("travelStyles"))
+            form.updateByChat("travelStyles", fields.get("travelStyles"));
+        if (fields.containsKey("dietaryInfo"))
+            form.updateByChat("dietaryInfo", fields.get("dietaryInfo"));
         if (fields.containsKey("hasPet"))
             form.updateByChat("hasPet", fields.get("hasPet"));
         if (fields.containsKey("extraNotes"))

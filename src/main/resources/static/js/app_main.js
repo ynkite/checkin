@@ -1876,8 +1876,10 @@ async function sendMsg() {
                 // (2) 코드를 요약 패널의 HTML ID와 매핑
                 const domMap = {
                     'DEST': 'sum-dest', 'DATE': 'sum-date', 'PEOPLE': 'sum-people',
+                    'COMP': 'sum-comp',
                     'BUDGET': 'sum-budget', 'TRANS': 'sum-trans', 'ACC': 'sum-acc',
-                    'STYLE': 'sum-style', 'DENSITY': 'sum-density', 'PET': 'sum-pet'
+                    'ACCOPTS': 'sum-accopts',
+                    'STYLE': 'sum-style', 'DIET': 'sum-food', 'DENSITY': 'sum-density', 'PET': 'sum-pet'
                 };
 
                 const domId = domMap[field];
@@ -1901,18 +1903,31 @@ async function sendMsg() {
                 // DB 업데이트용 필드 수집
                 const _apiMap = {
                     'BUDGET': 'budget', 'TRANS': 'transportType',
-                    'ACC': 'accommodationType', 'DENSITY': 'scheduleDensity', 'DEST': 'destination',
-                    'PEOPLE': 'companionCount',
+                    'ACC': 'accommodationType', 'ACCOPTS': 'accommodationOptions',
+                    'STYLE': 'travelStyles', 'DIET': 'dietaryInfo',
+                    'DENSITY': 'scheduleDensity', 'DEST': 'destination',
+                    'COMP': 'companionType', 'PEOPLE': 'companionCount',
                     'PET': 'hasPet'
                 };
                 const _af = _apiMap[field];
-                if (_af) _patchFields[_af] = (_af === 'budget') ? newVal.replace(/[^0-9]/g, '') : newVal;
+                if (_af) {
+                    if (_af === 'budget' || _af === 'companionCount') {
+                        _patchFields[_af] = newVal.replace(/[^0-9]/g, '');
+                    } else if (_af === 'accommodationOptions' || _af === 'travelStyles' || _af === 'dietaryInfo') {
+                        // 쉼표 구분 다중 선택 값을 JSON 배열로 변환
+                        const opts = newVal.split(',').map(s => s.trim()).filter(Boolean);
+                        _patchFields[_af] = JSON.stringify(opts);
+                    } else {
+                        _patchFields[_af] = newVal;
+                    }
+                }
             }
 
-            // UPDATE 태그가 있으면 DB에 일괄 PATCH
+            // UPDATE 태그가 있으면 DB에 일괄 PATCH + sessionStorage 스냅샷 갱신
             const _tid = window._currentTripId;
             if (_tid && Object.keys(_patchFields).length > 0) {
                 api.patch(`/api/trips/${_tid}/input-form`, _patchFields);
+                if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
             }
 
             const extraRegex = /\[EXTRA:([^:\]]+):([^\]]+)\]/g;
@@ -2029,6 +2044,7 @@ function reSyncChipFromUpdate(field, value) {
     const singleMap = {
         TRANS: { group:'#chip-trans', other:'other-trans' },
         ACC:   { group:'#chip-acc',   other:'other-acc'   },
+        COMP:  { group:'#chip-comp',  other:'other-comp'  },
         DENSITY: { group:'#chip-density' },
     };
     if (singleMap[field]) {
@@ -2037,6 +2053,31 @@ function reSyncChipFromUpdate(field, value) {
         const label   = isOther ? '기타' : value;
         document.querySelectorAll(group + ' .chip').forEach(c => c.classList.toggle('on', c.textContent.trim() === label));
         if (isOther && other) { const el = document.getElementById(other); if(el){el.value=value.slice(3,-1);el.classList.add('show');} }
+        return;
+    }
+    // 숙소 세부 옵션 (다중)
+    if (field === 'ACCOPTS') {
+        document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+        value.split(',').map(s => s.trim()).forEach(v => {
+            const isOther = v.startsWith('기타('), label = isOther ? '기타' : v;
+            const chip = [...document.querySelectorAll('#chip-accopts .chip')].find(c => c.textContent.trim() === label);
+            if (chip) { chip.classList.add('on'); if(isOther){const el=document.getElementById('other-accopts');if(el){el.value=v.slice(3,-1);el.classList.add('show');}} }
+        });
+        return;
+    }
+    // 식이 정보 (다중)
+    if (field === 'DIET') {
+        document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
+        value.split(',').map(s => s.trim()).forEach(v => {
+            if (v.startsWith('알러지(')) {
+                const chip = [...document.querySelectorAll('#chip-food .chip')].find(c => c.textContent.trim() === '알러지 있음');
+                if (chip) { chip.classList.add('on'); const el = document.getElementById('other-allergy'); if(el){el.value=v.slice(4,-1);el.classList.add('show');} }
+                return;
+            }
+            const isOther = v.startsWith('기타('), label = isOther ? '기타' : v;
+            const chip = [...document.querySelectorAll('#chip-food .chip')].find(c => c.textContent.trim() === label);
+            if (chip) { chip.classList.add('on'); if(isOther){const el=document.getElementById('other-food');if(el){el.value=v.slice(3,-1);el.classList.add('show');}} }
+        });
         return;
     }
     // 스타일 (다중)
@@ -2468,8 +2509,6 @@ function startPlanFromCuration(curationId) {
                 }
             }
         }
-        // preferences + 추천 정보 적용
-        _applyCurationPreferences(c);
     }, 150);
 
     toast((c.title || '') + ' 큐레이션으로 플랜을 시작합니다 ✈');
@@ -3439,20 +3478,29 @@ function goResumePlanner() {
         return;
     }
     go('planner', false);
-    if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
-    const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '1');
-    // 검증 없이 직접 패널 전환
-    for (let i = 1; i <= 3; i++) {
-        const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
-        if (!sb || !sp) continue;
-        sb.classList.remove('active', 'done'); sp.classList.remove('active');
-        if (i < savedStep) sb.classList.add('done');
-        if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
+    const savedId   = sessionStorage.getItem('plannerDraftId');
+    const savedStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '3');
+    if (savedId) {
+        // DB에서 최신 데이터로 복원 (챗봇 변경사항 포함)
+        window._currentTripId = parseInt(savedId);
+        restorePlannerFromTrip(parseInt(savedId)).then(() => {
+            goPlanStep(savedStep);
+        });
+    } else {
+        // fallback: tripId 없을 때만 sessionStorage 스냅샷 사용
+        if (typeof _restorePlannerDraft === 'function') _restorePlannerDraft();
+        for (let i = 1; i <= 3; i++) {
+            const sb = document.getElementById('sb-' + i), sp = document.getElementById('sp-' + i);
+            if (!sb || !sp) continue;
+            sb.classList.remove('active', 'done'); sp.classList.remove('active');
+            if (i < savedStep) sb.classList.add('done');
+            if (i === savedStep) { sb.classList.add('active'); sp.classList.add('active'); }
+        }
+        if (savedStep === 3 && typeof startChatWithSummary === 'function') {
+            setTimeout(() => startChatWithSummary(), 100);
+        }
+        history.pushState({ page: 'planner', step: savedStep }, '', '/');
     }
-    if (savedStep === 3 && typeof startChatWithSummary === 'function') {
-        setTimeout(() => startChatWithSummary(), 100);
-    }
-    history.pushState({ page: 'planner', step: savedStep }, '', '/');
 }
 function _hasPlannerDraft() {
     if (window._currentTripId) return true;
@@ -4098,6 +4146,14 @@ window.addEventListener('popstate', async e => {
     if (savedPage && savedPage !== 'main') {
         go(savedPage, false);
         history.replaceState({ page: savedPage }, '', location.href);
+
+        // 플래너 페이지 새로고침 복원: DB에서 최신 데이터를 가져와 챗봇 변경사항까지 반영
+        if (savedPage === 'planner' && window._currentTripId && _loggedIn) {
+            const _autoStep = parseInt(sessionStorage.getItem('plannerDraftStep') || '3');
+            restorePlannerFromTrip(window._currentTripId).then(() => {
+                goPlanStep(_autoStep);
+            });
+        }
 
         // 관리자 페이지로 복원된 경우, 저장된 하위 섹션을 자동으로 연다
         if (savedPage === 'admin') {
