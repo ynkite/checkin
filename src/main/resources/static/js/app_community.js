@@ -1088,8 +1088,8 @@ function renderDestBars(dests) {
       title,
       theme,
       displayOrder: parseInt(order) || 1,
-      startAt,
-      endAt,
+      startDate: startAt,
+      endDate: endAt,
       planId: planId ? parseInt(planId) : null,
       isDefault: 0
     };

@@ -90,13 +90,15 @@ public class Curation {
 
     // 큐레이션 수정 (null/blank인 필드는 기존 값 유지)
     public void update(TravelPlan plan, String title, String theme, Integer displayOrder,
-                       LocalDateTime startAt, LocalDateTime endAt, String destination, String extraNotes) {
+                       LocalDateTime startAt, LocalDateTime endAt, boolean isDefault,
+                       String destination, String extraNotes) {
         if (plan != null) this.plan = plan;
         if (title != null && !title.isBlank()) this.title = title;
         if (theme != null) this.theme = theme;
         if (displayOrder != null) this.displayOrder = displayOrder;
         this.startAt = startAt;
         this.endAt = endAt;
+        this.isDefault = isDefault;
         if (destination != null) this.destination = destination;
         if (extraNotes != null) this.extraNotes = extraNotes;
     }

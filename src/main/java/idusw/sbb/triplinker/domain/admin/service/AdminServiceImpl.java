@@ -245,7 +245,9 @@ public class AdminServiceImpl implements AdminService {
         TravelPlan plan = (dto.planId() != null) ? travelPlanRepository.findById(dto.planId()).orElse(null) : null;
 
         curation.update(plan, dto.title(), dto.theme(), dto.displayOrder(),
-                parseDate(dto.startDate()), parseDate(dto.endDate()), dto.destination(), dto.extraNotes());
+                parseDate(dto.startDate()), parseDate(dto.endDate()),
+                dto.isDefault() != null && dto.isDefault() == 1,
+                dto.destination(), dto.extraNotes());
         adminLogRepository.save(AdminLog.of(admin, "CURATION_UPDATE", curationId, dto.title()));
     }
 

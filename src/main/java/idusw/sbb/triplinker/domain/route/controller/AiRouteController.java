@@ -15,22 +15,27 @@ public class AiRouteController {
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Object>> generateRoute(@PathVariable Long tripId) {
-        // 1) AI에게 일정을 짜달라고 요청
-        String aiRouteJson = aiRouteService.generateAiRoute(tripId);
+        // 1) AI가 type별 장소 후보(이름+sub+stars)만 생성 — 좌표·순서·날짜 없음
+        String candidatesJson = aiRouteService.generateCandidates(tripId);
 
-        // 2) AI가 준 JSON을 DB에 저장 (saveAiRouteToDb 안에서 카카오 거리 보정도 수행)
-        aiRouteService.saveAiRouteToDb(tripId, aiRouteJson);
+        // 2) 후보 → 좌표 확보 → 일자별 클러스터링 → 시간 골격 조립
+        String routeJson = aiRouteService.assembleCandidates(tripId, candidatesJson);
 
-        // 3) 카카오 실측 거리로 동선 교정: 20/13km 초과(~50km)는 자동 교체,
-        //    50km 초과 장소가 있으면 그 목록을 받아 프론트 알림창에 위임
-        java.util.List<String> over50 = aiRouteService.enforceDistanceAndGetOver50(tripId, aiRouteJson);
+        // 3) DB 저장 (카카오 transit 보정 + 당일치기 숙소 차단 포함)
+        aiRouteService.saveAiRouteToDb(tripId, routeJson);
 
-        // 최종본을 다시 읽어서 반환 (자동 교체로 바뀌었을 수 있음)
+        // 4) 50km 초과 장소 검사: 사용자요청 장소는 알림(over50), AI 장소는 자동교체
+        java.util.List<String> over50 = aiRouteService.enforceDistanceAndGetOver50(tripId, routeJson);
+
+        // 5) 동선 순서 검증·교정 (장소명·개수 변경 없이 순서·time만 조정)
+        aiRouteService.validateOrderWithClaude(tripId);
+
+        // 최종본을 다시 읽어서 반환
         Object finalRoute = aiRouteService.getRoutesByTripId(tripId);
 
         java.util.Map<String, Object> data = new java.util.HashMap<>();
         data.put("route", finalRoute);
-        data.put("over50", over50);          // 비어있으면 알림 없음
+        data.put("over50", over50);
         data.put("needConfirm", !over50.isEmpty());
 
         return ResponseEntity.ok(ApiResponse.success(data));

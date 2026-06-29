@@ -2387,7 +2387,7 @@ function sortPosts(val) {
  * 15. 슬라이더
  * ─────────────────────────────────────────────── */
 let _si = 0, _sn = 4;
-function changeSlide(d) { goSlide((_si + d + _sn) % _sn); }
+function changeSlide(d) { const n = document.querySelectorAll('.slide').length || _sn; goSlide((_si + d + n) % n); }
 function goSlide(i) {
     document.querySelectorAll('.slide').forEach((s,j) => s.classList.toggle('on', j===i));
     document.querySelectorAll('.dot').forEach((d,j)  => d.classList.toggle('on', j===i));
