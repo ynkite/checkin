@@ -24,11 +24,9 @@ public class AiRouteController {
         // 3) DB 저장 (카카오 transit 보정 + 당일치기 숙소 차단 포함)
         aiRouteService.saveAiRouteToDb(tripId, routeJson);
 
-        // 4) 50km 초과 장소 검사: 사용자요청 장소는 알림(over50), AI 장소는 자동교체
-        java.util.List<String> over50 = aiRouteService.enforceDistanceAndGetOver50(tripId, routeJson);
-
-        // 5) 동선 순서 검증·교정 (장소명·개수 변경 없이 순서·time만 조정)
-        aiRouteService.validateOrderWithClaude(tripId);
+        // 4) 최종 정리(코드 기반): 한 방향 정렬 + 먼 장소/밀도초과 삭제 (AI 생성·추가 없음)
+        //    - 사용자요청인데 숙소에서 먼 장소는 삭제하지 않고 over50으로 반환 → 프론트 알림
+        java.util.List<String> over50 = aiRouteService.finalizeRoute(tripId);
 
         // 최종본을 다시 읽어서 반환
         Object finalRoute = aiRouteService.getRoutesByTripId(tripId);
