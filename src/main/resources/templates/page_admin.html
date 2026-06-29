@@ -725,7 +725,7 @@
             <td>${colorDot}${c.title}${tags?`<div style="margin-top:3px">${tags}</div>`:''}</td>
             <td>${c.theme||'-'}</td>
             <td>${c.displayOrder||'-'}</td>
-            <td style="font-size:11px">${c.startDate?c.startDate.slice(0,10):'상시'}~${c.endDate?c.endDate.slice(0,10):'상시'}</td>
+            <td style="font-size:11px">${c.isDefault?'<span style="padding:1px 6px;border-radius:8px;background:var(--sage-pale);color:var(--sage-d);border:1px solid var(--sage-l);margin-right:4px">상시</span>':''}${c.startDate?c.startDate.slice(0,10):''}~${c.endDate?c.endDate.slice(0,10):''}</td>
             <td>
               <button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openEditCuration(${c.curationId||c.id})">수정</button>&nbsp;
               <button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="deleteCuration(${c.curationId||c.id})">삭제</button>
@@ -815,6 +815,7 @@
         startDate:    document.getElementById('cur-start')?.value||null,
         endDate:      document.getElementById('cur-end')?.value||null,
         displayOrder: parseInt(document.getElementById('cur-order')?.value)||1,
+        isDefault:    document.getElementById('cur-is-default')?.checked ? 1 : 0,
         destination:  (()=>{
           const prov = document.getElementById('cur-dest-prov')?.value||'';
           const city = document.getElementById('cur-dest-city')?.value||'';
@@ -839,6 +840,8 @@
       ['cur-title','cur-theme','cur-start','cur-end','cur-tags','cur-star-badges','cur-dest-prov'].forEach(id=>{
         const el=document.getElementById(id);if(el)el.value='';
       });
+      const isDefResetEl=document.getElementById('cur-is-default');
+      if(isDefResetEl) isDefResetEl.checked=false;
       const cityResetEl=document.getElementById('cur-dest-city');
       if(cityResetEl) cityResetEl.innerHTML='<option value="">구/군 선택</option>';
       const o=document.getElementById('cur-order');if(o)o.value='1';
@@ -856,9 +859,11 @@
       const c=res.data; _curEditId=id; _admDayCount=0;
       document.getElementById('cur-title').value=c.title||'';
       document.getElementById('cur-theme').value=c.theme||'';
-      document.getElementById('cur-start').value=c.startDate||'';
-      document.getElementById('cur-end').value=c.endDate||'';
+      document.getElementById('cur-start').value=c.startDate?c.startDate.slice(0,10):'';
+      document.getElementById('cur-end').value=c.endDate?c.endDate.slice(0,10):'';
       document.getElementById('cur-order').value=c.displayOrder||1;
+      const isDefEl=document.getElementById('cur-is-default');
+      if(isDefEl) isDefEl.checked=!!c.isDefault;
       // destination 복원 (형식: "제주" 또는 "제주|제주시")
       const destCurProvEl=document.getElementById('cur-dest-prov');
       const destCurCityEl=document.getElementById('cur-dest-city');
@@ -1110,6 +1115,12 @@
               <div class="form-group">
                 <label class="form-label">노출 종료</label>
                 <input class="form-input" type="date" id="cur-end">
+              </div>
+            </div>
+            <div class="form-row" style="margin-top:4px">
+              <div class="form-group" style="display:flex;align-items:center;gap:8px">
+                <input type="checkbox" id="cur-is-default" style="width:16px;height:16px;cursor:pointer">
+                <label for="cur-is-default" class="form-label" style="margin:0;cursor:pointer">상시 노출 <small style="color:var(--text3);font-weight:400">(노출 기간과 무관하게 메인에 항상 표시)</small></label>
               </div>
             </div>
             <div class="form-row">
