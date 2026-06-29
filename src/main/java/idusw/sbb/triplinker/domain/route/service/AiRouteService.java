@@ -48,6 +48,7 @@ public class AiRouteService {
     private final TravelPlanRepository planRepository;
     private final ExpenseRepository expenseRepository;
     private final PlaceService placeService;
+    private final idusw.sbb.triplinker.domain.place.repository.PlaceRepository placeRepository;
     private final ObjectMapper objectMapper;
 
     // ★카카오 거리 계산용
@@ -65,6 +66,7 @@ public class AiRouteService {
             TravelPlanRepository planRepository,
             ExpenseRepository expenseRepository,
             PlaceService placeService,
+            idusw.sbb.triplinker.domain.place.repository.PlaceRepository placeRepository,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
 
@@ -86,6 +88,7 @@ public class AiRouteService {
         this.planRepository = planRepository;
         this.expenseRepository = expenseRepository;
         this.placeService = placeService;
+        this.placeRepository = placeRepository;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
 
@@ -477,7 +480,11 @@ public class AiRouteService {
 
         // ★카카오 API로 거리/시간/통행료를 실제값으로 보정 (저장 직전 1회)
         PlanInputForm form = plan.getForm();
-        json = recalcTransitWithKakao(json, form != null ? form.getTransportType() : null, plan.getDestination());
+        int paxCount = (form != null && form.getCompanionCount() != null) ? form.getCompanionCount() : 2;
+        json = recalcTransitWithKakao(json, form != null ? form.getTransportType() : null, plan.getDestination(), paxCount);
+
+        // ★식당 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화 (AI 라벨-시간 불일치 교정)
+        json = syncMealLabelByTime(json);
 
         // ★당일치기(0박)면 숙소(stay)를 강제 제거 (AI가 규칙 어겨도 최종 차단)
         if (plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate())) {
@@ -499,6 +506,46 @@ public class AiRouteService {
         // 예상비용·장소 미리보기는 현재 보고 있는 일정(draft 우선) 기준으로 갱신해도 무방하다.
         parseAndSaveEstimatedExpenses(plan, json);
         placeService.parseAndSavePlacesFromRouteJson(plan, json);
+    }
+
+    /**
+     * ★식당(food)의 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화한다.
+     *   AI가 sub엔 '점심'이라 적고 time은 18:00로 배정하는 라벨-시간 불일치를 코드로 교정.
+     *   - time 16:00 이상 → 저녁, 그 미만 → 점심. sub의 끼니 단어만 바꾸고 금액 등 나머지는 보존.
+     */
+    private String syncMealLabelByTime(String json) {
+        if (json == null || !json.contains("[")) return json;
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+            boolean changed = false;
+            for (JsonNode dayNode : root) {
+                JsonNode places = dayNode.path("places");
+                if (!places.isArray()) continue;
+                for (JsonNode pl : places) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    if (!"food".equals(pl.path("type").asText(""))) continue;
+                    String sub = pl.path("sub").asText("");
+                    if (!sub.contains("점심") && !sub.contains("저녁")) continue;
+                    String time = pl.path("time").asText("");
+                    int colon = time.indexOf(":");
+                    if (colon <= 0) continue;
+                    int hour;
+                    try { hour = Integer.parseInt(time.substring(0, colon).trim()); }
+                    catch (Exception e) { continue; }
+                    String meal = (hour >= 16) ? "저녁" : "점심";
+                    String fixed = sub.replace("점심", meal).replace("저녁", meal);
+                    if (!fixed.equals(sub)) {
+                        ((com.fasterxml.jackson.databind.node.ObjectNode) pl).put("sub", fixed);
+                        changed = true;
+                    }
+                }
+            }
+            return changed ? objectMapper.writeValueAsString(root) : json;
+        } catch (Exception e) {
+            System.err.println("[syncMealLabelByTime] 실패, 원본 유지: " + e.getMessage());
+            return json;
+        }
     }
 
     // AI 동선 JSON을 파싱해 가계부(Expense)의 "AI 예상 비용"을 생성/갱신
@@ -1046,6 +1093,192 @@ public class AiRouteService {
         return 2 * R * Math.asin(Math.sqrt(v));
     }
 
+    // ════════════════════════════════════════════════════════════════
+    //  ★코드 기반 후처리(AI 생성·추가 없음, 삭제·조정만)
+    //   1) 숙소(또는 그날 장소 중심)에서 40km 초과로 떨어진 장소 삭제
+    //      - 단, 사용자가 직접 요청한 장소(userRequested)는 삭제하지 않고 알림(over50)으로 위임
+    //   2) 밀도(빡빡/여유)에 맞게 카테고리별 개수 초과분 삭제
+    //      - 빡빡: food 2~3 / cafe 1~2 / tour 1~3
+    //      - 여유: food 2~3 / cafe 1   / tour 1
+    //   3) 좌표 없는 장소(가짜 의심) 삭제
+    //   삭제 후 places 사이 transit "이동" 재삽입 → saveAiRouteToDb가 거리 다시 채움.
+    //   반환: [정제된 JSON, over50(사용자요청인데 먼 장소 이름들) ]는 별도 메서드로 분리.
+    // ════════════════════════════════════════════════════════════════
+    private static final double FAR_LIMIT = 40_000; // 40km
+
+    /** 밀도별 카테고리 상한 [food, cafe, tour]. */
+    private int[] densityCaps(String density) {
+        if ("빡빡하게".equals(density)) return new int[]{3, 2, 3};
+        if ("여유롭게".equals(density)) return new int[]{3, 1, 1};
+        return new int[]{3, 1, 2}; // 보통
+    }
+
+    /**
+     * 코드 기반 정제. 멀거나(40km↑) 좌표없거나 밀도초과인 비고정 장소를 삭제한다.
+     * (stay·food·사용자요청은 보존. food는 끼니라 개수 상한만 적용)
+     * @return 사용자가 요청했으나 멀어서 알림이 필요한 장소명 목록(프론트 over50 알림용)
+     */
+    public java.util.List<String> postProcessRoute(Long tripId, String json,
+                                                   java.util.Set<String> userRequested, String density) {
+        java.util.List<String> over50 = new java.util.ArrayList<>();
+        try {
+            TravelPlan plan = planRepository.findById(tripId).orElse(null);
+            if (plan == null) return over50;
+            String dest = plan.getDestination();
+            int[] caps = densityCaps(density);
+            java.util.Map<String, double[]> geo = new java.util.HashMap<>();
+
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return over50;
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+
+                // 실제 장소만 수집(좌표 포함)
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> spots = new java.util.ArrayList<>();
+                for (JsonNode pl : placesNode) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    spots.add((com.fasterxml.jackson.databind.node.ObjectNode) pl);
+                }
+                if (spots.isEmpty()) continue;
+
+                // 좌표 확보
+                java.util.Map<com.fasterxml.jackson.databind.node.ObjectNode, double[]> coord = new java.util.HashMap<>();
+                for (var s : spots) {
+                    double[] c = (s.has("lat") && s.has("lng"))
+                            ? new double[]{ s.path("lat").asDouble(), s.path("lng").asDouble() }
+                            : geocodeCached(withRegion(dest, s.path("name").asText("")), geo);
+                    coord.put(s, c);
+                }
+
+                // 그날 중심점(숙소 우선, 없으면 비-숙소 좌표 중앙값)
+                double[] center = null;
+                for (var s : spots) {
+                    if ("stay".equals(s.path("type").asText("")) && coord.get(s) != null) { center = coord.get(s); break; }
+                }
+                if (center == null) {
+                    java.util.List<Double> la = new java.util.ArrayList<>(), lo = new java.util.ArrayList<>();
+                    for (var s : spots) { double[] c = coord.get(s); if (c != null) { la.add(c[0]); lo.add(c[1]); } }
+                    if (!la.isEmpty()) {
+                        java.util.Collections.sort(la); java.util.Collections.sort(lo);
+                        center = new double[]{ la.get(la.size()/2), lo.get(lo.size()/2) };
+                    }
+                }
+
+                // 삭제 판정
+                int foodN = 0, cafeN = 0, tourN = 0;
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> kept = new java.util.ArrayList<>();
+                for (var s : spots) {
+                    String type = s.path("type").asText("");
+                    String nm = s.path("name").asText("");
+                    boolean isStay = "stay".equals(type);
+                    boolean isUserReq = userRequested.contains(nm);
+                    double[] c = coord.get(s);
+
+                    // (1) 좌표 없는 장소(가짜) — 사용자요청 아니면 삭제
+                    if (c == null) {
+                        if (isUserReq) { kept.add(s); continue; }
+                        System.out.println("🗑️ [삭제-좌표없음] " + nm);
+                        continue;
+                    }
+                    // (2) 중심에서 40km 초과 (★카카오 길찾기 실제 도로거리 기준)
+                    //     직선거리로 1차 스크리닝(20km 이하면 안전 → 길찾기 생략, API 절약).
+                    //     20km 초과면 카카오 길찾기로 실제 도로거리 확정. 길찾기 실패 시 직선거리로 폴백.
+                    if (center != null && !isStay) {
+                        double straight = haversine(center, c);
+                        double roadDist = straight;
+                        if (straight > 20_000) {
+                            long[] r = carDirections(center, c);   // [위도,경도] 순서 그대로
+                            if (r != null && r[0] > 0) roadDist = r[0]; // r[0]=도로거리(m)
+                        }
+                        if (roadDist > FAR_LIMIT) {
+                            if (isUserReq) {           // 사용자요청 → 삭제 않고 알림
+                                over50.add(nm);
+                                kept.add(s);
+                                continue;
+                            }
+                            System.out.println("🗑️ [삭제-먼장소 " + Math.round(roadDist/1000) + "km(도로)] " + nm);
+                            continue;                  // AI 장소 → 삭제
+                        }
+                    }
+                    // (3) 밀도별 개수 상한 (stay·사용자요청은 카운트 예외로 항상 보존)
+                    if (!isStay && !isUserReq) {
+                        if ("food".equals(type)) { if (foodN >= caps[0]) { System.out.println("🗑️ [삭제-밀도초과 food] " + nm); continue; } foodN++; }
+                        else if ("cafe".equals(type)) { if (cafeN >= caps[1]) { System.out.println("🗑️ [삭제-밀도초과 cafe] " + nm); continue; } cafeN++; }
+                        else if ("tour".equals(type)) { if (tourN >= caps[2]) { System.out.println("🗑️ [삭제-밀도초과 tour] " + nm); continue; } tourN++; }
+                    }
+                    kept.add(s);
+                }
+
+                // ★식당(food)의 sub 끼니를 배치 시간(time)에 맞춰 보정한다.
+                //   AI가 18:00에 배치했는데 sub가 "점심"으로 남는 불일치를 바로잡는다.
+                //   기준: time의 시(hour)가 16시 이상이면 저녁, 그 외(점심대)는 점심.
+                for (var s : kept) {
+                    if (!"food".equals(s.path("type").asText(""))) continue;
+                    String timeStr = s.path("time").asText("");
+                    int hour = -1;
+                    try {
+                        if (timeStr.contains(":")) hour = Integer.parseInt(timeStr.split(":")[0].trim());
+                    } catch (Exception ignore) {}
+                    if (hour < 0) continue;
+                    String wantMeal = (hour >= 16) ? "저녁" : "점심";
+                    String sub = s.path("sub").asText("");
+                    // sub의 기존 "점심"/"저녁"을 wantMeal로 치환(가격·인원 부분은 유지)
+                    if (sub.contains("점심") || sub.contains("저녁")) {
+                        String fixed = sub.replace("점심", wantMeal).replace("저녁", wantMeal);
+                        ((com.fasterxml.jackson.databind.node.ObjectNode) s).put("sub", fixed);
+                    }
+                }
+
+                // transit "이동" 재삽입하여 places 재구성
+                com.fasterxml.jackson.databind.node.ArrayNode rebuilt = objectMapper.createArrayNode();
+                for (int k = 0; k < kept.size(); k++) {
+                    if (k > 0) {
+                        com.fasterxml.jackson.databind.node.ObjectNode t = objectMapper.createObjectNode();
+                        t.put("transit", "이동");
+                        rebuilt.add(t);
+                    }
+                    rebuilt.add(kept.get(k));
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode).set("places", rebuilt);
+            }
+
+            saveAiRouteToDb(tripId, objectMapper.writeValueAsString(root));
+        } catch (Exception e) {
+            System.err.println("[postProcessRoute] 실패: " + e.getMessage());
+        }
+        return over50;
+    }
+
+    /**
+     * ★생성 직후 최종 정리(컨트롤러가 호출).
+     *   1) reorderWithinTimeBlocks: 한 방향(최근접 이웃) 정렬 → 지그재그 제거
+     *   2) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
+     *   Claude 검증/교체는 새 장소를 지어내 환각을 유발하므로 생성 흐름에서 쓰지 않는다.
+     *   @return 사용자요청인데 먼 장소(프론트 알림용 over50)
+     */
+    public java.util.List<String> finalizeRoute(Long tripId) {
+        TravelPlan plan = planRepository.findById(tripId).orElse(null);
+        if (plan == null) return java.util.Collections.emptyList();
+        PlanInputForm form = plan.getForm();
+        java.util.Set<String> userRequested = extractUserRequestedNames(form);
+        String density = form != null ? form.getScheduleDensity() : null;
+
+        boolean isEditingConfirmed = "FIXED".equals(plan.getStatus());
+        String json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
+        if (json == null || json.isBlank() || !json.contains("[")) return java.util.Collections.emptyList();
+
+        // 1) 한 방향 정렬
+        String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        if (!reordered.equals(json)) {
+            saveAiRouteToDb(tripId, reordered);
+            json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
+        }
+        // 2) 먼 장소·밀도초과 삭제 (내부에서 saveAiRouteToDb로 거리 재보정)
+        return postProcessRoute(tripId, json, userRequested, density);
+    }
+
     public java.util.List<String> enforceDistanceAndGetOver50(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
@@ -1214,12 +1447,35 @@ public class AiRouteService {
         } catch (Exception ignore) {}
         return set;
     }
+
+    /**
+     * 사용자 요청 장소명 → 끼니 시간대("점심"/"저녁") 매핑.
+     * extra_notes의 label(예 "1일차저녁", "2일차점심")에서 끼니를 추출한다.
+     * label에 끼니 단서가 없으면 매핑에 넣지 않는다(기본값 처리).
+     */
+    private java.util.Map<String, String> extractRequestedMealTime(PlanInputForm form) {
+        java.util.Map<String, String> map = new java.util.HashMap<>();
+        if (form == null || form.getExtraNotes() == null) return map;
+        try {
+            JsonNode arr = objectMapper.readTree(form.getExtraNotes());
+            if (arr.isArray()) {
+                for (JsonNode n : arr) {
+                    String v = n.has("value") ? n.path("value").asText("") : "";
+                    String label = n.has("label") ? n.path("label").asText("") : "";
+                    if (v == null || v.isBlank()) continue;
+                    if (label.contains("저녁")) map.put(v.trim(), "저녁");
+                    else if (label.contains("점심")) map.put(v.trim(), "점심");
+                }
+            }
+        } catch (Exception ignore) {}
+        return map;
+    }
     // ─────────────────────────────────────────────────────────────
     //  ★카카오 API로 transit 거리/시간/비용을 실제값으로 덮어쓴다.
     //   AI가 지어낸 부정확한 km 대신 카카오맵 길찾기와 동일한 값을 채운다.
     //   (AI는 장소·순서만 책임지고, 숫자는 카카오가 책임 → 정확도↑·토큰↓)
     // ─────────────────────────────────────────────────────────────
-    private String recalcTransitWithKakao(String json, String transportType, String destination) {
+    private String recalcTransitWithKakao(String json, String transportType, String destination, int paxCount) {
         try {
             System.out.println("🗺️ [카카오 보정 시작] 이동수단=" + transportType + " / 여행지=" + destination
                     + " / 키 길이=" + (kakaoRestKey == null ? "null" : kakaoRestKey.length()));
@@ -1286,13 +1542,33 @@ public class AiRouteService {
                         // 대중교통은 자차 도로거리/시간을 그대로 쓰면 안 됨.
                         // 환승·대기 포함 평균 표정속도(약 22km/h)로 소요시간 보정.
                         min = Math.round(km / 22.0 * 60.0);
-                        cost = "대중교통 운임 별도";
+                        // ★대중교통 평균 운임 추정: 기본요금 1,500원 + 거리비례(10km 초과분 km당 100원),
+                        //   인원수만큼 합산. (버스·지하철 평균 기준)
+                        long farePerPerson = 1500 + (km > 10 ? Math.round((km - 10) * 100) : 0);
+                        long totalFare = farePerPerson * Math.max(1, paxCount);
+                        cost = String.format("₩%,d", totalFare);
                         icon = "🚌 대중교통";
                     }
                     System.out.println("✅ [카카오] " + prev.path("name").asText("") + " → "
                             + next.path("name").asText("") + " : " + String.format("%.1f", km) + "km / " + min + "분");
-                    ((com.fasterxml.jackson.databind.node.ObjectNode) places.get(i))
-                            .put("transit", String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost));
+                    com.fasterxml.jackson.databind.node.ObjectNode transitNode =
+                            (com.fasterxml.jackson.databind.node.ObjectNode) places.get(i);
+                    transitNode.put("transit", String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost));
+
+                    // ★도로 경로 좌표 저장(자차) → 프론트가 직선이 아닌 도로를 따라 폴리라인을 그림.
+                    //   대중교통은 도로 경로가 부정확하므로 생략(직선 폴백).
+                    if (isCar) {
+                        java.util.List<double[]> coords = carPath(from, to);
+                        if (coords != null && coords.size() >= 2) {
+                            com.fasterxml.jackson.databind.node.ArrayNode pathArr = objectMapper.createArrayNode();
+                            for (double[] c : coords) {
+                                com.fasterxml.jackson.databind.node.ArrayNode pt = objectMapper.createArrayNode();
+                                pt.add(c[0]); pt.add(c[1]); // [위도, 경도]
+                                pathArr.add(pt);
+                            }
+                            transitNode.set("pathCoords", pathArr);
+                        }
+                    }
                 }
 
                 // ★budget 재계산: 카카오가 채운 transit 금액 + 장소 sub 금액 합으로 그날 총액 갱신
@@ -1419,6 +1695,109 @@ public class AiRouteService {
         }
     }
 
+    // ───────────────────────────────────────────────────────────────────
+    // ★카카오 키워드 검색 → 실존 장소 목록(상호명+좌표+업종)을 통째로 반환.
+    //   geocodeOnce는 좌표 1개만 주지만, 이건 후보 목록 자체를 카카오에서 가져온다.
+    //   → AI가 이름을 지어내는 환각을 원천 차단(카카오에 실제 있는 곳만 후보).
+    //   sigungu : destination의 시군구(예 "해운대구"). centerXY가 null일 때만 주소로 검증.
+    //   centerXY: [경도(x), 위도(y)] (null이 아니면 반경 검색), radiusM: 반경(m, 최대 20000)
+    //   want    : 가져올 최대 개수
+    // ───────────────────────────────────────────────────────────────────
+    private java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> kakaoSearchPlaces(
+            String query, String sigungu, double[] centerXY, int radiusM, int want) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+        if (query == null || query.isBlank()) return out;
+        try {
+            String enc = java.net.URLEncoder.encode(query, java.nio.charset.StandardCharsets.UTF_8);
+            StringBuilder url = new StringBuilder(
+                    "https://dapi.kakao.com/v2/local/search/keyword.json?size=15&query=" + enc);
+            if (centerXY != null) {
+                url.append("&x=").append(centerXY[0]).append("&y=").append(centerXY[1])
+                        .append("&radius=").append(Math.min(radiusM, 20000)).append("&sort=distance");
+            }
+            java.net.URI uri = java.net.URI.create(url.toString());
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
+            org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
+
+            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
+                    uri, org.springframework.http.HttpMethod.GET, req, String.class);
+
+            JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
+            if (!docs.isArray()) return out;
+
+            for (JsonNode doc : docs) {
+                if (out.size() >= want) break;
+                String addr = doc.path("address_name").asText("");
+                String road = doc.path("road_address_name").asText("");
+                // 이름 검색(반경 X)일 때만 시군구 일치 검증으로 타지역 차단.
+                // 반경 검색은 카카오가 거리로 이미 걸러주므로 완화한다.
+                if (sigungu != null && !sigungu.isBlank() && centerXY == null
+                        && !addr.contains(sigungu) && !road.contains(sigungu)) continue;
+
+                String placeName = doc.path("place_name").asText("");
+                String catName = doc.path("category_name").asText("");
+                // ★관광 부적합 장소 배제: 역·터미널·주차장·관공서·병원·마트·아파트·학교 등.
+                //   (관광지/맛집/카페 후보로 부적절한 것들을 수집 단계에서 거른다)
+                if (isNonTouristPlace(placeName, catName)) continue;
+
+                com.fasterxml.jackson.databind.node.ObjectNode n = objectMapper.createObjectNode();
+                n.put("name", placeName);
+                n.put("lat", doc.path("y").asDouble());
+                n.put("lng", doc.path("x").asDouble());
+                n.put("category", catName);
+                out.add(n);
+            }
+        } catch (Exception e) {
+            System.err.println("[kakaoSearchPlaces] 실패(" + query + "): " + e.getMessage());
+        }
+        return out;
+    }
+
+    /** name 기준 중복 제거하며 dst에 src를 합친다(앞쪽 우선, cap 개수까지). */
+    private void mergeUnique(java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> dst,
+                             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> src, int cap) {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (var n : dst) seen.add(n.path("name").asText(""));
+        for (var n : src) {
+            if (dst.size() >= cap) break;
+            String nm = n.path("name").asText("");
+            if (nm.isBlank() || seen.contains(nm)) continue;
+            seen.add(nm);
+            dst.add(n);
+        }
+    }
+
+    /** destination에서 시군구 토큰을 뽑는다(마지막 토큰, 예 "부산광역시 해운대구" → "해운대구"). */
+    private String extractSigungu(String destination) {
+        if (destination == null || destination.isBlank()) return null;
+        String[] t = destination.trim().split("\\s+");
+        return t[t.length - 1];
+    }
+
+    /** 관광·식당·카페 후보로 부적합한 장소인지 판별(역·터미널·주차장·관공서·병원·마트·아파트·학교 등). */
+    private boolean isNonTouristPlace(String name, String category) {
+        String n = name == null ? "" : name;
+        String c = category == null ? "" : category;
+        // 카카오 category_name 예: "교통,수송 > 지하철,전철 > ...", "여행 > 관광,명소", "음식점 > ..."
+        String[] badCat = {
+                "지하철", "전철", "기차역", "고속버스", "시외버스", "버스터미널", "공항",
+                "주차장", "주유소", "충전소", "관공서", "공공기관", "병원", "약국",
+                "마트", "대형마트", "편의점", "은행", "학교", "유치원", "어린이집",
+                "아파트", "부동산", "회사", "공장"
+        };
+        for (String b : badCat) if (c.contains(b)) return true;
+        // 이름 기반 보조 필터(카테고리가 비어오는 경우 대비)
+        String[] badName = {"역", "터미널", "주차장", "안내소", "관리사무소", "정류장", "정거장"};
+        for (String b : badName) {
+            // "송정역", "송관관광안내소" 등은 배제하되, "역사관"·"역전회관"처럼 단어 일부는 보존
+            if (n.endsWith(b)) return true;
+        }
+        return false;
+    }
+
     // 좌표 → [거리(m), 시간(초), 통행료(원)] (카카오 모빌리티 자차 길찾기)
     // 좌표쌍별 길찾기 결과 캐시(동일 구간 중복 카카오 호출 방지)
     private final java.util.Map<String, long[]> dirCache = new java.util.concurrent.ConcurrentHashMap<>();
@@ -1460,6 +1839,54 @@ public class AiRouteService {
         }
     }
 
+    // ★도로 경로 좌표 캐시: "from_to" → [[lat,lng], [lat,lng], ...]
+    private final java.util.Map<String, java.util.List<double[]>> pathCache =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 카카오 길찾기로 두 좌표 사이의 '도로를 따라가는 경로 좌표'를 반환한다([위도,경도] 목록).
+     * 프론트가 이 좌표로 폴리라인을 그리면 바다·산을 직선으로 가로지르지 않는다.
+     * 실패 시 null → 프론트는 직선으로 폴백.
+     */
+    private java.util.List<double[]> carPath(double[] from, double[] to) {
+        String key = from[0] + "," + from[1] + "_" + to[0] + "," + to[1];
+        java.util.List<double[]> cached = pathCache.get(key);
+        if (cached != null) return cached;
+        try {
+            String url = String.format(
+                    "https://apis-navi.kakaomobility.com/v1/directions?origin=%f,%f&destination=%f,%f",
+                    from[1], from[0], to[1], to[0]); // 경도,위도
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
+            org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
+            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
+                    url, org.springframework.http.HttpMethod.GET, req, String.class);
+
+            JsonNode routes = objectMapper.readTree(res.getBody()).path("routes");
+            if (!routes.isArray() || routes.isEmpty()) return null;
+
+            java.util.List<double[]> coords = new java.util.ArrayList<>();
+            // routes[0].sections[].roads[].vertexes : [x1,y1,x2,y2,...] (경도,위도 평탄 배열)
+            for (JsonNode sec : routes.get(0).path("sections")) {
+                for (JsonNode road : sec.path("roads")) {
+                    JsonNode vtx = road.path("vertexes");
+                    if (!vtx.isArray()) continue;
+                    for (int k = 0; k + 1 < vtx.size(); k += 2) {
+                        double lng = vtx.get(k).asDouble();
+                        double lat = vtx.get(k + 1).asDouble();
+                        coords.add(new double[]{ lat, lng }); // [위도,경도]로 저장
+                    }
+                }
+            }
+            if (coords.isEmpty()) return null;
+            pathCache.put(key, coords);
+            return coords;
+        } catch (Exception e) {
+            System.err.println("[carPath] 실패: " + e.getMessage());
+            return null;
+        }
+    }
+
     // ════════════════════════════════════════════════════════════════
     //  ★ 신규 파이프라인 프롬프트 메서드 (커밋2: 추가만 — 커밋3에서 컨트롤러 연결)
     // ════════════════════════════════════════════════════════════════
@@ -1472,6 +1899,14 @@ public class AiRouteService {
      * @return {"stay":[...],"food":[...],"cafe":[...],"tour":[...]} 형태의 JSON 문자열
      */
     public String generateCandidates(Long tripId) {
+        // ★후보 생성은 이제 카카오 키워드 검색(collectCandidatesFromKakao)이 담당한다.
+        //   AI가 장소명을 지어내는 환각을 막기 위해 이 단계에서 LLM을 호출하지 않는다.
+        //   컨트롤러 호환을 위해 빈 JSON만 반환하고, 실제 후보는 assembleCandidates에서 수집한다.
+        return "{}";
+    }
+
+    @Deprecated // 구버전: AI가 후보 이름을 생성하던 방식(카카오 검색으로 대체됨)
+    public String generateCandidatesByAi(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
         PlanInputForm form = plan.getForm();
@@ -1490,7 +1925,7 @@ public class AiRouteService {
         String stayLine = isDayTrip
                 ? "- stay  : 0개 (당일치기 — stay 배열은 반드시 빈 배열[]로 출력)"
                 : "- stay  : 3개 (옵션 비교용. 숙소 유형: \"" + form.getAccommodationType()
-                  + "\", 옵션: " + form.getAccommodationOptions() + ")";
+                + "\", 옵션: " + form.getAccommodationOptions() + ")";
 
         String prompt = "당신은 'TripLinker'의 여행 장소 조사 전문 AI입니다.\n"
                 + "아래 여행 조건에 맞는 실존 장소 후보 목록을 type별로 생성하세요.\n"
@@ -1571,16 +2006,244 @@ public class AiRouteService {
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
         PlanInputForm form = plan.getForm();
         java.util.Set<String> userRequested = extractUserRequestedNames(form);
-        java.util.Map<String, double[]> geoCache = new java.util.HashMap<>();
         try {
-            JsonNode candidatesNode = objectMapper.readTree(candidatesJson);
+            // ★카카오에서 실존 장소를 직접 수집(환각 차단). AI 후보(candidatesJson)는 더 이상 쓰지 않는다.
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
-                    geocodeAndFilterCandidates(candidatesNode, plan.getDestination(), geoCache);
+                    collectCandidatesFromKakao(plan, form, userRequested);
             return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
             System.err.println("[assembleCandidates] 실패: " + e.getMessage());
             return "[]";
         }
+    }
+
+    /**
+     * 장소 가격(1인 단가)을 DB(PLACES.avg_price)에서 조회한다. 없으면 -1(→ AI 추정 대상).
+     */
+    private int resolveDbPrice(String name) {
+        try {
+            var found = placeRepository.findByName(name);
+            if (found.isPresent() && found.get().getAvgPrice() != null && found.get().getAvgPrice() > 0) {
+                return found.get().getAvgPrice();
+            }
+        } catch (Exception ignore) {}
+        return -1;
+    }
+
+    /** type·끼니·단가·인원으로 sub 문자열 생성. */
+    private String buildSub(String type, String meal, int unit, int cnt) {
+        switch (type) {
+            case "food": return String.format("맛집 · %s · ₩%,d×%d", meal == null ? "점심" : meal, unit, cnt);
+            case "cafe": return String.format("카페 · ₩%,d×%d", unit, cnt);
+            case "tour": return String.format("관광지 · 1h · ₩%,d×%d", unit, cnt);
+            case "stay": return String.format("숙소 · ₩%,d", unit);
+            default:     return String.format("· ₩%,d×%d", unit, cnt);
+        }
+    }
+
+    /**
+     * ★카카오 키워드 검색으로 실존 후보를 직접 수집한다(AI 환각 원천 차단).
+     *   1) 숙소 1곳 선정(여행 내내 동일): "{여행지} {숙소유형}/숙소" 검색 상단 1개
+     *   2) 그 숙소 기준 주변 카페/관광지/맛집 수집:
+     *      - (a) "{숙소명} 주변 {카테고리}" 이름 검색 + (b) 숙소 좌표 반경 검색 → 합쳐서 중복 제거
+     *      - 카테고리별 (Day수 × 5)개
+     *   3) 사용자 요청 장소(extra_notes)는 "{여행지} {요청명}"으로 카카오 검색 → 잡히면 type 맨 앞 삽입,
+     *      안 잡히면 조용히 제외(거리 알림은 enforceDistanceAndGetOver50이 처리)
+     * 출력: {stay:[...], food:[...], cafe:[...], tour:[...]} (각 항목 name/lat/lng/sub/stars 포함)
+     */
+    private java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>
+    collectCandidatesFromKakao(TravelPlan plan, PlanInputForm form, java.util.Set<String> userRequested) {
+
+        String dest = plan.getDestination();           // 예: "부산광역시 해운대구"
+        String sigungu = extractSigungu(dest);          // 예: "해운대구"
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        long numDays = isDayTrip ? 1
+                : (plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay()) + 1;
+        int cnt = form.getCompanionCount() != null ? form.getCompanionCount() : 2;
+        int perType = (int) numDays * 5;                // 카테고리별 Day수 × 5개
+
+        java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result =
+                new java.util.LinkedHashMap<>();
+        result.put("stay", new java.util.ArrayList<>());
+        result.put("food", new java.util.ArrayList<>());
+        result.put("cafe", new java.util.ArrayList<>());
+        result.put("tour", new java.util.ArrayList<>());
+
+        // ── 1) 숙소 1곳 선정 (당일치기면 건너뜀) ──
+        double[] stayXY = null;       // [경도(x), 위도(y)] — 반경 검색용
+        String stayName = null;
+        if (!isDayTrip) {
+            String accType = form.getAccommodationType();
+            if (accType == null || accType.isBlank() || accType.startsWith("기타(")) accType = "숙소";
+            // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stays =
+                    kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+            if (stays.isEmpty()) {  // 유형으로 못 찾으면 "숙소"로 재시도
+                stays = kakaoSearchPlaces(dest + " 숙소", sigungu, null, 0, 1);
+            }
+            if (!stays.isEmpty()) {
+                var s = stays.get(0);
+                stayName = s.path("name").asText("");
+                stayXY = new double[]{ s.path("lng").asDouble(), s.path("lat").asDouble() };
+                s.put("type", "stay");
+                s.put("_unit", resolveDbPrice(stayName)); // DB가격, 없으면 -1 → AI 추정
+                s.put("stars", "평점 정보 없음");
+                result.get("stay").add(s);
+            }
+        }
+
+        // ── 2) 카테고리별 후보 수집: 이름 검색 + 반경 검색을 합쳐 중복 제거 ──
+        // 카카오 카테고리 키워드와 우리 type/sub 매핑
+        record Cat(String type, String kw) {}
+        Cat[] cats = {
+                new Cat("food", "맛집"),
+                new Cat("tour", "관광지"),
+                new Cat("cafe", "카페"),
+        };
+        // 검색 기준점: 숙소가 있으면 숙소명/숙소좌표, 없으면(당일치기) 여행지 중심 좌표
+        if (stayXY == null) {
+            var anchor = kakaoSearchPlaces(dest, sigungu, null, 0, 1);
+            if (!anchor.isEmpty())
+                stayXY = new double[]{ anchor.get(0).path("lng").asDouble(), anchor.get(0).path("lat").asDouble() };
+        }
+        for (Cat c : cats) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> merged = result.get(c.type());
+            // (a) "{숙소명} 주변 {카테고리}" 이름 검색
+            if (stayName != null && !stayName.isBlank()) {
+                mergeUnique(merged, kakaoSearchPlaces(stayName + " 주변 " + c.kw(), sigungu, null, 0, perType), perType);
+            }
+            // (b) 숙소(또는 여행지) 좌표 반경 5km 검색
+            if (stayXY != null) {
+                mergeUnique(merged, kakaoSearchPlaces(c.kw(), sigungu, stayXY, 5000, perType), perType);
+            }
+            // (c) 그래도 모자라면 "{여행지} {카테고리}"로 보충
+            if (merged.size() < perType) {
+                mergeUnique(merged, kakaoSearchPlaces(dest + " " + c.kw(), sigungu, null, 0, perType), perType);
+            }
+            // type/stars + 가격 단가(_unit: DB값 또는 -1) 저장. sub는 AI 추정 후 일괄 생성.
+            for (var n : merged) {
+                if (!n.has("type")) n.put("type", c.type());
+                if (!n.has("_unit")) n.put("_unit", resolveDbPrice(n.path("name").asText("")));
+                if (!n.has("_meal")) n.put("_meal", "점심");
+                if (!n.has("stars")) n.put("stars", "평점 정보 없음");
+            }
+            System.out.println("📍 [카카오 후보] " + c.type() + " " + merged.size() + "개 수집");
+        }
+
+        // ── 3) 사용자 요청 장소 삽입(카카오로 검증, 못 찾으면 제외) ──
+        // 요청 장소의 끼니 시간대(점심/저녁) 맵 (extra_notes의 label 기반)
+        java.util.Map<String, String> mealTimeMap = extractRequestedMealTime(form);
+        for (String reqName : userRequested) {
+            if (reqName == null || reqName.isBlank()) continue;
+            // ★동명/프랜차이즈 대응: 숙소(또는 중심) 좌표 기준 반경 검색(sort=distance)으로
+            //   여러 지점을 받아 '가장 가까운 곳'을 고른다. 좌표가 없으면 일반 이름 검색.
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> hit;
+            if (stayXY != null) {
+                // 숙소 반경 20km 안에서 이름으로 검색(거리순). 반경 안에 없으면 이름 검색으로 폴백.
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> near =
+                        kakaoSearchPlaces(reqName, sigungu, stayXY, 20000, 10);
+                // 요청명이 실제로 상호에 포함된 결과만(엉뚱한 근처 가게 배제), 이미 거리순 정렬됨
+                String key = reqName.replaceAll("\\s+", "");
+                hit = new java.util.ArrayList<>();
+                for (var cand : near) {
+                    if (cand.path("name").asText("").replaceAll("\\s+", "").contains(key)) { hit.add(cand); break; }
+                }
+                if (hit.isEmpty()) hit = kakaoSearchPlaces(dest + " " + reqName, sigungu, null, 0, 1);
+            } else {
+                hit = kakaoSearchPlaces(dest + " " + reqName, sigungu, null, 0, 1);
+            }
+            if (hit.isEmpty()) {
+                System.out.println("⚠️ [사용자요청 제외-카카오없음] " + reqName);
+                continue;
+            }
+            var n = hit.get(0); // 거리순 정렬이면 가장 가까운 지점
+            // 업종으로 type 추정(카페>맛집>관광지). 기본은 관광지.
+            String catName = n.path("category").asText("");
+            String type = catName.contains("카페") ? "cafe"
+                    : (catName.contains("음식") || catName.contains("식당") || catName.contains("맛집")) ? "food" : "tour";
+            n.put("type", type);
+            // ★사용자가 지정한 끼니(점심/저녁) 저장. 식당이 아니면 점심 기본.
+            String meal = mealTimeMap.getOrDefault(reqName, "점심");
+            n.put("_meal", meal);
+            n.put("_unit", resolveDbPrice(reqName));
+            n.put("stars", "평점 정보 없음");
+            // 해당 type 맨 앞에 삽입(이미 있으면 중복 제거)
+            result.get(type).removeIf(x -> reqName.equals(x.path("name").asText("")));
+            result.get(type).add(0, n);
+            System.out.println("✅ [사용자요청 포함] " + reqName + " (" + type + (("food".equals(type)) ? "/" + meal : "") + ")");
+        }
+
+        // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
+        estimatePricesWithAi(result, dest);
+        for (var entry : result.entrySet()) {
+            String type = entry.getKey();
+            for (var n : entry.getValue()) {
+                int unit = n.has("_unit") ? n.path("_unit").asInt(-1) : -1;
+                if (unit < 0) unit = 0; // AI 추정도 실패하면 0
+                String meal = n.has("_meal") ? n.path("_meal").asText("점심") : "점심";
+                n.put("sub", buildSub(type, meal, unit, cnt));
+                n.remove("_unit");
+                n.remove("_meal");
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 가격(_unit)이 -1인 장소들을 모아 AI(Claude)에게 1회 호출로 1인 단가(숙소는 1박가)를 추정받는다.
+     * AI는 가격만 매기며 장소를 새로 만들지 않으므로 환각 위험이 없다. 실패 시 -1 유지(→ 0 처리).
+     */
+    private void estimatePricesWithAi(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            String destination) {
+
+        // 추정 대상 수집
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> targets = new java.util.ArrayList<>();
+        for (var list : result.values())
+            for (var n : list)
+                if (!n.has("_unit") || n.path("_unit").asInt(-1) < 0) targets.add(n);
+        if (targets.isEmpty()) return;
+
+        // 프롬프트용 목록 문자열
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < targets.size(); i++) {
+            sb.append(i).append(". ")
+                    .append(targets.get(i).path("type").asText("")).append(" | ")
+                    .append(targets.get(i).path("name").asText("")).append("\n");
+        }
+
+        String prompt = "당신은 한국 여행 물가 추정 전문가입니다. 아래 장소들의 '1인 기준 예상 비용(원)'을 추정하세요.\n"
+                + "- food(맛집): 1인 식사 평균 단가\n"
+                + "- cafe(카페): 1인 음료 평균 단가\n"
+                + "- tour(관광지): 1인 입장료(무료면 0)\n"
+                + "- stay(숙소): 1박 평균 시세(1인 아님, 1박 전체 금액)\n"
+                + "여행지: " + destination + "\n"
+                + "[장소 목록]\n" + sb
+                + "\n[출력 규칙] 설명·마크다운 없이, 각 줄을 \"인덱스:금액\" 형식으로만 출력. 예:\n0:12000\n1:9000\n";
+
+        String raw;
+        try {
+            raw = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            try { raw = primaryClient.prompt().user(prompt).call().content(); }
+            catch (Exception ex) { System.err.println("[가격추정 실패] " + ex.getMessage()); return; }
+        }
+        if (raw == null) return;
+
+        // "인덱스:금액" 파싱
+        for (String line : raw.split("\\r?\\n")) {
+            String[] kv = line.trim().split(":");
+            if (kv.length != 2) continue;
+            try {
+                int idx = Integer.parseInt(kv[0].trim());
+                int price = Integer.parseInt(kv[1].replaceAll("[^0-9]", "").trim());
+                if (idx >= 0 && idx < targets.size() && price >= 0) {
+                    targets.get(idx).put("_unit", price);
+                }
+            } catch (Exception ignore) {}
+        }
+        System.out.println("💰 [AI 가격추정] " + targets.size() + "개 장소 추정 완료");
     }
 
     /**
@@ -1629,21 +2292,21 @@ public class AiRouteService {
         // ── 밀도 지침 ──
         String densityGuide;
         if ("빡빡하게".equals(density)) {
-            densityGuide = "빡빡하게: 하루 7~9개 장소. 아침 일찍 시작, 저녁 늦게 마무리.";
+            densityGuide = "빡빡하게: 하루 식당 2~3개 · 카페 1~2개 · 관광지 1~3개. 아침 일찍 시작, 저녁 늦게 마무리.";
         } else if ("여유롭게".equals(density)) {
-            densityGuide = "여유롭게: 하루 3~5개 장소. 이동 여유 확보, 느긋한 일정.";
+            densityGuide = "여유롭게: 하루 식당 2~3개 · 카페 1개 · 관광지 1개. 이동 여유 확보, 느긋한 일정.";
         } else {
-            densityGuide = "보통: 하루 5~6개 장소.";
+            densityGuide = "보통: 하루 식당 2~3개 · 카페 1개 · 관광지 2개.";
         }
 
         // ── 숙소 규칙 ──
         String stayRules = isDayTrip
                 ? "★당일치기(0박): type=stay 절대 금지. 관광지·맛집·카페로만 구성."
                 : "숙소 규칙:\n"
-                  + "  - Day1 마지막: stay 1개 배치(체크인). Day1 첫 장소는 관광/식당으로 시작.\n"
-                  + "  - Day2~마지막전날: 맨 처음(출발)과 맨 끝(취침)에 동일 숙소. 중간 날 없으면 해당 없음.\n"
-                  + "  - 마지막 날: 전날 숙소 출발(체크아웃)으로 시작. 밤 새 숙소 없음.\n"
-                  + "  - 중간 날 동일 숙소 2회 등장은 '중복 금지'의 예외.";
+                + "  - Day1 마지막: stay 1개 배치(체크인). Day1 첫 장소는 관광/식당으로 시작.\n"
+                + "  - Day2~마지막전날: 맨 처음(출발)과 맨 끝(취침)에 동일 숙소. 중간 날 없으면 해당 없음.\n"
+                + "  - 마지막 날: 전날 숙소 출발(체크아웃)으로 시작. 밤 새 숙소 없음.\n"
+                + "  - 중간 날 동일 숙소 2회 등장은 '중복 금지'의 예외.";
 
         String userReqStr = userRequested.isEmpty() ? "없음" : String.join(", ", userRequested);
 
@@ -1738,10 +2401,10 @@ public class AiRouteService {
      *     타지역 판단은 '후보들끼리 뭉치는 중심(중앙값)' 기준 80km 초과만.
      */
     private java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>
-            geocodeAndFilterCandidates(
-                    JsonNode candidatesJson,
-                    String destination,
-                    java.util.Map<String, double[]> geoCache) {
+    geocodeAndFilterCandidates(
+            JsonNode candidatesJson,
+            String destination,
+            java.util.Map<String, double[]> geoCache) {
 
         String[] types = {"stay", "food", "cafe", "tour"};
         java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result

@@ -471,7 +471,7 @@
         ${day.places ? day.places.map(p => p.transit ? `<div class="transit-map-row">${p.transit}</div>` : `
           <div class="place-row" data-key="${p.key}">
             <div class="pr-drag">⋮⋮</div>
-            <div class="pr-icon pr-${p.type}">${p.icon || '📍'}</div>
+            <div class="pr-icon pr-${p.type}">${p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍')))}</div>
             <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
               <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
               <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
@@ -505,14 +505,24 @@
 
         routeData.forEach(d => {
           let currentDayKeys = [];
+          let currentDayPaths = [];   // ★구간별 도로 경로 좌표(transit.pathCoords) 모음
           if(d.places) {
             d.places.forEach(p => {
+              if(p.transit) {
+                // transit 객체에 백엔드가 박은 도로 경로 좌표가 있으면 수집
+                if (Array.isArray(p.pathCoords) && p.pathCoords.length >= 2) {
+                  currentDayPaths.push(p.pathCoords);
+                } else {
+                  currentDayPaths.push(null); // 경로 없으면 직선 폴백 표시
+                }
+                return;
+              }
               if(!p.transit && p.name) {
                 let pinColor = p.type === 'stay' ? '#2D9E8A' : (p.type === 'food' ? '#F87171' : (p.type === 'cafe' ? '#7C3AED' : '#22B5C4'));
                 MAP_PINS.push({
                   key: p.key,
                   type: p.type,
-                  icon: p.icon || '📍',
+                  icon: p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍'))),
                   color: pinColor,
                   label: p.name,
                   day: d.day,
@@ -528,7 +538,7 @@
               }
             });
           }
-          DAY_ROUTES.push({ day: d.day, color: colors[(d.day - 1) % colors.length], keys: currentDayKeys });
+          DAY_ROUTES.push({ day: d.day, color: colors[(d.day - 1) % colors.length], keys: currentDayKeys, segPaths: currentDayPaths });
         });
 
         if (typeof initDragAndDrop === 'function') initDragAndDrop();
@@ -938,38 +948,77 @@
 
     // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
     function drawLivePolylines() {
+      // ★중복 그리기 방지: 기존 폴리라인·화살표를 먼저 모두 제거한다.
+      //   (이게 없으면 직선→도로경로 등 여러 번 호출 시 선이 겹쳐 이상한 선이 남는다)
+      if (window._kakaoPolylines) {
+        window._kakaoPolylines.forEach(function(item) { if (item.line) item.line.setMap(null); });
+      }
+      window._kakaoPolylines = [];
+      if (window._kakaoArrows) {
+        window._kakaoArrows.forEach(function(a) { a.setMap(null); });
+        window._kakaoArrows = [];
+      }
+
       var pinByKey = {};
       MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
 
       DAY_ROUTES.forEach(function(route) {
-        var path = route.keys.map(function(k) {
-          var p = pinByKey[k];
-          return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
-        }).filter(Boolean);
+        var keys = route.keys;
+        var hasRoad = Array.isArray(route.segPaths) && route.segPaths.some(function(s){ return Array.isArray(s) && s.length >= 2; });
 
-        if (path.length < 2) return;
+        // 구간(장소 i → 장소 i+1) 단위로 좌표 배열을 만든다.
+        //   도로 경로(segPaths[i])가 있으면 그걸, 없으면 두 마커 직선을 쓴다.
+        var segments = [];
+        for (var i = 0; i < keys.length - 1; i++) {
+          var a = pinByKey[keys[i]], b = pinByKey[keys[i + 1]];
+          if (!a || !b || !a.isFound || !b.isFound) continue;
+          var segCoords = [];
+          var seg = hasRoad ? route.segPaths[i] : null;
+          if (Array.isArray(seg) && seg.length >= 2) {
+            segCoords.push([a.lat, a.lng]);
+            seg.forEach(function(c){ segCoords.push([c[0], c[1]]); });
+            segCoords.push([b.lat, b.lng]);
+          } else {
+            segCoords.push([a.lat, a.lng], [b.lat, b.lng]);
+          }
+          segments.push(segCoords);
+        }
+        if (segments.length === 0) return;
 
-        // 🎯 [테두리 선] 밑에 깔리는 검은색 실선 (두께 10)
-        var bgPolyline = new kakao.maps.Polyline({
-          path: path,
-          strokeWeight: 10,
-          strokeColor: '#000000',
-          strokeOpacity: 0.6,
-          strokeStyle: 'solid'
+        // ★왕복(겹침) 구간 분리: 진행 방향의 수직으로 살짝 평행 이동(offset).
+        //   같은 도로를 갔다가 오면 가는 길/오는 길이 나란히 보여 화살표가 안 엉킨다.
+        //   offset 양은 위경도 기준 약 8m. (지도 줌과 무관한 고정 물리거리)
+        var OFFSET_DEG = 0.00007; // 약 8m
+        function offsetSeg(coords) {
+          if (coords.length < 2) return coords.map(function(c){ return new kakao.maps.LatLng(c[0], c[1]); });
+          // 구간 전체의 평균 진행방향 벡터
+          var dLat = coords[coords.length-1][0] - coords[0][0];
+          var dLng = coords[coords.length-1][1] - coords[0][1];
+          var len = Math.sqrt(dLat*dLat + dLng*dLng) || 1;
+          // 진행방향의 오른쪽 법선(수직) 단위벡터 → 항상 진행방향 오른쪽으로 민다.
+          //   왕복이면 가는 길과 오는 길은 진행방향이 반대라 서로 반대쪽으로 밀려 분리됨.
+          var nLat = (dLng / len) * OFFSET_DEG;
+          var nLng = (-dLat / len) * OFFSET_DEG;
+          return coords.map(function(c){ return new kakao.maps.LatLng(c[0] + nLat, c[1] + nLng); });
+        }
+
+        segments.forEach(function(segCoords) {
+          var p = offsetSeg(segCoords);
+          if (p.length < 2) return;
+
+          var bg = new kakao.maps.Polyline({
+            path: p, strokeWeight: 10, strokeColor: '#000000', strokeOpacity: 0.6, strokeStyle: 'solid'
+          });
+          bg.setMap(window._kakaoMap);
+          window._kakaoPolylines.push({ day: route.day, line: bg, path: null });
+
+          var main = new kakao.maps.Polyline({
+            path: p, strokeWeight: 6, strokeColor: route.color, strokeOpacity: 1.0, strokeStyle: 'solid'
+          });
+          main.setMap(window._kakaoMap);
+          // 화살표는 실제 그려진(offset된) 경로 위에 찍어 방향을 표시한다.
+          window._kakaoPolylines.push({ day: route.day, line: main, path: p });
         });
-        bgPolyline.setMap(window._kakaoMap);
-        window._kakaoPolylines.push({ day: route.day, line: bgPolyline, path: null });
-
-        // 🎯 [내부 컬러 선] 검은색 선 위에 얹어지는 고유 컬러 선
-        var mainPolyline = new kakao.maps.Polyline({
-          path: path,
-          strokeWeight: 6,
-          strokeColor: route.color,
-          strokeOpacity: 1.0,
-          strokeStyle: 'solid'
-        });
-        mainPolyline.setMap(window._kakaoMap);
-        window._kakaoPolylines.push({ day: route.day, line: mainPolyline, path: path });
       });
 
       setTimeout(renderArrows, 100);
@@ -1026,7 +1075,10 @@
           var dy = px2.y - px1.y;
           var distPx = Math.sqrt(dx * dx + dy * dy);
 
-          var arrowCount = Math.min(Math.floor(distPx / 30), 30);
+          // ★확대할수록 촘촘하게: 화면상 35px마다 화살표 1개(픽셀 고정 간격).
+          //   줌인하면 같은 구간의 픽셀거리가 늘어 화살표 수가 자동으로 증가한다.
+          //   상한을 200으로 크게 둬 30개에서 막히지 않게 한다.
+          var arrowCount = Math.min(Math.floor(distPx / 35), 200);
           if (arrowCount < 1) continue;
 
           var angle = Math.atan2(dy, dx);
@@ -1037,7 +1089,9 @@
             var cx = px1.x + dx * ratio;
             var cy = px1.y + dy * ratio;
 
-            var arrowSize = 3.5;
+            // 화살표 크기(px). coordsFromPoint로 현재 줌 기준 좌표로 되돌리므로
+            // 매 렌더마다 화면상 동일한 픽셀 크기로 보인다(줌인해도 작게 유지).
+            var arrowSize = 5;
             var angleOffset = Math.PI * 0.8;
 
             var tipX = cx + Math.cos(angle) * (arrowSize / 2);
@@ -1105,10 +1159,24 @@
         window._kakaoPolylines = window._kakaoPolylines.filter(function(p) { return p.day != dayNum; });
 
         var route = DAY_ROUTES.find(function(r) { return r.day == dayNum; });
-        var path = keys.map(function(k) {
+        var straightPath = keys.map(function(k) {
           var p = pinByKey[k];
           return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
+
+        // ★도로 경로 우선(segPaths) — 없으면 마커 직선 폴백
+        var path = [];
+        var hasRoad = route && Array.isArray(route.segPaths) && route.segPaths.some(function(s){ return Array.isArray(s) && s.length >= 2; });
+        if (hasRoad) {
+          for (var i = 0; i < keys.length; i++) {
+            var p = pinByKey[keys[i]];
+            if (p && p.lat && p.lng && p.isFound) path.push(new kakao.maps.LatLng(p.lat, p.lng));
+            var seg = route.segPaths[i];
+            if (Array.isArray(seg) && seg.length >= 2) seg.forEach(function(c){ path.push(new kakao.maps.LatLng(c[0], c[1])); });
+          }
+        } else {
+          path = straightPath;
+        }
 
         // 🩹 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
         if (window._kakaoMap) {
@@ -1123,19 +1191,9 @@
         }
         if (path.length < 2) { setTimeout(renderArrows, 50); return; }
 
-        var lineColor = route ? route.color : '#2D9E8A';
-
-        var bgPolyline = new kakao.maps.Polyline({
-          path: path, strokeWeight: 10, strokeColor: '#000000', strokeOpacity: 0.6, strokeStyle: 'solid'
-        });
-        bgPolyline.setMap(window._kakaoMap);
-        window._kakaoPolylines.push({ day: dayNum, line: bgPolyline, path: null });
-
-        var mainPolyline = new kakao.maps.Polyline({
-          path: path, strokeWeight: 6, strokeColor: lineColor, strokeOpacity: 1.0, strokeStyle: 'solid'
-        });
-        mainPolyline.setMap(window._kakaoMap);
-        window._kakaoPolylines.push({ day: dayNum, line: mainPolyline, path: path });
+        // ★폴리라인은 drawLivePolylines로 일원화(구간별 offset·왕복 분리 로직 공유).
+        //   여기서 직접 통짜 path로 그리면 왕복 겹침·중복선이 생기므로 전체 재렌더를 호출한다.
+        drawLivePolylines();
 
         // 렌더링 주기가 꼬여 선 좌표가 0,0 픽셀로 강제 압축되는 현상을 차단하기 위해
         // 레이아웃 동기화를 강제 실행합니다.
@@ -1654,6 +1712,12 @@
       }
     }
     async function requestMapIndoorAlternative(dayNum) {
+
+      if (window._planConfirmed) {
+        toast('🔒 일정이 확정되어 있습니다. 좌측 상단의 [수정] 버튼을 눌러 수정 모드로 전환한 뒤 진행해 주세요.');
+        return;
+      }
+
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
