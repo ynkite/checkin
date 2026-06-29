@@ -377,93 +377,94 @@ public class AiRouteService {
      *  - Claude 호출이 실패하면(키 없음/장애 등) 원본(Groq 결과)을 그대로 반환하므로,
      *    이 메서드를 살려둬도 Claude가 죽으면 자동으로 기존 결과가 유지된다.
      */
-    private String validateAndFixWithClaude(TravelPlan plan, PlanInputForm form, String groqRouteJson) {
-        if (groqRouteJson == null || groqRouteJson.isBlank() || !groqRouteJson.contains("[")) {
-            return groqRouteJson;
+    /**
+     * 5단계: DB에 저장된 최신 일정을 읽어 동선 순서만 검증·교정 후 다시 저장.
+     * 장소명·개수는 절대 변경하지 않으며, 순서(order)와 time 값만 조정한다.
+     */
+    @Transactional
+    public void validateOrderWithClaude(Long tripId) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        String currentJson = plan.getRouteJson();
+        if (currentJson == null || currentJson.isBlank() || !currentJson.contains("[")) return;
+        PlanInputForm form = plan.getForm();
+        if (form == null) return;
+
+        String fixed = validateAndFixWithClaude(plan, form, currentJson);
+        if (fixed != null && !fixed.isBlank() && !fixed.equals(currentJson)) {
+            plan.setRouteJson(fixed);
+            planRepository.save(plan);
         }
-        // Groq·Gemini 둘 다 실패해 방어용 더미가 들어온 경우엔 검증하지 않고 그대로 반환
-        if (groqRouteJson.contains("fallback_d1_") || groqRouteJson.contains("서버 지연 임시")) {
-            return groqRouteJson;
+    }
+
+    private String validateAndFixWithClaude(TravelPlan plan, PlanInputForm form, String routeJson) {
+        if (routeJson == null || routeJson.isBlank() || !routeJson.contains("[")) {
+            return routeJson;
+        }
+        if (routeJson.contains("fallback_d1_") || routeJson.contains("서버 지연 임시")) {
+            return routeJson;
         }
 
         String prompt = String.format("""
-            당신은 'TripLinker'의 여행 일정 검수(QA) 전문 AI입니다.
-            다른 AI가 1차로 생성한 [원본 여행 동선 JSON]을 받아, 아래 [검증 항목]을 기준으로
-            오류가 있는 부분만 정확히 수정한 뒤, 동일한 구조의 완성된 JSON 배열만 출력하세요.
-            오류가 전혀 없다면 원본을 그대로(구조 변경 없이) 다시 출력하세요.
+            당신은 'TripLinker'의 동선 순서 검수(QA) AI입니다.
+            아래 [여행 동선 JSON]의 장소 순서와 시간 배치만 검증하고, 문제가 있으면 순서·time만 교정하세요.
+
+            ★★★ 절대 금지 사항 ★★★
+            - 장소명(name) 변경·추가·삭제 금지
+            - 장소 개수(하루 장소 수) 변경 금지
+            - sub·stars·type·icon·key·replacePh 값 변경 금지
+            - 새로운 장소를 목록에 없던 이름으로 만들어 넣는 것 금지
 
             [여행 기본 정보]
-            - 여행지: %s / 일정: %s ~ %s / 예산: %d원 / 인원: %s (%d명)
-            - 이동 수단: %s / 숙소 유형: %s / 스타일: %s / 식이: %s / 밀도: %s
-            - 유아 동반: %s / 반려동물 동반: %s
+            - 여행지: %s / 일정: %s ~ %s / 이동 수단: %s
             - 유저 요청 사항: %s
 
-            [검증 항목 - 발견 시 반드시 교정]
-            1. 가짜 장소 차단: 카카오맵에 실존하지 않거나 모호한 명칭("OO먹자골목", "XX 맛집"),
-               폐업/가상의 장소, '체크인/방문/식사' 같은 임의 접미사가 붙은 장소는
-               같은 권역의 실존하는 대중적 장소로 교체하세요.
-               ★숙박명 검증★: "함안호텔"처럼 지역명+업종만 붙인 임의 합성 명칭은 카카오맵에 없는
-               가짜 이름으로 간주하고, 해당 지역에 실제 등록된 숙박업소의 공식 상호명으로 교체하세요.
-            2. 지역 일관성: 모든 장소가 '여행지' 행정구역 안에 있어야 합니다. 벗어난 장소는 교체.
-            3. 동선 무결성: 편도 30분/20km 이상 멀리 튀는 지그재그 동선이면 반경 5~10km 내
-               장소로 교체하고, 직전/직후 'transit'(거리·시간·비용)을 현실적으로 재계산하세요.
-               ★클러스터링★: 같은 날 장소들이 10km 이상 흩어져 지그재그가 생기면,
-               다른 장소들과 가장 가까운 실존 장소로 교체하여 하루 동선을 한 권역으로 모으세요.
-               단, 유저 요청에 명시된 특정 장소는 교체 금지.
-                        4. ★장소 중복 제거★: 전체 일정에서 같은 장소(동일 상호명)가 2번 이상 등장하면,
-                                       두 번째 등장하는 것을 같은 권역의 다른 실존 장소로 교체하세요. 단, 유저가 재방문을 요청한 경우는 예외.
-                                       ★숙소 연속성 예외★: 전날 묵은 동일 숙소(stay)가 다음 날 '맨 첫 일정(출발)'으로 다시 등장하는 것은 정상적인 연속성이므로 절대 중복으로 간주해 교체·삭제하지 마세요.
-                                    5. ★숙소 연속성 검증★: 2일 이상 일정에서 중간 날(Day 2 ~ 마지막 전날)은 전날 숙소가 그 날 '맨 처음(아침 출발)'과 '맨 마지막(밤 취침)'에 모두 있어야 정상입니다.
-                                       - 빠져 있으면 전날과 동일한 숙소 stay 객체를 그 위치에 추가하세요.
-                                       - 단, 첫째 날(Day 1) 아침과 마지막 날 밤에는 숙소를 넣지 마세요. (Day 1은 관광/식당으로 시작, 마지막 날은 아침에 전날 숙소에서 출발 후 밤 숙소 없음)
-            6. 예산 수학 검증(가장 중요): 각 Day의 'budget' 은 그 Day의 모든 'sub' 금액과
-               'transit' 금액의 합과 정확히 일치해야 합니다. 틀리면 budget을 올바르게 다시 계산하세요.
-               숙박비가 비현실적(1박 70만원 등)이면 일반 시세(10~20만원)로 보정하세요.
-            7. 타입 규칙: 'type' 은 "stay","food","cafe","tour" 4가지만 허용. 그 외 값은 알맞게 교정.
+            [검증 항목 — 순서·시간만 조정]
+            1. 지그재그 동선 교정: 같은 날(Day) 장소들 중 지리적으로 역방향 이동(왔다갔다)이
+               발생하면, 기존 장소 집합 안에서 순서를 재배열해 한 방향 흐름이 되도록 하세요.
+               단, 유저 요청 장소(%s)는 순서 이동 금지.
+            2. 시간(time) 정렬: places 배열 내 time 값이 시간순으로 오름차순이 되도록 조정.
+               점심(sub에 '점심' 포함) → 12:00, 저녁(sub에 '저녁' 포함) → 18:00 고정.
+            3. transit 위치: 장소 객체와 장소 객체 사이에 {"transit":"이동"}이 반드시 있어야 합니다.
+               누락된 위치에만 삽입하고, 이미 있는 것은 건드리지 마세요.
+               transit의 값은 항상 "이동"만 허용 — 거리·시간·금액 숫자 절대 금지.
+            4. 숙소 연속성 위치 확인: 중간 날(Day 2 ~ 마지막 전날) 맨 처음과 맨 끝에 동일 숙소가
+               있어야 합니다. 이미 있으면 건드리지 말고, 없으면 같은 날 이미 있는 숙소 객체를
+               복사해 해당 위치에 삽입하세요. 새 숙소를 창작하는 것은 금지.
+            5. 문제가 없으면 원본 JSON을 그대로 반환.
 
-            [원본 여행 동선 JSON]
+            [여행 동선 JSON]
             %s
 
-            [출력 규칙 - 매우 중요]
-            1. 'type' 은 반드시 "stay","food","cafe","tour" 중 하나.
-            2. 장소와 장소 사이에는 반드시 이동 정보('transit') 객체를 포함.
-            3. 인사말·설명·마크다운 코드블럭(```json 등) 금지. 오직 원본과 동일한 구조의
-               순수 JSON 배열(Array) 텍스트만 출력하세요.
+            [출력 규칙]
+            - 인사말·설명·마크다운 코드블럭 금지.
+            - 원본과 동일한 구조의 순수 JSON 배열(Array)만 출력.
             """,
                 plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
-                form.getBudget(), form.getCompanionType(), form.getCompanionCount(),
-                form.getTransportType(), form.getAccommodationType(),
-                form.getTravelStyles(), form.getDietaryInfo(), form.getScheduleDensity(),
-                form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X",
+                form.getTransportType(),
                 parseExtraNotesToPrompt(form.getExtraNotes()),
-                groqRouteJson
+                parseExtraNotesToPrompt(form.getExtraNotes()),
+                routeJson
         );
 
         String fixedJson;
         try {
-            System.out.println("🔎 Claude 일정 검증·교정 기동 중...");
+            System.out.println("🔎 동선 순서 검증 중 (validateAndFixWithClaude)...");
             fixedJson = claudeClient.prompt().user(prompt).call().content();
         } catch (Exception e) {
-            // Claude 실패 시 → 검증 생략하고 Groq 원본을 그대로 사용 (기존 방식 유지)
-            System.out.println("⚠️ Claude 검증 실패, Groq 원본 그대로 사용: " + e.getMessage());
-            return groqRouteJson;
+            System.out.println("⚠️ 순서 검증 실패, 원본 그대로 사용: " + e.getMessage());
+            return routeJson;
         }
 
-        if (fixedJson == null || !fixedJson.contains("[")) {
-            return groqRouteJson;
-        }
+        if (fixedJson == null || !fixedJson.contains("[")) return routeJson;
 
-        // 마크다운 잔해 제거
         fixedJson = fixedJson.substring(fixedJson.indexOf("["), fixedJson.lastIndexOf("]") + 1).trim();
 
-        // 교정 결과가 유효한 JSON 배열인지 한 번 더 방어 (깨졌으면 원본 사용)
         try {
             JsonNode parsed = objectMapper.readTree(fixedJson);
-            if (!parsed.isArray() || parsed.isEmpty()) {
-                return groqRouteJson;
-            }
+            if (!parsed.isArray() || parsed.isEmpty()) return routeJson;
         } catch (Exception e) {
-            return groqRouteJson;
+            return routeJson;
         }
 
         return fixedJson;
@@ -1049,11 +1050,6 @@ public class AiRouteService {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
         PlanInputForm form = plan.getForm();
-        String transportType = form != null ? form.getTransportType() : null;
-        boolean isCar = transportType == null || !transportType.contains("대중교통");
-
-        double normalLimit = isCar ? 20_000 : 13_000;
-        double stayLimit   = isCar ? 35_000 : 25_000;
         final double HARD_LIMIT = 50_000; // 50km
 
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
@@ -1123,23 +1119,6 @@ public class AiRouteService {
         // 사용자 요청 장소가 50km 초과면 자동교체하지 않고 프론트 알림에 위임
         if (!over50.isEmpty()) return over50;
 
-        // 2) 20/13km(숙소 35/25km) 초과 구간 자동 교체 (1회).
-        //    50km 자동교체로 LLM이 이미 돌았다면, 그 결과(DB 최신본)를 기준으로
-        //    거리 교체를 이어서 진행한다. (50km만 고치고 기장처럼 20~50km 떨어진
-        //    장소를 그대로 두는 사고를 막기 위해 건너뛰지 않는다)
-        String current = autoOver50.isEmpty() ? json : String.valueOf(getRoutesByTripId(tripId));
-        for (int attempt = 0; attempt < 2; attempt++) {
-            java.util.List<java.util.Map<String, String>> requests =
-                    findFarPlaces(current, normalLimit, stayLimit, userRequested, plan.getDestination());
-            if (requests.isEmpty()) break;
-            try {
-                // replaceAiRoutePlaces 내부에서 이미 saveAiRouteToDb까지 수행하므로 여기서 또 저장하지 않는다
-                current = replaceAiRoutePlaces(tripId, requests);
-            } catch (Exception e) {
-                System.err.println("[거리 자동교체 실패] " + e.getMessage());
-                break;
-            }
-        }
         return java.util.Collections.emptyList();
     }
     /** 50km 초과 장소를 사용자요청(알림) / AI장소(자동교체)로 분류 */
@@ -1414,8 +1393,22 @@ public class AiRouteService {
 
             JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
             if (!docs.isArray() || docs.isEmpty()) return null;
-            JsonNode f = docs.get(0);
-            return new double[]{ f.path("y").asDouble(), f.path("x").asDouble() }; // [위도, 경도]
+
+            // ★ 지역 필터: query 첫 토큰(시/도)으로 address_name 검증 → 동명 타지역 오인식 차단
+            // "부산 해운대구 연돈" 검색 시 카카오가 서울 결과를 1순위로 올려도 부산 결과를 찾아서 반환
+            String regionKeyword = null;
+            String[] qTokens = query.split("\\s+");
+            if (qTokens.length >= 2) {
+                regionKeyword = qTokens[0];
+            }
+            for (JsonNode doc : docs) {
+                if (regionKeyword != null) {
+                    String addr = doc.path("address_name").asText("");
+                    if (!addr.contains(regionKeyword)) continue;
+                }
+                return new double[]{ doc.path("y").asDouble(), doc.path("x").asDouble() }; // [위도, 경도]
+            }
+            return null;
         } catch (org.springframework.web.client.HttpStatusCodeException he) {
             System.err.println("[geocode] HTTP " + he.getStatusCode() + " (" + query + ") : "
                     + he.getResponseBodyAsString());
@@ -1465,5 +1458,343 @@ public class AiRouteService {
             System.err.println("[carDirections] 실패: " + e.getMessage());
             return null;
         }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    //  ★ 신규 파이프라인 프롬프트 메서드 (커밋2: 추가만 — 커밋3에서 컨트롤러 연결)
+    // ════════════════════════════════════════════════════════════════
+
+    /**
+     * AI에게 type별(stay/food/cafe/tour) 장소 후보 리스트만 생성하도록 요청한다.
+     * 좌표·순서·날짜·transit 은 일절 포함하지 않음.
+     * assembleCandidates 에서 geocodeAndFilterCandidates → buildRouteWithAI 순으로 처리된다.
+     *
+     * @return {"stay":[...],"food":[...],"cafe":[...],"tour":[...]} 형태의 JSON 문자열
+     */
+    public String generateCandidates(Long tripId) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        PlanInputForm form = plan.getForm();
+        if (form == null) throw new IllegalStateException("해당 플랜의 취향 정보가 DB에 없습니다.");
+
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        long numNights = isDayTrip ? 0
+                : plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay();
+        long numDays = numNights + 1;
+        int cnt = form.getCompanionCount();
+
+        // M×N 수량: food 3/일, tour 4/일, cafe 2/일 → 하루 약 9개 후보 (AI가 밀도에 맞게 선별)
+        int foodCnt = (int) numDays * 3;
+        int tourCnt = (int) numDays * 4;
+        int cafeCnt = (int) numDays * 2;
+        String stayLine = isDayTrip
+                ? "- stay  : 0개 (당일치기 — stay 배열은 반드시 빈 배열[]로 출력)"
+                : "- stay  : 3개 (옵션 비교용. 숙소 유형: \"" + form.getAccommodationType()
+                  + "\", 옵션: " + form.getAccommodationOptions() + ")";
+
+        String prompt = "당신은 'TripLinker'의 여행 장소 조사 전문 AI입니다.\n"
+                + "아래 여행 조건에 맞는 실존 장소 후보 목록을 type별로 생성하세요.\n"
+                + "★순서·날짜·시간·이동 정보는 절대 출력하지 마세요. 이름과 기본 정보만 출력합니다.★\n\n"
+                + "[여행 기본 정보]\n"
+                + "- 여행지: " + plan.getDestination()
+                + " / 일정: " + plan.getStartDate() + " ~ " + plan.getEndDate()
+                + " (" + numNights + "박 " + numDays + "일) / 총 예산: " + form.getBudget() + "원\n"
+                + "- 인원: " + form.getCompanionType() + " (" + cnt + "명)"
+                + " / 유아 동반: " + (form.getHasInfant() == 1 ? "O" : "X")
+                + " / 반려동물 동반: " + (form.getHasPet() == 1 ? "O" : "X") + "\n"
+                + "- 이동 수단: " + form.getTransportType()
+                + " / 스타일: " + form.getTravelStyles()
+                + " / 밀도: " + form.getScheduleDensity()
+                + " / 식이: " + form.getDietaryInfo() + "\n"
+                + "- 유저 요청 사항: " + parseExtraNotesToPrompt(form.getExtraNotes()) + "\n\n"
+                + "[생성 수량 — 서버가 좌표 확인 후 AI가 선별해 최적 동선을 조립합니다]\n"
+                + "- food  : " + foodCnt + "개 (하루 3개 × " + numDays + "일)\n"
+                + "- tour  : " + tourCnt + "개 (하루 4개 × " + numDays + "일)\n"
+                + "- cafe  : " + cafeCnt + "개 (하루 2개 × " + numDays + "일)\n"
+                + stayLine + "\n\n"
+                + "[후보 생성 규칙]\n"
+                + "1. 장소명 절대 규칙 (Hallucination 차단):\n"
+                + "   - 반드시 카카오맵에 공식 등록된 실존 상호명 전체를 정확히 기입하세요.\n"
+                + "   - \"OO 맛집\", \"OO 거리\", \"OO 먹자골목\" 등 포괄·집합 명칭 절대 금지.\n"
+                + "   - 폐업·가상 장소 금지. 이름 뒤에 서술형 접미사('체크인', '방문' 등) 금지.\n"
+                + "2. 지역 다양성: 여행지(" + plan.getDestination() + ") 안에서 다양한 권역에 분산된 후보를 생성하세요.\n"
+                + "   (서버가 좌표 확인 후, AI가 하루별로 지리적으로 가까운 것끼리 묶어 일정을 짭니다.)\n"
+                + "3. 지역 일관성: 모든 후보는 여행지(" + plan.getDestination() + ") 경계 안에만 존재해야 합니다.\n"
+                + "4. sub 규격:\n"
+                + "   - stay : \"숙소 · ₩금액\" (1박 기준 실제 시세)\n"
+                + "   - food : \"맛집 · 점심 · ₩금액×" + cnt + "\" 또는 \"맛집 · 저녁 · ₩금액×" + cnt + "\"\n"
+                + "   - cafe : \"카페 · ₩금액×" + cnt + "\"\n"
+                + "   - tour : \"관광지 · 1h · ₩금액×" + cnt + "\" (무료면 ₩0×" + cnt + ")\n"
+                + "5. stars: 항상 \"평점 정보 없음\" 고정. 숫자 지어내기 절대 금지.\n"
+                + "6. 숙소 업종: stay 배열에는 \"" + form.getAccommodationType() + "\" 유형만 포함.\n"
+                + "7. 유저 요청 사항에 특정 장소·식당이 명시됐다면 해당 타입 배열 맨 앞에 반드시 포함.\n"
+                + "8. 식이 옵션(" + form.getDietaryInfo() + ")이 있으면 food 후보에 반영.\n"
+                + "9. 예산(" + form.getBudget() + "원) 고려해 장소 단가를 현실적으로 책정.\n\n"
+                + "[출력 형식 — 이 JSON만 출력, 설명·마크다운 코드블럭 금지]\n"
+                + "{\n"
+                + "  \"stay\": [ {\"name\":\"실존 숙소명\", \"sub\":\"숙소 · ₩금액\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"food\": [ {\"name\":\"실존 식당명\", \"sub\":\"맛집 · 점심 · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"cafe\": [ {\"name\":\"실존 카페명\", \"sub\":\"카페 · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ],\n"
+                + "  \"tour\": [ {\"name\":\"실존 관광지명\", \"sub\":\"관광지 · 1h · ₩금액×" + cnt + "\", \"stars\":\"평점 정보 없음\"} ]\n"
+                + "}";
+
+        String raw = "{}";
+        try {
+            System.out.println("🔍 [후보 생성] Claude 기동 중 (" + plan.getDestination() + " " + numDays + "일)...");
+            raw = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            System.out.println("⚠️ [후보 생성] Claude 실패, Groq 폴백: " + e.getMessage());
+            try {
+                raw = primaryClient.prompt().user(prompt).call().content();
+            } catch (Exception ex) {
+                System.err.println("🚨 [후보 생성] 모든 LLM 실패: " + ex.getMessage());
+            }
+        }
+
+        // 마크다운 잔해 제거 (```json ... ``` 등)
+        if (raw != null && raw.contains("{")) {
+            int start = raw.indexOf("{");
+            int end = raw.lastIndexOf("}");
+            if (start >= 0 && end > start) raw = raw.substring(start, end + 1);
+        }
+        System.out.println("✅ [후보 생성 완료] " + plan.getDestination());
+        return (raw != null) ? raw.trim() : "{}";
+    }
+
+    /**
+     * 후보 JSON → 좌표 확보 → 클러스터링 → 시간 골격 조립.
+     * saveAiRouteToDb 에 바로 넘길 수 있는 완성 일정 JSON 문자열을 반환한다.
+     * (커밋3: 컨트롤러 generateRoute 에서 generateCandidates 다음에 호출)
+     */
+    public String assembleCandidates(Long tripId, String candidatesJson) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        PlanInputForm form = plan.getForm();
+        java.util.Set<String> userRequested = extractUserRequestedNames(form);
+        java.util.Map<String, double[]> geoCache = new java.util.HashMap<>();
+        try {
+            JsonNode candidatesNode = objectMapper.readTree(candidatesJson);
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
+                    geocodeAndFilterCandidates(candidatesNode, plan.getDestination(), geoCache);
+            return buildRouteWithAI(filtered, plan, form, userRequested);
+        } catch (Exception e) {
+            System.err.println("[assembleCandidates] 실패: " + e.getMessage());
+            return "[]";
+        }
+    }
+
+    /**
+     * 좌표 확인이 완료된 후보 목록을 AI에게 전달해 완성 일정 JSON을 받아온다.
+     * AI가 lat/lng를 보고 지리적으로 가까운 것끼리 묶어 일자별 동선을 조립한다.
+     * transit은 항상 {"transit":"이동"}만 출력하며, 실제 시간/거리는 saveAiRouteToDb에서 채운다.
+     */
+    private String buildRouteWithAI(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> geocodedCandidates,
+            TravelPlan plan, PlanInputForm form, java.util.Set<String> userRequested) {
+
+        boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
+        long numNights = isDayTrip ? 0 : plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay();
+        long numDays = numNights + 1;
+        int cnt = form.getCompanionCount();
+        String density = form.getScheduleDensity();
+
+        // ── 후보 목록을 프롬프트용 문자열로 직렬화 ──
+        StringBuilder candidatesSb = new StringBuilder();
+        for (String type : new String[]{"stay", "food", "cafe", "tour"}) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> list =
+                    geocodedCandidates.getOrDefault(type, java.util.Collections.emptyList());
+            if (list.isEmpty()) continue;
+            candidatesSb.append("\n[").append(type.toUpperCase()).append(" — ").append(list.size()).append("개]\n");
+            for (int i = 0; i < list.size(); i++) {
+                com.fasterxml.jackson.databind.node.ObjectNode n = list.get(i);
+                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%n",
+                        i + 1,
+                        n.path("name").asText(""),
+                        n.path("sub").asText(""),
+                        n.path("lat").asDouble(),
+                        n.path("lng").asDouble()));
+            }
+        }
+
+        // ── 날짜별 라벨 힌트 ──
+        StringBuilder dayLabelsSb = new StringBuilder();
+        String[] DOW_KO = {"월", "화", "수", "목", "금", "토", "일"};
+        for (int d = 1; d <= numDays; d++) {
+            java.time.LocalDate date = plan.getStartDate().plusDays(d - 1);
+            String dow = DOW_KO[date.getDayOfWeek().getValue() - 1];
+            dayLabelsSb.append(String.format("  Day %d = %s (%s)%n", d,
+                    String.format("%02d/%02d", date.getMonthValue(), date.getDayOfMonth()), dow));
+        }
+
+        // ── 밀도 지침 ──
+        String densityGuide;
+        if ("빡빡하게".equals(density)) {
+            densityGuide = "빡빡하게: 하루 7~9개 장소. 아침 일찍 시작, 저녁 늦게 마무리.";
+        } else if ("여유롭게".equals(density)) {
+            densityGuide = "여유롭게: 하루 3~5개 장소. 이동 여유 확보, 느긋한 일정.";
+        } else {
+            densityGuide = "보통: 하루 5~6개 장소.";
+        }
+
+        // ── 숙소 규칙 ──
+        String stayRules = isDayTrip
+                ? "★당일치기(0박): type=stay 절대 금지. 관광지·맛집·카페로만 구성."
+                : "숙소 규칙:\n"
+                  + "  - Day1 마지막: stay 1개 배치(체크인). Day1 첫 장소는 관광/식당으로 시작.\n"
+                  + "  - Day2~마지막전날: 맨 처음(출발)과 맨 끝(취침)에 동일 숙소. 중간 날 없으면 해당 없음.\n"
+                  + "  - 마지막 날: 전날 숙소 출발(체크아웃)으로 시작. 밤 새 숙소 없음.\n"
+                  + "  - 중간 날 동일 숙소 2회 등장은 '중복 금지'의 예외.";
+
+        String userReqStr = userRequested.isEmpty() ? "없음" : String.join(", ", userRequested);
+
+        String prompt = "당신은 'TripLinker'의 최적 동선 생성 AI입니다.\n"
+                + "아래 [좌표 확인 완료 후보]를 보고, " + numNights + "박 " + numDays + "일 여행 일정을 완성하세요.\n\n"
+                + "[여행 기본 정보]\n"
+                + "- 여행지: " + plan.getDestination()
+                + " / 일정: " + plan.getStartDate() + " ~ " + plan.getEndDate()
+                + " (" + numNights + "박 " + numDays + "일) / 예산: " + form.getBudget() + "원\n"
+                + "- 인원: " + form.getCompanionType() + " (" + cnt + "명)"
+                + " / 이동 수단: " + form.getTransportType()
+                + " / 스타일: " + form.getTravelStyles()
+                + " / 밀도: " + density + "\n"
+                + "- 식이: " + form.getDietaryInfo()
+                + " / 유아: " + (form.getHasInfant() == 1 ? "O" : "X")
+                + " / 반려동물: " + (form.getHasPet() == 1 ? "O" : "X") + "\n"
+                + "- 유저 요청: " + parseExtraNotesToPrompt(form.getExtraNotes()) + "\n\n"
+                + "[날짜 정보]\n" + dayLabelsSb
+                + "\n[밀도 지침]\n" + densityGuide + "\n\n"
+                + "[좌표 확인 완료 후보 — 아래 후보만 사용, 이외 장소 임의 추가 절대 금지]\n"
+                + candidatesSb
+                + "\n[동선 생성 규칙]\n"
+                + "1. 지리적 군집화(최우선): lat/lng 좌표를 보고 가까운 후보끼리 같은 날로 묶으세요.\n"
+                + "   같은 날 장소들은 서로 15km 이내로 모아 지그재그 동선 금지.\n"
+                + "   Day마다 권역을 달리해 날짜 간 중복 이동 방지.\n"
+                + "2. 후보만 사용: 목록에 없는 장소 임의 추가 절대 금지.\n"
+                + "3. 시간 배치:\n"
+                + "   - 점심(lunch sub 포함) → 12:00 고정\n"
+                + "   - 저녁(dinner sub 포함) → 18:00 고정\n"
+                + "   - 오전 관광: 09:00~11:30 / 오후 관광: 13:30~17:30 / 카페: 틈새\n"
+                + "4. " + stayRules + "\n"
+                + "5. transit: 장소 사이 반드시 {\"transit\":\"이동\"} 삽입. 거리·시간·금액 숫자 절대 금지.\n"
+                + "6. sub·stars: 후보 목록 값을 그대로 복사. 임의 수정 금지.\n"
+                + "7. 장소 중복 금지: 전체 일정에서 동일 상호명 1회만. (숙소 연속성은 예외)\n"
+                + "8. icon: stay=🏨, food=🍽️, cafe=☕, tour=📍\n"
+                + "9. key: d{day}_{순번} 형식 (예: d1_1, d2_3)\n"
+                + "10. replacePh: \"장소 교체 요청\" 고정.\n"
+                + "11. budget: 그 날 sub 금액 합산, ₩ 표기.\n"
+                + "12. label: \"📅 Day {N} · MM/DD (요일)\" 형식.\n"
+                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n\n"
+                + "[출력 — 아래 JSON 배열만, 설명·마크다운 코드블럭 금지]\n"
+                + "[\n"
+                + "  {\n"
+                + "    \"day\": 1,\n"
+                + "    \"label\": \"📅 Day 1 · MM/DD (요일)\",\n"
+                + "    \"budget\": \"₩금액\",\n"
+                + "    \"places\": [\n"
+                + "      {\"type\":\"food\",\"icon\":\"🍽️\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_1\",\"time\":\"12:00\",\"replacePh\":\"장소 교체 요청\"},\n"
+                + "      {\"transit\":\"이동\"},\n"
+                + "      {\"type\":\"tour\",\"icon\":\"📍\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_2\",\"time\":\"14:00\",\"replacePh\":\"장소 교체 요청\"}\n"
+                + "    ]\n"
+                + "  }\n"
+                + "]";
+
+        String result;
+        try {
+            System.out.println("🗺️ AI 동선 조립 중 (buildRouteWithAI Claude)...");
+            result = claudeClient.prompt().user(prompt).call().content();
+        } catch (Exception e) {
+            System.out.println("⚠️ Claude 동선 조립 실패, Groq 기동: " + e.getMessage());
+            try {
+                result = primaryClient.prompt().user(prompt).call().content();
+            } catch (Exception ex) {
+                System.out.println("🚨 동선 조립 AI 전체 실패: " + ex.getMessage());
+                return "[]";
+            }
+        }
+
+        if (result == null || !result.contains("[")) return "[]";
+
+        int jsonStart = result.indexOf("[");
+        int jsonEnd = result.lastIndexOf("]");
+        if (jsonStart < 0 || jsonEnd <= jsonStart) return "[]";
+        result = result.substring(jsonStart, jsonEnd + 1).trim();
+
+        try {
+            JsonNode parsed = objectMapper.readTree(result);
+            if (!parsed.isArray() || parsed.isEmpty()) return "[]";
+        } catch (Exception e) {
+            return "[]";
+        }
+
+        return result;
+    }
+
+    /**
+     * 후보 장소 JSON 전체를 geocoding 하고 좌표 실패·타지역 이상치를 제거한다.
+     * 입력: {"stay":[...],"food":[...],"cafe":[...],"tour":[...]} (generateCandidates 출력 구조)
+     * 출력: 각 항목에 "lat"/"lng" 추가, 좌표를 못 잡은 항목 제거, 타지역 이상치 제거
+     *
+     * §9: 여행지 중심 좌표 고정 반경 차단(권역 잠금) 재도입 금지.
+     *     타지역 판단은 '후보들끼리 뭉치는 중심(중앙값)' 기준 80km 초과만.
+     */
+    private java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>>
+            geocodeAndFilterCandidates(
+                    JsonNode candidatesJson,
+                    String destination,
+                    java.util.Map<String, double[]> geoCache) {
+
+        String[] types = {"stay", "food", "cafe", "tour"};
+        java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result
+                = new java.util.LinkedHashMap<>();
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> all = new java.util.ArrayList<>();
+
+        for (String type : types) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> list = new java.util.ArrayList<>();
+            result.put(type, list);
+            JsonNode arr = candidatesJson.path(type);
+            if (!arr.isArray()) continue;
+            for (JsonNode item : arr) {
+                com.fasterxml.jackson.databind.node.ObjectNode node =
+                        (com.fasterxml.jackson.databind.node.ObjectNode) item.deepCopy();
+                String nm = node.path("name").asText("").trim();
+                if (nm.isEmpty()) continue;
+                double[] c = geocodeCached(withRegion(destination, nm), geoCache);
+                if (c == null) {
+                    System.out.println("[후보탈락-좌표없음] " + nm);
+                    continue;
+                }
+                node.put("lat", c[0]);
+                node.put("lng", c[1]);
+                list.add(node);
+                all.add(node);
+            }
+        }
+
+        // 전체 후보 중앙값 기준 80km 초과 → 타지역 이상치로 보고 제거
+        if (all.size() >= 3) {
+            java.util.List<Double> lats = new java.util.ArrayList<>();
+            java.util.List<Double> lngs = new java.util.ArrayList<>();
+            for (com.fasterxml.jackson.databind.node.ObjectNode n : all) {
+                lats.add(n.path("lat").asDouble());
+                lngs.add(n.path("lng").asDouble());
+            }
+            java.util.Collections.sort(lats);
+            java.util.Collections.sort(lngs);
+            double[] center = {lats.get(lats.size() / 2), lngs.get(lngs.size() / 2)};
+            final double OUTLIER_DIST = 80_000.0;
+            for (String type : types) {
+                result.get(type).removeIf(n -> {
+                    double[] c = {n.path("lat").asDouble(), n.path("lng").asDouble()};
+                    double dist = haversine(center, c);
+                    if (dist > OUTLIER_DIST) {
+                        System.out.println("[후보탈락-타지역] " + n.path("name").asText("")
+                                + " (" + Math.round(dist / 1000.0) + "km)");
+                        return true;
+                    }
+                    return false;
+                });
+            }
+        }
+        return result;
     }
 }
