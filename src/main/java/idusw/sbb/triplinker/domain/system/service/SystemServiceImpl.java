@@ -19,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
 
 import java.util.Objects;
 
@@ -44,6 +45,13 @@ public class SystemServiceImpl implements SystemService {
         Post post = postRepository.findById(dto.postId())
                 .orElseThrow(() -> new IllegalArgumentException("신고 대상 게시글을 찾을 수 없습니다."));
 
+        boolean isComment = dto.commentId() != null && dto.commentId() > 0;
+
+        // 중복 신고 방지
+        if (reportRepository.existsDuplicateReport(userId, dto.postId(), dto.commentId())) {
+            throw new IllegalArgumentException(isComment ? "이미 신고한 댓글입니다." : "이미 신고한 게시글입니다.");
+        }
+
         Report report = Report.builder()
                 .post(post)
                 .reporter(reporter)
@@ -51,7 +59,28 @@ public class SystemServiceImpl implements SystemService {
                 .commentId(dto.commentId())
                 .build();
 
-        return reportRepository.save(report).getId();
+        Long reportId = reportRepository.save(report).getId();
+
+        // 신고당한 계정(피신고자)에게 알림 전송
+        if (isComment) {
+            PostComment comment = postCommentRepository.findById(dto.commentId())
+                    .orElseThrow(() -> new IllegalArgumentException("신고 대상 댓글을 찾을 수 없습니다."));
+            notificationService.send(
+                    comment.getUser().getId(),
+                    "COMMENT_REPORTED",
+                    "댓글 신고 접수 안내",
+                    "작성하신 댓글이 신고되었습니다. 사유: " + dto.reason()
+            );
+        } else {
+            notificationService.send(
+                    post.getUser().getId(),
+                    "POST_REPORTED",
+                    "게시글 신고 접수 안내",
+                    "작성하신 게시글이 신고되었습니다. 사유: " + dto.reason()
+            );
+        }
+
+        return reportId;
     }
 
     // 내 알림 목록 조회
@@ -89,12 +118,38 @@ public class SystemServiceImpl implements SystemService {
         User reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자 정보를 찾을 수 없습니다."));
 
+        boolean isComment = dto.commentId() != null && dto.commentId() > 0;
+
+        // 중복 신고 방지
+        if (reportRepository.existsDuplicateReport(reporterId, postId, dto.commentId())) {
+            throw new IllegalArgumentException(isComment ? "이미 신고한 댓글입니다." : "이미 신고한 게시글입니다.");
+        }
+
         reportRepository.save(Report.builder()
                 .post(post)
                 .reporter(reporter)
                 .reason(dto.reason())
                 .commentId(dto.commentId())
                 .build());
+
+        // 신고당한 계정(피신고자)에게 알림 전송
+        if (isComment) {
+            PostComment comment = postCommentRepository.findById(dto.commentId())
+                    .orElseThrow(() -> new IllegalArgumentException("신고 대상 댓글을 찾을 수 없습니다."));
+            notificationService.send(
+                    comment.getUser().getId(),
+                    "COMMENT_REPORTED",
+                    "댓글 신고 접수 안내",
+                    "작성하신 댓글이 신고되었습니다. 사유: " + dto.reason()
+            );
+        } else {
+            notificationService.send(
+                    post.getUser().getId(),
+                    "POST_REPORTED",
+                    "게시글 신고 접수 안내",
+                    "작성하신 게시글이 신고되었습니다. 사유: " + dto.reason()
+            );
+        }
     }
 
     @Override
@@ -132,7 +187,12 @@ public class SystemServiceImpl implements SystemService {
 
         Post post = report.getPost();
         post.delete();
-        report.resolve(adminNote, adminName);
+
+        // 게시글에 달린 모든 PENDING 신고 일괄 처리
+        List<Report> pendingReports = reportRepository.findByPostIdAndCommentIdIsNullAndStatus(post.getId(), "PENDING");
+        for (Report r : pendingReports) {
+            r.resolve(adminNote, adminName);
+        }
 
         notificationService.send(post.getUser().getId(), "POST_DELETED", "게시글 삭제 안내", adminNote);
     }
@@ -154,7 +214,9 @@ public class SystemServiceImpl implements SystemService {
         User admin = userRepository.findById(adminId).orElse(null);
         String adminName = (admin != null) ? admin.getName() : "관리자";
 
-        if (report.getCommentId() != null && report.getCommentId() > 0) {
+        boolean isComment = report.getCommentId() != null && report.getCommentId() > 0;
+
+        if (isComment) {
             // 댓글 숨김 처리
             postCommentRepository.findById(report.getCommentId()).ifPresent(comment -> {
                 comment.hide();
@@ -172,7 +234,18 @@ public class SystemServiceImpl implements SystemService {
                     "POST_HIDDEN", "게시글 숨김 안내", adminNote);
         }
 
-        report.resolve(adminNote, adminName);
+        // 해당 글/댓글에 달린 모든 PENDING 신고 일괄 처리
+        List<Report> pendingReports;
+        if (isComment) {
+            pendingReports = reportRepository.findByPostIdAndCommentIdAndStatus(
+                    report.getPost().getId(), report.getCommentId(), "PENDING");
+        } else {
+            pendingReports = reportRepository.findByPostIdAndCommentIdIsNullAndStatus(
+                    report.getPost().getId(), "PENDING");
+        }
+        for (Report r : pendingReports) {
+            r.resolve(adminNote, adminName);
+        }
     }
 
     @Override
