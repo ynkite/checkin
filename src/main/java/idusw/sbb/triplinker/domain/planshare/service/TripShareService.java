@@ -104,7 +104,7 @@ public class TripShareService {
             return scheme + "://" + serverName + ":" + serverPort;
         } catch (Exception e) {
             // 예외 발생 시 AWS 서버 주소를 반환
-            return "http://52.78.185.138:8081";
+            return "http://43.201.154.80:8081";
         }
     }
 

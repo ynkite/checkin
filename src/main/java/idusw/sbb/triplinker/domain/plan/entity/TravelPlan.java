@@ -90,13 +90,14 @@ public class TravelPlan {
     private LocalDateTime updatedAt;
 
 
-    @Column(columnDefinition = "TEXT")
+    // TEXT(64KB) 로는 3박 일정이 안 들어간다. 평가셋 100건 중 59건이 저장에서 터졌다.
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String routeJson; //여기에 AI가 생성한 JSON 문자열을 통째로 저장
 
     // ★수정 중(draft) 일정 JSON. 마이페이지에서 확정본을 수정할 때는 여기에만 저장하고,
     //   '확정(FIXED)'을 누를 때 routeJson(확정본)으로 승격한다.
     //   미확정 상태로 종료/로그아웃해도 routeJson(직전 확정본)은 보존된다.
-    @Column(name = "draft_route_json", columnDefinition = "TEXT")
+    @Column(name = "draft_route_json", columnDefinition = "MEDIUMTEXT")
     private String draftRouteJson;
 
 

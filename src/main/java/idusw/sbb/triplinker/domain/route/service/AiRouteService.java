@@ -1555,19 +1555,17 @@ public class AiRouteService {
                             (com.fasterxml.jackson.databind.node.ObjectNode) places.get(i);
                     transitNode.put("transit", String.format("%s · %.1fkm · 약 %d분 · %s", icon, km, min, cost));
 
-                    // ★도로 경로 좌표 저장(자차) → 프론트가 직선이 아닌 도로를 따라 폴리라인을 그림.
-                    //   대중교통은 도로 경로가 부정확하므로 생략(직선 폴백).
-                    if (isCar) {
-                        java.util.List<double[]> coords = carPath(from, to);
-                        if (coords != null && coords.size() >= 2) {
-                            com.fasterxml.jackson.databind.node.ArrayNode pathArr = objectMapper.createArrayNode();
-                            for (double[] c : coords) {
-                                com.fasterxml.jackson.databind.node.ArrayNode pt = objectMapper.createArrayNode();
-                                pt.add(c[0]); pt.add(c[1]); // [위도, 경도]
-                                pathArr.add(pt);
-                            }
-                            transitNode.set("pathCoords", pathArr);
+                    // ★도로 경로 좌표 저장 → 프론트가 직선이 아닌 도로를 따라 폴리라인을 그림.
+                    //   대중교통도 카카오 자차 도로경로를 그대로 그려 직선보다 실제 동선에 가깝게 표시한다.
+                    java.util.List<double[]> coords = carPath(from, to);
+                    if (coords != null && coords.size() >= 2) {
+                        com.fasterxml.jackson.databind.node.ArrayNode pathArr = objectMapper.createArrayNode();
+                        for (double[] c : coords) {
+                            com.fasterxml.jackson.databind.node.ArrayNode pt = objectMapper.createArrayNode();
+                            pt.add(c[0]); pt.add(c[1]); // [위도, 경도]
+                            pathArr.add(pt);
                         }
+                        transitNode.set("pathCoords", pathArr);
                     }
                 }
 
