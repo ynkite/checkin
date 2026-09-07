@@ -1,0 +1,19 @@
+# ============================================================
+# application-local.properties 템플릿 (로컬 개발용)
+#   이 파일을 application-local.properties 로 복사 후 값 채우기
+# ============================================================
+
+# ---------- DB ----------
+spring.datasource.url=jdbc:mariadb://localhost:3306/<DB이름>?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+spring.datasource.username=<DB 사용자>
+spring.datasource.password=<DB 비밀번호>
+
+# ---------- 서버 ----------
+# 팀원끼리 동시에 띄울 때는 서로 다른 포트를 사용할 것 (8080, 8081, 8082 ...)
+server.port=8080
+
+# ---------- OAuth 리다이렉트 (포트를 바꾸면 여기도 함께 변경) ----------
+spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:8080/login/oauth2/code/google
+
+# ---------- 업로드 경로 (본인 PC 절대경로) ----------
+file.upload.path=<예: E:/uploads/>
