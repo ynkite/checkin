@@ -9,10 +9,11 @@ spring.datasource.username=<DB 사용자>
 spring.datasource.password=<DB 비밀번호>
 
 # ---------- 서버 ----------
-# 팀원끼리 동시에 띄울 때는 서로 다른 포트를 사용할 것 (8080, 8081, 8082 ...)
+# 로컬 개발은 전원 8080 고정 (서버 배포는 8081)
+# 예외: 워크트리 2개를 동시에 띄울 때만 두 번째를 8090 등으로 변경
 server.port=8080
 
-# ---------- OAuth 리다이렉트 (포트를 바꾸면 여기도 함께 변경) ----------
+# ---------- OAuth 리다이렉트 (포트를 바꾸면 여기도 반드시 함께 변경) ----------
 spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:8080/login/oauth2/code/google
 
 # ---------- 업로드 경로 (본인 PC 절대경로) ----------
