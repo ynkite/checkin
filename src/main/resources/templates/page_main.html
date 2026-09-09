@@ -809,87 +809,245 @@
 
 
   <div class="page active" id="page-main">
-    <div class="hero">
-      <div>
-        <div class="hsc">
-          <div class="hsc-ey"></div>
-          <div class="hsc-ttl"></div>
-          <div class="hsc-sub"></div>
-          <div class="hsc-dest-row"></div>
-          <div class="hsc-cards"></div>
-          <div style="margin-top:16px">
-            <button class="hsc-go"
-                    style="width:100%;padding:14px;font-size:15px;font-weight:700;border-radius:var(--r)"
-                    onclick="goNewPlanner()">
-              ✏️ 여행지 직접 입력하러 가기 →
-            </button>
+    <div class="ck-home">
+      <section class="ck-hero" id="ck_hero">
+        <div class="ck-wr ck-grid">
+          <div>
+            <h1>붐비면 순서를 바꿉니다</h1>
+            <p class="ck-sub">여행 당일, 다음에 갈 관광지가 붐비면 미리 알립니다. 덜 붐비는 곳을 먼저 가도록 순서를 바꾸고, 몇 분 줄고 얼마 더 드는지 같이 보여줍니다.</p>
+
+            <div class="ck-tell" role="status" aria-live="polite">
+              <div class="ck-ph"><i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i></div>
+              <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
+              <p class="ck-why" id="ck_tw">남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.</p>
+              <div class="ck-plans" id="ck_plans">
+                <div class="ck-plan ck-a"><span class="ck-t">14:30</span> 해운대 <span class="ck-ar">→</span>
+                  <span class="ck-t">17:30</span> 광안리</div>
+                <div class="ck-plan ck-b ck-now"><span class="ck-t">14:20</span> 광안리 <span class="ck-ar">→</span>
+                  <span class="ck-t">17:40</span> 해운대</div>
+              </div>
+              <div class="ck-chips" id="ck_tc">
+                <b id="ck_c1">−40분</b><b id="ck_c2">+3,200원</b><b class="ck-hot" id="ck_c3">일몰에 맞음</b>
+              </div>
+            </div>
+          </div>
+
+          <div class="ck-places" id="ck_places">
+            <article class="ck-place ck-a ck-busy" id="ck_cardH">
+              <span class="ck-ord" id="ck_ordH">1</span>
+              <span class="ck-glow"></span>
+              <div class="ck-win"><div class="ck-in" style="--sy:-24%"></div></div>
+              <div class="ck-meta">
+                <b>해운대</b>
+                <span class="ck-stt" id="ck_stH">14:30 도착 예정<br>지금 재는 중</span>
+                <div class="ck-g"><i id="ck_gH" style="width:40%"></i></div>
+              </div>
+            </article>
+            <article class="ck-place ck-b" id="ck_cardG">
+              <span class="ck-ord" id="ck_ordG">2</span>
+              <span class="ck-glow"></span>
+              <div class="ck-win"><div class="ck-in" style="--sy:-6%"></div></div>
+              <div class="ck-meta">
+                <b>광안리</b>
+                <span class="ck-stt" id="ck_stG">17:30 도착 예정<br>지금 재는 중</span>
+                <div class="ck-g"><i id="ck_gG" style="width:40%"></i></div>
+              </div>
+            </article>
           </div>
         </div>
-      </div>
-      <div class="curation-panel">
-        <div class="slide-arr-wrap">
-          <button class="slide-arr" onclick="changeSlide(-1)">&#8249;</button>
-          <button class="slide-arr" onclick="changeSlide(1)">&#8250;</button>
-        </div>
-        <div class="slide-dots"></div>
-      </div>
-    </div>
 
-    <!--  <div style="display:flex;justify-content:center;padding:0 56px 28px;padding-right:calc(56px + 120px)">-->
-    <!--    <div style="display:inline-flex;align-items:center;gap:7px;background:var(&#45;&#45;warm-pale);border:1px solid #F0CBA8;color:#8A5A2A;padding:9px 20px;border-radius:10px;font-size:12px;font-weight:500">-->
-    <!--      ⚠️ 비회원도 큐레이션·인기 경로 열람 가능 &nbsp;/&nbsp; 스크랩·좋아요·AI 추천은 로그인 후 이용 가능-->
-    <!--    </div>-->
-    <!--  </div>-->
-
-    <div class="sec" id="top3-sec">
-      <div class="sec-row">
-        <div>
-          <div class="sec-ey">커뮤니티 인기</div>
-          <h2 class="sec-hd">인기 경로 TOP 3</h2>
+        <div class="ck-wr ck-form">
+          <form class="ck-bar" id="ck_mk" onsubmit="return false">
+            <div class="ck-fr">
+              <div class="ck-fld"><label for="f1">어디로</label>
+                <select id="ck_f1"><option>부산</option><option>서울</option><option>제주</option><option>강릉</option><option>경주</option></select></div>
+              <div class="ck-fld"><label for="f2">며칠</label>
+                <select id="ck_f2"><option>2박 3일</option><option>1박 2일</option><option>3박 4일</option><option>당일</option></select></div>
+              <div class="ck-fld"><label for="f3">언제부터</label>
+                <input id="ck_f3" type="date" value="2026-09-19"></div>
+              <div class="ck-fld"><label for="f4">몇 명</label>
+                <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
+            </div>
+            <div class="ck-cond">
+              <span>같이 가는 사람</span>
+              <div class="ck-chips2" id="ck_cc">
+                <button type="button" aria-pressed="false">반려동물</button>
+                <button type="button" aria-pressed="false">유아차</button>
+                <button type="button" aria-pressed="false">노약자</button>
+                <button type="button" aria-pressed="false">키즈존</button>
+                <button type="button" aria-pressed="false">노키즈존</button>
+              </div>
+            </div>
+            <button class="ck-go" type="submit">경로 만들기</button>
+            <p class="ck-note" id="ck_nt">고른 조건에 맞는 곳만 골라 순서를 짭니다.</p>
+          </form>
         </div>
-        <div class="sec-meta">↻ 실시간 스크랩순 랭킹</div>
-      </div>
-      <div class="top3-grid"></div>
-    </div>
+      </section>
 
-    <div class="sec">
-      <div class="sec-row">
-        <div>
-          <h2 class="sec-hd">인기 맛집 TOP 3</h2>
+      <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
+      <section class="ck-wr ck-blk ck-mine" id="ck_mine">
+        <div class="ck-hd">
+          <h2>내 여행</h2>
+          <p class="ck-side">저장한 경로와 진행 중인 여행입니다. 로그인한 계정에서만 보입니다.</p>
         </div>
-        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
-      </div>
-      <div class="popular-grid" id="popular-food-grid"></div>
-    </div>
+        <div class="ck-row" id="ck_mine_row">
+          <div class="ck-empty">불러오는 중입니다.</div>
+        </div>
+      </section>
 
-    <div class="sec">
-      <div class="sec-row">
-        <div>
-          <h2 class="sec-hd">인기 숙소 TOP 3</h2>
+      <!-- 추천 여행. 컨테이너와 클래스는 initMainPage() 가 채우므로 그대로 두고,
+           껍데기와 카드 모양만 새로 입힌다. -->
+      <section class="ck-wr ck-blk" id="ck_cur">
+        <div class="ck-hd">
+          <h2>이런 여행은 어떠세요</h2>
+          <p class="ck-side">지역과 기간만 고르면 순서까지 짜여 있습니다.</p>
         </div>
-        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
-      </div>
-      <div class="popular-grid" id="popular-stay-grid"></div>
-    </div>
+        <div class="ck-cur">
+          <div class="hsc">
+            <div class="hsc-ey"></div>
+            <div class="hsc-ttl"></div>
+            <div class="hsc-sub"></div>
+            <div class="hsc-dest-row"></div>
+            <div class="hsc-cards"></div>
+            <button class="ck-go2" type="button" onclick="goNewPlanner()">여행지 직접 입력하기 →</button>
+          </div>
+          <div class="curation-panel">
+            <div class="slide-arr-wrap">
+              <button class="slide-arr" onclick="changeSlide(-1)">&#8249;</button>
+              <button class="slide-arr" onclick="changeSlide(1)">&#8250;</button>
+            </div>
+            <div class="slide-dots"></div>
+          </div>
+        </div>
+      </section>
 
-    <div class="sec">
-      <div class="sec-row">
-        <div>
-          <h2 class="sec-hd">인기 관광지 TOP 3</h2>
+      <section class="ck-wr ck-blk" id="ck_free">
+        <div class="ck-hd">
+          <h2>지금 한가한 곳</h2>
+          <p class="ck-side">집중률 100이 평소 같은 시각입니다.</p>
         </div>
-        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
-      </div>
-      <div class="popular-grid" id="popular-tour-grid"></div>
-    </div>
+        <div class="ck-free">
+          <article class="ck-spot"><div class="ck-nm">다대포</div><div class="ck-why">낙조, 모래사장 · 차로 32분</div>
+            <div class="ck-vv"><b class="ck-fig">64</b><i>평소의 64%</i></div><div class="ck-bar"><i style="width:43%"></i></div></article>
+          <article class="ck-spot"><div class="ck-nm">흰여울문화마을</div><div class="ck-why">골목, 전망 · 차로 24분</div>
+            <div class="ck-vv"><b class="ck-fig">71</b><i>평소의 71%</i></div><div class="ck-bar"><i style="width:47%"></i></div></article>
+          <article class="ck-spot"><div class="ck-nm">태종대</div><div class="ck-why">해안 절벽, 등대 · 차로 27분</div>
+            <div class="ck-vv"><b class="ck-fig">78</b><i>평소의 78%</i></div><div class="ck-bar"><i style="width:52%"></i></div></article>
+          <article class="ck-spot ck-hot"><div class="ck-nm">해운대</div><div class="ck-why">지금 붐빔 · 저녁이 낫습니다</div>
+            <div class="ck-vv"><b class="ck-fig">142</b><i>평소의 1.4배</i></div><div class="ck-bar"><i style="width:95%"></i></div></article>
+        </div>
+      </section>
 
-    <div class="sec">
-      <div class="sec-row">
-        <div>
-          <h2 class="sec-hd">인기 카페 TOP 3</h2>
+      <section class="ck-wr ck-blk" id="ck_budget">
+        <div class="ck-hd">
+          <h2>숙박비가 왜 그 금액인지</h2>
+          <p class="ck-side">항목마다 확인한 값인지 추정한 값인지 표시합니다.</p>
         </div>
-        <div class="sec-meta">↻ 실시간 담긴 횟수 랭킹</div>
+        <div class="ck-bud">
+          <div class="ck-card">
+            <table class="ck-rows">
+              <thead><tr><th>숙박 항목</th><th>금액</th><th>확인 여부</th></tr></thead>
+              <tbody>
+                <tr><td>객실 2박</td><td>120,000</td><td>확정</td></tr>
+                <tr><td>인원 추가 2명</td><td>40,000</td><td>확정</td></tr>
+                <tr><td>바베큐 이용</td><td>30,000</td><td>추정</td></tr>
+                <tr><td>레이트 체크아웃</td><td>10,000</td><td>추정</td></tr>
+                <tr><td>청소비</td><td>0</td><td>없음</td></tr>
+              </tbody>
+              <tfoot><tr><td>합계</td><td>184,000 ~ 216,000</td><td></td></tr></tfoot>
+            </table>
+          </div>
+          <div class="ck-card ck-conf">
+            <div class="ck-big ck-fig">80<span>%</span></div>
+            <p>총액의 80%는 확인한 금액입니다. 확정은 공개된 요금표에서 찾은 값, 추정은 같은 지역 같은 유형 숙소의 평균입니다.</p>
+            <div class="ck-bar" aria-hidden="true"><i style="flex:0 0 80%"></i><i style="flex:1"></i></div>
+            <div class="ck-lg"><span><em>160,000</em> 확정</span><span><em>40,000</em> 추정</span></div>
+            <p>결제한 금액을 남기면 다음 예측 범위가 좁아집니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="ck-wr ck-blk" id="ck_how">
+        <div class="ck-hd">
+          <h2>쓰는 순서</h2>
+          <p class="ck-side">경로를 만들고, 당일 확인하고, 어긋나면 바꿉니다.</p>
+        </div>
+        <div class="ck-steps">
+          <article class="ck-st"><div class="ck-no">01</div><h3>경로를 만든다</h3>
+            <p>지역과 기간, 같이 가는 사람만 고릅니다. 시각은 직접 정하지 않습니다. 숙소 체크인 시각과 각 장소 영업시간, 이동시간을 넣고 계산합니다.</p></article>
+          <article class="ck-st"><div class="ck-no">02</div><h3>당일 지도에서 본다</h3>
+            <p>지금 어디쯤이고 다음 장소가 얼마나 붐비는지 한 화면에 나옵니다. 스크롤은 없습니다.</p></article>
+          <article class="ck-st"><div class="ck-no">03</div><h3>어긋나면 바꾼다</h3>
+            <p>붐비면 먼저 말합니다. 순서를 바꾸면 몇 분이 줄고 얼마가 더 드는지 같이 나옵니다.</p></article>
+        </div>
+      </section>
+
+      <section class="ck-wr ck-blk">
+        <div class="ck-hd">
+          <h2>캘린더로 옮겨 갑니다</h2>
+          <p class="ck-side">일정이 바뀌면 캘린더도 바뀝니다.</p>
+        </div>
+        <div class="ck-sync">
+          <div><b>아이폰·구글 캘린더</b><p>구독 주소를 한 번 넣으면 됩니다. 순서를 바꿀 때마다 캘린더가 따라옵니다.</p></div>
+          <div><b>출발 30분 전 알림</b><p>움직여야 할 시각에 알립니다. 붐빔이 심해지면 더 일찍 알립니다.</p></div>
+          <div><b>일행과 공유</b><p>링크로 같이 봅니다. 누가 순서를 바꿨는지 남습니다.</p></div>
+        </div>
+      </section>
+
+      <section class="ck-wr ck-blk" id="ck_data">
+        <div class="ck-hd">
+          <h2>쓰는 데이터</h2>
+          <p class="ck-side">전부 공개 API에서 받아옵니다.</p>
+        </div>
+        <div class="ck-data">
+          <div class="ck-src"><b>한국관광공사 OpenAPI</b>
+            <ul><li>국문 관광정보</li><li>관광지별 연관 관광지</li><li>기초지자체 중심 관광지</li><li>관광지 집중률 예측</li><li>지역별 방문자 수</li></ul></div>
+          <div class="ck-src"><b>이동과 소요시간</b>
+            <ul><li>카카오모빌리티 경로</li><li>TMAP 교통정보</li><li>TMAP 타임머신 — 미래 시각 소요시간</li></ul></div>
+          <div class="ck-src"><b>지형과 건물</b>
+            <ul><li>OpenStreetMap 건물 발자국·층수</li><li>Esri 캔버스 베이스맵</li><li>기상청 날씨</li></ul></div>
+          <div class="ck-src"><b>순서를 짜는 방식</b>
+            <ul><li>순서 계산은 알고리즘</li><li>후보 선별과 설명은 AI</li><li>시각은 입력이 아니라 계산 결과</li></ul></div>
+        </div>
+      </section>
+
+      <!-- 아래 다섯 섹션은 기존 기능이다. 컨테이너 id·클래스를 바꾸면
+           app_main.js 의 렌더가 깨진다. 껍데기만 새 디자인으로 입혔다. -->
+      <section class="ck-wr ck-blk" id="ck_pop">
+        <div class="ck-hd">
+          <h2>사람들이 많이 담은 경로</h2>
+          <p class="ck-side">스크랩이 많은 순서입니다. 실시간으로 바뀝니다.</p>
+        </div>
+        <div class="top3-grid ck-cards"></div>
+      </section>
+
+      <section class="ck-wr ck-blk">
+        <div class="ck-hd"><h2>많이 담은 맛집</h2></div>
+        <div class="popular-grid ck-cards" id="popular-food-grid"></div>
+      </section>
+
+      <section class="ck-wr ck-blk">
+        <div class="ck-hd"><h2>많이 담은 숙소</h2></div>
+        <div class="popular-grid ck-cards" id="popular-stay-grid"></div>
+      </section>
+
+      <section class="ck-wr ck-blk">
+        <div class="ck-hd"><h2>많이 담은 관광지</h2></div>
+        <div class="popular-grid ck-cards" id="popular-tour-grid"></div>
+      </section>
+
+      <section class="ck-wr ck-blk">
+        <div class="ck-hd"><h2>많이 담은 카페</h2></div>
+        <div class="popular-grid ck-cards" id="popular-cafe-grid"></div>
+      </section>
+
+      <div class="ck-wr">
+        <div class="ck-attr">
+          <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 집중률 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
+          <span>화면의 집중률과 금액은 시연용 예시입니다. 사람 기호는 인원수가 아니라 집중률 지수를 밀도로 옮긴 것입니다.</span>
+          <span>2026 관광데이터 활용 공모전 출품작 · 팀 체크인</span>
+        </div>
       </div>
-      <div class="popular-grid" id="popular-cafe-grid"></div>
     </div>
   </div>
   <!--// 하드 코딩을 삭제하면 아래 부분을 사용-->

@@ -87,6 +87,16 @@
   --slate:#4A6A9E;       /* 카테고리        (파란 슬레이트 --g0 계열) */
   --slate-pale:#ECF1F8;
 
+  /* 신호색 위에 얹는 글자.
+     --sig 는 밝은 앰버라 흰 글자가 안 읽힌다. 짙은 갈색을 쓴다.
+     대비 --on-sig 9.5 · --on-sig-2 5.6 (--sig 배경 기준) */
+  --on-sig:#331C00;
+  --on-sig-2:#6B3C00;
+
+  /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
+  --void-veil:rgba(237,241,245,.82);
+  --void-veil-2:rgba(237,241,245,.95);
+
   /* 그림자 — 청록 rgba 를 걷어냈다 */
   --sh-ui:0 2px 16px rgba(16,22,32,.07);
   --sh-ui-h:0 10px 34px -8px rgba(16,22,32,.18);
@@ -197,6 +207,8 @@
   --terra:#E8845A; --terra-pale:#3A2A20;
   --tile:#E3705A;  --tile-pale:#3A241F;
   --slate:#8FA9D4; --slate-pale:#232C3C;
+  --void-veil:rgba(20,26,38,.82); --void-veil-2:rgba(20,26,38,.95);
+  --on-sig:#331C00; --on-sig-2:#6B3C00;
   --sh-ui:0 2px 16px rgba(0,0,0,.45);
   --sh-ui-h:0 10px 34px -8px rgba(0,0,0,.6);
 }

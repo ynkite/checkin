@@ -1,0 +1,327 @@
+/*
+ * 체크인 — 메인페이지 (styles_home.css)
+ *
+ * 클래스에 ck- 접두어를 붙였다. 시안의 .hero/.card/.form/.bar/.st/.go 가
+ * styles_main.css 의 같은 이름과 충돌하기 때문이다.
+ * 색은 tokens.css 변수만 쓴다.
+ */
+
+.ck-top{position:fixed; top:0; left:0; right:0; z-index:30; padding:14px 0;
+  background:var(--void-veil); backdrop-filter:blur(14px) saturate(1.3);
+  border-bottom:1px solid transparent; transition:border-color .2s, background .2s}
+.ck-top.ck-on{border-color:var(--hair); background:var(--void-veil-2)}
+.ck-top .ck-wr{display:flex; align-items:center; gap:24px}
+.ck-top .ck-bd{font-size:19px; font-weight:700; letter-spacing:-.07em; margin-right:auto}
+.ck-top nav{display:flex; gap:20px}
+.ck-top nav a{font-size:14px; font-weight:500; color:var(--ink-2); text-decoration:none}
+.ck-top nav a:hover{color:var(--ink)}
+.ck-top .ck-lg{padding:9px 17px 10px; border-radius:99px; font-size:14px; font-weight:600;
+  background:var(--ink); color:var(--panel)}
+.ck-top .ck-lg:hover{filter:brightness(1.25)}
+
+/* ── 히어로 ── */
+.ck-hero{position:relative; padding:104px 0 26px; overflow:hidden}
+.ck-hero::before{content:""; position:absolute; right:-14%; top:-24%; width:76%; height:150%;
+  z-index:0; pointer-events:none; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(255,255,255,.9), rgba(255,255,255,0))}
+.ck-hero .ck-grid{position:relative; z-index:2; display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.08fr); gap:42px; align-items:start}
+.ck-hero h1{font-size:clamp(34px,4.4vw,56px); max-width:14ch}
+.ck-hero .ck-sub{margin-top:18px; font-size:17px; line-height:1.72; color:var(--ink-2); max-width:38ch}
+
+/* 나레이션 */
+.ck-tell{margin-top:26px; background:var(--panel); border-radius:15px; box-shadow:var(--lift);
+  padding:19px 21px 20px}
+.ck-tell .ck-ph{display:flex; gap:7px; margin-bottom:13px}
+.ck-tell .ck-ph i{flex:1; height:3px; border-radius:99px; background:var(--panel-2); overflow:hidden}
+.ck-tell .ck-ph i b{display:block; height:100%; width:0; background:var(--ink); border-radius:99px}
+.ck-tell .ck-ph i.ck-on b{width:100%; transition:width 2.5s linear}
+.ck-tell .ck-ph i.ck-done b{width:100%}
+.ck-tell .ck-line{font-size:17px; font-weight:700; letter-spacing:-.035em; min-height:1.55em}
+.ck-tell .ck-line em{font-style:normal; color:var(--num)}
+.ck-tell .ck-why{font-size:13.5px; line-height:1.62; color:var(--ink-2); margin-top:5px; min-height:2.7em}
+.ck-plans{position:relative; height:44px; margin-top:13px; overflow:hidden}
+.ck-plan{position:absolute; inset:0; display:flex; align-items:center; gap:9px;
+  font-size:14.5px; font-weight:600; padding:0 13px; border-radius:10px; background:var(--ui-plate);
+  box-shadow:inset 0 0 0 1px var(--panel-2); transition:transform .55s cubic-bezier(.3,.9,.3,1), opacity .4s}
+.ck-plan .ck-t{font-family:var(--fig); font-size:13.5px; font-weight:600; color:var(--num)}
+.ck-plan .ck-ar{color:var(--ink-3); font-weight:400}
+.ck-plan.ck-now{background:var(--sig); box-shadow:none; color:var(--on-sig)}
+.ck-plan.ck-now .ck-t{color:var(--on-sig-2)}
+.ck-plan.ck-now .ck-ar{color:var(--on-sig-2)}
+.ck-plan.ck-b{transform:translateY(100%); opacity:0}
+.ck-plans.ck-sw .ck-plan.ck-a{transform:translateY(-100%); opacity:0}
+.ck-plans.ck-sw .ck-plan.ck-b{transform:none; opacity:1}
+.ck-tell .ck-chips{display:flex; gap:7px; margin-top:12px; min-height:32px; flex-wrap:wrap}
+.ck-tell .ck-chips b{font-family:var(--fig); font-size:13px; font-weight:600; padding:5px 11px 6px;
+  border-radius:99px; background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--panel-2);
+  opacity:0; transform:translateY(6px); transition:opacity .4s, transform .4s}
+.ck-tell .ck-chips b.ck-on{opacity:1; transform:none}
+.ck-tell .ck-chips b.ck-hot{background:var(--sig); color:var(--on-sig); box-shadow:none}
+
+/* 관광지 카드 두 장 */
+.ck-places{display:flex; gap:16px; margin-top:4px}
+.ck-place{flex:1 1 0; min-width:0; position:relative; background:var(--panel); border-radius:16px;
+  box-shadow:var(--lift); overflow:hidden;
+  transition:transform .62s cubic-bezier(.34,1.02,.3,1), box-shadow .4s}
+.ck-places.ck-sw .ck-place.ck-a{transform:translateX(calc(100% + 16px))}
+.ck-places.ck-sw .ck-place.ck-b{transform:translateX(calc(-100% - 16px))}
+.ck-place .ck-ord{position:absolute; left:13px; top:13px; z-index:4; width:26px; height:26px;
+  border-radius:99px; display:grid; place-items:center; font-family:var(--fig);
+  font-size:12.5px; font-weight:600; background:var(--ink); color:var(--panel)}
+.ck-place.ck-lead .ck-ord{background:var(--sig); color:var(--on-sig)}
+.ck-place .ck-win{position:relative; height:196px; overflow:hidden; background:var(--plate)}
+.ck-place .ck-win .ck-in{width:100%; transform:translateY(var(--sy,0))}
+.ck-place .ck-win::after{content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.5) 0, rgba(255,255,255,0) 26%)}
+.ck-place .ck-glow{position:absolute; inset:0; z-index:3; opacity:0; pointer-events:none;
+  transition:opacity .5s ease;
+  background:radial-gradient(60% 54% at 50% 58%, rgba(255,158,18,.5), rgba(255,158,18,0) 72%)}
+.ck-place.ck-busy .ck-glow{opacity:1}
+.ck-place .ck-meta{padding:15px 17px 17px}
+.ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:-.04em}
+.ck-place .ck-meta .ck-stt{display:block; font-size:13px; color:var(--ink-2); margin-top:3px;
+  min-height:2.6em}
+.ck-place .ck-meta .ck-stt strong{font-weight:700; color:var(--num)}
+.ck-place .ck-g{height:5px; margin-top:11px; border-radius:99px; background:var(--panel-2); overflow:hidden}
+.ck-place .ck-g i{display:block; height:100%; background:var(--ink); transition:width .6s ease}
+.ck-place.ck-busy .ck-g i{background:var(--sig)}
+
+/* 폼 바 */
+.ck-form{position:relative; z-index:6; margin-top:22px}
+.ck-form .ck-bar{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
+  background:var(--panel); border-radius:16px; box-shadow:var(--lift); padding:15px 17px 16px}
+.ck-fr{display:flex; gap:10px; flex:1 1 470px; min-width:0}
+.ck-fld{flex:1 1 0; min-width:0}
+.ck-fld label{display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:5px}
+.ck-fld select,.ck-fld input{width:100%; padding:11px 12px 12px; border-radius:9px; background:var(--ui-plate);
+  border:1px solid var(--panel-2); font-size:15px; font-weight:500}
+.ck-fld select:hover,.ck-fld input:hover{border-color:var(--ui-line)}
+.ck-cond{flex:1 1 330px; min-width:0}
+.ck-cond > span{display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:6px}
+.ck-chips2{display:flex; gap:6px; flex-wrap:wrap}
+.ck-chips2 button{padding:7px 13px 8px; border-radius:99px; font-size:13.5px; color:var(--ink-2);
+  box-shadow:inset 0 0 0 1px var(--panel-2); transition:box-shadow .14s, color .14s, background .14s}
+.ck-chips2 button:hover{color:var(--ink); box-shadow:inset 0 0 0 1px var(--ui-line)}
+.ck-chips2 button[aria-pressed="true"]{background:var(--ink); color:var(--panel); font-weight:600; box-shadow:none}
+.ck-go{flex:0 0 auto; padding:13px 26px 14px; border-radius:10px; background:var(--ink);
+  color:var(--panel); font-size:15px; font-weight:700; letter-spacing:-.02em; white-space:nowrap;
+  transition:transform .13s cubic-bezier(.34,1.5,.64,1), filter .15s}
+.ck-go:hover{filter:brightness(1.2)}
+.ck-go:active{transform:scale(.985)}
+.ck-note{flex:1 1 100%; margin-top:2px; font-size:12px; color:var(--ink-3)}
+
+/* ── 섹션 ── */
+section.ck-blk{padding:70px 0 0}
+.ck-hd{display:flex; align-items:flex-end; gap:24px; flex-wrap:wrap; margin-bottom:22px}
+.ck-hd h2{font-size:clamp(23px,2.9vw,33px); flex:1; min-width:250px}
+.ck-hd .ck-side{font-size:14.5px; color:var(--ink-2); max-width:34ch; padding-bottom:4px}
+
+.ck-free{display:grid; grid-template-columns:repeat(auto-fit,minmax(206px,1fr)); gap:12px}
+.ck-spot{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:17px 19px 19px}
+.ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em}
+.ck-spot .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
+.ck-spot .ck-vv{display:flex; align-items:baseline; gap:8px; margin-top:14px}
+.ck-spot .ck-vv b{font-family:var(--fig); font-size:26px; font-weight:600; letter-spacing:-.05em}
+.ck-spot .ck-vv i{font-style:normal; font-size:12px; color:var(--ink-2)}
+.ck-spot .ck-bar{height:5px; margin-top:9px; border-radius:99px; background:var(--panel-2); overflow:hidden}
+.ck-spot .ck-bar i{display:block; height:100%; background:var(--ink)}
+.ck-spot.ck-hot .ck-vv b{color:var(--num)} .ck-spot.ck-hot .ck-bar i{background:var(--sig)}
+
+.ck-bud{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px}
+.ck-card{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:20px 22px 22px}
+table.ck-rows{width:100%; border-collapse:collapse}
+table.ck-rows th{text-align:left; font-size:12.5px; font-weight:600; color:var(--ink-2);
+  padding:0 0 11px; border-bottom:1.5px solid var(--ink)}
+table.ck-rows th:nth-child(2),table.ck-rows th:nth-child(3){text-align:right}
+table.ck-rows td{padding:12px 0; border-bottom:1px solid var(--panel-2); font-size:15px}
+table.ck-rows td:nth-child(2){text-align:right; font-family:var(--fig); font-variant-numeric:tabular-nums}
+table.ck-rows td:nth-child(3){text-align:right; font-size:13px; color:var(--ink-2); width:82px}
+table.ck-rows tfoot td{border-bottom:0; border-top:1.5px solid var(--ink); padding-top:15px;
+  font-weight:700; font-size:17px}
+table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
+.ck-conf .ck-big{font-family:var(--fig); font-size:clamp(40px,5vw,60px); font-weight:600;
+  letter-spacing:-.055em; line-height:.95}
+.ck-conf .ck-big span{font-size:.44em}
+.ck-conf p{font-size:14px; line-height:1.68; color:var(--ink-2); margin-top:12px}
+.ck-conf .ck-bar{display:flex; height:6px; margin-top:18px; background:var(--panel-2);
+  border-radius:99px; overflow:hidden}
+.ck-conf .ck-bar i:first-child{background:var(--ink)} .ck-conf .ck-bar i:last-child{background:var(--ink-3)}
+.ck-conf .ck-lg{display:flex; gap:16px; margin-top:10px; font-size:12.5px; color:var(--ink-2)}
+.ck-conf .ck-lg em{font-style:normal; font-weight:600; color:var(--ink); font-family:var(--fig)}
+
+.ck-steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:14px}
+.ck-st{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:22px 22px 24px}
+.ck-st .ck-no{font-family:var(--fig); font-size:29px; font-weight:600; letter-spacing:-.05em;
+  color:var(--num); line-height:1}
+.ck-st h3{font-size:19px; font-weight:700; letter-spacing:-.035em; margin-top:12px}
+.ck-st p{font-size:14.5px; line-height:1.7; color:var(--ink-2); margin-top:7px}
+
+.ck-sync{display:flex; gap:14px; flex-wrap:wrap}
+.ck-sync > div{flex:1 1 210px; background:var(--panel); border-radius:13px; box-shadow:var(--lift2);
+  padding:18px 20px 20px}
+.ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:-.03em}
+.ck-sync p{font-size:13.5px; color:var(--ink-2); margin-top:5px; line-height:1.62}
+
+.ck-data{display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:12px}
+.ck-src{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:17px 19px 18px}
+.ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:-.03em}
+.ck-src ul{margin:8px 0 0; padding-left:16px; font-size:13px; color:var(--ink-2); line-height:1.78}
+
+.ck-foot{margin-top:74px; border-top:1px solid var(--hair)}
+.ck-foot .ck-wr{display:flex; flex-direction:column; gap:5px; padding:24px 30px 44px;
+  font-size:11.5px; line-height:1.6; color:var(--ink-3)}
+
+@media (max-width:1060px){
+  .ck-hero .ck-grid{grid-template-columns:1fr; gap:26px}
+  .ck-bud{grid-template-columns:1fr}
+}
+@media (max-width:900px){
+  .ck-hero{padding:88px 0 20px}
+  .ck-top nav{display:none}
+  section.ck-blk{padding:52px 0 0}
+  .ck-fr{flex-wrap:wrap} .ck-fld{flex:1 1 45%} .ck-go{width:100%}
+  .ck-place .ck-win{height:150px}
+}
+@media (max-width:560px){ .ck-fr{flex-direction:column} }
+@media (prefers-reduced-motion:reduce){
+  .ck-tell .ck-ph i.ck-on b{transition:none}
+  .ck-place,.ck-plan,.ck-tell .ck-chips b,.ck-place .ck-g i{transition:none}
+}
+
+/* 시안의 _palette.css 에 있던 유틸. 여기로 옮긴다. */
+.ck-wr{max-width:1300px; margin:0 auto; padding:0 30px}
+.ck-fig{font-family:var(--fig); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+.ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:-.042em;
+  line-height:1.13; text-wrap:balance}
+.ck-home p{margin:0; text-wrap:pretty}
+.ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--void); color:var(--ink)}
+.ck-home button{border:0; background:none; cursor:pointer; font-family:inherit; color:inherit}
+.ck-home select,.ck-home input{font-family:inherit; color:inherit}
+
+/* 매싱 주입 전 자리 유지 — 카드가 갑자기 커지지 않게 */
+.ck-win .ck-in:empty{height:260px; background:var(--plate)}
+
+/* 내 여행 (로그인 시만 보인다) */
+.ck-mine{display:none}
+.ck-mine.ck-on{display:block}
+.ck-mine .ck-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px}
+.ck-trip{background:var(--panel); border-radius:13px; box-shadow:var(--lift2);
+  padding:17px 19px 19px; text-align:left; width:100%}
+.ck-trip:hover{box-shadow:var(--lift)}
+.ck-trip .ck-when{font-family:var(--fig); font-size:12.5px; color:var(--num); font-weight:600}
+.ck-trip .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em; margin-top:4px}
+.ck-trip .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
+.ck-live{display:inline-flex; align-items:center; gap:6px; padding:4px 10px 5px;
+  border-radius:99px; background:var(--sig); color:var(--on-sig);
+  font-size:12px; font-weight:700; margin-bottom:9px}
+.ck-empty{font-size:14px; color:var(--ink-2); background:var(--panel); border-radius:13px;
+  box-shadow:var(--lift2); padding:22px}
+
+/* 출처 표기 */
+.ck-attr{margin-top:56px; padding-top:22px; border-top:1px solid var(--hair);
+  display:flex; flex-direction:column; gap:5px; font-size:11.5px; line-height:1.6;
+  color:var(--ink-3)}
+
+/* ══════════════════════════════════════════════════════════════
+   기존 기능 재입힘
+
+   app_main.js 가 만드는 마크업은 클래스가 정해져 있다. 마크업을 바꾸면
+   그 JS 가 깨지므로, .ck-home 안에서만 그 클래스들을 새로 입힌다.
+   TripLinker 시절 모양(청록 테두리·둥근 알약·그라디언트)을 걷어낸다.
+   ══════════════════════════════════════════════════════════════ */
+
+.ck-home .ck-cards,
+.ck-home .top3-grid,
+.ck-home .popular-grid{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(258px,1fr)); gap:12px;
+}
+
+/* 카드 — 시안의 .ck-spot 과 같은 몸을 갖는다 */
+.ck-home .post-card,
+.ck-home .popular-grid > *,
+.ck-home .top3-grid > *{
+  background:var(--panel); border:0; border-radius:13px; box-shadow:var(--lift2);
+  padding:17px 19px 19px; overflow:hidden; position:relative;
+}
+.ck-home .post-card:hover,
+.ck-home .popular-grid > *:hover,
+.ck-home .top3-grid > *:hover{ box-shadow:var(--lift) }
+
+.ck-home .post-ttl{
+  font-size:17px; font-weight:700; letter-spacing:-.035em; color:var(--ink);
+  line-height:1.34; margin:0;
+}
+.ck-home .post-stats{
+  display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;
+  font-family:var(--fig); font-size:12.5px; color:var(--ink-2);
+}
+.ck-home .post-stat{ background:none; padding:0; border:0; color:inherit }
+.ck-home .post-foot{
+  margin-top:13px; padding-top:12px; border-top:1px solid var(--panel-2);
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  font-size:12.5px; color:var(--ink-3);
+}
+
+/* 순위 숫자 — 색 블록을 걷고 숫자만 남긴다 */
+.ck-home .post-rank-num,
+.ck-home [class*="rank-num"]{
+  background:none !important; color:var(--num) !important;
+  font-family:var(--fig); font-size:26px; font-weight:600; letter-spacing:-.05em;
+  padding:0; border-radius:0; width:auto; height:auto; box-shadow:none;
+  display:block; margin-bottom:4px;
+}
+
+/* 추천 여행 (큐레이션) */
+.ck-home .ck-cur{
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:end;
+  background:var(--panel); border-radius:16px; box-shadow:var(--lift); padding:22px 24px 24px;
+}
+.ck-home .hsc{ min-width:0 }
+.ck-home .hsc-ey{
+  font-family:var(--fig); font-size:12px; font-weight:600; color:var(--num);
+  letter-spacing:0; text-transform:none; background:none; padding:0; border:0;
+}
+.ck-home .hsc-ttl{
+  font-size:clamp(21px,2.4vw,28px); font-weight:700; letter-spacing:-.042em;
+  color:var(--ink); margin-top:5px; line-height:1.16;
+}
+.ck-home .hsc-sub{ font-size:14.5px; color:var(--ink-2); margin-top:7px; line-height:1.66 }
+.ck-home .hsc-dest-row{ display:flex; gap:7px; flex-wrap:wrap; margin-top:13px }
+.ck-home .hsc-cards{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
+.ck-home .ck-go2{
+  margin-top:18px; padding:12px 22px 13px; border-radius:10px;
+  background:var(--ui); color:var(--panel); font-size:14.5px; font-weight:700;
+  letter-spacing:-.02em;
+}
+.ck-home .ck-go2:hover{ filter:brightness(1.25) }
+.ck-home .curation-panel{
+  display:flex; flex-direction:column; align-items:flex-end; gap:12px;
+  background:none; box-shadow:none; padding:0; border:0;
+}
+.ck-home .slide-arr-wrap{ display:flex; gap:7px }
+.ck-home .slide-arr{
+  width:34px; height:34px; border-radius:99px; display:grid; place-items:center;
+  background:var(--ui-plate); color:var(--ink-2); font-size:17px;
+  box-shadow:inset 0 0 0 1px var(--panel-2);
+}
+.ck-home .slide-arr:hover{ background:var(--panel-2); color:var(--ink) }
+.ck-home .slide-dots{ display:flex; gap:6px }
+.ck-home .slide-dots > *{
+  width:6px; height:6px; border-radius:99px; background:var(--panel-2); border:0;
+}
+.ck-home .slide-dots > .active,
+.ck-home .slide-dots > .on{ background:var(--ink); width:18px }
+
+/* 시안에 없던 칩·태그류가 섞여 들어오면 모양을 통일한다 */
+.ck-home .slide-chip,
+.ck-home [class*="chip"]:not(.ck-chips2 button){
+  padding:5px 11px 6px; border-radius:99px; background:var(--ui-plate);
+  box-shadow:inset 0 0 0 1px var(--panel-2); color:var(--ink-2);
+  font-size:12.5px; font-weight:500; border:0;
+}
+
+@media (max-width:820px){
+  .ck-home .ck-cur{ grid-template-columns:1fr }
+  .ck-home .curation-panel{ align-items:flex-start }
+}
