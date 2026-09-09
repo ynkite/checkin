@@ -3270,7 +3270,7 @@ function shareInviteToKakaoTalk() {
         Kakao.Share.sendDefault({
             objectType: 'feed',
             content: {
-                title: '✈️ 체키인 여행 플랜 공유',
+                title: '✈️ 체크인 여행 플랜 공유',
                 description: `🔗 플랜 열람 링크: ${inviteUrl}`,
                 imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
                 link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }

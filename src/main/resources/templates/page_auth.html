@@ -71,7 +71,7 @@
     regionEmpty:   '거주 지역(도/시)을 선택해주세요.',
     genderEmpty:   '성별을 선택해주세요.',
     mbtiIncomplete:'MBTI 4가지 항목을 모두 선택해주세요.',
-    signupSuccess: '🎉 체키인 회원가입 성공!',
+    signupSuccess: '🎉 체크인 회원가입 성공!',
     signupFail:    '가입 실패: 입력 조건을 다시 확인해주세요.',
   };
 
@@ -171,7 +171,7 @@
                 if (btn) {
                   btn.innerText = "발송 중...";
                   btn.disabled = true;
-                  btn.style.background = "var(--text3)"; // 체키인 테마 회록색
+                  btn.style.background = "var(--text3)"; // 체크인 테마 회록색
                   btn.style.cursor = "wait";             // 로딩 커서
                 }
 
@@ -742,7 +742,7 @@
     <div class="pr-card" style="text-align: center; padding: 36px 24px 28px;">
       <div class="pr-title" style="font-size: 20px; margin-bottom: 8px;">회원가입 완료!</div>
       <p class="pr-sub" style="margin-bottom: 24px; line-height: 1.5;">
-        체키인 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
+        체크인 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
       </p>
       <button class="pr-btn" style="margin-top: 0;" onclick="document.getElementById('signupSuccessModal').style.display='none'; go('login');">확인</button>
     </div>
