@@ -1,0 +1,342 @@
+/* =============================================================================
+ * TripLinker — 여행 날짜 범위 캘린더 (styles_calendar.css)
+ *
+ * 【파일 설명】
+ * - 플래너 STEP1 의 「여행 날짜」 범위 선택 캘린더 전용 스타일
+ * - 두 달을 나란히 보여주고, 가는 날~오는 날 사이를 밴드로 잇는다
+ *
+ * 【연관 파일】
+ * - tokens.css          : 색·간격·모서리 변수의 단일 출처 (이 파일보다 먼저 로드)
+ * - page_planner.html   : 캘린더 마크업과 동작 스크립트
+ * - styles_main.css     : .form-group / .form-label 등 폼 공통
+ *
+ * 【규칙】
+ * - 색 값을 이 파일에 직접 적지 않는다. 반드시 var(--...) 로 참조한다
+ * - 한국어 문장 컨테이너에는 word-break:keep-all 을 넣는다
+ * ============================================================================= */
+
+.cal {
+    background: var(--panel);
+    border: 1px solid var(--hair);
+    border-radius: var(--r-panel);
+    box-shadow: var(--lift2);
+    padding: 14px 16px 16px;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+
+/* ---------- 상단: 달 이동 ---------- */
+.cal-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.cal-ms {
+    flex: 1;
+    display: flex;
+    gap: 24px;
+}
+
+.cal-ms b {
+    flex: 1;
+    text-align: center;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: var(--tracking-tight);
+}
+
+.cal-nav {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: none;
+    border-radius: var(--r-field);
+    cursor: pointer;
+}
+
+.cal-nav:hover {
+    background: var(--panel-2);
+}
+
+.cal-nav:disabled {
+    opacity: .3;
+    cursor: default;
+}
+
+.cal-nav svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--ink-2);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ---------- 두 달 ---------- */
+.cal-months {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.cal-mo {
+    min-width: 0;
+}
+
+/* 달 이름 — 넓은 화면에서는 상단 헤더가 대신하므로 숨긴다 */
+.cal-cap {
+    display: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: var(--tracking-tight);
+    padding: 2px 0 6px;
+}
+
+.cal-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 2px;
+}
+
+.cal-dow span {
+    text-align: center;
+    font-size: var(--t-xs);
+    font-weight: 600;
+    color: var(--ink-3);
+    padding: 4px 0;
+}
+
+/* 밴드가 칸 사이에서 끊기지 않도록 gap 을 두지 않는다 */
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+/* ---------- 날짜 칸 ---------- */
+.cal-cell {
+    position: relative;
+    height: 42px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+/* 세로 여백 4px 은 아래 구간 밴드(inset:4px 0)와 높이를 맞추기 위한 것이다 */
+.cal-cell .in {
+    position: relative;
+    z-index: 2;
+    height: calc(100% - 8px);
+    margin: 4px 0;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-field);
+    font-size: 14px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-num);
+}
+
+.cal-cell.void {
+    visibility: hidden;
+}
+
+.cal-cell:not(:disabled):hover .in {
+    box-shadow: inset 0 0 0 1.5px var(--ink-3);
+}
+
+.cal-cell:focus-visible {
+    outline: 2px solid var(--sig);
+    outline-offset: -2px;
+    border-radius: var(--r-field);
+}
+
+/* 지난 날짜 · 3박 4일을 넘는 날짜 */
+.cal-cell:disabled {
+    cursor: default;
+}
+
+.cal-cell:disabled .in {
+    color: var(--ink-3);
+    opacity: .45;
+}
+
+/* 오늘 — 채운 원이 아니라 점 하나 */
+.cal-cell.today .in::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 4px;
+    width: 3px;
+    height: 3px;
+    margin-left: -1.5px;
+    border-radius: var(--r-pill);
+    background: var(--ink-2);
+}
+
+/* ---------- 구간 밴드 ---------- */
+.cal-cell.mid::before,
+.cal-cell.s::before,
+.cal-cell.e::before {
+    content: "";
+    position: absolute;
+    inset: 4px 0;
+    z-index: 1;
+    background: var(--panel-2);
+}
+
+.cal-cell.s::before {
+    left: 50%;
+    border-radius: var(--r-field) 0 0 var(--r-field);
+}
+
+.cal-cell.e::before {
+    right: 50%;
+    border-radius: 0 var(--r-field) var(--r-field) 0;
+}
+
+.cal-cell.s.e::before {
+    display: none;
+}
+
+/* 주 경계에서 밴드를 마감한다 */
+.cal-cell.wk-first.mid::before,
+.cal-cell.wk-first.e::before {
+    left: 0;
+    border-radius: var(--r-field) 0 0 var(--r-field);
+}
+
+.cal-cell.wk-last.mid::before,
+.cal-cell.wk-last.s::before {
+    right: 0;
+    border-radius: 0 var(--r-field) var(--r-field) 0;
+}
+
+/* 가는 날 · 오는 날 */
+.cal-cell.s .in,
+.cal-cell.e .in {
+    background: var(--ink);
+    color: var(--panel);
+    font-weight: 700;
+}
+
+.cal-cell.s.today .in::after,
+.cal-cell.e.today .in::after {
+    background: var(--panel);
+}
+
+.cal-cell.s:not(:disabled):hover .in,
+.cal-cell.e:not(:disabled):hover .in {
+    box-shadow: none;
+}
+
+/* ---------- 아래 요약 ---------- */
+.cal-sum {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--hair);
+    word-break: keep-all;
+}
+
+.cal-pick {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: var(--tracking-tight);
+}
+
+.cal-pick .fig {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-num);
+}
+
+.cal-nights {
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+}
+
+.cal-reset {
+    margin-left: auto;
+    border: 0;
+    background: none;
+    padding: 4px 2px;
+    font: inherit;
+    font-size: var(--t-sm);
+    color: var(--ink-2);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.cal-reset:hover {
+    color: var(--ink);
+}
+
+.cal-reset[hidden] {
+    display: none;
+}
+
+.cal-note {
+    margin: 8px 0 0;
+    font-size: var(--t-xs);
+    line-height: 1.55;
+    color: var(--ink-3);
+    word-break: keep-all;
+}
+
+/* =============================================================================
+ * 반응형 — 브레이크포인트는 styles_responsive.css 와 같은 값을 쓴다 (768 / 480)
+ * ========================================================================== */
+@media (max-width: 768px) {
+    /* 두 달을 나란히 놓을 수 없다. 한 줄에 한 달씩, 세로로 이어 붙인다 */
+    .cal-months {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+
+    /* 헤더의 달 이름 대신 각 달 위에 이름을 붙인다 */
+    .cal-ms {
+        display: none;
+    }
+
+    .cal-cap {
+        display: block;
+    }
+
+    .cal-top {
+        justify-content: space-between;
+        margin-bottom: 4px;
+    }
+
+    .cal {
+        padding: 12px 12px 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .cal-cell {
+        height: 38px;
+    }
+
+    .cal-cell .in {
+        font-size: 13.5px;
+    }
+
+    .cal-sum {
+        gap: 8px;
+    }
+}
