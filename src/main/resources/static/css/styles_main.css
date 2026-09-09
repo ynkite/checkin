@@ -21,29 +21,52 @@
  * - page_admin.html : 관리자 페이지
  * - page_place.html : 장소 상세 (리뷰/날씨)
  * ============================================================================= */
+/* ────────────────────────────────────────────────────────────
+   이 블록은 어댑터다. 색을 직접 정의하지 않고 tokens.css 로 넘긴다.
+
+   기존 이름(--sage 등)을 그대로 남겨 둔 이유 — 화면 CSS·JS 에
+   var(--sage) 참조가 1,700곳이 넘는다. 이름을 바꾸면 그 전부를
+   손대야 하고, 한 곳만 놓쳐도 색이 빠진 채 배포된다.
+   값만 바꾸면 호출 지점을 하나도 건드리지 않는다.
+
+   새로 쓰는 CSS 는 이 이름 대신 tokens.css 의 이름을 직접 쓴다.
+   ──────────────────────────────────────────────────────────── */
 :root {
-    --sage: #2D9E8A;
-    --sage-l: #4DB8A4;
-    --sage-pale: #E8F5F2;
-    --sage-d: #1E7A69;
-    --cream: #F5F0E8;
-    --cream2: #EDE8DF;
-    --warm: #C4763A;
-    --warm-pale: #FBF0E6;
-    --coral: #E87060;
-    --sky: #5B9BD5;
-    --text1: #1C2B2A;
-    --text2: #4A5E5C;
-    --text3: #8FA3A0;
-    --text: #1C2B2A;
-    --surface: #FFFFFF;
-    --border: #D8E6E3;
-    --border2: #EAF2F0;
+    /* 주색 — 청록에서 잉크 계열로 */
+    --sage: var(--ui);
+    --sage-l: var(--ui-l);
+    --sage-pale: var(--ui-pale);
+    --sage-d: var(--ui-d);
+
+    /* 판 — 웜크림 폐기, 중성 밝은 판으로 */
+    --cream: var(--ui-plate);
+    --cream2: var(--ui-plate-2);
+
+    /* 보조 강조 · 확인 */
+    --warm: var(--terra);
+    --warm-pale: var(--terra-pale);
+
+    /* 오류 · 잠김.  주의 — .cat-food 도 이 값을 쓴다 (기존 혼용, 별도 정리 필요) */
+    --coral: var(--tile);
+
+    /* 카테고리 (숙소 · 관광) */
+    --sky: var(--slate);
+
+    /* 글자 — 청록 섞인 회색에서 중성 잉크로 */
+    --text1: var(--ink);
+    --text2: var(--ink-2);
+    --text3: var(--ink-3);
+    --text: var(--ink);
+
+    --surface: var(--panel);
+    --border: var(--ui-line);
+    --border2: var(--ui-line-2);
+
     --r: 14px;
     --r-sm: 8px;
     --r-lg: 20px;
-    --sh: 0 2px 16px rgba(45, 158, 138, .08);
-    --sh-h: 0 8px 32px rgba(45, 158, 138, .18);
+    --sh: var(--sh-ui);
+    --sh-h: var(--sh-ui-h);
 }
 
 * {
