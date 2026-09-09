@@ -549,3 +549,14 @@ table {
     body:has(#navPlannerSteps[style*="flex"]) .nps-lbl { white-space: nowrap; font-size: 11px; }
     body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
 }
+
+/* ─── 좁은 화면: 날씨 버튼 라벨에 날짜가 들어가면 반 칸에 안 들어간다 → 각각 한 줄 ─── */
+@media (max-width: 480px) {
+    .pl-card-ttl > div:last-child {
+        flex-wrap: wrap;
+    }
+    #weather-btn-wrap,
+    .btn-load-pref {
+        flex: 1 1 100%;
+    }
+}
