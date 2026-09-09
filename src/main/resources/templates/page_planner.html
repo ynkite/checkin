@@ -1601,16 +1601,45 @@
                         </div>
                     </div>
 
-                    <div class="pl-2col">
-                        <div class="form-group">
-                            <label class="form-label">출발일</label>
-                            <input class="form-input" type="date" id="s1-date-start" onchange="onStartDateChange()">
-                            <div style="font-size:11px;color:var(--text3);margin-top:4px">📅 오늘 이후 날짜만 선택 가능합니다</div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">귀환일(최대 3박 4일까지 가능합니다)</label>
-                            <input class="form-input" type="date" id="s1-date-end" onchange="onEndDateChange()">
-                            <div style="font-size:11px;color:var(--text3);margin-top:4px">🏠 출발일 이후 날짜 선택 (당일 여행 가능)</div>
+                    <!-- 여행 날짜 — 가는 날·오는 날을 캘린더에서 한 번에 고른다.
+                         고른 값은 아래 hidden input 두 개에 YYYY-MM-DD 로 들어간다.
+                         기존 스크립트(createPlan / updateSummaryCard / 임시저장)가
+                         이 두 id 를 그대로 읽으므로 id 를 바꾸지 않는다. -->
+                    <div class="form-group">
+                        <label class="form-label">여행 날짜</label>
+                        <input type="hidden" id="s1-date-start" onchange="onStartDateChange()">
+                        <input type="hidden" id="s1-date-end" onchange="onEndDateChange()">
+
+                        <div class="cal" id="s1-cal">
+                            <div class="cal-top">
+                                <button type="button" class="cal-nav" id="cal-prev" aria-label="이전 달">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+                                </button>
+                                <div class="cal-ms"><b id="cal-m1"></b><b id="cal-m2"></b></div>
+                                <button type="button" class="cal-nav" id="cal-next" aria-label="다음 달">
+                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                                </button>
+                            </div>
+
+                            <div class="cal-months" id="cal-months">
+                                <div class="cal-mo">
+                                    <div class="cal-cap" id="cal-cap1"></div>
+                                    <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+                                    <div class="cal-grid" id="cal-g1" role="grid" aria-label="첫 번째 달"></div>
+                                </div>
+                                <div class="cal-mo">
+                                    <div class="cal-cap" id="cal-cap2"></div>
+                                    <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+                                    <div class="cal-grid" id="cal-g2" role="grid" aria-label="두 번째 달"></div>
+                                </div>
+                            </div>
+
+                            <div class="cal-sum">
+                                <span class="cal-pick" id="cal-pick">가는 날을 고르세요</span>
+                                <span class="cal-nights" id="cal-nights"></span>
+                                <button type="button" class="cal-reset" id="cal-reset" hidden>다시 고르기</button>
+                            </div>
+                            <p class="cal-note">일정은 3박 4일까지 짤 수 있어요. 하루만 다녀오는 것도 됩니다.</p>
                         </div>
                     </div>
                     <div class="pl-2col">
@@ -1955,7 +1984,8 @@
             const today    = new Date().toISOString().split('T')[0];
             const val      = startEl.value;
             if (!val) { updateWeatherBtn(); return; }
-            if (val < today) {
+            // 여행 기록을 복원할 때는 min 이 과거 날짜로 풀려 있다. 그때는 막지 않는다.
+            if (val < (startEl.min || today)) {
                 toast('⚠️ 출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
                 startEl.value = '';
                 updateWeatherBtn();
@@ -2109,8 +2139,225 @@
             document.getElementById('weatherPopup').classList.remove('open');
         }
 
+        /* ─────────────────────────────────────────────────────────
+         * 여행 날짜 캘린더
+         *  - 두 달을 나란히 놓고 가는 날 ~ 오는 날을 한 번에 고른다
+         *  - 고른 값은 hidden input #s1-date-start / #s1-date-end 에
+         *    YYYY-MM-DD 로 넣고 change 를 쏜다. 기존 스크립트는 그대로 돈다
+         *  - 반대로 임시저장 복원처럼 다른 코드가 input.value 를 직접 바꿀 때도
+         *    화면이 따라가야 해서 value 세터를 한 겹 감싼다(_calWatch)
+         *  - 고를 수 있는 가장 이른 날은 input.min 이 정한다.
+         *    평소에는 오늘, 여행 기록을 복원할 때는 과거로 풀린다
+         * ───────────────────────────────────────────────────────── */
+        const CAL_MAX_NIGHTS = 3;
+
+        const _calPad   = n => String(n).padStart(2, '0');
+        const _calKey   = d => `${d.getFullYear()}-${_calPad(d.getMonth() + 1)}-${_calPad(d.getDate())}`;
+        const _calParse = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+        const _calAdd   = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+        const _calDiff  = (a, b) => Math.round((b - a) / 86400000);
+        const _calSame  = (a, b) => !!a && !!b && _calKey(a) === _calKey(b);
+        const _calMonth = d => new Date(d.getFullYear(), d.getMonth(), 1);
+        const _calName  = d => `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
+
+        let _calBase  = null;   // 왼쪽에 놓인 달
+        let _calHover = null;   // 오는 날 미리보기
+        let _calReady = false;
+
+        function _calStartEl() { return document.getElementById('s1-date-start'); }
+        function _calEndEl()   { return document.getElementById('s1-date-end'); }
+
+        function _calToday() { const t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+        function _calFloor() { const m = _calStartEl()?.min; return m ? _calParse(m) : _calToday(); }
+        function _calValue(el) { return el && el.value ? _calParse(el.value) : null; }
+
+        function _calBuild(host, monthDate) {
+            const y = monthDate.getFullYear(), m = monthDate.getMonth();
+            const lead = new Date(y, m, 1).getDay();
+            const days = new Date(y, m + 1, 0).getDate();
+            const today = _calToday();
+            const floor = _calFloor();
+            const start = _calValue(_calStartEl());
+            const end   = _calValue(_calEndEl());
+            const to    = end || _calHover;
+            const last  = (start && !end) ? _calAdd(start, CAL_MAX_NIGHTS) : null;
+
+            const cells = [];
+            for (let i = 0; i < lead; i++) cells.push('<div class="cal-cell void" aria-hidden="true"></div>');
+
+            for (let n = 1; n <= days; n++) {
+                const d = new Date(y, m, n);
+                // 지난 날짜, 그리고 가는 날에서 3박을 넘는 날은 고를 수 없다
+                const off = d < floor || (last && d > last);
+                const isS = _calSame(d, start);
+                const isE = !!to && _calSame(d, to);
+                const cls = ['cal-cell'];
+                if (_calSame(d, today)) cls.push('today');
+                if (isS) cls.push('s');
+                if (isE) cls.push('e');
+                if (start && to && d > start && d < to) cls.push('mid');
+                if (d.getDay() === 0) cls.push('wk-first');
+                if (d.getDay() === 6) cls.push('wk-last');
+
+                cells.push(
+                    `<button type="button" class="${cls.join(' ')}" role="gridcell" data-d="${_calKey(d)}"` +
+                    (off ? ' disabled' : '') +
+                    ` aria-selected="${isS || _calSame(d, end)}"` +
+                    ` aria-label="${m + 1}월 ${n}일 ${DAYS_KO[d.getDay()]}요일">` +
+                    `<span class="in">${n}</span></button>`);
+            }
+            host.innerHTML = cells.join('');
+        }
+
+        function _calSummary() {
+            const start = _calValue(_calStartEl());
+            const end   = _calValue(_calEndEl());
+            const pick  = document.getElementById('cal-pick');
+            const nights = document.getElementById('cal-nights');
+            const reset = document.getElementById('cal-reset');
+            const label = d => `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
+
+            if (start && end) {
+                const n = _calDiff(start, end);
+                pick.textContent = `${label(start)} ~ ${label(end)}`;
+                nights.textContent = n === 0 ? '당일치기' : `${n}박 ${n + 1}일`;
+            } else if (start) {
+                pick.textContent = `${label(start)} 출발`;
+                nights.textContent = '오는 날을 고르세요';
+            } else {
+                pick.textContent = '가는 날을 고르세요';
+                nights.textContent = '';
+            }
+            reset.hidden = !start;
+        }
+
+        function _calRender() {
+            const g1 = document.getElementById('cal-g1');
+            if (!g1 || !_calBase) return;
+            const m2 = new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1);
+
+            document.getElementById('cal-m1').textContent   = _calName(_calBase);
+            document.getElementById('cal-m2').textContent   = _calName(m2);
+            document.getElementById('cal-cap1').textContent = _calName(_calBase);
+            document.getElementById('cal-cap2').textContent = _calName(m2);
+
+            _calBuild(g1, _calBase);
+            _calBuild(document.getElementById('cal-g2'), m2);
+
+            const floor = _calMonth(_calFloor());
+            document.getElementById('cal-prev').disabled = _calBase <= floor;
+            _calSummary();
+        }
+
+        function _calGoto(monthFirst) {
+            const floor = _calMonth(_calFloor());
+            _calBase = monthFirst < floor ? floor : monthFirst;
+            _calRender();
+        }
+
+        function _calSet(start, end) {
+            const st = _calStartEl(), en = _calEndEl();
+            const sv = start ? _calKey(start) : '';
+            const ev = end   ? _calKey(end)   : '';
+            // 가는 날을 먼저 넣어야 onStartDateChange 가 오는 날의 허용 범위를 다시 잡는다
+            if (st.value !== sv) { st.value = sv; st.dispatchEvent(new Event('change')); }
+            if (en.value !== ev) { en.value = ev; en.dispatchEvent(new Event('change')); }
+            _calRender();
+        }
+
+        function _calPickDate(d) {
+            const start = _calValue(_calStartEl());
+            const end   = _calValue(_calEndEl());
+            _calHover = null;
+            if (!start || end || d < start) _calSet(d, null);   // 처음부터 다시 고른다
+            else _calSet(start, d);                             // 오는 날 확정
+        }
+
+        // 고른 날이 보이는 두 달 밖이면 그 달로 넘어간다 (기록 복원 등)
+        function _calReveal() {
+            const s = _calValue(_calStartEl());
+            if (!s) return;
+            const last = new Date(_calBase.getFullYear(), _calBase.getMonth() + 2, 0);
+            if (s < _calBase || s > last) _calBase = _calMonth(s);
+        }
+
+        // 다른 코드가 input.value 를 직접 바꿔도 캘린더가 따라가게 한다
+        function _calWatch(el) {
+            const base = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+            Object.defineProperty(el, 'value', {
+                configurable: true,
+                get() { return base.get.call(this); },
+                set(v) {
+                    base.set.call(this, v);
+                    if (!_calReady) return;
+                    if (this.id === 's1-date-start') _calReveal();
+                    _calRender();
+                }
+            });
+        }
+
+        function _calInit() {
+            const host = document.getElementById('cal-months');
+            if (!host || _calReady) return;
+
+            const start = _calValue(_calStartEl());
+            const floor = _calFloor();
+            _calBase = _calMonth(start && start > floor ? start : floor);
+
+            host.addEventListener('click', e => {
+                const b = e.target.closest('.cal-cell');
+                if (!b || b.disabled || !b.dataset.d) return;
+                _calPickDate(_calParse(b.dataset.d));
+            });
+
+            host.addEventListener('mouseover', e => {
+                const b = e.target.closest('.cal-cell');
+                if (!b || b.disabled || !b.dataset.d) return;
+                const s = _calValue(_calStartEl());
+                if (!s || _calValue(_calEndEl())) return;
+                const d = _calParse(b.dataset.d);
+                if (d < s || _calSame(d, _calHover)) return;
+                _calHover = d;
+                _calRender();
+            });
+
+            host.addEventListener('mouseleave', () => {
+                if (_calHover) { _calHover = null; _calRender(); }
+            });
+
+            // 키보드 — 좌우 하루, 위아래 한 주, PageUp/Down 한 달
+            host.addEventListener('keydown', e => {
+                const b = e.target.closest('.cal-cell');
+                if (!b || !b.dataset.d) return;
+                const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7,
+                               PageUp: -30, PageDown: 30 }[e.key];
+                if (step === undefined) return;
+                e.preventDefault();
+                const d = _calAdd(_calParse(b.dataset.d), step);
+                if (d < _calBase) _calGoto(_calMonth(d));
+                else if (d > new Date(_calBase.getFullYear(), _calBase.getMonth() + 2, 0)) {
+                    _calGoto(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+                }
+                const t = host.querySelector(`[data-d="${_calKey(d)}"]`);
+                if (t && !t.disabled) t.focus();
+            });
+
+            document.getElementById('cal-prev').addEventListener('click',
+                () => _calGoto(new Date(_calBase.getFullYear(), _calBase.getMonth() - 1, 1)));
+            document.getElementById('cal-next').addEventListener('click',
+                () => _calGoto(new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1)));
+            document.getElementById('cal-reset').addEventListener('click',
+                () => { _calHover = null; _calSet(null, null); });
+
+            _calWatch(_calStartEl());
+            _calWatch(_calEndEl());
+            _calReady = true;
+            _calRender();
+        }
+
         function initPlannerDateConstraints() {
-            const today   = new Date().toISOString().split('T')[0];
+            // toISOString 은 UTC 라 한국 시간으로 오전 9시 전이면 어제가 나온다. 로컬 날짜를 쓴다.
+            const today   = _calKey(_calToday());
             const startEl = document.getElementById('s1-date-start');
             const endEl   = document.getElementById('s1-date-end');
 
@@ -2128,6 +2375,7 @@
             if (startEl.value) endEl.min = startEl.value;
             updateWeatherBtn();
             _initStep1AutoSave();
+            _calInit();
         }
 
         if (document.readyState === 'loading') {
