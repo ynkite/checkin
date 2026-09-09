@@ -71,6 +71,14 @@ public class TravelPlan {
     @Column(name = "scraped_from_plan_id")
     private Long scrapedFromPlanId;
 
+    // 공유 링크 토큰 — 읽기/편집 각각 32자 랜덤. 서로 유도 불가하도록 별도 저장.
+    // 인증 없이 열리는 링크라 추측 불가능해야 한다(XOR 방식 폐기).
+    @Column(name = "share_read_token", length = 32, unique = true)
+    private String shareReadToken;
+
+    @Column(name = "share_edit_token", length = 32, unique = true)
+    private String shareEditToken;
+
     // 플랜 상태 (DRAFT / CONFIRMED)
     @Column(nullable = false, length = 20)
     @Builder.Default

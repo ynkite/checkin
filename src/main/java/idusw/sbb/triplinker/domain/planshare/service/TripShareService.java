@@ -9,6 +9,7 @@ import idusw.sbb.triplinker.domain.planshare.entity.TripMember;
 import idusw.sbb.triplinker.domain.planshare.repository.TripMemberRepository;
 import idusw.sbb.triplinker.domain.user.entity.User;
 import idusw.sbb.triplinker.domain.user.repository.UserRepository;
+import idusw.sbb.triplinker.global.util.ShareTokenGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -108,38 +109,93 @@ public class TripShareService {
         }
     }
 
-    // 읽기 전용 공유 링크 생성
+    // 공유 링크 생성 — role 에 맞는 토큰을 없으면 발급하고 링크를 돌려준다.
+    // READER 는 /trip/{토큰}, EDITOR 는 /trip/{토큰}/edit. 읽기 토큰으로 편집 링크를 유도할 수 없다.
+    @Transactional
+    public Map<String, String> generateShareLink(Long tripId, PlanRole role) {
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+
+        String token = ensureToken(plan, role);
+        String link = shareUrl(token, role);
+        return Map.of("shareLink", link, "role", role.name());
+    }
+
+    // 기존 호출 호환 — role 없이 부르면 읽기 링크
     @Transactional
     public Map<String, String> generateShareLink(Long tripId) {
-        String hexToken;
-        try {
-            long obscure = tripId ^ 0x5A3C9B7D2EL; // 비트 마스킹으로 숫자 완전 변형
-            hexToken = Long.toHexString(obscure);
-        } catch (Exception e) {
-            hexToken = String.valueOf(tripId);
-        }
+        return generateShareLink(tripId, PlanRole.READER);
+    }
 
-        //난수 주소 생성
-        String currentHost = getDynamicHost();
-        String readOnlyLink = currentHost + "/plan/view?token=" + hexToken;
-        return Map.of("shareLink", readOnlyLink);
+    // 토큰 재발급 — 유출됐을 때 기존 링크를 끊고 새 토큰을 준다.
+    @Transactional
+    public Map<String, String> regenerateShareLink(Long tripId, PlanRole role) {
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        setToken(plan, role, null);
+        String token = ensureToken(plan, role);
+        return Map.of("shareLink", shareUrl(token, role), "role", role.name());
+    }
+
+    // 토큰 폐기 — 링크를 완전히 끊는다.
+    @Transactional
+    public void revokeShareLink(Long tripId, PlanRole role) {
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        setToken(plan, role, null);
+    }
+
+    // 읽기 토큰 → 플랜 (인증 없이 열리는 링크 진입점)
+    public TravelPlan resolveByReadToken(String token) {
+        return travelPlanRepository.findByShareReadToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않거나 폐기된 링크입니다."));
+    }
+
+    // 편집 토큰 → 플랜
+    public TravelPlan resolveByEditToken(String token) {
+        return travelPlanRepository.findByShareEditToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("유효하지 않거나 폐기된 링크입니다."));
+    }
+
+    // role 에 해당하는 토큰을 반환하되, 없으면 새로 발급해 저장한다.
+    private String ensureToken(TravelPlan plan, PlanRole role) {
+        String existing = (role == PlanRole.EDITOR) ? plan.getShareEditToken() : plan.getShareReadToken();
+        if (existing != null) return existing;
+        String token = uniqueToken(role);
+        setToken(plan, role, token);
+        return token;
+    }
+
+    private void setToken(TravelPlan plan, PlanRole role, String token) {
+        if (role == PlanRole.EDITOR) plan.setShareEditToken(token);
+        else plan.setShareReadToken(token);
+    }
+
+    // 충돌 없는 토큰 발급 (192비트라 사실상 유일하지만 방어)
+    private String uniqueToken(PlanRole role) {
+        for (int i = 0; i < 5; i++) {
+            String t = ShareTokenGenerator.generate();
+            boolean taken = (role == PlanRole.EDITOR)
+                    ? travelPlanRepository.findByShareEditToken(t).isPresent()
+                    : travelPlanRepository.findByShareReadToken(t).isPresent();
+            if (!taken) return t;
+        }
+        throw new IllegalStateException("토큰 생성 실패");
+    }
+
+    private String shareUrl(String token, PlanRole role) {
+        String host = getDynamicHost();
+        return (role == PlanRole.EDITOR) ? host + "/trip/" + token + "/edit" : host + "/trip/" + token;
     }
 
 
     // 초대 이메일 내용 구성 및 발송 로직
     private void sendInviteEmail(String email, String name, String planTitle, Long tripId) {
-        String hexToken;
-        try {
-            // 주소창/공유모달과 완벽하게 동일한 16진수 비트 연산 암호화 처리
-            long obscure = tripId ^ 0x5A3C9B7D2EL;
-            hexToken = Long.toHexString(obscure);
-        } catch (Exception e) {
-            hexToken = String.valueOf(tripId);
-        }
-
-        // 편집 링크 주소 뒤에 id=숫자 대신 token=난수 형태로 암호화하여 발송
-        String currentHost = getDynamicHost();
-        String inviteLink = currentHost + "/plan?token=" + hexToken;
+        // 편집자 초대는 편집 토큰 링크를 보낸다. 없으면 발급.
+        TravelPlan plan = travelPlanRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        String token = ensureToken(plan, PlanRole.EDITOR);
+        String inviteLink = shareUrl(token, PlanRole.EDITOR);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
