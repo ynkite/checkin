@@ -6,7 +6,7 @@ plugins {
 
 group = 'idusw.sbb'
 version = '0.0.1-SNAPSHOT'
-description = 'trip-linker'
+description = 'checkin'
 
 java {
     toolchain {
@@ -77,5 +77,5 @@ tasks.named('test') {
 }
 
 tasks.named('bootJar') {
-    archiveFileName = 'triplinker.jar'
+    archiveFileName = 'checkin.jar'
 }

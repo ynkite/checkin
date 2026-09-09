@@ -1,0 +1,65 @@
+//    여행 플랜 서비스 인터페이스
+//    플랜 생성, 취향 폼 저장, 상세/목록 조회, 이전 플랜 불러오기 기능의 메서드를 정의한다.
+
+package idusw.sbb.checkin.domain.plan.service;
+
+
+
+import idusw.sbb.checkin.domain.plan.dto.PlanCreateDto;
+import idusw.sbb.checkin.domain.plan.dto.PlanDetailResponseDto;
+import idusw.sbb.checkin.domain.plan.dto.PlanInputFormSaveDto;
+import idusw.sbb.checkin.domain.plan.dto.TripListResponseDto;
+
+import java.util.List;
+import java.util.Map;
+
+public interface TravelPlanService {
+
+
+//      TRAVEL_PLANS 생성 (form_id = NULL)
+//      @return 생성된 tripId
+
+    Long createPlan(Long userId, PlanCreateDto dto);
+
+
+      //PLAN_INPUT_FORM 저장
+      //TRAVEL_PLANS.form_id 지연 업데이트
+      //@return 생성된 formId
+
+    Long saveInputForm(Long userId, Long tripId, PlanInputFormSaveDto dto);
+
+    // GET /api/trips/{tripId}
+    PlanDetailResponseDto getPlanDetail(Long userId, Long tripId);
+
+    // GET /api/trips
+    List<PlanDetailResponseDto> getMyPlans(Long userId);
+
+
+     // 이전 플랜 불러오기 (AUTO_LOADED)
+     // 가장 최근 UI_CLICK / CHATBOT 폼을 복사해서 현재 플랜에 저장
+     // @return formId (없으면 null)
+
+    Long loadPreviousPreference(Long userId, Long tripId);
+
+    void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields);
+
+    // 플랜 확정/수정 상태 변경 (FIXED = 확정, DRAFT = 수정 중)
+    void updatePlanStatus(Long userId, Long tripId, String status);
+
+    Map<String, Object> getLatestPreference(Long userId);
+
+    Map<String, Object> getInputFormMap(Long tripId);
+
+    List<TripListResponseDto> getMyTripList(Long userId);
+
+    // 초대받은 링크 보관용
+    void saveInvitedPlan(Long userId, Long originalTripId, String inviteUrl, String title, String destination);
+    List<Map<String, Object>> getInvitedPlans(Long userId);
+    void deleteInvitedPlan(Long userId, Long planId);
+
+
+    //내 여행 기록일반 삭제 메서드
+    void deletePlan(Long userId, Long tripId);
+
+
+}

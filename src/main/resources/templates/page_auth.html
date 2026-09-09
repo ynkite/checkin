@@ -19,9 +19,9 @@
   // ── 페이지 텍스트 ──
   const AUTH_TEXT = {
     signupTitle:   '회원가입',
-    signupSub:     'TripLinker와 함께 완성형 여행을 시작하세요',
+    signupSub:     '체크인와 함께 완성형 여행을 시작하세요',
     loginTitle:    '로그인',
-    loginSub:      'TripLinker에 오신 것을 환영합니다',
+    loginSub:      '체크인에 오신 것을 환영합니다',
     kakaoTitle:    '카카오 계정으로 가입',
     kakaoSub:      '카카오 계정이 연결되었습니다',
     kakaoNotice:   '🟡 카카오로 연결되었습니다. 아이디·이메일·비밀번호는 카카오 계정으로 대체됩니다.',
@@ -71,7 +71,7 @@
     regionEmpty:   '거주 지역(도/시)을 선택해주세요.',
     genderEmpty:   '성별을 선택해주세요.',
     mbtiIncomplete:'MBTI 4가지 항목을 모두 선택해주세요.',
-    signupSuccess: '🎉 TripLinker 회원가입 성공!',
+    signupSuccess: '🎉 체키인 회원가입 성공!',
     signupFail:    '가입 실패: 입력 조건을 다시 확인해주세요.',
   };
 
@@ -171,7 +171,7 @@
                 if (btn) {
                   btn.innerText = "발송 중...";
                   btn.disabled = true;
-                  btn.style.background = "var(--text3)"; // TripLinker 테마 회록색
+                  btn.style.background = "var(--text3)"; // 체키인 테마 회록색
                   btn.style.cursor = "wait";             // 로딩 커서
                 }
 
@@ -382,7 +382,7 @@
   <div class="auth-wrap" style="align-items:flex-start;padding-top:28px">
     <div class="auth-card" style="width:600px">
       <h2 class="auth-ttl">회원가입</h2>
-      <p class="auth-sub">TripLinker와 함께 완성형 여행을 시작하세요</p>
+      <p class="auth-sub">체크인와 함께 완성형 여행을 시작하세요</p>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">아이디</label>
@@ -555,7 +555,7 @@
   <div class="auth-wrap">
     <div class="auth-card" style="width:400px">
       <h2 class="auth-ttl">로그인</h2>
-      <p class="auth-sub">TripLinker에 오신 것을 환영합니다</p>
+      <p class="auth-sub">체크인에 오신 것을 환영합니다</p>
       <div class="login-warn" id="login-warn" style="display:none"></div>
       <div class="form-group">
         <label class="form-label">아이디</label>
@@ -742,7 +742,7 @@
     <div class="pr-card" style="text-align: center; padding: 36px 24px 28px;">
       <div class="pr-title" style="font-size: 20px; margin-bottom: 8px;">회원가입 완료!</div>
       <p class="pr-sub" style="margin-bottom: 24px; line-height: 1.5;">
-        TripLinker 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
+        체키인 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
       </p>
       <button class="pr-btn" style="margin-top: 0;" onclick="document.getElementById('signupSuccessModal').style.display='none'; go('login');">확인</button>
     </div>

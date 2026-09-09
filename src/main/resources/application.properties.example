@@ -1,4 +1,4 @@
-spring.application.name=trip-linker
+spring.application.name=checkin
 spring.profiles.active=local
 
 spring.datasource.driver-class-name=org.mariadb.jdbc.Driver

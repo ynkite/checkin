@@ -1,5 +1,5 @@
 /* =============================================================================
- * TripLinker - 메인 애플리케이션 로직 (app_main.js) — API 연동 버전
+ * 체크인 - 메인 애플리케이션 로직 (app_main.js) — API 연동 버전
  *
  * 【변경사항】
  * - ACCOUNTS / NOTIF_DATA / MYPAGE_DATA / PLACE_REVIEWS 하드코딩 완전 제거
@@ -29,7 +29,7 @@
 /* ───────────────────────────────────────────────
  * 1. API 유틸리티 (공통 fetch 래퍼 + 토큰 관리)
  * ─────────────────────────────────────────────── */
-const API_BASE = '';  // 동일 Origin이면 '' / 다른 도메인이면 'https://api.triplinker.com'
+const API_BASE = '';  // 동일 Origin이면 '' / 다른 도메인이면 'https://api.example.com'
 
 /** localStorage 헬퍼 */
 const Token = {
@@ -3270,7 +3270,7 @@ function shareInviteToKakaoTalk() {
         Kakao.Share.sendDefault({
             objectType: 'feed',
             content: {
-                title: '✈️ TripLinker 여행 플랜 공유',
+                title: '✈️ 체키인 여행 플랜 공유',
                 description: `🔗 플랜 열람 링크: ${inviteUrl}`,
                 imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
                 link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
@@ -4083,14 +4083,14 @@ window.addEventListener('popstate', async e => {
                     logoEl.style.pointerEvents = 'none';
 
                     // 버튼 중복 생성 방지
-                    if (!document.getElementById('tryTripLinkerBtn')) {
+                    if (!document.getElementById('tryCheckinBtn')) {
                         const tryBtn = document.createElement('a');
-                        tryBtn.id = 'tryTripLinkerBtn';
+                        tryBtn.id = 'tryCheckinBtn';
                         tryBtn.href = window.location.origin; // 🚀 클릭 시 이동할 타겟 메인 주소
                         tryBtn.target = '_blank';              // 🚀 무조건 새 창으로 열기
                         tryBtn.style.textDecoration = 'none';
                         tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
-                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 TripLinker 사용해보기</span>';
+                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 체크인 사용해보기</span>';
 
                         // 로고 바로 오른쪽에 버튼 삽입
                         logoEl.parentNode.insertBefore(tryBtn, logoEl.nextSibling);

@@ -1,5 +1,5 @@
 /* =============================================================================
- * TripLinker - 커뮤니티/관리자 로직 (app_community.js) — API 연동 버전
+ * 체크인 - 커뮤니티/관리자 로직 (app_community.js) — API 연동 버전
  *
  * 【변경사항 요약】
  * ① ACCOUNTS / NOTIF_DATA / MYPAGE_DATA / PLACE_REVIEWS 하드코딩 완전 제거
