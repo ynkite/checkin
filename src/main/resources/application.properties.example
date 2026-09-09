@@ -1,97 +1,82 @@
-# ============================================================
-# application.properties 템플릿
-# ------------------------------------------------------------
-# 사용법
-#   1) 이 파일을 같은 폴더에 application.properties 로 복사
-#   2) <...> 부분을 실제 값으로 채우기
-#   3) application.properties 는 .gitignore 대상이라 커밋되지 않음
-#
-# ※ 실제 키를 이 .example 파일에 적지 말 것 (이 파일은 커밋됨)
-# ============================================================
-
-spring.application.name=triplinker
-# local | prod
+spring.application.name=trip-linker
 spring.profiles.active=local
 
-# ---------- DB (공통) ----------
-# 접속 정보는 application-local.properties / application-prod.properties 에 작성
 spring.datasource.driver-class-name=org.mariadb.jdbc.Driver
+
 spring.jpa.hibernate.ddl-auto=update
 spring.jpa.show-sql=true
 spring.jpa.properties.hibernate.format_sql=true
 
-# ---------- 메일 (인증 메일 발송) ----------
+# Mail
 spring.mail.host=smtp.gmail.com
 spring.mail.port=587
-spring.mail.username=<발신용 이메일>
-# Gmail 은 앱 비밀번호 사용 (일반 로그인 비밀번호 아님)
-spring.mail.password=<앱 비밀번호>
+spring.mail.username=${MAIL_USERNAME:}
+spring.mail.password=${MAIL_PASSWORD:}
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
 
-# ---------- JWT ----------
-# 최소 32바이트 이상 랜덤 문자열
-jwt.secret=<랜덤 시크릿>
+# JWT
+jwt.secret=${JWT_SECRET:}
 jwt.access-token-validity-in-milliseconds=1800000
-jwt.refresh-token-validity-in-milliseconds=1209600000
+jwt.refresh-token-validity-in-milliseconds=604800000
 
-# ---------- 소셜 로그인: Google ----------
-# https://console.cloud.google.com  >  API 및 서비스  >  사용자 인증 정보
-spring.security.oauth2.client.registration.google.client-id=<구글 client-id>
-spring.security.oauth2.client.registration.google.client-secret=<구글 client-secret>
+# Google OAuth2
+spring.security.oauth2.client.registration.google.client-id=${GOOGLE_CLIENT_ID:}
+spring.security.oauth2.client.registration.google.client-secret=${GOOGLE_CLIENT_SECRET:}
 spring.security.oauth2.client.registration.google.scope=profile,email
 
-# ---------- 소셜 로그인: Kakao ----------
-# https://developers.kakao.com  >  내 애플리케이션
-spring.security.oauth2.client.registration.kakao.client-id=<카카오 REST API 키>
-spring.security.oauth2.client.registration.kakao.client-secret=<카카오 client-secret>
-spring.security.oauth2.client.registration.kakao.redirect-uri={baseUrl}/login/oauth2/code/kakao
+# Kakao OAuth2 (redirect-uri? ?? {baseUrl}?? ?? ?? ???)
+spring.security.oauth2.client.registration.kakao.client-id=${KAKAO_CLIENT_ID:}
+spring.security.oauth2.client.registration.kakao.client-secret=${KAKAO_CLIENT_SECRET:}
+spring.security.oauth2.client.registration.kakao.redirect-uri={baseUrl}/{action}/oauth2/code/{registrationId}
 spring.security.oauth2.client.registration.kakao.authorization-grant-type=authorization_code
 spring.security.oauth2.client.registration.kakao.client-authentication-method=client_secret_post
 spring.security.oauth2.client.registration.kakao.client-name=Kakao
 spring.security.oauth2.client.registration.kakao.scope=profile_nickname,account_email
+
 spring.security.oauth2.client.provider.kakao.authorization-uri=https://kauth.kakao.com/oauth/authorize
 spring.security.oauth2.client.provider.kakao.token-uri=https://kauth.kakao.com/oauth/token
 spring.security.oauth2.client.provider.kakao.user-info-uri=https://kapi.kakao.com/v2/user/me
 spring.security.oauth2.client.provider.kakao.user-name-attribute=id
 
-# ---------- 카카오맵 ----------
-# JavaScript 키는 브라우저에 노출되므로 반드시 플랫폼 도메인 등록으로 제한할 것
-kakao.maps.api.key=<카카오 JavaScript 키>
-kakao.rest.api.key=<카카오 REST API 키>
-kakao.admin-key=<카카오 Admin 키>
+weather.api.key=${WEATHER_API_KEY:}
 
-# ---------- 날씨 (기상청 API 허브) ----------
-# https://apihub.kma.go.kr
-weather.api.key=<기상청 API 키>
+# AI
+ai.primary=groq
+ai.fallback=gemini
 
-# ---------- AI 모델 선택 ----------
-# openai | anthropic | google | ollama
-ai.primary=openai
-ai.fallback=ollama
-
-spring.ai.openai.api-key=<OpenAI 키>
-spring.ai.openai.base-url=https://api.openai.com
-spring.ai.openai.chat.options.model=<모델명>
-spring.ai.openai.chat.options.max-tokens=2048
+spring.ai.openai.api-key=${OPENAI_API_KEY:}
+spring.ai.openai.base-url=https://api.groq.com/openai
+spring.ai.openai.chat.options.model=openai/gpt-oss-120b
+spring.ai.openai.chat.options.max-tokens=2000
 spring.ai.openai.chat.options.temperature=0.7
 
-spring.ai.anthropic.api-key=<Anthropic 키>
-spring.ai.anthropic.chat.options.model=<모델명>
-spring.ai.anthropic.chat.options.max-tokens=2048
+spring.ai.google.genai.api-key=${GOOGLE_AI_KEY:}
+spring.ai.google.genai.chat.options.model=gemini-3.5-flash
+
+spring.ai.ollama.base-url=http://localhost:11434/
+spring.ai.ollama.chat.options.model=llama3
+spring.ai.ollama.chat.model=llama3
+
+kakao.maps.api.key=${KAKAO_JS_KEY:}
+kakao.rest.api.key=${KAKAO_REST_KEY:}
+kakao.admin-key=${KAKAO_ADMIN_KEY:}
+
+logging.level.org.springframework.security=DEBUG
+
+spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:}
+spring.ai.anthropic.chat.options.model=claude-sonnet-4-6
+spring.ai.anthropic.chat.options.max-tokens=16384
 spring.ai.anthropic.chat.options.temperature=0.7
 
-spring.ai.google.genai.api-key=<Google GenAI 키>
-spring.ai.google.genai.chat.options.model=<모델명>
+file.upload.url=/uploads/posts/
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=30MB
 
-spring.ai.ollama.base-url=http://localhost:11434
-spring.ai.ollama.chat.options.model=<로컬 모델명>
-spring.ai.ollama.chat.model=<로컬 모델명>
+# ── 한국관광공사 OpenAPI (이수환) ──
+tour.api.key=${TOUR_API_KEY:}
+tour.api.base-url=http://apis.data.go.kr/B551011
 
-# ---------- 파일 업로드 ----------
-file.upload.url=/uploads/
-spring.servlet.multipart.max-file-size=20MB
-spring.servlet.multipart.max-request-size=20MB
-
-# ---------- 로깅 ----------
-logging.level.org.springframework.security=INFO
+# ── SK open API / TMAP (이수환) ──
+tmap.api.key=${TMAP_APP_KEY:}
+tmap.api.base-url=https://apis.openapi.sk.com
