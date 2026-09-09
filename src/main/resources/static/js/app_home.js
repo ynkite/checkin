@@ -25,12 +25,12 @@
       stG: '17:30 도착 예정<br>집중률 재는 중', gG: 40, busyG: 0,
       sw: 0, chips: 0, ordH: '1', ordG: '2', lead: 'H' },
     { line: '해운대가 지금 <em>집중률 142</em>',
-      why: '평소 이 시각의 1.4배입니다. 두 시간 뒤에도 비슷할 것으로 봅니다. 광안리는 71로 한가합니다.',
+      why: '평소 이 시각의 1.4배입니다. 두 시간 뒤에도 비슷할 것으로 봅니다. 광안리는 71, 한가한 편입니다.',
       stH: '14:30 도착 예정<br><strong>집중률 142</strong> · 평소의 1.4배', gH: 95, busyH: 1,
       stG: '17:30 도착 예정<br>집중률 71 · 평소의 71%', gG: 47, busyG: 0,
       sw: 0, chips: 0, ordH: '1', ordG: '2', lead: 'H' },
     { line: '광안리를 <em>먼저 가는 쪽으로</em> 바꿨습니다',
-      why: '해운대는 17시 40분으로 미뤘습니다. 그 시각 집중률은 96으로 내려갑니다.',
+      why: '해운대는 17시 40분으로 미뤘습니다. 그 시각이면 96까지 내려갑니다.',
       stH: '17:40으로 미룸<br>그 시각 집중률 96', gH: 64, busyH: 0,
       stG: '14:20으로 당김<br>집중률 71 · 한가함', gG: 47, busyG: 0,
       sw: 1, chips: 1, ordH: '2', ordG: '1', lead: 'G' }
@@ -138,8 +138,7 @@
     var row = $('ck_mine_row');
     if (!row) return;
     if (!list.length) {
-      row.innerHTML = '<div class="ck-empty">아직 저장한 경로가 없습니다. ' +
-                      '위에서 지역과 기간을 고르면 첫 경로가 만들어집니다.</div>';
+      row.innerHTML = '<div class="ck-empty">아직 없습니다. 위에서 지역과 기간을 고르면 첫 경로가 생깁니다.</div>';
       return;
     }
     /* 여행 중 → 다가오는 → 지난 순. 각 묶음 안에서는 최근 수정순 */
@@ -179,8 +178,7 @@
       })
       .catch(function () {
         var row = $('ck_mine_row');
-        if (row) row.innerHTML = '<div class="ck-empty">여행 목록을 불러오지 못했습니다. ' +
-                                 '잠시 뒤에 다시 시도해 주세요.</div>';
+        if (row) row.innerHTML = '<div class="ck-empty">목록을 가져오지 못했습니다. 잠시 뒤에 다시 열어 보세요.</div>';
       });
   }
 
@@ -209,8 +207,8 @@
         var picked = [].slice.call(cc.querySelectorAll('[aria-pressed="true"]'))
                        .map(function (x) { return x.textContent.trim(); });
         nt.textContent = picked.length
-          ? picked.join(' · ') + ' 조건에 맞는 곳만 골라 순서를 짭니다.'
-          : '고른 조건에 맞는 곳만 골라 순서를 짭니다.';
+          ? picked.join(' · ') + ' 조건에 맞는 곳만 후보에 올립니다.'
+          : '조건에 안 맞는 곳은 후보에서 빠집니다.';
       });
     }
 

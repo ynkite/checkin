@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>체크인 — AI 여행 플래너</title>
-  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&family=Gmarket+Sans:wght@300;500;700&display=swap" rel="stylesheet">
+  <!-- Pretendard·Gmarket Sans 는 Google Fonts 에 없다. 기존 링크는 400 을 받아
+       웹폰트가 하나도 로드되지 않았다. 실제로 서비스되는 조합으로 바꿨다. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <script>
     /* 하늘(시간대). 서버 시각이 아니라 보는 사람의 시각을 쓴다.
        페인트 전에 실행되어야 깜빡이지 않으므로 head 안에 인라인으로 둔다. */
@@ -44,10 +47,10 @@
   </div>
   <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')">☰</button>
   <div class="nav-links">
-    <button class="nav-link on" onclick="goHomeRefresh()">🏠 홈</button>
-    <button class="nav-link" onclick="goRefresh('community')">👥 커뮤니티</button>
-    <button class="nav-link" onclick="goRefresh('weather')">🌤️ 날씨</button>
-    <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">✈ 플랜</button>
+    <button class="nav-link on" onclick="goHomeRefresh()">홈</button>
+    <button class="nav-link" onclick="goRefresh('community')">커뮤니티</button>
+    <button class="nav-link" onclick="goRefresh('weather')">날씨</button>
+    <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">플랜</button>
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
         <span class="nps-num">1</span>
@@ -193,16 +196,16 @@
 <div id="bottomNav" class="bnav" role="navigation">
   <div class="bnav-bar">
     <button class="bnav-item" data-page="main"      onclick="goHomeRefresh()">
-      <span class="bnav-icon">🏠</span><span class="bnav-lbl">홈</span>
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M3 10.4 12 3l9 7.4M5.6 9.2V20h12.8V9.2"/></svg></span><span class="bnav-lbl">홈</span>
     </button>
     <button class="bnav-item" data-page="community" onclick="goRefresh('community')">
-      <span class="bnav-icon">👥</span><span class="bnav-lbl">커뮤니티</span>
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M8.4 11.2a3 3 0 1 0 0-6 3 3 0 0 0 0 6M2.6 20c0-3.2 2.6-5.2 5.8-5.2s5.8 2 5.8 5.2M16.2 8.6a2.4 2.4 0 1 0 0-4.8M17 14.9c2.4.3 4.4 2.1 4.4 5.1"/></svg></span><span class="bnav-lbl">커뮤니티</span>
     </button>
     <button class="bnav-item" data-page="weather"   onclick="go('weather')">
-      <span class="bnav-icon">🌤️</span><span class="bnav-lbl">날씨</span>
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M17.2 18.4H7.6a4.4 4.4 0 0 1-.5-8.8 5.6 5.6 0 0 1 10.7 1.3 3.8 3.8 0 0 1-.6 7.5"/></svg></span><span class="bnav-lbl">날씨</span>
     </button>
     <button class="bnav-item" data-page="planner"   onclick="navPlannerClick()">
-      <span class="bnav-icon">✈️</span><span class="bnav-lbl">플랜</span>
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M3.4 13.2 21 5.6l-4.2 6.2 1.2 6.6-3.8-3.4-4.4 3.4.6-4.4z"/></svg></span><span class="bnav-lbl">플랜</span>
     </button>
     <button class="bnav-item" data-page="mypage"    onclick="go(_loggedIn?'mypage':'login')">
       <span class="bnav-icon">👤</span><span class="bnav-lbl">마이페이지</span>
@@ -229,10 +232,10 @@
     <div class="foot-col">
       <h4>바로가기</h4>
       <ul>
-        <li><a onclick="goHomeRefresh()" style="cursor:pointer">🏠 홈</a></li>
-        <li><a onclick="navPlannerClick()" style="cursor:pointer">✈️ 여행 플래너</a></li>
-        <li><a onclick="go('weather')" style="cursor:pointer">🌤️ 날씨</a></li>
-        <li><a onclick="goRefresh('community')" style="cursor:pointer">👥 커뮤니티</a></li>
+        <li><a onclick="goHomeRefresh()" style="cursor:pointer">홈</a></li>
+        <li><a onclick="navPlannerClick()" style="cursor:pointer">여행 플래너</a></li>
+        <li><a onclick="go('weather')" style="cursor:pointer">날씨</a></li>
+        <li><a onclick="goRefresh('community')" style="cursor:pointer">커뮤니티</a></li>
       </ul>
     </div>
 

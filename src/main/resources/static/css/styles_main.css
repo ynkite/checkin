@@ -80,7 +80,7 @@ html {
 }
 
 body {
-    font-family: 'Pretendard', -apple-system, sans-serif;
+    font-family: var(--sans);
     background: var(--cream);
     color: var(--text);
     line-height: 1.6;
@@ -726,7 +726,7 @@ nav {
 }
 
 .hsc-ttl {
-    font-family: 'Gmarket Sans', sans-serif;
+    font-family: var(--sans);
     font-size: 34px;
     font-weight: 700;
     color: var(--text);
@@ -1149,7 +1149,7 @@ nav {
     line-height: 1;
     margin-bottom: 14px;
     /* 배너 아래 본문 글자들과의 고정 간격 */
-    font-family: 'Gmarket Sans', sans-serif;
+    font-family: var(--sans);
 }
 
 .card-ttl {
@@ -1289,7 +1289,7 @@ nav {
     line-height: 1;
     margin-bottom: 14px;
     /* 배너 아래 본문 글자들과의 고정 간격 */
-    font-family: 'Gmarket Sans', sans-serif;
+    font-family: var(--sans);
 }
 
 .pop-card:hover {

@@ -325,3 +325,11 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home .ck-cur{ grid-template-columns:1fr }
   .ck-home .curation-panel{ align-items:flex-start }
 }
+
+/* 하단 네비 아이콘 — 이모지 대신 선 아이콘.
+   이모지는 기기마다 다르게 그려지고 색을 맞출 수 없다. */
+.bnav-svg{
+  width:22px; height:22px; display:block; margin:0 auto;
+  fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}

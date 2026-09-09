@@ -27,7 +27,7 @@
     margin-top: 64px;
     background: var(--foot-bg);
     color: var(--foot-text);
-    font-family: 'Pretendard', system-ui, sans-serif;
+    font-family: var(--sans);
 }
 
 .site-footer a {
