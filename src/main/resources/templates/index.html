@@ -1,12 +1,22 @@
 <!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<html lang="ko" data-sky="day" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>체크인 — AI 여행 플래너</title>
   <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800;900&family=Gmarket+Sans:wght@300;500;700&display=swap" rel="stylesheet">
+  <script>
+    /* 하늘(시간대). 서버 시각이 아니라 보는 사람의 시각을 쓴다.
+       페인트 전에 실행되어야 깜빡이지 않으므로 head 안에 인라인으로 둔다. */
+    (function () {
+      var h = new Date().getHours();
+      var sky = h >= 20 || h < 7 ? 'night' : (h >= 17 ? 'dusk' : 'day');
+      document.documentElement.setAttribute('data-sky', sky);
+    })();
+  </script>
   <link rel="stylesheet" th:href="@{/css/tokens.css}">
   <link rel="stylesheet" th:href="@{/css/styles_brand.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_massing.css}">
   <link rel="stylesheet" th:href="@{/css/styles_main.css}">
   <link rel="stylesheet" th:href="@{/css/styles_budget.css}">
   <link rel="stylesheet" th:href="@{/css/styles_place.css}">

@@ -1,0 +1,83 @@
+/*
+ * 체크인 — 3D 매싱 클래스 매핑 (styles_massing.css)
+ *
+ * 매싱 SVG 는 색을 갖지 않고 클래스만 내보낸다. 색은 여기서 tokens.css 변수로
+ * 연결하고, tokens.css 의 [data-sky] 가 시간대에 따라 그 변수를 바꾼다.
+ * 따라서 data-sky 만 바꾸면 SVG 를 다시 만들지 않고 낮/노을/밤이 된다.
+ *
+ * 금지 — 이 파일의 path 에 transition 을 걸지 않는다 (측정: 54ms -> 5ms).
+ *        SVG filter 를 쓰지 않는다. 그림자는 .sh1/.sh2 오프셋 2겹으로 낸다.
+ */
+svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecision}
+.plate{fill:var(--plate)}
+.g-water{fill:var(--water)} .g-beach{fill:var(--beach)} .g-green{fill:var(--green)}
+.cl{fill:none; stroke:var(--shore); stroke-width:1.6}
+.rdc{fill:none; stroke:var(--rdc); stroke-width:6.6; stroke-linecap:round; stroke-linejoin:round}
+.rd1{fill:none; stroke:var(--rd1); stroke-width:4.8; stroke-linecap:round; stroke-linejoin:round}
+.rd2{fill:none; stroke:var(--rd2); stroke-width:2.9; stroke-linecap:round; stroke-linejoin:round}
+.rd3{fill:none; stroke:var(--rd3); stroke-width:1.6; stroke-linecap:round}
+.rdp{fill:none; stroke:var(--rdpv); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+.rdm{fill:none; stroke:var(--lane); stroke-width:1.3; stroke-dasharray:7 9;
+  stroke-linecap:round; opacity:.9}
+.sh1{fill:var(--sh1c)} .sh2{fill:var(--sh2c)}
+.wv{fill:none; stroke:var(--wave); stroke-linecap:round}
+.wv.w1{stroke-width:2.5} .wv.w2{stroke-width:1.8; opacity:.72} .wv.w3{stroke-width:1.3; opacity:.46}
+.gt{fill:none; stroke:var(--tuft); stroke-width:1.1; stroke-linecap:round}
+.ss{fill:none; stroke:var(--stip); stroke-width:1.5; stroke-linecap:round}
+.ge{fill:none; stroke:var(--gedge); stroke-width:1.6; stroke-linejoin:round}
+.rf,.rk,.s1,.s2{stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
+.fa.rf{fill:var(--a0); stroke:var(--a0)} .fa.rk{fill:var(--a1); stroke:var(--a1)}
+.fa.s1{fill:var(--a1); stroke:var(--a1)} .fa.s2{fill:var(--a2); stroke:var(--a2)}
+.fb.rf{fill:var(--b0); stroke:var(--b0)} .fb.rk{fill:var(--b1); stroke:var(--b1)}
+.fb.s1{fill:var(--b1); stroke:var(--b1)} .fb.s2{fill:var(--b2); stroke:var(--b2)}
+.fc.rf{fill:var(--c0); stroke:var(--c0)} .fc.rk{fill:var(--c1); stroke:var(--c1)}
+.fc.s1{fill:var(--c1); stroke:var(--c1)} .fc.s2{fill:var(--c2); stroke:var(--c2)}
+.fd.rf{fill:var(--d0); stroke:var(--d0)} .fd.rk{fill:var(--d1); stroke:var(--d1)}
+.fd.s1{fill:var(--d1); stroke:var(--d1)} .fd.s2{fill:var(--d2); stroke:var(--d2)}
+.fe.rf{fill:var(--e0); stroke:var(--e0)} .fe.rk{fill:var(--e1); stroke:var(--e1)}
+.fe.s1{fill:var(--e1); stroke:var(--e1)} .fe.s2{fill:var(--e2); stroke:var(--e2)}
+.ff.rf{fill:var(--f0); stroke:var(--f0)} .ff.rk{fill:var(--f1); stroke:var(--f1)}
+.ff.s1{fill:var(--f1); stroke:var(--f1)} .ff.s2{fill:var(--f2); stroke:var(--f2)}
+.fg.rf{fill:var(--g0); stroke:var(--g0)} .fg.rk{fill:var(--g1); stroke:var(--g1)}
+.fg.s1{fill:var(--g1); stroke:var(--g1)} .fg.s2{fill:var(--g2); stroke:var(--g2)}
+.fh.rf{fill:var(--h0); stroke:var(--h0)} .fh.rk{fill:var(--h1); stroke:var(--h1)}
+.fh.s1{fill:var(--h1); stroke:var(--h1)} .fh.s2{fill:var(--h2); stroke:var(--h2)}
+.fm.rf{fill:var(--m0); stroke:var(--m0)} .fm.rk{fill:var(--m1); stroke:var(--m1)}
+.fm.s1{fill:var(--m1); stroke:var(--m1)} .fm.s2{fill:var(--m2); stroke:var(--m2)}
+.ru{fill:var(--ru0); stroke:var(--ru0)} .ru2{fill:var(--ru1); stroke:var(--ru1)}
+.ru,.ru2{stroke-width:2; stroke-linejoin:round; paint-order:stroke}
+.tc,.tp{fill:var(--tc); stroke:var(--tc); stroke-width:2.2; stroke-linejoin:round}
+.tc.t2,.tp.t2{fill:var(--tc2); stroke:var(--tc2)}
+.tc.td{fill:var(--td); stroke:var(--td)}
+.tk{fill:none; stroke:var(--tk); stroke-width:1.9; stroke-linecap:round}
+.bu{fill:var(--bush); stroke:var(--bush); stroke-width:1.8; stroke-linejoin:round}
+.bu2{fill:var(--bush2); stroke:var(--bush2); stroke-width:1.4}
+.bn{fill:none; stroke:#8A6E4E; stroke-width:2.6; stroke-linecap:round}
+.bnb{fill:none; stroke:#6F573C; stroke-width:1.6; stroke-linecap:round}
+.us{stroke-width:1.4; stroke-linejoin:round; paint-order:stroke}
+.us.u1{fill:var(--u1); stroke:var(--u1)} .us.u2{fill:var(--u2); stroke:var(--u2)}
+.us.u3{fill:var(--u3); stroke:var(--u3)}
+.uk{fill:none; stroke:var(--uk); stroke-width:1.4; stroke-linecap:round}
+.cb{stroke-width:2.6; stroke-linejoin:round; paint-order:stroke}
+.cb.c1{fill:var(--v1); stroke:var(--v1)} .cb.c2{fill:var(--v2); stroke:var(--v2)}
+.cb.c3{fill:var(--v3); stroke:var(--v3)} .ct{fill:var(--vt)}
+.bt{stroke-width:2.2; stroke-linejoin:round; paint-order:stroke}
+.bt.k1{fill:var(--bo1); stroke:var(--bo1)} .bt.k2{fill:var(--bo2); stroke:var(--bo2)}
+.btw{fill:none; stroke:var(--wake); stroke-width:1.8; stroke-linecap:round}
+.bs{fill:none; stroke:var(--bo2); stroke-width:1.4; stroke-linecap:round}
+.crowd .leg{fill:none; stroke:var(--pp); stroke-width:1.5; stroke-linecap:round; opacity:.9}
+.crowd .tor{stroke-width:1.1; stroke-linejoin:round; paint-order:stroke}
+.crowd .tor.k1{fill:var(--pc1); stroke:var(--pc1)} .crowd .tor.k2{fill:var(--pc2); stroke:var(--pc2)}
+.crowd .tor.k3{fill:var(--pc3); stroke:var(--pc3)} .crowd .tor.k4{fill:var(--pc4); stroke:var(--pc4)}
+.crowd .tor.k5{fill:var(--pc5); stroke:var(--pc5)}
+.crowd .hed{fill:var(--skin); stroke:var(--skin); stroke-width:.8}
+@media (max-width:860px){ svg.mass{shape-rendering:optimizeSpeed} svg.mass .wv{display:none} }
+
+.rt-case,.rb-case{fill:none; stroke:var(--halo); stroke-width:7;
+  stroke-linecap:round; stroke-linejoin:round}
+.rt-done,.rt-todo,.rt-hot,.rb-done,.rb-todo,.rb-hot{fill:none;
+  stroke-linecap:round; stroke-linejoin:round; transition:opacity .5s ease}
+.rt-todo,.rt-done,.rt-hot{stroke:var(--onmap); stroke-width:2.8; opacity:.5; stroke-dasharray:7 8}
+.rb-hot,.rb-done,.rb-todo{stroke:var(--sig); stroke-width:3.8}
+.rt-case,.rb-case{transition:opacity .5s ease}
+
