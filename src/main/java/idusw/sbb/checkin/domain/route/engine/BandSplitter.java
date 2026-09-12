@@ -24,7 +24,7 @@ import java.util.function.ToDoubleBiFunction;
  */
 public final class BandSplitter {
 
-    public static final int DEFAULT_MIN_PER_DAY = 3;
+    public static final int DEFAULT_MIN_PER_DAY = 8;
     public static final double DEFAULT_NEAR_BOUNDARY = 5.0;
     public static final double DEFAULT_MID_BOUNDARY = 25.0;
 
@@ -62,7 +62,10 @@ public final class BandSplitter {
         this.costMetric = costMetric;
     }
 
-    /** 5km/25km 경계, minPerDay=3, 비율 기반 우회비용 임계, Haversine 비용 — 기본값 그대로. */
+    /**
+     * 5km/25km 경계, minPerDay=8(식사 2 + 활동 3~4 + 여유, 결정 7-3), 비율 기반 우회비용 임계,
+     * Haversine 비용 — 기본값 그대로.
+     */
     public static BandSplitter withDefaults() {
         return new BandSplitter(DEFAULT_NEAR_BOUNDARY, DEFAULT_MID_BOUNDARY,
                 DEFAULT_MIN_PER_DAY, null, Haversine::distanceKm);

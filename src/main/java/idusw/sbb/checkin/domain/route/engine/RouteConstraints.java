@@ -20,8 +20,13 @@ public record RouteConstraints(
         LocalTime dinnerWindowEnd,
         Duration maxDailyTravelTime,
         GeoPoint arrivalPoint,
-        GeoPoint departurePoint
+        GeoPoint departurePoint,
+        LocalTime dayStartTime,
+        LocalTime dayEndTime
 ) {
+
+    private static final LocalTime DEFAULT_DAY_START = LocalTime.of(9, 0);
+    private static final LocalTime DEFAULT_DAY_END = LocalTime.of(21, 0);
 
     public RouteConstraints {
         if (arrivalPoint == null) {
@@ -34,6 +39,11 @@ public record RouteConstraints(
         }
         // 왕복이 대부분이라 귀가 출발 지점을 따로 안 주면 도착 지점과 같다고 본다.
         departurePoint = departurePoint != null ? departurePoint : arrivalPoint;
+        dayStartTime = dayStartTime != null ? dayStartTime : DEFAULT_DAY_START;
+        dayEndTime = dayEndTime != null ? dayEndTime : DEFAULT_DAY_END;
+        if (!dayStartTime.isBefore(dayEndTime)) {
+            throw new IllegalArgumentException("dayStartTime must be before dayEndTime");
+        }
     }
 
     private static void requireOrderedWindow(LocalTime start, LocalTime end, String label) {
@@ -65,5 +75,22 @@ public record RouteConstraints(
         return arrivalPoint.distanceKmTo(candidate)
                 + candidate.distanceKmTo(departurePoint)
                 - arrivalPoint.distanceKmTo(departurePoint);
+    }
+
+    /** 첫날은 {@code max(firstDayArrival, dayStartTime)} — 새벽 도착이라고 dayStartTime 전부터 채우지 않는다 (결정 7-1). */
+    public LocalTime effectiveDayStart(boolean isFirstDay) {
+        if (!isFirstDay || firstDayArrival == null) {
+            return dayStartTime;
+        }
+        LocalTime arrivalTime = firstDayArrival.toLocalTime();
+        return arrivalTime.isAfter(dayStartTime) ? arrivalTime : dayStartTime;
+    }
+
+    /** 마지막 날은 {@code min(dayEndTime, lastDayDepartureTime)} — 더 이른 쪽에서 하루가 끝난다 (결정 7-1). */
+    public LocalTime effectiveDayEnd(boolean isLastDay) {
+        if (!isLastDay || lastDayDepartureTime == null) {
+            return dayEndTime;
+        }
+        return lastDayDepartureTime.isBefore(dayEndTime) ? lastDayDepartureTime : dayEndTime;
     }
 }
