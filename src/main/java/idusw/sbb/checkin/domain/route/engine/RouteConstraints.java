@@ -93,4 +93,29 @@ public record RouteConstraints(
         }
         return lastDayDepartureTime.isBefore(dayEndTime) ? lastDayDepartureTime : dayEndTime;
     }
+
+    /**
+     * 슬롯 시간 창의 시작 (결정 7-2 표). {@code SlotBuilder} 와 {@code DayPlanner} 가 같은
+     * 창 계산을 각자 중복 구현하지 않도록 여기 하나로 둔다. 점심/저녁 창이 설정돼 있어야 한다.
+     */
+    public LocalTime windowStart(SlotType type, boolean isFirstDay) {
+        return switch (type) {
+            case MORNING_ACTIVITY -> effectiveDayStart(isFirstDay);
+            case LUNCH -> lunchWindowStart;
+            case AFTERNOON_ACTIVITY -> lunchWindowEnd;
+            case DINNER -> dinnerWindowStart;
+            case EVENING_ACTIVITY -> dinnerWindowEnd;
+        };
+    }
+
+    /** 슬롯 시간 창의 끝 (결정 7-2 표). */
+    public LocalTime windowEnd(SlotType type, boolean isLastDay) {
+        return switch (type) {
+            case MORNING_ACTIVITY -> lunchWindowStart;
+            case LUNCH -> lunchWindowEnd;
+            case AFTERNOON_ACTIVITY -> dinnerWindowStart;
+            case DINNER -> dinnerWindowEnd;
+            case EVENING_ACTIVITY -> effectiveDayEnd(isLastDay);
+        };
+    }
 }

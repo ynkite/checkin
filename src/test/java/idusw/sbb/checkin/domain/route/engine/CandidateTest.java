@@ -59,4 +59,40 @@ class CandidateTest {
         Candidate c = candidate(null, null, Set.of());
         assertThat(c.closedDays()).isEmpty();
     }
+
+    // ── 결정 9-2 : dwellMinutes 비면 카테고리 기본값 ─────────────────────
+
+    @Test
+    void dwellMinutes를_주면_그대로_쓴다() {
+        Candidate c = new Candidate("c1", "카페", LOCATION, CandidateCategory.CAFE, 25, null, null, null);
+        assertThat(c.dwellMinutes()).isEqualTo(25);
+    }
+
+    @Test
+    void dwellMinutes가_없으면_FOOD는_60분() {
+        Candidate c = new Candidate("c1", "식당", LOCATION, CandidateCategory.FOOD, null, null, null, null);
+        assertThat(c.dwellMinutes()).isEqualTo(60);
+    }
+
+    @Test
+    void dwellMinutes가_없으면_TOUR는_90분() {
+        Candidate c = new Candidate("c1", "관광지", LOCATION, CandidateCategory.TOUR, null, null, null, null);
+        assertThat(c.dwellMinutes()).isEqualTo(90);
+    }
+
+    @Test
+    void dwellMinutes가_없으면_CAFE는_40분() {
+        Candidate c = new Candidate("c1", "카페", LOCATION, CandidateCategory.CAFE, null, null, null, null);
+        assertThat(c.dwellMinutes()).isEqualTo(40);
+    }
+
+    @Test
+    void 기본값은_접근자에서_계산될뿐_생성자에서_필드에_박히지_않는다() {
+        Candidate explicit = new Candidate("c1", "식당", LOCATION, CandidateCategory.FOOD, 60, null, null, null);
+        Candidate defaulted = new Candidate("c1", "식당", LOCATION, CandidateCategory.FOOD, null, null, null, null);
+
+        // 접근자 결과는 우연히 같다(둘 다 60분) — 하지만 저장된 값 자체는 달라야 한다.
+        assertThat(explicit.dwellMinutes()).isEqualTo(defaulted.dwellMinutes());
+        assertThat(explicit).isNotEqualTo(defaulted);
+    }
 }

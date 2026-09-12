@@ -94,30 +94,22 @@ public final class SlotBuilder {
         boolean isFirstDay = pool.dayIndex() == 0;
         boolean isLastDay = pool.dayIndex() == totalDays - 1;
 
-        LocalTime dayStart = constraints.effectiveDayStart(isFirstDay);
-        LocalTime dayEnd = constraints.effectiveDayEnd(isLastDay);
-
-        List<SlotWindow> windows = List.of(
-                new SlotWindow(SlotType.MORNING_ACTIVITY, dayStart, constraints.lunchWindowStart()),
-                new SlotWindow(SlotType.LUNCH, constraints.lunchWindowStart(), constraints.lunchWindowEnd()),
-                new SlotWindow(SlotType.AFTERNOON_ACTIVITY, constraints.lunchWindowEnd(), constraints.dinnerWindowStart()),
-                new SlotWindow(SlotType.DINNER, constraints.dinnerWindowStart(), constraints.dinnerWindowEnd()),
-                new SlotWindow(SlotType.EVENING_ACTIVITY, constraints.dinnerWindowEnd(), dayEnd));
-
         GeoPoint referencePoint = anchor != null ? anchor.location() : constraints.arrivalPoint();
         Set<String> usedToday = new HashSet<>();
         List<TimeSlot> result = new ArrayList<>();
 
-        for (SlotWindow window : windows) {
-            if (!window.start().isBefore(window.end())) {
+        for (SlotType type : SlotType.values()) {
+            LocalTime windowStart = constraints.windowStart(type, isFirstDay);
+            LocalTime windowEnd = constraints.windowEnd(type, isLastDay);
+            if (!windowStart.isBefore(windowEnd)) {
                 continue; // 창이 0 이하로 접힘 — 이 슬롯은 만들지 않는다
             }
 
-            List<Candidate> cut = cut(pool.candidates(), window, usedToday, referencePoint);
+            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, usedToday, referencePoint);
             for (Candidate candidate : cut) {
                 usedToday.add(candidate.id());
             }
-            result.add(new TimeSlot(window.type(), cut));
+            result.add(new TimeSlot(type, cut));
 
             if (!cut.isEmpty()) {
                 referencePoint = centroid(cut);
@@ -128,14 +120,15 @@ public final class SlotBuilder {
     }
 
     /** 결정 4 의 3단계: 카테고리 적합 → 필터 통과 → 영업시간 겹침 → 기준점에서 가까운 순 상위 5. */
-    private List<Candidate> cut(List<Candidate> dayPool, SlotWindow window, Set<String> usedToday, GeoPoint referencePoint) {
-        boolean isMealSlot = window.type() == SlotType.LUNCH || window.type() == SlotType.DINNER;
+    private List<Candidate> cut(List<Candidate> dayPool, SlotType type, LocalTime windowStart, LocalTime windowEnd,
+                                 Set<String> usedToday, GeoPoint referencePoint) {
+        boolean isMealSlot = type == SlotType.LUNCH || type == SlotType.DINNER;
 
         return dayPool.stream()
                 .filter(c -> !usedToday.contains(c.id()))
                 .filter(c -> isMealSlot == (c.category() == CandidateCategory.FOOD))
                 .filter(filter)
-                .filter(c -> overlapsWindow(c, window.start(), window.end()))
+                .filter(c -> overlapsWindow(c, windowStart, windowEnd))
                 .sorted(Comparator.comparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
                 .limit(TimeSlot.MAX_CANDIDATES)
                 .toList();
@@ -152,8 +145,5 @@ public final class SlotBuilder {
         double lat = candidates.stream().mapToDouble(c -> c.location().latitude()).average().orElseThrow();
         double lng = candidates.stream().mapToDouble(c -> c.location().longitude()).average().orElseThrow();
         return new GeoPoint(lat, lng);
-    }
-
-    private record SlotWindow(SlotType type, LocalTime start, LocalTime end) {
     }
 }
