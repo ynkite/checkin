@@ -2432,6 +2432,10 @@ function changeSlide(d) { const n = document.querySelectorAll('.slide').length |
 function goSlide(i) {
     document.querySelectorAll('.slide').forEach((s,j) => s.classList.toggle('on', j===i));
     document.querySelectorAll('.dot').forEach((d,j)  => d.classList.toggle('on', j===i));
+    // 메인 화면 왼쪽 경로 목록도 같이 옮긴다
+    document.querySelectorAll('#ck_rtlist button[data-i]').forEach((b,j) => {
+        if (j === i) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+    });
     _si = i;
 }
 

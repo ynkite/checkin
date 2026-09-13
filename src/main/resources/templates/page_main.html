@@ -244,6 +244,14 @@
       if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
     }
 
+    /* 큐레이션 제목·설명에 이모지가 섞여 들어온다(DB 시드).
+       UI 문구에는 이모지를 쓰지 않으므로 그릴 때 걷어낸다. */
+    function _noEmo(v) {
+      return String(v == null ? '' : v)
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/gu, '')
+        .replace(/\s{2,}/g, ' ').trim();
+    }
+
     // ── 메인 페이지 초기화 ──
     async function initMainPage() {
       // 1. 고정 정적 텍스트 주입
@@ -273,7 +281,7 @@
           /* 색은 CSS 가 정한다. 예전에는 여기서 그라데이션을 직접 박았다. */
           const tags = en.tags || (s.theme ? s.theme.split(',') : []);
           const chips = tags.length
-                  ? `<div class="ck-sl-tags">` + tags.map(x => `<span>${_esc(x)}</span>`).join('') + `</div>`
+                  ? `<div class="ck-sl-tags">` + tags.map(x => `<span>${_noEmo(_esc(x))}</span>`).join('') + `</div>`
                   : '';
 
           // 숙박일수 · 인원 · 이동수단 → subTitle
@@ -283,7 +291,7 @@
           const companion = pref.companion || '';
           const transport = pref.transport || '';
           const subTitleParts = [nightCount, companion, transport ? transport + ' 추천' : ''].filter(Boolean);
-          const subTitle = s.isMock ? s.subTitle : (subTitleParts.join(' · ') || _esc(s.subTitle || s.meta || ''));
+          const subTitle = _noEmo(s.isMock ? s.subTitle : (subTitleParts.join(' · ') || _esc(s.subTitle || s.meta || '')));
 
           // 관광지 spots 목록
           const attractions = en.adminRecommendedAttractions || [];
@@ -320,7 +328,7 @@
           const _starBadges = en.starBadges && en.starBadges.length ? en.starBadges : null;
           const badges = s.badgesHtml || `<span class="ck-sl-badge">`
                   + (_starBadges ? _esc(_starBadges[0]) : '미리 짜 둔 경로') + `</span>`;
-          const title = s.isMock ? s.title : _esc(s.title);
+          const title = _noEmo(s.isMock ? s.title : _esc(s.title));
           const budget = s.budgetHtml || '';
 
           const onClickPrev = s.isMock ? `openPreview(${s.curationId})` : `openPreview('${s.curationId}')`;
@@ -348,6 +356,24 @@
 
         if (existingArrow) panelEl.insertBefore(frag, existingArrow); else panelEl.appendChild(frag);
         if (existingDots) existingDots.innerHTML = curations.map((_, i) => `<div class="dot${i===0?' on':''}" onclick="goSlide(${i})"></div>`).join('');
+
+        /* 왼쪽 목록 — 어떤 경로가 있는지 한눈에 보이게. 누르면 카드가 바뀐다. */
+        const listEl = document.getElementById('ck_rtlist');
+        if (listEl) {
+          listEl.innerHTML = curations.map((c, i) => {
+            let e = {};
+            try { e = JSON.parse(c.extra_notes || c.extraNotes || '{}'); } catch (err) {}
+            const days = (e.days || []).length;
+            const meta = [days > 1 ? (days - 1) + '박' + days + '일' : (days === 1 ? '당일치기' : ''),
+                          (e.preferences || {}).companion || ''].filter(Boolean).join(' · ');
+            return `<li><button type="button" data-i="${i}"${i === 0 ? ' aria-current="true"' : ''}>` +
+                   `<b>${_noEmo(_esc(c.title || ''))}</b>${meta ? `<i>${_esc(meta)}</i>` : ''}</button></li>`;
+          }).join('');
+          listEl.addEventListener('click', function (ev) {
+            const b = ev.target.closest('button[data-i]');
+            if (b) goSlide(+b.dataset.i);
+          });
+        }
 
         // 4초마다 다음 슬라이드로 넘긴다
         if (window._slideAutoTimer) clearInterval(window._slideAutoTimer);
@@ -742,6 +768,9 @@
             <p class="ck-picklbl">어디부터 볼까요</p>
             <div class="hsc-dest-row"></div>
             <p class="ck-picknote">고른 지역으로 바로 넘어갑니다. 날짜와 인원은 다음 화면에서 손보면 됩니다.</p>
+            <!-- 미리 짜 둔 경로 목록. 화살표를 눌러야만 다음 것을 볼 수 있으면
+                 무엇이 있는지 모른다. initMainPage() 가 채운다. -->
+            <ul class="ck-rtlist" id="ck_rtlist"></ul>
             <button class="ck-go2" type="button" onclick="goNewPlanner()">직접 입력하기</button>
           </div>
           <div class="curation-panel">
