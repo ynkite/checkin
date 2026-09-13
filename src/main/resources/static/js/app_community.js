@@ -331,7 +331,7 @@ async function openPostDetail(postId) {
 async function likePost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/likes', {});
   if (res.success) {
@@ -340,7 +340,7 @@ async function likePost(e, postId) {
       const n = parseInt(el.textContent.replace(/\D/g, '')) || 0;
       el.textContent = '❤️ ' + (n + 1);
     }
-    toast('❤️ 좋아요!');
+    toast('좋아요!');
   } else {
     toast(res.message || '⚠️ 좋아요 처리에 실패했습니다.');
   }
@@ -353,7 +353,7 @@ async function likePost(e, postId) {
 async function scrapPost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/scraps', {});
   if (res.success) {
@@ -362,7 +362,7 @@ async function scrapPost(e, postId) {
       const n = parseInt(el.textContent.replace(/\D/g, '')) || 0;
       el.textContent = '🔖 ' + (n + 1);
     }
-    toast('🔖 스크랩했습니다.');
+    toast('스크랩했습니다.');
   } else {
     toast(res.message || '⚠️ 스크랩 처리에 실패했습니다.');
   }
@@ -398,7 +398,7 @@ async function submitReportPost() {
  *      PATCH /api/posts/{postId}
  * ═══════════════════════════════════════════════════════════════════ */
 async function submitReview() {
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const titleEl   = document.getElementById('writeTitle');
@@ -427,11 +427,11 @@ async function submitReview() {
 
   if (res.success) {
     closeWrite();
-    toast('후기가 등록되었습니다! 🎉');
+    toast('후기가 등록되었습니다! ');
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
   } else {
-    toast('⚠️ ' + (res.message || '게시글 등록에 실패했습니다.'));
+    toast((res.message || '게시글 등록에 실패했습니다.'));
   }
 }
 
@@ -447,11 +447,11 @@ async function submitEditReview() {
 
   const res = await api.patch('/api/posts/' + _openedPostId, { title, content });
   if (res.success) {
-    toast('✅ 후기가 수정되었습니다.');
+    toast('후기가 수정되었습니다.');
     go('review');
     openPostDetail(_openedPostId);
   } else {
-    toast('⚠️ ' + (res.message || '수정에 실패했습니다.'));
+    toast((res.message || '수정에 실패했습니다.'));
   }
 }
 
@@ -465,7 +465,7 @@ async function deleteMyPost(postId) {
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
   } else {
-    toast('⚠️ ' + (res.message || '삭제에 실패했습니다.'));
+    toast((res.message || '삭제에 실패했습니다.'));
   }
 }
 
@@ -541,7 +541,7 @@ async function submitReportComment() {
   if (!_reportCommentPostId) {
     _reportCommentPostId = window._currentPostId || window._openedPostId;
   }
-  if (!_reportCommentPostId) { toast('⚠️ 신고 대상 게시글을 찾을 수 없습니다.'); return; }
+  if (!_reportCommentPostId) { toast('신고 대상 게시글을 찾을 수 없습니다.'); return; }
 
   const modal = document.getElementById('reportCommentModal');
   if (modal) modal.style.display = 'none';
@@ -558,7 +558,7 @@ async function submitReportComment() {
 }
 
 async function submitComment() {
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const inp     = document.getElementById('commentInput');
@@ -572,7 +572,7 @@ async function submitComment() {
     toast('댓글이 등록되었습니다!');
     await loadComments(_openedPostId);
   } else {
-    toast('⚠️ ' + (res.message || '댓글 등록에 실패했습니다.'));
+    toast((res.message || '댓글 등록에 실패했습니다.'));
   }
 }
 
@@ -666,7 +666,7 @@ async function cancelRouteScrap(e, postId) {
   e.stopPropagation();
   const res = await api.post('/api/posts/' + postId + '/scraps', {});
   if (res.success) {
-    toast('🔖 스크랩을 취소했습니다.');
+    toast('스크랩을 취소했습니다.');
     loadMyRouteScrap();
   } else {
     toast(res.message || '⚠️ 취소에 실패했습니다.');
@@ -677,10 +677,10 @@ async function deleteScrap(e, scrapId, tabKey) {
   e.stopPropagation();
   const res = await api.del('/api/scraps/' + scrapId);
   if (res.success) {
-    toast('🔖 스크랩을 삭제했습니다.');
+    toast('스크랩을 삭제했습니다.');
     if (tabKey) loadMyScrap(tabKey);
     else ['stay', 'food', 'tour', 'cafe'].forEach(loadMyScrap);
-  } else             { toast('⚠️ 삭제에 실패했습니다.'); }
+  } else             { toast('삭제에 실패했습니다.'); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1107,7 +1107,7 @@ function renderDestBars(dests) {
       _clearCurationForm();
       loadAdminCurations();
     } else {
-      toast('⚠️ ' + (res.message || '처리에 실패했습니다.'));
+      toast((res.message || '처리에 실패했습니다.'));
     }
   }
 
@@ -1142,10 +1142,10 @@ function renderDestBars(dests) {
     if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/admin/curations/' + curationId);
     if (res.success) {
-      toast('✅ 큐레이션이 삭제되었습니다.');
+      toast('큐레이션이 삭제되었습니다.');
       loadAdminCurations();
     } else {
-      toast('⚠️ 삭제에 실패했습니다.');
+      toast('삭제에 실패했습니다.');
     }
   }
 

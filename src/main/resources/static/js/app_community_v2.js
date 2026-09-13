@@ -1258,7 +1258,7 @@
         if (!window._commUtil.requireLogin()) return;
 
         if (typeof _isSuspended !== 'undefined' && _isSuspended) {
-            if (typeof toast === 'function') toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.');
+            if (typeof toast === 'function') toast('해당 계정은 커뮤니티 기능이 제한되었습니다.');
             return;
         }
 
@@ -1856,7 +1856,7 @@
 
     window.submitReview = async function () {
         if (typeof _isSuspended !== 'undefined' && _isSuspended) {
-            if (typeof toast === 'function') toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.');
+            if (typeof toast === 'function') toast('해당 계정은 커뮤니티 기능이 제한되었습니다.');
             return;
         }
         if (!window._commUtil.requireLogin()) return;
@@ -1927,7 +1927,7 @@
             const preview = document.getElementById('writeImagePreview');
             if (preview) preview.innerHTML = '';
             if (typeof closeWrite === 'function') closeWrite();
-            if (typeof toast === 'function') toast('후기가 등록되었습니다! 🎉');
+            if (typeof toast === 'function') toast('후기가 등록되었습니다! ');
             if (typeof loadCommunityPosts === 'function') await loadCommunityPosts(0, true);
             if (typeof go === 'function') go('community');
             return;

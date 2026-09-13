@@ -322,3 +322,27 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
 })();
+
+/* 「많이 담긴 곳」 탭 — 네 종류를 한 절에 넣고 하나씩 보여 준다.
+   그리드는 initMainPage() 가 모두 채운다. 여기서는 보이기만 바꾼다. */
+(function () {
+  function initKindTabs() {
+    var bar = document.querySelector('#ck_kind .ck-tabs');
+    if (!bar) return;
+    bar.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-pop]');
+      if (!b) return;
+      bar.querySelectorAll('button[data-pop]').forEach(function (x) {
+        x.setAttribute('aria-selected', String(x === b));
+      });
+      document.querySelectorAll('#ck_kind .ck-pop').forEach(function (g) {
+        g.hidden = (g.id !== 'popular-' + b.dataset.pop + '-grid');
+      });
+    });
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initKindTabs);
+  } else {
+    initKindTabs();
+  }
+})();
