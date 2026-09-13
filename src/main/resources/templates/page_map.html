@@ -21,7 +21,7 @@
      *  레일·경로 공통 도우미
      *
      *  시각은 "HH:MM" 문자열, 이동 정보는 백엔드가
-     *  "자차 · 12.4km · 약 24분 · ₩2,000" 꼴로 채운다.
+     *  "자차 · 12.4km · 약 24분 · 2,000원" 꼴로 채운다.
      *  (AiRouteService.recalcTransitWithKakao 의 포맷)
      *  파싱에 실패한 값은 화면에 만들지 않는다 — 가짜 자리표시자를 두지 않는다.
      * ════════════════════════════════════════════════════════ */
@@ -55,7 +55,7 @@
       var mm = /(\d+)\s*분/.exec(s);
       if (mh || mm) o.min = (mh ? parseInt(mh[1], 10) * 60 : 0) + (mm ? parseInt(mm[1], 10) : 0);
       var mc = /₩\s*([\d,]+)/.exec(s);
-      if (mc) o.cost = '₩' + mc[1];
+      if (mc) o.cost = mc[1] + '원';
       if (s.indexOf('도보') >= 0) o.mode = '도보';
       else if (s.indexOf('대중교통') >= 0 || s.indexOf('🚌') >= 0) o.mode = '대중교통';
       else if (s.indexOf('자차') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
@@ -175,13 +175,13 @@
 
     // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
     const MAP_BUDGET_ITEMS = [
-      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000', color: 'var(--sage)',  barPct: 78 },
-      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '₩96,000',  color: 'var(--coral)', barPct: 42 },
-      { label: '교통비', sub: '이동거리 ÷ 연비 × ₩2,000', amount: '₩80,000',  color: '#22B5C4',       barPct: 35 },
-      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '₩48,000',  color: '#F5A623',       barPct: 21 },
+      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '180,000원', color: 'var(--sage)',  barPct: 78 },
+      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '96,000원',  color: 'var(--coral)', barPct: 42 },
+      { label: '교통비', sub: '이동거리 ÷ 연비 × 2,000원', amount: '80,000원',  color: '#22B5C4',       barPct: 35 },
+      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '48,000원',  color: '#F5A623',       barPct: 21 },
     ];
-    const MAP_BUDGET_TOTAL     = '₩404,000';
-    const MAP_BUDGET_REMAINING = '₩96,000';
+    const MAP_BUDGET_TOTAL     = '404,000원';
+    const MAP_BUDGET_REMAINING = '96,000원';
 
     // ── 날씨 알림 ──
     const MAP_WEATHER_ALERT = {
@@ -198,7 +198,7 @@
     ];
 
     // ── 총 예산 표시 초기값 ──
-    const MAP_TOTAL_BUDGET_DISPLAY = '₩ 404,000';
+    const MAP_TOTAL_BUDGET_DISPLAY = '404,000원';
 
 
     // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
@@ -501,7 +501,7 @@
             day.places.forEach(p => {
               // 1. 일반 장소 금액 계산 (x, X, ×, * 대소문자 특수문자 모두 허용)
               if (p.sub) {
-                const amountMatch = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
+                const amountMatch = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
                 if (amountMatch) {
                   const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
                   const qty  = parseInt(amountMatch[2] || '1');
@@ -514,7 +514,7 @@
               }
               // 2. 이동 수단(transit) 금액 계산
               if (p.transit) {
-                const m = p.transit.match(/₩\s*([\d,]+)/);
+                const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
                 if (m) {
                   const cost = parseInt(m[1].replace(/,/g,'')) || 0;
                   catSums.transit += cost;
@@ -524,11 +524,11 @@
             });
           }
           // 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
-          day.budget = `₩${dailySum.toLocaleString()}`;
+          day.budget = `${dailySum.toLocaleString()}원`;
           realTotalBudget += dailySum;
         });
 
-        const finalBudgetStr = '₩' + realTotalBudget.toLocaleString();
+        const finalBudgetStr = realTotalBudget.toLocaleString() + '원';
         if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
         if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = finalBudgetStr;
 
@@ -548,7 +548,7 @@
         if (budgetItemsEl) {
           budgetItemsEl.innerHTML = cats.map(c => `
         <div class="mp-bg-row${(c.val === leadVal && leadVal > 0) ? ' mp-lead' : ''}">
-          <div class="mp-bg-top"><span>${c.label}</span><span>₩${c.val.toLocaleString()}</span></div>
+          <div class="mp-bg-top"><span>${c.label}</span><span>${c.val.toLocaleString()}원</span></div>
           <div class="mp-bg-bar"><i style="width:${pct(c.val)}%"></i></div>
         </div>`).join('');
         }
@@ -577,8 +577,8 @@
         if (remainEl && inputBudget > 0) {
           const remain = inputBudget - realTotalBudget;
           remainEl.textContent = remain >= 0
-                  ? `정한 예산 안쪽입니다. ₩${remain.toLocaleString()} 남았습니다.`
-                  : `정한 예산보다 ₩${Math.abs(remain).toLocaleString()} 많습니다.`;
+                  ? `정한 예산 안쪽입니다. ${remain.toLocaleString()}원 남았습니다.`
+                  : `정한 예산보다 ${Math.abs(remain).toLocaleString()}원 많습니다.`;
           remainEl.classList.toggle('mp-over', remain < 0);
         }
 
@@ -2152,7 +2152,7 @@
       (day.places || []).forEach(p => {
         total += p.transit ? extractAmount(p.transit) : extractAmount(p.sub);
       });
-      day.budget = '₩' + total.toLocaleString();
+      day.budget = total.toLocaleString();
     }
 
     // ── 모달 1: 사이트 선택 ──
@@ -2266,7 +2266,7 @@
       const oldName = found.place.name;   // 이름 변경 전 기준으로 동일 숙소를 찾기 위해 보관
 
       found.place.name = finalName;
-      found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
+      found.place.sub = `숙소 · ${finalVal.toLocaleString()}원`;
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
 
@@ -2280,8 +2280,8 @@
             pl.actualPrice = finalVal;
             // 출발/조식 등 기존 sub 설명이 있으면 보존하고 금액만 교체
             pl.sub = pl.sub && pl.sub.includes('·')
-                    ? pl.sub.replace(/₩[\d,]+/, `₩${finalVal.toLocaleString()}`)
-                    : `숙소 · ₩${finalVal.toLocaleString()}`;
+                    ? pl.sub.replace(/₩?[\d,]+\s*원?/, `${finalVal.toLocaleString()}원`)
+                    : `숙소 · ${finalVal.toLocaleString()}원`;
             recalcDayBudget(di);
           }
         });
@@ -2330,7 +2330,7 @@
         <div class="map-list" id="mapDayList"></div>
         <div class="map-budget-bar">
           <div class="mbb-label">전체 여행 예산</div>
-          <div class="mbb-amount" id="totalBudget">₩ 404,000</div>
+          <div class="mbb-amount" id="totalBudget">404,000원</div>
         </div>
         <div class="map-acts">
           <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
@@ -2359,7 +2359,7 @@
               <div id="map-budget-items"></div>
               <div class="mp-bg-total">
                 <div id="map-budget-total-label">예상 총액</div>
-                <div id="map-budget-total">₩0</div>
+                <div id="map-budget-total">0원</div>
               </div>
               <div id="map-budget-remaining">정한 예산을 입력하면 남는 금액을 같이 보여줍니다.</div>
             </div>
@@ -2547,8 +2547,8 @@
         </div>
         <label class="mp-flab" for="stayPriceInput">1박 금액</label>
         <div class="mp-fmoney">
-          <span>₩</span>
           <input id="stayPriceInput" type="number" min="1" placeholder="150000" oninput="onTopPriceInput()">
+          <span>원</span>
         </div>
         <button type="button" class="mp-disc" onclick="toggleOtherStay()">
           <span id="otherStayArrow">▸</span> 다른 숙소로 잡았다면
@@ -2560,8 +2560,8 @@
                  oninput="onOtherStayInput()">
           <label class="mp-flab" for="otherStayPrice" style="margin-top:12px">1박 금액</label>
           <div class="mp-fmoney" style="margin-bottom:0">
-            <span>₩</span>
             <input id="otherStayPrice" type="number" min="1" placeholder="180000" oninput="onOtherStayInput()">
+            <span>원</span>
           </div>
         </div>
         <button class="mp-mbtn" style="width:100%;margin-top:18px" onclick="saveStayPrice()">저장</button>

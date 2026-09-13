@@ -37,9 +37,11 @@
 
 /* ── 레일 머리 ─────────────────────────────────────────────── */
 .ml-hd{ padding:20px 22px 16px; border-bottom:1px solid var(--ui-line) }
+/* 이어브로우 — 메인은 READY·LIVE 처럼 영문 짧은 말이라 자간을 넓혔다.
+   같은 값을 한글에 주면 「여 행  동 선」 처럼 글자가 흩어진다. */
 .mp-eyebrow{
-  font-family:var(--fig); font-size:11px; font-weight:600;
-  letter-spacing:.14em; color:var(--ink-3); margin-bottom:7px;
+  font-size:11.5px; font-weight:600; letter-spacing:-.01em;
+  color:var(--ink-3); margin-bottom:7px;
 }
 .ml-plan-ttl{
   font-size:21px; font-weight:700; letter-spacing:-.042em; line-height:1.2;
@@ -436,8 +438,8 @@
 /* ── 예산 뷰 ───────────────────────────────────────────────── */
 #budgetView{ background:var(--page); padding:26px 28px 34px }
 .mp-bg-eyebrow{
-  font-family:var(--fig); font-size:11px; font-weight:600;
-  letter-spacing:.14em; color:var(--ink-3); margin-bottom:7px;
+  font-size:11.5px; font-weight:600; letter-spacing:-.01em;
+  color:var(--ink-3); margin-bottom:7px;
 }
 #budgetView h3{
   font-size:25px; font-weight:700; letter-spacing:-.045em; color:var(--ink);
@@ -672,6 +674,12 @@
 @media (max-width:620px){
   #mapWeatherPopup .weather-grid{ grid-template-columns:repeat(3,1fr) !important }
   .mp-sheet{ width:100%; padding:24px 20px 22px }
+}
+
+/* 좁은 화면에는 아래에 탭바(.bnav, 59px)가 떠 있다.
+   레일 바닥의 지도·예산·공유 버튼이 그 밑에 깔렸다. */
+@media (max-width:768px){
+  .map-acts{ padding-bottom:calc(18px + 59px + env(safe-area-inset-bottom, 0px)) }
 }
 
 @media (prefers-reduced-motion:reduce){

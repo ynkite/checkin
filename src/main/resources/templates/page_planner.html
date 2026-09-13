@@ -526,7 +526,7 @@
             if (el('sum-dest'))    el('sum-dest').textContent    = dest || '—';
             if (el('sum-date'))    el('sum-date').textContent    = dateStr;
             if (el('sum-people'))  el('sum-people').textContent  = pax ? pax + '인' : '—';
-            if (el('sum-budget'))  el('sum-budget').textContent  = budgetRaw ? '₩' + budgetRaw.toLocaleString() : '—';
+            if (el('sum-budget'))  el('sum-budget').textContent  = budgetRaw ? budgetRaw.toLocaleString() : '—';
             if (el('sum-trans'))   el('sum-trans').textContent   = trans;
             if (el('sum-acc'))     el('sum-acc').textContent     = acc;
             if (el('sum-style'))   el('sum-style').textContent   = _wrap(styles);
@@ -967,7 +967,7 @@
             const old = document.getElementById('preGenGate');
             if (old) old.remove();
 
-            const won = (n) => '₩' + (Number(n) || 0).toLocaleString();
+            const won = (n) => (Number(n) || 0).toLocaleString();
             let bodyHtml = '';
 
             if (issues.missing.length > 0) {
@@ -1467,7 +1467,7 @@
                                 const km = Math.max(1, Math.round(hv(a, b)));
                                 const min = Math.max(5, Math.round(km * perKmMin));
                                 const cost = Math.round((km * perKmCost) / 100) * 100;
-                                rebuilt.push({ transit: `${mode} · ${km}km · 약 ${min}분 · ₩${cost.toLocaleString()}` });
+                                rebuilt.push({ transit: `${mode} · ${km}km · 약 ${min}분 · ${cost.toLocaleString()}원` });
                             } else {
                                 rebuilt.push({ transit: `${mode} · 이동` });
                             }

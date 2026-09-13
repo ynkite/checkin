@@ -2481,7 +2481,7 @@ window._handleWriteImageSelect = function(input) {
         const title      = post.planTitle || post.planDestination || '연동된 플랜';
         const styles     = post.planTravelStyles ? String(post.planTravelStyles).replaceAll(',', ' · ') : '여행';
         const transport  = post.planTransportType || '';
-        const budget     = post.planBudget ? '₩' + Number(post.planBudget).toLocaleString('ko-KR') : '';
+        const budget     = post.planBudget ? Number(post.planBudget).toLocaleString('ko-KR') + '원' : '';
         return [title, places.length ? `${places.length}곳` : '', styles, transport, budget].filter(Boolean).join(' · ');
     }
 
@@ -2637,8 +2637,8 @@ window._handleWriteImageSelect = function(input) {
             const n = Number(String(day.budget || '').replace(/[^\d]/g, ''));
             return sum + (Number.isNaN(n) ? 0 : n);
         }, 0);
-        if (total > 0) return `₩${total.toLocaleString('ko-KR')}~`;
-        if (fallbackBudget) { const n = Number(fallbackBudget); if (!Number.isNaN(n)) return `₩${n.toLocaleString('ko-KR')}~`; }
+        if (total > 0) return `${total.toLocaleString('ko-KR')}원~`;
+        if (fallbackBudget) { const n = Number(fallbackBudget); if (!Number.isNaN(n)) return `${n.toLocaleString('ko-KR')}원~`; }
         return '예산 정보 없음';
     }
 

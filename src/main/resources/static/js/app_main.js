@@ -2454,7 +2454,7 @@ function startPlanFromCard(data) {
     if (pr && data.prov) { for(let i=0;i<pr.options.length;i++){if(pr.options[i].text===data.prov){pr.value=pr.options[i].value||pr.options[i].text;break;}} updateCityDest(pr); }
     const sd=document.getElementById('sum-dest');    if(sd) sd.textContent = data.dest||'';
     const sp=document.getElementById('sum-people');  if(sp) sp.textContent = data.people?(data.people+'인'):'';
-    const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?('₩'+data.budget.toLocaleString()):'';
+    const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?(data.budget.toLocaleString()+'원'):'';
     toast((data.dest||'') + ' 여행 플랜을 시작합니다');
 }
 
@@ -3650,19 +3650,19 @@ function _applyDestText(val) {
 }
 
 const _md = {
-    jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'맛',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'맛',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
+    jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'제주 에메랄드 해안 3박 4일',budget:'425,000원~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'맛',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'맛',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
         coords:[{lat:33.5097,lng:126.4927},{lat:33.3946,lng:126.2390},{lat:33.2450,lng:126.4122},{lat:33.3617,lng:126.5292},{lat:33.4583,lng:126.9425},{lat:33.5008,lng:126.9519}]},
-    seorak:   {tags:['가을 특선','10월 단풍'],ttl:'설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'맛',name:'속초 닭강정 명가',r:'4.5'}],
+    seorak:   {tags:['가을 특선','10월 단풍'],ttl:'설악산 단풍 트레킹 2박 3일',budget:'380,000원~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'맛',name:'속초 닭강정 명가',r:'4.5'}],
         coords:[{lat:38.2070,lng:128.5918},{lat:38.2100,lng:128.5927},{lat:38.1190,lng:128.4654},{lat:38.1600,lng:128.4750},{lat:38.2070,lng:128.5918}]},
-    gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'맛',name:'황남빵 카페',r:'4.7'}],
+    gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'경주 벚꽃 역사 기행 1박 2일',budget:'290,000원~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'맛',name:'황남빵 카페',r:'4.7'}],
         coords:[{lat:35.8394,lng:129.2117},{lat:35.8347,lng:129.2198},{lat:35.8344,lng:129.2253},{lat:35.7896,lng:129.3317},{lat:35.7947,lng:129.3473}]},
-    busan:    {tags:['여름 특선','서핑 시즌'],ttl:'부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'맛',name:'자갈치시장 회',r:'4.6'}],
+    busan:    {tags:['여름 특선','서핑 시즌'],ttl:'부산 해운대 서핑 투어 2박 3일',budget:'620,000원~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'맛',name:'자갈치시장 회',r:'4.6'}],
         coords:[{lat:35.1628,lng:129.1603},{lat:35.1533,lng:129.1186},{lat:35.0979,lng:129.0378},{lat:35.0590,lng:129.0850},{lat:35.0970,lng:129.0127}]},
-    gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'테라로사 강릉본점',r:'4.9'}],
+    gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'강릉 바다+커피 힐링 루트',budget:'480,000원~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'테라로사 강릉본점',r:'4.9'}],
         coords:[{lat:37.7958,lng:128.9004},{lat:37.7746,lng:128.9415},{lat:37.6847,lng:129.0527},{lat:37.7654,lng:128.9083},{lat:37.7755,lng:128.8745}]},
-    jeonju:   {tags:['가성비 TOP','한식'],ttl:'전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'맛',name:'비빔밥 명가',r:'4.8'}],
+    jeonju:   {tags:['가성비 TOP','한식'],ttl:'전주 한옥마을 미식 기행 1박 2일',budget:'320,000원~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'맛',name:'비빔밥 명가',r:'4.8'}],
         coords:[{lat:35.8196,lng:127.1474},{lat:35.8196,lng:127.1504},{lat:35.8175,lng:127.1523},{lat:35.8162,lng:127.1551},{lat:35.8122,lng:127.1529}]},
-    namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'바다낙지 식당',r:'4.5'}],
+    namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'남해 독일마을+다랭이마을 2박 3일',budget:'620,000원~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'바다낙지 식당',r:'4.5'}],
         coords:[{lat:34.9035,lng:127.9013},{lat:34.8369,lng:127.9211},{lat:34.7738,lng:127.9076},{lat:34.7990,lng:128.0448},{lat:34.8768,lng:128.0272}]}
 };
 
@@ -3774,7 +3774,7 @@ function openPreview(key) {
 
         // 예산 합산
         const totalBudget = allPlaces.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-        const budgetStr = totalBudget > 0 ? '₩' + totalBudget.toLocaleString() + '~' : '—';
+        const budgetStr = totalBudget > 0 ? totalBudget.toLocaleString() + '원~' : '—';
 
         // 숙소 스냅샷
         const accs = en.adminRecommendedAccommodations || [];
