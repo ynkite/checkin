@@ -98,8 +98,8 @@
   --on-sig-2:#6B3C00;
 
   /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
-  --void-veil:rgba(242,240,236,.84);
-  --void-veil-2:rgba(242,240,236,.96);
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
 
   /* 그림자 — 청록 rgba 를 걷어냈다 */
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
@@ -120,7 +120,7 @@
 
 [data-sky="day"]{
   /* 13:00 -> 18:30  낮에서 노을로 */
-  --void:color-mix(in oklab, #F2F0EC calc(100% - var(--mix,0%)), #DDCFC8);
+  --void:color-mix(in oklab, #FFFFFF calc(100% - var(--mix,0%)), #DDCFC8);
   --plate:color-mix(in oklab, #F0EEEA calc(100% - var(--mix,0%)), #DCCFC8);
   --water:color-mix(in oklab, #A9D2E8 calc(100% - var(--mix,0%)), #8E96B4);
   --beach:color-mix(in oklab, #F0E1C4 calc(100% - var(--mix,0%)), #D9BFA0);
@@ -217,8 +217,8 @@
   --tile-pale:#FCEBE7;
   --slate:#4A6A9E;
   --slate-pale:#ECF1F8;
-  --void-veil:rgba(242,240,236,.84);
-  --void-veil-2:rgba(242,240,236,.96);
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
@@ -324,8 +324,8 @@
   --tile-pale:#FCEBE7;
   --slate:#4A6A9E;
   --slate-pale:#ECF1F8;
-  --void-veil:rgba(242,240,236,.84);
-  --void-veil-2:rgba(242,240,236,.96);
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
@@ -441,7 +441,7 @@
 
 [data-sky="dawn"]{
   /* 05:00 -> 13:00  밤에서 낮으로 */
-  --void:color-mix(in oklab, #141A26 calc(100% - var(--mix,0%)), #F2F0EC);
+  --void:color-mix(in oklab, #141A26 calc(100% - var(--mix,0%)), #FFFFFF);
   --plate:color-mix(in oklab, #1B2230 calc(100% - var(--mix,0%)), #F0EEEA);
   --water:color-mix(in oklab, #0C121C calc(100% - var(--mix,0%)), #A9D2E8);
   --beach:color-mix(in oklab, #3A3B44 calc(100% - var(--mix,0%)), #F0E1C4);

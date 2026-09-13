@@ -30,7 +30,7 @@
 .ck-hero .ck-sub{margin-top:18px; font-size:17px; line-height:1.72; color:var(--ink-2); max-width:38ch}
 
 /* 나레이션 */
-.ck-tell{margin-top:26px; background:var(--panel); border-radius:15px; box-shadow:var(--lift);
+.ck-tell{margin-top:26px; background:var(--panel); border-radius:8px; box-shadow:var(--lift);
   padding:19px 21px 20px}
 .ck-tell .ck-ph{display:flex; gap:7px; margin-bottom:13px}
 .ck-tell .ck-ph i{flex:1; height:3px; border-radius:99px; background:var(--panel-2); overflow:hidden}
@@ -42,7 +42,7 @@
 .ck-tell .ck-why{font-size:13.5px; line-height:1.62; color:var(--ink-2); margin-top:5px; min-height:2.7em}
 .ck-plans{position:relative; height:44px; margin-top:13px; overflow:hidden}
 .ck-plan{position:absolute; inset:0; display:flex; align-items:center; gap:9px;
-  font-size:14.5px; font-weight:600; padding:0 13px; border-radius:10px; background:var(--ui-plate);
+  font-size:14.5px; font-weight:600; padding:0 13px; border-radius:6px; background:var(--ui-plate);
   box-shadow:inset 0 0 0 1px var(--panel-2); transition:transform .55s cubic-bezier(.3,.9,.3,1), opacity .4s}
 .ck-plan .ck-t{font-family:var(--fig); font-size:13.5px; font-weight:600; color:var(--num)}
 .ck-plan .ck-ar{color:var(--ink-3); font-weight:400}
@@ -61,7 +61,7 @@
 
 /* 관광지 카드 두 장 */
 .ck-places{display:flex; gap:16px; margin-top:4px}
-.ck-place{flex:1 1 0; min-width:0; position:relative; background:var(--panel); border-radius:16px;
+.ck-place{flex:1 1 0; min-width:0; position:relative; background:var(--panel); border-radius:8px;
   box-shadow:var(--lift); overflow:hidden;
   transition:transform .62s cubic-bezier(.34,1.02,.3,1), box-shadow .4s}
 .ck-places.ck-sw .ck-place.ck-a{transform:translateX(calc(100% + 16px))}
@@ -90,11 +90,11 @@
 /* 폼 바 */
 .ck-form{position:relative; z-index:6; margin-top:22px}
 .ck-form .ck-bar{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;
-  background:var(--panel); border-radius:16px; box-shadow:var(--lift); padding:15px 17px 16px}
+  background:var(--panel); border-radius:8px; box-shadow:var(--lift); padding:15px 17px 16px}
 .ck-fr{display:flex; gap:10px; flex:1 1 470px; min-width:0}
 .ck-fld{flex:1 1 0; min-width:0}
 .ck-fld label{display:block; font-size:12px; font-weight:600; color:var(--ink-2); margin-bottom:5px}
-.ck-fld select,.ck-fld input{width:100%; padding:11px 12px 12px; border-radius:9px; background:var(--ui-plate);
+.ck-fld select,.ck-fld input{width:100%; padding:11px 12px 12px; border-radius:6px; background:var(--ui-plate);
   border:1px solid var(--panel-2); font-size:15px; font-weight:500}
 .ck-fld select:hover,.ck-fld input:hover{border-color:var(--ui-line)}
 .ck-cond{flex:1 1 330px; min-width:0}
@@ -104,7 +104,7 @@
   box-shadow:inset 0 0 0 1px var(--panel-2); transition:box-shadow .14s, color .14s, background .14s}
 .ck-chips2 button:hover{color:var(--ink); box-shadow:inset 0 0 0 1px var(--ui-line)}
 .ck-chips2 button[aria-pressed="true"]{background:var(--ink); color:var(--panel); font-weight:600; box-shadow:none}
-.ck-go{flex:0 0 auto; padding:13px 26px 14px; border-radius:10px; background:var(--ink);
+.ck-go{flex:0 0 auto; padding:13px 26px 14px; border-radius:6px; background:var(--ink);
   color:var(--panel); font-size:15px; font-weight:700; letter-spacing:-.02em; white-space:nowrap;
   transition:transform .13s cubic-bezier(.34,1.5,.64,1), filter .15s}
 .ck-go:hover{filter:brightness(1.2)}
@@ -118,7 +118,7 @@ section.ck-blk{padding:70px 0 0}
 .ck-hd .ck-side{font-size:14.5px; color:var(--ink-2); max-width:34ch; padding-bottom:4px}
 
 .ck-free{display:grid; grid-template-columns:repeat(auto-fit,minmax(206px,1fr)); gap:12px}
-.ck-spot{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:17px 19px 19px}
+.ck-spot{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 19px}
 .ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em}
 .ck-spot .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
 .ck-spot .ck-vv{display:flex; align-items:baseline; gap:8px; margin-top:14px}
@@ -129,7 +129,7 @@ section.ck-blk{padding:70px 0 0}
 .ck-spot.ck-hot .ck-vv b{color:var(--num)} .ck-spot.ck-hot .ck-bar i{background:var(--sig)}
 
 .ck-bud{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:16px}
-.ck-card{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:20px 22px 22px}
+.ck-card{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:20px 22px 22px}
 table.ck-rows{width:100%; border-collapse:collapse}
 table.ck-rows th{text-align:left; font-size:12.5px; font-weight:600; color:var(--ink-2);
   padding:0 0 11px; border-bottom:1.5px solid var(--ink)}
@@ -151,20 +151,20 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-conf .ck-lg em{font-style:normal; font-weight:600; color:var(--ink); font-family:var(--fig)}
 
 .ck-steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(248px,1fr)); gap:14px}
-.ck-st{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:22px 22px 24px}
+.ck-st{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:22px 22px 24px}
 .ck-st .ck-no{font-family:var(--fig); font-size:29px; font-weight:600; letter-spacing:-.05em;
   color:var(--num); line-height:1}
 .ck-st h3{font-size:19px; font-weight:700; letter-spacing:-.035em; margin-top:12px}
 .ck-st p{font-size:14.5px; line-height:1.7; color:var(--ink-2); margin-top:7px}
 
 .ck-sync{display:flex; gap:14px; flex-wrap:wrap}
-.ck-sync > div{flex:1 1 210px; background:var(--panel); border-radius:13px; box-shadow:var(--lift2);
+.ck-sync > div{flex:1 1 210px; background:var(--panel); border-radius:8px; box-shadow:var(--lift2);
   padding:18px 20px 20px}
 .ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:-.03em}
 .ck-sync p{font-size:13.5px; color:var(--ink-2); margin-top:5px; line-height:1.62}
 
 .ck-data{display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:12px}
-.ck-src{background:var(--panel); border-radius:13px; box-shadow:var(--lift2); padding:17px 19px 18px}
+.ck-src{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 18px}
 .ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:-.03em}
 .ck-src ul{margin:8px 0 0; padding-left:16px; font-size:13px; color:var(--ink-2); line-height:1.78}
 
@@ -206,7 +206,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-mine{display:none}
 .ck-mine.ck-on{display:block}
 .ck-mine .ck-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px}
-.ck-trip{background:var(--panel); border-radius:13px; box-shadow:var(--lift2);
+.ck-trip{background:var(--panel); border-radius:8px; box-shadow:var(--lift2);
   padding:17px 19px 19px; text-align:left; width:100%}
 .ck-trip:hover{box-shadow:var(--lift)}
 .ck-trip .ck-when{font-family:var(--fig); font-size:12.5px; color:var(--num); font-weight:600}
@@ -215,7 +215,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-live{display:inline-flex; align-items:center; gap:6px; padding:4px 10px 5px;
   border-radius:99px; background:var(--sig); color:var(--on-sig);
   font-size:12px; font-weight:700; margin-bottom:9px}
-.ck-empty{font-size:14px; color:var(--ink-2); background:var(--panel); border-radius:13px;
+.ck-empty{font-size:14px; color:var(--ink-2); background:var(--panel); border-radius:8px;
   box-shadow:var(--lift2); padding:22px}
 
 /* 출처 표기 */
@@ -241,7 +241,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .post-card,
 .ck-home .popular-grid > *,
 .ck-home .top3-grid > *{
-  background:var(--panel); border:0; border-radius:13px; box-shadow:var(--lift2);
+  background:var(--panel); border:0; border-radius:8px; box-shadow:var(--lift2);
   padding:17px 19px 19px; overflow:hidden; position:relative;
 }
 .ck-home .post-card:hover,
@@ -275,7 +275,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 추천 여행 (큐레이션) */
 .ck-home .ck-cur{
   display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:end;
-  background:var(--panel); border-radius:16px; box-shadow:var(--lift); padding:22px 24px 24px;
+  background:var(--panel); border-radius:8px; box-shadow:var(--lift); padding:22px 24px 24px;
 }
 .ck-home .hsc{ min-width:0 }
 .ck-home .hsc-ey{
@@ -290,8 +290,8 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .hsc-dest-row{ display:flex; gap:7px; flex-wrap:wrap; margin-top:13px }
 .ck-home .hsc-cards{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
 .ck-home .ck-go2{
-  margin-top:18px; padding:12px 22px 13px; border-radius:10px;
-  background:var(--ui); color:var(--panel); font-size:14.5px; font-weight:700;
+  margin-top:18px; padding:12px 22px 13px; border-radius:99px;
+  background:var(--terra); color:var(--panel); font-size:14.5px; font-weight:700;
   letter-spacing:-.02em;
 }
 .ck-home .ck-go2:hover{ filter:brightness(1.25) }
@@ -351,9 +351,9 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
    ══════════════════════════════════════════════════════════════ */
 
 /* 떠 있는 것 — 히어로의 주인공들 */
-.ck-home .ck-place{ border-radius:18px; box-shadow:var(--lift) }
+.ck-home .ck-place{ border-radius:6px; box-shadow:var(--lift) }
 .ck-home .ck-tell,
-.ck-home .ck-form .ck-bar{ border-radius:16px; box-shadow:var(--lift) }
+.ck-home .ck-form .ck-bar{ border-radius:8px; box-shadow:var(--lift) }
 
 /* 읽는 목록 — 그림자를 걷고 실선 한 겹으로 */
 .ck-home .ck-spot,
@@ -365,7 +365,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .post-card,
 .ck-home .popular-grid > *,
 .ck-home .top3-grid > *{
-  border-radius:10px;
+  border-radius:6px;
   box-shadow:none;
   border:1px solid var(--ui-line);
 }
@@ -379,7 +379,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 /* 표 — 카드가 아니라 표다 */
 .ck-home .ck-bud .ck-card{
-  border-radius:10px; box-shadow:none; border:1px solid var(--ui-line);
+  border-radius:6px; box-shadow:none; border:1px solid var(--ui-line);
 }
 /* 확정 비율 카드만 채워서 표와 구분한다 */
 .ck-home .ck-bud .ck-card.ck-conf{
@@ -387,11 +387,11 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 
 /* 추천 여행 — 하나뿐이니 떠 있어도 된다 */
-.ck-home .ck-cur{ border-radius:16px; box-shadow:var(--lift) }
+.ck-home .ck-cur{ border-radius:8px; box-shadow:var(--lift) }
 
 /* ── 제목을 더 키운다. 본문과의 간격이 좁아 위계가 약했다 ── */
-.ck-home h1{ font-size:clamp(38px, 5.4vw, 68px); letter-spacing:-.05em; line-height:1.06 }
-.ck-home .ck-hd h2{ font-size:clamp(25px, 3.2vw, 38px); letter-spacing:-.046em }
+.ck-home h1{ font-size:clamp(32px, 3.6vw, 46px); letter-spacing:-.042em; line-height:1.12 }
+.ck-home .ck-hd h2{ font-size:clamp(22px, 2.3vw, 29px); letter-spacing:-.04em }
 .ck-home .ck-sub{ font-size:17.5px; line-height:1.7 }
 
 /* 섹션 간격에 리듬을 준다. 전부 70px 이던 것을 역할별로 나눈다 */
@@ -498,7 +498,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-form .ck-bar{ align-items:end; gap:14px }
 .ck-home .ck-cond{ flex:0 0 auto; min-width:0 }
 .ck-condbtn{
-  padding:11px 15px 12px; border-radius:9px; font-size:14px; font-weight:600;
+  padding:11px 15px 12px; border-radius:6px; font-size:14px; font-weight:600;
   color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line); white-space:nowrap;
 }
 .ck-condbtn:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
@@ -558,16 +558,16 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 버튼은 완전한 알약으로. 각진 사각형 버튼은 어디에나 있다 */
 .ck-home .ck-go{
   border-radius:99px; padding:14px 30px 15px;
-  background:var(--ui); color:var(--panel);
+  background:var(--terra); color:var(--panel);
   font-size:16px; font-weight:700; letter-spacing:-.02em;
 }
-.ck-home .ck-go:hover{ filter:brightness(1.35) }
+.ck-home .ck-go:hover{ filter:brightness(1.12) }
 .ck-home .ck-condbtn{ border-radius:99px; padding:12px 18px 13px }
-.ck-home .ck-go2{ border-radius:99px; padding:13px 26px 14px }
+.ck-home .ck-go2{ border-radius:99px; padding:13px 26px 14px; background:var(--terra) }
 
 /* 폼 판 자체도 가볍게 — 흰 슬래브가 아니라 얇은 선반 */
 .ck-home .ck-form .ck-bar{
-  background:var(--panel); border-radius:18px;
+  background:var(--panel); border-radius:6px;
   box-shadow:var(--lift); padding:20px 24px 22px;
 }
 .ck-home .ck-note{ font-size:12.5px; color:var(--ink-3); margin-top:8px }
