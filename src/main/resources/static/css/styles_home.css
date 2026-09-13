@@ -707,11 +707,15 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 /* 섹션 라벨 — 제목 위에 작은 표식을 둔다. 제목만 반복되면 리듬이 없다 */
 .ck-home .ck-hd{ position:relative }
+/* 이어브로우 — 제목을 수식하는 절이다. 둘이 한 문장으로 읽힌다.
+   영문 카테고리 태그(READY · LIVE · BUDGET)를 한국어 화면에 얹는 것은
+   기본값으로 나오는 모양이라 버렸다. 트리플이 같은 자리를 이렇게 쓴다.
+   모노 + 자간 .14em 도 함께 뺐다 — 한글이 흩어진다. */
 .ck-home .ck-hd::before{
   content:attr(data-label);
   flex:0 0 100%; order:-1;   /* .ck-hd 가 flex 라 block 만으로는 제목 옆에 선다 */
-  font-family:var(--fig); font-size:11px; font-weight:600;
-  letter-spacing:.14em; color:var(--num); margin-bottom:-4px;
+  font-size:14px; font-weight:500; letter-spacing:-.025em;
+  color:var(--ink-3); margin-bottom:1px; word-break:keep-all;
 }
 .ck-home .ck-hd:not([data-label])::before{ display:none }
 

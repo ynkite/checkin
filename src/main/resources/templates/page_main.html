@@ -246,7 +246,22 @@
         const res = await api.get('/api/curations');
         curations = res.success && Array.isArray(res.data) ? res.data : [];
       }
-      window._curationData = curations || [];
+      /* 만들다 만 기록은 내보내지 않는다 — 제목이 한 글자이거나
+         들를 곳이 하나도 없으면 보여 줄 것이 없다. 지우는 것은
+         관리자 화면에서 할 일이다. 여기서는 내보내지만 않는다. */
+      curations = (curations || []).filter(function (c) {
+        var title = String(c.title || '').trim();
+        if (title.length < 2) return false;
+        var en = {};
+        try { en = JSON.parse(c.extra_notes || c.extraNotes || '{}'); } catch (e) {}
+        var days = en.days || [];
+        var spots = en.adminRecommendedAttractions || [];
+        var places = days.reduce(function (n, d) {
+          return n + ((d && d.places) ? d.places.length : 0);
+        }, 0);
+        return spots.length > 0 || places > 0;
+      });
+      window._curationData = curations;
 
       const panelEl = document.querySelector('.curation-panel');
       if (panelEl && curations && curations.length) {
@@ -734,7 +749,7 @@
       </section>
       <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
       <section class="ck-wr ck-blk ck-mine" id="ck_mine">
-        <div class="ck-hd" data-label="MY TRIPS">
+        <div class="ck-hd" data-label="이어서 보는">
           <h2>내 여행</h2>
           <p class="ck-side">지금 가 있는 여행이 맨 위에 옵니다.</p>
         </div>
@@ -746,7 +761,7 @@
       <!-- 추천 여행. 컨테이너와 클래스는 initMainPage() 가 채우므로 그대로 두고,
            껍데기와 카드 모양만 새로 입힌다. -->
       <section class="ck-wr ck-blk" id="ck_cur">
-        <div class="ck-hd" data-label="READY">
+        <div class="ck-hd" data-label="지역만 고르면 되는">
           <h2>바로 떠날 수 있는 경로</h2>
           <p class="ck-side">지역만 고르면 첫날 아침부터 시각이 다 잡혀 있습니다.</p>
         </div>
@@ -771,7 +786,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_free">
-        <div class="ck-hd" data-label="LIVE">
+        <div class="ck-hd" data-label="오늘 이 시각의">
           <h2>지금 한가한 곳</h2>
           <p class="ck-side">100이 평소 수준입니다.</p>
         </div>
@@ -788,7 +803,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_budget">
-        <div class="ck-hd" data-label="BUDGET">
+        <div class="ck-hd" data-label="확정과 추정을 나눠 적은">
           <h2>숙박비가 왜 그 금액인지</h2>
           <p class="ck-side">요금표에서 찾은 값과, 비슷한 숙소 평균으로 메운 값을 나눠 뒀습니다.</p>
         </div>
@@ -817,7 +832,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_how">
-        <div class="ck-hd" data-label="HOW">
+        <div class="ck-hd" data-label="손이 가는 건">
           <h2>여행 전에 한 번, 여행 중에 두 번</h2>
         </div>
         <div class="ck-steps">
@@ -831,7 +846,7 @@
       </section>
 
       <section class="ck-wr ck-blk">
-        <div class="ck-hd" data-label="SYNC">
+        <div class="ck-hd" data-label="순서를 바꾸면">
           <h2>캘린더도 같이 바뀝니다</h2>
         </div>
         <div class="ck-sync">
@@ -842,8 +857,8 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_data">
-        <div class="ck-hd" data-label="DATA">
-          <h2>무엇으로 계산하나</h2>
+        <div class="ck-hd" data-label="짐작이 아니라">
+          <h2>이 숫자는 어디서 왔나</h2>
         </div>
         <div class="ck-data">
           <div class="ck-src"><b>한국관광공사 OpenAPI</b>
@@ -860,7 +875,7 @@
       <!-- 아래 다섯 섹션은 기존 기능이다. 컨테이너 id·클래스를 바꾸면
            app_main.js 의 렌더가 깨진다. 껍데기만 새 디자인으로 입혔다. -->
       <section class="ck-wr ck-blk" id="ck_pop">
-        <div class="ck-hd" data-label="POPULAR">
+        <div class="ck-hd" data-label="그대로 가져다 쓰는">
           <h2>사람들이 담아 간 일정</h2>
           <p class="ck-side">커뮤니티에서 스크랩이 많은 순서입니다.</p>
         </div>
