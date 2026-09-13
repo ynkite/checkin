@@ -317,12 +317,95 @@
 
   /* ─────────────────────────── 시작 ─────────────────────────── */
 
+  /* ─────────────── 6. 숫자가 차오른다 ───────────────
+     집중률과 확정 비율은 이 제품이 파는 것이다. 다 그려진 채로
+     스크롤에 들어오면 그냥 인쇄물이다. 화면에 들어올 때 0 에서
+     실제 값까지 올린다.
+
+     값은 HTML 에 이미 적혀 있다. 0 으로 내리는 것은 화면 밖에
+     있을 때만 한다. 관찰자가 없거나 움직임을 끄면 손대지 않는다. */
+
+  function countUp(el, to, ms) {
+    var t0 = 0;
+    function step(now) {
+      if (!t0) t0 = now;
+      var k = Math.min(1, (now - t0) / ms);
+      k = 1 - Math.pow(1 - k, 3);                 /* 끝에서 부드럽게 선다 */
+      var v = String(Math.round(to * k));
+      if (el.nodeType === 3) el.nodeValue = v; else el.textContent = v;
+      if (k < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function initCounters() {
+    if (reduce || !window.IntersectionObserver) return;
+
+    var groups = [];
+    ['ck_free', 'ck_budget'].forEach(function (id) {
+      var sec = $(id);
+      if (!sec) return;
+
+      var items = [];
+      sec.querySelectorAll('.ck-fig').forEach(function (b) {
+        var n = parseInt((b.textContent || '').replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(n) && n > 0 && b.children.length === 0) {
+          items.push({ el: b, to: n });
+        }
+      });
+      /* 확정 비율은 「80<span>%</span>」 이라 자식이 있다. 앞 숫자만 센다 */
+      sec.querySelectorAll('.ck-big').forEach(function (b) {
+        var first = b.firstChild;
+        if (!first || first.nodeType !== 3) return;
+        var n = parseInt(first.nodeValue.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(n) && n > 0) items.push({ el: first, to: n, text: true });
+      });
+      var bars = [];
+      sec.querySelectorAll('.ck-bar > i').forEach(function (i) {
+        var w = i.style.width, f = i.style.flexBasis || i.style.flex;
+        if (w) bars.push({ el: i, prop: 'width', to: w });
+        else if (f && f.indexOf('%') > -1) bars.push({ el: i, prop: 'flexBasis', to: f });
+      });
+      if (!items.length && !bars.length) return;
+
+      /* 화면 안에 이미 들어와 있으면 건드리지 않는다 */
+      var r = sec.getBoundingClientRect();
+      if (r.top < window.innerHeight * 0.9) return;
+
+      items.forEach(function (x) {
+        if (x.text) x.el.nodeValue = '0'; else x.el.textContent = '0';
+      });
+      bars.forEach(function (x) { x.el.style[x.prop] = '0%'; });
+      groups.push({ sec: sec, items: items, bars: bars });
+    });
+
+    if (!groups.length) return;
+
+    var io = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var g = groups.filter(function (x) { return x.sec === e.target; })[0];
+        if (!g) return;
+        io.unobserve(e.target);
+        g.bars.forEach(function (x, i) {
+          setTimeout(function () { x.el.style[x.prop] = x.to; }, i * 70);
+        });
+        g.items.forEach(function (x, i) {
+          setTimeout(function () { countUp(x.el, x.to, 620); }, i * 70);
+        });
+      });
+    }, { threshold: 0.25 });
+
+    groups.forEach(function (g) { io.observe(g.sec); });
+  }
+
   function start() {
     if (!$('ck_hero')) return;          // 메인페이지가 아니면 아무것도 하지 않는다
     initHero();
     initForm();
     initMine();
     initSky();
+    initCounters();
     if ('requestIdleCallback' in window) requestIdleCallback(injectScene, { timeout: 1200 });
     else setTimeout(injectScene, 200);
   }

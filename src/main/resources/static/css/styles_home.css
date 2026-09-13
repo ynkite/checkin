@@ -995,3 +995,21 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home svg.mass .rt-todo{ animation:none }
   .ck-home .ck-pin{ animation:none; transition:none }
 }
+
+/* 막대가 차오른다. 값은 HTML 에 적혀 있고 app_home.js 가 화면에
+   들어오는 순간에만 0 에서 되돌린다. */
+.ck-home #ck_free .ck-spot .ck-bar > i,
+.ck-home #ck_budget .ck-conf .ck-bar > i{
+  transition:width .9s cubic-bezier(.2,.75,.2,1), flex-basis .9s cubic-bezier(.2,.75,.2,1);
+}
+@media (prefers-reduced-motion:reduce){
+  .ck-home #ck_free .ck-spot .ck-bar > i,
+  .ck-home #ck_budget .ck-conf .ck-bar > i{ transition:none }
+}
+
+/* 근거 판 — 아래가 180px 비어 있었다. 각주를 바닥에 붙인다 */
+.ck-home .ck-bud{ gap:20px }
+.ck-home .ck-conf{ display:flex; flex-direction:column }
+.ck-home .ck-conf > p:last-child{
+  margin-top:auto; padding-top:18px; font-size:13px; color:var(--ink-3);
+}
