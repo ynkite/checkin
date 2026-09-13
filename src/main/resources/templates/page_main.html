@@ -823,8 +823,8 @@
         </div>
 
         <div class="ck-wr ck-lead">
-          <h1>붐비면 순서를 바꿉니다</h1>
-          <p class="ck-sub">해운대에 갈 시각인데 해운대가 붐비면, 광안리를 먼저 가자고 말을 겁니다. 몇 분 줄고 얼마가 더 드는지도 같이 붙습니다.</p>
+          <h1>줄 서려고<br>간 건 아니잖아요</h1>
+          <p class="ck-sub">다음에 갈 곳이 붐비면 미리 알려드립니다. 순서를 바꾸면 몇 분 줄고 얼마 더 드는지, 숫자로 같이 보여드립니다.</p>
             <div class="ck-tell" role="status" aria-live="polite">
               <div class="ck-ph"><i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i></div>
               <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
@@ -864,15 +864,15 @@
               </div>
             </div>
             <button class="ck-go" type="submit">경로 만들기</button>
-            <p class="ck-note" id="ck_nt">조건에 안 맞는 곳은 후보에서 빠집니다.</p>
+            <p class="ck-note" id="ck_nt">고른 조건에 안 맞는 곳은 아예 후보에서 뺍니다.</p>
           </form>
         </div>
       </section>
       <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
       <section class="ck-wr ck-blk ck-mine" id="ck_mine">
-        <div class="ck-hd">
+        <div class="ck-hd" data-label="MY TRIPS">
           <h2>내 여행</h2>
-          <p class="ck-side">여행 중인 것이 맨 위에 옵니다.</p>
+          <p class="ck-side">지금 가 있는 여행이 맨 위에 옵니다.</p>
         </div>
         <div class="ck-row" id="ck_mine_row">
           <div class="ck-empty">가져오는 중</div>
@@ -882,9 +882,9 @@
       <!-- 추천 여행. 컨테이너와 클래스는 initMainPage() 가 채우므로 그대로 두고,
            껍데기와 카드 모양만 새로 입힌다. -->
       <section class="ck-wr ck-blk" id="ck_cur">
-        <div class="ck-hd">
-          <h2>짜여 있는 경로</h2>
-          <p class="ck-side">고르면 1일차 아침부터 이미 채워져 있습니다.</p>
+        <div class="ck-hd" data-label="READY">
+          <h2>바로 떠날 수 있는 경로</h2>
+          <p class="ck-side">지역만 고르면 첫날 아침부터 시각이 다 잡혀 있습니다.</p>
         </div>
         <div class="ck-cur">
           <div class="hsc">
@@ -906,7 +906,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_free">
-        <div class="ck-hd">
+        <div class="ck-hd" data-label="LIVE">
           <h2>지금 한가한 곳</h2>
           <p class="ck-side">100이 평소 수준입니다.</p>
         </div>
@@ -923,7 +923,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_budget">
-        <div class="ck-hd">
+        <div class="ck-hd" data-label="BUDGET">
           <h2>숙박비가 왜 그 금액인지</h2>
           <p class="ck-side">요금표에서 찾은 값과, 비슷한 숙소 평균으로 메운 값을 나눠 뒀습니다.</p>
         </div>
@@ -952,8 +952,8 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_how">
-        <div class="ck-hd">
-          <h2>세 번 만집니다</h2>
+        <div class="ck-hd" data-label="HOW">
+          <h2>여행 전에 한 번, 여행 중에 두 번</h2>
         </div>
         <div class="ck-steps">
           <article class="ck-st"><div class="ck-no">01</div><h3>지역과 기간만</h3>
@@ -966,8 +966,8 @@
       </section>
 
       <section class="ck-wr ck-blk">
-        <div class="ck-hd">
-          <h2>바꾼 일정은 캘린더에도</h2>
+        <div class="ck-hd" data-label="SYNC">
+          <h2>캘린더도 같이 바뀝니다</h2>
         </div>
         <div class="ck-sync">
           <div><b>아이폰·구글 캘린더</b><p>구독 주소를 한 번 등록하면 그다음부터는 알아서 따라옵니다.</p></div>
@@ -977,7 +977,7 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_data">
-        <div class="ck-hd">
+        <div class="ck-hd" data-label="DATA">
           <h2>무엇으로 계산하나</h2>
         </div>
         <div class="ck-data">
@@ -995,7 +995,7 @@
       <!-- 아래 다섯 섹션은 기존 기능이다. 컨테이너 id·클래스를 바꾸면
            app_main.js 의 렌더가 깨진다. 껍데기만 새 디자인으로 입혔다. -->
       <section class="ck-wr ck-blk" id="ck_pop">
-        <div class="ck-hd">
+        <div class="ck-hd" data-label="POPULAR">
           <h2>많이 담긴 경로</h2>
           <p class="ck-side">스크랩 수 기준, 실시간</p>
         </div>

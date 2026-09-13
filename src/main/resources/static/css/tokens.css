@@ -29,9 +29,9 @@
   --t-hero:clamp(34px, 4.4vw, 56px);
   --t-h2:clamp(23px, 2.9vw, 33px);
   --t-h3:19px;
-  --t-body:15px;
-  --t-sm:13.5px;
-  --t-xs:12px;
+  --t-body:17px;
+  --t-sm:14px;
+  --t-xs:11px;
   --tracking-tight:-.042em;   /* 제목 */
   --tracking-num:-.02em;      /* 숫자 */
 
@@ -46,16 +46,16 @@
   --r-panel:16px;
   --r-pill:99px;
   --r-field:9px;
-  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
-  --lift2:0 3px 12px rgba(16,24,38,.10);
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --lift2:0 3px 12px rgba(40,30,22,.09);
 
   /* ── 판·글자 (하늘과 무관하게 기본은 밝은 판) ─────────── */
   --panel:#FFFFFF;
-  --panel-2:#E6EAEF;
-  --ink:#101620;
-  --ink-2:#556071;
-  --ink-3:#7C8798;
-  --hair:rgba(16,22,32,.09);
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --ink-3:#8B827A;
+  --hair:rgba(26,21,18,.10);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
      「지금」과 「바뀜」에만. 장식으로 쓰지 않는다.
@@ -71,15 +71,15 @@
      주색을 신호색(--sig)으로 쓰지 않는다. --sig 는 「지금」과 「바뀜」
      전용이고, 버튼 198곳에 깔면 신호가 신호가 아니게 된다. */
 
-  --ui:#1D2635;          /* 주 버튼 · 활성 상태 */
-  --ui-d:#0D131E;        /* hover */
-  --ui-l:#47536A;        /* 보조 테두리 · 아이콘 */
-  --ui-pale:#EEF1F5;     /* 옅은 배경 */
+  --ui:#241D18;          /* 주 버튼 · 활성 상태 */
+  --ui-d:#120E0B;        /* hover */
+  --ui-l:#5A5149;        /* 보조 테두리 · 아이콘 */
+  --ui-pale:#F2EEE9;     /* 옅은 배경 */
 
-  --ui-line:#DBE0E7;     /* 테두리 */
-  --ui-line-2:#EDEFF3;   /* 옅은 구분선 */
-  --ui-plate:#F4F6F9;    /* 옅은 판 (이전 웜크림 자리) */
-  --ui-plate-2:#E8ECF1;
+  --ui-line:#DED7CF;     /* 테두리 */
+  --ui-line-2:#EFEAE4;   /* 옅은 구분선 */
+  --ui-plate:#F7F4F0;    /* 옅은 판 (이전 웜크림 자리) */
+  --ui-plate-2:#ECE6DF;
 
   /* 강조 3색 — 미니어처 세계의 지붕 계열에서 뽑았다.
      지도와 UI 가 같은 색족을 쓰면 한 덩어리로 읽힌다.
@@ -98,12 +98,12 @@
   --on-sig-2:#6B3C00;
 
   /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
-  --void-veil:rgba(237,241,245,.82);
-  --void-veil-2:rgba(237,241,245,.95);
+  --void-veil:rgba(242,240,236,.84);
+  --void-veil-2:rgba(242,240,236,.96);
 
   /* 그림자 — 청록 rgba 를 걷어냈다 */
-  --sh-ui:0 2px 16px rgba(16,22,32,.07);
-  --sh-ui-h:0 10px 34px -8px rgba(16,22,32,.18);
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
 /* ══════════════════ 하늘 — 연속 보간 ══════════════════
@@ -120,8 +120,8 @@
 
 [data-sky="day"]{
   /* 13:00 -> 18:30  낮에서 노을로 */
-  --void:color-mix(in oklab, #EDF1F5 calc(100% - var(--mix,0%)), #DDCFC8);
-  --plate:color-mix(in oklab, #EEF1F4 calc(100% - var(--mix,0%)), #DCCFC8);
+  --void:color-mix(in oklab, #F2F0EC calc(100% - var(--mix,0%)), #DDCFC8);
+  --plate:color-mix(in oklab, #F0EEEA calc(100% - var(--mix,0%)), #DCCFC8);
   --water:color-mix(in oklab, #A9D2E8 calc(100% - var(--mix,0%)), #8E96B4);
   --beach:color-mix(in oklab, #F0E1C4 calc(100% - var(--mix,0%)), #D9BFA0);
   --green:color-mix(in oklab, #D8E3CD calc(100% - var(--mix,0%)), #B9BDA8);
@@ -197,32 +197,32 @@
   --halo:color-mix(in oklab, rgba(255,255,255,.94) calc(100% - var(--mix,0%)), rgba(255,248,240,.9));
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#E6EAEF;
-  --ink:#101620;
-  --ink-2:#556071;
-  --hair:rgba(16,22,32,.09);
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
-  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
-  --ui:#1D2635;
-  --ui-d:#0D131E;
-  --ui-l:#47536A;
-  --ui-pale:#EEF1F5;
-  --ui-line:#DBE0E7;
-  --ui-line-2:#EDEFF3;
-  --ui-plate:#F4F6F9;
-  --ui-plate-2:#E8ECF1;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
   --terra:#BC5219;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
   --slate:#4A6A9E;
   --slate-pale:#ECF1F8;
-  --void-veil:rgba(237,241,245,.82);
-  --void-veil-2:rgba(237,241,245,.95);
+  --void-veil:rgba(242,240,236,.84);
+  --void-veil-2:rgba(242,240,236,.96);
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
-  --sh-ui:0 2px 16px rgba(16,22,32,.07);
-  --sh-ui-h:0 10px 34px -8px rgba(16,22,32,.18);
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
 [data-sky="dusk"]{
@@ -242,7 +242,7 @@
   --a0:color-mix(in oklab, #D66A4C calc(100% - var(--mix,0%)), #6E4A44);
   --a1:color-mix(in oklab, #B4553B calc(100% - var(--mix,0%)), #5A3B37);
   --a2:color-mix(in oklab, #8E402C calc(100% - var(--mix,0%)), #462D2B);
-  --b0:color-mix(in oklab, #8E93AE calc(100% - var(--mix,0%)), #46536A);
+  --b0:color-mix(in oklab, #8E93AE calc(100% - var(--mix,0%)), #4A423B);
   --b1:color-mix(in oklab, #767B96 calc(100% - var(--mix,0%)), #3A4557);
   --b2:color-mix(in oklab, #5E637C calc(100% - var(--mix,0%)), #2E3746);
   --c0:color-mix(in oklab, #E4D5C0 calc(100% - var(--mix,0%)), #5E5C58);
@@ -297,39 +297,39 @@
   --skin:color-mix(in oklab, #B4855F calc(100% - var(--mix,0%)), #C6CEDA);
   --pc1:color-mix(in oklab, #CE4832 calc(100% - var(--mix,0%)), #D8DEE8);
   --pc2:color-mix(in oklab, #3A5F9C calc(100% - var(--mix,0%)), #AEB8C6);
-  --pc3:color-mix(in oklab, #E2DAD2 calc(100% - var(--mix,0%)), #EFF3F8);
+  --pc3:color-mix(in oklab, #E2DAD2 calc(100% - var(--mix,0%)), #F4F1EC);
   --pc4:color-mix(in oklab, #F0A028 calc(100% - var(--mix,0%)), #FFD37A);
   --pc5:color-mix(in oklab, #3E4250 calc(100% - var(--mix,0%)), #8E9AAA);
   --onmap:color-mix(in oklab, #221C24 calc(100% - var(--mix,0%)), #F0F4F8);
   --halo:color-mix(in oklab, rgba(255,248,240,.9) calc(100% - var(--mix,0%)), rgba(10,14,22,.92));
   --num:#8A4A00;
   --panel:#FFFFFF;
-  --panel-2:#E6EAEF;
-  --ink:#101620;
-  --ink-2:#556071;
-  --hair:rgba(16,22,32,.09);
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
-  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
-  --ui:#1D2635;
-  --ui-d:#0D131E;
-  --ui-l:#47536A;
-  --ui-pale:#EEF1F5;
-  --ui-line:#DBE0E7;
-  --ui-line-2:#EDEFF3;
-  --ui-plate:#F4F6F9;
-  --ui-plate-2:#E8ECF1;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
   --terra:#BC5219;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
   --slate:#4A6A9E;
   --slate-pale:#ECF1F8;
-  --void-veil:rgba(237,241,245,.82);
-  --void-veil-2:rgba(237,241,245,.95);
+  --void-veil:rgba(242,240,236,.84);
+  --void-veil-2:rgba(242,240,236,.96);
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
-  --sh-ui:0 2px 16px rgba(16,22,32,.07);
-  --sh-ui-h:0 10px 34px -8px rgba(16,22,32,.18);
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
 [data-sky="night"]{
@@ -349,7 +349,7 @@
   --a0:#6E4A44;
   --a1:#5A3B37;
   --a2:#462D2B;
-  --b0:#46536A;
+  --b0:#4A423B;
   --b1:#3A4557;
   --b2:#2E3746;
   --c0:#5E5C58;
@@ -404,27 +404,27 @@
   --skin:#C6CEDA;
   --pc1:#D8DEE8;
   --pc2:#AEB8C6;
-  --pc3:#EFF3F8;
+  --pc3:#F4F1EC;
   --pc4:#FFD37A;
   --pc5:#8E9AAA;
   --onmap:#F0F4F8;
   --halo:rgba(10,14,22,.92);
   --num:#FFC53D;
-  --panel:#1C2432;
-  --panel-2:#2E3846;
-  --ink:#EFF3F8;
-  --ink-2:#9BA7B5;
+  --panel:#221D19;
+  --panel-2:#342D27;
+  --ink:#F4F1EC;
+  --ink-2:#A69C92;
   --hair:rgba(255,255,255,.13);
   --sig-deep:#FFD066;
   --lift:0 18px 44px -14px rgba(0,0,0,.62), 0 2px 8px -2px rgba(0,0,0,.5);
-  --ui:#46536A;
-  --ui-d:#566580;
-  --ui-l:#8A97AA;
-  --ui-pale:#252E3D;
+  --ui:#4A423B;
+  --ui-d:#5C534A;
+  --ui-l:#948A80;
+  --ui-pale:#2A241F;
   --ui-line:rgba(255,255,255,.14);
   --ui-line-2:rgba(255,255,255,.08);
-  --ui-plate:#222B39;
-  --ui-plate-2:#2C3644;
+  --ui-plate:#272119;
+  --ui-plate-2:#322B24;
   --terra:#E8845A;
   --terra-pale:#3A2A20;
   --tile:#E3705A;
@@ -441,8 +441,8 @@
 
 [data-sky="dawn"]{
   /* 05:00 -> 13:00  밤에서 낮으로 */
-  --void:color-mix(in oklab, #141A26 calc(100% - var(--mix,0%)), #EDF1F5);
-  --plate:color-mix(in oklab, #1B2230 calc(100% - var(--mix,0%)), #EEF1F4);
+  --void:color-mix(in oklab, #141A26 calc(100% - var(--mix,0%)), #F2F0EC);
+  --plate:color-mix(in oklab, #1B2230 calc(100% - var(--mix,0%)), #F0EEEA);
   --water:color-mix(in oklab, #0C121C calc(100% - var(--mix,0%)), #A9D2E8);
   --beach:color-mix(in oklab, #3A3B44 calc(100% - var(--mix,0%)), #F0E1C4);
   --green:color-mix(in oklab, #1A2430 calc(100% - var(--mix,0%)), #D8E3CD);
@@ -456,7 +456,7 @@
   --a0:color-mix(in oklab, #6E4A44 calc(100% - var(--mix,0%)), #E8734A);
   --a1:color-mix(in oklab, #5A3B37 calc(100% - var(--mix,0%)), #CE5D36);
   --a2:color-mix(in oklab, #462D2B calc(100% - var(--mix,0%)), #AC4A28);
-  --b0:color-mix(in oklab, #46536A calc(100% - var(--mix,0%)), #A5B4C8);
+  --b0:color-mix(in oklab, #4A423B calc(100% - var(--mix,0%)), #A5B4C8);
   --b1:color-mix(in oklab, #3A4557 calc(100% - var(--mix,0%)), #8C9CB2);
   --b2:color-mix(in oklab, #2E3746 calc(100% - var(--mix,0%)), #74849A);
   --c0:color-mix(in oklab, #5E5C58 calc(100% - var(--mix,0%)), #F3EDE0);
@@ -511,27 +511,27 @@
   --skin:color-mix(in oklab, #C6CEDA calc(100% - var(--mix,0%)), #D2A278);
   --pc1:color-mix(in oklab, #D8DEE8 calc(100% - var(--mix,0%)), #E14B2E);
   --pc2:color-mix(in oklab, #AEB8C6 calc(100% - var(--mix,0%)), #2E6FC4);
-  --pc3:color-mix(in oklab, #EFF3F8 calc(100% - var(--mix,0%)), #F6F8FA);
+  --pc3:color-mix(in oklab, #F4F1EC calc(100% - var(--mix,0%)), #F6F8FA);
   --pc4:color-mix(in oklab, #FFD37A calc(100% - var(--mix,0%)), #FFAE1A);
   --pc5:color-mix(in oklab, #8E9AAA calc(100% - var(--mix,0%)), #3C4756);
   --onmap:color-mix(in oklab, #F0F4F8 calc(100% - var(--mix,0%)), #151C28);
   --halo:color-mix(in oklab, rgba(10,14,22,.92) calc(100% - var(--mix,0%)), rgba(255,255,255,.94));
   --num:#FFC53D;
-  --panel:#1C2432;
-  --panel-2:#2E3846;
-  --ink:#EFF3F8;
-  --ink-2:#9BA7B5;
+  --panel:#221D19;
+  --panel-2:#342D27;
+  --ink:#F4F1EC;
+  --ink-2:#A69C92;
   --hair:rgba(255,255,255,.13);
   --sig-deep:#FFD066;
   --lift:0 18px 44px -14px rgba(0,0,0,.62), 0 2px 8px -2px rgba(0,0,0,.5);
-  --ui:#46536A;
-  --ui-d:#566580;
-  --ui-l:#8A97AA;
-  --ui-pale:#252E3D;
+  --ui:#4A423B;
+  --ui-d:#5C534A;
+  --ui-l:#948A80;
+  --ui-pale:#2A241F;
   --ui-line:rgba(255,255,255,.14);
   --ui-line-2:rgba(255,255,255,.08);
-  --ui-plate:#222B39;
-  --ui-plate-2:#2C3644;
+  --ui-plate:#272119;
+  --ui-plate-2:#322B24;
   --terra:#E8845A;
   --terra-pale:#3A2A20;
   --tile:#E3705A;

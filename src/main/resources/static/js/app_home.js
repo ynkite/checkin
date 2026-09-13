@@ -237,7 +237,7 @@
         if (cn) cn.textContent = picked.length ? picked.length : '';
         nt.textContent = picked.length
           ? picked.join(' · ') + ' 조건에 맞는 곳만 후보에 올립니다.'
-          : '조건에 안 맞는 곳은 후보에서 빠집니다.';
+          : '고른 조건에 안 맞는 곳은 아예 후보에서 뺍니다.';
       });
     }
 
