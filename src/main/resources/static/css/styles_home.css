@@ -402,3 +402,123 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home section.ck-blk{ padding:54px 0 0 }
   .ck-home #ck_pop{ padding:66px 0 0 }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   히어로 — 미니어처가 무대다
+
+   이전 판은 머리글 옆에 잘린 썸네일 두 장을 놓았다. 제품의 정체성인
+   미니어처가 구석 장식이 되고, 흰 슬래브 두 개가 같은 무게로 쌓였다.
+
+   이번 판은 장면을 무대로 깔고 그 위에 얹는다. 핵심은 좌표계다 —
+   핀과 경로는 장면과 **같은 상자** 안에 있어야 한다. 바깥 섹션을
+   기준으로 %를 주면 장면이 확대·중앙정렬된 만큼 어긋난다.
+   ══════════════════════════════════════════════════════════════ */
+
+.ck-stage{ position:relative; isolation:isolate; padding-bottom:12px }
+
+/* 무대 바깥 틀 — 높이와 잘림만 담당한다 */
+.ck-scene{
+  position:absolute; left:0; right:0; top:-18px; z-index:0;
+  height:clamp(430px, 42vw, 640px);
+  overflow:hidden; pointer-events:none;
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 62%,transparent 99%);
+          mask-image:linear-gradient(180deg,#000 0,#000 62%,transparent 99%);
+}
+
+/* 장면 상자 — svg·핀·경로가 모두 이 안에 있다. 한 좌표계다. */
+.ck-frame{
+  position:absolute; left:50%; top:0; transform:translateX(-50%);
+  width:min(1560px, 104%);
+  aspect-ratio:1560 / 1123;
+  /* 경로가 장면의 27~60% 높이에 있다. 그 띠가 창 가운데 오도록 올린다. */
+  top:-16%;
+}
+.ck-frame > div{ position:absolute; inset:0 }
+.ck-frame svg.mass{ width:100%; height:100%; display:block }
+
+/* 왼쪽을 판 색으로 덮어 글이 읽히게 한다 */
+.ck-scene::after{
+  content:""; position:absolute; inset:0; z-index:2;
+  background:
+    linear-gradient(97deg,
+      var(--void) 0 17%,
+      color-mix(in oklab, var(--void) 72%, transparent) 30%,
+      color-mix(in oklab, var(--void) 24%, transparent) 46%,
+      transparent 58%),
+    linear-gradient(180deg, var(--void) 0, transparent 13%);
+}
+
+/* 경로 — 점선 브레드크럼. 장면 상자를 꽉 채운다 */
+.ck-trail{ position:absolute; inset:0; z-index:1; width:100%; height:100% }
+.ck-trail path{
+  fill:none; stroke:var(--ui); stroke-width:2.2; stroke-linecap:round;
+  stroke-dasharray:1 9; vector-effect:non-scaling-stroke; opacity:.5;
+}
+.ck-trail path.ck-live{ stroke:var(--sig); opacity:1; stroke-dasharray:2 7; stroke-width:2.8 }
+
+/* 핀 */
+.ck-pins{ position:absolute; inset:0; z-index:3 }
+.ck-pin{
+  position:absolute; transform:translate(-50%,-100%);
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+}
+.ck-pin .ck-bub{
+  display:flex; align-items:baseline; gap:7px; white-space:nowrap;
+  padding:6px 12px 7px; border-radius:99px;
+  background:var(--panel); box-shadow:var(--lift2);
+  font-size:13px; font-weight:600; letter-spacing:-.025em; color:var(--ink);
+}
+.ck-pin .ck-bub em{ font-style:normal; font-family:var(--fig); font-size:12px;
+  font-weight:600; color:var(--num) }
+.ck-pin .ck-dot{ width:12px; height:12px; border-radius:99px;
+  background:var(--ui); box-shadow:0 0 0 3px var(--panel) }
+.ck-pin.ck-hot .ck-bub{ background:var(--sig); box-shadow:none; color:var(--on-sig) }
+.ck-pin.ck-hot .ck-bub em{ color:var(--on-sig-2) }
+.ck-pin.ck-hot .ck-dot{ background:var(--sig) }
+.ck-pin.ck-hot::after{
+  content:""; position:absolute; left:50%; bottom:-8px; width:28px; height:28px;
+  margin-left:-14px; border-radius:99px; border:2px solid var(--sig); opacity:0;
+  animation:ckPing 2.6s cubic-bezier(.16,.7,.3,1) infinite;
+}
+@keyframes ckPing{
+  0%   { transform:scale(.42); opacity:.85 }
+  70%,100% { transform:scale(1.9); opacity:0 }
+}
+
+/* 장면 위의 글 */
+.ck-lead{ position:relative; z-index:4; padding-top:clamp(26px, 4vw, 62px) }
+.ck-lead h1{ max-width:12ch }
+.ck-lead .ck-sub{ max-width:31ch; margin-top:16px }
+.ck-home .ck-tell{ max-width:406px; margin-top:22px }
+
+/* 폼 — 조건 칩은 접어 둔다 */
+.ck-home .ck-form{ position:relative; z-index:4; margin-top:clamp(54px, 7vw, 128px) }
+.ck-home .ck-form .ck-bar{ align-items:end; gap:14px }
+.ck-home .ck-cond{ flex:0 0 auto; min-width:0 }
+.ck-condbtn{
+  padding:11px 15px 12px; border-radius:9px; font-size:14px; font-weight:600;
+  color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line); white-space:nowrap;
+}
+.ck-condbtn:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.ck-condbtn[aria-expanded="true"]{ background:var(--ui); color:var(--panel); box-shadow:none }
+.ck-condbtn .ck-n{ font-family:var(--fig); font-size:12px; margin-left:6px }
+.ck-home .ck-chips2{ display:none; flex-basis:100%; margin-top:4px }
+.ck-home .ck-chips2.ck-open{ display:flex }
+
+@media (max-width:1000px){
+  .ck-scene{ height:clamp(300px, 52vw, 460px) }
+  .ck-frame{ width:min(1560px, 156%); top:-20% }
+  .ck-home .ck-form{ margin-top:clamp(34px, 7vw, 90px) }
+  .ck-lead h1, .ck-lead .ck-sub{ max-width:none }
+  .ck-pin .ck-bub{ font-size:12px; padding:5px 10px 6px }
+}
+@media (max-width:620px){
+  .ck-scene::after{
+    background:linear-gradient(180deg, var(--void) 0 8%, transparent 30%, color-mix(in oklab, var(--void) 70%, transparent) 78%, var(--void) 100%);
+  }
+  .ck-home .ck-tell{ max-width:none }
+  .ck-pin:not(.ck-hot) .ck-bub{ display:none }
+}
+@media (prefers-reduced-motion:reduce){
+  .ck-pin.ck-hot::after{ animation:none; opacity:.5; transform:scale(1.2) }
+}

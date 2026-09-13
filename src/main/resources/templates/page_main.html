@@ -810,12 +810,21 @@
 
   <div class="page active" id="page-main">
     <div class="ck-home">
-      <section class="ck-hero" id="ck_hero">
-        <div class="ck-wr ck-grid">
-          <div>
-            <h1>붐비면 순서를 바꿉니다</h1>
-            <p class="ck-sub">해운대에 갈 시각인데 해운대가 붐비면, 광안리를 먼저 가자고 말을 겁니다. 몇 분 줄고 얼마가 더 드는지도 같이 붙습니다.</p>
+      <section class="ck-hero ck-stage" id="ck_hero">
+        <!-- 무대. app_home.js 가 mass_hero.svg 를 여기 넣는다. -->
+        <div class="ck-scene" aria-hidden="true">
+          <!-- svg·경로·핀이 한 상자 안에 있어야 좌표계가 맞는다.
+               바깥 섹션 기준으로 %를 주면 장면이 확대·중앙정렬된 만큼 어긋난다. -->
+          <div class="ck-frame" id="ck_frame">
+            <div id="ck_scene"></div>
+            <svg class="ck-trail" id="ck_trail" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+            <div class="ck-pins" id="ck_pinlayer"></div>
+          </div>
+        </div>
 
+        <div class="ck-wr ck-lead">
+          <h1>붐비면 순서를 바꿉니다</h1>
+          <p class="ck-sub">해운대에 갈 시각인데 해운대가 붐비면, 광안리를 먼저 가자고 말을 겁니다. 몇 분 줄고 얼마가 더 드는지도 같이 붙습니다.</p>
             <div class="ck-tell" role="status" aria-live="polite">
               <div class="ck-ph"><i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i></div>
               <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
@@ -830,30 +839,6 @@
                 <b id="ck_c1">−40분</b><b id="ck_c2">+3,200원</b><b class="ck-hot" id="ck_c3">일몰에 맞음</b>
               </div>
             </div>
-          </div>
-
-          <div class="ck-places" id="ck_places">
-            <article class="ck-place ck-a ck-busy" id="ck_cardH">
-              <span class="ck-ord" id="ck_ordH">1</span>
-              <span class="ck-glow"></span>
-              <div class="ck-win"><div class="ck-in" style="--sy:-24%"></div></div>
-              <div class="ck-meta">
-                <b>해운대</b>
-                <span class="ck-stt" id="ck_stH">14:30 도착 예정<br>지금 재는 중</span>
-                <div class="ck-g"><i id="ck_gH" style="width:40%"></i></div>
-              </div>
-            </article>
-            <article class="ck-place ck-b" id="ck_cardG">
-              <span class="ck-ord" id="ck_ordG">2</span>
-              <span class="ck-glow"></span>
-              <div class="ck-win"><div class="ck-in" style="--sy:-6%"></div></div>
-              <div class="ck-meta">
-                <b>광안리</b>
-                <span class="ck-stt" id="ck_stG">17:30 도착 예정<br>지금 재는 중</span>
-                <div class="ck-g"><i id="ck_gG" style="width:40%"></i></div>
-              </div>
-            </article>
-          </div>
         </div>
 
         <div class="ck-wr ck-form">
@@ -869,7 +854,7 @@
                 <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
             </div>
             <div class="ck-cond">
-              <span>같이 가는 사람</span>
+            <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
               <div class="ck-chips2" id="ck_cc">
                 <button type="button" aria-pressed="false">반려동물</button>
                 <button type="button" aria-pressed="false">유아차</button>
@@ -883,7 +868,6 @@
           </form>
         </div>
       </section>
-
       <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
       <section class="ck-wr ck-blk ck-mine" id="ck_mine">
         <div class="ck-hd">
