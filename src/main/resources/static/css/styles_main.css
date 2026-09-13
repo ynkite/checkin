@@ -3020,7 +3020,7 @@ nav {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(135deg, #C5EADF 0%, #B8E0D4 50%, #A8D4C8 100%)
+    background: linear-gradient(135deg, var(--ui-plate) 0%, var(--ui-plate-2) 50%, var(--ui-plate-2) 100%)
 }
 
 .map-right::before {
@@ -3385,7 +3385,7 @@ nav {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: conic-gradient(var(--sage) 0deg 137deg, var(--coral) 137deg 216deg, #22B5C4 216deg 266deg, #F5A623 266deg 309deg, #9CA3AF 309deg 360deg);
+    background: conic-gradient(var(--sage) 0deg 137deg, var(--coral) 137deg 216deg, var(--slate) 216deg 266deg, #F5A623 266deg 309deg, #9CA3AF 309deg 360deg);
     flex-shrink: 0
 }
 
@@ -3898,7 +3898,7 @@ nav {
 
 .badge-a {
     background: #DCFCE7;
-    color: #16A34A
+    color: var(--terra)
 }
 
 .badge-s {
