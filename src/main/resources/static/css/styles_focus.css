@@ -1,0 +1,43 @@
+/*
+ * 체크인 — 키보드 초점 표시 (styles_focus.css)
+ *
+ * 왜 따로 두나
+ *   `outline:none` 이 18곳에 있고 대체 표시는 6곳뿐이었다. 키보드로
+ *   넘기면 지금 어디에 있는지 보이지 않는다. 마우스로 쓰는 사람에게는
+ *   테두리가 안 보이는 편이 낫지만, 키보드로 쓰는 사람에게는 필수다.
+ *
+ *   :focus-visible 은 키보드로 옮겼을 때만 걸린다. 클릭에는 안 걸린다.
+ *   여러 파일에 흩어진 outline:none 을 하나씩 지우는 대신 마지막에 한 번
+ *   덮는다. index.html 에서 모든 스타일 뒤에 둔다.
+ *
+ *   !important 는 여기서만 쓴다 — 같은 속성을 지우는 규칙이 뒤에 없다는
+ *   보장이 없기 때문이다.
+ *
+ * 색
+ *   --sig 는 밝은 판과 어두운 띠 양쪽에서 보인다. 글자가 아니라 테두리라
+ *   tokens.css 의 금지 3번(밝은 배경에 --sig 로 글자)에 걸리지 않는다.
+ */
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{
+  outline:2px solid var(--sig) !important;
+  outline-offset:2px !important;
+  border-radius:inherit;
+}
+
+/* 알약·원형 요소는 offset 이 붙으면 모서리가 어긋난다 */
+:where(.ck-go, .ck-go2, .ck-sl-b1, .ck-sl-b2, .chip, .hsc-dest,
+       .slide-arr, .btn-map-act, .mf-chip, .cal-pre, .btn-next,
+       .btn-prev-step, .mp-empty-go, .wx-links a):focus-visible{
+  outline-offset:3px !important;
+}
+
+/* 지도·풍경 위에 뜬 것은 바깥쪽 테두리가 배경에 묻힌다.
+   밝은 테두리를 한 겹 더 깔아 어디서든 보이게 한다. */
+:where(.ck-pin, .mp-pin, .slide-arr):focus-visible{
+  box-shadow:0 0 0 4px var(--panel) !important;
+}
+
+/* 마우스로 눌렀을 때는 테두리를 그리지 않는다 */
+:where(a, button, input, select, textarea, summary):focus:not(:focus-visible){
+  outline:none;
+}
