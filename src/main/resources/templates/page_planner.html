@@ -1517,26 +1517,27 @@
         <div class="planner-wrap">
 
             <div class="planner-hd">
-                <div class="planner-ey">AI TRAVEL PLANNER</div>
-                <div class="planner-ttl">여행 플랜 생성</div>
+                <div class="planner-ey">PLAN</div>
+                <div class="planner-ttl">어디로, 언제 가세요</div>
+                <p class="planner-sub">시각은 넣지 않아도 됩니다. 영업시간과 이동시간을 넣고 계산해서 하루를 채웁니다.</p>
             </div>
 
             <div class="step-bar" id="plannerStepBar" style="display:none">
                 <div class="step-item active" id="sb-1" onclick="goPlanStep(1)">
                     <div class="step-num">1</div>
-                    <div class="step-lbl">기본 정보</div>
+                    <div class="step-lbl">어디로, 언제</div>
                 </div>
                 <div class="step-item" id="sb-2" onclick="goPlanStep(2)">
                     <div class="step-num">2</div>
-                    <div class="step-lbl">취향 설정</div>
+                    <div class="step-lbl">뭘 좋아하세요</div>
                 </div>
                 <div class="step-item" id="sb-3" onclick="goPlanStep(3)">
                     <div class="step-num">3</div>
-                    <div class="step-lbl">AI 챗봇</div>
+                    <div class="step-lbl">더 할 말</div>
                 </div>
                 <div class="step-item" id="sb-4" onclick="goPlanStep(4)">
                     <div class="step-num">4</div>
-                    <div class="step-lbl">경로 생성</div>
+                    <div class="step-lbl">경로 만들기</div>
                 </div>
             </div>
 
@@ -1545,7 +1546,7 @@
                 <!-- 여행지 & 날짜 -->
                 <div class="pl-card">
                     <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                        <span>여행지 &amp; 날짜</span>
+                        <span>어디로, 언제</span>
                         <div style="display:flex;align-items:center;gap:8px">
                             <div id="weather-btn-wrap" style="display:none">
                                 <button class="weather-date-btn" onclick="openWeatherPopup()">
@@ -1557,7 +1558,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">출발지</label>
+                        <label class="form-label">어디서 출발</label>
                         <div class="loc-selector">
                             <select class="loc-big" id="dep-prov" onchange="updateCityDep(this)">
                                 <option value="">도/시 선택</option>
@@ -1575,7 +1576,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">여행지 (국내 전용)</label>
+                        <label class="form-label">어디로<em class="form-hint">국내만 됩니다</em></label>
                         <div class="loc-selector">
                             <select class="loc-big" id="dest-prov" onchange="updateCityDest(this)">
                                 <option value="">도/시 선택</option>
@@ -1606,7 +1607,7 @@
                          기존 스크립트(createPlan / updateSummaryCard / 임시저장)가
                          이 두 id 를 그대로 읽으므로 id 를 바꾸지 않는다. -->
                     <div class="form-group">
-                        <label class="form-label">여행 날짜</label>
+                        <label class="form-label">언제</label>
                         <input type="hidden" id="s1-date-start" onchange="onStartDateChange()">
                         <input type="hidden" id="s1-date-end" onchange="onEndDateChange()">
 
@@ -1663,7 +1664,7 @@
                     </div>
                     <div class="pl-2col">
                         <div class="form-group">
-                            <label class="form-label">인원</label>
+                            <label class="form-label">몇 명</label>
                             <div style="display:flex; align-items:center; gap:8px">
                                 <input class="form-input" id="s1-pax" type="number" min="1" max="10" placeholder="예: 3"
                                        oninput="this.value=this.value.replace(/[^0-9]/g,''); if(parseInt(this.value)>10) this.value='10';"
@@ -1672,7 +1673,7 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label class="form-label">총 예산 (최대 1,000만원)</label>
+                            <label class="form-label">예산<em class="form-hint">최대 1,000만원</em></label>
                             <div style="display:flex; align-items:center; gap:8px">
                                 <input class="form-input" type="text" id="s1-budget" placeholder="예: 500,000"
                                        style="width:160px; flex-shrink:0"
@@ -1686,20 +1687,21 @@
                     </div>
                 </div>
 
-                <!-- 이동 수단 -->
+                <!-- 셋 다 「어떻게 다니세요」에 대한 답이다. 한 판에 둔다 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">이동 수단</div>
+                    <div class="pl-card-ttl">어떻게 다니세요</div>
+                    <div class="pl-row">
+                    <div class="pl-row-lb">무엇으로</div>
                     <div class="chip-row" id="chip-trans">
                         <button class="chip on" onclick="pick(this,'trans')">자차</button>
                         <button class="chip" onclick="pick(this,'trans')">대중교통</button>
                         <button class="chip" onclick="pick(this,'trans');showOtherInput('other-trans',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-trans" placeholder="이동 수단을 직접 입력해주세요">
-                </div>
+                    <input class="other-input" id="other-trans" placeholder="어떻게 다니는지 적어 주세요">
+                    </div>
 
-                <!-- 숙소 형태 -->
-                <div class="pl-card">
-                    <div class="pl-card-ttl">숙소 형태</div>
+                    <div class="pl-row">
+                    <div class="pl-row-lb">어디서 자나요</div>
                     <div class="chip-row" id="chip-acc">
                         <button class="chip on" onclick="pick(this,'acc')">호텔</button>
                         <button class="chip" onclick="pick(this,'acc')">펜션</button>
@@ -1707,12 +1709,11 @@
                         <button class="chip" onclick="pick(this,'acc')">리조트</button>
                         <button class="chip" onclick="pick(this,'acc');showOtherInput('other-acc',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-acc" placeholder="숙소 형태를 직접 입력해주세요">
-                </div>
+                    <input class="other-input" id="other-acc" placeholder="어디서 자는지 적어 주세요">
+                    </div>
 
-                <!-- 동행자 유형 -->
-                <div class="pl-card">
-                    <div class="pl-card-ttl">동행자 유형</div>
+                    <div class="pl-row">
+                    <div class="pl-row-lb">누구와</div>
                     <div class="chip-row" id="chip-comp">
                         <button class="chip" onclick="pick(this,'comp')">혼자</button>
                         <button class="chip on" onclick="pick(this,'comp')">커플</button>
@@ -1720,11 +1721,12 @@
                         <button class="chip" onclick="pick(this,'comp')">친구</button>
                         <button class="chip" onclick="pick(this,'comp');showOtherInput('other-comp',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-comp" placeholder="동행자 유형을 직접 입력해주세요">
+                    <input class="other-input" id="other-comp" placeholder="누구와 가는지 적어 주세요">
+                    </div>
                 </div>
 
                 <div class="pl-btns">
-                    <button class="btn-next" onclick="createPlan()">다음 단계 →</button>
+                    <button class="btn-next" onclick="createPlan()">경로 만들기</button>
                     <button class="btn-prev-step" onclick="resetAndBackToStep1()" style="margin-left:auto">초기화</button>
                 </div>
             </div>
