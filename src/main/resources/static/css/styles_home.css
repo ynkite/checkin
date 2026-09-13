@@ -549,13 +549,18 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
     linear-gradient(180deg, var(--page) 0, transparent 13%);
 }
 
-/* 경로 — 점선 브레드크럼. 장면 상자를 꽉 채운다 */
-.ck-trail{ position:absolute; inset:0; z-index:1; width:100%; height:100% }
-.ck-trail path{
-  fill:none; stroke:var(--ui); stroke-width:2.2; stroke-linecap:round;
-  stroke-dasharray:1 9; vector-effect:non-scaling-stroke; opacity:.5;
-}
-.ck-trail path.ck-live{ stroke:var(--sig); opacity:1; stroke-dasharray:2 7; stroke-width:2.8 }
+/* 경로는 mass_hero.svg 안에 들어 있다. 같은 두 지점을 잇는 길이 두 개다 —
+   해변을 따라가는 길(rt-*)과 안쪽 도로로 도는 길(rb-*).
+   처음에는 해변 길이 지금 계획이다. 장면 3(순서 교체)에서 안쪽 길로 넘어간다.
+   styles_massing.css 가 이미 opacity 전환을 갖고 있어 그대로 미끄러진다. */
+.ck-home svg.mass .rt-todo{ stroke:var(--sig); opacity:.95; stroke-width:3.2 }
+.ck-home svg.mass .rb-case,
+.ck-home svg.mass .rb-hot{ opacity:0 }
+
+.ck-home .ck-alt svg.mass .rt-todo{ stroke:var(--onmap); opacity:.28; stroke-width:2.8 }
+.ck-home .ck-alt svg.mass .rt-case{ opacity:.4 }
+.ck-home .ck-alt svg.mass .rb-case{ opacity:1 }
+.ck-home .ck-alt svg.mass .rb-hot{ opacity:1 }
 
 /* 핀 */
 .ck-pins{ position:absolute; inset:0; z-index:3 }
@@ -952,4 +957,41 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .btn-scrap.scrapped,
 .ck-home .pop-scrap-btn.scrapped{
   background:var(--terra); border-color:var(--terra); color:var(--panel);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   무대의 움직임
+
+   화면이 통째로 정지해 있으면 「지금」 을 다루는 제품으로 안 읽힌다.
+   움직이는 것은 셋뿐이다 — 경로 위를 흐르는 점, 지금 이동 중인 구간,
+   붐비는 곳의 파장. 모두 제품이 실제로 말하는 것이다.
+   장식으로 움직이는 것은 두지 않는다.
+
+   tokens.css 의 금지 항목 1번은 「매싱 path 에 transition 을 걸지 않는다」 다.
+   아래 path 는 매싱(건물)이 아니라 경로선이다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 점이 길을 따라 흐른다. rt-todo 의 dasharray 가 7 8 이라 주기는 15 다 */
+.ck-home svg.mass .rt-todo{ animation:ckFlow 3.4s linear infinite }
+@keyframes ckFlow{ to{ stroke-dashoffset:-15 } }
+
+/* 핀은 순서대로 들어온다. 세 곳을 차례로 들르는 경로라는 뜻이다 */
+.ck-home .ck-pin{
+  transition:transform .5s cubic-bezier(.34,1.02,.3,1);
+  animation:ckPinIn .5s cubic-bezier(.2,.9,.3,1) backwards;
+  animation-delay:calc(var(--i, 0) * 140ms + 220ms);
+}
+@keyframes ckPinIn{
+  from{ opacity:0; transform:translate(-50%,-94%) scale(.9) }
+  to  { opacity:1; transform:translate(-50%,-100%) scale(1) }
+}
+
+/* 말풍선은 붐빌 때만 색이 바뀐다. 바뀌는 순간이 보이게 한다 */
+.ck-home .ck-pin .ck-bub{ transition:background .4s, color .4s, box-shadow .4s }
+.ck-home .ck-pin .ck-dot{ transition:background .4s, transform .4s }
+.ck-home .ck-pin.ck-hot .ck-dot{ transform:scale(1.18) }
+
+@media (prefers-reduced-motion:reduce){
+  .ck-home svg.mass .rt-todo{ animation:none }
+  .ck-home .ck-pin{ animation:none; transition:none }
 }

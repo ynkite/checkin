@@ -39,34 +39,42 @@
       .catch(function () { return null; });   /* 못 받아도 글은 읽힌다 */
   }
 
-  /* 경로를 점선으로 잇는다. 좌표가 %라 viewBox 0 0 100 100 에 그대로 들어간다. */
+  /* 경로는 SVG 안에 이미 들어 있다.
+
+     mass_hero.svg 는 같은 두 지점을 잇는 길 두 개를 갖고 있다 —
+     해변을 따라가는 길(rt-*)과 안쪽 도로로 도는 길(rb-*). 둘 다 실제
+     도로 모양이다. 여기서 %좌표로 직선을 하나 더 그으면 선이 세 겹이
+     되고, 그중 하나만 도로를 안 따라간다. 그래서 긋지 않는다.
+
+     장면에 따라 어느 길이 살아 있는지만 바꾼다.
+     .rt-* / .rb-* 는 styles_massing.css 에서 이미 opacity 전환을 갖는다. */
   function drawTrail(route, liveIdx) {
-    var svg = $('ck_trail');
-    if (!svg || route.length < 2) return;
-    var d = route.map(function (p, i) {
-      return (i ? 'L' : 'M') + p.x.toFixed(2) + ' ' + p.y.toFixed(2);
-    }).join(' ');
-    var live = '';
-    if (liveIdx > 0 && route[liveIdx - 1] && route[liveIdx]) {
-      var a = route[liveIdx - 1], b = route[liveIdx];
-      live = '<path class="ck-live" d="M' + a.x.toFixed(2) + ' ' + a.y.toFixed(2) +
-             ' L' + b.x.toFixed(2) + ' ' + b.y.toFixed(2) + '"/>';
-    }
-    svg.innerHTML = '<path d="' + d + '"/>' + live;
+    var host = $('ck_scene');
+    if (!host) return;
+    /* SVG 요소가 아니라 담는 div 에 표시한다. injectScene 이 svg 를
+       나중에 갈아 끼우므로 svg 에 붙인 클래스는 날아간다. */
+    host.classList.toggle('ck-alt', liveIdx >= 2);
   }
 
+  /* 핀도 마찬가지다. 다시 만들면 들어오는 애니메이션이 매번 처음부터
+     돌고, 붐비는 곳이 바뀌는 순간이 안 보인다. 클래스만 바꾼다. */
   function drawPins(route, hotIdx) {
     var layer = $('ck_pinlayer');
     if (!layer) return;
-    layer.innerHTML = route.map(function (p, i) {
-      var hot = i === hotIdx;
-      return '<div class="ck-pin' + (hot ? ' ck-hot' : '') + '"' +
-             ' style="left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
-             '<span class="ck-bub">' + esc(p.name) +
-             (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
-             '<span class="ck-dot"></span>' +
-             '</div>';
-    }).join('');
+    if (!layer.firstElementChild) {
+      layer.innerHTML = route.map(function (p, i) {
+        return '<div class="ck-pin" style="--i:' + i +
+               ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
+               '<span class="ck-bub">' + esc(p.name) +
+               (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
+               '<span class="ck-dot"></span>' +
+               '</div>';
+      }).join('');
+    }
+    var pins = layer.children;
+    for (var i = 0; i < pins.length; i++) {
+      pins[i].classList.toggle('ck-hot', i === hotIdx);
+    }
   }
 
   /* ─────────────── 2. 나레이션 ───────────────
