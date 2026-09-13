@@ -260,6 +260,24 @@
     try { sessionStorage.removeItem('ckHeroPick'); } catch (e) {}
   };
 
+  /* ─────────────── 5. 하늘을 분 단위로 따라가게 한다 ───────────────
+     index.html 의 head 에서 한 번 정해지고, 여기서 계속 갱신한다.
+     --mix 한 값만 바뀌므로 비용이 없다. 탭이 숨으면 멈춘다. */
+
+  function initSky() {
+    if (typeof window.ckSky !== 'function') return;
+    var timer = null;
+    function loop() {
+      window.ckSky();
+      timer = setTimeout(loop, 60000);
+    }
+    loop();
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { clearTimeout(timer); timer = null; }
+      else if (!timer) loop();
+    });
+  }
+
   /* ─────────────────────────── 시작 ─────────────────────────── */
 
   function start() {
@@ -267,6 +285,7 @@
     initTell();
     initForm();
     initMine();
+    initSky();
     if ('requestIdleCallback' in window) requestIdleCallback(injectMass, { timeout: 1200 });
     else setTimeout(injectMass, 200);
   }
