@@ -9,7 +9,7 @@
    =================================================== -->
   <script>
     /* ============================================================
-     * 🚨 [임시 하드코딩 데이터]
+     * [임시 하드코딩 데이터]
      * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
      * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
      * ============================================================ */
@@ -23,8 +23,8 @@
 
     // 2. 내 여행 기록 데이터
     const MOCK_MYPAGE_TRIPS = [
-      { action: "go('map')", icon: "🗺️", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 2인 · 자차 · 비공개", budget: "₩404,000" },
-      { action: "go('map')", icon: "🏙️", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 4인 · 대중교통 · 공개", budget: "₩280,000" }
+      { action: "go('map')", icon: "제주", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 2인 · 자차 · 비공개", budget: "₩404,000" },
+      { action: "go('map')", icon: "부산", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 4인 · 대중교통 · 공개", budget: "₩280,000" }
     ];
 
     // 3. 작성한 후기 데이터 → API 연동으로 대체
@@ -32,38 +32,38 @@
 
     // 5. 스크랩한 숙소 데이터
     const MOCK_MYPAGE_SCRAP_STAY = [
-      { action: "go('place-hyeopjae')", icon: "🏖️", iconBg: "#E8F5F2", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "📌 3,241번 담김", stats2: "★ 스크랩 412" },
-      { action: "go('place-reviews')", icon: "🌊", iconBg: "#E8F5F2", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "📌 2,718번 담김", stats2: "★ 스크랩 287" }
+      { action: "go('place-hyeopjae')", icon: "숙소", iconBg: "#E8F5F2", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "3,241번 담김", stats2: "★ 스크랩 412" },
+      { action: "go('place-reviews')", icon: "숙소", iconBg: "#E8F5F2", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "2,718번 담김", stats2: "★ 스크랩 287" }
     ];
 
     // 6. 스크랩한 맛집 데이터
     const MOCK_MYPAGE_SCRAP_FOOD = [
-      { action: "go('place-teraroasa')", icon: "☕", iconBg: "#FEF3F2", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "📌 2,941번 담김", stats2: "★ 스크랩 318" },
-      { action: "go('place-reviews')", icon: "🍖", iconBg: "#FEF3F2", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "#F5A623", ratingStar: "★★★★☆", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "📌 2,512번 담김", stats2: "★ 스크랩 241" }
+      { action: "go('place-teraroasa')", icon: "카페", iconBg: "#FEF3F2", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "2,941번 담김", stats2: "★ 스크랩 318" },
+      { action: "go('place-reviews')", icon: "맛집", iconBg: "#FEF3F2", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "#F5A623", ratingStar: "★★★★☆", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "2,512번 담김", stats2: "★ 스크랩 241" }
     ];
 
     // 7. 스크랩한 관광지 데이터
     const MOCK_MYPAGE_SCRAP_TOUR = [
-      { action: "go('place-t-seongsan')", icon: "🌅", iconBg: "#EEF6FF", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "📌 4,102번 담김", stats2: "★ 스크랩 521" },
-      { action: "go('place-t-udo')", icon: "🏝️", iconBg: "#EEF6FF", name: "우도", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "📌 3,560번 담김", stats2: "★ 스크랩 448" }
+      { action: "go('place-t-seongsan')", icon: "관광", iconBg: "#EEF6FF", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "4,102번 담김", stats2: "★ 스크랩 521" },
+      { action: "go('place-t-udo')", icon: "관광", iconBg: "#EEF6FF", name: "우도", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "3,560번 담김", stats2: "★ 스크랩 448" }
     ];
 
     // 8. 스크랩한 카페 데이터
     const MOCK_MYPAGE_SCRAP_CAFE = [
-      { action: "go('place-c-handam')", icon: "☕", iconBg: "#F5F0FF", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "📌 2,341번 담김", stats2: "★ 스크랩 312" },
-      { action: "go('place-c-arario')", icon: "☕", iconBg: "#F5F0FF", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "📌 1,980번 담김", stats2: "★ 스크랩 267" }
+      { action: "go('place-c-handam')", icon: "카페", iconBg: "#F5F0FF", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "2,341번 담김", stats2: "★ 스크랩 312" },
+      { action: "go('place-c-arario')", icon: "카페", iconBg: "#F5F0FF", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "1,980번 담김", stats2: "★ 스크랩 267" }
     ];
 
     // 8. 가계부 데이터
     const MOCK_MYPAGE_LEDGER = [
-      { id: "my-ledger-jeju", action: "selectMyLedger(this,'jeju')", class: "ts-card on", border: "var(--sage)", bg: "var(--sage-pale)", icon: "🗺️", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 제주 기준", budget: "₩404,000", budgetColor: "var(--sage)", mb: "10px" },
-      { id: "my-ledger-busan", action: "selectMyLedger(this,'busan')", class: "ts-card", border: "var(--border)", bg: "var(--surface)", icon: "🏙️", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 부산 기준", budget: "₩280,000", budgetColor: "var(--text2)", mb: "18px" }
+      { id: "my-ledger-jeju", action: "selectMyLedger(this,'jeju')", class: "ts-card on", border: "var(--sage)", bg: "var(--sage-pale)", icon: "지도", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 제주 기준", budget: "₩404,000", budgetColor: "var(--sage)", mb: "10px" },
+      { id: "my-ledger-busan", action: "selectMyLedger(this,'busan')", class: "ts-card", border: "var(--border)", bg: "var(--surface)", icon: "도시", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 부산 기준", budget: "₩280,000", budgetColor: "var(--text2)", mb: "18px" }
     ];
 
     // 9. 설정 및 안내 문구 텍스트
     const MOCK_MYPAGE_TEXTS = {
-      infoPwWarn: "🔒 보안을 위해 현재 비밀번호를 먼저 확인합니다.",
-      withdrawWarn: "⚠️ 탈퇴 즉시 username·email 마스킹 / status → DELETED<br>REFRESH_TOKENS 즉시 삭제 · 작성 후기는 '탈퇴한 사용자'로 표시"
+      infoPwWarn: "보안을 위해 현재 비밀번호를 먼저 확인합니다.",
+      withdrawWarn: "탈퇴 즉시 username·email 마스킹 / status → DELETED<br>REFRESH_TOKENS 즉시 삭제 · 작성 후기는 '탈퇴한 사용자'로 표시"
     };
     /* ============================================================ */
 
@@ -97,7 +97,7 @@
     `).join('');
       }
 
-      // 2-2. 🤝 초대받은 일정 렌더링 (내 여행 기록과 똑같은 디자인 적용)
+      // 2-2. 초대받은 일정 렌더링 (내 여행 기록과 똑같은 디자인 적용)
       let invited = typeof MOCK_MYPAGE_INVITED !== 'undefined' ? MOCK_MYPAGE_INVITED : [];
       const invitedContainer = document.getElementById("my-invited-list");
       if (invitedContainer && invited.length > 0) {
@@ -108,14 +108,14 @@
 
           return `
         <div class="ts-card" onclick="${targetAction}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border2);cursor:pointer;margin-bottom:12px;transition:all .2s;" onmouseover="this.style.borderColor='var(--sage-l)'; this.style.boxShadow='var(--sh)';" onmouseout="this.style.borderColor='var(--border2)'; this.style.boxShadow='none';">
-          <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;">🤝</div>
+          <div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--panel);flex-shrink:0;">초대</div>
           <div style="flex:1">
             <div style="font-weight:800;font-size:14px;color:var(--text);margin-bottom:2px;">${t.title}</div>
             <div style="font-size:11px;color:var(--text3);">${metaInfo}</div>
           </div>
           <div style="text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
               <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">링크 상태</span>
-              <span style="color:var(--sage-d); font-weight:800; font-size:12px;">🔗 연결됨</span>
+              <span style="color:var(--sage-d); font-weight:800; font-size:12px;">연결됨</span>
           </div>
         </div>`;
         }).join('');
@@ -132,7 +132,7 @@
         ledgerContainer.innerHTML = ledgers.map(l => `
       <div class="${l.class}" id="${l.id}" onclick="${l.action}"
         style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:2px solid ${l.border};background:${l.bg};cursor:pointer;margin-bottom:${l.mb}">
-        <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:20px">${l.icon}</div>
+        <div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:20px">${l.icon}</div>
         <div style="flex:1">
           <div style="font-weight:700;font-size:14px">${l.title}</div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">${l.meta}</div>
@@ -171,19 +171,19 @@
         <button class="my-menu-toggle" id="myMenuToggle" onclick="toggleMyMenu()">메뉴 접기 ▲</button>
         <div class="my-menu-collapse" id="myMenuCollapse">
           <div class="my-menu-sep">내 활동</div>
-          <button class="my-menu on" onclick="showMySection('trips',this)">📋 내 여행 기록</button>
-          <button class="my-menu" onclick="showMySection('invited',this)">🤝 초대받은 일정</button>
-          <button class="my-menu" onclick="showMySection('reviews',this)">✍️ 작성한 후기</button>
-          <button class="my-menu" onclick="showMySection('likes',this)">❤️ 좋아요한 후기</button>
-          <button class="my-menu" onclick="showMySection('scrap-stay',this)">🏨 스크랩한 숙소</button>
-          <button class="my-menu" onclick="showMySection('scrap-food',this)">🍽️ 스크랩한 맛집</button>
-          <button class="my-menu" onclick="showMySection('scrap-tour',this)">🗺️ 스크랩한 관광지</button>
-          <button class="my-menu" onclick="showMySection('scrap-cafe',this)">☕ 스크랩한 카페</button>
-          <button class="my-menu" onclick="showMySection('scrap-route',this)">🗺️ 스크랩한 여행 경로</button>
-          <button class="my-menu" onclick="showMySection('ledger',this)">💰 가계부</button>
+          <button class="my-menu on" onclick="showMySection('trips',this)">내 여행 기록</button>
+          <button class="my-menu" onclick="showMySection('invited',this)">초대받은 일정</button>
+          <button class="my-menu" onclick="showMySection('reviews',this)">작성한 후기</button>
+          <button class="my-menu" onclick="showMySection('likes',this)">좋아요한 후기</button>
+          <button class="my-menu" onclick="showMySection('scrap-stay',this)">스크랩한 숙소</button>
+          <button class="my-menu" onclick="showMySection('scrap-food',this)">스크랩한 맛집</button>
+          <button class="my-menu" onclick="showMySection('scrap-tour',this)">스크랩한 관광지</button>
+          <button class="my-menu" onclick="showMySection('scrap-cafe',this)">스크랩한 카페</button>
+          <button class="my-menu" onclick="showMySection('scrap-route',this)">스크랩한 여행 경로</button>
+          <button class="my-menu" onclick="showMySection('ledger',this)">가계부</button>
           <div class="my-menu-sep">설정</div>
-          <button class="my-menu" onclick="showMySection('info',this)">👤 회원정보 수정</button>
-          <button class="my-menu" onclick="showMySection('withdraw',this)">🗑️ 회원 탈퇴</button>
+          <button class="my-menu" onclick="showMySection('info',this)">회원정보 수정</button>
+          <button class="my-menu" onclick="showMySection('withdraw',this)">회원 탈퇴</button>
         </div>
       </div>
 
@@ -236,7 +236,7 @@
 
         <div id="my-ledger" style="display:none">
           <div id="my-ledger-inner">
-            <h3 class="my-sec-ttl">💰 가계부</h3>
+            <h3 class="my-sec-ttl">가계부</h3>
             <p style="color:var(--text3);font-size:13px;margin-bottom:16px">여행을 선택하세요</p>
             <div id="my-ledger-list"></div>
             <div id="my-ledger-pager"></div>
@@ -244,7 +244,7 @@
         </div>
 
         <div id="my-info" style="display:none">
-          <h3 class="my-sec-ttl">👤 회원정보 수정</h3>
+          <h3 class="my-sec-ttl">회원정보 수정</h3>
           <div id="info-pw-step">
             <div id="info-pw-warn-txt" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--sage-d)"></div>
             <div id="info-social-notice"
@@ -257,7 +257,7 @@
                        onkeydown="if(event.key==='Enter')verifyInfoPw()">
               </div>
               <div id="info-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-bottom:10px">
-                ⚠️ 비밀번호가 올바르지 않습니다.
+                비밀번호가 올바르지 않습니다.
               </div>
               <button class="btn-f" style="padding:10px 20px;border-radius:var(--r)" onclick="verifyInfoPw()">확인</button>
             </div>
@@ -288,7 +288,7 @@
                    onkeydown="if(event.key==='Enter') doWithdraw()"
                    style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">
             <div id="withdraw-social-err" style="display:none;color:var(--coral);font-size:12px;margin-top:6px">
-              ⚠️ 제시된 문구를 정확히 입력해주세요.
+              제시된 문구를 정확히 입력해주세요.
             </div>
           </div>
 
@@ -297,7 +297,7 @@
             <input class="form-input" type="password" id="withdrawPwInput" placeholder="비밀번호를 입력해주세요"
                    onkeydown="if(event.key==='Enter') doWithdraw()" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;box-sizing:border-box;">
             <div id="withdraw-pw-err" style="display:none;color:var(--coral);font-size:12px;margin-top:6px">
-              ⚠️ 비밀번호가 올바르지 않습니다.
+              비밀번호가 올바르지 않습니다.
             </div>
           </div>
 
@@ -310,7 +310,7 @@
              style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
              onclick="if(event.target===this)closeWithdrawModal()">
           <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
-            <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">⚠️ 정말 탈퇴하시겠습니까?</h3>
+            <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">정말 탈퇴하시겠습니까?</h3>
 
             <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
               • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>

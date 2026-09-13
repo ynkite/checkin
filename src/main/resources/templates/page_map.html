@@ -21,7 +21,7 @@
      *  레일·경로 공통 도우미
      *
      *  시각은 "HH:MM" 문자열, 이동 정보는 백엔드가
-     *  "🚗 자차 · 12.4km · 약 24분 · ₩2,000" 꼴로 채운다.
+     *  "자차 · 12.4km · 약 24분 · ₩2,000" 꼴로 채운다.
      *  (AiRouteService.recalcTransitWithKakao 의 포맷)
      *  파싱에 실패한 값은 화면에 만들지 않는다 — 가짜 자리표시자를 두지 않는다.
      * ════════════════════════════════════════════════════════ */
@@ -275,7 +275,7 @@
               const params = new URLSearchParams(window.location.search);
               const hasShareToken = params.has('token');
 
-              // 🎯 백틱(`) 대신 작은따옴표(')를 사용하여 템플릿 깨짐을 방지합니다.
+              // 백틱(`) 대신 작은따옴표(')를 사용하여 템플릿 깨짐을 방지합니다.
               if (window._isInvitedEditView || hasShareToken) {
                 descEl.innerHTML = '해당 여행 플랜은 링크 보관하기 클릭시<br>초대받은 일정에서 언제든지 다시 확인할 수 있습니다.';
               } else {
@@ -311,7 +311,7 @@
         }
       }
 
-      // 🎯 [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
+      // [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
       if (!window._currentTripId) {
         window._currentTripId = parsedTripId || sessionStorage.getItem('plannerDraftId');
       }
@@ -331,7 +331,7 @@
           const metaEl  = document.querySelector('.ml-plan-meta') || document.getElementById('mapPlanMeta');
 
           if (!r.success || !r.data) {
-            // 🔒 [공유 링크 비회원 예외 가드]
+            // [공유 링크 비회원 예외 가드]
             // 다른 계정이거나 비회원이어서 인증이 실패해도, 세션 창고 정보를 스캔해 상단바를 강제 업데이트합니다!
             try {
               const draft = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
@@ -353,7 +353,7 @@
                 let trans = '자차';
 
                 if (draft['chips_chip-trans']) {
-                  const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
+                  const transArr = ['자차', '대중교통', '기타'];
                   const idx = draft['chips_chip-trans'].findIndex(Boolean);
                   if (idx !== -1) {
                     trans = transArr[idx];
@@ -375,7 +375,7 @@
             window._mpTripStart = t.startDate;
             if (typeof _mpRefreshLive === 'function') _mpRefreshLive();
           }
-          // 🔒 플랜 상태(FIXED=확정 / 그 외=수정 중)를 버튼·배지·잠금에 반영
+          // 플랜 상태(FIXED=확정 / 그 외=수정 중)를 버튼·배지·잠금에 반영
           if (typeof applyPlanConfirmState === 'function') {
             applyPlanConfirmState(t.status === 'FIXED');
           }
@@ -389,7 +389,7 @@
               let pax   = fr.data?.companionCount || t.pax || '';
               let trans = fr.data?.transportType  || '';
 
-              // ★숙소 딥링크용 여행 기본정보 전역 저장
+              // 숙소 딥링크용 여행 기본정보 전역 저장
               window._stayBookingInfo = {
                 dest:  t.destination || '',
                 start: t.startDate || '',
@@ -404,7 +404,7 @@
                 }
                 if (!trans || trans.includes('자차')) {
                   if (draft['chips_chip-trans']) {
-                    const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
+                    const transArr = ['자차', '대중교통', '기타'];
                     const idx = draft['chips_chip-trans'].findIndex(Boolean);
                     if (idx !== -1) {
                       trans = transArr[idx];
@@ -418,7 +418,7 @@
                 console.error("세션 데이터 읽기 오류:", e);
               }
 
-              // 🎯 [정정 핵심]: 조립 완료된 정식 텍스트를 화면 엘리먼트에 정상 주입합니다!
+              // [정정 핵심]: 조립 완료된 정식 텍스트를 화면 엘리먼트에 정상 주입합니다!
               metaEl.textContent = `${fmt(t.startDate)} ${startDow} – ${fmt(t.endDate)} ${endDow} · ${pax}인 · ${trans}`;
             });
           }
@@ -438,7 +438,7 @@
         if (res.success && res.data) {
           try {
             routeData = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
-            // 🔑 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
+            // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
             //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
             if (routeData) {
               sessionStorage.setItem('ai_generated_route',
@@ -474,7 +474,7 @@
       if (routeData && routeData.length > 0) {
         MAP_ITINERARY = routeData; // 전역 스코프에 데이터 주입
 
-        // ✨ [기능 추가]: AI가 만든 코스 기간에 맞춰 Day 탭 일수 동적 매핑 생성
+        // [기능 추가]: AI가 만든 코스 기간에 맞춰 Day 탭 일수 동적 매핑 생성
         //    탭에 그날의 기준 장소(첫 장소 ~ 마지막 장소)를 같이 보여준다.
         MAP_DAYS = [{ key: 'all', label: '전체', default: true }];
         routeData.forEach(d => {
@@ -523,7 +523,7 @@
               }
             });
           }
-          // ✨ 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
+          // 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
           day.budget = `₩${dailySum.toLocaleString()}`;
           realTotalBudget += dailySum;
         });
@@ -665,7 +665,7 @@
 
         routeData.forEach(d => {
           let currentDayKeys = [];
-          let currentDayPaths = [];   // ★구간별 도로 경로 좌표(transit.pathCoords) 모음
+          let currentDayPaths = [];   // 구간별 도로 경로 좌표(transit.pathCoords) 모음
           let ordInDay = 0;
           if(d.places) {
             d.places.forEach(p => {
@@ -687,7 +687,7 @@
                   label: p.name,
                   time: p.time || '',
                   day: d.day,
-                  // ★백엔드(recalcTransitWithKakao)가 이미 카카오 좌표를 박아줬으면 그대로 사용한다.
+                  // 백엔드(recalcTransitWithKakao)가 이미 카카오 좌표를 박아줬으면 그대로 사용한다.
                   //   (없을 때만 지도 init 단계에서 keywordSearch로 보조 검색)
                   lat: (typeof p.lat === 'number') ? p.lat : null,
                   lng: (typeof p.lng === 'number') ? p.lng : null,
@@ -731,7 +731,13 @@
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
                 `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
                 + `<span class="dt-n">${_mpEsc(d.label)}</span></button>`).join('');
-        listEl.innerHTML = '<div class="mp-empty">아직 만들어진 일정이 없습니다. 플래너에서 경로를 먼저 만들어 주세요.</div>';
+        /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        listEl.innerHTML =
+          '<div class="mp-empty">' +
+          '<p>아직 만들어진 일정이 없습니다.</p>' +
+          '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
+          '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>' +
+          '</div>';
       }
     }
 
@@ -741,7 +747,7 @@
       initMapPage();
     }
 
-    // ── ✨ [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
+    // ── [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
     function showDay(day, btn) {
       if(btn) {
         document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('on'));
@@ -808,7 +814,7 @@
         // (이전: 제주도 하드코딩 → 합안군 여행인데 제주도가 뜨던 버그 수정)
         var _initLat = 36.5, _initLng = 127.8, _initLevel = 8; // 한반도 중심(기본)
         if (MAP_PINS && MAP_PINS.length > 0 && typeof kakao !== 'undefined') {
-          // ★백엔드 좌표가 있는 첫 핀으로 초기 중심을 즉시 잡는다(검색 응답 전 한반도 중심이 잠깐 보이던 깜빡임 방지)
+          // 백엔드 좌표가 있는 첫 핀으로 초기 중심을 즉시 잡는다(검색 응답 전 한반도 중심이 잠깐 보이던 깜빡임 방지)
           var _firstFixed = MAP_PINS.find(function(p) {
             return p.isFound && typeof p.lat === 'number' && typeof p.lng === 'number';
           });
@@ -862,7 +868,7 @@
 
         if (totalPlaces === 0) {
           window._isKakaoMapInitRunning = false;
-          // 🩹 [빈 지도 보정] 마커가 0개여도 회색 빈 화면이 되지 않도록 한반도 중심으로 타일을 깔아준다
+          // [빈 지도 보정] 마커가 0개여도 회색 빈 화면이 되지 않도록 한반도 중심으로 타일을 깔아준다
           setTimeout(function() {
             if (window._kakaoMap) {
               window._kakaoMap.relayout();
@@ -873,7 +879,7 @@
           return;
         }
 
-        // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
+        // [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
         //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
         function _haversineKm(lat1, lng1, lat2, lng2) {
           var R = 6371;
@@ -909,7 +915,7 @@
           var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
           window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
           bounds.extend(new kakao.maps.LatLng(realLat, realLng));
-          window._kakaoBounds = bounds; // 🩹 선 깜빡임 보정용 — relayout 후 재적용에 사용
+          window._kakaoBounds = bounds; // 선 깜빡임 보정용 — relayout 후 재적용에 사용
           pin.isFound = true;
         }
 
@@ -953,7 +959,7 @@
             checkActualWeatherAlert(window._currentTripId);
           }, 100);
 
-// 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
+// [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
           //   bounds·폴리라인이 0px 기준으로 계산되어 안 보이는 사고가 있었다.
           //   relayout 후 한 박자 늦춰 setBounds·폴리라인을 적용하면 첫 진입에도 정상 동작한다.
           var _applyBoundsAndLines = function() {
@@ -976,7 +982,7 @@
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
         function _startPinSearch(destRegion, regionCenter, maxRadiusKm) {
           MAP_PINS.forEach(function(pin) {
-            // ★백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
+            // 백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
             //   (프론트 재검색이 백엔드와 다른 좌표를 잡아 시점이 튀던 문제 + 비동기 타이밍 문제 차단)
             if (pin.isFound && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
               _onResolved(pin, { y: pin.lat, x: pin.lng, place_url: pin.placeUrl, category_name: '' });
@@ -1016,7 +1022,7 @@
         // 여행지 중심 좌표 확보 후 검색 루프 기동
         function _runWithRegion(destRegion) {
           var hasCity = !!(destRegion && destRegion.trim().split(/\s+/).length >= 2);
-          // 🩹 [반경 완화] 인접 시·군(예: 속초↔양양↔고성) 장소가 경계에서 배제되지 않도록 여유를 둔다
+          // [반경 완화] 인접 시·군(예: 속초↔양양↔고성) 장소가 경계에서 배제되지 않도록 여유를 둔다
           var maxRadiusKm = (destRegion && destRegion.indexOf('제주') >= 0) ? 60 : (hasCity ? 60 : 90);
           var geocoder = (kakao.maps.services && kakao.maps.services.Geocoder)
                   ? new kakao.maps.services.Geocoder() : null;
@@ -1062,7 +1068,7 @@
       const alertBanner = document.querySelector('.weather-alert');
       if (!alertBanner) return;
 
-      // 🎯 기본값은 숨김 처리
+      // 기본값은 숨김 처리
       alertBanner.style.display = 'none';
 
       try {
@@ -1533,7 +1539,7 @@
       var pinByKey = {};
       MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
 
-      // 🩹 [핵심 수정] 이 날 경로에 '좌표가 아직 없는' 핀이 있으면, 그것부터 카카오 검색으로
+      // [핵심 수정] 이 날 경로에 '좌표가 아직 없는' 핀이 있으면, 그것부터 카카오 검색으로
       //    좌표를 채운 뒤에 그린다. (좌표 누락으로 path가 비어 지도가 깨지고 새로고침해야 하던 버그 차단)
       var needResolve = keys
               .map(function(k) { return pinByKey[k]; })
@@ -1550,7 +1556,7 @@
           return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
 
-        // ★도로 경로 우선(segPaths) — 없으면 마커 직선 폴백
+        // 도로 경로 우선(segPaths) — 없으면 마커 직선 폴백
         var path = [];
         var hasRoad = route && Array.isArray(route.segPaths) && route.segPaths.some(function(s){ return Array.isArray(s) && s.length >= 2; });
         if (hasRoad) {
@@ -1564,7 +1570,7 @@
           path = straightPath;
         }
 
-        // 🩹 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
+        // 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
         if (window._kakaoMap) {
           window._kakaoMap.relayout();
           var dayPins = keys.map(function(k) { return pinByKey[k]; })
@@ -1577,7 +1583,7 @@
         }
         if (path.length < 2) { setTimeout(renderArrows, 50); return; }
 
-        // ★폴리라인은 drawLivePolylines로 일원화(구간별 offset·왕복 분리 로직 공유).
+        // 폴리라인은 drawLivePolylines로 일원화(구간별 offset·왕복 분리 로직 공유).
         //   여기서 직접 통짜 path로 그리면 왕복 겹침·중복선이 생기므로 전체 재렌더를 호출한다.
         drawLivePolylines();
 
@@ -1635,7 +1641,7 @@
           if (dragSrc !== this) this.style.outline = '1.5px dashed var(--ink-3)';
         });
         row.addEventListener('dragleave', function(e) {
-          // 🎯 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
+          // 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
           if (e.relatedTarget && this.contains(e.relatedTarget)) {
             return; // 자식 노드로 들어간 거라면 점선 유지하고 무시!
           }
@@ -1685,7 +1691,7 @@
           // 4. 세션 & DB 저장 호출
           sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
           if (window._currentTripId) {
-            // 🎯 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
+            // 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
                       if (!res.success) { toast('순서를 저장하지 못했습니다. ' + (res.message || '')); return; }
@@ -1737,7 +1743,7 @@
       }
     }
 
-    // ── 🔥 [기능 해결]: AI가 동적으로 뿌려준 유니크 키(uniq1, uniq2) 클릭 시 데이터 누락 방지 팝업 가드 ──
+    // ── [기능 해결]: AI가 동적으로 뿌려준 유니크 키(uniq1, uniq2) 클릭 시 데이터 누락 방지 팝업 가드 ──
     function showMapPlacePopup(nameOrKey, type) {
       var realName = nameOrKey;
       var realSub = "추천 장소";
@@ -1765,7 +1771,7 @@
       // 카테고리 텍스트 요약 규격화
       var tl = type === 'stay' ? '숙소' : (type === 'food' ? '맛집' : (type === 'cafe' ? '카페' : '관광지'));
 
-      // ✨ [수정] 정의되지 않았던 name 대신 realName으로 깨진 DOM 안전하게 바인딩
+      // [수정] 정의되지 않았던 name 대신 realName으로 깨진 DOM 안전하게 바인딩
       document.getElementById('mpPlace').textContent = realName;
       document.getElementById('mpType').textContent  = tl;
 
@@ -1803,7 +1809,7 @@
 
 
 
-    // ── 💡 1. 큐(대기열) 전역 변수 및 렌더링 (사용자가 직접 텍스트 수정 가능) ──
+    // ── 1. 큐(대기열) 전역 변수 및 렌더링 (사용자가 직접 텍스트 수정 가능) ──
     window._q = window._q || [];
 
     function showReplaceInput(btn, key) {
@@ -1898,7 +1904,7 @@
       }
     }
 
-    // ✨ 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
+    // 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
     function updateQueueReq(idx, newVal) {
       if (_q[idx]) _q[idx].req = newVal;
     }
@@ -1917,7 +1923,7 @@
       if (_q[idx]) _q[idx].req = newVal;
     }
 
-    // ── 💡 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
+    // ── 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
 
     async function execAllReplace() {
       const tripId = window._currentTripId;
@@ -1933,7 +1939,7 @@
       btn.disabled = true;
 
       try {
-        // ✨ 올바른 백엔드 주소로 연결!
+        // 올바른 백엔드 주소로 연결!
         const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
 
         if (res.success && res.data) {
@@ -1959,7 +1965,7 @@
     }
 
 
-    /* ── 🌤️ 지도 화면 전용: 날씨 팝업 열기 ── */
+    /* ── 지도 화면 전용: 날씨 팝업 열기 ── */
     async function openMapWeatherPopup() {
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
@@ -2042,7 +2048,7 @@
         const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
-        // 🎯 [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
+        // [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
         if (location.pathname.includes('/plan/view')) {
           replaceWrap.style.display = 'block';
           replaceWrap.classList.add('mp-mswap-off');
@@ -2121,7 +2127,7 @@
     }
 
     // ════════════════════════════════════════════════════════
-    //  ★숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·카카오)
+    // 숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·카카오)
     // ════════════════════════════════════════════════════════
 
     function findStayByKey(key) {
@@ -2264,7 +2270,7 @@
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
 
-      // ★같은 숙소(이름 동일) 전체 동기화: Day1에서 예약/금액입력하면 Day2 등 동일 숙소도 같이 반영
+      // 같은 숙소(이름 동일) 전체 동기화: Day1에서 예약/금액입력하면 Day2 등 동일 숙소도 같이 반영
       MAP_ITINERARY.forEach((day, di) => {
         if (!day.places) return;
         day.places.forEach(pl => {

@@ -2600,67 +2600,9 @@ nav {
     flex-wrap: wrap
 }
 
-.mf-chip {
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    border: 1.5px solid;
-    cursor: pointer;
-    transition: all .18s;
-    white-space: nowrap
-}
-
-.mf-stay {
-    border-color: var(--sage);
-    color: var(--sage);
-    background: var(--sage-pale)
-}
-
-.mf-stay.on {
-    background: var(--sage);
-    color: #fff
-}
-
-.mf-food {
-    border-color: var(--coral);
-    color: var(--coral);
-    background: #FEF3F2
-}
-
-.mf-food.on {
-    background: var(--coral);
-    color: #fff
-}
-
-.mf-tour {
-    border-color: var(--sky);
-    color: var(--sky);
-    background: #EBF4FC
-}
-
-.mf-tour.on {
-    background: var(--sky);
-    color: #fff
-}
-
-.mf-cafe {
-    border-color: #A78BFA;
-    /* 보라색 테두리 */
-    color: #7C3AED;
-    /* 보라색 글자 */
-    background: #F5F3FF;
-    /* 평소에는 연한 보라색 배경 (맛집/숙소와 통일) */
-}
-
-.mf-cafe.on {
-    background: #7C3AED;
-    /*  켜졌을 때는 진한 보라색 배경 */
-    color: #fff;
-    /*  글자색은 흰색으로 변환 (맛집/숙소와 통일) */
-    border-color: #7C3AED;
-    /* 테두리도 진한 보라색으로 일치 */
-}
+/* 지도 필터 칩은 styles_map.css 가 정한다.
+   여기 있던 규칙은 옛 팔레트(--sage/--coral/--sky/보라 #7C3AED)를 참조했다.
+   그 토큰들은 이제 없다. 첫 칩은 배경이 사라지고 카페는 보라로 남았다. */
 
 .day-tabs {
     display: flex;

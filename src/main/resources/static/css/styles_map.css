@@ -11,18 +11,21 @@
 /* ── 틀 ───────────────────────────────────────────────────── */
 /* .page 의 고정 padding-top(60px) 대신 실제 nav 높이를 쓴다.
    --nav-h 는 page_map 의 syncNavHeight() 가 넣는다. */
-#page-map{ background:var(--void); padding-top:var(--nav-h, 60px) }
+/* --void 는 풍경(하늘) 색이다. 시간대에 따라 어두워진다.
+   패널 바닥으로 쓰면 저녁에 글자가 사라진다 — 메인에서 같은 일을 겪고
+   --page 를 따로 뒀다. 여기도 --page 를 쓴다. */
+#page-map{ background:var(--page); padding-top:var(--nav-h, 60px) }
 
 .map-wrap{
   display:grid; grid-template-columns:364px minmax(0,1fr);
   height:calc(100vh - var(--nav-h, 60px));
-  background:var(--void); color:var(--ink);
+  background:var(--page); color:var(--ink);
   word-break:keep-all; overflow-wrap:break-word;
 }
 
 .map-left{
   display:flex; flex-direction:column; min-height:0; overflow:hidden;
-  background:var(--void); border-right:1px solid var(--ui-line);
+  background:var(--page); border-right:1px solid var(--ui-line);
 }
 .map-right{
   position:relative; overflow:hidden; background:var(--ui-plate);
@@ -79,9 +82,17 @@
 .mf-food::before{ background:var(--terra) }
 .mf-cafe::before{ background:var(--num) }
 .mf-tour::before{ background:var(--ui-l) }
+/* 네 칩이 모두 켜진 것이 기본이다. 켜짐을 검게 채우면 기본 상태가
+   가장 무겁고, 지도 핀과 맞춰 둔 색 구분도 흰 점으로 덮여 사라진다.
+   켜짐은 테두리를 굵히고 색 점을 살린다. 꺼짐을 흐리게 둔다. */
+.mf-chip{ background:var(--panel) }
 .mf-chip:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.mf-chip.on{ background:var(--ui); color:var(--panel); box-shadow:none; font-weight:600 }
-.mf-chip.on::before{ background:var(--panel) }
+.mf-chip.on{
+  color:var(--ink); font-weight:600;
+  box-shadow:inset 0 0 0 1.5px var(--ink);
+}
+.mf-chip:not(.on){ color:var(--ink-3) }
+.mf-chip:not(.on)::before{ background:var(--ui-line) }
 
 /* ── 날짜 탭 — 그날의 기준 장소를 같이 보여준다 ───────────── */
 .day-tabs{
@@ -220,7 +231,7 @@
 .transit-map-row::after{
   content:""; position:absolute; left:21.5px; top:50%; margin-top:-3.5px;
   width:7px; height:7px; border-radius:99px;
-  background:var(--void); box-shadow:inset 0 0 0 2px var(--ui-l);
+  background:var(--panel); box-shadow:inset 0 0 0 2px var(--ui-l);
 }
 .transit-map-row b{ font-weight:600; font-size:12.5px; color:var(--ink-2) }
 .transit-map-row i{
@@ -423,7 +434,7 @@
 .wa-cta{ font-size:12.5px; font-weight:600; color:var(--num); margin-top:8px }
 
 /* ── 예산 뷰 ───────────────────────────────────────────────── */
-#budgetView{ background:var(--void); padding:26px 28px 34px }
+#budgetView{ background:var(--page); padding:26px 28px 34px }
 .mp-bg-eyebrow{
   font-family:var(--fig); font-size:11px; font-weight:600;
   letter-spacing:.14em; color:var(--ink-3); margin-bottom:7px;
@@ -667,3 +678,15 @@
   .mp-here .mp-hping{ animation:none; opacity:.5; transform:scale(1.25) }
   .place-row, .mp-ord, .weather-alert{ transition:none }
 }
+
+/* 빈 일정 — 안내와 함께 갈 곳을 준다 */
+.mp-empty{ padding:34px 22px 30px; text-align:left }
+.mp-empty p{ margin:0; font-size:14.5px; color:var(--ink-2); line-height:1.7 }
+.mp-empty .mp-empty-sub{ margin-top:5px; font-size:13px; color:var(--ink-3) }
+.mp-empty-go{
+  margin-top:16px; padding:11px 20px 12px; border:0; border-radius:99px;
+  background:var(--terra); color:var(--panel); cursor:pointer;
+  font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
+  transition:filter .15s;
+}
+.mp-empty-go:hover{ filter:brightness(1.2) }

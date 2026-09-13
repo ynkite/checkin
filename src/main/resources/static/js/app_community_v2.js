@@ -1239,7 +1239,7 @@
         window._reportPostId = null;
 
         if (typeof toast === 'function') {
-            toast(res?.success !== false ? '🚨 신고가 접수되었습니다.' : res?.message || '신고 처리에 실패했습니다.');
+            toast(res?.success !== false ? '신고가 접수되었습니다.' : res?.message || '신고 처리에 실패했습니다.');
         }
     };
 
@@ -1288,26 +1288,26 @@
         const el = document.getElementById('scrap-cnt-' + postId);
         if (el) {
             const n = parseInt(el.textContent.replace(/\D/g, ''), 10) || 0;
-            el.textContent = '🔖 ' + (scrapped ? n + 1 : Math.max(0, n - 1));
+            el.textContent = '스크랩 ' + (scrapped ? n + 1 : Math.max(0, n - 1));
         }
 
         /* 버튼 상태 토글 — 이벤트 타겟이 버튼이면 텍스트/스타일 변경 */
         const btn = e && e.target && e.target.closest ? e.target.closest('button') : null;
         if (btn) {
             if (scrapped) {
-                btn.textContent = '✅ 스크랩됨';
+                btn.textContent = '스크랩됨';
                 btn.style.background = 'var(--sage-pale)';
                 btn.style.borderColor = 'var(--sage-d)';
                 btn.style.color = 'var(--sage-d)';
             } else {
-                btn.textContent = '🔖 스크랩';
+                btn.textContent = '스크랩';
                 btn.style.background = '';
                 btn.style.borderColor = '';
                 btn.style.color = '';
             }
         }
 
-        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
+        if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
     };
 
 })();
@@ -1361,7 +1361,7 @@
                     <div style="display:flex;align-items:center;gap:6px">
                         <span class="comment-writer" style="color:#9E9E9E">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
-                        <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
+                        <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
                     </div>
                     <div class="comment-content" style="color:#9E9E9E">${escapeHtml(c.content || '')}</div>
                 </div>`;
@@ -1383,7 +1383,7 @@
                     : `
                         <button onclick="openReportCommentModal(${c.commentId}, ${curPostId})"
                                 style="margin-left:auto;${commentActionBtnStyle}"
-                                title="댓글 신고">🚨 신고</button>`;
+                                title="댓글 신고">신고</button>`;
 
                 return `
                 <div class="comment-item">
@@ -1576,7 +1576,7 @@
                 _titleEl2.innerHTML = escapeHtml(post.title || '') +
                     ' <span style="font-size:12px;font-weight:700;background:#FFF3F3;color:#E53935;' +
                     'border:1px solid #FFCDD2;border-radius:5px;padding:2px 8px;vertical-align:middle;' +
-                    'white-space:nowrap">🚫 숨김 처리된 글</span>';
+                    'white-space:nowrap">숨김 처리된 글</span>';
             } else {
                 _titleEl2.textContent = post.title || '';
             }
@@ -2221,7 +2221,7 @@ window._handleWriteImageSelect = function(input) {
 
             // 숨김 처리된 글 표시 (관리자 & 본인)
             const hiddenBadge = isHidden
-                ? `<span style="font-size:10px;color:#E53935;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px;margin-left:6px">🚫 숨김 처리된 글</span>`
+                ? `<span style="font-size:10px;color:#E53935;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px;margin-left:6px">숨김 처리된 글</span>`
                 : '';
 
             div.innerHTML = `
@@ -2231,13 +2231,13 @@ window._handleWriteImageSelect = function(input) {
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
                         <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole) : ''} · ${escapeHtml(dateText)}</span>
                     </div>
-                    <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}${isHidden ? ' <span style="font-size:11px;font-weight:700;background:#FFF3F3;color:#E53935;border:1px solid #FFCDD2;border-radius:4px;padding:1px 7px;vertical-align:middle;white-space:nowrap">🚫 숨김 처리된 글</span>' : ''}</div>
+                    <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}${isHidden ? ' <span style="font-size:11px;font-weight:700;background:#FFF3F3;color:#E53935;border:1px solid #FFCDD2;border-radius:4px;padding:1px 7px;vertical-align:middle;white-space:nowrap">숨김 처리된 글</span>' : ''}</div>
                     ${tags.length ? `<div class="community-card-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
                     <div class="post-foot">
                         <div class="post-stats">
-                            <span class="post-stat">❤️ ${likes}</span>
-                            <span class="post-stat">🔖 ${scraps}</span>
-                            <span class="post-stat">👁 ${views}</span>
+                            <span class="post-stat">좋아요 ${likes}</span>
+                            <span class="post-stat">스크랩 ${scraps}</span>
+                            <span class="post-stat">조회 ${views}</span>
                         </div>
                     </div>
                 </div>
@@ -2443,8 +2443,8 @@ window._handleWriteImageSelect = function(input) {
         metaEl.innerHTML = `
             <span>${escapeHtml(writer)}</span>
             ${dateText ? `<span>${escapeHtml(dateText)}</span>` : ''}
-            <span>👁 ${escapeHtml(views)}</span>
-            <span>❤️ ${escapeHtml(likes)}</span>
+            <span>조회 ${escapeHtml(views)}</span>
+            <span>좋아요 ${escapeHtml(likes)}</span>
         `;
     }
 
@@ -2493,7 +2493,7 @@ window._handleWriteImageSelect = function(input) {
         badge.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px';
         badge.innerHTML = `
             <div>
-                <strong>🧳 연결된 플랜</strong>
+                <strong>연결된 플랜</strong>
                 <span class="review-plan-summary">${escapeHtml(getPlanSummary(post, routeData))}</span>
             </div>
             <button id="btn-plan-preview" type="button" class="btn-plan-preview" onclick="openCommunityPlanPreview()">미리보기</button>
@@ -2540,7 +2540,7 @@ window._handleWriteImageSelect = function(input) {
             placeList.style.display = 'block';
             placeList.innerHTML = `
                 <div class="review-place-snapshot">
-                    <h3>📍 방문 장소별 별점 & 한줄평</h3>
+                    <h3>방문 장소별 별점 & 한줄평</h3>
                     ${uniqueReviews.map(r => `
                         <div class="review-place-snapshot-row" style="cursor:pointer"
                              data-place-id="${r.placeId}"
@@ -2668,16 +2668,16 @@ window._handleWriteImageSelect = function(input) {
                     <div id="communityPlanKakaoMap" style="width:100%;height:100%;border-radius:14px"></div>
                 </div>
                 <div class="community-plan-preview-section">
-                    <h3>🏨 숙소 스냅샷</h3>
+                    <h3>숙소 스냅샷</h3>
                     <p id="cpp-stay">연동된 플랜의 숙소 정보가 없습니다.</p>
                 </div>
                 <div class="community-plan-preview-section">
-                    <h3>🍽 맛집 리스트 핵심글</h3>
+                    <h3>맛집 리스트 핵심글</h3>
                     <div id="cpp-places"></div>
                 </div>
                 <div class="community-plan-preview-actions">
                     <button type="button" class="cpp-main-btn" id="cpp-go-planner-btn">→ 해당 경로로 여행 계획하기</button>
-                    <button type="button" class="cpp-sub-btn" id="cpp-preview-scrap-btn">📌 스크랩</button>
+                    <button type="button" class="cpp-sub-btn" id="cpp-preview-scrap-btn">스크랩</button>
                 </div>
             </div>
         `;
@@ -2729,7 +2729,7 @@ window._handleWriteImageSelect = function(input) {
                 if (p.transit) { html.push(`<div class="cpp-transit-row">${escapeHtml(p.transit)}</div>`); return; }
                 html.push(`
                     <div class="cpp-place-row">
-                        <span>${escapeHtml(p.icon || '📍')}</span>
+                        <span>${escapeHtml(p.icon || '곳')}</span>
                         <strong>${escapeHtml(p.name || '장소')}</strong>
                         <em>${escapeHtml(p.time || p.sub || '플랜 장소')}</em>
                     </div>
@@ -2779,7 +2779,7 @@ window._handleWriteImageSelect = function(input) {
                             map, position, xAnchor: 0, yAnchor: 0,
                             content: `
                                 <div style="cursor:pointer;position:relative;width:0;height:0;">
-                                    <div style="position:absolute;left:-18px;top:-18px;width:36px;height:36px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff;z-index:2;">${escapeHtml(place.icon || '📍')}</div>
+                                    <div style="position:absolute;left:-18px;top:-18px;width:36px;height:36px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff;z-index:2;">${escapeHtml(place.icon || '곳')}</div>
                                     <div style="position:absolute;top:20px;left:0;transform:translateX(-50%);background:#fff;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08);z-index:1;">${escapeHtml(place.name)}</div>
                                 </div>`
                         });
@@ -2835,12 +2835,12 @@ window._handleWriteImageSelect = function(input) {
         const active = !!scrapped;
 
         btn.dataset.scrapped = active ? 'true' : 'false';
-        btn.textContent = active ? '📌 스크랩됨' : '📌 스크랩';
+        btn.textContent = active ? '스크랩됨' : '스크랩';
         btn.style.background = active ? activeColor : '#fff';
         btn.style.borderColor = activeColor;
         btn.style.color = active ? '#fff' : activeColor;
 
-        // "📌 스크랩됨" 문구가 버튼 안에서 줄바꿈되지 않도록 보강한다.
+        // "스크랩됨" 문구가 버튼 안에서 줄바꿈되지 않도록 보강한다.
         btn.style.whiteSpace = 'nowrap';
         btn.style.display = 'inline-flex';
         btn.style.alignItems = 'center';
@@ -3591,14 +3591,14 @@ window._handleWriteImageSelect = function(input) {
             el.className = 'place-card-item';
             el.innerHTML = [
                 '<div class="place-card-info">',
-                '  <span class="place-card-icon">📍</span>',
+                '  <span class="place-card-icon">곳</span>',
                 '  <span class="place-card-name">' + window._commUtil.escapeHtml(placeName) + '</span>',
                 '</div>',
                 '<div class="place-card-meta">',
                 '  <span class="place-card-stars">' + renderStars(card.avgRating || 0) + '</span>',
                 '  <span class="place-card-avg">' + (Number(card.avgRating || 0)).toFixed(1) + '</span>',
-                '  <span class="place-card-count">📌 ' + (card.reviewCount || 0) + '번 담김</span>',
-                '  <span class="place-card-scrap">🔖 ' + (card.scrapCount || 0) + '</span>',
+                '  <span class="place-card-count">' + (card.reviewCount || 0) + '번 담김</span>',
+                '  <span class="place-card-scrap">스크랩 ' + (card.scrapCount || 0) + '</span>',
                 '</div>'
             ].join('');
             el.addEventListener('click', function () {
@@ -3799,7 +3799,7 @@ window._handleWriteImageSelect = function(input) {
     const { escapeHtml } = window._commUtil;
 
     const PLACE_TABS = { stay: 'stay', food: 'food', tour: 'tour', cafe: 'cafe' };
-    const TYPE_ICON  = { stay: '🏨', food: '🍽️', cafe: '☕', tour: '🎡' };
+    const TYPE_ICON  = { stay: '숙', food: '맛', cafe: '카', tour: '관' };
     const TYPE_CSS   = { stay: 'pr-stay', food: 'pr-food', cafe: 'pr-cafe', tour: 'pr-tour' };
 
     function starsHtml(rating) {
@@ -3945,14 +3945,14 @@ window._handleWriteImageSelect = function(input) {
                 el.className = 'place-card-item';
                 el.innerHTML = [
                     `<div class="place-card-info">`,
-                    `  <span class="place-card-icon ${TYPE_CSS[card.category] || 'pr-tour'}">${TYPE_ICON[card.category] || '📍'}</span>`,
+                    `  <span class="place-card-icon ${TYPE_CSS[card.category] || 'pr-tour'}">${TYPE_ICON[card.category] || '곳'}</span>`,
                     `  <span class="place-card-name">${escapeHtml(card.name)}</span>`,
                     `</div>`,
                     `<div class="place-card-meta">`,
                     `  <span class="place-card-stars">${starsHtml(Math.round(card.avgRating || 0))}</span>`,
                     `  <span class="place-card-avg">${(card.avgRating || 0).toFixed(1)}</span>`,
-                    `  <span class="place-card-count">📌 ${card.reviewCount || 0}번 담김</span>`,
-                    `  <span class="place-card-scrap">🔖 ${card.scrapCount || 0}</span>`,
+                    `  <span class="place-card-count">${card.reviewCount || 0}번 담김</span>`,
+                    `  <span class="place-card-scrap">스크랩 ${card.scrapCount || 0}</span>`,
                     `</div>`
                 ].join('');
                 el.addEventListener('click', function () {
@@ -4034,7 +4034,7 @@ window._handleWriteImageSelect = function(input) {
             header.className = 'place-review-header';
             const mapQuery = encodeURIComponent(placeName || '');
             header.innerHTML = [
-                `<div class="place-review-name">📍 ${escapeHtml(placeName)}</div>`,
+                `<div class="place-review-name">${escapeHtml(placeName)}</div>`,
                 `<div class="place-avg-stars">${starsHtml(Math.round(avg))}</div>`,
                 `<div class="place-avg-score">${avg.toFixed(1)}</div>`,
                 `<div class="place-avg-count">${cnt}개 후기</div>`,
@@ -4169,7 +4169,7 @@ window._handleWriteImageSelect = function(input) {
                 const safeName = p.name.replace(/"/g, '&quot;');
                 return [
                     `<div class="plr-row" data-place-name="${safeName}" data-place-type="${type}">`,
-                    `  <div class="plr-icon ${TYPE_CSS[type] || 'pr-tour'}">${TYPE_ICON[type] || '📍'}</div>`,
+                    `  <div class="plr-icon ${TYPE_CSS[type] || 'pr-tour'}">${TYPE_ICON[type] || '곳'}</div>`,
                     `  <div class="plr-name">${escapeHtml(p.name)}</div>`,
                     `  <div class="star-sel" data-rating="0">`,
                     [1,2,3,4,5].map(n => `<button class="star-btn" onclick="setStars(this,${n})">★</button>`).join(''),
@@ -4367,11 +4367,11 @@ window._handleWriteImageSelect = function(input) {
                     <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
                     <div class="post-foot">
                         <div class="post-stats">
-                            <span class="post-stat">❤️ ${escapeHtml(likes)}</span>
-                            ${views ? `<span class="post-stat">👁 ${escapeHtml(views)}</span>` : ''}
+                            <span class="post-stat">좋아요 ${escapeHtml(likes)}</span>
+                            ${views ? `<span class="post-stat">조회 ${escapeHtml(views)}</span>` : ''}
                         </div>
                         <div style="display:flex;gap:6px">
-                            <button class="btn-scrap" onclick="event.stopPropagation(); editMyPost(${escapeHtml(postId)})">✏️ 수정</button>
+                            <button class="btn-scrap" onclick="event.stopPropagation(); editMyPost(${escapeHtml(postId)})">수정</button>
                             <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation(); deleteMyPost(${escapeHtml(postId)})">삭제</button>
                         </div>
                     </div>
@@ -4393,8 +4393,8 @@ window._handleWriteImageSelect = function(input) {
                     <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
                     <div class="post-foot">
                         <div class="post-stats">
-                            <span class="post-stat">❤️ ${escapeHtml(likes)}</span>
-                            ${views ? `<span class="post-stat">👁 ${escapeHtml(views)}</span>` : ''}
+                            <span class="post-stat">좋아요 ${escapeHtml(likes)}</span>
+                            ${views ? `<span class="post-stat">조회 ${escapeHtml(views)}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -4557,7 +4557,7 @@ window._handleWriteImageSelect = function(input) {
         const res      = await api.post(`/api/posts/${postId}/scraps?category=${category}`, {});
         const scrapped = res?.data === true;
         if (window._currentPostDetail) window._currentPostDetail.scrappedByMe = scrapped;
-        if (typeof toast === 'function') toast(scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.');
+        if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
 
         await window.openPostDetail(postId);
         setTimeout(applyActionState, 100);
@@ -4634,7 +4634,7 @@ window._handleWriteImageSelect = function(input) {
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px" id="communityEditPlaceReviewsSection" style="display:none">
-                    <label class="form-label">📍 장소별 별점 &amp; 한줄평</label>
+                    <label class="form-label">장소별 별점 &amp; 한줄평</label>
                     <div id="communityEditPlaceReviewsBody" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"></div>
                 </div>
                 <div class="form-group" style="margin-bottom:18px">
@@ -4885,7 +4885,7 @@ window._handleWriteImageSelect = function(input) {
         const planInfoEl = document.getElementById('communityEditPlanInfo');
         if (planInfoEl) {
             planInfoEl.textContent = post.planTitle
-                ? ('📍 ' + post.planTitle + (post.planDestination ? ' · ' + post.planDestination : ''))
+                ? ('' + post.planTitle + (post.planDestination ? ' · ' + post.planDestination : ''))
                 : '연동된 여행 경로 없음';
         }
 
@@ -4906,7 +4906,7 @@ window._handleWriteImageSelect = function(input) {
                 var routeRaw = post.planRouteJson;
                 var days = [];
                 try { days = routeRaw ? (typeof routeRaw === 'string' ? JSON.parse(routeRaw) : routeRaw) : []; } catch(_) {}
-                var TYPE_ICON_MAP = { stay: '🏨', food: '🍽️', cafe: '☕', tour: '🎡', attraction: '🎡' };
+                var TYPE_ICON_MAP = { stay: '숙', food: '맛', cafe: '카', tour: '관', attraction: '관' };
                 var TYPE_CSS_MAP  = { stay: 'pr-stay', food: 'pr-food', cafe: 'pr-cafe', tour: 'pr-tour', attraction: 'pr-tour' };
                 var planPlaces = [];
                 (Array.isArray(days) ? days : []).forEach(function(day) {
@@ -4928,7 +4928,7 @@ window._handleWriteImageSelect = function(input) {
                     plrSection.style.display = 'block';
                     plrBody.innerHTML = planPlaces.map(function(p) {
                         var type    = (p.type || 'tour').toLowerCase();
-                        var icon    = TYPE_ICON_MAP[type] || '📍';
+                        var icon    = TYPE_ICON_MAP[type] || '곳';
                         var css     = TYPE_CSS_MAP[type]  || 'pr-tour';
                         var existing = reviewMap[p.name];
                         var rating  = existing ? (existing.rating || 0) : 0;
@@ -4952,7 +4952,7 @@ window._handleWriteImageSelect = function(input) {
                             return '<button class="star-btn' + (n <= (r.rating||0) ? ' lit' : '') + '" onclick="setStars(this,' + n + ')">★</button>';
                         }).join('');
                         return '<div class="plr-row" data-place-name="' + escapeHtml(r.placeName||'') + '" data-place-type="' + (r.category||'tour').toLowerCase() + '" data-review-id="' + r.id + '">' +
-                            '<div class="plr-icon pr-tour">📍</div>' +
+                            '<div class="plr-icon pr-tour">관</div>' +
                             '<div class="plr-name">' + escapeHtml(r.placeName||'') + '</div>' +
                             '<div class="star-sel" data-rating="' + (r.rating||0) + '">' + stars + '</div>' +
                             '<input class="one-line" placeholder="한줄평 (선택)" maxlength="200" value="' + escapeHtml(r.comment||'') + '">' +
@@ -4987,7 +4987,7 @@ window._handleWriteImageSelect = function(input) {
             'data-my-place-scrap-category="' + escapeHtml(category) + '" ' +
             'onclick="window.goToScrapPlace(' + placeId + ',\'' + safeNameForJs + '\',\'' + safeCategoryForJs + '\',' + avgRatingForJs + ')">' +
             '<div class="pc-hd">' +
-            '<div class="pc-icon">' + (iconMap[s.category] || '📍') + '</div>' +
+            '<div class="pc-icon">' + (iconMap[s.category] || '곳') + '</div>' +
             '<div style="flex:1;min-width:0">' +
             '<div class="pc-name">' + escapeHtml(placeName) + '</div>' +
             '<div class="pc-meta">' + escapeHtml(s.address || labelMap[s.category] || '') + '</div>' +
@@ -4995,7 +4995,7 @@ window._handleWriteImageSelect = function(input) {
             '</div>' +
             '<button onclick="event.stopPropagation();window.deleteMyPlaceScrap(' + s.scrapId + ',this,\'' + escapeHtml(category) + '\')" ' +
             'style="font-size:11px;background:none;border:1px solid var(--border2);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);flex-shrink:0">' +
-            '🗑️ 삭제' +
+            '삭제' +
             '</button>' +
             '</div>' +
             '</div>';
@@ -5003,7 +5003,7 @@ window._handleWriteImageSelect = function(input) {
 
     window.loadMyScrap = async function loadMyScrap(category, page) {
         const catMap   = { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' };
-        const iconMap  = { STAY: '🏨', FOOD: '🍽️', TOUR: '🗺️', CAFE: '☕' };
+        const iconMap  = { STAY: '숙', FOOD: '맛', TOUR: '관', CAFE: '카' };
         const labelMap = { STAY: '숙소', FOOD: '맛집', TOUR: '관광지', CAFE: '카페' };
         const listId   = { stay: 'my-scrap-stay-list', food: 'my-scrap-food-list', tour: 'my-scrap-tour-list', cafe: 'my-scrap-cafe-list' };
 
@@ -5077,8 +5077,8 @@ window._handleWriteImageSelect = function(input) {
         const scrapped = res?.data === true;
         if (typeof toast === 'function') {
             toast(res?.success === false
-                ? (res?.message || '⚠️ 스크랩 처리에 실패했습니다.')
-                : (scrapped ? '🔖 스크랩했습니다.' : '🔖 스크랩을 취소했습니다.'));
+                ? (res?.message || '스크랩 처리에 실패했습니다.')
+                : (scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.'));
         }
         /* 집합 갱신 → 다른 화면에서도 상태 일관 */
         if (window._scrappedPlaceIds) {
@@ -5162,7 +5162,7 @@ window._handleWriteImageSelect = function(input) {
             (window._myRouteScrapDeleteMode
                 ? '<input type="checkbox" class="route-scrap-del-chk" id="chk-route-scrap-' + escapeHtml(postId) + '" value="' + escapeHtml(postId) + '" onclick="event.stopPropagation();" style="width:16px;height:16px;cursor:pointer;margin-left:4px;">'
                 : '') +
-            '<div style="width:42px;height:42px;border-radius:10px;background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;">🗺️</div>' +
+            '<div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;">지도</div>' +
             '<div class="trip-info" style="flex:1;min-width:0;">' +
             '<div class="trip-ttl" style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(title) + '</div>' +
             '<div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">' + escapeHtml(writer) + ' · 여행 경로</div>' +

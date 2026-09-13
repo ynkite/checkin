@@ -66,7 +66,7 @@
               '<span class="pop-scrap-n">★ ' + (item.scrapCount || 0) + '</span>' +
               '</span>' +
               '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '"' + scrapBtnStyle + ' ' +
-              'onclick="event.stopPropagation(); ' + onClickScrap + '">★ 스크랩</button>' +
+              'onclick="event.stopPropagation(); ' + onClickScrap + '">★스크랩</button>' +
               '</div>' +
               '</div>';
     }
@@ -160,11 +160,11 @@
        여기서 style 로 직접 칠하면 팔레트가 바뀌어도 따라오지 않는다. */
     function _applyMainScrapStyle(btn, scrapped) {
       if (!btn) return;
-      btn.textContent = '★ 스크랩';
+      btn.textContent = '★스크랩';
       btn.classList.toggle('scrapped', !!scrapped);
     }
 
-    /* 스크랩 카운트(★ 숫자) 실시간 갱신 — 버튼이 속한 카드 내부의 카운트 엘리먼트를 +1/-1 */
+    /* 스크랩 카운트(★숫자) 실시간 갱신 — 버튼이 속한 카드 내부의 카운트 엘리먼트를 +1/-1 */
     function _updateScrapCount(btn, scrapped, selector) {
       if (!btn) return;
       const card = btn.closest('.pop-card') || btn.closest('.top3-card') || btn.parentElement;
@@ -191,7 +191,7 @@
         if (typeof toast === 'function') toast('스크랩 처리에 실패했습니다.');
         return;
       }
-      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '⚠️ 스크랩 처리에 실패했습니다.'); return; }
+      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '스크랩 처리에 실패했습니다.'); return; }
       const scrapped = res.data === true;
       const btn = document.getElementById(btnId);
       if (btn) {
@@ -378,7 +378,7 @@
       }
 
       // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
-      // ★ 스크랩 상태 유지를 위해 카드 렌더링 전에 내 스크랩 목록을 먼저 로드
+      // 스크랩 상태 유지를 위해 카드 렌더링 전에 내 스크랩 목록을 먼저 로드
       await _loadMyScrappedPlaceIds();
       let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
       if (!top3Routes && typeof api !== 'undefined') {
@@ -433,7 +433,7 @@
               <span class="card-stat">조회 ${r.views || r.viewCount || 0}</span>
               <span class="card-scrap-n">★ ${r.scraps || r.scrapCount || 0}</span>
             </div>
-            <button class="${scrapBtnCls}"${scrapBtnStyle} onclick="event.stopPropagation(); ${onClickScrap}">★ 스크랩</button>
+            <button class="${scrapBtnCls}"${scrapBtnStyle} onclick="event.stopPropagation(); ${onClickScrap}">★스크랩</button>
           </div>
         </div>`;
         }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';

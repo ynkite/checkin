@@ -476,7 +476,7 @@ async function _initSession(accessToken, refreshToken) {
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
     Token.clear();
-    // 🎯 [캐시 박멸] 세션 만료로 강제 로그아웃 시에도 플랜 캐시 전부 제거
+    // [캐시 정리] 세션 만료로 강제 로그아웃 시에도 플랜 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
     sessionStorage.removeItem('ai_generated_route');
@@ -501,7 +501,7 @@ function updateNav() {
     const al = document.getElementById('navAdminLink');
     const nb = document.getElementById('navBellBtn');
 
-    // 🎯 [신규] 상단바에 '초대받은 일정 저장하기' 버튼 동적 생성
+    // [신규] 상단바에 '초대받은 일정 저장하기' 버튼 동적 생성
     let saveInviteBtn = document.getElementById('navSaveInviteBtn');
     if (!saveInviteBtn) {
         const navBtns = document.querySelector('.nav-btns');
@@ -510,7 +510,7 @@ function updateNav() {
             saveInviteBtn.id = 'navSaveInviteBtn';
             saveInviteBtn.className = 'btn-f';
             saveInviteBtn.style.background = 'var(--warm)'; // 눈에 띄는 주황색 계열
-            saveInviteBtn.innerHTML = '🔗 링크 보관하기';
+            saveInviteBtn.innerHTML = '링크 보관하기';
 
             saveInviteBtn.onclick = () => {
                 const tid = window._currentTripId;
@@ -536,7 +536,7 @@ function updateNav() {
                         if (typeof updateMyPageUI === 'function') updateMyPageUI();
                     } else {
                         toast('저장 중 오류가 발생했습니다.');
-                        saveInviteBtn.innerHTML = '📌 내 목록에 담기';
+                        saveInviteBtn.innerHTML = '내 목록에 담기';
                         saveInviteBtn.style.opacity = '1';
                         saveInviteBtn.style.pointerEvents = 'auto';
                     }
@@ -565,7 +565,7 @@ function updateNav() {
         if (al) al.style.display = 'none';
     }
 
-    // 🎯 [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
+    // [신규] 수정 권한으로 접속했고, 로그인 상태일 때만 '저장하기' 버튼 노출
     if (saveInviteBtn) {
         const isMapPageActive = document.getElementById('page-map')?.classList.contains('active');
 
@@ -587,9 +587,9 @@ function updateNav() {
     const plannerBtn = document.getElementById('navPlannerBtn');
     if (plannerBtn) {
         if (_loggedIn && _hasPlannerDraft()) {
-            plannerBtn.textContent = '✏️ 작성중인 플랜';
+            plannerBtn.textContent = '작성중인 플랜';
         } else {
-            plannerBtn.textContent = '✈ 플랜';
+            plannerBtn.textContent = '플랜';
         }
     }
     if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
@@ -606,7 +606,7 @@ function _startLockCountdown(totalSeconds, warnEl) {
         return m > 0 ? `${m}분 ${r}초` : `${s}초`;
     }
 
-    warnEl.innerHTML = `🔒 5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
+    warnEl.innerHTML = `5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
     warnEl.style.display = 'flex';
 
     _loginLockTimer = setInterval(() => {
@@ -615,10 +615,10 @@ function _startLockCountdown(totalSeconds, warnEl) {
             clearInterval(_loginLockTimer);
             _loginLockTimer = null;
             _loginLockedUntil = null;
-            warnEl.innerHTML = '✅ 잠금이 해제되었습니다. 다시 로그인해주세요.';
+            warnEl.innerHTML = '잠금이 해제되었습니다. 다시 로그인해주세요.';
             return;
         }
-        warnEl.innerHTML = `🔒 5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
+        warnEl.innerHTML = `5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
     }, 1000);
 }
 
@@ -634,7 +634,7 @@ async function tryLogin() {
         return;
     }
     if (!id || !pw) {
-        w.innerHTML = '⚠️ 아이디와 비밀번호를 입력하세요';
+        w.innerHTML = '아이디와 비밀번호를 입력하세요';
         w.style.display = 'flex';
         return;
     }
@@ -648,8 +648,8 @@ async function tryLogin() {
         } else {
             const failCount = res.data?.failCount;
             w.innerHTML = failCount
-                ? `⚠️ 비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
-                : '⚠️ 아이디 또는 비밀번호를 확인해주세요.';
+                ? `비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
+                : '아이디 또는 비밀번호를 확인해주세요.';
             w.style.display = 'flex';
         }
         return;
@@ -657,7 +657,7 @@ async function tryLogin() {
     w.style.display = 'none';
 
     await _initSession(res.data.accessToken, res.data.refreshToken);
-    toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다! 🎉');
+    toast((_currentUser ? _currentUser.name : id) + '님, 환영합니다');
 
     if (res.data.isPasswordChangeRecommended) {
         setTimeout(() => {
@@ -763,7 +763,7 @@ function _handleOAuthCallback() {
                 setTimeout(function() { startSocialSignup(); }, 800);
             } else {
                 go('main');
-                toast((_currentUser ? _currentUser.name : '') + '님, 환영합니다! 🎉');
+                toast((_currentUser ? _currentUser.name : '') + '님, 환영합니다');
             }
         });
     }
@@ -773,7 +773,7 @@ function _handleOAuthCallback() {
 async function doLogout() {
     await api.post('/api/auth/logout', {});
     Token.clear();
-    // 🎯 [캐시 박멸] 다른 계정 로그인 시 이전 플랜이 남지 않도록 플랜 관련 캐시 전부 제거
+    // [캐시 정리] 다른 계정 로그인 시 이전 플랜이 남지 않도록 플랜 관련 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
     sessionStorage.removeItem('ai_generated_route');
@@ -834,7 +834,7 @@ async function doSocialSignup() {
 }
 function startSocialSignup() {
     var provider = (_currentUser && _currentUser.username && _currentUser.username.startsWith('google')) ? 'google' : 'kakao';
-    var icon     = provider === 'google' ? '🔵' : '🟡';
+    var icon     = provider === 'google' ? 'G' : 'K';
     var iconEl   = document.getElementById('social-signup-icon');
     var noticeEl = document.getElementById('social-signup-notice');
     if (iconEl)   iconEl.textContent = icon;
@@ -859,7 +859,7 @@ async function updateMyPageUI() {
     if (nm) nm.textContent = _currentUser.name  || '';
     if (em) em.textContent = _maskEmail(_currentUser.email);
 
-    // ✨ 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
+    // 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
     const [tripsRes, invitedRes] = await Promise.all([
         api.get('/api/trips'),
         api.get('/api/trips/invited'),
@@ -955,7 +955,7 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
     if (paginated.length > 0) {
         html += paginated.map(x => {
-            // 🎯 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
+            // 삭제 모드일 때는 클릭 시 체크박스가 눌리게 하고, 평소에는 링크로 이동
             const cardClickAction = window._invitedDeleteMode
                 ? `const chk = document.getElementById('chk-invited-${x.id}'); if(chk) chk.checked = !chk.checked;`
                 : `window.location.href='${x.url}'`;
@@ -965,13 +965,13 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
         ${window._invitedDeleteMode ? `
           <input type="checkbox" class="invited-del-chk" id="chk-invited-${x.id}" value="${x.id}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
         ` : ''}
-        <div class="trip-thumb">🤝</div>
+        <div class="trip-thumb">초대</div>
         <div class="trip-info" style="flex:1;">
           <div class="trip-ttl">${x.title || '초대받은 여행 플랜'}</div>
           <div class="trip-meta">${x.destination || '공유받은 지역'}</div>
         </div>
         <div class="trip-budget" style="color:var(--sage); font-size:12px; font-weight:800; min-width:80px; text-align:right;">
-          ${window._invitedDeleteMode ? '<span style="color:var(--text3); font-size:11px; font-weight:600;">선택 대기</span>' : '🔗 연결됨'}
+          ${window._invitedDeleteMode ? '<span style="color:var(--text3); font-size:11px; font-weight:600;">선택 대기</span>' : '연결됨'}
         </div>
       </div>`;
         }).join('');
@@ -990,13 +990,13 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     container.innerHTML = html;
 }
 
-// 🎯 내 초대받은 일정 삭제 모드 토글
+// 내 초대받은 일정 삭제 모드 토글
 function toggleInvitedDeleteMode(isDeleteMode) {
     window._invitedDeleteMode = isDeleteMode;
     _renderMyInvitedTrips(null, window._invitedTripsCurrentPage);
 }
 
-// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (API 연동)
+// 체크박스 선택된 항목들 일괄 삭제 처리 (API 연동)
 async function execInvitedBulkDelete() {
     const chks = document.querySelectorAll('.invited-del-chk:checked');
     if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
@@ -1010,7 +1010,7 @@ async function execInvitedBulkDelete() {
     }
 
     if (successCount > 0) {
-        toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+        toast(`${successCount}개의 일정이 삭제되었습니다.`);
         window._invitedDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
@@ -1022,7 +1022,7 @@ async function execInvitedBulkDelete() {
 // 1. 기존 함수 덮어쓰기 (onclick 부분이 수정됨!)
 window._myTripsData = [];
 window._myTripsCurrentPage = 1;
-const TRIPS_PER_PAGE = 5; // 🎯 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
+const TRIPS_PER_PAGE = 5; // 한 페이지에 보여줄 카드 개수 (필요시 변경하세요)
 window._myTripsDeleteMode = false;
 
 function _renderMyTrips(trips = null, page = 1) {
@@ -1045,7 +1045,7 @@ function _renderMyTrips(trips = null, page = 1) {
     const startIndex = (currentPage - 1) * TRIPS_PER_PAGE;
     const paginatedTrips = allTrips.slice(startIndex, startIndex + TRIPS_PER_PAGE);
 
-    // 🎯 타이틀 옆에 삭제버튼 배치 (초대받은 일정과 동일한 로직)
+    // 타이틀 옆에 삭제버튼 배치 (초대받은 일정과 동일한 로직)
     let html = `
   <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
     <h3 class="my-sec-ttl" style="margin:0;">내 여행 기록</h3>
@@ -1079,7 +1079,7 @@ function _renderMyTrips(trips = null, page = 1) {
             const displayEnd   = x.endDate ? x.endDate.replace(/-/g, '.') : '';
             const displayDest  = x.destination || '';
 
-            // 🎯 삭제 모드일 때 클릭하면 체크박스가 눌리도록 로직 분기
+            // 삭제 모드일 때 클릭하면 체크박스가 눌리도록 로직 분기
             const cardClickAction = window._myTripsDeleteMode
                 ? `const chk = document.getElementById('chk-mytrip-${x.id || x.tripId}'); if(chk) chk.checked = !chk.checked;`
                 : `openMyTrip(${x.id || x.tripId})`;
@@ -1093,7 +1093,7 @@ function _renderMyTrips(trips = null, page = 1) {
           <input type="checkbox" class="mytrip-del-chk" id="chk-mytrip-${x.id || x.tripId}" value="${x.id || x.tripId}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
         ` : ''}
         <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
-                    display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">🗺️</div>
+                    display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">지도</div>
         <div class="trip-info" style="flex:1;">
           <div class="trip-ttl" style="font-weight:700;font-size:14px;">${x.title || '여행 플랜'}</div>
           <div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">${displayStart} ~ ${displayEnd} · ${displayDest}</div>
@@ -1117,13 +1117,13 @@ function _renderMyTrips(trips = null, page = 1) {
     te.innerHTML = html;
 }
 
-// 🎯 내 여행 기록 삭제 모드 토글
+// 내 여행 기록 삭제 모드 토글
 function toggleMyTripsDeleteMode(isDeleteMode) {
     window._myTripsDeleteMode = isDeleteMode;
     _renderMyTrips(null, window._myTripsCurrentPage);
 }
 
-// 🎯 체크박스 선택된 항목들 일괄 삭제 처리 (새로 만든 API 연동)
+// 체크박스 선택된 항목들 일괄 삭제 처리 (새로 만든 API 연동)
 async function execMyTripsBulkDelete() {
     const chks = document.querySelectorAll('.mytrip-del-chk:checked');
     if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
@@ -1132,12 +1132,12 @@ async function execMyTripsBulkDelete() {
     let successCount = 0;
     for (const chk of chks) {
         const id = chk.value;
-        const res = await api.del('/api/trips/' + id); // 🚀 새로 추가한 백엔드 API 호출!
+        const res = await api.del('/api/trips/' + id); // 새로 추가한 백엔드 API 호출!
         if (res.success) successCount++;
     }
 
     if (successCount > 0) {
-        toast(`✅ ${successCount}개의 일정이 삭제되었습니다.`);
+        toast(`${successCount}개의 일정이 삭제되었습니다.`);
         window._myTripsDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
@@ -1147,22 +1147,22 @@ async function execMyTripsBulkDelete() {
 
 // 2. 새로 추가할 함수 (_renderMyTrips 함수 바로 밑에 붙여넣어 주세요)
 function openMyTrip(tripId) {
-    // ✨ 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
+    // 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
     window._currentTripId = tripId;
     sessionStorage.setItem('plannerDraftId', tripId);
 
-    // 🔁 내 여행 기록에서 진입 → 1·2·3 단계 폼/대화를 백엔드 기준으로 다시 채워야 함을 표시.
+    // 내 여행 기록에서 진입 → 1·2·3 단계 폼/대화를 백엔드 기준으로 다시 채워야 함을 표시.
     window._planHydrateTripId = tripId;
     window._chatRestored      = false;
     sessionStorage.removeItem('plannerDraftStep');
     sessionStorage.removeItem('plannerDraftState');
 
-    // 🎯 [핵심 버그 수정]: 다른 일정으로 바꿀 때 기존에 쌓여있던 교체 요청 대기열을 완전히 박멸(초기화)합니다.
+    // [핵심 버그 수정]: 다른 일정으로 바꿀 때 기존에 쌓여있던 교체 요청 대기열을 완전히 비움합니다.
     window._q = [];
     if (typeof _q !== 'undefined') _q = [];
-    // 🎯 [지역 캐시 박멸]: 이전 플랜의 목적지가 남아 엉뚱한 지역 지도가 뜨는 것을 방지
+    // [지역 캐시 정리]: 이전 플랜의 목적지가 남아 엉뚱한 지역 지도가 뜨는 것을 방지
     window._mapDestRegion = null;
-    // 🎯 교체 요청 레이아웃 바 및 접혀있던 토글 안내판도 깨끗하게 초기 상태로 원상복구합니다.
+    // 교체 요청 레이아웃 바 및 접혀있던 토글 안내판도 깨끗하게 초기 상태로 원상복구합니다.
     const rb = document.getElementById('recalcBar');
     if (rb) rb.style.display = 'none';
     const qBox = document.getElementById('queueBox');
@@ -1172,7 +1172,7 @@ function openMyTrip(tripId) {
 
     // 맵 전환 시 이전 데이터 잔상이 보이지 않도록 화면 백지화
     const listEl = document.getElementById('mapDayList');
-    if (listEl) listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--sage-d);font-weight:700;">✨ 여행 정보를 불러오는 중...</div>';
+    if (listEl) listEl.innerHTML = '<div style="padding:40px 20px;text-align:center;color:var(--sage-d);font-weight:700;">여행 정보를 불러오는 중...</div>';
 
     if (window._kakaoOverlays) window._kakaoOverlays.forEach(o => o.overlay.setMap(null));
     if (window._kakaoPolylines) window._kakaoPolylines.forEach(p => p.line.setMap(null));
@@ -1203,9 +1203,9 @@ async function _renderMyReviews() {
     <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
       <div class="post-ttl" style="margin-top:5px">${r.title}</div>
       <div class="post-foot">
-        <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+        <div class="post-stats"><span class="post-stat">좋아요 ${r.likes}</span>${r.views ? `<span class="post-stat">조회 ${r.views}</span>` : ''}</div>
         <div style="display:flex;gap:6px">
-          <button class="btn-scrap" onclick="event.stopPropagation();openMyReviewEdit(${r.postId})">✏️ 수정</button>
+          <button class="btn-scrap" onclick="event.stopPropagation();openMyReviewEdit(${r.postId})">수정</button>
           <button class="btn-scrap" style="color:var(--coral);border-color:var(--coral)" onclick="event.stopPropagation();deleteMyPost(${r.postId})">삭제</button>
         </div>
       </div>
@@ -1251,7 +1251,7 @@ async function _renderMyLikedPosts() {
     listEl.innerHTML = liked.map(r => `
     <div class="post-card"><span class="post-cat ${r.catClass}">${r.catLabel}</span>
       <div class="post-ttl" style="margin-top:5px">${r.title}</div>
-      <div class="post-stats"><span class="post-stat">❤️ ${r.likes}</span>${r.views ? `<span class="post-stat">👁 ${r.views}</span>` : ''}</div>
+      <div class="post-stats"><span class="post-stat">좋아요 ${r.likes}</span>${r.views ? `<span class="post-stat">조회 ${r.views}</span>` : ''}</div>
     </div>
   `).join('');
 }
@@ -1296,7 +1296,7 @@ function buildEditHTML(u, isSocial) {
     const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option>${provinceOpts}</select><select class="form-input" id="edit-region-city" style="flex:1">${cityOpts}</select></div></div>`;
     const pwHtml = isSocial ? '' : `<hr style="border:none;border-top:1px solid var(--border2);margin:14px 0"><div class="form-group"><label class="form-label">새 비밀번호</label><input class="form-input" type="password" id="edit-newpw" placeholder="새 비밀번호 8자 이상"></div><div class="form-group"><label class="form-label">새 비밀번호 확인</label><input class="form-input" type="password" id="edit-newpw2" placeholder="새 비밀번호 재입력"></div>`;
     const ds = 'style="background:var(--cream2);color:var(--text3);cursor:not-allowed"';
-    const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">🟡 카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
+    const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
     return socialNotice
         + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
         + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${_maskEmail(u.email||'')}" disabled ${ds}></div>`
@@ -1490,7 +1490,7 @@ function closeNotifPopup() {
 //                 background:${n.isRead ? 'var(--cream)' : 'var(--sage-pale)'};
 //                 border:1px solid ${n.isRead ? 'var(--border2)' : 'var(--sage-l)'}">
 //       <div style="display:flex;align-items:flex-start;gap:9px">
-//         <span style="font-size:18px;flex-shrink:0">📢</span>
+//         <span style="font-size:18px;flex-shrink:0"></span>
 //         <div style="flex:1;min-width:0">
 //           <div style="font-size:12px;font-weight:700;margin-bottom:3px">${n.title || ''}</div>
 //           <div style="font-size:12px;color:var(--text2);line-height:1.6">${n.content || ''}</div>
@@ -1532,11 +1532,11 @@ function renderNotifList() {
     }
 
     function notifIcon(type) {
-        if (type === 'ACCOUNT_SUSPENDED') return '🚫';
-        if (type === 'REPORT_REJECTED')   return '↩️';
-        if (type === 'POST_DELETED')      return '🗑️';
-        if (type === 'ROLE_CHANGED')      return '🔑';
-        return '📢';
+        if (type === 'ACCOUNT_SUSPENDED') return '정지';
+        if (type === 'REPORT_REJECTED')   return '반려';
+        if (type === 'POST_DELETED')      return '삭제';
+        if (type === 'ROLE_CHANGED')      return '권한';
+        return '알림';
     }
 
     list.innerHTML = _userNotifs.map((n) => `
@@ -1572,7 +1572,7 @@ async function deleteNotif(notifId) {
 /** GET /api/maps/places?keyword={key} */
 async function showMapPlacePopup(key, type) {
     const modal = document.getElementById('mapPlaceModal');
-    const tl = type === 'stay' ? '🏨 숙소' : type === 'food' ? '🍽️ 맛집' : '📍 관광지';
+    const tl = type === 'stay' ? '숙소' : type === 'food' ? '맛집' : '관광지';
     document.getElementById('mpPlace').textContent = key;
     document.getElementById('mpType').textContent = tl;
     document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">불러오는 중...</div>';
@@ -1588,7 +1588,7 @@ async function showMapPlacePopup(key, type) {
         naviEl.innerHTML = pin
             ? `<a href="https://map.kakao.com/link/to/${encodeURIComponent(displayName)},${pin.lat},${pin.lng}" target="_blank"
            style="display:block;width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;
-           text-decoration:none;text-align:center;font-size:13px;font-weight:700;margin-bottom:12px;box-sizing:border-box">🚗 카카오맵으로 길찾기</a>`
+           text-decoration:none;text-align:center;font-size:13px;font-weight:700;margin-bottom:12px;box-sizing:border-box">카카오맵으로 길찾기</a>`
             : '';
     }
 
@@ -1607,7 +1607,7 @@ async function showMapPlacePopup(key, type) {
         return;
     }
 
-    let h = `<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--sage-d)">💬 방문 후기 (${reviews.length}개)</div>`;
+    let h = `<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--sage-d)">방문 후기 (${reviews.length}개)</div>`;
     reviews.forEach(r => {
         const stars = '★'.repeat(Math.floor(r.rating || 0)) + '☆'.repeat(5 - Math.floor(r.rating || 0));
         h += `<div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer"
@@ -1628,9 +1628,9 @@ async function showMapPlacePopup(key, type) {
 
 function getMapLinks(q) {
     const e = encodeURIComponent(q);
-    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>`
-        + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>`
-        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>`;
+    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">네이버 지도</a>`
+        + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">카카오맵</a>`
+        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">구글 맵</a>`;
 }
 
 function showReviewDetail(place, type, stars, text) {
@@ -1649,7 +1649,7 @@ function showReviewDetail(place, type, stars, text) {
 
 /** POST /api/chat/sessions : 플래너 입력 후 챗봇 세션 생성 */
 async function startChatWithSummary() {
-    // 🔁 복원된(기존 여행 기록에서 불러온) 대화가 이미 떠 있으면 새 세션으로 덮어쓰지 않는다.
+    // 복원된(기존 여행 기록에서 불러온) 대화가 이미 떠 있으면 새 세션으로 덮어쓰지 않는다.
     if (window._chatRestored) {
         if (typeof updateSummaryCard === 'function') updateSummaryCard();
         return;
@@ -1747,7 +1747,7 @@ async function startChatWithSummary() {
         ];
 
         sourceHtml = '<br><br><hr style="border:none;border-top:1px solid rgba(0,0,0,.08);margin:10px 0">'
-            + '📌 <strong>커뮤니티 원본 플랜에서 반영된 값</strong><br>'
+            + '<strong>커뮤니티 원본 플랜에서 반영된 값</strong><br>'
             + sourceRows
                 .map(function (row) { return safe(row[0]) + ': <strong>' + safe(row[1]) + '</strong>'; })
                 .join('<br>');
@@ -1764,8 +1764,8 @@ async function startChatWithSummary() {
     }
 
     addBubble(
-        '입력 정보를 정리해드릴게요 📋<br><br>'
-        + '✅ <strong>현재 여행 계획에 반영된 값</strong><br>'
+        '입력 정보를 정리해드릴게요<br><br>'
+        + '<strong>현재 여행 계획에 반영된 값</strong><br>'
         + currentHtml
         + sourceHtml
         + '<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!',
@@ -1779,7 +1779,7 @@ function startChat() {
     const msgs = document.getElementById('chatMsgs');
     if (!msgs) return;
     msgs.innerHTML = '';
-    addBubble('안녕하세요! AI 여행 플래너입니다 ✈<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','🐕 강아지','일정 생성'], true);
+    addBubble('안녕하세요! AI 여행 플래너입니다<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','강아지','일정 생성'], true);
 }
 
 /* ───────────────────────────────────────────────
@@ -1825,7 +1825,7 @@ async function sendMsg() {
     loadingDiv.id = loadingId;
     loadingDiv.className = 'cmsg';
     loadingDiv.innerHTML = `
-  <div class="cav bot">🤖</div>
+  <div class="cav bot">AI</div>
   <div>
     <div class="cbubble bot" style="display:flex; align-items:center; gap:4px; min-height: 38px;">
       <div class="typing-dot"></div>
@@ -2158,7 +2158,7 @@ async function openSummaryEdit(field, domId, label) {
         });
     }
 
-    toast(`✅ ${label} 수정 완료`);
+    toast(`${label} 수정 완료`);
 }
 
 function addBubble(txt, role, qrs, isHtml) {
@@ -2169,7 +2169,7 @@ function addBubble(txt, role, qrs, isHtml) {
         // isHtml=true 면 코드가 직접 만든 안전한 HTML이므로 그대로 사용,
         // 아니면 AI 응답이므로 마크다운 변환 + 이스케이프 처리
         const inner = isHtml ? txt : formatBotReply(txt);
-        d.innerHTML = `<div class="cav bot">🤖</div><div><div class="cbubble bot">${inner}</div>`
+        d.innerHTML = `<div class="cav bot">AI</div><div><div class="cbubble bot">${inner}</div>`
             + (qrs ? '<div class="qr-row">' + qrs.map(q => `<button class="qr-btn" onclick="document.getElementById('chatInp').value='${q}';sendMsg()">${q}</button>`).join('') + '</div>' : '')
             + '</div>';
     } else {
@@ -2179,7 +2179,7 @@ function addBubble(txt, role, qrs, isHtml) {
     msgs.scrollTop = msgs.scrollHeight;
 }
 
-/* 🎯 [신규] 챗봇 답변 포맷터 — XSS 방지 + 마크다운 → HTML 변환
+/* [신규] 챗봇 답변 포맷터 — XSS 방지 + 마크다운 → HTML 변환
  *  - 먼저 HTML 특수문자를 이스케이프해 스크립트 주입을 막고,
  *  - 그 다음 **굵게**, *기울임*, - 목록, 줄바꿈 등을 안전한 태그로 바꾼다. */
 function escapeHtmlBubble(s) {
@@ -2455,7 +2455,7 @@ function startPlanFromCard(data) {
     const sd=document.getElementById('sum-dest');    if(sd) sd.textContent = data.dest||'';
     const sp=document.getElementById('sum-people');  if(sp) sp.textContent = data.people?(data.people+'인'):'';
     const sb=document.getElementById('sum-budget');  if(sb) sb.textContent = data.budget?('₩'+data.budget.toLocaleString()):'';
-    toast((data.dest||'') + ' 여행 플랜을 시작합니다 ✈');
+    toast((data.dest||'') + ' 여행 플랜을 시작합니다');
 }
 
 /* ───────────────────────────────────────────────
@@ -2515,7 +2515,7 @@ function startPlanFromCuration(curationId) {
         }
     }, 150);
 
-    toast((c.title || '') + ' 큐레이션으로 플랜을 시작합니다 ✈');
+    toast((c.title || '') + ' 큐레이션으로 플랜을 시작합니다');
 }
 
 /** 큐레이션의 칩 선택값 + 추천 숙소/맛집을 플래너 화면에 적용 (사용자가 그 후 자유롭게 변경 가능) */
@@ -2552,11 +2552,11 @@ function _applyCurationPreferences(c) {
     // 위 필드가 없으면 days에서 fallback
     if (!recoRows.length) {
         (extra.days || []).forEach(day => (day.places || []).forEach(p => {
-            if (p.type === '🏨 숙소')        recoRows.push({ label: '관리자 추천 숙소', value: p.name });
-            else if (p.type === '🍽️ 맛집')   recoRows.push({ label: '관리자 추천 맛집', value: p.name });
-            else if (p.type === '📍 관광지')  recoRows.push({ label: '관리자 추천 관광지', value: p.name });
-            else if (p.type === '☕ 카페')    recoRows.push({ label: '관리자 추천 카페', value: p.name });
-            else if (p.type === '🎭 문화')    recoRows.push({ label: '관리자 추천 문화', value: p.name });
+            if (p.type === '숙소')        recoRows.push({ label: '관리자 추천 숙소', value: p.name });
+            else if (p.type === '맛집')   recoRows.push({ label: '관리자 추천 맛집', value: p.name });
+            else if (p.type === '관광지')  recoRows.push({ label: '관리자 추천 관광지', value: p.name });
+            else if (p.type === '카페')    recoRows.push({ label: '관리자 추천 카페', value: p.name });
+            else if (p.type === '문화')    recoRows.push({ label: '관리자 추천 문화', value: p.name });
         }));
     }
 
@@ -2841,7 +2841,7 @@ function goPlanStep(n) {
         document.getElementById('navPlannerBtn')?.classList.add('on');
     }
 
-    // 🔁 내 여행 기록에서 진입(openMyTrip) 했고 아직 폼을 안 채웠다면,
+    // 내 여행 기록에서 진입(openMyTrip) 했고 아직 폼을 안 채웠다면,
     //    백엔드에서 1·2·3 단계(기본/취향/대화)를 먼저 복원한 뒤 같은 단계로 다시 진입.
     if (n <= 3 && window._planHydrateTripId && String(window._planHydrateTripId) === String(window._currentTripId)) {
         const _tid = window._planHydrateTripId;
@@ -2911,7 +2911,7 @@ function toggleMarker(btn, type) {
 
     if (window._kakaoOverlays && window._kakaoMap) {
         window._kakaoOverlays.filter(o => {
-            // 💡 핵심: AI가 'tour' 대신 'sight', 'attraction' 등으로 지어낸 경우까지 모두 관광지로 묶어서 강제 필터링!
+            // 핵심: AI가 'tour' 대신 'sight', 'attraction' 등으로 지어낸 경우까지 모두 관광지로 묶어서 강제 필터링!
             if (type === 'tour') {
                 return ['tour', 'sight', 'attraction', 'place'].includes(o.type);
             }
@@ -2923,7 +2923,7 @@ function toggleMarker(btn, type) {
         document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
     }
 
-    toast(btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,'') + (isOn ? ' 표시' : ' 숨김'));
+    toast(btn.textContent.trim() + (isOn ? ' 표시' : ' 숨김'));
 }
 
 /* ───────────────────────────────────────────────
@@ -3003,7 +3003,7 @@ async function execAllReplace() {
         if (res.success && res.data) {
             toast('AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
 
-            // ✨ 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
+            // 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
             let cleanJson = res.data;
             if (typeof cleanJson === 'string' && cleanJson.includes('[')) {
                 cleanJson = cleanJson.substring(cleanJson.indexOf('['), cleanJson.lastIndexOf(']') + 1);
@@ -3076,16 +3076,16 @@ function addPlanItem(btn) {
     const div=document.createElement('div'); div.className='pdb-item';
     div.style.cssText='flex-direction:column;align-items:flex-start;gap:8px;margin-top:6px';
     div.innerHTML=`<div style="display:flex;align-items:center;gap:8px;width:100%">
-    <span class="pdb-type-icon">📍</span>
+    <span class="pdb-type-icon">곳</span>
     <input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">
     <button class="btn-pdb-rm" onclick="this.closest('.pdb-item').remove()" style="flex-shrink:0">✕</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
     <select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
-      <option value="관광지">📍 관광지</option>
-      <option value="숙소">🏨 숙소</option>
-      <option value="맛집">🍽️ 맛집</option>
-      <option value="카페">☕ 카페</option>
+      <option value="관광지">관광지</option>
+      <option value="숙소">숙소</option>
+      <option value="맛집">맛집</option>
+      <option value="카페">카페</option>
     </select>
     <input type="time" value="10:00" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
     <input type="number" placeholder="금액(원)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">
@@ -3097,7 +3097,7 @@ function addPlanItem(btn) {
 var _reportAction = 'hide';
 function openReportAction(type, id, post, reporter, reason) {
     _reportAction=type; const isDelete=(type==='hide');
-    document.getElementById('reportActionTitle').textContent = isDelete?'🙈 숨김 처리':'↩️ 신고 반려 처리';
+    document.getElementById('reportActionTitle').textContent = isDelete?'숨김 처리':'↩신고 반려 처리';
     document.getElementById('ra-id').textContent=id; document.getElementById('ra-post').textContent=post;
     document.getElementById('ra-reporter').textContent=reporter; document.getElementById('ra-reason').textContent=reason;
     document.getElementById('ra-reason-label').innerHTML=(isDelete?'숨김 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
@@ -3122,7 +3122,7 @@ async function confirmSuspend() {
     const notifyMsg=document.getElementById('su-notify-msg')?.value||'';
     const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r, notifyMessage:notifyMsg});
     closeSuspendModal();
-    toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'⚠️ 정지 처리에 실패했습니다.');
+    toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'정지 처리에 실패했습니다.');
     if(res.success) loadAdminUsers();
 }
 
@@ -3137,7 +3137,7 @@ async function confirmReportAction() {
     closeReportAction();
     toast(res.success
         ? (_reportAction==='hide'?'숨김 처리 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
-        : '⚠️ 처리에 실패했습니다.');
+        : '처리에 실패했습니다.');
     if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
 }
 
@@ -3158,7 +3158,7 @@ async function changeRole(action, userId, username) {
         if (data.success) {
             toast(`${label} 완료`);
             // 회원 목록 새로고침
-            loadAdminUsers(); // ★ 회원 목록만 새로고침
+            loadAdminUsers(); // 회원 목록만 새로고침
         } else {
             toast('처리 실패: ' + (data.message || ''));
         }
@@ -3236,7 +3236,7 @@ function openShareModal() {
     const linkEl = document.getElementById('share-link-val');
 
     if (linkEl && tripId) {
-        // 🎯 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
+        // 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
         const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
         linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     }
@@ -3267,20 +3267,20 @@ function shareInviteToKakaoTalk() {
             obscureToken = parseInt(tripId).toString(16);
         }
 
-        // 🎯 [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성
+        // [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성
         const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
 
         // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
         Kakao.Share.sendDefault({
             objectType: 'feed',
             content: {
-                title: '✈️ 체크인 여행 플랜 공유',
-                description: `🔗 플랜 열람 링크: ${inviteUrl}`,
+                title: '체크인 여행 플랜 공유',
+                description: `플랜 열람 링크: ${inviteUrl}`,
                 imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400',
                 link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl }
             },
             buttons: [
-                { title: '🗺️ 여행 일정 열람하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
+                { title: '여행 일정 열람하기', link: { mobileWebUrl: inviteUrl, webUrl: inviteUrl } }
             ]
         });
         toast('카카오톡 초대 창이 활성화되었습니다.');
@@ -3296,12 +3296,12 @@ async function loadShareMembersData() {
     const linkEl = document.getElementById('share-link-val');
 
     if (!tripId) {
-        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">⚠️ 저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
         if(linkEl) linkEl.value = '';
         return;
     }
 
-    // 🎯 화면 로드 시에도 링크 창에 완벽한 난수 주소가 유지되도록 체결
+    // 화면 로드 시에도 링크 창에 완벽한 난수 주소가 유지되도록 체결
     const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
     if(linkEl) linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
@@ -3650,19 +3650,19 @@ function _applyDestText(val) {
 }
 
 const _md = {
-    jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'🌊 제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'🦞',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'☕',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
+    jeju:     {tags:['시즌 큐레이션','초여름'],ttl:'제주 에메랄드 해안 3박 4일',budget:'₩425,000~',places:'8곳',dur:'3박 4일',stay:'협재 오션뷰 풀빌라 외 1건',foods:[{icon:'맛',name:'민락어민활어직판장 횟집',r:'4.6'},{icon:'맛',name:'오션뷰 카페 에메랄드힐',r:'4.8'}],
         coords:[{lat:33.5097,lng:126.4927},{lat:33.3946,lng:126.2390},{lat:33.2450,lng:126.4122},{lat:33.3617,lng:126.5292},{lat:33.4583,lng:126.9425},{lat:33.5008,lng:126.9519}]},
-    seorak:   {tags:['가을 특선','10월 단풍'],ttl:'🍁 설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'🍜',name:'속초 닭강정 명가',r:'4.5'}],
+    seorak:   {tags:['가을 특선','10월 단풍'],ttl:'설악산 단풍 트레킹 2박 3일',budget:'₩380,000~',places:'6곳',dur:'2박 3일',stay:'설악동 게스트하우스 외 1건',foods:[{icon:'맛',name:'속초 닭강정 명가',r:'4.5'}],
         coords:[{lat:38.2070,lng:128.5918},{lat:38.2100,lng:128.5927},{lat:38.1190,lng:128.4654},{lat:38.1600,lng:128.4750},{lat:38.2070,lng:128.5918}]},
-    gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'🌸 경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'🍞',name:'황남빵 카페',r:'4.7'}],
+    gyeongju: {tags:['봄 기획','벚꽃 시즌'],ttl:'경주 벚꽃 역사 기행 1박 2일',budget:'₩290,000~',places:'7곳',dur:'1박 2일',stay:'경주 한옥 스테이 외 1건',foods:[{icon:'맛',name:'황남빵 카페',r:'4.7'}],
         coords:[{lat:35.8394,lng:129.2117},{lat:35.8347,lng:129.2198},{lat:35.8344,lng:129.2253},{lat:35.7896,lng:129.3317},{lat:35.7947,lng:129.3473}]},
-    busan:    {tags:['여름 특선','서핑 시즌'],ttl:'🏄 부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'🐟',name:'자갈치시장 회',r:'4.6'}],
+    busan:    {tags:['여름 특선','서핑 시즌'],ttl:'부산 해운대 서핑 투어 2박 3일',budget:'₩620,000~',places:'9곳',dur:'2박 3일',stay:'해운대 호텔 외 1건',foods:[{icon:'맛',name:'자갈치시장 회',r:'4.6'}],
         coords:[{lat:35.1628,lng:129.1603},{lat:35.1533,lng:129.1186},{lat:35.0979,lng:129.0378},{lat:35.0590,lng:129.0850},{lat:35.0970,lng:129.0127}]},
-    gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'☕ 강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'☕',name:'테라로사 강릉본점',r:'4.9'}],
+    gangneung:{tags:['커뮤니티 인기','힐링'],ttl:'강릉 바다+커피 힐링 루트',budget:'₩480,000~',places:'10곳',dur:'2박 3일',stay:'안목해변 오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'테라로사 강릉본점',r:'4.9'}],
         coords:[{lat:37.7958,lng:128.9004},{lat:37.7746,lng:128.9415},{lat:37.6847,lng:129.0527},{lat:37.7654,lng:128.9083},{lat:37.7755,lng:128.8745}]},
-    jeonju:   {tags:['가성비 TOP','한식'],ttl:'🍚 전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'🍚',name:'비빔밥 명가',r:'4.8'}],
+    jeonju:   {tags:['가성비 TOP','한식'],ttl:'전주 한옥마을 미식 기행 1박 2일',budget:'₩320,000~',places:'8곳',dur:'1박 2일',stay:'전통 한옥 스테이 외 1건',foods:[{icon:'맛',name:'비빔밥 명가',r:'4.8'}],
         coords:[{lat:35.8196,lng:127.1474},{lat:35.8196,lng:127.1504},{lat:35.8175,lng:127.1523},{lat:35.8162,lng:127.1551},{lat:35.8122,lng:127.1529}]},
-    namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'🏝 남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'🐙',name:'바다낙지 식당',r:'4.5'}],
+    namhae:   {tags:['커뮤니티 인기','액티비티'],ttl:'남해 독일마을+다랭이마을 2박 3일',budget:'₩620,000~',places:'7곳',dur:'2박 3일',stay:'오션뷰 펜션 외 1건',foods:[{icon:'맛',name:'바다낙지 식당',r:'4.5'}],
         coords:[{lat:34.9035,lng:127.9013},{lat:34.8369,lng:127.9211},{lat:34.7738,lng:127.9076},{lat:34.7990,lng:128.0448},{lat:34.8768,lng:128.0272}]}
 };
 
@@ -3785,7 +3785,7 @@ function openPreview(key) {
         // 맛집 리스트 (이름 기반, 평점은 데이터에 없으므로 표시 생략)
         const foods = en.adminRecommendedRestaurants || [];
         const foodHtml = foods.length
-            ? foods.map(f => `<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">🍽️</span>${_escSafe(f)}</div></div>`).join('')
+            ? foods.map(f => `<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">맛</span>${_escSafe(f)}</div></div>`).join('')
             : '<div style="color:#888;font-size:13px;padding:4px 0">등록된 맛집 정보가 없습니다.</div>';
 
         if (el('prevTags'))     el('prevTags').innerHTML      = tags.map(t => `<span class="prev-tag">${_escSafe(t)}</span>`).join('');
@@ -3943,7 +3943,7 @@ window.addEventListener('popstate', async e => {
     const p = e.state?.page || 'main';
     const step = e.state?.step;
 
-    // 🎯 [뒤로가기 가드]: 이전 페이지가 지도였고, 현재 수정 중인 상태(확정하지 않은 상태)라면 뒤로가기 가드 실행
+    // [뒤로가기 가드]: 이전 페이지가 지도였고, 현재 수정 중인 상태(확정하지 않은 상태)라면 뒤로가기 가드 실행
     const prevPage = sessionStorage.getItem('currentPage');
     if (prevPage === 'map' && p !== 'map' && window._planConfirmed === false) {
         // 이미 히스토리는 넘어갔으므로 제자리 유지를 위해 히스토리를 임시로 map 상태로 강제 복구
@@ -4016,9 +4016,9 @@ window.addEventListener('popstate', async e => {
     // OAuth 콜백 처리 (URL에 토큰이 있을 경우)
     _handleOAuthCallback();
 
-    // ✨ 공유 링크 접속 시 URL에서 token(난수) 추출 후 원본 id 복원 및 읽기 전용 UI 처리
+    // 공유 링크 접속 시 URL에서 token(난수) 추출 후 원본 id 복원 및 읽기 전용 UI 처리
     const params = new URLSearchParams(location.search);
-    const shareToken = params.get('token'); // 🎯 token 난수 파라미터 읽기
+    const shareToken = params.get('token'); // token 난수 파라미터 읽기
     const token = Token.getAccess();
 
     // 난수 토큰이 존재하면 역으로 디코딩하여 원본 숫자로 복원
@@ -4033,7 +4033,7 @@ window.addEventListener('popstate', async e => {
         }
     }
 
-    // 🔒 공유 링크(?token=난수값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
+    // 공유 링크(?token=난수값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
     if (shareToken && !location.pathname.includes('/plan/view') && !token) {
         // 1. 현재 가려던 초대 링크 전체 주소를 브라우저 임시 창고에 박아둡니다.
         sessionStorage.setItem('redirectUrl', location.pathname + location.search);
@@ -4048,7 +4048,7 @@ window.addEventListener('popstate', async e => {
         }, 100);
 
         document.body.style.visibility = 'visible';
-        return; // 🚨 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 중단시킵니다.
+        return; // 핵심 가드: 아래쪽 지도 그리거나 메인 가는 다른 초기화 코드를 전부 중단시킵니다.
     }
 
     // 복원된 고유 ID로 기존 지도 연동 시스템 매핑 체결
@@ -4057,7 +4057,7 @@ window.addEventListener('popstate', async e => {
         sessionStorage.setItem('plannerDraftId', sharedId);
         sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
 
-        // 🚨 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
+        // 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
         if (location.pathname.includes('/plan/view')) {
 
             // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
@@ -4081,7 +4081,7 @@ window.addEventListener('popstate', async e => {
                 const logoEl = document.querySelector('.logo') || document.querySelector('.nav-logo') || document.querySelector('header a');
 
                 if (logoEl) {
-                    // 🚨 로고의 a 태그 링크를 완전히 폭파시키고 클릭 이벤트 강제 정지
+                    // 로고의 a 태그 링크를 완전히 폭파시키고 클릭 이벤트 강제 정지
                     logoEl.removeAttribute('href');
                     logoEl.onclick = function(e) { e.preventDefault(); return false; };
                     logoEl.style.pointerEvents = 'none';
@@ -4090,11 +4090,11 @@ window.addEventListener('popstate', async e => {
                     if (!document.getElementById('tryCheckinBtn')) {
                         const tryBtn = document.createElement('a');
                         tryBtn.id = 'tryCheckinBtn';
-                        tryBtn.href = window.location.origin; // 🚀 클릭 시 이동할 타겟 메인 주소
-                        tryBtn.target = '_blank';              // 🚀 무조건 새 창으로 열기
+                        tryBtn.href = window.location.origin; // 클릭 시 이동할 타겟 메인 주소
+                        tryBtn.target = '_blank';              // 무조건 새 창으로 열기
                         tryBtn.style.textDecoration = 'none';
                         tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
-                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">🚀 체크인 사용해보기</span>';
+                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">체크인 사용해보기</span>';
 
                         // 로고 바로 오른쪽에 버튼 삽입
                         logoEl.parentNode.insertBefore(tryBtn, logoEl.nextSibling);
@@ -4114,7 +4114,7 @@ window.addEventListener('popstate', async e => {
                 toast('읽기 전용으로 플랜을 열람합니다.');
             }, 800);
         }else {
-            // 🎯 [신규] 읽기 전용이 아닌 '수정 권한' 링크로 접근한 경우, 초대된 일정 뷰어임을 명시
+            // [신규] 읽기 전용이 아닌 '수정 권한' 링크로 접근한 경우, 초대된 일정 뷰어임을 명시
             window._isInvitedEditView = true;
         }
     }
@@ -4249,7 +4249,7 @@ function initWithdrawSection() {
     // 계정 타입에 따른 화면 분기
     if (_currentUser.isSocial) {
         if (warnEl) warnEl.innerHTML =
-            '🔗 소셜 계정 탈퇴 시 카카오·구글과의 연결이 즉시 해제됩니다.<br>' +
+            '소셜 계정 탈퇴 시 카카오·구글과의 연결이 즉시 해제됩니다.<br>' +
             '• 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>' +
             '• 탈퇴 후 복구는 불가능합니다.<br>' +
             "• 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.";

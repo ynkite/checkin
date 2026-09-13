@@ -120,7 +120,7 @@
     <span class="brand logo-full"><svg class="brand-mk" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.2 L7.6 15.6 L17 4.6"/></svg><span class="brand-tx">체크인</span></span>
     <span class="brand logo-symbol"><svg class="brand-mk" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.2 L7.6 15.6 L17 4.6"/></svg><span class="brand-tx">체크인</span></span>
   </div>
-  <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')">☰</button>
+  <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="nav-links">
     <button class="nav-link on" onclick="goHomeRefresh()">홈</button>
     <button class="nav-link" onclick="goRefresh('community')">커뮤니티</button>
@@ -154,7 +154,7 @@
     <button class="btn-f" id="navSignupBtn" onclick="go('signup')">체크인 시작</button>
     <div id="navBellWrapper" style="position:relative;display:inline-flex;align-items:center;margin-right:8px;">
       <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
-      background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; line-height:1;">🔔</button>
+      background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; line-height:1;"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.6a6 6 0 1 0-12 0c0 6-2.2 7.4-2.2 7.4h16.4S18 14.6 18 8.6"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></button>
       <span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-7px;
         background:#e53e3e;color:#fff;border-radius:50%;min-width:18px;height:18px;
         font-size:10px;font-weight:700;text-align:center;line-height:18px;
@@ -193,7 +193,7 @@
      style="display:none;position:fixed;top:60px;right:16px;width:580px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
   <div
           style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
-    <div style="font-size:14px;font-weight:700">🔔 알림</div>
+    <div style="font-size:14px;font-weight:700">알림</div>
     <button onclick="closeNotifPopup()"
             style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3)">✕</button>
   </div>
@@ -210,7 +210,7 @@
 <div id="reportPostModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportPostModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
   <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-    <div style="font-size:16px;font-weight:700;margin-bottom:16px">🚨 게시글 신고</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">게시글 신고</div>
     <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
     <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
@@ -233,7 +233,7 @@
 <div id="reportCommentModal" style="display:none;position:fixed;inset:0;z-index:2100;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportCommentModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
   <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
-    <div style="font-size:16px;font-weight:700;margin-bottom:16px">🚨 댓글 신고</div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:16px">댓글 신고</div>
     <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
     <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
@@ -283,7 +283,7 @@
       <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M3.4 13.2 21 5.6l-4.2 6.2 1.2 6.6-3.8-3.4-4.4 3.4.6-4.4z"/></svg></span><span class="bnav-lbl">플랜</span>
     </button>
     <button class="bnav-item" data-page="mypage"    onclick="go(_loggedIn?'mypage':'login')">
-      <span class="bnav-icon">👤</span><span class="bnav-lbl">마이페이지</span>
+      <span class="bnav-icon">내</span><span class="bnav-lbl">마이페이지</span>
     </button>
   </div>
 </div>
@@ -318,8 +318,8 @@
     <div class="foot-col">
       <h4>고객지원</h4>
       <ul>
-        <li><a href="mailto:Triplinker0@gmail.com">✉️ Triplinker0@gmail.com</a></li>
-        <li><a href="https://github.com/ynkite/checkin" target="_blank" rel="noopener">🔗 GitHub</a></li>
+        <li><a href="mailto:Triplinker0@gmail.com">Triplinker0@gmail.com</a></li>
+        <li><a href="https://github.com/ynkite/checkin" target="_blank" rel="noopener">GitHub</a></li>
       </ul>
     </div>
 
@@ -353,7 +353,6 @@
 <div id="unsavedChangesModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
   <div onclick="closeUnsavedChangesModal()" style="position:absolute; inset:0; background:rgba(0,0,0,.45)"></div>
   <div style="position:relative; background:var(--surface,#fff); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
-    <div style="font-size:32px; margin-bottom:12px;">✏️</div>
     <div style="font-size:16px; font-weight:700; color:var(--text,#111); margin-bottom:10px;">저장되지 않은 변경사항</div>
     <div style="font-size:13px; color:var(--text3,#888); line-height:1.5; margin-bottom:22px;">
       수정 중인 내용이 아직 확정되지 않았습니다.<br>현재 상태로 저장하고 이동하시겠습니까?

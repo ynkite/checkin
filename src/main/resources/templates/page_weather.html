@@ -7,27 +7,19 @@
 
     <div class="page" id="page-weather">
         <div class="info-wrap">
-            <h2 style="font-size:22px;font-weight:800;margin-bottom:22px">🌤️ 날씨</h2>
+            <h2 style="font-size:22px;font-weight:800;margin-bottom:22px">날씨</h2>
 
             <div class="info-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                    <div style="font-size:14px;font-weight:700" id="weather-tab-title">🌤️ 날씨 예보 로딩 중...</div>
+                    <div style="font-size:14px;font-weight:700" id="weather-tab-title">날씨 예보 로딩 중...</div>
                 </div>
                 <div class="weather-grid" id="weather-tab-grid" style="margin-top:12px"></div>
-                <div id="weather-tab-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
-                <div style="margin-top:10px;font-size:11px;color:var(--text3)">자세한 날씨는 아래 서비스에서 확인하세요.</div>
-                <!-- 네이버·구글 날씨 이동 버튼 -->
-                <div style="display:flex;gap:10px;margin-top:14px">
-                    <a href="https://weather.naver.com" target="_blank"
-                       style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
-                        <img src="https://ssl.pstatic.net/static/common/favicon/2023/0328/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
-                        네이버 날씨
-                    </a>
-                    <a href="https://www.google.com/search?q=날씨" target="_blank"
-                       style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#4285F4;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
-                        <img src="https://www.google.com/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
-                        구글 날씨
-                    </a>
+                <div id="weather-tab-alert" class="wx-alert" style="display:none"></div>
+                <p class="wx-more">자세한 예보는 이쪽에서 볼 수 있습니다.</p>
+                <!-- 바깥 서비스 링크. 예보가 주인공이고 이건 그 다음이다 -->
+                <div class="wx-links">
+                    <a href="https://weather.naver.com" target="_blank" rel="noopener">네이버 날씨</a>
+                    <a href="https://www.google.com/search?q=날씨" target="_blank" rel="noopener">구글 날씨</a>
                 </div>
             </div>
         </div>
@@ -38,14 +30,34 @@
             const DAYS_KO = ['일','월','화','수','목','금','토'];
 
             // 기상청 WeatherResponseDto → 화면 표시용 객체 변환
+            /* 날씨 그림 — 이모지 대신 선 아이콘.
+            이모지는 기기마다 다르게 그려지고 색을 맞출 수 없다.
+            색은 CSS(.wx)가 정한다. */
+            function wxIcon(kind) {
+            var o = '<svg class="wx" viewBox="0 0 24 24" aria-hidden="true">';
+            var sun   = '<circle cx="12" cy="9.5" r="4"/><path d="M12 1.6v2M12 15.4v2M4.4 9.5h2M17.6 9.5h2M6.6 4.1l1.4 1.4M16 13.5l1.4 1.4M17.4 4.1L16 5.5M8 13.5l-1.4 1.4"/>';
+            var sunS  = '<circle cx="8.5" cy="7" r="3.1"/><path d="M8.5 1.4v1.6M3.4 7H1.8M4.6 3.1l1.1 1.1M4.6 10.9l1.1-1.1"/>';
+            var cloud = '<path d="M7.4 19h9.2a3.6 3.6 0 0 0 .3-7.2 5.1 5.1 0 0 0-9.8-1A3.6 3.6 0 0 0 7.4 19Z"/>';
+            var rain  = '<path d="M9 21.4l-.9 1.8M13 21.4l-.9 1.8M17 21.4l-.9 1.8"/>';
+            var snow  = '<path d="M9 22h.02M13 22h.02M17 22h.02" stroke-width="2.6"/>';
+            if (kind === 'clear')  o += sun;
+            else if (kind === 'partly') o += sunS + cloud;
+            else if (kind === 'cloud')  o += cloud;
+            else if (kind === 'rain')   o += cloud + rain;
+            else if (kind === 'snow')   o += cloud + snow;
+            else if (kind === 'shower') o += sunS + cloud + rain;
+            else o += cloud;
+            return o + '</svg>';
+            }
+
             function toDisplayItem(dto) {
-                const skyIconMap  = { 1:'☀️', 3:'⛅', 4:'☁️' };
-                const ptyIconMap  = { 1:'🌧️', 2:'🌧️', 3:'🌨️', 4:'🌦️' };
+                const skyKindMap = { 1:'clear', 3:'partly', 4:'cloud' };
+                const ptyKindMap = { 1:'rain', 2:'rain', 3:'snow', 4:'shower' };
                 const skyDescMap  = { 1:'맑음', 3:'구름많음', 4:'흐림' };
                 const ptyDescMap  = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
 
                 const warn = dto.pop >= 60 || dto.pty > 0;
-                const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+                const icon = wxIcon(dto.pty > 0 ? (ptyKindMap[dto.pty] || 'rain') : (skyKindMap[dto.sky] || 'partly'));
                 const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
 
                 return { icon, desc, temp: dto.tmp, rain: dto.pop, warn };
@@ -64,7 +76,7 @@
                         '<div class="w-day">' + label + '</div>' +
                         '<div class="w-temp">' + w.temp + '°C</div>' +
                         '<div class="w-desc">' + w.desc + '</div>' +
-                        (w.rain > 0 ? '<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ' + w.rain + '%</div>' : '') +
+                        (w.rain > 0 ? '<div style="font-size:9px;color:var(--sky);margin-top:2px">강수 ' + w.rain + '%</div>' : '') +
                         (w.warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px">실내 추천</div>' : '') +
                         '</div>';
                 }).join('');
@@ -79,7 +91,7 @@
                 if (!grid) return;
 
                 // 로딩 표시
-                if (titleEl) titleEl.textContent = '🌤️ 날씨 예보 불러오는 중...';
+                if (titleEl) titleEl.textContent = '날씨 예보 불러오는 중...';
                 grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
 
                 const targetRegion = region || '서울';
@@ -103,7 +115,7 @@
                         return (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getDate().toString().padStart(2,'0');
                     };
 
-                    if (titleEl) titleEl.textContent = '🌤️ ' + targetRegion + ' 날씨 예보 (' + fmt(days[0]) + '~' + fmt(days[6]) + ')';
+                    if (titleEl) titleEl.textContent = '' + targetRegion + ' 날씨 예보 (' + fmt(days[0]) + '~' + fmt(days[6]) + ')';
 
                     // 백엔드 응답 7일치 slice → 화면용 변환
                     const weatherItems = json.data.slice(0, 7).map(toDisplayItem);
@@ -113,21 +125,21 @@
                     if (alertEl) {
                         if (warnDays.length > 0) {
                             alertEl.style.display = 'block';
-                            alertEl.textContent = '⚠️ ' + warnDays.join(', ') + ' 악천후 감지 — 실내 장소 우선 배치';
+                            alertEl.textContent = '' + warnDays.join(', ') + ' 악천후 감지 — 실내 장소 우선 배치';
                         } else {
                             alertEl.style.display = 'none';
                         }
                     }
 
                 } catch (e) {
-                    if (titleEl) titleEl.textContent = '🌤️ 날씨 예보';
+                    if (titleEl) titleEl.textContent = '날씨 예보';
                     grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
                     if (alertEl) alertEl.style.display = 'none';
                     console.warn('[WeatherTab] API 호출 실패:', e);
                 }
             }
 
-            // ✅ window에 노출 — go()에서 호출 가능 + page_planner에서 지역값 전달 가능
+            // window에 노출 — go()에서 호출 가능 + page_planner에서 지역값 전달 가능
             // 사용법: window.renderWeatherTab()           → 서울 기본
             //         window.renderWeatherTab('부산')      → 지역 지정
             window.renderWeatherTab = renderWeatherTab;

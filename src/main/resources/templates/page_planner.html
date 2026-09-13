@@ -98,7 +98,7 @@
                 const d = json.data;
                 _applyPlanPrefToForm(d);
                 updateSummaryCard();
-                toast('이전 플랜을 불러왔습니다 ✓');
+                toast('이전 플랜을 불러왔습니다✓');
             } catch (e) {
                 toast('플랜 불러오기 중 오류가 발생했습니다.');
             }
@@ -684,7 +684,7 @@
             toast('폼이 초기화되었습니다. 경로를 다시 생성하려면 1번부터 입력해주세요.');
         }
 
-        // ── 🌀 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
+        // ── 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
         function _showGenLoading(text) {
             window._genCancelled = false;
             let ov = document.getElementById('genLoadOverlay');
@@ -723,7 +723,7 @@
             window._genCancelled = true;
             _hideGenLoading();
             const btn = document.querySelector('#sp-3 .btn-gen');
-            if (btn) { btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+            if (btn) { btn.innerHTML = '일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
             toast('일정 생성을 취소했습니다.');
         }
 
@@ -735,7 +735,7 @@
             const tripId = window._currentTripId;
             if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-            // 🛟 [예산 보존] 생성 중 예산칸이 비워지는 문제 방지용 스냅샷
+            // [예산 보존] 생성 중 예산칸이 비워지는 문제 방지용 스냅샷
             window._budgetSnapshot = (document.getElementById('s1-budget')?.value || '').trim();
 
             // 1. 버튼 비활성화 + 반투명 로딩 오버레이 표시
@@ -746,7 +746,7 @@
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
                 if (res.success && res.data) {
-                    // ★방법1: data가 {route, over50} 객체. route는 기존처럼 JSON 문자열
+                    // 방법1: data가 {route, over50} 객체. route는 기존처럼 JSON 문자열
                     let cleanJson = res.data.route;
                     const over50 = res.data.over50 || [];
                     if (cleanJson.includes('[')) {
@@ -754,16 +754,16 @@
                     }
                     const draftRoute = JSON.parse(cleanJson);
 
-                    // ★50km 초과 장소 알림 (한 번에 모아서)
+                    // 50km 초과 장소 알림 (한 번에 모아서)
                     if (over50.length > 0) {
                         _hideGenLoading();
                         _showOver50Gate(tripId, over50, draftRoute, btn);
                         return; // 사용자 선택 전까지 진행 보류
                     }
 
-                    // 🚦 [생성 전 확인 게이트] 지도에 없는 장소 / 예산 부족을 먼저 점검하고,
+                    // [생성 전 확인 게이트] 지도에 없는 장소 / 예산 부족을 먼저 점검하고,
                     //    문제가 있으면 사용자가 '확인하고 생성'을 눌러야만 진행한다.
-                    btn.innerHTML = '🔎 생성 전 점검 중...';
+                    btn.innerHTML = '생성 전 점검 중...';
                     const issues = await _preGenerateAudit(tripId, draftRoute);
 
                     const _proceed = () => {
@@ -778,7 +778,7 @@
                         _hideGenLoading();
                         // 게이트 표시 → 확인 시에만 _proceed(), 취소 시 버튼 원상복구
                         _showPreGenGate(issues, _proceed, () => {
-                            btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                            btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
                             btn.disabled = false;
                         });
                     } else {
@@ -787,21 +787,21 @@
 
                 } else {
                     _hideGenLoading();
-                    toast('⚠️ ' + (res.message || '일정 생성에 실패했습니다.'));
+                    toast('' + (res.message || '일정 생성에 실패했습니다.'));
                     // 실패 시 버튼 즉시 원상복구
-                    btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                    btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
                     btn.disabled = false;
                 }
             } catch (e) {
                 _hideGenLoading();
-                toast('⚠️ AI 서버 연결에 실패했습니다.');
+                toast('AI 서버 연결에 실패했습니다.');
                 // 에러 발생 시 버튼 즉시 원상복구
-                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
         }
         /* ─────────────────────────────────────────────────────────
-     * ★50km 초과 장소 알림 게이트
+     * 50km 초과 장소 알림 게이트
      *   [무시하고 생성] 그대로 진행 / [변경] 해당 장소만 교체 / [취소] 중단
      * ───────────────────────────────────────────────────────── */
         function _showOver50Gate(tripId, over50, draftRoute, btn) {
@@ -811,7 +811,7 @@
                background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
             <div style="background:#fff;border-radius:16px;padding:24px;width:360px;max-width:90%;
                  box-shadow:0 10px 40px rgba(0,0,0,0.2);">
-              <div style="font-weight:700;font-size:16px;margin-bottom:8px;">🚗 너무 먼 장소가 있어요</div>
+              <div style="font-weight:700;font-size:16px;margin-bottom:8px;">너무 먼 장소가 있어요</div>
               <div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:12px;">
                 아래 장소가 다른 일정과 50km 이상 떨어져 있습니다.<br>${list}
               </div>
@@ -829,7 +829,7 @@
 
             const close = () => document.getElementById('over50Overlay')?.remove();
             const restoreBtn = () => {
-                if (btn) { btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+                if (btn) { btn.innerHTML = '일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
             };
 
             // [무시하고 생성] — draft 그대로 기존 파이프라인 진행
@@ -875,7 +875,7 @@
         }
 
         /* ─────────────────────────────────────────────────────────
-         * 🚦 생성 전 점검(Audit): ① 지도에 없는 장소  ② 예산 부족
+         * 생성 전 점검(Audit): ① 지도에 없는 장소  ② 예산 부족
          *   - 챗봇 지정(잠금) 장소는 '없는 장소'여도 제거 대상이 아니므로 안내에서 제외
          *   - 반환: { missing: [장소명...], budgetShort: bool, budget, estimated }
          * ───────────────────────────────────────────────────────── */
@@ -931,7 +931,7 @@
                 return key.length >= 2 && userChatNorm.includes(key);
             };
 
-            // 🎯 AI가 자체 추천한(=잠금 안 된) 장소가 지도에 없으면 생성 직후
+            // AI가 자체 추천한(=잠금 안 된) 장소가 지도에 없으면 생성 직후
             //   validateAndHealingRoute()가 자동으로 조용히 교체하므로 여기서 물을 필요 없음.
             //   사용자가 직접 요청(잠금)한 장소는 자동 교체 대상에서 제외되므로, 그 장소가
             //   지도에 없을 때만 게이트로 알리고 변경 여부를 물어야 함.
@@ -958,7 +958,7 @@
             return result;
         }
 
-        /* 🚦 확인 게이트 모달
+        /* 확인 게이트 모달
  *   취소          → 모달 닫고 버튼 원복
  *   변경          → 이슈별 자동 메시지를 챗봇 입력창에 넣고 sendMsg() 호출 → AI가 수정
  *   무시하고 생성  → 검증 무시하고 바로 생성 진행
@@ -972,12 +972,12 @@
 
             if (issues.missing.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">🗺️ 요청하신 장소를 지도에서 찾을 수 없어요</div>'
+                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
                     + '<div style="font-size:12px;color:#555;margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
             }
             if (issues.closed && issues.closed.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">🚫 해당 날짜에 이용할 수 없는 장소</div>'
+                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
                     + '<div style="font-size:12px;color:#555;margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
                     + '<div style="display:flex;flex-direction:column;gap:6px">'
                     + issues.closed.map(c => '<div style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:#a04">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
@@ -985,7 +985,7 @@
             }
             if (issues.budgetShort) {
                 bodyHtml += '<div style="margin-bottom:6px">'
-                    + '<div style="font-weight:800;color:#b9770e;margin-bottom:6px">💰 예산이 부족할 수 있어요</div>'
+                    + '<div style="font-weight:800;color:#b9770e;margin-bottom:6px">예산이 부족할 수 있어요</div>'
                     + '<div style="font-size:12px;color:#555;line-height:1.6">'
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
                     + '이 일정의 예상 최소 비용은 약 <b style="color:#b9770e">' + won(issues.estimated) + '</b>입니다.<br>'
@@ -1054,7 +1054,7 @@
             wrap.onclick = (e) => { if (e.target === wrap) { close(); onCancel && onCancel(); } };
         }
 
-        // ── 🤖 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
+        // ── 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
         function validateAndHealingRoute(tripId, routeData, btn) {
             if (window._genCancelled) { _hideGenLoading(); return; }
             if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined' || !kakao.maps.services) {
@@ -1070,7 +1070,7 @@
             const destCity = document.getElementById('dest-city') ? document.getElementById('dest-city').value : '';
             const destRegion = destProv + (destCity && destCity !== '전체' && destCity !== '시/군/구 선택' ? ' ' + destCity : '');
 
-            // 🎯 [추가] 여행지 중심 좌표 + 허용 반경.
+            // [추가] 여행지 중심 좌표 + 허용 반경.
             //   모든 장소는 이 중심에서 maxRadiusKm 안에 있어야 한다(타지역 장소 원천 차단용).
             //   시/군/구까지 지정되면 좁게(40km), 시/도만이면 넓게(80km) 잡는다.
             const hasCity = !!(destCity && destCity !== '전체' && destCity !== '시/군/구 선택');
@@ -1113,7 +1113,7 @@
                 return;
             }
 
-            // 🔒 [챗봇 1순위] 유저가 챗봇에서 '상호명을 직접 언급'한 장소는 잠금(교체·이동·삭제 금지).
+            // [챗봇 1순위] 유저가 챗봇에서 '상호명을 직접 언급'한 장소는 잠금(교체·이동·삭제 금지).
             //   유저 발화에 place.name이 (정규화 후 부분일치로) 등장하면 잠근다.
             //   → "사상 합천 돼지국밥" 발화 ↔ 경로의 "합천 돼지국밥집"이 매칭되도록,
             //     공백·지역접두어("사상"·"부산" 등)·흔한 접미어("집","점","식당") 차이를 흡수한다.
@@ -1149,17 +1149,17 @@
                 }
             });
             if (_lockedNames.size > 0) {
-                console.log('🔒 [챗봇 지정 장소 잠금] 교체/이동 금지:', [..._lockedNames]);
+                console.log('[챗봇 지정 장소 잠금] 교체/이동 금지:', [..._lockedNames]);
             }
 
-            // 🏠 하루 단위 동선 클러스터 허용 반경(숙소 기준). 지역 반경(maxRadiusKm)보다 훨씬 좁게.
+            // 하루 단위 동선 클러스터 허용 반경(숙소 기준). 지역 반경(maxRadiusKm)보다 훨씬 좁게.
             const dayClusterKm = (destProv && destProv.includes('제주')) ? 15 : (hasCity ? 8 : 12);
             const _typeKor = { stay: '숙소', food: '맛집', cafe: '카페', tour: '관광지' };
 
             let searchCount = 0;
             const totalPlaces = allPins.length;
 
-            // 🎯 [추가] 여행지 중심 좌표를 먼저 구한 뒤(geocode/keyword), 검색 루프를 시작한다.
+            // [추가] 여행지 중심 좌표를 먼저 구한 뒤(geocode/keyword), 검색 루프를 시작한다.
             function _runSearchLoopAfterCenter() {
                 _startPinSearchLoop();
             }
@@ -1189,7 +1189,7 @@
                 _runSearchLoopAfterCenter();
             }
 
-            // 🎯 비동기 카카오 검색 기동 루프
+            // 비동기 카카오 검색 기동 루프
             function _startPinSearchLoop() {
                 allPins.forEach(pin => {
                     const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
@@ -1224,7 +1224,7 @@
                                     pin.lng = parseFloat(fb.x);
                                     pin.isFound = true;
                                 } else {
-                                    console.error(`❌ [검증 탈락] 지도에 없거나 여행지(${destRegion}) 반경 밖 장소 배제: ${pin.label}`);
+                                    console.error(`[검증 탈락] 지도에 없거나 여행지(${destRegion}) 반경 밖 장소 배제: ${pin.label}`);
                                     pin.isFound = false;
                                 }
                                 finalizeSearch();
@@ -1232,7 +1232,7 @@
                         }
                     });
 
-                    // 🎯 모든 장소의 검색이 끝난 후 실행되는 검수 핵심 제어 함수
+                    // 모든 장소의 검색이 끝난 후 실행되는 검수 핵심 제어 함수
                     function finalizeSearch() {
                         searchCount++;
                         if (searchCount !== totalPlaces) return;
@@ -1243,11 +1243,11 @@
                         //   (예: 대전 여행인데 제주/강릉/부산 동명 장소가 잡힌 경우)
                         if (regionCenter) {
                             allPins.forEach(pin => {
-                                if (_lockedNames.has(pin.label)) return; // 🔒 챗봇 지정 장소는 건드리지 않음
+                                if (_lockedNames.has(pin.label)) return; // 챗봇 지정 장소는 건드리지 않음
                                 if (pin.isFound && pin.lat && pin.lng) {
                                     const distFromCenter = _haversineKm(regionCenter.lat, regionCenter.lng, pin.lat, pin.lng);
                                     if (distFromCenter > maxRadiusKm) {
-                                        console.warn(`🚨 [여행지 이탈] ${pin.label} : 중심에서 ${distFromCenter.toFixed(1)}km (허용 ${maxRadiusKm}km)`);
+                                        console.warn(`[여행지 이탈] ${pin.label} : 중심에서 ${distFromCenter.toFixed(1)}km (허용 ${maxRadiusKm}km)`);
                                         if (!autoFixRequests.some(r => r.place === pin.label)) {
                                             autoFixRequests.push({
                                                 place: pin.label,
@@ -1261,7 +1261,7 @@
 
                         // [검수 1단계] 지도에 없는 장소를 추출하여 전량 교체 리스트에 우선 편입
                         allPins.forEach(pin => {
-                            if (_lockedNames.has(pin.label)) return; // 🔒 챗봇 지정 장소는 유지(설령 검색 실패라도 교체/삭제 안 함)
+                            if (_lockedNames.has(pin.label)) return; // 챗봇 지정 장소는 유지(설령 검색 실패라도 교체/삭제 안 함)
                             if (!pin.isFound) {
                                 if (!autoFixRequests.some(r => r.place === pin.label)) {
                                     autoFixRequests.push({
@@ -1272,7 +1272,7 @@
                             }
                         });
 
-                        // [검수 2단계] 🏠 숙소 기준 'outlier' 탐지 — 그 날 숙소 권역에서 멀리 벗어난 장소를
+                        // [검수 2단계] 숙소 기준 'outlier' 탐지 — 그 날 숙소 권역에서 멀리 벗어난 장소를
                         //   같은 종류·같은 식사 시간대로 '숙소 근처' 실존 장소로 교체 요청한다(지그재그 원천 차단).
                         const dayKeys = [...new Set(allPins.map(p => p.day))];
 
@@ -1289,11 +1289,11 @@
                             }
 
                             dayPins.forEach(pin => {
-                                if (_lockedNames.has(pin.label)) return;  // 🔒 챗봇 지정 장소는 절대 교체 안 함
+                                if (_lockedNames.has(pin.label)) return;  // 챗봇 지정 장소는 절대 교체 안 함
                                 if (pin.type === 'stay') return;           // 숙소 자체는 기준점이므로 제외
                                 const dist = _haversineKm(anchor.lat, anchor.lng, pin.lat, pin.lng);
                                 if (dist > dayClusterKm) {
-                                    console.warn(`🚨 [동선 이탈] Day ${dNum} | ${pin.label}(${_typeKor[pin.type] || pin.type}) : 숙소권역에서 ${dist.toFixed(1)}km (허용 ${dayClusterKm}km)`);
+                                    console.warn(`[동선 이탈] Day ${dNum} | ${pin.label}(${_typeKor[pin.type] || pin.type}) : 숙소권역에서 ${dist.toFixed(1)}km (허용 ${dayClusterKm}km)`);
                                     if (!autoFixRequests.some(r => r.place === pin.label)) {
                                         const kind = _typeKor[pin.type] || '장소';
                                         autoFixRequests.push({
@@ -1330,7 +1330,7 @@
                                         const cleanData = JSON.parse(nextJson);
                                         sessionStorage.setItem('ai_generated_route', nextJson);
 
-                                        // 🔄 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
+                                        // 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
                                         validateAndHealingRoute(tripId, cleanData, btn);
                                     } else {
                                         _finalizePlannerRoute(routeData, btn);
@@ -1339,7 +1339,7 @@
                                 .catch(() => _finalizePlannerRoute(routeData, btn));
 
                         } else if (autoFixRequests.length > 0) {
-                            // 🎯 [최종 방어] 2회 교체를 다 썼는데도 여행지 밖/가짜 장소가 남았다면,
+                            // [최종 방어] 2회 교체를 다 썼는데도 여행지 밖/가짜 장소가 남았다면,
                             //   그 장소를 일정에서 제거해 전국으로 퍼진 동선이 그대로 그려지는 것을 막는다.
                             const badNames = new Set(autoFixRequests.map(r => r.place));
                             const cleaned = routeData.map(d => {
@@ -1363,13 +1363,13 @@
                                 });
                                 return { ...d, places: tidy };
                             });
-                            console.warn('⚠️ 2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
+                            console.warn('2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
                             toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
                             const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
                             _finalizePlannerRoute(cleanedReordered, btn);
                         } else {
-                            console.log("✅ 정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
+                            console.log("정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
                             const finalRoute = _reorderRouteByProximity(routeData, allPins, _lockedNames);
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(finalRoute));
                             _finalizePlannerRoute(finalRoute, btn);
@@ -1380,7 +1380,7 @@
         }
 
         /**
-         * 🧭 숙소 기준 동선 정렬.
+         * 숙소 기준 동선 정렬.
          *  - 맛집(food)·숙소(stay)·챗봇 지정 장소(locked)는 위치 고정 → 식사 시간 흐름·1순위 보존
          *  - 관광지(tour)·카페(cafe)만 숙소 기준 최근접 이웃(NN) 순서로 재배치
          *  - 시간 슬롯은 원래 순서 그대로 재배정, transit(이동)은 좌표로 재계산
@@ -1450,12 +1450,12 @@
                     newSlots.forEach((p, i) => { if (times[i] != null && p) p.time = times[i]; });
 
                     // 이동수단 추출(기존 transit에서) 후 transit 재계산
-                    const sample = (day.places.find(p => p.transit) || {}).transit || '🚗 자차';
-                    let mode = '🚗 자차', perKmMin = 2.5, perKmCost = 300;
+                    const sample = (day.places.find(p => p.transit) || {}).transit || '자차';
+                    let mode = '자차', perKmMin = 2.5, perKmCost = 300;
                     if (sample.includes('대중교통') || sample.includes('🚌') || sample.includes('🚇')) {
-                        mode = '🚌 대중교통'; perKmMin = 4; perKmCost = 250;
+                        mode = '대중교통'; perKmMin = 4; perKmCost = 250;
                     } else if (sample.includes('도보') || sample.includes('🚶')) {
-                        mode = '🚶 도보'; perKmMin = 13; perKmCost = 0;
+                        mode = '도보'; perKmMin = 13; perKmCost = 0;
                     }
 
                     const rebuilt = [];
@@ -1483,7 +1483,7 @@
 
         function _finalizePlannerRoute(routeData, btn) {
             _hideGenLoading();
-            // 🛟 [예산 복구] 생성 과정에서 예산칸이 비워졌다면 스냅샷 값으로 되돌린다.
+            // [예산 복구] 생성 과정에서 예산칸이 비워졌다면 스냅샷 값으로 되돌린다.
             const _bEl = document.getElementById('s1-budget');
             if (_bEl && (!_bEl.value || !_bEl.value.trim()) && window._budgetSnapshot) {
                 _bEl.value = window._budgetSnapshot;
@@ -1491,12 +1491,12 @@
             }
             if (window._genCancelled) { return; }
             if (btn) {
-                btn.innerHTML = '✈ 일정 생성하기 → 경로 상세 수정';
+                btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
                 btn.disabled = false;
             }
 
             if (!routeData) {
-                toast('⚠️ 일정 데이터를 불러오지 못했습니다.');
+                toast('일정 데이터를 불러오지 못했습니다.');
                 return;
             }
 
@@ -1505,7 +1505,7 @@
             _planDirty = false; // 더티 플래그 해제
 
             // 2. 화면 이동 (지도 페이지)
-            toast('✅ 일정이 생성되었습니다. 지도로 이동합니다.');
+            toast('일정이 생성되었습니다. 지도로 이동합니다.');
             go('map');
         }
 
@@ -1518,7 +1518,7 @@
 
             <div class="planner-hd">
                 <div class="planner-ey">AI TRAVEL PLANNER</div>
-                <div class="planner-ttl">✈ 여행 플랜 생성</div>
+                <div class="planner-ttl">여행 플랜 생성</div>
             </div>
 
             <div class="step-bar" id="plannerStepBar" style="display:none">
@@ -1545,11 +1545,11 @@
                 <!-- 여행지 & 날짜 -->
                 <div class="pl-card">
                     <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                        <span>📍 여행지 &amp; 날짜</span>
+                        <span>여행지 &amp; 날짜</span>
                         <div style="display:flex;align-items:center;gap:8px">
                             <div id="weather-btn-wrap" style="display:none">
                                 <button class="weather-date-btn" onclick="openWeatherPopup()">
-                                    🌤️ <span id="weather-btn-label">날씨 미리보기</span>
+                                    <span id="weather-btn-label">날씨 미리보기</span>
                                 </button>
                             </div>
                             <button class="btn-load-pref" onclick="loadPreviousPreference()">이전 플랜 불러오기</button>
@@ -1688,10 +1688,10 @@
 
                 <!-- 이동 수단 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">🚗 이동 수단</div>
+                    <div class="pl-card-ttl">이동 수단</div>
                     <div class="chip-row" id="chip-trans">
-                        <button class="chip on" onclick="pick(this,'trans')">🚗 자차</button>
-                        <button class="chip" onclick="pick(this,'trans')">🚌 대중교통</button>
+                        <button class="chip on" onclick="pick(this,'trans')">자차</button>
+                        <button class="chip" onclick="pick(this,'trans')">대중교통</button>
                         <button class="chip" onclick="pick(this,'trans');showOtherInput('other-trans',this)">기타</button>
                     </div>
                     <input class="other-input" id="other-trans" placeholder="이동 수단을 직접 입력해주세요">
@@ -1699,7 +1699,7 @@
 
                 <!-- 숙소 형태 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">🏨 숙소 형태</div>
+                    <div class="pl-card-ttl">숙소 형태</div>
                     <div class="chip-row" id="chip-acc">
                         <button class="chip on" onclick="pick(this,'acc')">호텔</button>
                         <button class="chip" onclick="pick(this,'acc')">펜션</button>
@@ -1712,7 +1712,7 @@
 
                 <!-- 동행자 유형 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">👥 동행자 유형</div>
+                    <div class="pl-card-ttl">동행자 유형</div>
                     <div class="chip-row" id="chip-comp">
                         <button class="chip" onclick="pick(this,'comp')">혼자</button>
                         <button class="chip on" onclick="pick(this,'comp')">커플</button>
@@ -1734,7 +1734,7 @@
 
                 <!-- 여행 스타일 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">✨ 여행 스타일 <small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
+                    <div class="pl-card-ttl">여행 스타일 <small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
                     <div class="chip-row" id="chip-style">
                         <button class="chip" onclick="tog(this)">가성비</button>
                         <button class="chip" onclick="tog(this)">럭셔리</button>
@@ -1749,7 +1749,7 @@
 
                 <!-- 식이 정보 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">🍽️ 식이 정보<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
+                    <div class="pl-card-ttl">식이 정보<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
                     <div class="chip-row" id="chip-food">
                         <button class="chip" onclick="tog(this)">비건</button>
                         <button class="chip on" onclick="tog(this)">해산물 선호</button>
@@ -1763,7 +1763,7 @@
 
                 <!-- 특수 조건 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">⚙️ 특수 조건<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
+                    <div class="pl-card-ttl">특수 조건<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
                     <div class="chip-row" id="chip-special">
                         <button class="chip" onclick="tog(this)">유아 동반</button>
                         <button class="chip" onclick="tog(this)">반려동물 동반</button>
@@ -1775,7 +1775,7 @@
 
                 <!-- 일정 밀도 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">📅 일정 밀도 <small style="font-size:11px;color:var(--text3);font-weight:400">MBTI 기반 자동 선택 (변경 가능)</small></div>
+                    <div class="pl-card-ttl">일정 밀도 <small style="font-size:11px;color:var(--text3);font-weight:400">MBTI 기반 자동 선택 (변경 가능)</small></div>
                     <div class="chip-row" id="chip-density">
                         <button class="chip" onclick="pick(this,'density')">빼곡하게</button>
                         <button class="chip on" onclick="pick(this,'density')">여유롭게</button>
@@ -1785,7 +1785,7 @@
 
                 <!-- 숙소 세부 옵션 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl">🏠 숙소 세부 옵션<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
+                    <div class="pl-card-ttl">숙소 세부 옵션<small style="font-size:11px;color:var(--text3);font-weight:400">(다중 선택 가능)</small></div>
                     <div class="chip-row" id="chip-accopts">
                         <button class="chip" onclick="tog(this)">오션뷰</button>
                         <button class="chip" onclick="tog(this)">취사 가능</button>
@@ -1808,7 +1808,7 @@
                 <div class="chat-layout">
                     <div class="chat-box">
                         <div class="chat-hd">
-                            <div class="chat-bot-av" id="inj-c-av">🤖</div>
+                            <div class="chat-bot-av" id="inj-c-av">AI</div>
                             <div>
                                 <div style="font-size:13px;font-weight:700">체크인 AI</div>
                                 <div style="font-size:10px;color:var(--sage)">● 온라인</div>
@@ -1925,12 +1925,12 @@
                             <div id="tab-extra" class="asc-tab-panel" style="display:none">
                                 <div id="sum-extra-rows"></div>
                                 <div class="asc-note" id="extra-empty-msg">
-                                    💬 챗봇과 대화하면<br>추가된 내용이 여기에 표시돼요
+                                    챗봇과 대화하면<br>추가된 내용이 여기에 표시돼요
                                 </div>
                             </div>
 
                             <button class="btn-gen" onclick="generateScheduleAndGoMap(this)">
-                                ✈ 일정 생성하기 → 경로 상세 수정
+                                일정 생성하기 → 경로 상세 수정
                             </button>
                         </div>
                     </div>
@@ -1950,19 +1950,18 @@
             <button class="modal-x" onclick="closeWeatherPopup()">✕</button>
             <div style="padding:4px 0 14px">
                 <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">AI TRAVEL PLANNER</div>
-                <div style="font-size:16px;font-weight:800" id="wp-title">🌤️ 여행 날씨 예보</div>
+                <div style="font-size:16px;font-weight:800" id="wp-title">여행 날씨 예보</div>
             </div>
 
             <!-- 날씨 데이터 없음 안내 -->
             <div id="wp-no-data" style="display:none;text-align:center;padding:30px 16px">
-                <div style="font-size:40px;margin-bottom:14px">🌐</div>
                 <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
                 <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
                     <div style="font-size:13px;color:var(--text2);line-height:1.8">
-                        📌 날씨 예보 서비스는 <strong>오늘로부터 최대 14일 이내</strong> 기간만 제공합니다.<br>
-                        📌 출발일이 14일을 초과하는 경우, 현재로서는 예보 데이터를 제공하기 어렵습니다.<br>
-                        📌 여행 날짜가 가까워지면 다시 이 버튼을 눌러보세요.<br>
-                        📌 지금 바로 확인하려면 아래 네이버·구글 날씨를 이용해 주세요.
+                        날씨 예보 서비스는 <strong>오늘로부터 최대 14일 이내</strong> 기간만 제공합니다.<br>
+                        출발일이 14일을 초과하는 경우, 현재로서는 예보 데이터를 제공하기 어렵습니다.<br>
+                        여행 날짜가 가까워지면 다시 이 버튼을 눌러보세요.<br>
+                        지금 바로 확인하려면 아래 네이버·구글 날씨를 이용해 주세요.
                     </div>
                 </div>
             </div>
@@ -1970,7 +1969,7 @@
             <!-- 날씨 그리드 (데이터 있는 경우) -->
             <div id="wp-data-wrap">
                 <div style="font-size:11px;color:var(--sage);background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 12px;margin-bottom:12px">
-                    ℹ️ 출발일 기준 <strong>최대 7일</strong>까지의 날씨 예보만 표시됩니다. 그 이후 일정은 외부 날씨 서비스를 이용해 주세요.
+                    ℹ출발일 기준 <strong>최대 7일</strong>까지의 날씨 예보만 표시됩니다. 그 이후 일정은 외부 날씨 서비스를 이용해 주세요.
                 </div>
                 <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
                 <div id="wp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
@@ -2005,7 +2004,7 @@
             if (!val) { updateWeatherBtn(); return; }
             // 여행 기록을 복원할 때는 min 이 과거 날짜로 풀려 있다. 그때는 막지 않는다.
             if (val < (startEl.min || today)) {
-                toast('⚠️ 출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
+                toast('출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
                 startEl.value = '';
                 updateWeatherBtn();
                 return;
@@ -2017,10 +2016,10 @@
             endInput.max = maxEnd.toISOString().split('T')[0];
             if (endInput.value && endInput.value < val) {
                 endInput.value = '';
-                toast('⚠️ 귀환일이 출발일보다 이전이어서 초기화되었습니다.');
+                toast('귀환일이 출발일보다 이전이어서 초기화되었습니다.');
             } else if (endInput.value && endInput.value > endInput.max) {
                 endInput.value = '';
-                toast('⚠️ 최대 3박 4일까지만 선택할 수 있습니다.');
+                toast('최대 3박 4일까지만 선택할 수 있습니다.');
             }
             updateWeatherBtn();
         }
@@ -2032,7 +2031,7 @@
             const end     = endEl.value;
             if (!end) { updateWeatherBtn(); return; }
             if (start && end < start) {
-                toast('⚠️ 귀환일은 출발일과 같거나 이후 날짜만 선택할 수 있습니다.');
+                toast('귀환일은 출발일과 같거나 이후 날짜만 선택할 수 있습니다.');
                 endEl.value = '';
                 updateWeatherBtn();
                 return;
@@ -2041,7 +2040,7 @@
                 const maxEnd = new Date(start);
                 maxEnd.setDate(maxEnd.getDate() + 3);
                 if (end > maxEnd.toISOString().split('T')[0]) {
-                    toast('⚠️ 최대 3박 4일까지만 선택할 수 있습니다.');
+                    toast('최대 3박 4일까지만 선택할 수 있습니다.');
                     endEl.value = '';
                     updateWeatherBtn();
                     return;
@@ -2078,7 +2077,7 @@
                 : destProv?.options[destProv.selectedIndex]?.text || '';
             const locStr = (loc && loc !== '도/시 선택') ? loc : '서울';
 
-            document.getElementById('wp-title').textContent = `🌤️ ${locStr} 여행 날씨 예보`;
+            document.getElementById('wp-title').textContent = `${locStr} 여행 날씨 예보`;
 
             const noData   = document.getElementById('wp-no-data');
             const dataWrap = document.getElementById('wp-data-wrap');
@@ -2110,8 +2109,25 @@
 
                 grid.style.gridTemplateColumns = `repeat(${previewDays.length}, 1fr)`;
 
-                const skyIconMap = { 1:'☀️', 3:'⛅', 4:'☁️' };
-                const ptyIconMap = { 1:'🌧️', 2:'🌧️', 3:'🌨️', 4:'🌦️' };
+                /* 날씨 그림 — 이모지 대신 선 아이콘. 색은 CSS(.wx)가 정한다 */
+                function wxIcon(kind) {
+                    var o = '<svg class="wx" viewBox="0 0 24 24" aria-hidden="true">';
+                    var sun   = '<circle cx="12" cy="9.5" r="4"/><path d="M12 1.6v2M12 15.4v2M4.4 9.5h2M17.6 9.5h2M6.6 4.1l1.4 1.4M16 13.5l1.4 1.4M17.4 4.1L16 5.5M8 13.5l-1.4 1.4"/>';
+                    var sunS  = '<circle cx="8.5" cy="7" r="3.1"/><path d="M8.5 1.4v1.6M3.4 7H1.8M4.6 3.1l1.1 1.1M4.6 10.9l1.1-1.1"/>';
+                    var cloud = '<path d="M7.4 19h9.2a3.6 3.6 0 0 0 .3-7.2 5.1 5.1 0 0 0-9.8-1A3.6 3.6 0 0 0 7.4 19Z"/>';
+                    var rain  = '<path d="M9 21.4l-.9 1.8M13 21.4l-.9 1.8M17 21.4l-.9 1.8"/>';
+                    var snow  = '<path d="M9 22h.02M13 22h.02M17 22h.02" stroke-width="2.6"/>';
+                    if (kind === 'clear') o += sun;
+                    else if (kind === 'partly') o += sunS + cloud;
+                    else if (kind === 'rain')   o += cloud + rain;
+                    else if (kind === 'snow')   o += cloud + snow;
+                    else if (kind === 'shower') o += sunS + cloud + rain;
+                    else o += cloud;
+                    return o + '</svg>';
+                }
+
+                const skyKindMap = { 1:'clear', 3:'partly', 4:'cloud' };
+                const ptyKindMap = { 1:'rain', 2:'rain', 3:'snow', 4:'shower' };
                 const skyDescMap = { 1:'맑음', 3:'구름많음', 4:'흐림' };
                 const ptyDescMap = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
 
@@ -2121,7 +2137,7 @@
                 grid.innerHTML = previewDays.map((d, i) => {
                     const dto  = json.data[i] || json.data[json.data.length - 1];
                     const warn = dto.pop >= 60 || dto.pty > 0;
-                    const icon = dto.pty > 0 ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
+                    const icon = wxIcon(dto.pty > 0 ? (ptyKindMap[dto.pty] || 'rain') : (skyKindMap[dto.sky] || 'partly'));
                     const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
                     if (warn) warnDays.push(`${d.getMonth()+1}/${d.getDate()}`);
                     return `<div class="w-item${warn ? ' w-warn' : ''}">
@@ -2129,21 +2145,21 @@
           <div class="w-day">${fmt(d)}</div>
           <div class="w-temp">${dto.tmp}°C</div>
           <div class="w-desc">${desc}</div>
-          ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
+          ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">강수 ${dto.pop}%</div>` : ''}
           ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px">실내 추천</div>' : ''}
         </div>`;
                 }).join('');
 
                 if (clipped) {
                     grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--text3);text-align:center;padding:8px 0;border-top:1px dashed var(--border)">
-          📌 이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 예보 범위 초과로 표시되지 않습니다
+          이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 예보 범위 초과로 표시되지 않습니다
         </div>`;
                 }
 
                 const alertEl = document.getElementById('wp-alert');
                 if (warnDays.length) {
                     alertEl.style.display = 'block';
-                    alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
+                    alertEl.textContent = `${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
                 } else {
                     alertEl.style.display = 'none';
                 }

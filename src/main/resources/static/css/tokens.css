@@ -54,7 +54,7 @@
   --panel-2:#EAE5DF;
   --ink:#1A1512;
   --ink-2:#5E564F;
-  --ink-3:#8B827A;
+  --ink-3:#766E67;   /* 흰 바탕 5.00 · 연한 판 위 4.56. 이전 #8B827A 는 3.77 이었다 */
   --hair:rgba(26,21,18,.10);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
@@ -84,7 +84,7 @@
   /* 강조 3색 — 미니어처 세계의 지붕 계열에서 뽑았다.
      지도와 UI 가 같은 색족을 쓰면 한 덩어리로 읽힌다.
      세 값 모두 흰 배경 위 글자와 흰 글자 배경 양쪽으로 대비 4.5:1 이상. */
-  --terra:#BC5219;       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
+  --terra:#B64F18;   /* --terra-pale 위 4.58. 이전 #B64F18 는 4.33 이었다 */       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
   --terra-pale:#FDF1E3;
   --tile:#C8402A;        /* 오류 · 잠김      (진한 기와 --d0 계열) */
   --tile-pale:#FCEBE7;
@@ -227,7 +227,7 @@
   --ui-line-2:#EFEAE4;
   --ui-plate:#F7F4F0;
   --ui-plate-2:#ECE6DF;
-  --terra:#BC5219;
+  --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -334,7 +334,7 @@
   --ui-line-2:#EFEAE4;
   --ui-plate:#F7F4F0;
   --ui-plate-2:#ECE6DF;
-  --terra:#BC5219;
+  --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -441,7 +441,7 @@
   --ui-line-2:#EFEAE4;
   --ui-plate:#F7F4F0;
   --ui-plate-2:#ECE6DF;
-  --terra:#BC5219;
+  --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -548,7 +548,7 @@
   --ui-line-2:#EFEAE4;
   --ui-plate:#F7F4F0;
   --ui-plate-2:#ECE6DF;
-  --terra:#BC5219;
+  --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -665,3 +665,56 @@ svg.mass{display:block; shape-rendering:geometricPrecision}
    4. 색을 CSS 에 직접 적지 않는다. 새 색이 필요하면 이 파일에 토큰을 먼저 만든다.
    5. 한국어 줄바꿈: 본문 컨테이너에 word-break:keep-all 을 반드시 넣는다.
    ============================================================ */
+
+/* ══════════════════════════════════════════════════════════════
+   옛 이름 잇기
+
+   이름을 checkin 으로 바꾸기 전 화면들(커뮤니티·가계부·장소·마이페이지)이
+   아직 옛 팔레트 이름을 쓴다. 실측 — 정의되지 않은 var() 참조 789곳.
+   그 선언들은 통째로 무효가 되어 색이 빠진 채 그려지고 있었다.
+   (지도 필터의 카페 칩만 하드코딩 보라 #7C3AED 로 남아 혼자 튀었다.)
+
+   789곳을 다 고치는 대신 이름을 잇는다. 새 화면에서는 쓰지 않는다.
+   초록 계열(--sage)은 주황(--terra)으로 받는다 — 이 제품에 초록은 없다.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --text:var(--ink);         --text1:var(--ink);
+  --text2:var(--ink-2);      --text3:var(--ink-3);
+  --surface:var(--panel);    --surface2:var(--ui-plate);
+  --cream:var(--ui-plate);   --cream2:var(--ui-plate-2);
+  --border:var(--ui-line);   --border2:var(--ui-line-2);
+
+  --primary:var(--terra);
+  --sage:var(--terra);       --sage-d:var(--sig-deep);
+  --sage-l:var(--ui-line);   --sage-pale:var(--terra-pale);
+  --coral:var(--tile);       --sky:var(--slate);
+  --warm:var(--num);         --warm-pale:var(--terra-pale);
+
+  --r:8px;  --r-sm:6px;  --r-lg:12px;
+  --sh:var(--lift2);  --sh-h:var(--lift);
+}
+
+/* 날씨 선 아이콘 — page_weather / page_planner 의 wxIcon() 이 그린다.
+   이모지는 기기마다 다르게 그려지고 색을 팔레트에 맞출 수 없다. */
+.wx{
+  width:26px; height:26px; display:block; margin:0 auto;
+  fill:none; stroke:var(--ink-2); stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.w-warn .wx{ stroke:var(--num) }
+
+/* 날씨 화면 — 바깥 서비스 링크는 보조 동작이다 */
+.wx-links{ display:flex; gap:8px; margin-top:12px }
+.wx-links a{
+  flex:1; text-align:center; padding:9px 0 10px; border-radius:99px;
+  text-decoration:none; font-size:13px; font-weight:600; letter-spacing:-.02em;
+  color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
+  transition:color .15s, box-shadow .15s;
+}
+.wx-links a:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.wx-more{ margin:12px 0 0; font-size:12px; color:var(--ink-3) }
+.wx-alert{
+  margin-top:11px; padding:11px 12px; border-radius:8px;
+  background:var(--tile-pale); box-shadow:inset 0 0 0 1px var(--tile);
+  font-size:12.5px; line-height:1.6; color:var(--ink);
+}
