@@ -2919,7 +2919,7 @@ function toggleMarker(btn, type) {
         document.querySelectorAll('.map-pin[data-type="'+type+'"]').forEach(p => p.style.display=isOn?'flex':'none');
     }
 
-    toast((isOn?'✅ 표시':'❌ 숨김') + ' · ' + btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,''));
+    toast(btn.textContent.trim().replace(/[🏨🍽️📍☕\s]/g,'') + (isOn ? ' 표시' : ' 숨김'));
 }
 
 /* ───────────────────────────────────────────────
@@ -2972,7 +2972,7 @@ function renderQ() {
     if(_q.length===0){box.classList.remove('has');cnt.textContent='0';if(btn)btn.disabled=true;items.innerHTML='';return;}
     box.classList.add('has'); box.style.display='block'; cnt.textContent=_q.length;
     if(btn) btn.disabled=false;
-    items.innerHTML=_q.map((q,i)=>`<div class="q-item"><div style="flex:1"><div class="q-place">📍 ${q.place}</div><div class="q-req">"${q.req}"</div></div><button class="q-rm" onclick="rmQ(${i})">✕</button></div>`).join('');
+    items.innerHTML=_q.map((q,i)=>`<div class="q-item"><div style="flex:1;min-width:0"><div class="q-place">${q.place}</div><div class="q-req">${q.req}</div></div><button class="q-rm" onclick="rmQ(${i})">✕</button></div>`).join('');
 }
 function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
