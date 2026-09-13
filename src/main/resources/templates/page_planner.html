@@ -2263,7 +2263,10 @@
             _calRoll(document.getElementById('cal-v-end'),   _calFieldHtml(end));
 
             const onEnd = !!start && !end;
-            [['cal-f-start', !onEnd], ['cal-f-end', onEnd]].forEach(([id, on]) => {
+            /* 대괄호 두 개를 붙여 쓰지 않는다. Thymeleaf 가 [[ 를 인라인 표현식으로
+               읽어 렌더가 중간에 끊긴다. 헤더는 이미 나간 뒤라 500 도 안 뜨고
+               응답이 잘린 채로 전달된다. 사이에 공백을 둔다. */
+            [ ['cal-f-start', !onEnd], ['cal-f-end', onEnd] ].forEach(([id, on]) => {
                 const f = document.getElementById(id);
                 f.classList.toggle('is-on', on);
                 f.setAttribute('aria-pressed', String(on));

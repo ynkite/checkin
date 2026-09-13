@@ -422,21 +422,23 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 무대 바깥 틀 — 높이와 잘림만 담당한다 */
 .ck-scene{
   position:absolute; left:0; right:0; top:-18px; z-index:0;
-  height:clamp(470px, 48vw, 730px);
+  height:clamp(500px, 53vw, 800px);
   overflow:hidden; pointer-events:none;
   /* 아래로 완전히 사라진다. 중간에서 끊기면 잘린 단면이 보인다. */
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.55) 72%,transparent 96%);
-          mask-image:linear-gradient(180deg,#000 0,#000 46%,rgba(0,0,0,.55) 72%,transparent 96%);
+  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 58%,rgba(0,0,0,.5) 82%,transparent 99%);
+          mask-image:linear-gradient(180deg,#000 0,#000 58%,rgba(0,0,0,.5) 82%,transparent 99%);
 }
 
 /* 장면 상자 — svg·핀·경로가 모두 이 안에 있다. 한 좌표계다. */
 .ck-frame{
-  position:absolute; left:50%; top:0; transform:translateX(-50%);
-  width:min(1560px, 100%);
+  /* 경로 좌표가 x 15~58% 라 장면을 가운데 두면 핀이 글 위에 올라탄다.
+     오른쪽으로 밀어 글 영역(왼쪽 1/3)과 겹치지 않게 한다. */
+  position:absolute; left:74%; top:0; transform:translateX(-50%);
+  width:min(1720px, 112%);
   aspect-ratio:1560 / 1123;
   /* 잘리는 자리가 건물 한가운데가 되지 않게 한다.
      장면 위쪽 0~12% 는 빈 판·물이라 거기서 시작하면 단면이 보이지 않는다. */
-  top:-4%;
+  top:2%;
 }
 .ck-frame > div{ position:absolute; inset:0 }
 .ck-frame svg.mass{ width:100%; height:100%; display:block }
@@ -445,11 +447,11 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-scene::after{
   content:""; position:absolute; inset:0; z-index:2;
   background:
-    linear-gradient(97deg,
-      var(--page) 0 17%,
-      color-mix(in oklab, var(--page) 72%, transparent) 30%,
-      color-mix(in oklab, var(--page) 24%, transparent) 46%,
-      transparent 58%),
+    linear-gradient(96deg,
+      var(--page) 0 26%,
+      color-mix(in oklab, var(--page) 80%, transparent) 36%,
+      color-mix(in oklab, var(--page) 28%, transparent) 50%,
+      transparent 62%),
     linear-gradient(180deg, var(--page) 0, transparent 13%);
 }
 
@@ -491,13 +493,13 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 
 /* 장면 위의 글 */
-.ck-lead{ position:relative; z-index:4; padding-top:clamp(26px, 4vw, 62px) }
+.ck-lead{ position:relative; z-index:4; padding-top:clamp(40px, 6vw, 104px) }
 .ck-lead h1{ max-width:12ch }
 .ck-lead .ck-sub{ max-width:31ch; margin-top:16px }
 .ck-home .ck-tell{ max-width:406px; margin-top:22px }
 
 /* 폼 — 조건 칩은 접어 둔다 */
-.ck-home .ck-form{ position:relative; z-index:4; margin-top:clamp(54px, 7vw, 128px) }
+.ck-home .ck-form{ position:relative; z-index:4; margin-top:clamp(20px, 2.6vw, 46px) }
 .ck-home .ck-form .ck-bar{ align-items:end; gap:14px }
 .ck-home .ck-cond{ flex:0 0 auto; min-width:0 }
 .ck-condbtn{
@@ -512,7 +514,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 @media (max-width:1000px){
   .ck-scene{ height:clamp(300px, 56vw, 470px) }
-  .ck-frame{ width:min(1560px, 138%); top:-6% }
+  .ck-frame{ width:min(1560px, 148%); left:58%; top:0 }
   .ck-home .ck-form{ margin-top:clamp(34px, 7vw, 90px) }
   .ck-lead h1, .ck-lead .ck-sub{ max-width:none }
   .ck-pin .ck-bub{ font-size:12px; padding:5px 10px 6px }
