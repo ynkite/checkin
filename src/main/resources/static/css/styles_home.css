@@ -1017,3 +1017,48 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-conf > p:last-child{
   margin-top:auto; padding-top:18px; font-size:13px; color:var(--ink-3);
 }
+
+/* ── 바뀐 순서 — 한 줄이 아니라 구간으로 ──────────────────
+   주황으로 꽉 채운 판에 글 한 줄만 들어 있었다. 카드에서 가장 무거운
+   자리인데 담긴 것이 가장 적었다. 정거장 둘과 그 사이를 나눠 적는다.
+   사이의 시간은 두 시각의 차이라 새로 지어낸 값이 아니다. */
+.ck-home .ck-plans{ height:58px }
+.ck-home .ck-plan{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center; gap:14px; padding:0 15px;
+  font-size:inherit; font-weight:inherit;
+  background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--ui-line-2);
+}
+.ck-home .ck-stop{ display:flex; flex-direction:column; gap:1px; line-height:1.18 }
+.ck-home .ck-stop .ck-t{
+  font-family:var(--fig); font-size:11.5px; font-weight:600;
+  letter-spacing:-.01em; color:var(--ink-3);
+}
+.ck-home .ck-stop i{
+  font-style:normal; font-size:15px; font-weight:700;
+  letter-spacing:-.035em; color:var(--ink);
+}
+.ck-home .ck-leg{
+  display:flex; align-items:center; gap:9px; min-width:0;
+  font-size:11.5px; color:var(--ink-3); white-space:nowrap;
+}
+.ck-home .ck-leg::before,
+.ck-home .ck-leg::after{
+  content:""; flex:1 1 auto; min-width:8px; height:0;
+  border-top:1.5px dotted var(--ui-line);
+}
+
+/* 바뀐 쪽 — 주황으로 채우는 대신 왼쪽에 한 줄 세운다 */
+.ck-home .ck-plan.ck-now{
+  background:var(--terra-pale); color:var(--ink);
+  box-shadow:inset 3px 0 0 var(--terra), inset 0 0 0 1px var(--terra-pale);
+}
+.ck-home .ck-plan.ck-now .ck-t{ color:var(--num) }
+.ck-home .ck-plan.ck-now .ck-leg{ color:var(--sig-deep) }
+.ck-home .ck-plan.ck-now .ck-leg::before,
+.ck-home .ck-plan.ck-now .ck-leg::after{ border-top-color:var(--terra) }
+
+/* 장면 표시줄 — 검은 굵은 선 셋이 장식처럼 보였다 */
+.ck-home .ck-tell .ck-ph i{ height:2px; background:var(--ui-line-2) }
+.ck-home .ck-tell .ck-ph i b{ background:var(--ink-3) }
+.ck-home .ck-tell .ck-ph i.ck-on b{ background:var(--ink) }
