@@ -1601,7 +1601,7 @@
                         </div>
                     </div>
 
-                    <!-- 여행 날짜 — 가는 날·오는 날을 캘린더에서 한 번에 고른다.
+                    <!-- 여행 날짜 — 체크인·체크아웃을 캘린더에서 한 번에 고른다.
                          고른 값은 아래 hidden input 두 개에 YYYY-MM-DD 로 들어간다.
                          기존 스크립트(createPlan / updateSummaryCard / 임시저장)가
                          이 두 id 를 그대로 읽으므로 id 를 바꾸지 않는다. -->
@@ -1610,36 +1610,55 @@
                         <input type="hidden" id="s1-date-start" onchange="onStartDateChange()">
                         <input type="hidden" id="s1-date-end" onchange="onEndDateChange()">
 
-                        <div class="cal" id="s1-cal">
-                            <div class="cal-top">
-                                <button type="button" class="cal-nav" id="cal-prev" aria-label="이전 달">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-                                </button>
-                                <div class="cal-ms"><b id="cal-m1"></b><b id="cal-m2"></b></div>
-                                <button type="button" class="cal-nav" id="cal-next" aria-label="다음 달">
-                                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-                                </button>
+                        <div class="cal" id="s1-cal" data-n="">
+                            <!-- 고른 날짜를 크게 보여준다.
+                                 밑줄이 들어간 쪽이 지금 고르는 중인 칸이다. -->
+                            <div class="cal-head">
+                                <div class="cal-fields">
+                                    <button type="button" class="cal-field is-on" id="cal-f-start" aria-pressed="true">
+                                        <span class="cal-f-lb">체크인</span>
+                                        <span class="cal-f-slot"><span class="cal-f-val" id="cal-v-start"><span class="cal-f-e">날짜 선택</span></span></span>
+                                    </button>
+                                    <button type="button" class="cal-field" id="cal-f-end" aria-pressed="false">
+                                        <span class="cal-f-lb">체크아웃</span>
+                                        <span class="cal-f-slot"><span class="cal-f-val" id="cal-v-end"><span class="cal-f-e">날짜 선택</span></span></span>
+                                    </button>
+                                </div>
+                                <span class="cal-badge" id="cal-badge" hidden></span>
                             </div>
 
-                            <div class="cal-months" id="cal-months">
-                                <div class="cal-mo">
-                                    <div class="cal-cap" id="cal-cap1"></div>
-                                    <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-                                    <div class="cal-grid" id="cal-g1" role="grid" aria-label="첫 번째 달"></div>
+                            <div class="cal-body">
+                                <div class="cal-top">
+                                    <button type="button" class="cal-nav" id="cal-prev" aria-label="이전 달">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+                                    </button>
+                                    <div class="cal-ms"><b id="cal-m1"></b><b id="cal-m2"></b></div>
+                                    <button type="button" class="cal-nav" id="cal-next" aria-label="다음 달">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+                                    </button>
                                 </div>
-                                <div class="cal-mo">
-                                    <div class="cal-cap" id="cal-cap2"></div>
-                                    <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-                                    <div class="cal-grid" id="cal-g2" role="grid" aria-label="두 번째 달"></div>
+
+                                <div class="cal-months" id="cal-months">
+                                    <div class="cal-mo">
+                                        <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+                                        <div class="cal-grid" id="cal-g1" role="grid" aria-label="첫 번째 달"></div>
+                                    </div>
+                                    <div class="cal-mo">
+                                        <div class="cal-dow" aria-hidden="true"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+                                        <div class="cal-grid" id="cal-g2" role="grid" aria-label="두 번째 달"></div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="cal-sum">
-                                <span class="cal-pick" id="cal-pick">가는 날을 고르세요</span>
-                                <span class="cal-nights" id="cal-nights"></span>
-                                <button type="button" class="cal-reset" id="cal-reset" hidden>다시 고르기</button>
+                            <div class="cal-foot">
+                                <div class="cal-pres" role="group" aria-label="자주 쓰는 기간">
+                                    <button type="button" class="cal-pre" data-n="0" aria-pressed="false">당일</button>
+                                    <button type="button" class="cal-pre" data-n="1" aria-pressed="false">1박</button>
+                                    <button type="button" class="cal-pre" data-n="2" aria-pressed="false">2박</button>
+                                    <button type="button" class="cal-pre" data-n="3" aria-pressed="false">3박</button>
+                                </div>
+                                <button type="button" class="cal-reset" id="cal-reset" hidden>초기화</button>
                             </div>
-                            <p class="cal-note">일정은 3박 4일까지 짤 수 있어요. 하루만 다녀오는 것도 됩니다.</p>
                         </div>
                     </div>
                     <div class="pl-2col">
@@ -2141,7 +2160,10 @@
 
         /* ─────────────────────────────────────────────────────────
          * 여행 날짜 캘린더
-         *  - 두 달을 나란히 놓고 가는 날 ~ 오는 날을 한 번에 고른다
+         *  - 두 달을 나란히 놓고 체크인 ~ 체크아웃을 한 번에 고른다
+         *  - 위쪽 두 칸이 고른 날짜를 크게 보여주고, 밑줄이 지금 고르는 쪽을 가리킨다
+         *  - 강조색은 박수에 묶여 있다. #s1-cal 의 data-n 하나로
+         *    원·띠·밑줄·배지·pill 이 한꺼번에 바뀐다 (styles_calendar.css)
          *  - 고른 값은 hidden input #s1-date-start / #s1-date-end 에
          *    YYYY-MM-DD 로 넣고 change 를 쏜다. 기존 스크립트는 그대로 돈다
          *  - 반대로 임시저장 복원처럼 다른 코드가 input.value 를 직접 바꿀 때도
@@ -2209,26 +2231,52 @@
             host.innerHTML = cells.join('');
         }
 
-        function _calSummary() {
+        // 값이 실제로 바뀔 때만 굴려 올린다. 같은 값이면 가만히 둔다
+        function _calRoll(el, html) {
+            if (el.innerHTML === html) return;
+            el.innerHTML = html;
+            el.classList.remove('cal-roll');
+            void el.offsetWidth;          // 애니메이션을 다시 태우려면 리플로우가 한 번 필요하다
+            el.classList.add('cal-roll');
+        }
+
+        function _calFieldHtml(d) {
+            if (!d) return '<span class="cal-f-e">날짜 선택</span>';
+            return `<span><b>${d.getMonth() + 1}</b>월 <b>${d.getDate()}</b>일</span>` +
+                   `<i class="cal-f-w">${DAYS_KO[d.getDay()]}</i>`;
+        }
+
+        // 체크인·체크아웃 칸, 박수 배지, 빠른 선택 pill 을 현재 값에 맞춘다
+        function _calHead() {
+            const cal   = document.getElementById('s1-cal');
             const start = _calValue(_calStartEl());
             const end   = _calValue(_calEndEl());
-            const pick  = document.getElementById('cal-pick');
-            const nights = document.getElementById('cal-nights');
-            const reset = document.getElementById('cal-reset');
-            const label = d => `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAYS_KO[d.getDay()]})`;
+            const n     = (start && end) ? _calDiff(start, end) : null;
 
-            if (start && end) {
-                const n = _calDiff(start, end);
-                pick.textContent = `${label(start)} ~ ${label(end)}`;
-                nights.textContent = n === 0 ? '당일치기' : `${n}박 ${n + 1}일`;
-            } else if (start) {
-                pick.textContent = `${label(start)} 출발`;
-                nights.textContent = '오는 날을 고르세요';
-            } else {
-                pick.textContent = '가는 날을 고르세요';
-                nights.textContent = '';
-            }
-            reset.hidden = !start;
+            // 강조색이 박수에 묶여 있다. 이 한 줄로 원·띠·밑줄·pill 이 같이 바뀐다.
+            // 마우스로 훑는 동안에도 색이 따라오도록 미리보기 날짜까지 본다
+            const to = end || _calHover;
+            const nv = (start && to && to >= start) ? _calDiff(start, to) : null;
+            cal.dataset.n = nv === null ? '' : String(nv);
+
+            _calRoll(document.getElementById('cal-v-start'), _calFieldHtml(start));
+            _calRoll(document.getElementById('cal-v-end'),   _calFieldHtml(end));
+
+            const onEnd = !!start && !end;
+            [['cal-f-start', !onEnd], ['cal-f-end', onEnd]].forEach(([id, on]) => {
+                const f = document.getElementById(id);
+                f.classList.toggle('is-on', on);
+                f.setAttribute('aria-pressed', String(on));
+            });
+
+            const badge = document.getElementById('cal-badge');
+            badge.hidden = n === null;
+            if (n !== null) _calRoll(badge, n === 0 ? '당일' : `${n}박`);
+
+            document.querySelectorAll('.cal-pre').forEach(b => {
+                b.setAttribute('aria-pressed', String(n !== null && Number(b.dataset.n) === n));
+            });
+            document.getElementById('cal-reset').hidden = !start;
         }
 
         function _calRender() {
@@ -2236,17 +2284,15 @@
             if (!g1 || !_calBase) return;
             const m2 = new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1);
 
-            document.getElementById('cal-m1').textContent   = _calName(_calBase);
-            document.getElementById('cal-m2').textContent   = _calName(m2);
-            document.getElementById('cal-cap1').textContent = _calName(_calBase);
-            document.getElementById('cal-cap2').textContent = _calName(m2);
+            document.getElementById('cal-m1').textContent = _calName(_calBase);
+            document.getElementById('cal-m2').textContent = _calName(m2);
 
             _calBuild(g1, _calBase);
             _calBuild(document.getElementById('cal-g2'), m2);
 
             const floor = _calMonth(_calFloor());
             document.getElementById('cal-prev').disabled = _calBase <= floor;
-            _calSummary();
+            _calHead();
         }
 
         function _calGoto(monthFirst) {
@@ -2263,6 +2309,13 @@
             if (st.value !== sv) { st.value = sv; st.dispatchEvent(new Event('change')); }
             if (en.value !== ev) { en.value = ev; en.dispatchEvent(new Event('change')); }
             _calRender();
+        }
+
+        // 빠른 선택 — 체크인이 정해져 있으면 그 날부터, 아니면 오늘부터 잡는다
+        function _calPreset(n) {
+            const base = _calValue(_calStartEl()) || _calFloor();
+            _calHover = null;
+            _calSet(base, _calAdd(base, n));
         }
 
         function _calPickDate(d) {
@@ -2348,6 +2401,20 @@
                 () => _calGoto(new Date(_calBase.getFullYear(), _calBase.getMonth() + 1, 1)));
             document.getElementById('cal-reset').addEventListener('click',
                 () => { _calHover = null; _calSet(null, null); });
+
+            document.querySelectorAll('.cal-pre').forEach(b => {
+                b.addEventListener('click', () => _calPreset(Number(b.dataset.n)));
+            });
+
+            // 위 두 칸을 눌러 어느 쪽을 고칠지 고른다
+            document.getElementById('cal-f-start').addEventListener('click',
+                () => { _calHover = null; _calSet(null, null); });
+            document.getElementById('cal-f-end').addEventListener('click', () => {
+                const s = _calValue(_calStartEl());
+                if (!s) return;                    // 체크인이 먼저다
+                _calHover = null;
+                _calSet(s, null);
+            });
 
             _calWatch(_calStartEl());
             _calWatch(_calEndEl());
