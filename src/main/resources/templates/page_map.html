@@ -288,7 +288,7 @@
           toast('수정 모드로 전환되었습니다.');
         }
       } catch (e) {
-        toast('서버 오류가 발생했습니다.');
+        toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.');
       }
     }
 
@@ -470,7 +470,7 @@
     onclick="toggleMarker(this,'${f.type}')">${f.label}</button>`).join('');
 
 
-      // 3. AI 데이터가 성공적으로 로드되었을 때 처리
+      // 3. AI 데이터를 받았을 때
       if (routeData && routeData.length > 0) {
         MAP_ITINERARY = routeData; // 전역 스코프에 데이터 주입
 
@@ -1821,7 +1821,7 @@
 
     function addQueue(key) {
       const txt = document.getElementById('rt-' + key)?.value.trim();
-      if (!txt) { toast('요구사항을 입력해주세요.'); return; }
+      if (!txt) { toast('무엇을 바꿀지 적어 주세요.'); return; }
 
       // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
       let placeName = key; // fallback

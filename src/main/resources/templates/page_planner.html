@@ -100,7 +100,7 @@
                 updateSummaryCard();
                 toast('이전 플랜을 불러왔습니다✓');
             } catch (e) {
-                toast('플랜 불러오기 중 오류가 발생했습니다.');
+                toast('이전 플랜을 불러오지 못했습니다.');
             }
         }
 
@@ -460,7 +460,7 @@
                     toast(json.message || '플랜 생성에 실패했습니다.');
                 }
             } catch (e) {
-                toast('서버 오류가 발생했습니다.');
+                toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.');
             }
         }
 
@@ -681,7 +681,7 @@
 
             history.pushState({ page: 'planner', step: 1 }, '', location.href);
             if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
-            toast('폼이 초기화되었습니다. 경로를 다시 생성하려면 1번부터 입력해주세요.');
+            toast('비웠습니다. 처음부터 다시 고르면 됩니다.');
         }
 
         // ── 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
@@ -989,7 +989,7 @@
                     + '<div style="font-size:12px;color:#555;line-height:1.6">'
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
                     + '이 일정의 예상 최소 비용은 약 <b style="color:#b9770e">' + won(issues.estimated) + '</b>입니다.<br>'
-                    + '예산을 올리지 않으면 <b style="color:#c0392b">일정 생성에 오류가 발생할 수 있습니다.</b><br>'
+                    + '예산을 올리지 않으면 <b style="color:#c0392b">일정이 제대로 안 나올 수 있습니다.</b><br>'
                     + '<span style="color:#888;font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
                     + '</div></div>';
             }
@@ -1746,7 +1746,7 @@
                         <button class="chip" onclick="tog(this)">음식 탐방</button>
                         <button class="chip" onclick="tog(this);showOtherInput('other-style',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-style" placeholder="여행 스타일을 직접 입력해주세요">
+                    <input class="other-input" id="other-style" placeholder="어떤 여행을 바라는지 적어 주세요">
                 </div>
 
                 <!-- 식이 정보 -->
@@ -1760,7 +1760,7 @@
                         <button class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
                     </div>
                     <input class="other-input" id="other-allergy" placeholder="알러지를 정확하게 작성해주세요">
-                    <input class="other-input" id="other-food" placeholder="식이 정보를 직접 입력해주세요">
+                    <input class="other-input" id="other-food" placeholder="먹는 것에 관해 적어 주세요">
                 </div>
 
                 <!-- 특수 조건 -->
@@ -1772,7 +1772,7 @@
                         <button class="chip" onclick="tog(this)">노인 동반</button>
                         <button class="chip" onclick="tog(this);showOtherInput('other-special',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-special" placeholder="특수 조건을 직접 입력해주세요">
+                    <input class="other-input" id="other-special" placeholder="따로 챙길 것이 있으면 적어 주세요">
                 </div>
 
                 <!-- 일정 밀도 -->
@@ -1795,7 +1795,7 @@
                         <button class="chip" onclick="tog(this)">수영장</button>
                         <button class="chip" onclick="tog(this);showOtherInput('other-accopts',this)">기타</button>
                     </div>
-                    <input class="other-input" id="other-accopts" placeholder="숙소 세부 옵션을 직접 입력해주세요">
+                    <input class="other-input" id="other-accopts" placeholder="숙소에 바라는 것을 적어 주세요">
                 </div>
 
                 <div class="pl-btns">

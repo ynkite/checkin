@@ -830,7 +830,7 @@
       else           res=await api.post('/api/admin/curations',payload);
 
       if(res&&res.success){
-        toast(_curEditId?'큐레이션이 수정되었습니다.':'큐레이션이 등록되었습니다.');
+        toast(_curEditId?'큐레이션이 수정되었습니다.':'큐레이션을 올렸습니다.');
         resetCurationForm(); loadAdminCurations();
       } else toast('저장에 실패했습니다.');
     }
@@ -1154,12 +1154,12 @@
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
                 <div class="chip-row" id="cadm-chip-acc"></div>
-                <input class="other-input" id="cadm-other-acc" placeholder="숙소 형태를 직접 입력해주세요">
+                <input class="other-input" id="cadm-other-acc" placeholder="어디서 자는지 적어 주세요">
               </div>
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
                 <div class="chip-row" id="cadm-chip-comp"></div>
-                <input class="other-input" id="cadm-other-comp" placeholder="동행자 유형을 직접 입력해주세요">
+                <input class="other-input" id="cadm-other-comp" placeholder="누구와 가는지 적어 주세요">
               </div>
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
@@ -1169,12 +1169,12 @@
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
                 <div class="chip-row" id="cadm-chip-diet"></div>
-                <input class="other-input" id="cadm-other-diet" placeholder="식이 정보를 직접 입력해주세요">
+                <input class="other-input" id="cadm-other-diet" placeholder="먹는 것에 관해 적어 주세요">
               </div>
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
                 <div class="chip-row" id="cadm-chip-special"></div>
-                <input class="other-input" id="cadm-other-special" placeholder="특수 조건을 직접 입력해주세요">
+                <input class="other-input" id="cadm-other-special" placeholder="따로 챙길 것이 있으면 적어 주세요">
               </div>
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px"></div>
@@ -1183,7 +1183,7 @@
               <div style="background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid var(--border2)">
                 <div class="cadm-sec-ttl" style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px"></div>
                 <div class="chip-row" id="cadm-chip-accopts"></div>
-                <input class="other-input" id="cadm-other-accopts" placeholder="숙소 세부 옵션을 직접 입력해주세요">
+                <input class="other-input" id="cadm-other-accopts" placeholder="숙소에 바라는 것을 적어 주세요">
               </div>
 
               <!-- ★Day 목록 (Day1 부터) -->
@@ -1232,7 +1232,7 @@
         <!-- ★정지 사유 상세 (보이는 textarea) -->
         <div class="form-group" style="margin-bottom:14px">
         <textarea class="form-input" id="su-detail" rows="3"
-                  placeholder="정지 사유를 상세히 입력해주세요..."
+                  placeholder="정지 사유를 적어 주세요"
                   style="resize:vertical;background:var(--cream2);font-family:inherit"></textarea>
         </div>
         <div class="sus-notif">
@@ -1242,7 +1242,7 @@
                     placeholder="귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)"></textarea>
         </div>
         <div class="sus-guide">
-          ℹ 정지 처리 시 해당 계정은 로그아웃 처리되며, 로그인 시 정지 알림이 표시됩니다.<br>
+          정지하면 그 계정은 바로 로그아웃되고, 다시 들어올 때 정지 안내를 봅니다.<br>
           정지 계정은 로그아웃 및 마이페이지 내 정보 관리만 가능합니다.
         </div>
         <div class="sus-foot">

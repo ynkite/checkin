@@ -474,14 +474,14 @@
     async function doCommentWrite() {
         const postId = window._currentPostId;
         const input  = document.getElementById('commentInput');
-        if (!input?.value.trim()) { toast('댓글을 입력해주세요.'); return; }
+        if (!input?.value.trim()) { toast('댓글을 적어 주세요.'); return; }
         if (!Token.getAccess())   { toast('로그인이 필요합니다.'); go('login'); return; }
 
         const res = await api.post(`/api/posts/${postId}/comments`,
             { content: input.value.trim() });
         if (res.success) {
             input.value = '';
-            toast('댓글이 등록되었습니다.');
+            toast('댓글을 올렸습니다.');
             await loadComments(postId);
         } else {
             toast(res.message || '댓글 등록에 실패했습니다.');
@@ -505,7 +505,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/scraps`, {});
-        toast(res.success ? '★스크랩 완료!' : (res.message || '스크랩 처리 실패'));
+        toast(res.success ? '★ 스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
     }
 
     /* ────────────────────────────────────────────────
@@ -594,8 +594,8 @@
         const activeChip = document.querySelector('#page-edit-review .vis-chip.on');
         const isPublic   = activeChip ? !activeChip.textContent.includes('비공개') : true;
 
-        if (!title)   { toast('제목을 입력해주세요.'); return; }
-        if (!content) { toast('내용을 입력해주세요.'); return; }
+        if (!title)   { toast('제목을 적어 주세요.'); return; }
+        if (!content) { toast('내용을 적어 주세요.'); return; }
 
         // 1. 게시글 수정
         const res = await api.patch(`/api/posts/${postId}`, { title, content, isPublic });
@@ -788,8 +788,8 @@
         const res = await api.post(`/api/places/${placeId}/scraps`, { category });
         const scrapped = res?.data === true;
         toast(res?.success === false
-            ? (res?.message || '스크랩 처리에 실패했습니다.')
-            : (scrapped ? '★스크랩했습니다!' : '스크랩을 취소했습니다.'));
+            ? (res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.')
+            : (scrapped ? '★ 스크랩했습니다.' : '스크랩을 취소했습니다.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -799,9 +799,9 @@
         const postId = window._currentPostId;
         if (postId) {
             const res = await api.post(`/api/posts/${postId}/scraps`, {});
-            toast(res.success ? '스크랩 완료!' : (res.message || '스크랩 처리 실패'));
+            toast(res.success ? '스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
         } else {
-            toast('스크랩 완료!');
+            toast('스크랩했습니다.');
         }
         closePrev();
     }
@@ -818,7 +818,7 @@
         }
         document.getElementById('confirmModal').classList.remove('open');
         go('map');
-        toast('플랜이 확정되었습니다!');
+        toast('일정을 확정했습니다.');
         document.getElementById('confirmDoneModal').classList.add('open');
     }
 
@@ -873,7 +873,7 @@
     async function doShareInvite() {
         const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
         const input  = document.getElementById('shareEmailInput');
-        if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+        if (!input?.value.trim()) { toast('이메일을 적어 주세요.'); return; }
         if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
         const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
@@ -888,7 +888,7 @@
             input.value = '';
             await loadShareModal();
         } else {
-            toast('초대 실패. 가입된 유저인지 확인해주세요.');
+            toast('초대하지 못했습니다. 가입한 계정인지 확인해 주세요.');
         }
     }
 
@@ -901,7 +901,7 @@
             toast('링크가 없습니다.'); return;
         }
         navigator.clipboard?.writeText(linkEl.value)
-            .then(() => toast('읽기 전용 링크가 복사되었습니다!'))
+            .then(() => toast('보기 전용 링크를 복사했습니다.'))
             .catch(() => toast('링크 복사에 실패했습니다.'));
     }
 

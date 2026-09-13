@@ -467,7 +467,7 @@
         const response = await fetch(url, options);
         let data = null;
         try { data = await response.json(); } catch (e) { data = null; }
-        if (!response.ok) throw new Error(data?.message || '요청 처리에 실패했습니다.');
+        if (!response.ok) throw new Error(data?.message || '보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         return data;
     };
 
@@ -1239,7 +1239,7 @@
         window._reportPostId = null;
 
         if (typeof toast === 'function') {
-            toast(res?.success !== false ? '신고가 접수되었습니다.' : res?.message || '신고 처리에 실패했습니다.');
+            toast(res?.success !== false ? '신고가 접수되었습니다.' : res?.message || '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         }
     };
 
@@ -1258,7 +1258,7 @@
         if (!window._commUtil.requireLogin()) return;
 
         if (typeof _isSuspended !== 'undefined' && _isSuspended) {
-            if (typeof toast === 'function') toast('해당 계정은 커뮤니티 기능이 제한되었습니다.');
+            if (typeof toast === 'function') toast('이 계정은 커뮤니티를 쓸 수 없습니다.');
             return;
         }
 
@@ -1277,7 +1277,7 @@
 
         const isSuccess = res && res.success !== false;
         if (!isSuccess) {
-            if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
+            if (typeof toast === 'function') toast(res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
             return;
         }
 
@@ -1675,12 +1675,12 @@
 
         if (!postId) { if (typeof toast === 'function') toast('게시글 정보를 찾을 수 없습니다.'); return; }
         if (!window._commUtil.requireLogin()) return;
-        if (!content) { if (typeof toast === 'function') toast('댓글을 입력해주세요.'); return; }
+        if (!content) { if (typeof toast === 'function') toast('댓글을 적어 주세요.'); return; }
 
         const res = await api.post(`/api/posts/${postId}/comments`, { content });
 
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('댓글이 등록되었습니다.');
+            if (typeof toast === 'function') toast('댓글을 올렸습니다.');
             await window.openPostDetail(postId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 등록에 실패했습니다.');
@@ -1781,7 +1781,7 @@
             return;
         }
         if (!content) {
-            if (typeof toast === 'function') toast('댓글 내용을 입력해주세요.');
+            if (typeof toast === 'function') toast('댓글을 적어 주세요.');
             return;
         }
 
@@ -1856,7 +1856,7 @@
 
     window.submitReview = async function () {
         if (typeof _isSuspended !== 'undefined' && _isSuspended) {
-            if (typeof toast === 'function') toast('해당 계정은 커뮤니티 기능이 제한되었습니다.');
+            if (typeof toast === 'function') toast('이 계정은 커뮤니티를 쓸 수 없습니다.');
             return;
         }
         if (!window._commUtil.requireLogin()) return;
@@ -1883,7 +1883,7 @@
         const isPublic  = true;
 
         if (!title || !window._commUtil.editorHasContent(editorEl)) {
-            if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
+            if (typeof toast === 'function') toast('제목과 내용을 적어 주세요.');
             return;
         }
 
@@ -1927,7 +1927,7 @@
             const preview = document.getElementById('writeImagePreview');
             if (preview) preview.innerHTML = '';
             if (typeof closeWrite === 'function') closeWrite();
-            if (typeof toast === 'function') toast('후기가 등록되었습니다! ');
+            if (typeof toast === 'function') toast('후기를 올렸습니다. ');
             if (typeof loadCommunityPosts === 'function') await loadCommunityPosts(0, true);
             if (typeof go === 'function') go('community');
             return;
@@ -2975,7 +2975,7 @@ window._handleWriteImageSelect = function(input) {
         try {
             const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
             if (!res || res.success === false) {
-                if (typeof toast === 'function') toast(res?.message || '스크랩 처리에 실패했습니다.');
+                if (typeof toast === 'function') toast(res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
                 return;
             }
 
@@ -3010,7 +3010,7 @@ window._handleWriteImageSelect = function(input) {
             }
         } catch (e) {
             console.error('[community-v2] 미리보기 플랜 스크랩 처리 실패:', e);
-            if (typeof toast === 'function') toast(e.message || '스크랩 처리에 실패했습니다.');
+            if (typeof toast === 'function') toast(e.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         } finally {
             if (btn) btn.disabled = false;
         }
@@ -4750,7 +4750,7 @@ window._handleWriteImageSelect = function(input) {
         const category = window._communityEditOriginalPost?.category || 'ROUTE';
 
         if (!postId || !title || !window._commUtil.editorHasContent(editor)) {
-            if (typeof toast === 'function') toast('제목과 내용을 입력해주세요.');
+            if (typeof toast === 'function') toast('제목과 내용을 적어 주세요.');
             return;
         }
 
@@ -5077,7 +5077,7 @@ window._handleWriteImageSelect = function(input) {
         const scrapped = res?.data === true;
         if (typeof toast === 'function') {
             toast(res?.success === false
-                ? (res?.message || '스크랩 처리에 실패했습니다.')
+                ? (res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.')
                 : (scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.'));
         }
         /* 집합 갱신 → 다른 화면에서도 상태 일관 */
@@ -5237,7 +5237,7 @@ window._handleWriteImageSelect = function(input) {
             const state = getMyCommunityPagingState('scrap-route');
             await window.loadMyRouteScrap(state.page || 0);
         } else {
-            if (typeof toast === 'function') toast('삭제 처리에 실패했습니다.');
+            if (typeof toast === 'function') toast('삭제하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         }
     };
 

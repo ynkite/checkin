@@ -256,7 +256,7 @@ async function doSearch() {
   const type   = typeEl ? typeEl.value : 'title';
   const q      = inpEl  ? inpEl.value.trim() : '';
 
-  if (!q) { toast('검색어를 입력해주세요'); return; }
+  if (!q) { toast('무엇을 찾을지 적어 주세요'); return; }
 
   const qs = new URLSearchParams({
     keyword:    q,
@@ -331,7 +331,7 @@ async function openPostDetail(postId) {
 async function likePost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/likes', {});
   if (res.success) {
@@ -342,7 +342,7 @@ async function likePost(e, postId) {
     }
     toast('좋아요!');
   } else {
-    toast(res.message || '좋아요 처리에 실패했습니다.');
+    toast(res.message || '좋아요를 누르지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   }
 }
 
@@ -353,7 +353,7 @@ async function likePost(e, postId) {
 async function scrapPost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/scraps', {});
   if (res.success) {
@@ -364,7 +364,7 @@ async function scrapPost(e, postId) {
     }
     toast('스크랩했습니다.');
   } else {
-    toast(res.message || '스크랩 처리에 실패했습니다.');
+    toast(res.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   }
 }
 
@@ -388,7 +388,7 @@ async function submitReportPost() {
   const res = await api.post('/api/posts/' + _reportPostId + '/reports', { reason });
   const modal = document.getElementById('reportPostModal');
   if (modal) modal.classList.remove('open');
-  toast((res && res.success !== false) ? '신고가 접수되었습니다.' : '신고 처리에 실패했습니다.');
+  toast((res && res.success !== false) ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportPostId = null;
 }
 
@@ -398,7 +398,7 @@ async function submitReportPost() {
  *      PATCH /api/posts/{postId}
  * ═══════════════════════════════════════════════════════════════════ */
 async function submitReview() {
-  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const titleEl   = document.getElementById('writeTitle');
@@ -413,7 +413,7 @@ async function submitReview() {
       : [];
   const isPublic = publicEl ? (publicEl.checked ? 1 : 0) : 1;
 
-  if (!title || !content) { toast('제목과 내용을 입력해주세요'); return; }
+  if (!title || !content) { toast('제목과 내용을 적어 주세요'); return; }
 
   const body = {
     title,
@@ -427,7 +427,7 @@ async function submitReview() {
 
   if (res.success) {
     closeWrite();
-    toast('후기가 등록되었습니다! ');
+    toast('후기를 올렸습니다. ');
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
   } else {
@@ -443,7 +443,7 @@ async function submitEditReview() {
   const title    = titleEl  ? titleEl.value.trim() : '';
   const content  = editorEl ? (editorEl.innerText || editorEl.value || '').trim() : '';
 
-  if (!title || !content) { toast('제목과 내용을 입력해주세요'); return; }
+  if (!title || !content) { toast('제목과 내용을 적어 주세요'); return; }
 
   const res = await api.patch('/api/posts/' + _openedPostId, { title, content });
   if (res.success) {
@@ -485,7 +485,7 @@ async function loadComments(postId) {
   if (!comments.length) {
     list.innerHTML =
         '<div style="color:var(--text3);font-size:13px;padding:10px 0;text-align:center">' +
-        '첫 댓글을 남겨보세요!</div>';
+        '첫 댓글을 남겨 보세요.</div>';
     return;
   }
 
@@ -552,24 +552,24 @@ async function submitReportComment() {
     commentId: _reportCommentId
   });
   const ok = res && res.success !== false;
-  toast(ok ? '신고가 접수되었습니다.' : '신고 처리에 실패했습니다.');
+  toast(ok ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportCommentId     = null;
   _reportCommentPostId = null;
 }
 
 async function submitComment() {
-  if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const inp     = document.getElementById('commentInput');
   const content = inp ? inp.value.trim() : '';
-  if (!content)  { toast('댓글 내용을 입력해주세요'); return; }
+  if (!content)  { toast('댓글을 적어 주세요'); return; }
   if (!_openedPostId) { toast('게시글 정보가 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + _openedPostId + '/comments', { content });
   if (res.success) {
     if (inp) inp.value = '';
-    toast('댓글이 등록되었습니다!');
+    toast('댓글을 올렸습니다.');
     await loadComments(_openedPostId);
   } else {
     toast((res.message || '댓글 등록에 실패했습니다.'));
@@ -896,14 +896,14 @@ function renderDestBars(dests) {
     const msg = document.getElementById('su-notify-msg') && document.getElementById('su-notify-msg').value;
     const res = await api.patch('/api/admin/users/' + uid + '/suspend', {reason: r, notifyMessage: msg});
     closeSuspendModal();
-    toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '정지 처리에 실패했습니다.');
+    toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '정지하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminUsers();
   }
 
   /* ─── 정지 해제 ─── */
   async function unsuspendUser(userId) {
     const res = await api.patch('/api/admin/users/' + userId + '/unsuspend', {});
-    toast(res.success ? '계정 정지가 해제되었습니다.' : '처리에 실패했습니다.');
+    toast(res.success ? '계정 정지가 해제되었습니다.' : '하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminUsers();
   }
 
@@ -1031,7 +1031,7 @@ function renderDestBars(dests) {
         ? (_reportAction === 'delete'
             ? '게시글 삭제 완료 · 작성자 알림 전송됨'
             : '신고 반려 완료 · 신고자 알림 전송됨')
-        : '처리에 실패했습니다.');
+        : '하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminReports();
   }
 
@@ -1080,7 +1080,7 @@ function renderDestBars(dests) {
     const planId = get('cur-plan-id');
 
     if (!title) {
-      toast('큐레이션 제목을 입력해주세요');
+      toast('큐레이션 제목을 적어 주세요');
       return;
     }
 
@@ -1102,12 +1102,12 @@ function renderDestBars(dests) {
     }
 
     if (res.success) {
-      toast(_editCurationId ? '큐레이션이 수정되었습니다.' : '큐레이션이 등록되었습니다.');
+      toast(_editCurationId ? '큐레이션이 수정되었습니다.' : '큐레이션을 올렸습니다.');
       _editCurationId = null;
       _clearCurationForm();
       loadAdminCurations();
     } else {
-      toast((res.message || '처리에 실패했습니다.'));
+      toast((res.message || '하지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
     }
   }
 

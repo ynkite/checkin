@@ -188,10 +188,10 @@
       try {
         res = await api.post('/api/places/' + placeId + '/scraps', { category: dbCat });
       } catch (err) {
-        if (typeof toast === 'function') toast('스크랩 처리에 실패했습니다.');
+        if (typeof toast === 'function') toast('스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         return;
       }
-      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '스크랩 처리에 실패했습니다.'); return; }
+      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
       const scrapped = res.data === true;
       const btn = document.getElementById(btnId);
       if (btn) {
@@ -212,7 +212,7 @@
       if (!_mainIsLoggedIn()) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
       const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
       const isOk = res && res.success !== false;
-      if (!isOk) { if (typeof toast === 'function') toast('스크랩 처리에 실패했습니다.'); return; }
+      if (!isOk) { if (typeof toast === 'function') toast('스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
       const scrapped = res.data === true;
       if (btn) {
         _applyMainScrapStyle(btn, scrapped);

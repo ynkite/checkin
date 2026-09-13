@@ -531,11 +531,11 @@ function updateNav() {
                     destination: metaText
                 }).then(res => {
                     if(res.success) {
-                        toast('[초대받은 일정] 탭에 안전하게 저장되었습니다!');
+                        toast('「초대받은 일정」 에 담았습니다.');
                         saveInviteBtn.style.display = 'none';
                         if (typeof updateMyPageUI === 'function') updateMyPageUI();
                     } else {
-                        toast('저장 중 오류가 발생했습니다.');
+                        toast('저장하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
                         saveInviteBtn.innerHTML = '내 목록에 담기';
                         saveInviteBtn.style.opacity = '1';
                         saveInviteBtn.style.pointerEvents = 'auto';
@@ -649,7 +649,7 @@ async function tryLogin() {
             const failCount = res.data?.failCount;
             w.innerHTML = failCount
                 ? `비밀번호 오류 (${failCount}/5회) · 5회 실패 시 5분 잠금`
-                : '아이디 또는 비밀번호를 확인해주세요.';
+                : '아이디나 비밀번호가 맞지 않습니다.';
             w.style.display = 'flex';
         }
         return;
@@ -748,7 +748,7 @@ function _handleOAuthCallback() {
         if (oauthError === 'email_already_exists') {
             toast('이미 가입되어 있는 이메일입니다.');
         } else {
-            toast('소셜 로그인 중 오류가 발생했습니다.');
+            toast('소셜 로그인이 끊겼습니다. 다시 해 보세요.');
         }
         return;
     }
@@ -759,7 +759,7 @@ function _handleOAuthCallback() {
         history.replaceState({}, '', location.pathname);
         _initSession(accessToken, refreshToken).then(function() {
             if (_currentUser && _currentUser.isSocial && _currentUser.region === '미설정') {
-                toast('회원가입을 먼저 진행해주세요!');
+                toast('먼저 가입해 주세요.');
                 setTimeout(function() { startSocialSignup(); }, 800);
             } else {
                 go('main');
@@ -791,7 +791,7 @@ async function doLogout() {
 /** 소셜 회원가입 완료 */
 async function doSocialSignup() {
     var nameEl = document.getElementById('social-name');
-    if (!nameEl || !nameEl.value.trim()) { toast('이름을 입력해주세요'); return; }
+    if (!nameEl || !nameEl.value.trim()) { toast('이름을 적어 주세요'); return; }
 
     var birthEl = document.getElementById('social-birth');
     var birthDate = birthEl ? birthEl.value : '';
@@ -826,10 +826,10 @@ async function doSocialSignup() {
             _currentUser.birthDate = birthDate;
             _currentUser.mbti = mbti;
         }
-        toast('소셜 계정으로 회원가입이 완료되었습니다!');
+        toast('소셜 계정으로 가입했습니다.');
         setTimeout(function() { go('main'); }, 1000);
     } else {
-        toast((res.message || '가입 처리 중 오류가 발생했습니다.'));
+        toast((res.message || '가입하지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
     }
 }
 function startSocialSignup() {
@@ -1014,7 +1014,7 @@ async function execInvitedBulkDelete() {
         window._invitedDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
-        toast('삭제 처리에 실패했습니다.');
+        toast('삭제하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     }
 }
 
@@ -1141,7 +1141,7 @@ async function execMyTripsBulkDelete() {
         window._myTripsDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
-        toast('삭제 처리에 실패했습니다.');
+        toast('삭제하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     }
 }
 
@@ -1324,7 +1324,7 @@ async function verifyInfoPw() {
 /** PATCH /api/users/me + (선택) PATCH /api/users/me/password */
 async function saveInfoEdit() {
     const n = document.getElementById('edit-name');
-    if (!n || !n.value.trim()) { toast('이름을 입력해주세요'); return; }
+    if (!n || !n.value.trim()) { toast('이름을 적어 주세요'); return; }
 
     const bigEl    = document.getElementById('edit-region-big');
     const cityEl   = document.getElementById('edit-region-city');
@@ -1409,7 +1409,7 @@ async function doWithdraw() {
         // 일반 계정: 비밀번호로 본인 확인
         const pw    = document.getElementById('withdrawPwInput')?.value;
         const errEl = document.getElementById('withdraw-pw-err');
-        if (!pw) { toast('비밀번호를 입력해주세요'); return; }
+        if (!pw) { toast('비밀번호를 적어 주세요'); return; }
         const res = await api.post('/api/users/me/verify-password', { password: pw });
         if (!res.success) {
             if (errEl) errEl.style.display = 'block';
@@ -1424,7 +1424,7 @@ async function confirmWithdraw() {
     closeWithdrawModal();
     const res = await api.del('/api/users/me');
     if (!res.success) {
-        toast((res.message || '탈퇴 처리 중 오류가 발생했습니다.'));
+        toast((res.message || '탈퇴하지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
         return;
     }
     toast('탈퇴가 완료되었습니다.');
@@ -1768,7 +1768,7 @@ async function startChatWithSummary() {
         + '<strong>현재 여행 계획에 반영된 값</strong><br>'
         + currentHtml
         + sourceHtml
-        + '<br><br>위 정보를 바탕으로 최적의 여행 일정을 만들어드리겠습니다!',
+        + '<br><br>이 내용으로 하루를 채워 보겠습니다.',
         'bot',
         ['일정 생성하기', '추가 요청 있어요', '예산 조정할게요'],
         true
@@ -1779,7 +1779,7 @@ function startChat() {
     const msgs = document.getElementById('chatMsgs');
     if (!msgs) return;
     msgs.innerHTML = '';
-    addBubble('안녕하세요! AI 여행 플래너입니다<br>추가로 원하시는 내용이 있으시면 말씀해주세요!', 'bot', ['반려동물 없음','강아지','일정 생성'], true);
+    addBubble('무엇을 더 챙길까요<br>바라는 것이 있으면 적어 주세요.', 'bot', ['반려동물 없음','강아지','일정 생성'], true);
 }
 
 /* ───────────────────────────────────────────────
@@ -2237,7 +2237,7 @@ function checkUname(inp) {
     const v = inp.value.trim();
     const m = document.getElementById('uname-msg');
     if (!v) { m.textContent = ''; inp.className = 'form-input'; return; }
-    if (v.length > 20) { sv(inp, m, 'err', '20자 이내로 입력해주세요'); return; }
+    if (v.length > 20) { sv(inp, m, 'err', '20자까지 쓸 수 있습니다'); return; }
     clearTimeout(_unameTimer);
     _unameTimer = setTimeout(async () => {
         const res = await api.get('/api/auth/check-username?username=' + encodeURIComponent(v));
@@ -2288,7 +2288,7 @@ function closePwReset() { document.getElementById('pwResetModal').classList.remo
 async function sendPwEmail() {
     const id = document.getElementById('pr-id').value.trim();
     const em = document.getElementById('pr-email').value.trim();
-    if (!id || !em) { toast('아이디와 이메일을 모두 입력해주세요'); return; }
+    if (!id || !em) { toast('아이디와 이메일을 둘 다 적어 주세요'); return; }
 
     const res = await api.post('/api/auth/password/reset-request', { email: em });
     if (!res.success) { toast((res.message || '이메일 발송에 실패했습니다.')); return; }
@@ -2308,7 +2308,7 @@ async function sendPwEmail() {
 
 function verifyCode() {
     const code = document.getElementById('pr-code').value.trim();
-    if (!code) { toast('인증코드를 입력해주세요'); return; }
+    if (!code) { toast('메일로 받은 인증번호를 적어 주세요'); return; }
     document.getElementById('pr-step2').style.display = 'none';
     document.getElementById('pr-step3').style.display = 'block';
     clearInterval(_pwTimer);
@@ -2319,12 +2319,12 @@ async function setPwNew() {
     const cp = document.getElementById('pr-confirm-pw').value;
     const tk = document.getElementById('pr-code').value.trim();
     if (np !== cp) { toast('비밀번호가 일치하지 않습니다'); return; }
-    if (np.length < 8) { toast('8자 이상 입력해주세요'); return; }
+    if (np.length < 8) { toast('8자 이상이어야 합니다'); return; }
 
     const res = await api.patch('/api/auth/password/reset', { token: tk, newPassword: np });
     if (res.success) {
         closePwReset();
-        toast('비밀번호가 성공적으로 변경되었습니다!');
+        toast('비밀번호를 바꿨습니다.');
     } else {
         toast((res.message || '비밀번호 변경에 실패했습니다.'));
     }
@@ -2334,12 +2334,12 @@ async function setPwNew() {
  * 14. 커뮤니티 (Post Domain — 공통 함수)
  * ─────────────────────────────────────────────── */
 function checkAndOpenWrite() {
-    if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+    if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
     document.getElementById('writeModal').classList.add('open');
 }
 function openWriteModal()  { document.getElementById('writeModal').classList.add('open'); }
 function closeWrite()      { document.getElementById('writeModal').classList.remove('open'); }
-function submitComment()   { if (_isSuspended) { toast('해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; } toast('댓글이 등록되었습니다!'); }
+function submitComment()   { if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; } toast('댓글을 올렸습니다.'); }
 function closeSuspendedAlert() { document.getElementById('suspendedAlert').classList.remove('open'); go('mypage'); }
 
 function filterByTag(tag, btn) {
@@ -2362,7 +2362,7 @@ function applyTagFilter() {
 function doSearch() {
     const type = document.getElementById('searchType').value;
     const q    = document.getElementById('searchInp').value.trim().toLowerCase();
-    if (!q) { toast('검색어를 입력해주세요'); return; }
+    if (!q) { toast('무엇을 찾을지 적어 주세요'); return; }
     let found = 0;
     document.querySelectorAll('.comm-post-item').forEach(item => {
         const title  = item.querySelector('.post-ttl')?.textContent.toLowerCase() || '';
@@ -2599,18 +2599,18 @@ function _validatePlanStep1() {
     if (isEmptySelect(destProv)) { toast('여행지 도/시를 선택해주세요.'); return false; }
     if (isEmptySelect(destCity)) { toast('여행지 시/군/구를 선택해주세요.'); return false; }
 
-    if (!dateStart || !dateStart.value) { toast('출발일을 입력해주세요.'); return false; }
-    if (!dateEnd   || !dateEnd.value)   { toast('귀환일을 입력해주세요.'); return false; }
+    if (!dateStart || !dateStart.value) { toast('떠나는 날을 골라 주세요.'); return false; }
+    if (!dateEnd   || !dateEnd.value)   { toast('돌아오는 날을 골라 주세요.'); return false; }
     if (dateStart.value > dateEnd.value){ toast('귀환일은 출발일 이후여야 합니다.'); return false; }
 
-    if (!pax    || !pax.value    || +pax.value < 1) { toast('인원을 1명 이상 입력해주세요.'); return false; }
-    if (!budget || !budget.value || +String(budget.value).replace(/,/g, '') < 1) { toast('총 예산을 입력해주세요.'); return false; }
+    if (!pax    || !pax.value    || +pax.value < 1) { toast('몇 명인지 적어 주세요.'); return false; }
+    if (!budget || !budget.value || +String(budget.value).replace(/,/g, '') < 1) { toast('쓸 수 있는 돈을 적어 주세요.'); return false; }
 
     const transChips = document.querySelectorAll('#chip-trans .chip.on');
     if (transChips.length === 0) { toast('이동 수단을 선택해주세요.'); return false; }
     if ([...transChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-trans')?.value.trim()) {
-            toast('이동 수단(기타)을 입력해주세요.'); return false;
+            toast('무엇으로 다니는지 적어 주세요.'); return false;
         }
     }
 
@@ -2618,7 +2618,7 @@ function _validatePlanStep1() {
     if (!accChip) { toast('숙소 형태를 선택해주세요.'); return false; }
     if (accChip.textContent.includes('기타')) {
         if (!document.getElementById('other-acc')?.value.trim()) {
-            toast('숙소 형태(기타)를 입력해주세요.'); return false;
+            toast('어디서 자는지 적어 주세요.'); return false;
         }
     }
 
@@ -2626,7 +2626,7 @@ function _validatePlanStep1() {
     if (!compChip) { toast('동행자 유형을 선택해주세요.'); return false; }
     if (compChip.textContent.includes('기타')) {
         if (!document.getElementById('other-comp')?.value.trim()) {
-            toast('동행자 유형(기타)을 입력해주세요.'); return false;
+            toast('누구와 가는지 적어 주세요.'); return false;
         }
     }
 
@@ -2638,18 +2638,18 @@ function _validatePlanStep2() {
     if (styleChips.length === 0) { toast('여행 스타일을 1개 이상 선택해주세요.'); return false; }
     if ([...styleChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-style')?.value.trim()) {
-            toast('여행 스타일(기타)을 입력해주세요.'); return false;
+            toast('어떤 여행을 바라는지 적어 주세요.'); return false;
         }
     }
     const foodChips = document.querySelectorAll('#chip-food .chip.on');
     if ([...foodChips].some(c => c.textContent.includes('알러지'))) {
         if (!document.getElementById('other-allergy')?.value.trim()) {
-            toast('알러지 정보를 입력해주세요.'); return false;
+            toast('못 먹는 것을 적어 주세요.'); return false;
         }
     }
     if ([...foodChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-food')?.value.trim()) {
-            toast('식이 정보(기타)를 입력해주세요.'); return false;
+            toast('먹는 것에 관해 적어 주세요.'); return false;
         }
     }
     return true;
@@ -2940,7 +2940,7 @@ function showReplaceInput(btn, name) {
 function addQueue(key) {
     const inp = document.getElementById('rt-' + key);
     const req = inp ? inp.value.trim() : '';
-    if (!req) { toast('교체 요구사항을 입력해주세요.'); return; }
+    if (!req) { toast('어떻게 바꿀지 적어 주세요.'); return; }
 
     // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
     let placeName = key; // fallback
@@ -3001,7 +3001,7 @@ async function execAllReplace() {
         const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
 
         if (res.success && res.data) {
-            toast('AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+            toast('바꿨습니다. 화면을 다시 그립니다.');
 
             // 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
             let cleanJson = res.data;
@@ -3018,12 +3018,12 @@ async function execAllReplace() {
             }, 1500);
 
         } else {
-            toast('<span style="color: black;">교체처리에 실패했습니다.</span>');
+            toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
             if (loadingOverlay) loadingOverlay.style.display = 'none';
             if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
         }
     } catch(e) {
-        toast('<span style="color: black;">교체처리에 실패했습니다.</span>');
+        toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
@@ -3122,7 +3122,7 @@ async function confirmSuspend() {
     const notifyMsg=document.getElementById('su-notify-msg')?.value||'';
     const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r, notifyMessage:notifyMsg});
     closeSuspendModal();
-    toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'정지 처리에 실패했습니다.');
+    toast(res.success?'계정 정지 처리 완료 · 알림 전송됨':'정지하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if(res.success) loadAdminUsers();
 }
 
@@ -3137,7 +3137,7 @@ async function confirmReportAction() {
     closeReportAction();
     toast(res.success
         ? (_reportAction==='hide'?'숨김 처리 완료 · 작성자 알림 전송됨':'신고 반려 완료 · 신고자 알림 전송됨')
-        : '처리에 실패했습니다.');
+        : '하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if(res.success) loadAdminReports(document.getElementById('admin-report-status-filter')?.value||'PENDING');
 }
 
@@ -3329,7 +3329,7 @@ async function loadShareMembersData() {
         </div>`;
         }
     } catch (e) {
-        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral);">서버 통신 오류가 발생했습니다.</div>';
+        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral);">서버에 닿지 못했습니다. 잠시 뒤에 다시 해 보세요.</div>';
     }
 }
 
@@ -3337,7 +3337,7 @@ async function loadShareMembersData() {
 async function inviteShareMember(btn) {
     const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
     const input  = document.getElementById('share-email-inp');
-    if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+    if (!input?.value.trim()) { toast('이메일을 적어 주세요.'); return; }
     if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
     const originalText = btn ? btn.innerHTML : '초대';
@@ -3367,7 +3367,7 @@ async function inviteShareMember(btn) {
         input.value = '';
         await loadShareMembersData(); // 목록 리로드 함수명 일치화
     } else {
-        toast('초대 실패. 가입된 유저인지 확인해주세요.');
+        toast('초대하지 못했습니다. 가입한 계정인지 확인해 주세요.');
     }
 }
 
@@ -3412,7 +3412,7 @@ async function copyShareLink() {
             if (linkEl) linkEl.value = res.data.shareLink;
 
             await copyToClipboard(res.data.shareLink);
-            toast('읽기 전용 링크가 클립보드에 복사되었습니다!');
+            toast('보기 전용 링크를 복사했습니다.');
         } else {
             throw new Error("API 반환 오류");
         }
@@ -4251,14 +4251,14 @@ function initWithdrawSection() {
         if (warnEl) warnEl.innerHTML =
             '소셜 계정 탈퇴 시 카카오·구글과의 연결이 즉시 해제됩니다.<br>' +
             '• 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>' +
-            '• 탈퇴 후 복구는 불가능합니다.<br>' +
+            '• 탈퇴하면 되돌릴 수 없습니다.<br>' +
             "• 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.";
         if (socialBox) socialBox.style.display = 'block';
         if (pwBox)     pwBox.style.display     = 'none';
     } else {
         if (warnEl) warnEl.innerHTML =
             '• 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>' +
-            '• 탈퇴 후 복구는 불가능합니다.<br>' +
+            '• 탈퇴하면 되돌릴 수 없습니다.<br>' +
             "• 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.";
         if (socialBox) socialBox.style.display = 'none';
         if (pwBox)     pwBox.style.display     = 'block';

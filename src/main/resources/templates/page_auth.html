@@ -53,26 +53,26 @@
 
   // ── 유효성 검사 메시지 ──
   const AUTH_VALID_MSG = {
-    idEmpty:       '아이디를 먼저 입력해주세요.',
+    idEmpty:       '아이디부터 적어 주세요.',
     idDuplicate:   '이미 사용 중인 아이디입니다.',
-    idOk:          '사용 가능한 아이디입니다!',
-    emailEmpty:    '이메일을 입력해주세요.',
-    emailInvalid:  '올바른 이메일 형식이 아닙니다. (@가 포함된 이메일을 입력해주세요.)',
+    idOk:          '쓸 수 있는 아이디입니다.',
+    emailEmpty:    '이메일을 적어 주세요.',
+    emailInvalid:  '올바른 이메일 형식이 아닙니다. (@가 포함된 이메일을 적어 주세요.)',
     emailDuplicate:'이미 가입된 이메일입니다. 다른 이메일을 사용해주세요.',
     emailSending:  '메일을 발송 중입니다. 잠시만 기다려주세요...',
-    emailSent:     '인증 메일이 발송되었습니다! 메일함을 확인해주세요.',
-    verifyOk:      '이메일 인증이 완료되었습니다!',
+    emailSent:     '인증 메일을 보냈습니다. 메일함을 봐 주세요.',
+    verifyOk:      '이메일을 확인했습니다.',
     verifyFail:    '인증번호가 틀렸거나 만료되었습니다.',
-    nameEmpty:     '이름을 입력해주세요.',
-    emailEmptyForm:'이메일을 입력해주세요.',
-    emailNotVerify:'이메일 인증을 먼저 완료해주세요!',
-    pwEmpty:       '비밀번호를 입력해주세요.',
+    nameEmpty:     '이름을 적어 주세요.',
+    emailEmptyForm:'이메일을 적어 주세요.',
+    emailNotVerify:'이메일부터 확인해 주세요.',
+    pwEmpty:       '비밀번호를 적어 주세요.',
     birthEmpty:    '생년월일을 선택해주세요.',
     regionEmpty:   '거주 지역(도/시)을 선택해주세요.',
     genderEmpty:   '성별을 선택해주세요.',
     mbtiIncomplete:'MBTI 4가지 항목을 모두 선택해주세요.',
-    signupSuccess: '체크인 회원가입 성공!',
-    signupFail:    '가입 실패: 입력 조건을 다시 확인해주세요.',
+    signupSuccess: '체크인 가입 완료',
+    signupFail:    '가입하지 못했습니다. 적은 내용을 다시 봐 주세요.',
   };
 
   // ── 지역별 시/군/구 목록 ──
@@ -316,7 +316,7 @@
   // 1단계: 이메일로 인증번호 발송
   function prSendCode() {
     const email = document.getElementById('pr-email').value.trim();
-    if (!email) { prSetMsg('pr-email-msg', '이메일을 입력해주세요.', false); return; }
+    if (!email) { prSetMsg('pr-email-msg', '이메일을 적어 주세요.', false); return; }
     prSetMsg('pr-email-msg', '발송 중입니다...', true);
     fetch(AUTH_API.pwResetRequest, {
       method: 'POST',
@@ -331,13 +331,13 @@
         const msg = await res.text().catch(() => '');
         prSetMsg('pr-email-msg', '' + (msg || '등록되지 않은 이메일입니다.'), false);
       }
-    }).catch(() => prSetMsg('pr-email-msg', '네트워크 오류가 발생했습니다.', false));
+    }).catch(() => prSetMsg('pr-email-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
 
   // 2단계: 인증번호 확인
   function prVerifyCode() {
     const code = document.getElementById('pr-code').value.trim();
-    if (!code) { prSetMsg('pr-code-msg', '인증번호를 입력해주세요.', false); return; }
+    if (!code) { prSetMsg('pr-code-msg', '메일로 받은 인증번호를 적어 주세요.', false); return; }
     prSetMsg('pr-code-msg', '확인 중...', true);
     fetch(`${AUTH_API.pwResetVerify}?email=${encodeURIComponent(_pwResetEmail)}&code=${code}`, {
       method: 'POST'
@@ -349,14 +349,14 @@
       } else {
         prSetMsg('pr-code-msg', '인증번호가 틀렸거나 만료되었습니다.', false);
       }
-    }).catch(() => prSetMsg('pr-code-msg', '네트워크 오류가 발생했습니다.', false));
+    }).catch(() => prSetMsg('pr-code-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
 
   // 3단계: 새 비밀번호 변경
   function prChangePassword() {
     const newPw     = document.getElementById('pr-new').value;
     const confirmPw = document.getElementById('pr-confirm').value;
-    if (!newPw) { prSetMsg('pr-pw-msg', '비밀번호를 입력해주세요.', false); return; }
+    if (!newPw) { prSetMsg('pr-pw-msg', '비밀번호를 적어 주세요.', false); return; }
     if (!PW_PATTERN.test(newPw)) { prSetMsg('pr-pw-msg', PW_PATTERN_MSG, false); return; }
     if (newPw !== confirmPw)  { prSetMsg('pr-pw-msg', '비밀번호가 일치하지 않습니다.', false); return; }
     prSetMsg('pr-pw-msg', '변경 중...', true);
@@ -366,13 +366,13 @@
       body: JSON.stringify({ email: _pwResetEmail, code: _pwResetCode, newPassword: newPw })
     }).then(async res => {
       if (res.ok) {
-        prSetMsg('pr-pw-msg', '비밀번호가 변경되었습니다!', true);
+        prSetMsg('pr-pw-msg', '비밀번호를 바꿨습니다.', true);
         setTimeout(() => { closePwResetModal(); }, 1500);
       } else {
         const msg = await res.text().catch(() => '');
         prSetMsg('pr-pw-msg', '' + (msg || '변경에 실패했습니다. 다시 시도해주세요.'), false);
       }
-    }).catch(() => prSetMsg('pr-pw-msg', '네트워크 오류가 발생했습니다.', false));
+    }).catch(() => prSetMsg('pr-pw-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
 
   document.addEventListener('DOMContentLoaded', initAuthPage);
@@ -485,7 +485,7 @@
 
         <div class="form-group">
           <label class="form-label">이름 <span style="color:var(--coral)">*</span></label>
-          <input class="form-input" id="social-name" placeholder="이름을 입력해주세요">
+          <input class="form-input" id="social-name" placeholder="이름을 적어 주세요">
         </div>
 
         <div class="form-row">

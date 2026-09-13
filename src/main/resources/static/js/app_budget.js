@@ -682,7 +682,7 @@ async function addLedgerExpense() {
     const amt  = document.getElementById('ledger-exp-amount')?.value;
     const date = document.getElementById('ledger-exp-date')?.value || null;
     const memo = document.getElementById('ledger-exp-memo')?.value?.trim() || null;
-    if (!cat || amt === '' || +amt < 0) { toast('카테고리와 금액을 입력해주세요.'); return; }
+    if (!cat || amt === '' || +amt < 0) { toast('어디에 얼마를 썼는지 적어 주세요.'); return; }
 
     const payload = { category: cat, amount: +amt };
     if (date) payload.expenseDate = date;
@@ -723,7 +723,7 @@ async function saveEditExpense(id) {
     const amount   = document.getElementById('edit-amt-' + id)?.value;
     const date     = document.getElementById('edit-date-' + id)?.value || null;
     const desc     = document.getElementById('edit-desc-' + id)?.value?.trim() || null;
-    if (!category || amount === '' || +amount < 0) { toast('카테고리와 금액을 확인해주세요.'); return; }
+    if (!category || amount === '' || +amount < 0) { toast('어디에 얼마를 썼는지 다시 봐 주세요.'); return; }
     const payload = { category, amount: +amount };
     if (date) payload.expenseDate = date;
     if (desc) payload.description = desc;
@@ -853,7 +853,7 @@ async function exportBudgetPDF() {
         }
 
         doc.save('가계부_' + (d.tripTitle || 'report') + '.pdf');
-        toast('PDF 다운로드 완료!');
+        toast('PDF 를 내려받았습니다.');
     } catch (e) {
         console.error(e);
         toast('PDF 생성 실패: ' + e.message);
