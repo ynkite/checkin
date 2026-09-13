@@ -898,3 +898,58 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 @media (max-width:820px){
   .ck-home .ck-rtlist{ max-width:none }
 }
+
+/* ── 순위 표시 — 배너를 걷는다 ──
+   styles_main 은 카드 위쪽에 42px 숫자를 얹은 그라데이션 배너를 깐다.
+   카드 높이의 3분의 1을 먹고, 정작 장소 이름보다 순위가 커진다.
+   순위는 표식이면 된다. */
+.ck-home .card-num,
+.ck-home .pop-rank{
+  margin:0 !important; padding:0; background:none !important;
+  color:var(--num); text-align:left;
+  font-family:var(--fig); font-size:13px; font-weight:600;
+  letter-spacing:.06em; line-height:1; margin-bottom:10px !important;
+}
+
+/* 카드 몸 — 나머지 목록과 같은 몸을 준다 */
+.ck-home .top3-card,
+.ck-home .pop-card{
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:6px;
+  padding:18px 19px 19px; box-shadow:none; transition:border-color .16s;
+}
+.ck-home .top3-card:hover,
+.ck-home .pop-card:hover{
+  border-color:var(--ink-3); transform:none; box-shadow:none;
+}
+.ck-home .card-ttl,
+.ck-home .pop-name{ font-size:16px; font-weight:700; letter-spacing:-.035em; line-height:1.35 }
+.ck-home .card-sub,
+.ck-home .pop-meta{ font-size:12.5px; color:var(--ink-3); margin-top:4px }
+
+/* 본문 미리보기 — 초록 라벨을 걷고 판을 낮춘다 */
+.ck-home .preview-box{
+  margin-top:12px; padding:11px 12px; border-radius:6px;
+  background:var(--ui-plate); border:0;
+}
+.ck-home .pvb-label{ color:var(--ink-2); font-size:11.5px; font-weight:600 }
+.ck-home .pvb-text{ color:var(--ink-3); font-size:12px; margin-top:3px }
+
+.ck-home .card-foot{ margin-top:14px }
+.ck-home .card-stat,
+.ck-home .pop-saves{ font-size:11.5px; color:var(--ink-3) }
+.ck-home .card-scrap-n,
+.ck-home .pop-scrap-n{ font-size:11.5px; color:var(--num); font-weight:600 }
+
+.ck-home .btn-scrap,
+.ck-home .pop-scrap-btn{
+  padding:6px 11px; border-radius:99px; font-size:11.5px; font-weight:600;
+  background:var(--panel); border:1px solid var(--ui-line); color:var(--ink-2);
+}
+.ck-home .btn-scrap:hover,
+.ck-home .pop-scrap-btn:hover{
+  background:var(--ui-plate); border-color:var(--ink-3); color:var(--ink);
+}
+.ck-home .btn-scrap.scrapped,
+.ck-home .pop-scrap-btn.scrapped{
+  background:var(--terra); border-color:var(--terra); color:var(--panel);
+}

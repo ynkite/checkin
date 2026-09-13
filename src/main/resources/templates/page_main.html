@@ -7,16 +7,10 @@
     // ── UI 고정 텍스트 및 레이아웃 설정 ──
     const QUICK_DESTS = ['제주도', '강릉', '부산', '전주', '경주'];
 
-    const SECTION_META = {
-      top3:      { rankColor: 'var(--warm)' },
-      food:      { rankColor: 'var(--sage)' },
-      stay:      { rankColor: 'var(--coral)' },
-      tour:      { rankColor: 'var(--sky)' },
-      cafe:      { rankColor: '#7C3AED' },
-    };
+;
 
     // ── 렌더링 헬퍼 (이슈 6a,6b 수정: 토글 스크랩 + 카테고리 매핑 수정) ──
-    function _popCard(item, index, rankColor) {
+    function _popCard(item, index) {
       var rank = String(index + 1).padStart(2, '0');
       var rating = item.avgRating != null ? Number(item.avgRating).toFixed(1)
               : (item.rating != null ? Number(item.rating).toFixed(1) : '0.0');
@@ -47,16 +41,14 @@
       var _alreadyScrapped = !item.isMock && placeId !== '' &&
               window._scrappedPlaceIds && window._scrappedPlaceIds.has(String(placeId));
       var scrapBtnCls   = 'pop-scrap-btn' + (_alreadyScrapped ? ' scrapped' : '');
-      var scrapBtnStyle = _alreadyScrapped
-              ? ' style="background:#46B29E;border-color:#46B29E;color:#fff"'
-              : '';
+      var scrapBtnStyle = '';   /* 색은 .scrapped 가 정한다 */
 
       var tagHtml = tags.length
               ? '<div class="pop-tags">' + tags.map(function(t){ return '<span class="pop-tag">' + _esc(t) + '</span>'; }).join('') + '</div>'
               : '';
 
       return '<div class="pop-card" onclick="' + onClickAction + '">' +
-              '<div class="pop-rank" style="background:' + rankColor + '">' + rank + '</div>' +
+              '<div class="pop-rank">' + rank + '</div>' +
               '<div class="pop-icon-row">' +
               '<div>' +
               '<div class="pop-name">' + _esc(item.name) + '</div>' +
@@ -164,22 +156,12 @@
       return !!(localStorage.getItem('accessToken') || localStorage.getItem('access_token'));
     }
 
-    /* 스크랩 버튼 스타일 — 커뮤니티 상세 페이지와 같은 모양. 라벨은 '★ 스크랩' 을 유지한다 */
-    var _MAIN_SCRAP_ACTIVE = '#46B29E';
+    /* 스크랩 버튼 — 색은 .btn-scrap.scrapped / .pop-scrap-btn.scrapped 가 정한다.
+       여기서 style 로 직접 칠하면 팔레트가 바뀌어도 따라오지 않는다. */
     function _applyMainScrapStyle(btn, scrapped) {
       if (!btn) return;
       btn.textContent = '★ 스크랩';
-      if (scrapped) {
-        btn.classList.add('scrapped');
-        btn.style.background  = _MAIN_SCRAP_ACTIVE;
-        btn.style.borderColor = _MAIN_SCRAP_ACTIVE;
-        btn.style.color       = '#fff';
-      } else {
-        btn.classList.remove('scrapped');
-        btn.style.background  = '';
-        btn.style.borderColor = '';
-        btn.style.color       = '';
-      }
+      btn.classList.toggle('scrapped', !!scrapped);
     }
 
     /* 스크랩 카운트(★ 숫자) 실시간 갱신 — 버튼이 속한 카드 내부의 카운트 엘리먼트를 +1/-1 */
@@ -416,7 +398,15 @@
 
           const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
           const pvbLabel = r.isMock ? r.pvbLabel : '후기 상세보기';
-          const pvbText = r.isMock ? r.pvbText : _esc((r.content || '').replace(/[\r\n]+/g, ' ').trim());
+          /* 본문은 에디터가 만든 HTML 이다. 그대로 두면 카드에 <div><img src=... 가
+             그대로 찍힌다. 태그를 걷고 공백을 합친 뒤 자른다. */
+          const _plain = String(r.content || '')
+                  .replace(/<[^>]*>/g, ' ')
+                  .replace(/&nbsp;/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+          const pvbText = r.isMock ? r.pvbText
+                  : _esc(_plain.length > 90 ? _plain.slice(0, 90) + '…' : _plain);
           /* 스크랩 토글: mock은 인라인, API는 toggleRouteScrap 사용 */
           const onClickScrap = r.isMock
                   ? `(function(b){_applyMainScrapStyle(b,true)})(this);toast('스크랩했습니다.')`
@@ -426,13 +416,11 @@
           const _routeScrapped = !r.isMock && r.postId != null &&
                   window._scrappedPostIds && window._scrappedPostIds.has(String(r.postId));
           const scrapBtnCls   = 'btn-scrap' + (_routeScrapped ? ' scrapped' : '');
-          const scrapBtnStyle = _routeScrapped
-                  ? ' style="background:#46B29E;border-color:#46B29E;color:#fff"'
-                  : '';
+          const scrapBtnStyle = '';   /* 색은 .btn-scrap.scrapped 가 정한다 */
 
           return `
         <div class="top3-card" onclick="${onClickCard}">
-          <div class="card-num" style="background:${SECTION_META.top3.rankColor}">${rank}</div>
+          <div class="card-num">${rank}</div>
           <div class="card-ttl">${title.replace(' — ', '<br>— ')}</div>
           <div class="card-sub">${sub}</div>
           <div class="preview-box" onclick="event.stopPropagation(); ${onClickPreview}">
@@ -453,10 +441,10 @@
 
       // 4. 인기 명소 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
       const categories = [
-        { id: 'popular-food-grid', code: 'FOOD', color: SECTION_META.food.rankColor },
-        { id: 'popular-stay-grid', code: 'STAY', color: SECTION_META.stay.rankColor },
-        { id: 'popular-tour-grid', code: 'TOUR', color: SECTION_META.tour.rankColor },
-        { id: 'popular-cafe-grid', code: 'CAFE', color: SECTION_META.cafe.rankColor }
+        { id: 'popular-food-grid', code: 'FOOD' },
+        { id: 'popular-stay-grid', code: 'STAY' },
+        { id: 'popular-tour-grid', code: 'TOUR' },
+        { id: 'popular-cafe-grid', code: 'CAFE' }
       ];
 
       for (const cat of categories) {
@@ -478,7 +466,7 @@
 
         if (places) {
           gridEl.innerHTML = places.length
-                  ? places.map((p, idx) => _popCard(p, idx, cat.color)).join('')
+                  ? places.map((p, idx) => _popCard(p, idx)).join('')
                   : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">인기 명소가 없습니다.</div>';
         }
 
