@@ -291,7 +291,7 @@
 
   /* ─────────────── 5. 하늘을 분 단위로 따라가게 한다 ───────────────
      index.html 의 head 에서 한 번 정해지고, 여기서 계속 갱신한다.
-     --mix 한 값만 바뀌므로 비용이 없다. 탭이 숨으면 멈춘다. */
+     ckSky 가 oklab 에서 섞어 :root 에 넣는다. 탭이 숨으면 멈춘다. */
 
   function initSky() {
     if (typeof window.ckSky !== 'function') return;

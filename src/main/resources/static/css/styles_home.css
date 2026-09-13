@@ -195,7 +195,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:-.042em;
   line-height:1.13; text-wrap:balance}
 .ck-home p{margin:0; text-wrap:pretty}
-.ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--void); color:var(--ink)}
+.ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--page); color:var(--ink)}
 .ck-home button{border:0; background:none; cursor:pointer; font-family:inherit; color:inherit}
 .ck-home select,.ck-home input{font-family:inherit; color:inherit}
 
@@ -313,9 +313,12 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .slide-dots > .active,
 .ck-home .slide-dots > .on{ background:var(--ink); width:18px }
 
-/* 시안에 없던 칩·태그류가 섞여 들어오면 모양을 통일한다 */
+/* 칩·태그류 모양 통일.
+   [class*="chip"] 처럼 넓게 잡으면 칩을 담는 컨테이너(.ck-chips)까지 걸려
+   빈 알약이 생긴다. 실제 칩 요소만 집는다. */
 .ck-home .slide-chip,
-.ck-home [class*="chip"]:not(.ck-chips2 button){
+.ck-home .ck-chips > b,
+.ck-home .ck-chips2 > button{
   padding:5px 11px 6px; border-radius:99px; background:var(--ui-plate);
   box-shadow:inset 0 0 0 1px var(--panel-2); color:var(--ink-2);
   font-size:12.5px; font-weight:500; border:0;
@@ -443,11 +446,11 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   content:""; position:absolute; inset:0; z-index:2;
   background:
     linear-gradient(97deg,
-      var(--void) 0 17%,
-      color-mix(in oklab, var(--void) 72%, transparent) 30%,
-      color-mix(in oklab, var(--void) 24%, transparent) 46%,
+      var(--page) 0 17%,
+      color-mix(in oklab, var(--page) 72%, transparent) 30%,
+      color-mix(in oklab, var(--page) 24%, transparent) 46%,
       transparent 58%),
-    linear-gradient(180deg, var(--void) 0, transparent 13%);
+    linear-gradient(180deg, var(--page) 0, transparent 13%);
 }
 
 /* 경로 — 점선 브레드크럼. 장면 상자를 꽉 채운다 */
@@ -516,7 +519,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 @media (max-width:620px){
   .ck-scene::after{
-    background:linear-gradient(180deg, var(--void) 0 8%, transparent 30%, color-mix(in oklab, var(--void) 70%, transparent) 78%, var(--void) 100%);
+    background:linear-gradient(180deg, var(--page) 0 8%, transparent 30%, color-mix(in oklab, var(--page) 70%, transparent) 78%, var(--page) 100%);
   }
   .ck-home .ck-tell{ max-width:none }
   .ck-pin:not(.ck-hot) .ck-bub{ display:none }
@@ -587,3 +590,9 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   letter-spacing:.14em; color:var(--num); margin-bottom:9px;
 }
 .ck-home .ck-hd:not([data-label])::before{ display:none }
+
+
+/* 계획 교체 슬롯 — 두 줄이 겹쳐 바뀌는 자리다.
+   비어 있으면 빈 알약처럼 보이므로 내용이 있을 때만 자리를 차지한다. */
+.ck-home .ck-plans:not(:has(.ck-plan)){ display:none }
+.ck-home .ck-plan:empty{ display:none }
