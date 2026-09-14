@@ -61,5 +61,11 @@ public interface TravelPlanService {
     //내 여행 기록일반 삭제 메서드
     void deletePlan(Long userId, Long tripId);
 
+    // 경로 스크랩 — 남의 공개 경로를 스냅샷으로 저장 / 목록 / 해제
+    Long scrapPlan(Long userId, Long originalPlanId);
+    List<Map<String, Object>> getScrappedPlans(Long userId);
+    void deleteScrappedPlan(Long userId, Long scrapPlanId);
+    // 스크랩본을 내 것으로 복제 (날짜만 지정, 나머지 복사)
+    Long cloneScrappedPlan(Long userId, Long scrapPlanId, java.time.LocalDate startDate, java.time.LocalDate endDate);
 
 }
