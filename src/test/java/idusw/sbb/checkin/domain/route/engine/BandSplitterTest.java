@@ -177,9 +177,10 @@ class BandSplitterTest {
     @Test
     void 임계_이내_후보가_충분하면_그대로_쓰고_완화하지_않는다() {
         GeoPoint departurePoint = northOf(ANCHOR_POINT, 60);
-        // 귀가 경로(0~60km 자오선) 위에 그대로 있는 후보 8개 — 우회비용이 0에 가깝다
+        // 귀가 경로(0~60km 자오선) 위에 그대로 있는 후보 8개 — 우회비용이 0에 가깝다.
+        // 전부 절대거리 가드(36km) 안쪽이라 가드에 걸리지 않는다 (결정 11-(2)).
         List<Candidate> onPath = new ArrayList<>();
-        double[] onPathKm = {26, 30, 34, 38, 42, 46, 50, 54};
+        double[] onPathKm = {26, 27, 28, 29, 30, 31, 32, 33};
         for (int i = 0; i < onPathKm.length; i++) {
             onPath.add(candidateAt("onpath" + i, northOf(ANCHOR_POINT, onPathKm[i])));
         }
@@ -203,9 +204,10 @@ class BandSplitterTest {
     @Test
     void 임계_이내_후보가_모자라면_우회비용_오름차순으로_완화해서_채운다() {
         GeoPoint departurePoint = northOf(ANCHOR_POINT, 10);
-        // 귀가 방향과 무관한, 동쪽으로 점점 더 멀어지는 후보 10개 — 전부 우회비용이 크고, 뒤로 갈수록 더 크다
+        // 귀가 방향과 무관한, 동쪽으로 점점 더 멀어지는 후보 10개 — 전부 우회비용이 크고, 뒤로 갈수록 더 크다.
+        // 25~34km 라 RETURN 밴드이면서 절대거리 가드(36km) 안쪽이다.
         List<Candidate> offPath = new ArrayList<>();
-        double[] lngOffsets = {0.30, 0.32, 0.34, 0.36, 0.38, 0.40, 0.42, 0.44, 0.46, 0.48};
+        double[] lngOffsets = {0.28, 0.29, 0.30, 0.31, 0.32, 0.33, 0.34, 0.35, 0.36, 0.37};
         for (int i = 0; i < lngOffsets.length; i++) {
             offPath.add(candidateAt("off" + i,
                     new GeoPoint(ANCHOR_POINT.latitude(), ANCHOR_POINT.longitude() + lngOffsets[i])));
@@ -226,6 +228,55 @@ class BandSplitterTest {
         assertThat(lastDay.size()).isEqualTo(BandSplitter.DEFAULT_MIN_PER_DAY);
         // 우회비용은 동쪽으로 갈수록 커지므로, 가장 멀리 있는 off8·off9 는 8개 완화 채움에서 빠진다
         assertThat(idsOf(lastDay)).doesNotContain("off8", "off9");
+    }
+
+    // ── 결정 11-(2) : 귀가 밴드 절대거리 가드 (뒤 단계 FAR_LIMIT 40km 와의 접점) ──
+
+    @Test
+    void 앵커에서_36km를_넘는_귀가_후보는_애초에_풀에_안_들어온다() {
+        GeoPoint departurePoint = northOf(ANCHOR_POINT, 120);
+        List<Candidate> all = new ArrayList<>(selfSufficientNear());
+        all.add(candidateAt("in35", northOf(ANCHOR_POINT, 35)));   // 가드 안쪽
+        all.add(candidateAt("out37", northOf(ANCHOR_POINT, 37)));  // 가드 바깥
+        all.add(candidateAt("out60", northOf(ANCHOR_POINT, 60)));  // 우회비용은 0에 가깝지만 너무 멀다
+
+        List<DailyCandidatePool> result = BandSplitter.withDefaults().split(
+                ANCHOR, constraintsWithDeparture(departurePoint), all, 2);
+
+        assertThat(idsOf(result.get(1))).containsExactly("in35");
+    }
+
+    @Test
+    void 가드에_걸린_후보는_완화_폴백으로도_안_들어온다() {
+        GeoPoint departurePoint = northOf(ANCHOR_POINT, 120);
+        List<Candidate> all = new ArrayList<>(selfSufficientNear());
+        for (int k = 0; k < 5; k++) {
+            all.add(candidateAt("far" + k, northOf(ANCHOR_POINT, 40 + k * 10)));
+        }
+
+        List<DailyCandidatePool> result = BandSplitter.withDefaults().split(
+                ANCHOR, constraintsWithDeparture(departurePoint), all, 2);
+
+        // 완화는 "임계 이하가 모자라면 우회비용 순으로 채운다" 지 "가드를 푼다" 가 아니다.
+        assertThat(result.get(1).candidates()).isEmpty();
+        assertThat(result.get(1).relaxed()).isTrue();
+    }
+
+    @Test
+    void 가드에_걸린_후보는_중간_날_보충에도_안_쓰인다() {
+        List<Candidate> all = new ArrayList<>(selfSufficientNear());
+        all.add(candidateAt("mid1", northOf(ANCHOR_POINT, 10)));
+        all.add(candidateAt("mid2", northOf(ANCHOR_POINT, 12)));
+        all.add(candidateAt("in30", northOf(ANCHOR_POINT, 30)));
+        all.add(candidateAt("out45", northOf(ANCHOR_POINT, 45)));
+        all.add(candidateAt("out60", northOf(ANCHOR_POINT, 60)));
+
+        // 중간 날 둘이 minPerDay 를 못 채워 보충(topUp)이 반드시 돈다 — 그 donor 목록에 RETURN 밴드가 있다.
+        List<DailyCandidatePool> result = BandSplitter.withDefaults().split(
+                ANCHOR, constraintsWithDeparture(northOf(ANCHOR_POINT, 120)), all, 4);
+
+        List<String> everyId = result.stream().flatMap(pool -> idsOf(pool).stream()).toList();
+        assertThat(everyId).contains("in30").doesNotContain("out45", "out60");
     }
 
     // ── 결정 5-(3) : 비율 기반 기본 임계값 — 여행이 길수록 임계도 늘어난다 ────

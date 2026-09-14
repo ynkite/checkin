@@ -28,6 +28,16 @@ public final class BandSplitter {
     public static final double DEFAULT_NEAR_BOUNDARY = 5.0;
     public static final double DEFAULT_MID_BOUNDARY = 25.0;
 
+    /**
+     * 귀가 밴드 절대거리 가드 (결정 11-(2)). 우회비용은 귀가 방향 장소를 앵커에서 멀어도 정상
+     * 후보로 보지만, {@code AiRouteService.postProcessRoute} 는 중심점 40km(도로거리) 로 자른다.
+     * 기준이 달라 엔진이 낸 장소가 뒤에서 조용히 지워지므로, 애초에 넣지 않는다.
+     *
+     * <p>이 값만은 {@code costMetric} 이 아니라 <b>항상 실제 km</b> 로 잰다 — 뒷단계 규칙이 km 라서다.
+     * 나중에 {@code TravelTimeProvider} 로 비용 단위가 분으로 바뀌어도 이 가드는 km 그대로다.
+     */
+    public static final double MAX_RETURN_DISTANCE_KM = 36.0;
+
     private static final double DEFAULT_DETOUR_RATIO = 0.3;
     private static final double DEFAULT_DETOUR_MIN = 5.0;
     private static final double DEFAULT_DETOUR_MAX = 20.0;
@@ -128,6 +138,10 @@ public final class BandSplitter {
             DistanceBand band = cost < nearBoundary ? DistanceBand.NEAR
                     : cost < midBoundary ? DistanceBand.MID
                     : DistanceBand.RETURN;
+            if (band == DistanceBand.RETURN
+                    && anchorPoint.distanceKmTo(candidate.location()) > MAX_RETURN_DISTANCE_KM) {
+                continue; // 뒤 단계가 어차피 지운다 — 중간 날 보충 후보로도 쓰지 않는다
+            }
             bands.get(band).add(candidate);
         }
         return bands;

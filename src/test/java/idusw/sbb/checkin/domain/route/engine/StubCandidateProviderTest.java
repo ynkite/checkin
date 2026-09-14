@@ -74,9 +74,27 @@ class StubCandidateProviderTest {
 
     // ── BandSplitter가 실제로 갈라야 한다 (이 작업의 핵심 요구사항) ───────────
 
+    /**
+     * 부산 스텁의 귀가 후보는 통도사(38km)·진해(42km)·창원(44km)·밀양(50km)·거제(68km)·통영(75km) 여섯 곳이라
+     * <b>전부 절대거리 가드(36km, 결정 11-(2)) 밖</b>이다. 가드는 뒤 단계 {@code postProcessRoute} 가
+     * 40km 도로거리로 지울 장소를 애초에 안 넣는 규칙이라, 여기서 귀가 밴드가 비는 게 정상 동작이다.
+     * 실제 후보는 카카오 반경 검색(≤20km)이 주므로 이 상황은 스텁 데이터 특성에 가깝다.
+     */
     @Test
-    void 부산_후보는_NEAR_MID_RETURN_전부로_실제로_갈린다() {
-        assertBandSplitterActuallySplits("부산", new GeoPoint(35.1587, 129.1604));
+    void 부산_후보는_근거리_중거리로_갈리고_귀가_밴드는_가드로_비워진다() {
+        GeoPoint anchorPoint = new GeoPoint(35.1587, 129.1604);
+        List<Candidate> candidates = provider.findCandidates("부산", START, END);
+        Anchor anchor = new Anchor("부산-anchor", "부산 숙소", anchorPoint, null, null);
+        RouteConstraints constraints = new RouteConstraints(
+                null, null, null, null, null, null, null, anchorPoint, null, null, null);
+
+        List<DailyCandidatePool> result = BandSplitter.withDefaults().split(anchor, constraints, candidates, 3);
+
+        assertThat(result.get(0).size()).isGreaterThan(0);
+        assertThat(result.get(1).size()).isGreaterThan(0);
+        assertThat(result.get(2).sourceBand()).isEqualTo(DistanceBand.RETURN);
+        assertThat(result.get(2).candidates()).isEmpty();
+        assertThat(candidates).anyMatch(c -> anchorPoint.distanceKmTo(c.location()) > BandSplitter.MAX_RETURN_DISTANCE_KM);
     }
 
     @Test
