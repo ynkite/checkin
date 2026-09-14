@@ -17,6 +17,7 @@ import idusw.sbb.checkin.domain.route.engine.TravelCostMetric;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -286,24 +287,90 @@ class RouteJsonWriterTest {
         int row = 0;
         for (SlotPlan slotPlan : dayPlan.slotPlans()) {
             List<Candidate> visits = slotPlan.visitOrder();
-            for (int i = 0; i < visits.size(); i++) {
-                LocalTime time = LocalTime.parse(rows.get(row + i).path("time").asText());
-                if (i > 0) {
-                    LocalTime previous = LocalTime.parse(rows.get(row + i - 1).path("time").asText());
-                    LocalTime expected = previous
-                            .plusMinutes(visits.get(i - 1).dwellMinutes())
-                            .plusMinutes(legMinutes(visits.get(i - 1), visits.get(i)));
-                    assertThat(time).isEqualTo(expected);
-                }
-                assertThat(rows.get(row + i).path("name").asText()).isEqualTo(visits.get(i).name());
+
+            // 엔진이 실제로 쓴 도착 시각을 뒤에서부터 되짚어 기대값을 만든다(표시 반올림 전 값).
+            LocalTime[] exact = new LocalTime[visits.size()];
+            for (int i = visits.size() - 1; i >= 0; i--) {
+                LocalTime departure = (i == visits.size() - 1)
+                        ? slotPlan.endTime()
+                        : exact[i + 1].minusMinutes(legMinutes(visits.get(i), visits.get(i + 1)));
+                exact[i] = departure.minusMinutes(visits.get(i).dwellMinutes());
             }
-            // 슬롯의 마지막 방문 도착 + 체류 = 엔진이 계산한 슬롯 종료 시각
-            LocalTime last = LocalTime.parse(rows.get(row + visits.size() - 1).path("time").asText());
-            assertThat(last.plusMinutes(visits.get(visits.size() - 1).dwellMinutes()))
-                    .isEqualTo(slotPlan.endTime());
+
+            for (int i = 0; i < visits.size(); i++) {
+                JsonNode place = rows.get(row + i);
+                LocalTime shown = LocalTime.parse(place.path("time").asText());
+                assertThat(place.path("name").asText()).isEqualTo(visits.get(i).name());
+                assertThat(shown.getMinute() % 5).isZero();
+                assertThat(Math.abs(Duration.between(exact[i], shown).toMinutes())).isLessThanOrEqualTo(2);
+            }
             row += visits.size();
         }
         assertThat(rows).hasSize(row);
+    }
+
+    // ── 원본 통과 : sub 에 금액·끼니가 들어 있어 뒤 단계 둘이 이 문자열을 읽는다 ──
+
+    @Test
+    void sub_stars_icon_name은_원본_노드_값을_그대로_통과시킨다() {
+        CandidateAdapter passThrough = new CandidateAdapter();
+        ObjectNode origin = node("강릉 고씨네동해막국수&순두부칼국수 본점", northOf(2),
+                "맛집 · 저녁 · ₩10,000×4", "평점 4.31");
+        origin.put("icon", "🍜");
+        Map<String, List<ObjectNode>> nodes = new LinkedHashMap<>();
+        nodes.put("food", List.of(origin));
+        Candidate candidate = passThrough.toCandidates(nodes).get(0);
+
+        ArrayNode root = RouteEngineFactory.withDefaults().jsonWriter(passThrough).write(
+                List.of(dayOf(0, singleVisit(SlotType.DINNER, candidate, LocalTime.of(19, 0)), LocalTime.of(20, 0))),
+                null, constraints(), START_DATE);
+
+        JsonNode place = root.get(0).path("places").get(0);
+        assertThat(place.path("name").asText()).isEqualTo("강릉 고씨네동해막국수&순두부칼국수 본점");
+        assertThat(place.path("sub").asText()).isEqualTo("맛집 · 저녁 · ₩10,000×4");
+        assertThat(place.path("stars").asText()).isEqualTo("평점 4.31");
+        assertThat(place.path("icon").asText()).isEqualTo("🍜");
+    }
+
+    @Test
+    void 원본에_icon이_없으면_type_기본_아이콘을_쓴다() {
+        ArrayNode root = writer.write(threeDays(), anchor, constraints(), START_DATE);
+
+        assertThat(root.get(0).path("places").get(0).path("icon").asText()).isEqualTo("📍");
+        assertThat(root.get(1).path("places").get(0).path("icon").asText()).isEqualTo("🏨");
+    }
+
+    // ── 표시 시각만 5분 단위 ─────────────────────────────────────────────
+
+    @Test
+    void 표시_시각은_5분_단위로_반올림한다() {
+        // TOUR 체류 90분. 종료 10:33 → 도착 09:03 → 09:05 / 종료 12:07 → 도착 10:37 → 10:35
+        ArrayNode up = writer.write(
+                List.of(dayOf(0, singleVisit(SlotType.MORNING_ACTIVITY, tours.get(0), LocalTime.of(10, 33)),
+                        LocalTime.of(20, 0))), null, constraints(), START_DATE);
+        ArrayNode down = writer.write(
+                List.of(dayOf(0, singleVisit(SlotType.MORNING_ACTIVITY, tours.get(0), LocalTime.of(12, 7)),
+                        LocalTime.of(20, 0))), null, constraints(), START_DATE);
+
+        assertThat(up.get(0).path("places").get(0).path("time").asText()).isEqualTo("09:05");
+        assertThat(down.get(0).path("places").get(0).path("time").asText()).isEqualTo("10:35");
+    }
+
+    @Test
+    void 반올림은_JSON에만_걸리고_엔진_결과는_그대로다() {
+        SlotPlan slotPlan = singleVisit(SlotType.MORNING_ACTIVITY, tours.get(0), LocalTime.of(10, 33));
+        DayPlan dayPlan = dayOf(0, slotPlan, LocalTime.of(19, 58));
+        // 첫날 끝에 숙소가 붙게 이틀로 쓴다 (하루짜리는 당일치기라 숙소가 없다)
+        List<DayPlan> days = List.of(dayPlan,
+                dayOf(1, singleVisit(SlotType.LUNCH, foods.get(0), LocalTime.of(13, 0)), LocalTime.of(20, 0)));
+
+        ArrayNode root = writer.write(days, anchor, constraints(), START_DATE);
+
+        assertThat(slotPlan.endTime()).isEqualTo(LocalTime.of(10, 33)); // 시뮬레이션 값은 분 단위 그대로
+        assertThat(dayPlan.returnTime()).isEqualTo(LocalTime.of(19, 58));
+        // 숙소 행의 표시 시각만 20:00 으로 반올림된다
+        ArrayNode places = (ArrayNode) root.get(0).path("places");
+        assertThat(places.get(places.size() - 1).path("time").asText()).isEqualTo("20:00");
     }
 
     @Test

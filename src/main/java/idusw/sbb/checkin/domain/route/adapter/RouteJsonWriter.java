@@ -48,6 +48,7 @@ public final class RouteJsonWriter {
     private static final String REPLACE_PLACEHOLDER = "장소 교체 요청";
     private static final String STARS_UNKNOWN = "평점 정보 없음";
     private static final String STAY_TYPE = "stay";
+    private static final int MINUTES_PER_DAY = 24 * 60;
     private static final Pattern AMOUNT_PATTERN = Pattern.compile("₩([\\d,]+)(?:×(\\d+))?");
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -165,36 +166,45 @@ public final class RouteJsonWriter {
     }
 
     private ObjectNode placeRow(Candidate candidate, LocalTime time) {
-        ObjectNode origin = candidateAdapter.originOf(candidate.id());
-        String type = CandidateAdapter.jsonType(candidate.category());
-
-        ObjectNode row = objectMapper.createObjectNode();
-        row.put("type", type);
-        row.put("icon", icon(type));
-        row.put("name", candidate.name());
-        row.put("sub", text(origin, "sub", ""));
-        row.put("stars", text(origin, "stars", STARS_UNKNOWN));
-        row.put("time", time.format(TIME_FORMAT));
-        row.put("replacePh", REPLACE_PLACEHOLDER);
-        row.put("lat", candidate.location().latitude());
-        row.put("lng", candidate.location().longitude());
-        return row;
+        return row(candidateAdapter.originOf(candidate.id()),
+                CandidateAdapter.jsonType(candidate.category()),
+                candidate.name(), candidate.location(), time);
     }
 
     private ObjectNode stayRow(Anchor anchor, LocalTime time) {
-        ObjectNode origin = candidateAdapter.originOf(anchor.id());
+        return row(candidateAdapter.originOf(anchor.id()),
+                STAY_TYPE, anchor.name(), anchor.location(), time);
+    }
 
+    /**
+     * {@code sub}·{@code stars}·{@code icon}·{@code name} 은 원본 후보 노드 값을 <b>그대로</b> 통과시킨다.
+     *
+     * <p>{@code sub} 에 금액({@code ₩35,000×4})과 끼니 라벨(점심/저녁)이 같이 들어 있어서다. 여기서
+     * 새로 지어내면 {@code parseAndSaveEstimatedExpenses} 의 예산 집계와 {@code syncMealLabelByTime}
+     * 의 라벨 보정이 동시에 헛돈다 — 둘 다 이 문자열을 읽는다.
+     */
+    private ObjectNode row(ObjectNode origin, String type, String fallbackName, GeoPoint location, LocalTime time) {
         ObjectNode row = objectMapper.createObjectNode();
-        row.put("type", STAY_TYPE);
-        row.put("icon", icon(STAY_TYPE));
-        row.put("name", anchor.name());
-        row.put("sub", text(origin, "sub", ""));
-        row.put("stars", text(origin, "stars", STARS_UNKNOWN));
-        row.put("time", time.format(TIME_FORMAT));
+        row.put("type", type);
+        row.put("icon", passThrough(origin, "icon", defaultIcon(type)));
+        row.put("name", passThrough(origin, "name", fallbackName));
+        row.put("sub", passThrough(origin, "sub", ""));
+        row.put("stars", passThrough(origin, "stars", STARS_UNKNOWN));
+        row.put("time", displayTime(time).format(TIME_FORMAT));
         row.put("replacePh", REPLACE_PLACEHOLDER);
-        row.put("lat", anchor.location().latitude());
-        row.put("lng", anchor.location().longitude());
+        row.put("lat", location.latitude());
+        row.put("lng", location.longitude());
         return row;
+    }
+
+    /**
+     * 표시용으로만 5분 단위 반올림한다. 시뮬레이션·검증은 분 단위 그대로다 — 09:03 을 그대로 찍으면
+     * 사람이 짠 일정으로 안 보인다.
+     */
+    private static LocalTime displayTime(LocalTime time) {
+        int minutes = time.getHour() * 60 + time.getMinute();
+        int rounded = (minutes + 2) / 5 * 5;
+        return LocalTime.ofSecondOfDay((rounded % MINUTES_PER_DAY) * 60L);
     }
 
     private ArrayNode interleaveTransit(List<ObjectNode> rows) {
@@ -218,7 +228,8 @@ public final class RouteJsonWriter {
                 DAY_OF_WEEK_KO[date.getDayOfWeek().getValue() - 1]);
     }
 
-    private static String icon(String type) {
+    /** 카카오 후보 노드에는 icon 이 없다 — 원본에 있으면 그게 우선이고, 없을 때만 이 값을 쓴다. */
+    private static String defaultIcon(String type) {
         return switch (type) {
             case STAY_TYPE -> "🏨";
             case "food" -> "🍽️";
@@ -227,12 +238,13 @@ public final class RouteJsonWriter {
         };
     }
 
-    private static String text(ObjectNode origin, String field, String fallback) {
-        if (origin == null) {
+    /** 원본 값을 다듬지 않고 그대로 준다. 비어 있을 때만 fallback. */
+    private static String passThrough(ObjectNode origin, String field, String fallback) {
+        if (origin == null || !origin.hasNonNull(field)) {
             return fallback;
         }
-        String value = origin.path(field).asText("").trim();
-        return value.isEmpty() ? fallback : value;
+        String value = origin.path(field).asText("");
+        return value.isBlank() ? fallback : value;
     }
 
     /** {@code "맛집 · 점심 · ₩12,000×2"} → 24000. 서비스의 예상비용 합산과 같은 규칙이다. */
