@@ -7,9 +7,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -43,14 +45,21 @@ public class TourApiClient {
      * @return items.item (배열 또는 단일 객체). 실패·오류코드면 빈 배열.
      */
     public JsonNode items(String service, String operation, Map<String, String> params) {
-        UriComponentsBuilder b = UriComponentsBuilder
-                .fromUriString(baseUrl + "/" + service + "/" + operation)
-                .queryParam("serviceKey", serviceKey)   // 디코딩키 → 여기서 한 번만 인코딩된다
-                .queryParam("MobileOS", "ETC")
-                .queryParam("MobileApp", "checkin")
-                .queryParam("_type", "json");
-        params.forEach(b::queryParam);
-        String url = b.encode(StandardCharsets.UTF_8).toUriString();
+        // 공통 파라미터 + 요청별 파라미터를 직접 인코딩한다.
+        // ⚠️ UriComponentsBuilder 는 디코딩키의 '/' 를 인코딩하지 않아 키가 깨진다
+        //    (SERVICE_KEY_IS_NOT_REGISTERED). serviceKey 를 직접 인코딩하고 URI 로 넘겨 재인코딩을 막는다.
+        Map<String, String> all = new LinkedHashMap<>();
+        all.put("serviceKey", serviceKey);   // 디코딩키
+        all.put("MobileOS", "ETC");
+        all.put("MobileApp", "checkin");
+        all.put("_type", "json");
+        all.putAll(params);
+
+        StringBuilder qs = new StringBuilder();
+        all.forEach((k, v) -> qs.append(qs.length() == 0 ? '?' : '&')
+                .append(k).append('=')
+                .append(URLEncoder.encode(v, StandardCharsets.UTF_8)));
+        String url = baseUrl + "/" + service + "/" + operation + qs;
 
         String raw = get(url, service);
         if (raw == null) return EMPTY;
@@ -73,9 +82,10 @@ public class TourApiClient {
 
     /** 호출 1회 + 실패 시 즉시 재시도 1회. 둘 다 실패하면 null(→ 폴백). */
     private String get(String url, String service) {
+        URI uri = URI.create(url);   // 이미 인코딩된 문자열 — RestTemplate 이 재인코딩하지 않도록 URI 로 넘긴다
         for (int attempt = 1; attempt <= 2; attempt++) {
             try {
-                return restTemplate.getForObject(url, String.class);
+                return restTemplate.getForObject(uri, String.class);
             } catch (Exception e) {
                 log.warn("[tour] {} 호출 실패 ({}차): {}", service, attempt, e.getMessage());
             }
