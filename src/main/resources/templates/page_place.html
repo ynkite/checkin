@@ -42,17 +42,17 @@
                 <strong id="pr-author-name"></strong>
                 <div id="pr-meta" style="display:inline-flex;gap:8px"></div>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px"
-                        onclick="doReviewLike()">❤️ 좋아요</button>
+                        onclick="doReviewLike()">좋아요</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px"
-                        onclick="doReviewScrap()">★ 스크랩</button>
+                        onclick="doReviewScrap()">★스크랩</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)"
-                        onclick="doReviewReport()">🚨 신고</button>
+                        onclick="doReviewReport()">신고</button>
                 <button class="btn-o community-owner-edit-btn"
-                        id="btn-review-edit" onclick="openCurrentPostEditModal()">✏️ 수정</button>
+                        id="btn-review-edit" onclick="openCurrentPostEditModal()">수정</button>
                 <button class="btn-o community-owner-delete-btn"
                         id="btn-review-delete"
                         style="display:none;padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)"
-                        onclick="deleteCurrentPostFromDetail()">🗑️ 삭제</button>
+                        onclick="deleteCurrentPostFromDetail()">삭제</button>
             </div>
 
             <div class="review-plan-badge" id="pr-plan-badge"></div>
@@ -63,7 +63,7 @@
             <div class="comment-box" id="pr-comments"></div>
 
             <div class="review-cta">
-                <div class="rcta-ttl">✈️ 이 경로가 마음에 드셨나요?</div>
+                <div class="rcta-ttl">이 경로가 마음에 드셨나요?</div>
                 <div class="rcta-sub" id="pr-cta-sub"></div>
                 <button class="btn-rcta" onclick="startPlanFromCommunityPost()">이 경로로 여행 계획하기 →</button>
             </div>
@@ -78,7 +78,7 @@
     <div class="page" id="page-edit-review">
         <div class="review-wrap">
             <div class="review-back" onclick="go('review')">← 후기로 돌아가기</div>
-            <h2 style="font-size:22px;font-weight:800;margin-bottom:18px">✏️ 후기 수정</h2>
+            <h2 style="font-size:22px;font-weight:800;margin-bottom:18px">후기 수정</h2>
             <div class="bcard write-form">
 
                 <div class="form-group">
@@ -99,7 +99,7 @@
                             <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px;text-decoration:underline"
                                     onclick="document.getElementById('editBlogEditor').focus();document.execCommand('underline')">U</button>
                             <button style="padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--surface);cursor:pointer;font-size:12px"
-                                    onclick="document.getElementById('editImgInput').click()">🖼️ 이미지</button>
+                                    onclick="document.getElementById('editImgInput').click()">이미지</button>
                             <input type="file" id="editImgInput" accept="image/*" style="display:none"
                                    onchange="insertEditImage(this)">
                         </div>
@@ -114,8 +114,8 @@
                 <div class="form-group">
                     <label class="form-label">공개 여부</label>
                     <div style="display:flex;gap:8px;margin-top:4px">
-                        <button class="vis-chip on" onclick="pickVis(this)">🌐 공개</button>
-                        <button class="vis-chip" onclick="pickVis(this)">🔒 비공개</button>
+                        <button class="vis-chip on" onclick="pickVis(this)">공개</button>
+                        <button class="vis-chip" onclick="pickVis(this)">비공개</button>
                     </div>
                 </div>
 
@@ -187,15 +187,15 @@
                 <div class="prev-map-box">
                     <div id="prevKakaoMap" style="width:100%;height:100%"></div>
                 </div>
-                <div class="prev-section-ttl">🏨 숙소 스냅샷</div>
+                <div class="prev-section-ttl">숙소 스냅샷</div>
                 <div class="prev-stay-list" id="prevStay"></div>
-                <div class="prev-section-ttl">🍽️ 맛집 리스트 핵심글</div>
+                <div class="prev-section-ttl">맛집 리스트 핵심글</div>
                 <div id="prevFoodList"></div>
                 <div class="prev-acts">
                     <button class="btn-prev-plan" onclick="closePrev();go('planner')">
                         → 해당 경로로 여행 계획하기
                     </button>
-                    <button class="btn-prev-scrap" onclick="doPreviewScrap()">🔖 스크랩</button>
+                    <button class="btn-prev-scrap" onclick="doPreviewScrap()">스크랩</button>
                 </div>
             </div>
         </div>
@@ -209,7 +209,7 @@
          onclick="if(event.target===this)this.classList.remove('open')">
         <div class="modal" style="width:400px">
             <div class="modal-hd">
-                <div class="modal-ttl">✅ 플랜 확정</div>
+                <div class="modal-ttl">플랜 확정</div>
                 <button class="modal-x"
                         onclick="this.closest('.overlay').classList.remove('open')">✕</button>
             </div>
@@ -220,8 +220,8 @@
                 <div class="form-group">
                     <label class="form-label">공개 여부</label>
                     <div style="display:flex;gap:8px;margin-top:4px">
-                        <button class="vis-chip on" onclick="pickVis(this)">🌐 공개</button>
-                        <button class="vis-chip" onclick="pickVis(this)">🔒 비공개</button>
+                        <button class="vis-chip on" onclick="pickVis(this)">공개</button>
+                        <button class="vis-chip" onclick="pickVis(this)">비공개</button>
                     </div>
                 </div>
                 <button class="btn-next" style="width:100%;margin-top:14px"
@@ -239,7 +239,7 @@
         <div class="modal" style="width:440px; padding:24px 28px;">
             <div class="modal-hd" style="border-bottom:none; padding-bottom:0; margin-bottom:16px;">
                 <h2 style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px;">
-                    🔗 여행 플랜 공유
+                    여행 플랜 공유
                 </h2>
                 <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
             </div>
@@ -324,8 +324,8 @@
         }
         _setHTML('pr-meta',
             `<span>${d.createdAt||''}</span>
-     <span>👁 ${d.viewCount||0}</span>
-     <span>❤️ ${d.likeCount||0}</span>`);
+     <span>조회 ${d.viewCount||0}</span>
+     <span>좋아요 ${d.likeCount||0}</span>`);
 
         // 수정 버튼 — 내 글일 때만
         const editBtn = document.getElementById('btn-review-edit');
@@ -334,7 +334,7 @@
         // 연결 플랜 배지
         if (d.connectedTrip) {
             _setHTML('pr-plan-badge', `
-      <div style="font-size:12px;font-weight:700;color:var(--sage-d)">📋 연결된 플랜</div>
+      <div style="font-size:12px;font-weight:700;color:var(--sage-d)">연결된 플랜</div>
       <div style="font-size:13px;color:var(--text2);flex:1">${d.connectedTrip.summary||''}</div>
       <button class="btn-f" style="padding:6px 12px;font-size:11px"
               onclick="openPreview('${d.connectedTrip.tripId}')">미리보기</button>`);
@@ -369,7 +369,7 @@
             if (repReviews.length && placeListEl) {
                 placeListEl.style.display = '';
                 _setHTML('pr-place-list',
-                    `<div class="bcard-ttl">📍 방문 장소별 별점 &amp; 한줄평</div>` +
+                    `<div class="bcard-ttl">방문 장소별 별점 &amp; 한줄평</div>` +
                     repReviews.map(p => `
         <div class="place-review-card" style="cursor:pointer"
              onclick="goToPlaceReviews(${p.placeId})">
@@ -417,7 +417,7 @@
 
         area.innerHTML = `
     <div class="comment-ttl">
-      💬 댓글 <span style="color:var(--sage)">${list.length}</span>
+      댓글 <span style="color:var(--sage)">${list.length}</span>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <div class="comm-av" style="flex-shrink:0">나</div>
@@ -448,7 +448,7 @@
           <div class="comm-hd">
             <span class="comm-author" style="color:#9E9E9E">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
-            <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">🚫 숨김 처리된 댓글</span>
+            <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
           </div>
           <div class="comm-text" style="color:#9E9E9E">${c.content||''}</div>
         </div>
@@ -474,14 +474,14 @@
     async function doCommentWrite() {
         const postId = window._currentPostId;
         const input  = document.getElementById('commentInput');
-        if (!input?.value.trim()) { toast('댓글을 입력해주세요.'); return; }
+        if (!input?.value.trim()) { toast('댓글을 적어 주세요.'); return; }
         if (!Token.getAccess())   { toast('로그인이 필요합니다.'); go('login'); return; }
 
         const res = await api.post(`/api/posts/${postId}/comments`,
             { content: input.value.trim() });
         if (res.success) {
             input.value = '';
-            toast('댓글이 등록되었습니다.');
+            toast('댓글을 올렸습니다.');
             await loadComments(postId);
         } else {
             toast(res.message || '댓글 등록에 실패했습니다.');
@@ -495,7 +495,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/likes`, {});
-        toast(res.success ? '❤️ 좋아요!' : (res.message || '좋아요 처리 실패'));
+        toast(res.success ? '좋아요!' : (res.message || '좋아요 처리 실패'));
     }
 
     /* ────────────────────────────────────────────────
@@ -505,7 +505,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/scraps`, {});
-        toast(res.success ? '★ 스크랩 완료!' : (res.message || '스크랩 처리 실패'));
+        toast(res.success ? '★ 스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
     }
 
     /* ────────────────────────────────────────────────
@@ -559,7 +559,7 @@
 
             container.innerHTML = `
                     <label class="form-label" style="display:block;margin-bottom:10px">
-                        📍 방문 장소별 별점 &amp; 한줄평
+                        방문 장소별 별점 &amp; 한줄평
                     </label>
                     <div id="edit-place-list">
                         ${reviews.map(r => `
@@ -594,8 +594,8 @@
         const activeChip = document.querySelector('#page-edit-review .vis-chip.on');
         const isPublic   = activeChip ? !activeChip.textContent.includes('비공개') : true;
 
-        if (!title)   { toast('제목을 입력해주세요.'); return; }
-        if (!content) { toast('내용을 입력해주세요.'); return; }
+        if (!title)   { toast('제목을 적어 주세요.'); return; }
+        if (!content) { toast('내용을 적어 주세요.'); return; }
 
         // 1. 게시글 수정
         const res = await api.patch(`/api/posts/${postId}`, { title, content, isPublic });
@@ -620,7 +620,7 @@
             }
         }
 
-        toast('✅ 수정이 완료되었습니다.');
+        toast('수정이 완료되었습니다.');
         go('review');
         loadReviewDetail(postId);
     }
@@ -656,8 +656,8 @@
     }
 
     function _placeCatIcon(category) {
-        return { accommodation: '🏨', restaurant: '🍽️', cafe: '☕', attraction: '📍' }
-            [(category || '').toLowerCase()] || '📍';
+        return { accommodation: '숙', restaurant: '맛', cafe: '카', attraction: '관' }
+            [(category || '').toLowerCase()] || '곳';
     }
 
     function _placeCatLabel(category) {
@@ -671,9 +671,9 @@
         const headerEl = document.getElementById('place-reviews-header');
         // 미리 알고 있는 이름이 있으면 즉시 헤더 표시, 없으면 로딩 표시
         if (headerEl) headerEl.innerHTML = hintPlaceName
-            ? `<div class="prc-icon" style="background:var(--sage-pale);font-size:22px">📍</div>
+            ? `<div class="prc-icon" style="background:var(--terra-pale);font-size:13px;font-weight:700">곳</div>
                <div style="flex:1"><div style="font-size:18px;font-weight:800">${escapeHtml ? escapeHtml(hintPlaceName) : hintPlaceName}</div></div>`
-            : `<div class="prc-icon" style="background:var(--sage-pale);font-size:22px">📍</div>
+            : `<div class="prc-icon" style="background:var(--terra-pale);font-size:13px;font-weight:700">곳</div>
                <div><div style="font-size:12px;color:var(--text3)">불러오는 중...</div></div>`;
 
         const res = await api.get(`/api/places/${placeId}/reviews`);
@@ -712,13 +712,13 @@
       </div>
     </div>
     <button class="btn-o" style="padding:6px 14px;font-size:12px"
-            onclick="doPlaceScrap()">★ 스크랩</button>`;
+            onclick="doPlaceScrap()">★스크랩</button>`;
 
         // 통계
         _setHTML('place-stats-grid', `
     <div class="prev-stat-card">
       <div class="psc-val">${avg ? avg.toFixed(1) : '—'}</div>
-      <div class="psc-label">★★★★★ 평균 평점</div>
+      <div class="psc-label">★★★★★평균 평점</div>
     </div>
     <div class="prev-stat-card">
       <div class="psc-val">${reviews.length}</div>
@@ -788,8 +788,8 @@
         const res = await api.post(`/api/places/${placeId}/scraps`, { category });
         const scrapped = res?.data === true;
         toast(res?.success === false
-            ? (res?.message || '스크랩 처리에 실패했습니다.')
-            : (scrapped ? '★ 스크랩했습니다!' : '스크랩을 취소했습니다.'));
+            ? (res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.')
+            : (scrapped ? '★ 스크랩했습니다.' : '스크랩을 취소했습니다.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -799,9 +799,9 @@
         const postId = window._currentPostId;
         if (postId) {
             const res = await api.post(`/api/posts/${postId}/scraps`, {});
-            toast(res.success ? '🔖 스크랩 완료!' : (res.message || '스크랩 처리 실패'));
+            toast(res.success ? '스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
         } else {
-            toast('🔖 스크랩 완료!');
+            toast('스크랩했습니다.');
         }
         closePrev();
     }
@@ -818,7 +818,7 @@
         }
         document.getElementById('confirmModal').classList.remove('open');
         go('map');
-        toast('✅ 플랜이 확정되었습니다!');
+        toast('일정을 확정했습니다.');
         document.getElementById('confirmDoneModal').classList.add('open');
     }
 
@@ -834,7 +834,7 @@
             return;
         }
 
-        // 💡 읽기 전용 링크 세팅 (/plan/view 경로)
+        // 읽기 전용 링크 세팅 (/plan/view 경로)
         const linkEl = document.getElementById('share-link-url');
         if (linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
 
@@ -873,7 +873,7 @@
     async function doShareInvite() {
         const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
         const input  = document.getElementById('shareEmailInput');
-        if (!input?.value.trim()) { toast('이메일을 입력해주세요.'); return; }
+        if (!input?.value.trim()) { toast('이메일을 적어 주세요.'); return; }
         if (!tripId) { toast('공유할 플랜이 없습니다.'); return; }
 
         const emails = input.value.split(',').map(e => e.trim()).filter(Boolean);
@@ -884,11 +884,11 @@
             if(res.success) successCount++;
         }
         if(successCount > 0) {
-            toast('✅ 초대(편집 권한)가 발송되었습니다.');
+            toast('초대(편집 권한)가 발송되었습니다.');
             input.value = '';
             await loadShareModal();
         } else {
-            toast('⚠️ 초대 실패. 가입된 유저인지 확인해주세요.');
+            toast('초대하지 못했습니다. 가입한 계정인지 확인해 주세요.');
         }
     }
 
@@ -901,7 +901,7 @@
             toast('링크가 없습니다.'); return;
         }
         navigator.clipboard?.writeText(linkEl.value)
-            .then(() => toast('✅ 읽기 전용 링크가 복사되었습니다!'))
+            .then(() => toast('보기 전용 링크를 복사했습니다.'))
             .catch(() => toast('링크 복사에 실패했습니다.'));
     }
 

@@ -1034,7 +1034,7 @@
 
 /* 숙소 */
 .comm-post-item .post-card:has(.cat-stay)::before {
-    background: #2D9E8A;
+    background: var(--terra);
 }
 
 /* 맛집 */
@@ -1194,7 +1194,7 @@
     border-radius: 12px 0 0 12px;
 }
 
-.place-review-card-wrap.type-stay::before { background: #2D9E8A; }
+.place-review-card-wrap.type-stay::before { background: var(--terra); }
 .place-review-card-wrap.type-food::before { background: #FF6B6B; }
 .place-review-card-wrap.type-tour::before { background: #3B82F6; }
 .place-review-card-wrap.type-cafe::before { background: #A78BFA; }
@@ -1294,7 +1294,7 @@
 .place-card-stars { color: #f5a623; font-size: .85rem; letter-spacing: -.5px; }
 .place-card-avg   { font-size: .82rem; font-weight: 700; color: var(--text2, #555); }
 .place-card-count { font-size: .78rem; color: var(--text3, #999); white-space: nowrap; }
-.place-card-scrap { font-size: .78rem; color: var(--sage-d, #5a8a6a); font-weight: 700; white-space: nowrap; }
+.place-card-scrap { font-size: .78rem; color: var(--num); font-weight: 700; white-space: nowrap; }
 
 /* 뒤로 가기 */
 .place-back-btn {
@@ -1380,18 +1380,18 @@
     transition: all .15s ease;
 }
 .place-review-scrap-btn:hover {
-    border-color: var(--sage-d, #46B29E);
-    color: var(--sage-d, #46B29E);
+    border-color: var(--terra);
+    color: var(--terra);
 }
 .place-review-scrap-btn .prs-star { font-size: .95rem; line-height: 1; }
 .place-review-scrap-btn.scrapped {
-    background: #46B29E;
-    border-color: #46B29E;
+    background: var(--terra);
+    border-color: var(--terra);
     color: #fff;
 }
 .place-review-scrap-btn.scrapped:hover {
-    background: #3a9c8a;
-    border-color: #3a9c8a;
+    background: var(--sig-deep);
+    border-color: var(--sig-deep);
     color: #fff;
 }
 
@@ -1427,18 +1427,20 @@
     font-weight: 700;
     transition: transform .1s ease, box-shadow .15s ease, filter .15s ease;
 }
-.place-map-links .pml-btn::before {
-    content: "📍";
-    font-size: .9rem;
+/* 바깥 지도로 나가는 링크. 브랜드색으로 꽉 채우면 세 개가 화면을
+   다 먹는다. 장소가 주인공이고 이건 보조 동작이다. 테두리만 두른다. */
+.place-map-links .pml-btn {
+    background: var(--panel);
+    color: var(--ink-2);
+    box-shadow: inset 0 0 0 1px var(--ui-line);
+    transition: color .15s, box-shadow .15s;
 }
 .place-map-links .pml-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(0,0,0,.14);
-    filter: brightness(1.03);
+    transform: none;
+    color: var(--ink);
+    box-shadow: inset 0 0 0 1px var(--ink-3);
+    filter: none;
 }
-.place-map-links .pml-naver  { background: #03C75A; color: #fff; }
-.place-map-links .pml-kakao  { background: #FEE500; color: #3C1E1E; }
-.place-map-links .pml-google { background: #4285F4; color: #fff; }
 
 /* ── 리뷰 목록 ── */
 .place-review-list {
@@ -1550,13 +1552,13 @@
     font-size: 11px;
     line-height: 1.2;
     background: #fff;
-    border: 1px solid #47B39F;
-    color: #47B39F;
+    border: 1px solid var(--terra);
+    color: var(--terra);
     transition: background .18s ease, color .18s ease, border-color .18s ease;
 }
 
 #page-review .community-owner-edit-btn:hover {
-    background: #47B39F;
-    border-color: #47B39F;
+    background: var(--terra);
+    border-color: var(--terra);
     color: #fff;
 }

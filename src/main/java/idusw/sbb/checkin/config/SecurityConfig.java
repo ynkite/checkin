@@ -52,8 +52,16 @@ public class SecurityConfig {
 
                 // API URL 주소별 접근 권한 나누기
                 .authorizeHttpRequests(auth -> auth
-                        //정적 리소스 (CSS, JS, 이미지 등) 전체 허용
-                        .requestMatchers("/**.css", "/**/*.css", "/**.js", "/**/*.js", "/**.html", "/**.ico", "img/**.png", "/**.jpg", "/**.svg", "/**.woff2", "/**.woff", "/**.ttf", "/plan/**", "/plan/view/**", "/trip/**").permitAll()
+                        // 정적 리소스 전체 허용.
+                        // 디렉터리로 잡는다 — 확장자 패턴만 쓰면 하위 경로가 빠진다.
+                        // (기존에 "/**.svg" 만 있어서 /img/*.svg 가 302 로 튕겼다)
+                        .requestMatchers("/css/**", "/js/**", "/img/**", "/font/**", "/fonts/**").permitAll()
+                        .requestMatchers("/**/*.css", "/**/*.js", "/**/*.svg", "/**/*.png", "/**/*.jpg",
+                                         "/**/*.jpeg", "/**/*.gif", "/**/*.webp", "/**/*.ico",
+                                         "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.map").permitAll()
+                        .requestMatchers("/plan/**", "/plan/view/**", "/trip/**").permitAll()
+                        // 캘린더 구독 피드 — 인증 없이 열리는 .ics (토큰으로 보호)
+                        .requestMatchers("/cal/**").permitAll()
 
                         // 업로드된 이미지 파일 비로그인 접근 허용
                         .requestMatchers("/uploads/**").permitAll()

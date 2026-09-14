@@ -30,7 +30,7 @@ async function updateLedgerList() {
                     background:${isSel ? 'var(--sage-pale)' : 'var(--surface)'};
                     cursor:pointer;margin-bottom:10px;transition:all .2s">
           <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
-                      display:flex;align-items:center;justify-content:center;font-size:20px">🗺️</div>
+                      display:flex;align-items:center;justify-content:center;font-size:20px">지도</div>
           <div style="flex:1">
             <div style="font-weight:700;font-size:14px">${l.title || '여행 플랜'}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">
@@ -119,12 +119,12 @@ function _populateLedgerTripCards() {
         const isSel = (_budgetSelectedTripId === t.id);
         return `
       <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
-        <div class="ts-thumb">🗺️</div>
+        <div class="ts-thumb">지도</div>
         <div class="ts-info">
           <div class="ts-name">${t.title || '여행 플랜'}</div>
           <div class="ts-meta">${t.startDate || ''} ~ ${t.endDate || ''} · ${t.destination || ''}</div>
         </div>
-        <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '✅ 확정' : '📝 초안'}</div>
+        <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '확정' : '초안'}</div>
       </div>`;
     }).join('');
 
@@ -198,8 +198,8 @@ const _CATEGORY_MAP = {
 };
 
 function _fmtWon(n) {
-    if (!n) return '₩0';
-    return '₩' + Number(n).toLocaleString();
+    if (!n) return '0원';
+    return Number(n).toLocaleString() + '원';
 }
 
 /** GET /api/trips/{tripId}/expenses → 가계부 상세 화면 렌더링 */
@@ -343,7 +343,7 @@ async function _loadExpenses(tripId) {
             </div>
             <div class="bi-bar-track" title="예상 지출"><div class="bi-bar-fill" style="width:${estW};background:${info.color};opacity:.35"></div></div>
             <div class="bi-bar-track" style="margin-top:4px" title="실제 지출"><div class="bi-bar-fill" style="width:${actW};background:${info.color}"></div></div>
-            ${isOver ? `<div style="font-size:11px;color:var(--coral);margin-top:5px;font-weight:600">⚠ ${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
+            ${isOver ? `<div style="font-size:11px;color:var(--coral);margin-top:5px;font-weight:600">${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
           </div>`;
             }).join('');
             listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${items}</div>`;
@@ -391,7 +391,7 @@ async function _loadExpenses(tripId) {
         const tripStarted = d.startDate <= today;
         if (notStarted) notStarted.style.display = tripStarted ? 'none' : 'block';
         if (notStarted && !tripStarted) {
-            notStarted.textContent = `✈️ 여행 시작 전입니다. 지출 입력은 ${d.startDate.replace(/-/g, '.')} 이후부터 가능합니다.`;
+            notStarted.textContent = `여행 시작 전입니다. 지출 입력은 ${d.startDate.replace(/-/g, '.')} 이후부터 가능합니다.`;
         }
         if (addForm) addForm.style.display = tripStarted ? '' : 'none';
     }
@@ -409,7 +409,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
         if (e.date) actByDate[e.date] = (actByDate[e.date] || 0) + (e.amount || 0);
     });
 
-    const typeIcon = { stay: '🏨', food: '🍽️', cafe: '☕', tour: '📍', sight: '📍', attraction: '📍' };
+    const typeIcon = { stay: '숙', food: '맛', cafe: '카', tour: '관', sight: '관', attraction: '관' };
 
     const html = routeData.map((day, idx) => {
         // Day N의 날짜 계산 (startDate + idx일)
@@ -425,13 +425,13 @@ function _renderItinerary(routeData, actualExps, startDate) {
         let estTotal = 0;
         places.forEach(p => {
             if (p.sub) {
-                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estTotal += (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
         });
         // 이동 비용도 포함
         (day.places || []).filter(p => p.transit).forEach(p => {
-            const m = p.transit.match(/₩\s*([\d,]+)/);
+            const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
             if (m) estTotal += parseInt(m[1].replace(/,/g, '')) || 0;
         });
 
@@ -442,10 +442,10 @@ function _renderItinerary(routeData, actualExps, startDate) {
         const placeRows = places.map(p => {
             let estAmt = 0;
             if (p.sub) {
-                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estAmt = (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
-            const icon = typeIcon[p.type] || '📍';
+            const icon = typeIcon[p.type] || '곳';
             return `
                 <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border2)">
                     <span style="font-size:13px;width:18px;text-align:center">${icon}</span>
@@ -467,7 +467,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
                             <span style="margin-left:10px;color:var(--text3)">실제 </span>
                             <strong style="color:${diff > 0 ? 'var(--coral)' : 'var(--sage)'}">${_fmtWon(actTotal)}</strong>
                             <span style="margin-left:6px;font-weight:700;color:${diff > 0 ? 'var(--coral)' : 'var(--sage)'}">
-                                ${diff > 0 ? '⚠ ' + _fmtWon(diff) + ' 초과' : '✓ ' + _fmtWon(-diff) + ' 절약'}
+                                ${diff > 0 ? '+' + _fmtWon(diff) + ' 초과' : '−' + _fmtWon(-diff) + ' 절약'}
                             </span>
                         ` : `<span style="margin-left:10px;color:var(--text3);font-size:10px">실제 미입력</span>`}
                     </div>
@@ -480,7 +480,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
 
     container.style.display = 'block';
     container.innerHTML = `
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">📅 일정별 지출 현황</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">일정별 지출 현황</div>
         ${html}`;
 }
 
@@ -544,7 +544,7 @@ async function _loadMapBudget() {
             ${hasAct ? `<div style="background:var(--border2);border-radius:4px;height:5px" title="실제 지출">
               <div style="width:${actW};background:${info.color};height:5px;border-radius:4px;transition:width .4s"></div>
             </div>` : ''}
-            ${isOver && hasAct ? `<div style="font-size:10px;color:var(--coral);margin-top:3px;font-weight:600">⚠ ${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
+            ${isOver && hasAct ? `<div style="font-size:10px;color:var(--coral);margin-top:3px;font-weight:600">${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
           </div>`;
             }).join('');
         }
@@ -570,8 +570,8 @@ async function _loadMapBudget() {
         if (base > 0) {
             const remain = base - spent;
             remainEl.textContent       = remain >= 0
-                ? `예산 범위 내 ✓ 잔여 ${_fmtWon(remain)}`
-                : `⚠️ 예산 ${_fmtWon(-remain)} 초과`;
+                ? `예산 범위 내 ✓잔여 ${_fmtWon(remain)}`
+                : `예산 ${_fmtWon(-remain)} 초과`;
             remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : '#FEF3F2';
             remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : '#FECACA';
             remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
@@ -682,7 +682,7 @@ async function addLedgerExpense() {
     const amt  = document.getElementById('ledger-exp-amount')?.value;
     const date = document.getElementById('ledger-exp-date')?.value || null;
     const memo = document.getElementById('ledger-exp-memo')?.value?.trim() || null;
-    if (!cat || amt === '' || +amt < 0) { toast('카테고리와 금액을 입력해주세요.'); return; }
+    if (!cat || amt === '' || +amt < 0) { toast('어디에 얼마를 썼는지 적어 주세요.'); return; }
 
     const payload = { category: cat, amount: +amt };
     if (date) payload.expenseDate = date;
@@ -723,7 +723,7 @@ async function saveEditExpense(id) {
     const amount   = document.getElementById('edit-amt-' + id)?.value;
     const date     = document.getElementById('edit-date-' + id)?.value || null;
     const desc     = document.getElementById('edit-desc-' + id)?.value?.trim() || null;
-    if (!category || amount === '' || +amount < 0) { toast('카테고리와 금액을 확인해주세요.'); return; }
+    if (!category || amount === '' || +amount < 0) { toast('어디에 얼마를 썼는지 다시 봐 주세요.'); return; }
     const payload = { category, amount: +amount };
     if (date) payload.expenseDate = date;
     if (desc) payload.description = desc;
@@ -853,7 +853,7 @@ async function exportBudgetPDF() {
         }
 
         doc.save('가계부_' + (d.tripTitle || 'report') + '.pdf');
-        toast('PDF 다운로드 완료!');
+        toast('PDF 를 내려받았습니다.');
     } catch (e) {
         console.error(e);
         toast('PDF 생성 실패: ' + e.message);

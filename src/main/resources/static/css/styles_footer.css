@@ -10,16 +10,20 @@
    ========================================================= */
 
 .site-footer {
-    /* ===== [색상 설정] - 여기 값만 바꾸면 됩니다 ===== */
-    --foot-bg:        #14403A;   /* 푸터 배경 (딥틸) */
-    --foot-accent:    #2D9E8A;   /* 상단 경계선 / 포인트 */
-    --foot-heading:   #4DB8A4;   /* 컬럼 제목(바로가기·고객지원 등) */
-    --foot-text:      #CDE0DB;   /* 일반 본문 글자 / 링크 */
-    --foot-text-bold: #FFFFFF;   /* 강조 글자(슬로건·팀장·팀원) */
-    --foot-muted:     #9FBAB4;   /* 보조 설명 글자(소속 등) */
-    --foot-credits:   #7FA39C;   /* 하단 출처·저작권 글자 */
-    --foot-line:      rgba(255,255,255,.10);  /* 하단 구분선 */
-    --foot-divider:   rgba(255,255,255,.25);  /* 출처 사이 | 기호 */
+    /* ===== [색상 설정] - 여기 값만 바꾸면 됩니다 =====
+       딥틸 + 민트에서 tokens.css 팔레트로 옮겼다. 이 제품에 초록은 없다.
+       어두운 바탕 위 글자는 --ui-line 한 가지로 두고 크기와 굵기로
+       위계를 낸다. 중간 밝기의 회색을 쓰면 #241D18 위에서 4.5 를
+       넘기지 못한다(실측 --ink-3 3.35). */
+    --foot-bg:        var(--ui);        /* 푸터 배경 */
+    --foot-accent:    var(--sig);       /* 상단 경계선 / 포인트 */
+    --foot-heading:   var(--sig);       /* 컬럼 제목 */
+    --foot-text:      var(--ui-line);   /* 일반 본문 글자 / 링크 */
+    --foot-text-bold: var(--ui-pale);   /* 강조 글자 */
+    --foot-muted:     var(--ui-line);   /* 보조 설명 — 크기로 낮춘다 */
+    --foot-credits:   var(--ui-line);   /* 하단 출처 — 크기로 낮춘다 */
+    --foot-line:      var(--ui-l);      /* 하단 구분선 */
+    --foot-divider:   var(--ink-3);     /* 출처 사이 구분 기호 — 글이 아니라 표식이다 */
     /* 로고 반전: 어두운 배경이면 1, 밝은 배경으로 바꾸면 0 으로 */
     --foot-logo-invert: 1;
     /* ================================================ */
@@ -27,7 +31,7 @@
     margin-top: 64px;
     background: var(--foot-bg);
     color: var(--foot-text);
-    font-family: 'Pretendard', system-ui, sans-serif;
+    font-family: var(--sans);
 }
 
 .site-footer a {
