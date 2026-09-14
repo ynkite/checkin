@@ -26,3 +26,10 @@ spring.security.oauth2.client.registration.google.redirect-uri=http://localhost:
 # ---------- 업로드 경로 ----------
 # 기본은 프로젝트 안 uploads/ (gitignore 대상). 다른 곳에 두려면 절대경로로 바꾼다
 file.upload.path=${UPLOAD_PATH:./uploads/}
+
+# ---------- Web Push (VAPID) ----------
+# 생성: npx web-push generate-vapid-keys --json
+# 팀 채팅으로만 공유, 커밋 금지
+push.vapid.public-key=<VAPID 공개키>
+push.vapid.private-key=<VAPID 비밀키>
+push.vapid.subject=mailto:admin@checkin.local
