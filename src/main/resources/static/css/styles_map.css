@@ -61,7 +61,7 @@
 #btnConfirmToggle{
   margin-left:auto; padding:8px 18px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:13px; font-weight:700; letter-spacing:-.02em;
-  background:var(--ui); color:var(--panel); transition:filter .15s;
+  background:var(--terra); color:var(--panel); transition:filter .15s;
 }
 #btnConfirmToggle:hover{ filter:brightness(1.3) }
 
@@ -119,7 +119,7 @@
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
-.day-tab.on{ background:var(--ui); box-shadow:none }
+.day-tab.on{ background:var(--terra); box-shadow:none }
 .day-tab.on .dt-n{ color:var(--panel) }
 .day-tab.on .dt-an{ color:var(--panel); opacity:.66 }
 
@@ -172,7 +172,7 @@
   font-family:var(--fig); font-size:11.5px; font-weight:600; letter-spacing:-.02em;
   background:var(--ui-pale); color:var(--ink-2); transition:background .16s, color .16s;
 }
-.place-row.mp-on .mp-ord{ background:var(--ui); color:var(--panel) }
+.place-row.mp-on .mp-ord{ background:var(--terra); color:var(--panel) }
 .place-row.mp-now .mp-ord{ background:var(--sig); color:var(--on-sig) }
 
 .pr-info{ grid-column:2; min-width:0 }
@@ -263,7 +263,7 @@
 .btn-queue-add{
   flex:0 0 auto; padding:8px 16px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:12.5px; font-weight:700;
-  background:var(--ui); color:var(--panel);
+  background:var(--terra); color:var(--panel);
 }
 .btn-queue-add:hover{ filter:brightness(1.3) }
 
@@ -274,7 +274,7 @@
   font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap;
   transition:filter .15s, box-shadow .15s, color .15s;
 }
-.btn-stay-check, .btn-stay-book{ background:var(--ui); color:var(--panel) }
+.btn-stay-check, .btn-stay-book{ background:var(--terra); color:var(--panel) }
 .btn-stay-check:hover, .btn-stay-book:hover{ filter:brightness(1.3) }
 .btn-stay-edit{
   background:transparent; color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
@@ -296,7 +296,7 @@
 .q-hd button{ font-family:inherit; font-size:11.5px; color:var(--ink-3) }
 .q-badge{
   font-family:var(--fig); font-size:11px; font-weight:600;
-  background:var(--ui); color:var(--panel); padding:1px 7px 2px; border-radius:99px;
+  background:var(--terra); color:var(--panel); padding:1px 7px 2px; border-radius:99px;
   margin-left:5px;
 }
 .queue-box #qItems{ flex:1 1 auto; min-height:0; max-height:min(240px,32vh); overflow-y:auto }
@@ -319,7 +319,7 @@
 .btn-all{
   width:100%; margin-top:8px; padding:10px 0 11px; border:0; border-radius:99px;
   cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
-  background:var(--ui); color:var(--panel);
+  background:var(--terra); color:var(--panel);
 }
 .btn-all:hover{ filter:brightness(1.3) }
 .btn-all:disabled{ background:var(--ui-pale); color:var(--ink-3); cursor:default }
@@ -353,7 +353,7 @@
   white-space:nowrap; text-align:center; transition:color .14s, box-shadow .14s, background .14s;
 }
 .btn-map-act:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.btn-map-act.on{ background:var(--ui); color:var(--panel); box-shadow:none; font-weight:600 }
+.btn-map-act.on{ background:var(--terra); color:var(--panel); box-shadow:none; font-weight:600 }
 
 /* ── 지도 위 — 경로 레이어 ─────────────────────────────────
    카카오 폴리라인의 파선 값을 문서로 확인할 수 없어 SVG 레이어로 그린다.
@@ -376,7 +376,7 @@
   position:absolute; left:-15px; top:-15px; width:30px; height:30px;
   border-radius:99px; display:grid; place-items:center;
   font-family:var(--fig); font-size:12px; font-weight:600; letter-spacing:-.02em;
-  background:var(--ui); color:var(--panel);
+  background:var(--terra); color:var(--panel);
   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--ui-l), var(--lift2);
   z-index:2;
 }
@@ -390,10 +390,10 @@
   font-size:11.5px; font-weight:600; letter-spacing:-.025em; z-index:1;
 }
 .mp-pin-on .mp-pd{
-  background:var(--ui-d);
+  background:var(--sig-deep);
   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 5.5px var(--ink), var(--lift);
 }
-.mp-pin-on .mp-pl{ background:var(--ui); color:var(--panel) }
+.mp-pin-on .mp-pl{ background:var(--terra); color:var(--panel) }
 
 /* 지금 여기 — 링이 번지고 그 안에 사람 */
 .mp-here{ position:relative; width:0; height:0; pointer-events:none }
@@ -461,7 +461,7 @@
   letter-spacing:-.02em; color:var(--ink-2);
 }
 .mp-bg-bar{ height:5px; border-radius:99px; background:var(--ui-pale); overflow:hidden }
-.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--ui) }
+.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--terra) }
 .mp-bg-row.mp-lead .mp-bg-bar i{ background:var(--sig) }
 .mp-bg-row.mp-lead .mp-bg-top span:last-child{ color:var(--num) }
 .mp-bg-total{
@@ -491,7 +491,7 @@
 .mp-ledger{
   width:100%; margin-top:18px; padding:12px 0 13px; border:0; border-radius:99px;
   cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;
-  letter-spacing:-.02em; background:var(--ui); color:var(--panel);
+  letter-spacing:-.02em; background:var(--terra); color:var(--panel);
 }
 .mp-ledger:hover{ filter:brightness(1.3) }
 
@@ -537,7 +537,7 @@
 .mp-mbtn{
   flex:0 0 auto; padding:11px 20px 12px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.02em;
-  background:var(--ui); color:var(--panel); white-space:nowrap; transition:filter .15s;
+  background:var(--terra); color:var(--panel); white-space:nowrap; transition:filter .15s;
 }
 .mp-mbtn:hover{ filter:brightness(1.3) }
 .mp-mbtn-q{
@@ -590,7 +590,7 @@
 .mp-navi{
   width:100%; padding:12px 0 13px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
-  background:var(--ui); color:var(--panel); margin-bottom:14px;
+  background:var(--terra); color:var(--panel); margin-bottom:14px;
 }
 .mp-navi:hover{ filter:brightness(1.3) }
 .mp-nocoord{
@@ -667,7 +667,7 @@
 .mp-swapbtn{
   padding:8px 15px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:12.5px; font-weight:600;
-  background:var(--ui); color:var(--panel); white-space:nowrap;
+  background:var(--terra); color:var(--panel); white-space:nowrap;
 }
 .mp-swapbtn:hover{ filter:brightness(1.3) }
 

@@ -456,18 +456,30 @@
 /* 「많이 담긴 곳」 탭 — 네 종류를 한 절에 넣고 하나씩 보여 준다.
    그리드는 initMainPage() 가 모두 채운다. 여기서는 보이기만 바꾼다. */
 (function () {
+  /* 탭 두 벌 — 바깥은 일정/장소, 안쪽은 맛집·숙소·관광지·카페.
+     둘 다 「고른 것만 보인다」라 한 곳에서 처리한다. */
   function initKindTabs() {
-    var bar = document.querySelector('#ck_kind .ck-tabs');
-    if (!bar) return;
-    bar.addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-pop]');
+    var sec = $('ck_pop');
+    if (!sec) return;
+
+    sec.addEventListener('click', function (e) {
+      var b = e.target.closest('.ck-tabs button[data-pane], .ck-tabs button[data-pop]');
       if (!b) return;
-      bar.querySelectorAll('button[data-pop]').forEach(function (x) {
+      var bar = b.parentElement;
+      bar.querySelectorAll('button').forEach(function (x) {
         x.setAttribute('aria-selected', String(x === b));
       });
-      document.querySelectorAll('#ck_kind .ck-pop').forEach(function (g) {
-        g.hidden = (g.id !== 'popular-' + b.dataset.pop + '-grid');
-      });
+
+      if (b.dataset.pane) {
+        ['ck_pane_trip', 'ck_pane_place'].forEach(function (id) {
+          var p = $(id);
+          if (p) p.hidden = (id !== b.dataset.pane);
+        });
+      } else {
+        sec.querySelectorAll('.ck-pop').forEach(function (g) {
+          g.hidden = (g.id !== 'popular-' + b.dataset.pop + '-grid');
+        });
+      }
     });
   }
   if (document.readyState === 'loading') {

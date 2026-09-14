@@ -32,11 +32,13 @@
    새로 쓰는 CSS 는 이 이름 대신 tokens.css 의 이름을 직접 쓴다.
    ──────────────────────────────────────────────────────────── */
 :root {
-    /* 주색 — 청록에서 잉크 계열로 */
-    --sage: var(--ui);
-    --sage-l: var(--ui-l);
-    --sage-pale: var(--ui-pale);
-    --sage-d: var(--ui-d);
+    /* 주색 — 청록 → 잉크 → 지붕 테라코타.
+       잉크로 두었더니 버튼·칩·배지가 전부 짙은 갈검정 면이 됐다.
+       이 제품의 강조는 미니어처 지붕 색이다. */
+    --sage: var(--terra);
+    --sage-l: var(--ui-line);
+    --sage-pale: var(--terra-pale);
+    --sage-d: var(--sig-deep);
 
     /* 판 — 웜크림 폐기, 중성 밝은 판으로 */
     --cream: var(--ui-plate);

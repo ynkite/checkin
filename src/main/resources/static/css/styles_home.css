@@ -195,7 +195,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:-.042em;
   line-height:1.13; text-wrap:balance}
 .ck-home p{margin:0; text-wrap:pretty}
-.ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--page); color:var(--ink)}
+.ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--ui-plate); color:var(--ink)}
 .ck-home button{border:0; background:none; cursor:pointer; font-family:inherit; color:inherit}
 .ck-home select,.ck-home input{font-family:inherit; color:inherit}
 
@@ -548,11 +548,11 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   content:""; position:absolute; inset:0; z-index:2;
   background:
     linear-gradient(96deg,
-      var(--page) 0 26%,
-      color-mix(in oklab, var(--page) 80%, transparent) 36%,
-      color-mix(in oklab, var(--page) 28%, transparent) 50%,
+      var(--ui-plate) 0 26%,
+      color-mix(in oklab, var(--ui-plate) 80%, transparent) 36%,
+      color-mix(in oklab, var(--ui-plate) 28%, transparent) 50%,
       transparent 62%),
-    linear-gradient(180deg, var(--page) 0, transparent 13%);
+    linear-gradient(180deg, var(--ui-plate) 0, transparent 13%);
 }
 
 /* 경로는 mass_hero.svg 안에 들어 있다. 같은 두 지점을 잇는 길이 두 개다 —
@@ -621,7 +621,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line); white-space:nowrap;
 }
 .ck-condbtn:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.ck-condbtn[aria-expanded="true"]{ background:var(--ui); color:var(--panel); box-shadow:none }
+.ck-condbtn[aria-expanded="true"]{ background:var(--terra); color:var(--panel); box-shadow:none }
 .ck-condbtn .ck-n{ font-family:var(--fig); font-size:12px; margin-left:6px }
 .ck-home .ck-chips2{ display:none; flex-basis:100%; margin-top:4px }
 .ck-home .ck-chips2.ck-open{ display:flex }
@@ -653,10 +653,10 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   }
   .ck-scene::after{
     background:linear-gradient(180deg,
-      var(--page) 0 4%,
+      var(--ui-plate) 0 4%,
       transparent 22%,
-      color-mix(in oklab, var(--page) 55%, transparent) 66%,
-      var(--page) 96%);
+      color-mix(in oklab, var(--ui-plate) 55%, transparent) 66%,
+      var(--ui-plate) 96%);
   }
   /* .ck-hero 의 상단 88px 는 장면이 없던 시절 값이다. 그대로 두면
      장면과 제목 사이가 벌어져 빈 칸이 생긴다(실측 75px). */
@@ -753,34 +753,35 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 .ck-home{ overflow-x:clip }   /* 화면 폭 배경이 가로 스크롤을 만들지 않게 */
 
-/* .ck-wr 의 1300px 제한을 풀고 좌우 여백으로 본문 폭을 지킨다.
-   의사요소에 z-index:-1 을 주면 .ck-home 의 배경 뒤로 들어가 사라진다. */
+/* 짙은 갈검정 띠를 썼다가 걷었다. 이 제품에 없는 색이다.
+   바닥이 판 색이 된 지금은 흰 띠 하나가 오히려 도드라진다.
+   .ck-wr 의 1300px 제한을 풀고 좌우 여백으로 본문 폭을 지킨다. */
 .ck-home #ck_free{
-  max-width:none; margin-top:70px; background:var(--ui); color:var(--ui-pale);
+  max-width:none; margin-top:70px; background:var(--panel); color:var(--ink);
   padding-top:58px; padding-bottom:62px;
   padding-left:max(30px, calc((100vw - 1240px) / 2));
   padding-right:max(30px, calc((100vw - 1240px) / 2));
 }
-.ck-home #ck_free .ck-hd::before{ color:var(--sig) }
-.ck-home #ck_free h2{ color:var(--ui-pale) }
-.ck-home #ck_free .ck-side{ color:var(--ui-line); opacity:.62 }
+.ck-home #ck_free .ck-hd::before{ color:var(--ink-3) }
+.ck-home #ck_free h2{ color:var(--ink) }
+.ck-home #ck_free .ck-side{ color:var(--ink-2) }
 
-/* 어두운 바탕에서는 카드가 필요 없다. 선 하나로 칸을 나눈다 */
+/* 한 띠 안에서는 카드가 필요 없다. 선 하나로 칸을 나눈다 */
 .ck-home #ck_free .ck-free{ gap:0 }
 .ck-home #ck_free .ck-spot{
   background:none; box-shadow:none; border-radius:0;
   padding:4px 22px 4px 0;
-  border:0; border-left:1px solid var(--ui-l);   /* 읽는 목록의 테두리 한 겹을 지운다 */
+  border:0; border-left:1px solid var(--ui-line);
 }
 .ck-home #ck_free .ck-spot:first-child{ border-left:0; padding-left:0 }
 .ck-home #ck_free .ck-spot:not(:first-child){ padding-left:22px }
-.ck-home #ck_free .ck-spot .ck-nm{ color:var(--ui-pale) }
-.ck-home #ck_free .ck-spot .ck-why{ color:var(--ui-line); opacity:.58 }
-.ck-home #ck_free .ck-spot .ck-vv b{ color:var(--ui-pale); font-size:34px }
-.ck-home #ck_free .ck-spot .ck-vv i{ color:var(--ui-line); opacity:.58 }
-.ck-home #ck_free .ck-spot .ck-bar{ background:var(--ui-l) }
-.ck-home #ck_free .ck-spot .ck-bar i{ background:var(--ui-pale) }
-.ck-home #ck_free .ck-spot.ck-hot .ck-vv b{ color:var(--sig) }
+.ck-home #ck_free .ck-spot .ck-nm{ color:var(--ink) }
+.ck-home #ck_free .ck-spot .ck-why{ color:var(--ink-2) }
+.ck-home #ck_free .ck-spot .ck-vv b{ color:var(--ink); font-size:34px }
+.ck-home #ck_free .ck-spot .ck-vv i{ color:var(--ink-2) }
+.ck-home #ck_free .ck-spot .ck-bar{ background:var(--ui-line) }
+.ck-home #ck_free .ck-spot .ck-bar i{ background:var(--ink) }
+.ck-home #ck_free .ck-spot.ck-hot .ck-vv b{ color:var(--num) }
 .ck-home #ck_free .ck-spot.ck-hot .ck-bar i{ background:var(--sig) }
 
 /* 다음 절이 어두운 띠에 바짝 붙지 않게 */
@@ -790,7 +791,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home #ck_free{ margin-top:52px; padding-top:44px; padding-bottom:48px }
   .ck-home #ck_free .ck-free{ gap:0 }
   .ck-home #ck_free .ck-spot{
-    border:0; border-top:1px solid var(--ui-l);
+    border:0; border-top:1px solid var(--ui-line);
     padding:16px 0 16px !important;
   }
   .ck-home #ck_free .ck-spot:first-child{ border-top:0; padding-top:0 !important }
@@ -1071,7 +1072,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   background:var(--terra-pale); color:var(--ink);
   box-shadow:inset 3px 0 0 var(--terra), inset 0 0 0 1px var(--terra-pale);
 }
-.ck-home .ck-plan.ck-now .ck-t{ color:var(--num) }
+.ck-home .ck-plan.ck-now .ck-t{ color:var(--sig-deep) }   /* --num 은 연한 살구 위에서 4.43 */
 .ck-home .ck-plan.ck-now .ck-leg{ color:var(--sig-deep) }
 .ck-home .ck-plan.ck-now .ck-leg::before,
 .ck-home .ck-plan.ck-now .ck-leg::after{ border-top-color:var(--terra) }
@@ -1095,7 +1096,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 .ck-home .ck-playbtn{
   flex:0 0 auto; width:38px; height:38px; border:0; border-radius:99px; cursor:pointer;
-  background:var(--ui); display:grid; place-items:center; transition:filter .15s;
+  background:var(--terra); display:grid; place-items:center; transition:filter .15s;
 }
 .ck-home .ck-playbtn:hover{ filter:brightness(1.6) }
 .ck-home .ck-playbtn svg{
@@ -1153,3 +1154,19 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-how2 .ck-how2-src{
   margin-top:14px; font-size:13.5px; line-height:1.7; color:var(--ink-3);
 }
+
+/* ── 한 절 안의 세 조각 ─────────────────────────────────────
+   같은 이야기의 조각이 세 절로 나뉘어 있었다. 한 절 안에서
+   작은 제목으로만 나눈다. 제목 세 개가 또 h2 면 절이 셋인 것과 같다. */
+.ck-home .ck-part{ margin-top:38px }
+.ck-home .ck-part:first-of-type{ margin-top:6px }
+.ck-home .ck-part-t{
+  font-size:13px; font-weight:600; letter-spacing:-.02em; color:var(--ink-3);
+  margin:0 0 16px; padding-bottom:9px; border-bottom:1px solid var(--ui-line);
+}
+
+/* 바깥 탭 — 일정 / 장소 */
+.ck-home .ck-tabs-top{ margin-top:-4px; margin-bottom:22px }
+.ck-home #ck_pane_place .ck-tabs{ margin-top:0 }
+.ck-home #ck_pane_trip[hidden],
+.ck-home #ck_pane_place[hidden]{ display:none }

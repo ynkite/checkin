@@ -685,9 +685,9 @@ svg.mass{display:block; shape-rendering:geometricPrecision}
   --cream:var(--ui-plate);   --cream2:var(--ui-plate-2);
   --border:var(--ui-line);   --border2:var(--ui-line-2);
 
+  /* --sage 계열은 styles_main.css 의 어댑터가 정한다.
+     여기서 또 정하면 출처가 둘이 된다. */
   --primary:var(--terra);
-  --sage:var(--terra);       --sage-d:var(--sig-deep);
-  --sage-l:var(--ui-line);   --sage-pale:var(--terra-pale);
   --coral:var(--tile);       --sky:var(--slate);
   --warm:var(--num);         --warm-pale:var(--terra-pale);
 

@@ -854,11 +854,15 @@
         </div>
       </section>
 
+            <!-- 세 절을 하나로. 셋 다 「이게 어떻게 돌아가나」에 대한 답이다. -->
       <section class="ck-wr ck-blk" id="ck_how">
-        <div class="ck-hd" data-label="손이 가는 건">
-          <h2>여행 전에 한 번, 여행 중에 두 번</h2>
+        <div class="ck-hd" data-label="손이 가는 건 두 번뿐">
+          <h2>이게 어떻게 돌아가나</h2>
         </div>
-        <div class="ck-steps">
+
+        <div class="ck-part">
+          <h3 class="ck-part-t">언제 손이 가나</h3>
+          <div class="ck-steps">
           <article class="ck-st"><div class="ck-no">01</div><h3>지역과 기간만</h3>
             <p>시각은 입력하지 않습니다. 숙소 체크인 시각과 장소별 영업시간, 이동시간을 넣고 계산해서 하루를 채웁니다.</p></article>
           <article class="ck-st"><div class="ck-no">02</div><h3>당일엔 지도 하나</h3>
@@ -866,24 +870,20 @@
           <article class="ck-st"><div class="ck-no">03</div><h3>어긋날 때</h3>
             <p>먼저 말을 겁니다. 바꿨을 때 몇 분이 줄고 얼마가 더 드는지 숫자로 붙습니다.</p></article>
         </div>
-      </section>
-
-      <section class="ck-wr ck-blk">
-        <div class="ck-hd" data-label="순서를 바꾸면">
-          <h2>캘린더도 같이 바뀝니다</h2>
         </div>
-        <div class="ck-sync">
+
+        <div class="ck-part">
+          <h3 class="ck-part-t">바꾸면 어디까지 따라오나</h3>
+          <div class="ck-sync">
           <div><b>아이폰·구글 캘린더</b><p>구독 주소를 한 번 등록하면 그다음부터는 알아서 따라옵니다.</p></div>
           <div><b>출발 30분 전</b><p>움직일 시각에 알립니다. 붐빔이 심하면 더 일찍.</p></div>
           <div><b>일행과 공유</b><p>링크 하나로 같이 봅니다. 누가 순서를 바꿨는지 기록에 남습니다.</p></div>
         </div>
-      </section>
-
-      <section class="ck-wr ck-blk" id="ck_data">
-        <div class="ck-hd" data-label="짐작이 아니라">
-          <h2>계산해서 나온 값입니다</h2>
         </div>
-        <div class="ck-how2">
+
+        <div class="ck-part">
+          <h3 class="ck-part-t">무엇으로 정하나</h3>
+          <div class="ck-how2">
           <p>
             순서는 알고리즘이 계산합니다. 후보를 고르고 왜 그 순서인지
             쓰는 것은 AI 가 합니다. <b>시각은 넣는 값이 아니라 나오는 값</b>입니다 —
@@ -894,24 +894,30 @@
             건물 형상은 OpenStreetMap 에서 가져옵니다.
           </p>
         </div>
+        </div>
       </section>
+
+      
+
+      
 
       <!-- 아래 다섯 섹션은 기존 기능이다. 컨테이너 id·클래스를 바꾸면
            app_main.js 의 렌더가 깨진다. 껍데기만 새 디자인으로 입혔다. -->
+            <!-- 커뮤니티가 담은 것. 일정이냐 장소냐만 다르다. -->
       <section class="ck-wr ck-blk" id="ck_pop">
         <div class="ck-hd" data-label="그대로 가져다 쓰는">
-          <h2>사람들이 담아 간 일정</h2>
+          <h2>사람들이 담아 간 것</h2>
           <p class="ck-side">커뮤니티에서 스크랩이 많은 순서입니다.</p>
         </div>
-        <div class="top3-grid ck-cards"></div>
-      </section>
-
-      <!-- 맛집·숙소·관광지·카페. 네 절로 늘어놓으면 같은 모양이 네 번
-           반복되고 화면만 길어진다. 한 절로 묶고 탭으로 바꾼다.
-           그리드 id 는 initMainPage() 가 쓰므로 그대로 둔다. -->
-      <section class="ck-wr ck-blk" id="ck_kind">
-        <div class="ck-hd"><h2>많이들 들르는 곳</h2></div>
-        <div class="ck-tabs" role="tablist">
+        <div class="ck-tabs ck-tabs-top" role="tablist">
+          <button type="button" role="tab" aria-selected="true"  data-pane="ck_pane_trip">일정</button>
+          <button type="button" role="tab" aria-selected="false" data-pane="ck_pane_place">장소</button>
+        </div>
+        <div id="ck_pane_trip">
+          <div class="top3-grid ck-cards"></div>
+        </div>
+        <div id="ck_pane_place" hidden>
+          <div class="ck-tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true"  data-pop="food">맛집</button>
           <button type="button" role="tab" aria-selected="false" data-pop="stay">숙소</button>
           <button type="button" role="tab" aria-selected="false" data-pop="tour">관광지</button>
@@ -921,7 +927,13 @@
         <div class="popular-grid ck-cards ck-pop" id="popular-stay-grid" hidden></div>
         <div class="popular-grid ck-cards ck-pop" id="popular-tour-grid" hidden></div>
         <div class="popular-grid ck-cards ck-pop" id="popular-cafe-grid" hidden></div>
+        </div>
       </section>
+
+      <!-- 맛집·숙소·관광지·카페. 네 절로 늘어놓으면 같은 모양이 네 번
+           반복되고 화면만 길어진다. 한 절로 묶고 탭으로 바꾼다.
+           그리드 id 는 initMainPage() 가 쓰므로 그대로 둔다. -->
+      
 
       <div class="ck-wr">
         <div class="ck-attr">
