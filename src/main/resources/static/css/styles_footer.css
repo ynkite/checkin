@@ -57,20 +57,11 @@
    묶음이라 height:30px 이 통째로 눌리고 brightness(0) 이 글자까지
    까맣게 칠했다. 실측 — 로고 자리에 검은 쐐기가 하나 생겼다. */
 .foot-brand .foot-logo {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    height: auto;
+    display: block;
+    height: 44px;
     width: auto;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
     filter: none;
-}
-.foot-brand .foot-logo .brand-mk { width: 18px; height: 18px; flex: 0 0 auto; }
-.foot-brand .foot-logo .brand-tx {
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: -.045em;
-    color: var(--foot-text-bold);
 }
 .foot-slogan {
     font-size: 14px;
@@ -196,5 +187,3 @@ body:has(#page-map.active) .site-footer {
 
 /* 밝은 판으로 바꾸면서 — 로고 글자가 흰색으로 남아 사라졌다.
    .brand-tx 는 상단 바용 색을 그대로 물려받는다. 여기서 다시 정한다. */
-.site-footer .brand-tx{ color:var(--foot-text-bold) }
-.site-footer .brand-mk{ stroke:var(--terra) }

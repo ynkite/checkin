@@ -11,6 +11,9 @@
        IBM Plex Sans KR 보다 촘촘해 같은 크기에서 더 또렷하다.
        가변 폰트 + 동적 서브셋이라 쓰는 글자만 받는다.
        숫자·시각은 IBM Plex Mono 를 그대로 쓴다 — 자릿수가 맞아야 한다. -->
+  <link rel="icon" href="/img/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="/img/favicon-64.png" sizes="64x64">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
@@ -126,8 +129,8 @@
 <!-- NAV -->
 <nav>
   <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
-    <span class="brand logo-full"><svg class="brand-mk" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.2 L7.6 15.6 L17 4.6"/></svg><span class="brand-tx">체크인</span></span>
-    <span class="brand logo-symbol"><svg class="brand-mk" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.2 L7.6 15.6 L17 4.6"/></svg><span class="brand-tx">체크인</span></span>
+    <img class="logo-full" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
+    <img class="logo-symbol" src="/img/logo-mark.png" alt="체크인" width="126" height="128" decoding="async">
   </div>
   <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="nav-links">
@@ -304,7 +307,7 @@
 
     <!-- 브랜드 -->
     <div class="foot-brand">
-      <span class="brand foot-logo"><svg class="brand-mk" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 11.2 L7.6 15.6 L17 4.6"/></svg><span class="brand-tx">체크인</span></span>
+      <img class="foot-logo" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
       <p class="foot-slogan">붐비는 시각을 피해 하루를 다시 짭니다</p>
       <p class="foot-desc">
         경로와 예산과 날씨를 한 화면에서 보고,<br>
@@ -339,8 +342,7 @@
       <h4>만든 사람</h4>
       <div class="foot-team-line">
         <strong>팀장</strong> 정상연<br>
-        <strong>팀원</strong> 김우현 · 김재민 · 홍은표<br>
-        <span class="foot-muted">대우능력개발원<br>클라우드기반 웹개발자 과정</span>
+        <strong>팀원</strong> 이수환 · 유지환 · 홍은표 · 홍성찬
       </div>
     </div>
 
@@ -352,9 +354,9 @@
         <span>지도 © Kakao · Esri · OpenStreetMap 기여자</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>날씨 정보 © 기상청</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>장소·집중률 © 한국관광공사 · 경로 © 카카오모빌리티 · TMAP</span><span class="foot-divider" aria-hidden="true">|</span>
-        <span>2026 관광데이터 활용 공모전 출품작</span>
+        <span>한국관광공사 2026 관광데이터 활용 공모전 출품작</span>
       </div>
-      <div class="foot-copy">© 2026 팀 Connectors</div>
+      <div class="foot-copy">© 2026 체크인</div>
     </div>
   </div>
 </footer>

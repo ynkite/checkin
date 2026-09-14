@@ -26,11 +26,24 @@ nav.nav-solid{
   border-bottom-color:var(--ui-line);
 }
 
-/* 브랜드 */
-nav .brand-tx{
-  font-size:17px; font-weight:700; letter-spacing:-.045em; color:var(--ink);
+/* 브랜드 — 손으로 그린 로고 두 벌.
+   넓은 화면은 가로형, 좁은 화면은 정사각 마크만.
+   원본이 4096px 이라 쓰는 크기의 2배로 줄여 두었다(logo.py). */
+/* 브랜드 — 손으로 그린 로고.
+   상단 바는 좁은 화면에서도 가로형을 쓴다. 정사각(앱 아이콘)은 38px
+   에서 글자가 뭉개져 무슨 그림인지 안 보인다. 실측 — 가로형은 26px
+   에서도 「check-in」 이 읽힌다. 정사각은 파비콘·홈 화면 아이콘 자리에
+   둔다. 거기가 앱 아이콘의 본래 쓰임이다.
+   styles_responsive.css 34행이 .logo-symbol 을 (0,2,0) 으로 숨기므로
+   자리수를 그보다 높여 둔다. */
+nav .nav-logo{ display:flex; align-items:center }
+nav .nav-logo .logo-full{
+  display:block; height:38px; width:auto;
 }
-nav .brand-mk{ width:17px; height:17px }
+nav .nav-logo .logo-symbol{ display:none }
+@media (max-width:760px){
+  nav .nav-logo .logo-full{ display:block; height:28px }
+}
 
 /* 링크 — 밑줄 하나로 지금 자리를 표시한다 */
 nav .nav-link{
