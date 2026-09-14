@@ -526,9 +526,15 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 장면 상자 — svg·핀·경로가 모두 이 안에 있다. 한 좌표계다. */
 .ck-frame{
   /* 경로 좌표가 x 15~58% 라 장면을 가운데 두면 핀이 글 위에 올라탄다.
-     오른쪽으로 밀어 글 영역(왼쪽 1/3)과 겹치지 않게 한다. */
-  position:absolute; left:74%; top:0; transform:translateX(-50%);
+     오른쪽으로 밀어 글 영역(왼쪽 1/3)과 겹치지 않게 한다.
+     79% 는 세 번째 핀(x 15.12%)이 제목 오른쪽 끝을 지나는 값이다. */
+  position:absolute; left:79%; top:0; transform:translateX(-50%);
   width:min(1720px, 112%);
+  /* 넓은 화면에서는 min() 의 1720px 이 걸려 상자 왼쪽 끝이 흰 가림막
+     밖으로 나온다. 실측 — 1920px 부터 세로 이음매가 드러났다.
+     상자 자체를 왼쪽에서 녹여 어느 폭에서도 끊긴 자리가 없게 한다. */
+  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 9%);
+          mask-image:linear-gradient(90deg, transparent 0, #000 9%);
   aspect-ratio:1560 / 1123;
   /* 잘리는 자리가 건물 한가운데가 되지 않게 한다.
      장면 위쪽 0~12% 는 빈 판·물이라 거기서 시작하면 단면이 보이지 않는다. */
@@ -562,28 +568,37 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-alt svg.mass .rb-case{ opacity:1 }
 .ck-home .ck-alt svg.mass .rb-hot{ opacity:1 }
 
-/* 핀 */
+/* ── 핀 — 도쿄 앱 프레임에서 읽은 모양 ──────────────────────
+   번호가 든 동그라미가 지점에 박히고 이름표는 위가 아니라 옆에 붙는다.
+   번호가 있어야 몇 번째로 들르는 곳인지 보인다. */
 .ck-pins{ position:absolute; inset:0; z-index:3 }
 .ck-pin{
-  position:absolute; transform:translate(-50%,-100%);
-  display:flex; flex-direction:column; align-items:center; gap:5px;
+  position:absolute; transform:translate(-50%,-50%);
+  display:flex; align-items:center; gap:7px; white-space:nowrap;
+}
+.ck-pin .ck-no{
+  flex:0 0 auto; width:21px; height:21px; border-radius:99px;
+  background:var(--terra); color:var(--panel);
+  font-family:var(--fig); font-size:11.5px; font-weight:600;
+  line-height:21px; text-align:center;
+  box-shadow:0 0 0 2.5px var(--panel), 0 2px 5px rgba(40,30,22,.28);
 }
 .ck-pin .ck-bub{
-  display:flex; align-items:baseline; gap:7px; white-space:nowrap;
-  padding:6px 12px 7px; border-radius:99px;
+  display:flex; align-items:baseline; gap:7px;
+  padding:5px 11px 6px; border-radius:99px;
   background:var(--panel); box-shadow:var(--lift2);
-  font-size:13px; font-weight:600; letter-spacing:-.025em; color:var(--ink);
+  font-size:12.5px; font-weight:600; letter-spacing:-.025em; color:var(--ink);
 }
-.ck-pin .ck-bub em{ font-style:normal; font-family:var(--fig); font-size:12px;
+.ck-pin .ck-bub em{ font-style:normal; font-family:var(--fig); font-size:11.5px;
   font-weight:600; color:var(--num) }
-.ck-pin .ck-dot{ width:12px; height:12px; border-radius:99px;
-  background:var(--ui); box-shadow:0 0 0 3px var(--panel) }
+
+/* 붐비는 곳만 색이 다르다 */
+.ck-pin.ck-hot .ck-no{ background:var(--sig); color:var(--on-sig) }
 .ck-pin.ck-hot .ck-bub{ background:var(--sig); box-shadow:none; color:var(--on-sig) }
 .ck-pin.ck-hot .ck-bub em{ color:var(--on-sig-2) }
-.ck-pin.ck-hot .ck-dot{ background:var(--sig) }
 .ck-pin.ck-hot::after{
-  content:""; position:absolute; left:50%; bottom:-8px; width:28px; height:28px;
-  margin-left:-14px; border-radius:99px; border:2px solid var(--sig); opacity:0;
+  content:""; position:absolute; left:10.5px; top:50%; width:30px; height:30px;
+  margin:-15px 0 0 -15px; border-radius:99px; border:2px solid var(--sig); opacity:0;
   animation:ckPing 2.6s cubic-bezier(.16,.7,.3,1) infinite;
 }
 @keyframes ckPing{
@@ -632,7 +647,10 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
      값은 mass_hero.json 의 핀 좌표에서 역산했다 — 세 핀이 모두 화면
      안에 들어오고 말풍선도 잘리지 않는 범위다. */
   .ck-scene{ height:60vw; top:-10px }
-  .ck-frame{ left:-18%; top:-22vw; width:182%; transform:none }
+  .ck-frame{
+    left:-18%; top:-22vw; width:182%; transform:none;
+    -webkit-mask-image:none; mask-image:none;
+  }
   .ck-scene::after{
     background:linear-gradient(180deg,
       var(--page) 0 4%,
@@ -1062,3 +1080,76 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-tell .ck-ph i{ height:2px; background:var(--ui-line-2) }
 .ck-home .ck-tell .ck-ph i b{ background:var(--ink-3) }
 .ck-home .ck-tell .ck-ph i.ck-on b{ background:var(--ink) }
+
+/* ══════════════════════════════════════════════════════════════
+   재생 바 — 하루를 따라간다
+
+   도쿄 앱은 지도 아래 이 막대로 하루를 재생한다. 우리 장면도 셋이라
+   그 진행을 그대로 옮겼다. 버튼은 실제로 장면 순환을 멈추고 다시 돌린다.
+   ══════════════════════════════════════════════════════════════ */
+.ck-home .ck-play{
+  position:relative; z-index:4; display:flex; align-items:center; gap:14px;
+  margin:22px 0 0; max-width:620px;   /* 글 칸 폭에 맞춘다 */
+  padding:10px 18px 10px 11px; border-radius:99px;
+  background:var(--panel); box-shadow:var(--lift);
+}
+.ck-home .ck-playbtn{
+  flex:0 0 auto; width:38px; height:38px; border:0; border-radius:99px; cursor:pointer;
+  background:var(--ui); display:grid; place-items:center; transition:filter .15s;
+}
+.ck-home .ck-playbtn:hover{ filter:brightness(1.6) }
+.ck-home .ck-playbtn svg{
+  width:20px; height:20px; fill:none; stroke:var(--panel);
+  stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round;
+}
+.ck-home .ck-playbtn .ck-ic-play{ display:none; fill:var(--panel); stroke:none }
+.ck-home .ck-play.ck-paused .ck-playbtn .ck-ic-pause{ display:none }
+.ck-home .ck-play.ck-paused .ck-playbtn .ck-ic-play{ display:block }
+
+.ck-home .ck-playtx{ flex:0 0 auto; min-width:0; line-height:1.3 }
+.ck-home .ck-playtx b{
+  display:block; font-size:13.5px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+}
+.ck-home .ck-playtx i{
+  font-style:normal; font-size:11.5px; color:var(--ink-3);
+}
+
+/* 진행선 — 값은 --at 로 들어온다 */
+.ck-home .ck-track{
+  position:relative; flex:1 1 auto; min-width:60px; height:2px;
+  background:var(--ui-line); border-radius:99px;
+}
+.ck-home .ck-track > i{
+  display:block; height:100%; width:var(--at, 0%); border-radius:99px;
+  background:var(--terra); transition:width .55s cubic-bezier(.4,.02,.2,1);
+}
+.ck-home .ck-track > em{
+  position:absolute; top:50%; left:var(--at, 0%); width:9px; height:9px;
+  margin:-4.5px 0 0 -4.5px; border-radius:99px; background:var(--terra);
+  box-shadow:0 0 0 2.5px var(--panel);
+  transition:left .55s cubic-bezier(.4,.02,.2,1);
+}
+.ck-home .ck-playnow{
+  flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:-.03em;
+  color:var(--ink-2); white-space:nowrap;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .ck-home .ck-track > i, .ck-home .ck-track > em{ transition:none }
+}
+@media (max-width:760px){
+  .ck-home .ck-play{ flex-wrap:wrap; border-radius:12px; padding:12px 14px; gap:10px }
+  .ck-home .ck-playtx{ flex:1 1 auto }
+  .ck-home .ck-track{ flex:1 1 100%; order:3 }
+  .ck-home .ck-playnow{ order:2 }
+}
+
+/* 계산 방식 — 카드 네 장에 목록을 담던 자리. 한 문단으로 줄였다 */
+.ck-home .ck-how2{ max-width:64ch }
+.ck-home .ck-how2 p{
+  font-size:17px; line-height:1.78; color:var(--ink-2); letter-spacing:-.02em;
+}
+.ck-home .ck-how2 p b{ color:var(--ink); font-weight:700 }
+.ck-home .ck-how2 .ck-how2-src{
+  margin-top:14px; font-size:13.5px; line-height:1.7; color:var(--ink-3);
+}

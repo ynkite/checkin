@@ -62,12 +62,14 @@
     var layer = $('ck_pinlayer');
     if (!layer) return;
     if (!layer.firstElementChild) {
+      /* 도쿄 앱 프레임에서 읽은 모양 — 번호가 든 동그라미가 지점에 박히고
+         이름표는 위가 아니라 옆에 붙는다. 번호가 있어야 순서가 보인다. */
       layer.innerHTML = route.map(function (p, i) {
         return '<div class="ck-pin" style="--i:' + i +
                ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
+               '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
                '<span class="ck-bub">' + esc(p.name) +
                (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
-               '<span class="ck-dot"></span>' +
                '</div>';
       }).join('');
     }
@@ -81,14 +83,19 @@
      장면 위의 핀과 아래 문구가 같은 장면을 설명한다.
      3장면: 원래 순서 -> 붐빔 감지 -> 순서 교체 */
 
+  /* at  — 재생 바에서 지금 어디쯤인지 (0~1)
+     now — 재생 바 오른쪽에 적는 지금 자리 */
   var SCENE = [
-    { line: '부산 1일차, 오후 순서입니다',
+    { at: 0,   now: '남포동',
+      line: '부산 1일차, 오후 순서입니다',
       why: '남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.',
       hot: -1, live: 1, chips: 0, sw: 0 },
-    { line: '해운대가 지금 <em>집중률 142</em>',
+    { at: .5,  now: '해변 한가운데',
+      line: '해운대가 지금 <em>집중률 142</em>',
       why: '평소 이 시각의 1.4배입니다. 두 시간 뒤에도 비슷할 것으로 봅니다. 광안리는 71, 한가한 편입니다.',
       hot: 1, live: 1, chips: 0, sw: 0 },
-    { line: '광안리를 <em>먼저 가는 쪽으로</em> 바꿨습니다',
+    { at: 1,   now: '해변 서쪽 끝',
+      line: '광안리를 <em>먼저 가는 쪽으로</em> 바꿨습니다',
       why: '해운대는 17시 40분으로 미뤘습니다. 그 시각이면 96까지 내려갑니다.',
       hot: 1, live: 2, chips: 1, sw: 1 }
   ];
@@ -112,12 +119,30 @@
         b.className = k < i ? 'ck-done' : (k === i ? 'ck-on' : '');
       });
       if (route.length) { drawPins(route, s.hot); drawTrail(route, s.live); }
+
+      var tr = $('ck_track'), nw = $('ck_playnow');
+      if (tr) tr.style.setProperty('--at', (s.at * 100).toFixed(1) + '%');
+      if (nw) nw.textContent = s.now;
     }
 
     function tick() {
       step = (step + 1) % SCENE.length;
       draw(step);
       timer = setTimeout(tick, step === SCENE.length - 1 ? 4200 : 2800);
+    }
+
+    /* 재생 바 — 멈춤은 사람이 누른 것이고, 화면 밖으로 나가 멈춘 것과 다르다.
+       둘을 섞으면 다시 스크롤했을 때 멈춰 둔 것이 저절로 돌아간다. */
+    var paused = false;
+    var btn = $('ck_playbtn'), play = $('ck_play');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        paused = !paused;
+        if (play) play.classList.toggle('ck-paused', paused);
+        btn.setAttribute('aria-label', paused ? '순서 따라가기 시작' : '순서 따라가기 멈춤');
+        if (paused) { clearTimeout(timer); timer = null; }
+        else if (!timer) tick();
+      });
     }
 
     fetch(HERO_JSON, { cache: 'force-cache' })
@@ -130,7 +155,7 @@
         if (hero && window.IntersectionObserver) {
           new IntersectionObserver(function (es) {
             es.forEach(function (e) {
-              if (e.isIntersecting) { if (!timer) tick(); }
+              if (e.isIntersecting) { if (!timer && !paused) tick(); }
               else { clearTimeout(timer); timer = null; }
             });
           }, { threshold: 0.05 }).observe(hero);
@@ -399,8 +424,22 @@
     groups.forEach(function (g) { io.observe(g.sec); });
   }
 
+  /* 상단 바 — 맨 위에서는 비워 두고 스크롤하면 바탕이 생긴다.
+     흰 띠가 전면 미니어처를 가로지르지 않게. */
+  function initNav() {
+    var nav = document.querySelector('nav');
+    if (!nav) return;
+    /* 전면 미니어처가 있는 메인에서만 맨 위를 비운다.
+       다른 화면은 흰 바탕이라 처음부터 바탕을 깔아야 경계가 보인다. */
+    var overHero = !!$('ck_hero');
+    function sync() { nav.classList.toggle('nav-solid', !overHero || window.scrollY > 12); }
+    sync();
+    if (overHero) window.addEventListener('scroll', sync, { passive: true });
+  }
+
   function start() {
-    if (!$('ck_hero')) return;          // 메인페이지가 아니면 아무것도 하지 않는다
+    initNav();                          // 상단 바는 모든 화면에 있다
+    if (!$('ck_hero')) return;          // 나머지는 메인페이지에서만
     initHero();
     initForm();
     initMine();
