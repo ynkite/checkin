@@ -88,7 +88,13 @@ public final class StubCandidateProvider implements PlaceCandidateProvider {
             place("busan-tongdosa", "통도사", 35.4924, 129.0655, CandidateCategory.TOUR,
                     LocalTime.of(8, 0), LocalTime.of(18, 0)),
             place("busan-geoje-beach", "학동몽돌해변", 34.7550, 128.5980, CandidateCategory.TOUR, null, null),
-            place("busan-tongyeong-dongpirang", "동피랑마을", 34.8440, 128.4335, CandidateCategory.TOUR, null, null)
+            place("busan-tongyeong-dongpirang", "동피랑마을", 34.8440, 128.4335, CandidateCategory.TOUR, null, null),
+            // 아래 셋은 27~34km — 귀가 밴드이면서 절대거리 가드(36km, 결정 11-(2)) 안쪽이다.
+            // 위의 귀가 후보 여섯 곳은 전부 38km 밖이라 가드에 걸려 빠진다.
+            place("busan-gimhae-suro-tomb", "김해수로왕릉", 35.2363, 128.8760, CandidateCategory.TOUR,
+                    LocalTime.of(9, 0), LocalTime.of(18, 0)),
+            place("busan-ganjeolgot", "간절곶", 35.3590, 129.3600, CandidateCategory.TOUR, null, null),
+            place("busan-gadeokdo-daehang", "가덕도대항전망대", 35.0190, 128.8280, CandidateCategory.TOUR, null, null)
     );
 
     // ── 경주 (앵커 가정: 보문관광단지 인근 숙소, 35.8380, 129.2748) ────────────
