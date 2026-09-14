@@ -6,6 +6,7 @@ import idusw.sbb.checkin.domain.plan.dto.PlanDetailResponseDto;
 import idusw.sbb.checkin.domain.plan.dto.PlanInputFormSaveDto;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
+import idusw.sbb.checkin.domain.plan.support.PlanScrapCopier;
 import idusw.sbb.checkin.domain.plan.repository.PlanInputFormRepository;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.checkin.domain.planshare.repository.TripMemberRepository;
@@ -287,6 +288,129 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     }
 
 
+
+    // 경로 스크랩 — 남의 공개 경로를 스냅샷으로 복사해 내 것으로 저장
+    @Override
+    @Transactional
+    public Long scrapPlan(Long userId, Long originalPlanId) {
+        User user = userRepository.findById(userId).orElseThrow();
+        TravelPlan original = travelPlanRepository.findById(originalPlanId)
+                .orElseThrow(() -> new IllegalArgumentException("경로를 찾을 수 없습니다."));
+
+        // 공개된 경로만 스크랩 가능
+        if (original.getIsPublic() != 1) {
+            throw new IllegalArgumentException("공개된 경로만 스크랩할 수 있습니다.");
+        }
+        // 내 경로는 스크랩 대상이 아니다
+        if (original.getUser().getId().equals(userId)) {
+            throw new IllegalArgumentException("내 경로는 스크랩할 수 없습니다.");
+        }
+        // 같은 원본 중복 스크랩 방지
+        if (travelPlanRepository.existsByUserIdAndScrapedFromPlanIdAndStatus(
+                userId, originalPlanId, PlanScrapCopier.STATUS)) {
+            throw new IllegalArgumentException("이미 스크랩한 경로입니다.");
+        }
+
+        TravelPlan snapshot = PlanScrapCopier.copy(original, user);
+        TravelPlan savedSnapshot = travelPlanRepository.save(snapshot);
+
+        // 원본의 입력폼(14항목)도 복사해 스냅샷을 완전 독립본으로 만든다 (원본 삭제돼도 복제 가능)
+        planInputFormRepository.findByPlanId(originalPlanId).ifPresent(srcForm -> {
+            PlanInputForm copied = copyForm(srcForm, savedSnapshot, user, originalPlanId);
+            savedSnapshot.linkInputForm(planInputFormRepository.save(copied));
+        });
+        return savedSnapshot.getId();
+    }
+
+    // 입력폼 14항목을 대상 플랜으로 복사 (스크랩·복제 공용)
+    private PlanInputForm copyForm(PlanInputForm src, TravelPlan targetPlan, User user, Long loadedFromPlanId) {
+        return PlanInputForm.builder()
+                .plan(targetPlan)
+                .user(user)
+                .departure(src.getDeparture())
+                .transportType(src.getTransportType())
+                .accommodationType(src.getAccommodationType())
+                .accommodationOptions(src.getAccommodationOptions())
+                .companionType(src.getCompanionType())
+                .companionCount(src.getCompanionCount())
+                .travelStyles(src.getTravelStyles())
+                .dietaryInfo(src.getDietaryInfo())
+                .hasInfant(src.getHasInfant())
+                .hasPet(src.getHasPet())
+                .scheduleDensity(src.getScheduleDensity())
+                .budget(src.getBudget())
+                .extraNotes(src.getExtraNotes())
+                .preferenceSource(src.getPreferenceSource())
+                .loadedFromPlanId(loadedFromPlanId)
+                .build();
+    }
+
+    // 스크랩한 경로를 내 것으로 복제 — 날짜만 사용자가 지정, 그 외(경로·입력폼)는 전부 복사
+    @Override
+    @Transactional
+    public Long cloneScrappedPlan(Long userId, Long scrapPlanId, java.time.LocalDate startDate, java.time.LocalDate endDate) {
+        User user = userRepository.findById(userId).orElseThrow();
+        TravelPlan snap = travelPlanRepository.findById(scrapPlanId)
+                .orElseThrow(() -> new IllegalArgumentException("스크랩한 경로를 찾을 수 없습니다."));
+
+        // 본인 소유의 스크랩본만 복제 가능
+        if (!snap.getUser().getId().equals(userId) || !PlanScrapCopier.STATUS.equals(snap.getStatus())) {
+            throw new IllegalArgumentException("복제할 수 있는 스크랩이 아닙니다.");
+        }
+        if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException("여행 날짜를 올바르게 지정해주세요.");
+        }
+
+        TravelPlan clone = TravelPlan.builder()
+                .user(user)
+                .title(snap.getTitle())
+                .destination(snap.getDestination())
+                .startDate(startDate)              // 날짜만 사용자 지정
+                .endDate(endDate)
+                .routeJson(snap.getRouteJson())    // 경로 통째 복사
+                .isPublic(0)
+                .status("DRAFT")                   // 내 것 = 편집 가능 상태
+                .build();
+        // ponytail: 사용자 날짜 폭이 원본 일수와 다르면 routeJson 의 day 수와 어긋날 수 있다. DRAFT 로 두어 사용자가 재편집.
+        TravelPlan savedClone = travelPlanRepository.save(clone);
+
+        planInputFormRepository.findByPlanId(snap.getId()).ifPresent(srcForm -> {
+            PlanInputForm copied = copyForm(srcForm, savedClone, user, snap.getScrapedFromPlanId());
+            savedClone.linkInputForm(planInputFormRepository.save(copied));
+        });
+        return savedClone.getId();
+    }
+
+    @Override
+    public List<Map<String, Object>> getScrappedPlans(Long userId) {
+        return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(plan -> PlanScrapCopier.STATUS.equals(plan.getStatus()))
+                .map(plan -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("id", plan.getId());                        // 내 스크랩본 id (해제·복제에 씀)
+                    m.put("originalPlanId", plan.getScrapedFromPlanId());
+                    m.put("title", plan.getTitle());
+                    m.put("destination", plan.getDestination());
+                    m.put("startDate", plan.getStartDate());
+                    m.put("endDate", plan.getEndDate());
+                    m.put("savedAt", plan.getCreatedAt());
+                    return m;
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public void deleteScrappedPlan(Long userId, Long scrapPlanId) {
+        travelPlanRepository.findById(scrapPlanId).ifPresent(plan -> {
+            // 본인 소유의 스크랩본만 삭제 (남의 것·일반 플랜 보호)
+            if (plan.getUser().getId().equals(userId)
+                    && PlanScrapCopier.STATUS.equals(plan.getStatus())) {
+                travelPlanRepository.delete(plan);
+            }
+        });
+    }
 
     // 초대받은 링크 보관
     @Override
