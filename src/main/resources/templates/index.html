@@ -7,7 +7,13 @@
   <!-- Pretendard·Gmarket Sans 는 Google Fonts 에 없다. 기존 링크는 400 을 받아
        웹폰트가 하나도 로드되지 않았다. 실제로 서비스되는 조합으로 바꿨다. -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <!-- 본문은 Pretendard. 한국 제품 화면에서 사실상 표준이고 한글 자족이
+       IBM Plex Sans KR 보다 촘촘해 같은 크기에서 더 또렷하다.
+       가변 폰트 + 동적 서브셋이라 쓰는 글자만 받는다.
+       숫자·시각은 IBM Plex Mono 를 그대로 쓴다 — 자릿수가 맞아야 한다. -->
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap">
   <script th:src="@{/js/sky-anchors.js}"></script>
   <script>
     /* 하늘 — 보는 사람의 시각으로 정한다. 페인트 전에 끝나야 깜빡이지 않는다.
