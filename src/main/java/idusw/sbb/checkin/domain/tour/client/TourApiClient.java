@@ -19,7 +19,7 @@ import java.util.Map;
  * 공통 파라미터·재시도 1회·resultCode 검사·items 추출을 한 곳에 모은다.
  * 실패 시 빈 노드를 돌려주므로(폴백) 화면 전체가 멈추지 않는다.
  *
- * ⚠️ 응답을 로컬 DB 에 영구 저장하지 않는다. 실시간 호출 이력이 남아야 심사에서 인정된다.
+ * 응답을 로컬 DB 에 영구 저장하지 않는다. 실시간 호출 이력이 남아야 심사에서 인정된다.
  */
 @Slf4j
 @Component
@@ -46,8 +46,8 @@ public class TourApiClient {
      */
     public JsonNode items(String service, String operation, Map<String, String> params) {
         // 공통 파라미터 + 요청별 파라미터를 직접 인코딩한다.
-        // ⚠️ UriComponentsBuilder 는 디코딩키의 '/' 를 인코딩하지 않아 키가 깨진다
-        //    (SERVICE_KEY_IS_NOT_REGISTERED). serviceKey 를 직접 인코딩하고 URI 로 넘겨 재인코딩을 막는다.
+        // UriComponentsBuilder 를 쓰면 디코딩키의 '/' 가 인코딩되지 않아 키가 깨진다
+        // (SERVICE_KEY_IS_NOT_REGISTERED). serviceKey 를 직접 인코딩하고 URI 로 넘겨 재인코딩을 막는다.
         Map<String, String> all = new LinkedHashMap<>();
         all.put("serviceKey", serviceKey);   // 디코딩키
         all.put("MobileOS", "ETC");

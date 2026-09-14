@@ -252,8 +252,8 @@ public class WeatherServiceImpl implements WeatherService {
 
     private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-    // 기상청 평년값(2011~2020) 월별 최저/최고 기온 근사 — 11일+ 예보 없음 구간용.
-    // ponytail: 전국 단일 테이블. 지역별 정밀화가 필요하면 지역×월 테이블로 확장.
+    // 기상청 평년값(2011~2020) 월별 최저/최고 기온 근사 — 11일 이상 예보 없는 구간에 쓴다.
+    // 지금은 전국 공통값이고, 지역별로 나눠야 하면 지역×월 테이블로 확장한다.
     private static final int[][] MONTHLY_NORMAL = {
             {-6, 3}, {-4, 6}, {1, 11}, {7, 18}, {13, 23}, {18, 27},
             {22, 29}, {23, 30}, {17, 26}, {10, 20}, {3, 12}, {-3, 5}
