@@ -726,6 +726,23 @@
             </div>
         </div>
 
+        <!-- 하루를 따라가는 막대. 장면 세 개가 이 진행선을 움직인다.
+             도쿄 앱의 재생 바 자리다. 장식이 아니라 실제로 장면을 돌린다. -->
+        <div class="ck-wr">
+          <div class="ck-play" id="ck_play">
+            <button type="button" class="ck-playbtn" id="ck_playbtn"
+                    aria-label="순서 따라가기 멈춤">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
+            </button>
+            <div class="ck-playtx">
+              <b id="ck_playttl">부산 1일차 오후를 순서대로 봅니다</b>
+              <i>세 곳 · 14:20 부터 19:05 까지</i>
+            </div>
+            <div class="ck-track" id="ck_track" aria-hidden="true"><i></i><em id="ck_trackdot"></em></div>
+            <span class="ck-playnow" id="ck_playnow">해변 한가운데</span>
+          </div>
+        </div>
+
         <div class="ck-wr ck-form">
           <form class="ck-bar" id="ck_mk" onsubmit="return false">
             <div class="ck-fr">
@@ -864,17 +881,18 @@
 
       <section class="ck-wr ck-blk" id="ck_data">
         <div class="ck-hd" data-label="짐작이 아니라">
-          <h2>이 숫자는 어디서 왔나</h2>
+          <h2>계산해서 나온 값입니다</h2>
         </div>
-        <div class="ck-data">
-          <div class="ck-src"><b>한국관광공사 OpenAPI</b>
-            <ul><li>국문 관광정보</li><li>관광지별 연관 관광지</li><li>기초지자체 중심 관광지</li><li>관광지 집중률 예측</li><li>지역별 방문자 수</li></ul></div>
-          <div class="ck-src"><b>이동과 소요시간</b>
-            <ul><li>카카오모빌리티 경로</li><li>TMAP 교통정보</li><li>TMAP 타임머신 (미래 시각 소요시간)</li></ul></div>
-          <div class="ck-src"><b>지형과 건물</b>
-            <ul><li>OpenStreetMap 건물 발자국·층수</li><li>Esri 캔버스 베이스맵</li><li>기상청 날씨</li></ul></div>
-          <div class="ck-src"><b>순서를 짜는 방식</b>
-            <ul><li>순서 계산은 알고리즘이 합니다</li><li>후보를 고르고 이유를 쓰는 건 AI</li><li>시각은 넣는 값이 아니라 나오는 값입니다</li></ul></div>
+        <div class="ck-how2">
+          <p>
+            순서는 알고리즘이 계산합니다. 후보를 고르고 왜 그 순서인지
+            쓰는 것은 AI 가 합니다. <b>시각은 넣는 값이 아니라 나오는 값</b>입니다 —
+            숙소 체크인 시각과 장소별 영업시간, 이동시간을 넣고 풀면 하루가 채워집니다.
+          </p>
+          <p class="ck-how2-src">
+            집중률과 장소는 한국관광공사, 이동시간은 카카오모빌리티와 TMAP,
+            건물 형상은 OpenStreetMap 에서 가져옵니다.
+          </p>
         </div>
       </section>
 
@@ -892,7 +910,7 @@
            반복되고 화면만 길어진다. 한 절로 묶고 탭으로 바꾼다.
            그리드 id 는 initMainPage() 가 쓰므로 그대로 둔다. -->
       <section class="ck-wr ck-blk" id="ck_kind">
-        <div class="ck-hd"><h2>많이 담긴 장소</h2></div>
+        <div class="ck-hd"><h2>많이들 들르는 곳</h2></div>
         <div class="ck-tabs" role="tablist">
           <button type="button" role="tab" aria-selected="true"  data-pop="food">맛집</button>
           <button type="button" role="tab" aria-selected="false" data-pop="stay">숙소</button>

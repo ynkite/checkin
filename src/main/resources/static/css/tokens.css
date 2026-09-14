@@ -22,7 +22,8 @@
 
 :root{
   /* ── 글꼴 ───────────────────────────────────────────────── */
-  --sans:"IBM Plex Sans KR", system-ui, "Malgun Gothic", sans-serif;
+  --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+         system-ui, "Malgun Gothic", sans-serif;
   --fig:"IBM Plex Mono", ui-monospace, monospace;   /* 시각·금액·집중률만 */
 
   /* ── 타입 스케일 ────────────────────────────────────────── */

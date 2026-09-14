@@ -24,11 +24,14 @@
 }
 
 /* ── 단계 표시 — 네 단계다. 옛 규칙은 세 칸으로 잡고 있었다 ── */
+/* 네 번째 단계는 JS 가 필요할 때만 켠다. 격자를 4칸으로 고정하면
+   꺼져 있을 때 오른쪽 한 칸이 빈 채로 선만 남는다. */
 #page-planner .step-bar{
-  grid-template-columns:repeat(4, minmax(0,1fr));
+  display:flex; gap:0;
   border:0; border-top:1px solid var(--ui-line); border-radius:0;
   background:none; overflow:visible; margin-bottom:26px;
 }
+#page-planner .step-item{ flex:1 1 0; min-width:0 }
 #page-planner .step-item{
   position:relative; padding:14px 14px 0 0; border:0; background:none;
   display:flex; align-items:baseline; gap:9px; cursor:pointer;
@@ -138,7 +141,8 @@
 }
 
 @media (max-width:720px){
-  #page-planner .step-bar{ grid-template-columns:repeat(2, minmax(0,1fr)); row-gap:4px }
+  #page-planner .step-bar{ flex-wrap:wrap; row-gap:4px }
+  #page-planner .step-item{ flex:1 1 45% }
   #page-planner .pl-card{ padding:20px 18px 22px }
   #page-planner .planner-sub{ max-width:none }
 }
@@ -188,4 +192,27 @@
 @media (max-width:620px){
   #page-planner .pl-row{ grid-template-columns:1fr; gap:8px }
   #page-planner .pl-row .other-input{ grid-column:1 }
+}
+
+/* 줄 안쪽 — 알약과 「기타」 입력이 같이 들어간다 */
+#page-planner .pl-row-bd{ min-width:0 }
+#page-planner .pl-row-bd .chip-row{ margin:0 }
+#page-planner .pl-row-bd .other-input{ margin-top:9px }
+#page-planner .pl-row-lb{
+  display:flex; flex-direction:column; gap:3px; align-items:flex-start;
+}
+#page-planner .pl-row-note{
+  font-style:normal; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  line-height:1.35; word-break:keep-all;
+}
+
+/* 여러 개 고를 수 있는 칸은 켜졌을 때 체크가 붙는다.
+   「(다중 선택 가능)」 이라고 적어 두는 대신 고른 모양으로 보인다. */
+#page-planner .chip[data-multi].on::before{
+  content:"✓"; margin-right:6px; font-size:11px; font-weight:700;
+  vertical-align:1px;
+}
+
+@media (max-width:620px){
+  #page-planner .pl-row-lb{ flex-direction:row; align-items:baseline; gap:8px; flex-wrap:wrap }
 }

@@ -1,0 +1,80 @@
+/*
+ * 체크인 — 상단 바 (styles_nav.css)
+ *
+ * 고친 것
+ *   1. 활성 링크가 회색 알약이었다. 지나가다 잘못 눌린 칩처럼 보인다.
+ *      글자 색과 밑줄 한 줄로 바꾼다
+ *   2. 링크가 12px 이라 본문(14~17px)보다 작아 눌러야 할 것으로 안 읽혔다
+ *   3. 오른쪽에 버튼 두 개가 나란히 서서 어느 쪽이 주인지 알 수 없었다.
+ *      로그인은 글자 링크, 「체크인 시작」만 알약 버튼
+ *   4. 흰 띠가 전면 미니어처를 가로질렀다. 맨 위에서는 비워 두고
+ *      스크롤하면 바탕이 생긴다 (app_home.js 가 .nav-solid 를 붙인다)
+ *
+ * 색은 tokens.css 변수만 쓴다. styles_main.css 뒤에 둔다.
+ */
+
+nav{
+  background:transparent;
+  backdrop-filter:none;
+  border-bottom:1px solid transparent;
+  padding:14px 26px;
+  transition:background .2s ease, border-color .2s ease, backdrop-filter .2s ease;
+}
+nav.nav-solid{
+  background:color-mix(in oklab, var(--page) 88%, transparent);
+  backdrop-filter:blur(14px);
+  border-bottom-color:var(--ui-line);
+}
+
+/* 브랜드 */
+nav .brand-tx{
+  font-size:17px; font-weight:700; letter-spacing:-.045em; color:var(--ink);
+}
+nav .brand-mk{ width:17px; height:17px }
+
+/* 링크 — 밑줄 하나로 지금 자리를 표시한다 */
+nav .nav-link{
+  position:relative; padding:6px 2px; margin:0 11px; border-radius:0;
+  background:none !important; border:0;
+  font-size:14px; font-weight:500; letter-spacing:-.03em;
+  color:var(--ink-3); transition:color .15s;
+}
+nav .nav-link:hover{ color:var(--ink-2) }
+nav .nav-link.on{ color:var(--ink); font-weight:600 }
+nav .nav-link.on::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px;
+  height:2px; border-radius:99px; background:var(--terra);
+}
+
+/* 오른쪽 — 주인은 하나뿐이다 */
+nav .nav-right{ display:flex; align-items:center; gap:14px }
+nav .btn-nav-ghost,
+nav .nav-user{
+  padding:0; border:0; background:none; cursor:pointer;
+  font-family:inherit; font-size:13.5px; font-weight:500; letter-spacing:-.03em;
+  color:var(--ink-3); transition:color .15s;
+}
+nav .btn-nav-ghost:hover{ color:var(--ink) }
+nav .btn-nav-primary{
+  padding:9px 18px 10px; border:0; border-radius:99px; cursor:pointer;
+  background:var(--terra); color:var(--panel);
+  font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.025em;
+  transition:filter .15s;
+}
+nav .btn-nav-primary:hover{ filter:brightness(1.2) }
+
+/* 알림 종 */
+nav #navBellBtn{ color:var(--ink-2) }
+nav #navBellBtn:hover{ color:var(--ink) }
+
+/* 햄버거 */
+nav #navHamburger{
+  border:0; background:none; cursor:pointer; color:var(--ink-2); padding:6px;
+}
+
+@media (max-width:900px){
+  nav{ padding:11px 18px }
+  nav.nav-open{
+    background:var(--page); border-bottom-color:var(--ui-line); backdrop-filter:none;
+  }
+}
