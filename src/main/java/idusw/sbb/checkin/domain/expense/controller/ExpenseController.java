@@ -1,6 +1,7 @@
 package idusw.sbb.checkin.domain.expense.controller;
 
 import idusw.sbb.checkin.domain.auth.security.CustomUserDetails;
+import idusw.sbb.checkin.domain.expense.dto.BudgetEstimate;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.checkin.domain.expense.dto.ExpenseAddRequestDto;
 import idusw.sbb.checkin.domain.expense.service.ExpenseService;
@@ -24,6 +25,15 @@ public class ExpenseController {
 
         BudgetReportResponseDto report = expenseService.getBudgetReport(tripId);
         return ResponseEntity.ok(ApiResponse.success(report));
+    }
+
+    /** 숙박비 예측 — 항목별 확정/추정 + 신뢰도 (예산 엔진 2층). */
+    @GetMapping("/{tripId}/budget-estimate")
+    public ResponseEntity<ApiResponse<BudgetEstimate>> budgetEstimate(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long tripId) {
+
+        return ResponseEntity.ok(ApiResponse.success(expenseService.estimateBudget(tripId)));
     }
 
     @PostMapping("/{tripId}/expenses")

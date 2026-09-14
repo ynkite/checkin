@@ -42,6 +42,27 @@ public class KorTourService {
         return toSpots(client.items(SERVICE, "areaBasedList2", params));
     }
 
+    /**
+     * 이름으로 찾기 (searchKeyword2) — 동선에 적힌 숙소 이름을 contentId 로 잇는다.
+     * 예산 엔진이 그 contentId 로 공개 요금을 받아 「확정」 항목을 만든다.
+     *
+     * @param keyword       장소 이름
+     * @param contentTypeId 관광타입 (숙박이면 32, null 이면 전체)
+     * @param numOfRows     페이지당 개수
+     */
+    public List<Spot> searchByName(String keyword, Integer contentTypeId, int numOfRows) {
+        if (keyword == null || keyword.isBlank()) return List.of();
+
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("keyword", keyword);
+        params.put("numOfRows", String.valueOf(numOfRows));
+        params.put("pageNo", "1");
+        params.put("arrange", "A");
+        if (contentTypeId != null) params.put("contentTypeId", String.valueOf(contentTypeId));
+
+        return toSpots(client.items(SERVICE, "searchKeyword2", params));
+    }
+
     private List<Spot> toSpots(JsonNode items) {
         List<Spot> result = new ArrayList<>();
         if (items.isObject()) {                          // 결과 1건이면 배열이 아닌 객체로 온다

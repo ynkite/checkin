@@ -1,5 +1,6 @@
 package idusw.sbb.checkin.domain.expense.service;
 
+import idusw.sbb.checkin.domain.expense.dto.BudgetEstimate;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto.CategoryBudgetDto;
 import idusw.sbb.checkin.domain.expense.dto.ExpenseAddRequestDto;
@@ -24,6 +25,17 @@ import java.util.Map;
 public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final TravelPlanRepository travelPlanRepository;
+    private final BudgetEstimator budgetEstimator;
+
+    /**
+     * 숙박비 예측 — 항목별 확정/추정 + 신뢰도 (예산 엔진 2층).
+     * 실제 지출(getBudgetReport)과 달리 아직 쓰지 않은 돈의 예측이다.
+     */
+    public BudgetEstimate estimateBudget(Long planId) {
+        TravelPlan plan = travelPlanRepository.findById(planId)
+                .orElseThrow(() -> new EntityNotFoundException("여행 플랜을 찾을 수 없습니다."));
+        return budgetEstimator.estimate(plan);
+    }
 
     public BudgetReportResponseDto getBudgetReport(Long planId) {
         TravelPlan plan = travelPlanRepository.findById(planId)
