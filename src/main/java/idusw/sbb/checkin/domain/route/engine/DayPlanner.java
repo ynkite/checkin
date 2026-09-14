@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.ToDoubleBiFunction;
 
@@ -72,6 +73,22 @@ public final class DayPlanner {
      */
     public DayPlan plan(List<TimeSlot> slots, GeoPoint startPoint, GeoPoint returnPoint,
                          RouteConstraints constraints, int dayIndex, int totalDays) {
+        return plan(slots, startPoint, returnPoint, constraints, dayIndex, totalDays,
+                DailyCategoryBudget.unlimited());
+    }
+
+    /**
+     * @param budget 하루 카테고리 예산 (결정 11-(1)). 활동 슬롯은 <b>남은 활동 예산을 남은 활동
+     *               슬롯 수로 나눠</b> 가져간다 — 앞에서부터 다 쓰면 오전에 몰리고 저녁이 비는데,
+     *               그게 before 데이터에서 지적한 바로 그 모양이다. 예산이 0인 카테고리는 슬롯에
+     *               들어가기 전에 후보 풀에서 빠진다.
+     */
+    public DayPlan plan(List<TimeSlot> slots, GeoPoint startPoint, GeoPoint returnPoint,
+                         RouteConstraints constraints, int dayIndex, int totalDays,
+                         DailyCategoryBudget budget) {
+        if (budget == null) {
+            throw new IllegalArgumentException("budget must not be null");
+        }
         if (slots == null) {
             throw new IllegalArgumentException("slots must not be null");
         }
@@ -90,20 +107,27 @@ public final class DayPlanner {
 
         boolean isFirstDay = dayIndex == 0;
         boolean isLastDay = dayIndex == totalDays - 1;
-        Duration budget = constraints.maxDailyTravelTime();
-        double budgetMinutes = budget != null ? budget.toSeconds() / 60.0 : Double.MAX_VALUE;
+        Duration travelBudget = constraints.maxDailyTravelTime();
+        double budgetMinutes = travelBudget != null ? travelBudget.toSeconds() / 60.0 : Double.MAX_VALUE;
 
         GeoPoint currentPoint = startPoint;
         LocalTime currentTime = constraints.effectiveDayStart(isFirstDay);
         double cumulativeCost = 0.0;
         List<SlotPlan> results = new ArrayList<>();
 
+        Map<CandidateCategory, Integer> remaining = budget.toRemaining();
+        int remainingActivitySlots = (int) slots.stream().filter(s -> isActivitySlot(s.type())).count();
+
         for (int i = 0; i < slots.size(); i++) {
-            TimeSlot slot = slots.get(i);
+            TimeSlot slot = affordable(slots.get(i), remaining);
             boolean isLastSlot = i == slots.size() - 1;
             LocalTime windowStart = constraints.windowStart(slot.type(), isFirstDay);
             LocalTime windowEnd = constraints.windowEnd(slot.type(), isLastDay);
             int cap = maxVisitsPolicy.apply(slot.type());
+            if (isActivitySlot(slot.type())) {
+                cap = Math.min(cap, activityShare(remaining, remainingActivitySlots));
+                remainingActivitySlots--;
+            }
 
             SlotPlan accepted = null;
             double acceptedReturnLeg = 0.0;
@@ -124,6 +148,9 @@ public final class DayPlanner {
             }
 
             results.add(accepted);
+            for (Candidate visited : accepted.visitOrder()) {
+                remaining.merge(visited.category(), -1, Integer::sum);
+            }
             cumulativeCost += accepted.travelCost();
             currentPoint = accepted.endPoint();
             currentTime = accepted.endTime();
@@ -140,5 +167,33 @@ public final class DayPlanner {
                 : currentTime;
 
         return new DayPlan(dayIndex, results, returnTime);
+    }
+
+    private static boolean isActivitySlot(SlotType type) {
+        return type == SlotType.MORNING_ACTIVITY
+                || type == SlotType.AFTERNOON_ACTIVITY
+                || type == SlotType.EVENING_ACTIVITY;
+    }
+
+    /**
+     * 활동 슬롯 하나가 가져갈 몫 = ceil(남은 활동 예산 / 남은 활동 슬롯 수).
+     * 관광 예산 2에 활동 슬롯 3이면 1 · 1 · 0 으로 갈린다 — 오전에 몰아넣지 않는다.
+     */
+    private static int activityShare(Map<CandidateCategory, Integer> remaining, int remainingActivitySlots) {
+        if (remainingActivitySlots <= 0) {
+            return 0;
+        }
+        // 무제한 예산이 Integer.MAX_VALUE 라 합이 int 를 넘는다 — 슬롯 상한으로 어차피 잘린다.
+        long activityBudget = (long) remaining.get(CandidateCategory.TOUR) + remaining.get(CandidateCategory.CAFE);
+        long share = (activityBudget + remainingActivitySlots - 1) / remainingActivitySlots;
+        return (int) Math.min(TimeSlot.MAX_CANDIDATES, share);
+    }
+
+    /** 예산이 0인 카테고리 후보는 슬롯에 들어가기 전에 뺀다 — SlotOptimizer 는 예산을 모른다. */
+    private static TimeSlot affordable(TimeSlot slot, Map<CandidateCategory, Integer> remaining) {
+        List<Candidate> within = slot.candidates().stream()
+                .filter(c -> remaining.get(c.category()) > 0)
+                .toList();
+        return within.size() == slot.size() ? slot : new TimeSlot(slot.type(), within);
     }
 }

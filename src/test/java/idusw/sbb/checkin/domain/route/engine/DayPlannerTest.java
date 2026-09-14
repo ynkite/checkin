@@ -26,6 +26,136 @@ class DayPlannerTest {
                 maxDailyTravelTime, ANCHOR_POINT, null, dayStart, dayEnd);
     }
 
+    /** 위도 1도 = 111.194km. 전부 앵커에서 1~2km 안이라 이동시간이 제약으로 걸리지 않는다. */
+    private static GeoPoint nearby(double km) {
+        return new GeoPoint(ANCHOR_POINT.latitude() + km / 111.194, ANCHOR_POINT.longitude());
+    }
+
+    /** 하루 다섯 슬롯 — 활동 슬롯마다 관광 후보 2곳씩, 식사 슬롯마다 식당 1곳씩. */
+    private static List<TimeSlot> fullDaySlots() {
+        return List.of(
+                new TimeSlot(SlotType.MORNING_ACTIVITY, List.of(
+                        candidate("tour-morning-1", nearby(1.0), CandidateCategory.TOUR, 90),
+                        candidate("tour-morning-2", nearby(1.1), CandidateCategory.TOUR, 90))),
+                new TimeSlot(SlotType.LUNCH, List.of(
+                        candidate("food-lunch", nearby(1.2), CandidateCategory.FOOD, 60))),
+                new TimeSlot(SlotType.AFTERNOON_ACTIVITY, List.of(
+                        candidate("tour-afternoon-1", nearby(1.3), CandidateCategory.TOUR, 90),
+                        candidate("tour-afternoon-2", nearby(1.4), CandidateCategory.TOUR, 90))),
+                new TimeSlot(SlotType.DINNER, List.of(
+                        candidate("food-dinner", nearby(1.5), CandidateCategory.FOOD, 60))),
+                new TimeSlot(SlotType.EVENING_ACTIVITY, List.of(
+                        candidate("tour-evening-1", nearby(1.6), CandidateCategory.TOUR, 90),
+                        candidate("tour-evening-2", nearby(1.7), CandidateCategory.TOUR, 90))));
+    }
+
+    private static RouteConstraints fullDayConstraints() {
+        return constraints(LocalTime.of(12, 0), LocalTime.of(13, 30),
+                LocalTime.of(18, 0), LocalTime.of(19, 30),
+                LocalTime.of(9, 0), LocalTime.of(21, 0), null);
+    }
+
+    private static List<Integer> visitCounts(DayPlan plan) {
+        return plan.slotPlans().stream().map(SlotPlan::visitCount).toList();
+    }
+
+    // ── 결정 11-(1) : 하루 카테고리 예산을 활동 슬롯에 고르게 나눈다 ──────────
+
+    @Test
+    void 관광_예산이_2면_오전1_오후1_저녁0_으로_갈린다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(fullDaySlots(), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 2));
+
+        // [MORNING, LUNCH, AFTERNOON, DINNER, EVENING]
+        assertThat(visitCounts(plan)).containsExactly(1, 1, 1, 1, 0);
+    }
+
+    @Test
+    void 관광_예산이_3이면_오전1_오후1_저녁1_이_된다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(fullDaySlots(), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 3));
+
+        assertThat(visitCounts(plan)).containsExactly(1, 1, 1, 1, 1);
+    }
+
+    @Test
+    void 예산을_앞_슬롯이_다_쓰지_않는다() {
+        // 앞에서부터 상한껏 쓰면 오전 2 · 오후 0 · 저녁 0 이 된다 — before 데이터의 그 모양이다.
+        DayPlan plan = DayPlanner.withDefaults().plan(fullDaySlots(), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 2));
+
+        assertThat(plan.slotPlans().get(0).visitCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 저녁_활동이_0인_날은_저녁식사로_닫힌다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(fullDaySlots(), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 2));
+
+        SlotPlan dinner = plan.slotPlans().get(3);
+        SlotPlan evening = plan.slotPlans().get(4);
+
+        assertThat(dinner.visitCount()).isEqualTo(1);
+        assertThat(evening.visitCount()).isZero();
+        // 빈 저녁 슬롯은 저녁식사의 종료 지점·시각을 그대로 물려받고, 복귀는 거기서 계산된다
+        assertThat(evening.endPoint()).isEqualTo(dinner.visitOrder().get(0).location());
+        assertThat(evening.endTime()).isEqualTo(dinner.endTime());
+        assertThat(plan.returnTime()).isAfter(dinner.endTime());
+    }
+
+    @Test
+    void 예산이_0인_카테고리_후보는_슬롯에_들어가지_않는다() {
+        List<TimeSlot> slots = List.of(
+                new TimeSlot(SlotType.MORNING_ACTIVITY, List.of(
+                        candidate("cafe-morning", nearby(1.0), CandidateCategory.CAFE, 40),
+                        candidate("tour-morning", nearby(1.1), CandidateCategory.TOUR, 90))),
+                new TimeSlot(SlotType.AFTERNOON_ACTIVITY, List.of(
+                        candidate("cafe-afternoon", nearby(1.2), CandidateCategory.CAFE, 40))));
+
+        DayPlan plan = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 5));
+
+        assertThat(plan.slotPlans()).flatExtracting(SlotPlan::visitOrder)
+                .extracting(Candidate::category)
+                .containsOnly(CandidateCategory.TOUR);
+        assertThat(plan.slotPlans().get(1).visitCount()).isZero(); // 카페뿐인 슬롯은 통째로 빈다
+    }
+
+    @Test
+    void 식사_슬롯_상한은_예산과_무관하게_한_곳이다() {
+        List<TimeSlot> slots = List.of(new TimeSlot(SlotType.LUNCH, List.of(
+                candidate("food1", nearby(1.0), CandidateCategory.FOOD, 60),
+                candidate("food2", nearby(1.1), CandidateCategory.FOOD, 60),
+                candidate("food3", nearby(1.2), CandidateCategory.FOOD, 60))));
+
+        DayPlan plan = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 1, 2));
+
+        assertThat(plan.slotPlans().get(0).visitCount()).isEqualTo(1);
+    }
+
+    @Test
+    void 밀도에서_예산을_그대로_가져온다() {
+        assertThat(DailyCategoryBudget.of(ScheduleDensity.RELAXED))
+                .isEqualTo(new DailyCategoryBudget(3, 1, 1));
+        assertThat(DailyCategoryBudget.of(ScheduleDensity.of("빼곡하게")))
+                .isEqualTo(new DailyCategoryBudget(3, 1, 2));
+    }
+
+    @Test
+    void 예산을_안_주면_예전처럼_시간만_자른다() {
+        List<TimeSlot> slots = fullDaySlots();
+        RouteConstraints c = fullDayConstraints();
+
+        DayPlan withoutBudget = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT, c, 0, 3);
+        DayPlan unlimited = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT, c, 0, 3,
+                DailyCategoryBudget.unlimited());
+
+        assertThat(visitCounts(withoutBudget)).isEqualTo(visitCounts(unlimited));
+        assertThat(visitCounts(withoutBudget).stream().mapToInt(Integer::intValue).sum())
+                .isGreaterThan(5); // 예산이 없으면 활동 슬롯이 후보를 더 담는다
+    }
+
     // ── 결정 9-3 : 경계 이동이 뒤 슬롯 창을 먹는다 ──────────────────────────
 
     @Test
