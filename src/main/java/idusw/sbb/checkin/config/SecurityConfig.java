@@ -60,6 +60,8 @@ public class SecurityConfig {
                                          "/**/*.jpeg", "/**/*.gif", "/**/*.webp", "/**/*.ico",
                                          "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.map").permitAll()
                         .requestMatchers("/plan/**", "/plan/view/**", "/trip/**").permitAll()
+                        // 캘린더 구독 피드 — 인증 없이 열리는 .ics (토큰으로 보호)
+                        .requestMatchers("/cal/**").permitAll()
 
                         // 업로드된 이미지 파일 비로그인 접근 허용
                         .requestMatchers("/uploads/**").permitAll()

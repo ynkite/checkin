@@ -73,6 +73,10 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    // 캘린더 구독 토큰 — 인증 없이 열리는 /cal/{token}.ics 진입점. 추측 불가능한 32자, 마이페이지에서 재발급.
+    @Column(name = "ics_token", length = 32, unique = true)
+    private String icsToken;
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -97,6 +101,11 @@ public class User {
         this.role = (role != null) ? role : "USER"; // 기본값 설정
         this.status = (status != null) ? status : "ACTIVE"; // 기본값 설정
         this.lastPwChangedAt = lastPwChangedAt;
+    }
+
+    // 캘린더 구독 토큰 설정/재발급 (null 이면 폐기)
+    public void assignIcsToken(String token) {
+        this.icsToken = token;
     }
 
     //닉네임 변경
