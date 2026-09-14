@@ -1,148 +1,85 @@
 /* =============================================================================
  * 체크인 - 지도 반응형 (styles_responsive_map.css)
+ *
+ * 1000px 이하 — 레일을 지도 아래로 내린다. 가로 스크롤이 생기면 안 된다.
+ * 620px  이하 — 레일은 현재 구간 앞뒤만 두고 나머지는 접는다.
  * ============================================================================= */
 
-/* 카카오 폴리라인 클리핑 방지
- * 폴리라인은 지도 영역보다 큰 내부 레이어에 절대위치로 그려지므로
- * 조상 요소에 overflow:hidden 이 걸리면 경로 선이 잘린다. */
-#page-map,
-#page-map .map-wrap,
-#page-map .map-right,
-#page-map #mapView,
-#prevKakaoMap {
-    overflow: visible !important;
+/* 플래너 미리보기 지도는 아직 카카오 폴리라인을 쓴다.
+   폴리라인은 지도 영역보다 큰 내부 레이어에 그려지므로 조상에 overflow:hidden 이
+   걸리면 선이 잘린다. 지도 화면(page-map)은 SVG 레이어로 바꿔 해당되지 않는다. */
+#prevKakaoMap{ overflow:visible !important }
+#prevKakaoMap img, #prevKakaoMap svg, #prevKakaoMap canvas{
+  max-width:none !important; max-height:none !important;
+}
+#page-map #kakaoMap img, #page-map #kakaoMap canvas{
+  max-width:none !important; max-height:none !important;
 }
 
-/* 지도 내 svg/canvas/img 는 크기 제약 없이 그려져야 함 */
-#page-map img, #page-map svg, #page-map canvas,
-.map-wrap img, .map-wrap svg, .map-wrap canvas,
-#prevKakaoMap img, #prevKakaoMap svg, #prevKakaoMap canvas {
-    max-width: none !important;
-    max-height: none !important;
+/* 지도와 레일을 나란히 두기엔 좁은 폭 */
+@media (max-width:1180px){
+  .map-wrap{ grid-template-columns:312px minmax(0,1fr) }
+  .ml-hd, .map-filters, .day-tabs, .map-budget-bar, .map-acts{
+    padding-left:18px; padding-right:18px;
+  }
+  .map-list{ padding-left:12px; padding-right:12px }
 }
 
-/* 모바일 탭 바 - 데스크탑에서는 숨김 */
-.map-mobile-tabs { display: none; }
-
-/* ≤1024px */
-@media (max-width: 1100px) {
-    .map-wrap { grid-template-columns: 260px 1fr; }
+/* ── 1000px 이하 — 지도 먼저, 레일은 그 아래 ── */
+@media (max-width:1000px){
+  .map-wrap{
+    display:flex; flex-direction:column; height:auto; min-height:0;
+  }
+  .map-right{
+    order:1; flex:0 0 auto; height:clamp(300px, 52vh, 460px);
+    border-bottom:1px solid var(--ui-line);
+  }
+  .map-left{
+    order:2; flex:1 1 auto; overflow:visible;
+    border-right:0; max-height:none;
+  }
+  .map-list{
+    flex:none; min-height:0; overflow-y:visible; max-height:none;
+  }
+  .queue-box{ max-height:none; overflow:visible }
+  .queue-box #qItems{ max-height:none }
+  .weather-alert{ left:16px; right:16px; max-width:none }
+  .map-acts{ padding-bottom:24px }
 }
 
-/* ≤768px */
-@media (max-width: 768px) {
+/* 펼치기 버튼 — 접힌 상태에서만 나온다 (아래 620px 규칙이 켠다) */
+.mp-more{
+  display:none; width:calc(100% - 12px); margin:6px 6px 2px;
+  padding:9px 0 10px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:600; color:var(--ink-3);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.mp-more:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
 
-    /* 전체 래퍼: flex 세로 스택, 전체 높이 고정 */
-    .map-wrap {
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        height: calc(100vh - var(--nav-h, 72px));
-    }
+/* ── 620px 이하 — 현재 구간 앞뒤만, 나머지는 접는다 ── */
+@media (max-width:620px){
+  .ml-hd{ padding:16px 16px 14px }
+  .ml-plan-ttl{ font-size:19px }
+  .map-filters, .day-tabs{ padding:11px 16px }
+  .map-filters{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none }
+  .map-filters::-webkit-scrollbar{ display:none }
+  .day-tab{ max-width:124px }
+  .map-list{ padding:0 10px 18px }
+  .place-row{ padding:11px 10px 12px; gap:9px }
+  .pr-name{ font-size:16px }
+  .map-right{ height:clamp(260px, 44vh, 380px) }
+  .mbb-amount{ font-size:21px }
 
-    /* 모바일 탭 바 표시 */
-    .map-mobile-tabs {
-        display: flex;
-        flex-shrink: 0;
-        background: var(--surface);
-        border-bottom: 1px solid var(--border2);
-    }
-    .map-mob-tab {
-        flex: 1;
-        padding: 11px;
-        border: none;
-        border-bottom: 2px solid transparent;
-        background: none;
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--text3);
-        cursor: pointer;
-        transition: color .15s;
-    }
-    .map-mob-tab.on {
-        color: var(--sage-d);
-        border-bottom-color: var(--sage);
-    }
-    /* Day 탭: 좁은 화면에서 가로 스크롤 없이 한 줄 균등 배치 */
-    .day-tabs {
-        overflow-x: hidden;
-        flex-wrap: nowrap;
-        gap: 2px;
-        padding: 8px 8px;
-    }
-    .day-tabs .day-tab {
-        flex: 1 1 0;
-        min-width: 0;
-        text-align: center;
-        padding: 4px 2px;
-        font-size: 10px;
-    }
-
-    /* 각 패널: 남은 높이 전체 차지 */
-    .map-left {
-        flex: 1;
-        max-height: none;
-        border-right: none;
-        border-bottom: none;
-        overflow-y: auto;
-    }
-    .map-right {
-        flex: 1;
-    }
-
-    /* 일정 패널 숨김: display:none OK (카카오맵 없음) */
-    .map-left.mob-hidden {
-        display: none;
-    }
-    /* 지도 패널 숨김: display:none 쓰면 카카오맵이 0크기로 초기화되어
-       폴리라인이 깨짐 → position:absolute로 영역 유지하면서 시각적으로만 숨김 */
-    .map-right.mob-hidden {
-        position: absolute;
-        inset: 0;
-        visibility: hidden;
-        pointer-events: none;
-        z-index: -1;
-    }
-
-    /* 하단 액션 바(지도/예산/공유)는 상단 탭으로 대체 → 모바일에서 전체 숨김 */
-    .map-acts {
-        display: none !important;
-    }
-
-    /* =========================================================================
-     * [수정] 지도 '날씨 악화 예보 감지' 박스 — 하단 네비에 가려 잘리던 문제
-     *   - position:absolute(지도 내부) → position:fixed 로 바꿔 화면 기준 고정
-     *   - 하단 바텀 네비(약 60px) + 안전영역 위로 올려 항상 전체가 보이게 함
-     *   - 스크롤하지 않아도 제목/본문/CTA 가 모두 노출되며 바로 누를 수 있음
-     * ====================================================================== */
-    #page-map .weather-alert {
-        position: fixed;
-        left: 12px;
-        right: 12px;
-        max-width: none;
-        bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 12px);
-        z-index: 1150;   /* 바텀 네비(1200)보다 아래, 지도 위 */
-    }
+  /* 접기 — JS 가 현재 구간 앞뒤 행에 mp-near 를 붙인다.
+     접힌 구간 자리에는 펼치기 버튼 하나만 남는다. */
+  .day-section.mp-folded .place-row:not(.mp-near),
+  .day-section.mp-folded .transit-map-row:not(.mp-near),
+  .day-section.mp-folded .stay-action-row:not(.mp-near),
+  .day-section.mp-folded .replace-area:not(.mp-near){ display:none }
+  .day-section.mp-folded .mp-more{ display:block }
 }
 
-/* 가로 모드 짧은 화면 (가로 폰) */
-@media (max-height: 500px) and (orientation: landscape) {
-    .map-wrap { height: 80vh; }
-}
-
-/* 태블릿: 지도는 좌우 분할 유지하되 Day 탭만 한 줄 균등 배치 */
-@media (min-width: 769px) and (max-width: 1100px) {
-    .day-tabs {
-        overflow-x: hidden;
-        flex-wrap: nowrap;
-        gap: 2px;
-        padding: 8px 8px;
-    }
-    .day-tabs .day-tab {
-        flex: 1 1 0;
-        min-width: 0;
-        text-align: center;
-        padding: 4px 2px;
-        font-size: 10px;
-    }
+/* 가로 모드 짧은 화면 */
+@media (max-height:520px) and (orientation:landscape) and (max-width:1000px){
+  .map-right{ height:64vh }
 }

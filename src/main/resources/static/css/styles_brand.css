@@ -33,7 +33,7 @@
 }
 
 .brand-tx {
-    font-family: 'Gmarket Sans', 'Pretendard', system-ui, sans-serif;
+    font-family: var(--sans);
     font-size: 21px;
     font-weight: 700;
     letter-spacing: -.035em;

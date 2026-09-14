@@ -1,0 +1,700 @@
+/*
+ * 체크인 — 지도 화면 (styles_map.css)
+ *
+ * 메인페이지(styles_home.css)에서 정한 표면 위계를 그대로 가져온다.
+ *   떠 있는 것   선택된 일정 행 · 지도 위 핀 · 날씨 알림   그림자
+ *   읽는 목록    나머지 일정 행 · 날짜 탭                  평평, 실선 한 겹
+ * 색은 tokens.css 변수만 쓴다. styles_main.css 의 옛 지도 규칙을 덮어쓰므로
+ * index.html 에서 styles_main.css 보다 뒤에 둔다.
+ */
+
+/* ── 틀 ───────────────────────────────────────────────────── */
+/* .page 의 고정 padding-top(60px) 대신 실제 nav 높이를 쓴다.
+   --nav-h 는 page_map 의 syncNavHeight() 가 넣는다. */
+/* --void 는 풍경(하늘) 색이다. 시간대에 따라 어두워진다.
+   패널 바닥으로 쓰면 저녁에 글자가 사라진다 — 메인에서 같은 일을 겪고
+   --page 를 따로 뒀다. 여기도 --page 를 쓴다. */
+#page-map{ background:var(--page); padding-top:var(--nav-h, 60px) }
+
+.map-wrap{
+  display:grid; grid-template-columns:364px minmax(0,1fr);
+  height:calc(100vh - var(--nav-h, 60px));
+  background:var(--page); color:var(--ink);
+  word-break:keep-all; overflow-wrap:break-word;
+}
+
+.map-left{
+  display:flex; flex-direction:column; min-height:0; overflow:hidden;
+  background:var(--page); border-right:1px solid var(--ui-line);
+}
+.map-right{
+  position:relative; overflow:hidden; background:var(--ui-plate);
+  display:block;
+}
+.map-right::before{ content:none }
+#mapView{ position:absolute; inset:0; overflow:hidden }
+#kakaoMap{ width:100%; height:100% }
+
+/* ── 레일 머리 ─────────────────────────────────────────────── */
+.ml-hd{ padding:20px 22px 16px; border-bottom:1px solid var(--ui-line) }
+/* 이어브로우 — 메인은 READY·LIVE 처럼 영문 짧은 말이라 자간을 넓혔다.
+   같은 값을 한글에 주면 「여 행  동 선」 처럼 글자가 흩어진다. */
+.mp-eyebrow{
+  font-size:11.5px; font-weight:600; letter-spacing:-.01em;
+  color:var(--ink-3); margin-bottom:7px;
+}
+.ml-plan-ttl{
+  font-size:21px; font-weight:700; letter-spacing:-.042em; line-height:1.2;
+  color:var(--ink); margin-bottom:5px;
+}
+.ml-plan-meta{
+  font-family:var(--fig); font-size:12px; line-height:1.55;
+  color:var(--ink-2); letter-spacing:-.01em;
+}
+.mp-state{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:13px }
+#planStatusBadge{
+  display:inline-flex; align-items:center; padding:4px 11px 5px; border-radius:99px;
+  font-size:11px; font-weight:600; letter-spacing:.04em;
+  background:var(--ui-pale); color:var(--ink-2);
+}
+#planStatusBadge.mp-fixed{ background:var(--sig); color:var(--on-sig) }
+#btnConfirmToggle{
+  margin-left:auto; padding:8px 18px 9px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:13px; font-weight:700; letter-spacing:-.02em;
+  background:var(--ui); color:var(--panel); transition:filter .15s;
+}
+#btnConfirmToggle:hover{ filter:brightness(1.3) }
+
+/* ── 종류 칩 ───────────────────────────────────────────────── */
+.map-filters{
+  display:flex; gap:6px; flex-wrap:wrap; padding:13px 22px;
+  border-bottom:1px solid var(--ui-line);
+}
+.mf-chip{
+  display:inline-flex; align-items:center; gap:6px;
+  padding:6px 12px 7px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:500; color:var(--ink-3);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+  transition:color .14s, box-shadow .14s, background .14s; white-space:nowrap;
+}
+.mf-chip::before{
+  content:""; width:7px; height:7px; border-radius:99px; background:var(--ui-l);
+}
+.mf-stay::before{ background:var(--slate) }
+.mf-food::before{ background:var(--terra) }
+.mf-cafe::before{ background:var(--num) }
+.mf-tour::before{ background:var(--ui-l) }
+/* 네 칩이 모두 켜진 것이 기본이다. 켜짐을 검게 채우면 기본 상태가
+   가장 무겁고, 지도 핀과 맞춰 둔 색 구분도 흰 점으로 덮여 사라진다.
+   켜짐은 테두리를 굵히고 색 점을 살린다. 꺼짐을 흐리게 둔다. */
+.mf-chip{ background:var(--panel) }
+.mf-chip:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.mf-chip.on{
+  color:var(--ink); font-weight:600;
+  box-shadow:inset 0 0 0 1.5px var(--ink);
+}
+.mf-chip:not(.on){ color:var(--ink-3) }
+.mf-chip:not(.on)::before{ background:var(--ui-line) }
+
+/* ── 날짜 탭 — 그날의 기준 장소를 같이 보여준다 ───────────── */
+.day-tabs{
+  display:flex; gap:7px; padding:13px 22px; flex-shrink:0;
+  border-bottom:1px solid var(--ui-line);
+  overflow-x:auto; scrollbar-width:none;
+}
+.day-tabs::-webkit-scrollbar{ display:none }
+.day-tab{
+  flex:0 0 auto; max-width:150px; min-width:0;
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  padding:9px 14px 10px; border:0; border-radius:12px; cursor:pointer;
+  font-family:inherit; text-align:left; background:transparent;
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+  transition:background .15s, box-shadow .15s;
+}
+.day-tab .dt-n{
+  font-size:13px; font-weight:700; letter-spacing:-.03em; color:var(--ink); white-space:nowrap;
+}
+.day-tab .dt-an{
+  font-size:11px; color:var(--ink-3); letter-spacing:-.01em;
+  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
+.day-tab.on{ background:var(--ui); box-shadow:none }
+.day-tab.on .dt-n{ color:var(--panel) }
+.day-tab.on .dt-an{ color:var(--panel); opacity:.66 }
+
+/* ── 일정 레일 ─────────────────────────────────────────────── */
+.map-list{
+  flex:1; min-height:100px; overflow-y:auto; overflow-x:hidden;
+  padding:0 16px 22px; scrollbar-width:thin;
+}
+.day-section + .day-section{ margin-top:6px }
+
+.ds-hd{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:18px 6px 9px; margin:0; border-radius:0;
+  border-bottom:1px solid var(--ui-line); background:none;
+}
+.ds-label{
+  display:flex; align-items:baseline; gap:8px;
+  font-size:13px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+}
+.ds-label .ds-date{
+  font-family:var(--fig); font-size:11px; font-weight:500;
+  letter-spacing:0; color:var(--ink-3);
+}
+.ds-budget{
+  font-family:var(--fig); font-size:13px; font-weight:600;
+  letter-spacing:-.02em; color:var(--ink-2);
+}
+
+/* 하루 합계 — 값이 없으면 JS 가 아예 만들지 않는다 */
+.mp-sum{
+  font-family:var(--fig); font-size:11.5px; letter-spacing:-.01em;
+  color:var(--ink-3); padding:9px 6px 4px;
+}
+
+/* 행 — 선택된 것만 흰 카드로 들뜬다 */
+.place-row{
+  position:relative; display:grid; grid-template-columns:24px minmax(0,1fr) auto;
+  align-items:start; gap:11px;
+  padding:12px 13px 13px; margin:0; border:0; border-radius:12px;
+  background:transparent; box-shadow:none; cursor:pointer;
+  transition:background .16s ease, box-shadow .22s ease;
+}
+.place-row:hover{ background:var(--ui-plate) }
+.place-row.mp-on{ background:var(--panel); box-shadow:var(--lift2) }
+.place-row.row-focus{ background:var(--panel); box-shadow:var(--lift2) }
+
+.mp-ord{
+  grid-column:1; margin-top:2px;
+  width:24px; height:24px; border-radius:99px; display:grid; place-items:center;
+  font-family:var(--fig); font-size:11.5px; font-weight:600; letter-spacing:-.02em;
+  background:var(--ui-pale); color:var(--ink-2); transition:background .16s, color .16s;
+}
+.place-row.mp-on .mp-ord{ background:var(--ui); color:var(--panel) }
+.place-row.mp-now .mp-ord{ background:var(--sig); color:var(--on-sig) }
+
+.pr-info{ grid-column:2; min-width:0 }
+.mp-time{
+  font-family:var(--fig); font-size:11px; font-weight:500; letter-spacing:.05em;
+  color:var(--ink-3); margin-bottom:3px;
+}
+.pr-name{
+  font-size:17px; font-weight:700; letter-spacing:-.035em; line-height:1.28;
+  color:var(--ink);
+}
+.pr-sub{
+  font-size:12.5px; line-height:1.5; color:var(--ink-2); margin-top:3px;
+}
+.pr-stars{ font-size:11.5px; color:var(--num); margin-top:3px; font-family:var(--fig) }
+.mp-nowtag{
+  display:inline-flex; align-items:center; margin-left:7px; vertical-align:2px;
+  padding:2px 8px 3px; border-radius:99px; background:var(--sig); color:var(--on-sig);
+  font-size:10.5px; font-weight:700; letter-spacing:.02em;
+}
+
+.pr-acts{ grid-column:3; display:flex; align-items:center; gap:5px; margin-top:2px }
+.btn-detail{
+  padding:5px 10px 6px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  background:transparent; white-space:nowrap; transition:color .14s, background .14s;
+  opacity:0;
+}
+.place-row:hover .btn-detail,
+.place-row.mp-on .btn-detail{ opacity:1 }
+.btn-detail:hover{ color:var(--ink); background:var(--ui-pale) }
+.btn-replace{
+  padding:5px 11px 6px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+  white-space:nowrap; transition:color .14s, box-shadow .14s;
+}
+.btn-replace:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+.pr-drag{
+  position:absolute; left:-1px; top:50%; transform:translateY(-50%);
+  width:14px; text-align:center; cursor:grab; user-select:none;
+  font-size:11px; line-height:1; color:var(--ink-3);
+  opacity:0; transition:opacity .14s;
+}
+.place-row:hover .pr-drag{ opacity:1 }
+
+/* 이동 연결 문구 — 점 하나와 세로 점선 */
+.transit-map-row{
+  position:relative; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  padding:6px 12px 7px 47px; margin:0; background:none;
+  font-size:12px; color:var(--ink-2);
+}
+.transit-map-row::before{
+  content:""; position:absolute; left:25px; top:-7px; bottom:-7px;
+  border-left:1.5px dotted var(--ui-line);
+}
+.transit-map-row::after{
+  content:""; position:absolute; left:21.5px; top:50%; margin-top:-3.5px;
+  width:7px; height:7px; border-radius:99px;
+  background:var(--panel); box-shadow:inset 0 0 0 2px var(--ui-l);
+}
+.transit-map-row b{ font-weight:600; font-size:12.5px; color:var(--ink-2) }
+.transit-map-row i{
+  font-style:normal; font-family:var(--fig); font-size:11px;
+  letter-spacing:-.01em; color:var(--ink-3);
+}
+.transit-map-row.mp-tr-live b{ color:var(--num) }
+.transit-map-row.mp-tr-live::after{ background:var(--sig); box-shadow:inset 0 0 0 2px var(--sig) }
+
+/* 교체 입력 */
+.replace-area{
+  display:none; margin:2px 0 6px 47px; padding:12px 14px 13px;
+  border-radius:10px; background:var(--ui-plate); border:1px solid var(--ui-line);
+}
+.replace-label{
+  font-size:11px; font-weight:600; letter-spacing:.06em;
+  color:var(--ink-3); margin-bottom:8px;
+}
+.replace-row{ display:flex; gap:8px; align-items:flex-end }
+.replace-inp{
+  flex:1; min-width:0; padding:7px 2px 8px;
+  background:transparent; border:0; border-bottom:1.5px solid var(--ui-line);
+  border-radius:0; font-family:inherit; font-size:14px; font-weight:500;
+  color:var(--ink); outline:none; transition:border-color .16s;
+}
+.replace-inp:focus{ border-bottom-color:var(--ink) }
+.btn-queue-add{
+  flex:0 0 auto; padding:8px 16px 9px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:700;
+  background:var(--ui); color:var(--panel);
+}
+.btn-queue-add:hover{ filter:brightness(1.3) }
+
+/* 숙소 예약 줄 */
+.stay-action-row{ display:flex; gap:7px; padding:0 13px 12px 48px }
+.stay-action-row button{
+  flex:1; padding:8px 0 9px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap;
+  transition:filter .15s, box-shadow .15s, color .15s;
+}
+.btn-stay-check, .btn-stay-book{ background:var(--ui); color:var(--panel) }
+.btn-stay-check:hover, .btn-stay-book:hover{ filter:brightness(1.3) }
+.btn-stay-edit{
+  background:transparent; color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.btn-stay-edit:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+/* ── 교체 요청 목록 ────────────────────────────────────────── */
+.queue-box{
+  display:none; margin:12px 16px 0; padding:14px 15px 15px;
+  border:1px solid var(--ui-line); border-radius:12px; background:var(--ui-plate);
+  flex-shrink:0; max-height:42vh; overflow:hidden; box-sizing:border-box;
+}
+.queue-box.has{ display:flex; flex-direction:column }
+.q-hd{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--ink-3);
+  margin-bottom:10px;
+}
+.q-hd button{ font-family:inherit; font-size:11.5px; color:var(--ink-3) }
+.q-badge{
+  font-family:var(--fig); font-size:11px; font-weight:600;
+  background:var(--ui); color:var(--panel); padding:1px 7px 2px; border-radius:99px;
+  margin-left:5px;
+}
+.queue-box #qItems{ flex:1 1 auto; min-height:0; max-height:min(240px,32vh); overflow-y:auto }
+/* 실제로 그리는 쪽은 app_main.js 의 renderQ 다 (한 줄: 내용 + 지우기 버튼) */
+.queue-box .q-item{
+  display:flex; align-items:flex-start; gap:8px;
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:10px;
+  padding:11px 12px; margin-bottom:8px; box-shadow:none;
+}
+.q-itop{ display:flex; align-items:center; justify-content:space-between; gap:8px }
+.q-place{ font-size:12.5px; font-weight:700; letter-spacing:-.03em; color:var(--ink); min-width:0 }
+.q-req{ font-size:12px; color:var(--ink-2); margin-top:2px }
+.q-rm{ background:none; border:0; cursor:pointer; color:var(--ink-3); font-size:13px; line-height:1; flex:0 0 auto }
+.q-inp{
+  width:100%; margin-top:7px; padding:5px 2px 6px; background:transparent; border:0;
+  border-bottom:1px solid var(--ui-line); border-radius:0; box-sizing:border-box;
+  font-family:inherit; font-size:12.5px; color:var(--ink); outline:none;
+}
+.q-inp:focus{ border-bottom-color:var(--ink) }
+.btn-all{
+  width:100%; margin-top:8px; padding:10px 0 11px; border:0; border-radius:99px;
+  cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
+  background:var(--ui); color:var(--panel);
+}
+.btn-all:hover{ filter:brightness(1.3) }
+.btn-all:disabled{ background:var(--ui-pale); color:var(--ink-3); cursor:default }
+#queueToggle{ margin:12px 16px 0 }
+#queueToggle button{
+  width:100%; padding:9px 0 10px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:600; color:var(--ink-2);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+#queueToggle button:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+/* ── 레일 바닥 ─────────────────────────────────────────────── */
+.map-budget-bar{
+  flex-shrink:0; padding:15px 22px 11px; border-top:1px solid var(--ui-line);
+}
+.mbb-label{
+  font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--ink-3);
+  margin-bottom:4px;
+}
+.mbb-amount{
+  font-family:var(--fig); font-size:23px; font-weight:600;
+  letter-spacing:-.045em; color:var(--ink);
+}
+.map-acts{
+  flex-shrink:0; display:flex; gap:7px; padding:0 22px 18px; align-items:center;
+}
+.btn-map-act{
+  flex:1; min-width:0; padding:9px 0 10px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:500; color:var(--ink-2);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+  white-space:nowrap; text-align:center; transition:color .14s, box-shadow .14s, background .14s;
+}
+.btn-map-act:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.btn-map-act.on{ background:var(--ui); color:var(--panel); box-shadow:none; font-weight:600 }
+
+/* ── 지도 위 — 경로 레이어 ─────────────────────────────────
+   카카오 폴리라인의 파선 값을 문서로 확인할 수 없어 SVG 레이어로 그린다.
+   좌표 → 픽셀 변환은 지도 idle 마다 다시 계산한다. */
+.mp-route{
+  position:absolute; left:0; top:0; z-index:4; pointer-events:none;
+  overflow:hidden;
+}
+.mp-rt{ fill:none; stroke-linecap:round; stroke-linejoin:round }
+.mp-rt-past{ stroke:var(--ui-l); stroke-width:2.4; stroke-dasharray:1 7; opacity:.55 }
+.mp-rt-next{ stroke:var(--ui-line); stroke-width:2.4; stroke-dasharray:1 7; opacity:.9 }
+.mp-rt-live{ stroke:var(--sig); stroke-width:4; opacity:1 }
+.mp-rt-case{ stroke:var(--halo); stroke-width:8; opacity:.75 }
+.mp-chev{ fill:none; stroke:var(--ui-l); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.5 }
+.mp-chev-live{ stroke:var(--on-sig-2); opacity:.9 }
+
+/* ── 지도 위 — 핀 ─────────────────────────────────────────── */
+.mp-pin{ position:relative; width:0; height:0; cursor:pointer }
+.mp-pd{
+  position:absolute; left:-15px; top:-15px; width:30px; height:30px;
+  border-radius:99px; display:grid; place-items:center;
+  font-family:var(--fig); font-size:12px; font-weight:600; letter-spacing:-.02em;
+  background:var(--ui); color:var(--panel);
+  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--ui-l), var(--lift2);
+  z-index:2;
+}
+.mp-pin-stay .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--slate), var(--lift2) }
+.mp-pin-food .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--terra), var(--lift2) }
+.mp-pin-cafe .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--num),   var(--lift2) }
+.mp-pl{
+  position:absolute; left:0; top:21px; transform:translateX(-50%);
+  white-space:nowrap; padding:3px 10px 4px; border-radius:99px;
+  background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
+  font-size:11.5px; font-weight:600; letter-spacing:-.025em; z-index:1;
+}
+.mp-pin-on .mp-pd{
+  background:var(--ui-d);
+  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 5.5px var(--ink), var(--lift);
+}
+.mp-pin-on .mp-pl{ background:var(--ui); color:var(--panel) }
+
+/* 지금 여기 — 링이 번지고 그 안에 사람 */
+.mp-here{ position:relative; width:0; height:0; pointer-events:none }
+.mp-here .mp-hfig{
+  position:absolute; left:-17px; top:-17px; width:34px; height:34px;
+  border-radius:99px; background:var(--sig);
+  box-shadow:0 0 0 3px var(--panel), var(--lift2);
+  display:block; padding:7px; box-sizing:border-box;
+}
+.mp-here .mp-hfig path, .mp-here .mp-hfig circle{ fill:var(--on-sig) }
+.mp-here .mp-hping{
+  position:absolute; left:-19px; top:-19px; width:38px; height:38px;
+  border-radius:99px; border:2px solid var(--sig); opacity:0;
+  animation:mpPing 2.6s cubic-bezier(.16,.7,.3,1) infinite;
+}
+@keyframes mpPing{
+  0%{ transform:scale(.45); opacity:.85 }
+  70%,100%{ transform:scale(1.9); opacity:0 }
+}
+.mp-here .mp-hlb{
+  position:absolute; left:0; top:23px; transform:translateX(-50%);
+  white-space:nowrap; padding:3px 10px 4px; border-radius:99px;
+  background:var(--sig); color:var(--on-sig);
+  font-size:11px; font-weight:700; letter-spacing:.02em;
+}
+
+/* ── 날씨 알림 ─────────────────────────────────────────────── */
+.weather-alert{
+  position:absolute; right:16px; bottom:16px; max-width:264px;
+  padding:15px 17px 16px; border-radius:14px; border:0;
+  background:var(--panel); box-shadow:var(--lift); cursor:pointer;
+  word-break:keep-all;
+}
+.weather-alert:hover{ transform:translateY(-2px); transition:transform .18s }
+.wa-ttl{
+  display:block; font-size:14px; font-weight:700; letter-spacing:-.035em;
+  color:var(--ink); margin-bottom:4px;
+}
+.wa-body{ font-size:12.5px; line-height:1.55; color:var(--ink-2) }
+.wa-cta{ font-size:12.5px; font-weight:600; color:var(--num); margin-top:8px }
+
+/* ── 예산 뷰 ───────────────────────────────────────────────── */
+#budgetView{ background:var(--page); padding:26px 28px 34px }
+.mp-bg-eyebrow{
+  font-size:11.5px; font-weight:600; letter-spacing:-.01em;
+  color:var(--ink-3); margin-bottom:7px;
+}
+#budgetView h3{
+  font-size:25px; font-weight:700; letter-spacing:-.045em; color:var(--ink);
+  margin:0 0 20px;
+}
+.mp-bg-card{
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:10px;
+  padding:20px 22px 22px;
+}
+.mp-bg-row{ margin-bottom:14px }
+.mp-bg-row:last-child{ margin-bottom:0 }
+.mp-bg-top{
+  display:flex; justify-content:space-between; align-items:baseline; gap:10px;
+  margin-bottom:6px;
+}
+.mp-bg-top span:first-child{ font-size:13.5px; font-weight:600; color:var(--ink) }
+.mp-bg-top span:last-child{
+  font-family:var(--fig); font-size:13.5px; font-weight:600;
+  letter-spacing:-.02em; color:var(--ink-2);
+}
+.mp-bg-bar{ height:5px; border-radius:99px; background:var(--ui-pale); overflow:hidden }
+.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--ui) }
+.mp-bg-row.mp-lead .mp-bg-bar i{ background:var(--sig) }
+.mp-bg-row.mp-lead .mp-bg-top span:last-child{ color:var(--num) }
+.mp-bg-total{
+  display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+  border-top:1.5px solid var(--ink); margin-top:18px; padding-top:15px;
+}
+#map-budget-total-label{ font-size:15px; font-weight:700; letter-spacing:-.03em }
+#map-budget-total{
+  font-family:var(--fig); font-size:25px; font-weight:600;
+  letter-spacing:-.05em; color:var(--ink);
+}
+#map-budget-remaining{
+  margin-top:12px; padding:10px 13px 11px; border-radius:10px;
+  font-size:12.5px; font-weight:500;
+  background:var(--ui-plate); border:1px solid var(--ui-line); color:var(--ink-2);
+}
+#map-budget-remaining.mp-over{
+  background:var(--tile-pale); border-color:var(--tile); color:var(--tile);
+}
+.pie-ring{ border-radius:99px; flex-shrink:0 }
+.pie-legend{ display:flex; flex-direction:column; gap:7px }
+.pie-leg-item{
+  display:flex; align-items:center; gap:8px;
+  font-family:var(--fig); font-size:12px; color:var(--ink-2);
+}
+.pie-dot{ width:8px; height:8px; border-radius:99px; flex-shrink:0 }
+.mp-ledger{
+  width:100%; margin-top:18px; padding:12px 0 13px; border:0; border-radius:99px;
+  cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;
+  letter-spacing:-.02em; background:var(--ui); color:var(--panel);
+}
+.mp-ledger:hover{ filter:brightness(1.3) }
+
+/* ── 확정(잠금) 상태 ───────────────────────────────────────── */
+.map-left.plan-locked .pr-drag,
+.map-left.plan-locked .btn-replace,
+.map-left.plan-locked .replace-area,
+.map-left.plan-locked .queue-box,
+.map-left.plan-locked .btn-stay-edit,
+.map-left.plan-locked .btn-stay-check,
+.map-left.plan-locked #queueToggle{ display:none !important }
+.map-left.plan-locked .place-row{ cursor:default }
+
+.mp-empty{
+  padding:34px 10px; font-size:14px; line-height:1.7; color:var(--ink-2);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   지도 화면의 창(모달)
+
+   styles_main.css 의 .overlay / .modal 몸체는 그대로 쓰고,
+   안쪽 부품만 이 화면의 언어(알약 버튼 · 밑줄 입력 · 토큰 색)로 맞춘다.
+   ══════════════════════════════════════════════════════════════ */
+
+#page-map .modal{ word-break:keep-all }
+.mp-sheet{ width:380px; padding:28px 26px 26px }
+.mp-sheet-sub{ font-size:13px; color:var(--ink-3); margin:4px 0 14px }
+.mp-sheet-row{ display:flex; gap:8px; margin-bottom:14px }
+
+.mp-mttl{
+  font-size:19px; font-weight:700; letter-spacing:-.04em; line-height:1.3;
+  color:var(--ink);
+}
+.mp-mhint{
+  font-size:12.5px; line-height:1.7; color:var(--ink-2);
+  background:var(--ui-plate); border-radius:10px; padding:12px 14px;
+}
+.mp-warn{
+  font-size:12px; line-height:1.65; color:var(--terra);
+  background:var(--terra-pale); border-radius:10px; padding:10px 12px;
+}
+
+.mp-mbtn{
+  flex:0 0 auto; padding:11px 20px 12px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.02em;
+  background:var(--ui); color:var(--panel); white-space:nowrap; transition:filter .15s;
+}
+.mp-mbtn:hover{ filter:brightness(1.3) }
+.mp-mbtn-q{
+  background:transparent; color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.mp-mbtn-q:hover{ filter:none; color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.mp-mbtn, .mp-mbtn-q{ flex:1 }
+
+.site-btn{
+  flex:1; padding:11px 0 12px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:13.5px; font-weight:600; color:var(--ink-2);
+  background:transparent; box-shadow:inset 0 0 0 1px var(--ui-line);
+  transition:color .14s, box-shadow .14s;
+}
+.site-btn:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+/* 입력 — 투명 + 밑줄 한 겹, 라벨은 작게 */
+.mp-flab{
+  display:block; font-size:11px; font-weight:600; letter-spacing:.06em;
+  color:var(--ink-3); margin-bottom:6px;
+}
+.mp-finp, .mp-minp{
+  width:100%; padding:9px 2px 10px; background:transparent; border:0;
+  border-bottom:1.5px solid var(--ui-line); border-radius:0;
+  font-family:inherit; font-size:16px; font-weight:600; letter-spacing:-.02em;
+  color:var(--ink); outline:none; transition:border-color .16s;
+}
+.mp-finp:focus, .mp-minp:focus{ border-bottom-color:var(--ink) }
+.mp-fmoney{ display:flex; align-items:baseline; gap:7px; margin-bottom:4px }
+.mp-fmoney span{ font-family:var(--fig); font-size:16px; font-weight:600; color:var(--ink-3) }
+.mp-fmoney input{
+  flex:1; min-width:0; padding:9px 2px 10px; background:transparent; border:0;
+  border-bottom:1.5px solid var(--ui-line); border-radius:0;
+  font-family:var(--fig); font-size:17px; font-weight:600; letter-spacing:-.03em;
+  color:var(--ink); outline:none; transition:border-color .16s;
+}
+.mp-fmoney input:focus{ border-bottom-color:var(--ink) }
+.mp-disc{
+  display:block; width:100%; text-align:left; margin-top:16px; padding:0;
+  border:0; background:none; cursor:pointer; font-family:inherit;
+  font-size:13px; font-weight:600; color:var(--ink-2); user-select:none;
+}
+.mp-disc:hover{ color:var(--ink) }
+.mp-subbox{
+  margin-top:12px; padding:14px 15px 15px; border-radius:10px;
+  background:var(--ui-plate); border:1px solid var(--ui-line);
+}
+
+/* 장소 팝업 */
+.mp-navi{
+  width:100%; padding:12px 0 13px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
+  background:var(--ui); color:var(--panel); margin-bottom:14px;
+}
+.mp-navi:hover{ filter:brightness(1.3) }
+.mp-nocoord{
+  padding:11px 13px; border-radius:10px; margin-bottom:14px;
+  font-size:12.5px; line-height:1.6; color:var(--terra); background:var(--terra-pale);
+}
+.mp-noreview{ padding:26px 0; text-align:center; font-size:13.5px; color:var(--ink-3) }
+.mp-linkwrap{ margin-top:18px; padding-top:16px; border-top:1px solid var(--ui-line) }
+.mp-linklb{
+  font-size:11px; font-weight:600; letter-spacing:.06em;
+  color:var(--ink-3); margin-bottom:10px;
+}
+.mp-links{ display:flex; gap:8px; flex-wrap:wrap }
+.mp-maplink{
+  flex:1 1 auto; text-align:center; padding:9px 14px 10px; border-radius:99px;
+  font-size:12.5px; font-weight:600; color:var(--ink-2); text-decoration:none;
+  box-shadow:inset 0 0 0 1px var(--ui-line); white-space:nowrap;
+}
+.mp-maplink:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+/* 공유 창 */
+.mp-mtabs{ display:flex; gap:0; border-bottom:1px solid var(--ui-line); margin-bottom:18px }
+#shareModal .share-tab{
+  flex:1; padding:11px 0 12px; border:0; background:none; cursor:pointer;
+  font-family:inherit; font-size:13.5px; font-weight:600; color:var(--ink-3);
+  border-bottom:3px solid transparent; margin-bottom:-1px;
+}
+#shareModal .share-tab.on{ color:var(--ink); font-weight:700 }
+.mp-mnote{ font-size:13px; color:var(--ink-2); margin-bottom:14px }
+.mp-mrow{ display:flex; gap:10px; align-items:flex-end; margin-bottom:20px }
+.mp-mlb{
+  font-size:11px; font-weight:600; letter-spacing:.06em;
+  color:var(--ink-3); margin-bottom:11px;
+}
+.mp-mrow .mp-mbtn{ flex:0 0 auto }
+.mp-kakao{
+  width:100%; padding:12px 0 13px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:13.5px; font-weight:700;
+  background:var(--ui-plate-2); color:var(--ink); margin-bottom:16px;
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.mp-kakao:hover{ background:var(--ui-pale) }
+
+/* 날씨 창 — 이 팝업 안에서만. .weather-grid 는 다른 화면도 쓰므로 범위를 좁힌다 */
+#mapWeatherPopup .weather-grid{ display:grid; gap:8px; margin-top:14px; overflow-x:auto }
+#mapWeatherPopup .w-item{
+  background:var(--ui-plate); border:1px solid var(--ui-line); border-radius:10px;
+  padding:13px 8px 14px; text-align:center; min-width:0;
+}
+#mapWeatherPopup .w-item.w-warn{ background:var(--sig); border-color:transparent }
+#mapWeatherPopup .w-day{ font-family:var(--fig); font-size:11px; color:var(--ink-3); margin-bottom:6px }
+#mapWeatherPopup .w-temp{
+  font-family:var(--fig); font-size:20px; font-weight:600;
+  letter-spacing:-.04em; color:var(--ink);
+}
+#mapWeatherPopup .w-desc{ font-size:12px; color:var(--ink-2); margin-top:3px }
+#mapWeatherPopup .w-pop{ font-family:var(--fig); font-size:10.5px; color:var(--ink-3); margin-top:4px }
+#mapWeatherPopup .w-warn .w-day,
+#mapWeatherPopup .w-warn .w-pop{ color:var(--on-sig-2) }
+#mapWeatherPopup .w-warn .w-temp,
+#mapWeatherPopup .w-warn .w-desc{ color:var(--on-sig) }
+
+.mp-malert{
+  margin-top:13px; padding:11px 13px; border-radius:10px;
+  font-size:12.5px; color:var(--num);
+  background:var(--ui-plate); border:1px solid var(--ui-line);
+}
+.mp-mswap{ margin-top:12px; padding:14px 15px 15px; border-radius:10px; background:var(--ui-plate) }
+.mp-mswap > div:first-child{
+  font-size:13.5px; font-weight:600; letter-spacing:-.03em;
+  color:var(--ink); margin-bottom:11px;
+}
+.mp-mswap-off{ background:var(--ui-plate); opacity:.8 }
+.mp-swapbtn{
+  padding:8px 15px 9px; border:0; border-radius:99px; cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:600;
+  background:var(--ui); color:var(--panel); white-space:nowrap;
+}
+.mp-swapbtn:hover{ filter:brightness(1.3) }
+
+@media (max-width:620px){
+  #mapWeatherPopup .weather-grid{ grid-template-columns:repeat(3,1fr) !important }
+  .mp-sheet{ width:100%; padding:24px 20px 22px }
+}
+
+/* 좁은 화면에는 아래에 탭바(.bnav, 59px)가 떠 있다.
+   레일 바닥의 지도·예산·공유 버튼이 그 밑에 깔렸다. */
+@media (max-width:768px){
+  .map-acts{ padding-bottom:calc(18px + 59px + env(safe-area-inset-bottom, 0px)) }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .mp-here .mp-hping{ animation:none; opacity:.5; transform:scale(1.25) }
+  .place-row, .mp-ord, .weather-alert{ transition:none }
+}
+
+/* 빈 일정 — 안내와 함께 갈 곳을 준다 */
+.mp-empty{ padding:34px 22px 30px; text-align:left }
+.mp-empty p{ margin:0; font-size:14.5px; color:var(--ink-2); line-height:1.7 }
+.mp-empty .mp-empty-sub{ margin-top:5px; font-size:13px; color:var(--ink-3) }
+.mp-empty-go{
+  margin-top:16px; padding:11px 20px 12px; border:0; border-radius:99px;
+  background:var(--terra); color:var(--panel); cursor:pointer;
+  font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
+  transition:filter .15s;
+}
+.mp-empty-go:hover{ filter:brightness(1.2) }
