@@ -8,6 +8,7 @@ import idusw.sbb.checkin.domain.place.service.PlaceService;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.route.engine.ScheduleDensity;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -1106,11 +1107,9 @@ public class AiRouteService {
     // ════════════════════════════════════════════════════════════════
     private static final double FAR_LIMIT = 40_000; // 40km
 
-    /** 밀도별 카테고리 상한 [food, cafe, tour]. */
+    /** 밀도별 카테고리 상한 [food, cafe, tour]. 매핑은 {@link ScheduleDensity} 가 유일한 출처다. */
     private int[] densityCaps(String density) {
-        if ("빡빡하게".equals(density)) return new int[]{3, 2, 3};
-        if ("여유롭게".equals(density)) return new int[]{3, 1, 1};
-        return new int[]{3, 1, 2}; // 보통
+        return ScheduleDensity.of(density).caps();
     }
 
     /**
