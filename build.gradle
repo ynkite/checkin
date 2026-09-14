@@ -63,6 +63,9 @@ dependencies {
     // Gemini
     implementation 'org.springframework.ai:spring-ai-starter-model-google-genai'
 
+    // Web Push (VAPID + 페이로드 암호화). 직접 구현 대신 표준 라이브러리 사용
+    implementation 'nl.martijndwars:web-push:5.1.1'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78.1'
 
 }
 

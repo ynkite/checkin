@@ -66,6 +66,10 @@ public class SecurityConfig {
                         // 업로드된 이미지 파일 비로그인 접근 허용
                         .requestMatchers("/uploads/**").permitAll()
 
+                        // PWA·푸시 공개 리소스 (서비스워커는 루트 스코프라야 전체 제어 가능)
+                        .requestMatchers("/sw.js", "/manifest.json").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/push/public-key").permitAll()
+
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
                                 "/",
