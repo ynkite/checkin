@@ -7,14 +7,13 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import idusw.sbb.checkin.domain.route.engine.Anchor;
 import idusw.sbb.checkin.domain.route.engine.Candidate;
 import idusw.sbb.checkin.domain.route.engine.DayPlan;
-import idusw.sbb.checkin.domain.route.engine.DayPlanner;
 import idusw.sbb.checkin.domain.route.engine.GeoPoint;
 import idusw.sbb.checkin.domain.route.engine.Haversine;
 import idusw.sbb.checkin.domain.route.engine.RouteConstraints;
-import idusw.sbb.checkin.domain.route.engine.SlotOptimizer;
 import idusw.sbb.checkin.domain.route.engine.SlotPlan;
 import idusw.sbb.checkin.domain.route.engine.SlotType;
 import idusw.sbb.checkin.domain.route.engine.TimeSlot;
+import idusw.sbb.checkin.domain.route.engine.TravelCostMetric;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -55,7 +54,7 @@ class RouteJsonWriterTest {
         foods = candidates.subList(0, 2);
         tours = candidates.subList(2, 4);
 
-        writer = RouteJsonWriter.withDefaults(adapter);
+        writer = RouteEngineFactory.withDefaults().jsonWriter(adapter);
     }
 
     private static ObjectNode node(String name, GeoPoint point, String sub, String stars) {
@@ -270,10 +269,12 @@ class RouteJsonWriterTest {
         List<TimeSlot> slots = List.of(
                 new TimeSlot(SlotType.MORNING_ACTIVITY, tours),
                 new TimeSlot(SlotType.LUNCH, foods));
-        DayPlan dayPlan = DayPlanner.withDefaults()
+        // 같은 팩토리에서 나온 짝이라 비용 함수가 하나다 — 이 테스트가 그 배선을 지킨다.
+        RouteEngineFactory factory = RouteEngineFactory.withDefaults();
+        DayPlan dayPlan = factory.dayPlanner()
                 .plan(slots, ANCHOR_POINT, ANCHOR_POINT, constraints, 0, 3);
 
-        ArrayNode root = writer.write(List.of(dayPlan), null, constraints, START_DATE);
+        ArrayNode root = factory.jsonWriter(adapter).write(List.of(dayPlan), null, constraints, START_DATE);
 
         List<JsonNode> rows = new ArrayList<>();
         for (JsonNode place : root.get(0).path("places")) {
@@ -328,6 +329,6 @@ class RouteJsonWriterTest {
 
     private static long legMinutes(Candidate from, Candidate to) {
         return (long) Math.ceil(Haversine.distanceKm(from.location(), to.location())
-                / SlotOptimizer.DEFAULT_AVERAGE_SPEED_KMH * 60.0);
+                / TravelCostMetric.DEFAULT_AVERAGE_SPEED_KMH * 60.0);
     }
 }

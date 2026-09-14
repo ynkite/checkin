@@ -49,8 +49,11 @@ public final class DayPlanner {
 
     /** 결정 9-1 표(식사=1곳, 활동=무제한) · averageSpeedKmh=30 · Haversine 비용 — 기본값 그대로. */
     public static DayPlanner withDefaults() {
-        ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes =
-                (from, to) -> Haversine.distanceKm(from, to) / SlotOptimizer.DEFAULT_AVERAGE_SPEED_KMH * 60.0;
+        return withCostMetric(TravelCostMetric.haversineDefault());
+    }
+
+    /** 이동비용 함수 하나로 {@link SlotOptimizer} 까지 같이 묶는다 — 둘이 다른 함수를 쓰면 안 된다. */
+    public static DayPlanner withCostMetric(ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes) {
         return new DayPlanner(new SlotOptimizer(travelTimeMinutes), travelTimeMinutes, DayPlanner::defaultMaxVisits);
     }
 

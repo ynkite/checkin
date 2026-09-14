@@ -30,7 +30,7 @@ import java.util.function.ToDoubleBiFunction;
  */
 public final class SlotOptimizer {
 
-    public static final double DEFAULT_AVERAGE_SPEED_KMH = 30.0; // 결정 7-4
+    public static final double DEFAULT_AVERAGE_SPEED_KMH = TravelCostMetric.DEFAULT_AVERAGE_SPEED_KMH;
 
     private final ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes;
 
@@ -42,10 +42,7 @@ public final class SlotOptimizer {
     }
 
     public static SlotOptimizer withHaversineEstimate(double averageSpeedKmh) {
-        if (averageSpeedKmh <= 0) {
-            throw new IllegalArgumentException("averageSpeedKmh must be positive");
-        }
-        return new SlotOptimizer((from, to) -> Haversine.distanceKm(from, to) / averageSpeedKmh * 60.0);
+        return new SlotOptimizer(TravelCostMetric.haversineMinutes(averageSpeedKmh));
     }
 
     public static SlotOptimizer withDefaults() {

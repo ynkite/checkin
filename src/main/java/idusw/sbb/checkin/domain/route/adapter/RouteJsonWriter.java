@@ -8,9 +8,7 @@ import idusw.sbb.checkin.domain.route.engine.Anchor;
 import idusw.sbb.checkin.domain.route.engine.Candidate;
 import idusw.sbb.checkin.domain.route.engine.DayPlan;
 import idusw.sbb.checkin.domain.route.engine.GeoPoint;
-import idusw.sbb.checkin.domain.route.engine.Haversine;
 import idusw.sbb.checkin.domain.route.engine.RouteConstraints;
-import idusw.sbb.checkin.domain.route.engine.SlotOptimizer;
 import idusw.sbb.checkin.domain.route.engine.SlotPlan;
 
 import java.time.LocalDate;
@@ -57,8 +55,8 @@ public final class RouteJsonWriter {
     private final ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes;
 
     /**
-     * @param travelTimeMinutes 방문 시각을 되짚는 데 쓴다 — <b>{@code DayPlanner} 에 준 것과 같은
-     *                          함수여야 한다.</b> 다르면 화면에 찍히는 시각이 엔진이 검증한 시각과 어긋난다
+     * 직접 부르지 말고 {@link RouteEngineFactory#jsonWriter(CandidateAdapter)} 로 받는다.
+     * {@code DayPlanner} 와 <b>같은</b> 이동비용 함수를 써야 시각이 어긋나지 않는다.
      */
     public RouteJsonWriter(CandidateAdapter candidateAdapter,
                            ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes) {
@@ -70,12 +68,6 @@ public final class RouteJsonWriter {
         }
         this.candidateAdapter = candidateAdapter;
         this.travelTimeMinutes = travelTimeMinutes;
-    }
-
-    /** {@code DayPlanner.withDefaults()} 와 같은 비용 함수 (Haversine · 시속 30km). */
-    public static RouteJsonWriter withDefaults(CandidateAdapter candidateAdapter) {
-        return new RouteJsonWriter(candidateAdapter,
-                (from, to) -> Haversine.distanceKm(from, to) / SlotOptimizer.DEFAULT_AVERAGE_SPEED_KMH * 60.0);
     }
 
     /**
@@ -150,6 +142,11 @@ public final class RouteJsonWriter {
      * <p>{@code SlotPlan} 은 종료 시각 하나만 남기지만, {@code SlotOptimizer} 의 전진 시뮬레이션이
      * {@code 도착(i+1) = 도착(i) + 체류(i) + ceil(이동(i→i+1))} 이라 역산이 정확히 성립한다.
      * 창이 열리기 전 도착해 기다린 시간도 종료 시각에 이미 반영돼 있어 창 정보가 필요 없다.
+     *
+     * <p><b>전제 — 슬롯 내부에는 대기가 없다.</b> 지금 대기는 슬롯의 첫 방문이 창 시작을 기다리는
+     * 한 번뿐이고, 그건 종료 시각에 접혀 있어 역산에 걸리지 않는다. 두 번째 방문부터 대기가 생기면
+     * (예: 영업 시작 전 도착해 기다리기) 그 시간이 이동시간으로 둔갑해 앞쪽 시각이 전부 당겨진다.
+     * {@code SlotOptimizer.simulate} 에 대기를 추가할 일이 생기면 여기도 같이 고쳐야 한다.
      */
     private List<LocalTime> arrivalTimes(SlotPlan slotPlan) {
         List<Candidate> visits = slotPlan.visitOrder();
