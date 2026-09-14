@@ -2,6 +2,7 @@ package idusw.sbb.checkin.domain.weather.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import idusw.sbb.checkin.domain.weather.dto.DayWeather;
 import idusw.sbb.checkin.domain.weather.dto.WeatherResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -244,5 +246,185 @@ public class WeatherServiceImpl implements WeatherService {
         if (val == null) return 0;
         try { return (int) Double.parseDouble(val.trim()); }
         catch (NumberFormatException e) { return 0; }
+    }
+
+    // ===================== E. 날짜별 날씨 =====================
+
+    private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+    // 기상청 평년값(2011~2020) 월별 최저/최고 기온 근사 — 11일+ 예보 없음 구간용.
+    // ponytail: 전국 단일 테이블. 지역별 정밀화가 필요하면 지역×월 테이블로 확장.
+    private static final int[][] MONTHLY_NORMAL = {
+            {-6, 3}, {-4, 6}, {1, 11}, {7, 18}, {13, 23}, {18, 27},
+            {22, 29}, {23, 30}, {17, 26}, {10, 20}, {3, 12}, {-3, 5}
+    };
+
+    /** 남은 일수 → 예보 종류. 0~2 단기 / 3~10 중기 / 11+ 평년. */
+    static String sourceFor(long daysAhead) {
+        if (daysAhead <= 2)  return "SHORT";
+        if (daysAhead <= 10) return "MID";
+        return "NORMAL";
+    }
+
+    @Override
+    public DayWeather getDayWeather(String region, LocalDate date) {
+        List<DayWeather> one = getDailyRange(region, date, date);
+        return one.isEmpty() ? normalDay(date) : one.get(0);
+    }
+
+    @Override
+    public List<DayWeather> getDailyRange(String region, LocalDate from, LocalDate to) {
+        if (from == null || to == null || to.isBefore(from)) return Collections.emptyList();
+        LocalDate today = LocalDate.now();
+
+        // 단기(0~2)·중기(3~10) 는 한 번씩만 호출해 날짜→값 맵으로 만든다 (실시간 호출 이력 유지).
+        Map<String, DayWeather> shortMap = safeShortDaily(region);
+        Map<String, DayWeather> midMap   = safeMidDaily(region);
+
+        List<DayWeather> result = new ArrayList<>();
+        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
+            long ahead = ChronoUnit.DAYS.between(today, d);
+            String key = d.format(YMD);
+            String src = sourceFor(ahead);
+            DayWeather dw = switch (src) {
+                case "SHORT" -> shortMap.get(key);
+                case "MID"   -> midMap.get(key);
+                default      -> null;
+            };
+            // 예보가 비면(호출 실패·경계일) 평년값으로 폴백
+            result.add(dw != null ? dw : normalDay(d));
+        }
+        return result;
+    }
+
+    /** 11일+ 또는 예보 없음 — 평년값. rainProb 는 null(모름). */
+    private DayWeather normalDay(LocalDate date) {
+        int[] mm = MONTHLY_NORMAL[date.getMonthValue() - 1];
+        return DayWeather.builder()
+                .date(date.format(YMD)).source("NORMAL")
+                .tempMin(mm[0]).tempMax(mm[1])
+                .rainProb(null).sky("평년").rainExpected(false)
+                .build();
+    }
+
+    private Map<String, DayWeather> safeShortDaily(String region) {
+        try { return parseShortDaily(fetchShortRaw(region)); }
+        catch (Exception e) { return Collections.emptyMap(); }
+    }
+
+    private Map<String, DayWeather> safeMidDaily(String region) {
+        try { return parseMidDaily(region); }
+        catch (Exception e) { return Collections.emptyMap(); }
+    }
+
+    private String fetchShortRaw(String region) {
+        int[] grid = REGION_GRID.getOrDefault(region, REGION_GRID.get("서울"));
+        LocalDateTime base = getBaseDateTime(LocalDateTime.now());
+        String url = "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst"
+                + "?pageNo=1&numOfRows=1000&dataType=JSON"
+                + "&base_date=" + base.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                + "&base_time=" + base.format(DateTimeFormatter.ofPattern("HHmm"))
+                + "&nx=" + grid[0] + "&ny=" + grid[1] + "&authKey=" + apiKey;
+        return restTemplate.getForObject(url, String.class);
+    }
+
+    /** 단기예보 → 날짜별 최저(TMN)/최고(TMX)/강수확률(최댓값)/하늘상태(정오). */
+    private Map<String, DayWeather> parseShortDaily(String raw) throws Exception {
+        JsonNode items = objectMapper.readTree(raw)
+                .path("response").path("body").path("items").path("item");
+
+        Map<String, Integer> tmn = new HashMap<>(), tmx = new HashMap<>();
+        Map<String, Integer> popMax = new HashMap<>(), skyNoon = new HashMap<>();
+        Map<String, Boolean> rain = new HashMap<>();
+
+        for (JsonNode it : items) {
+            String date = it.path("fcstDate").asText();
+            String time = it.path("fcstTime").asText();
+            String cat  = it.path("category").asText();
+            String val  = it.path("fcstValue").asText();
+            switch (cat) {
+                case "TMN" -> tmn.put(date, parseIntSafe(val));
+                case "TMX" -> tmx.put(date, parseIntSafe(val));
+                case "POP" -> popMax.merge(date, parseIntSafe(val), Math::max);
+                case "SKY" -> { if ("1200".equals(time)) skyNoon.put(date, parseIntSafe(val)); }
+                case "PTY" -> { if (parseIntSafe(val) > 0) rain.put(date, true); }
+                default -> {}
+            }
+        }
+
+        Map<String, DayWeather> out = new LinkedHashMap<>();
+        for (String date : tmx.keySet()) {
+            long ahead = ChronoUnit.DAYS.between(LocalDate.now(), LocalDate.parse(date, YMD));
+            int pop = popMax.getOrDefault(date, 0);
+            out.put(date, DayWeather.builder()
+                    .date(date).source(sourceFor(ahead))
+                    .tempMin(tmn.getOrDefault(date, tmx.get(date)))
+                    .tempMax(tmx.get(date))
+                    .rainProb(pop)
+                    .sky(skyText(skyNoon.getOrDefault(date, 1)))
+                    .rainExpected(rain.getOrDefault(date, false) || pop >= 60)
+                    .build());
+        }
+        return out;
+    }
+
+    /** 중기예보 → 3~10일 후 날짜별 최저/최고/강수확률/하늘상태. */
+    private Map<String, DayWeather> parseMidDaily(String region) throws Exception {
+        String landCode = MID_LAND_CODE.getOrDefault(region, "11B00000");
+        String taCode   = MID_TA_CODE.getOrDefault(region,   "11B10101");
+        String tmFc = getMidBaseTime(LocalDateTime.now());
+
+        String landUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidLandFcst"
+                + "?numOfRows=10&pageNo=1&dataType=JSON&regId=" + landCode + "&tmFc=" + tmFc + "&authKey=" + apiKey;
+        String taUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidTa"
+                + "?numOfRows=10&pageNo=1&dataType=JSON&regId=" + taCode + "&tmFc=" + tmFc + "&authKey=" + apiKey;
+
+        JsonNode land = firstItem(restTemplate.getForObject(landUrl, String.class));
+        JsonNode ta   = firstItem(restTemplate.getForObject(taUrl,   String.class));
+        if (land == null || ta == null) return Collections.emptyMap();
+
+        LocalDate today = LocalDate.now();
+        Map<String, DayWeather> out = new LinkedHashMap<>();
+        for (int day = 3; day <= 10; day++) {
+            // 중기육상예보는 8일차부터 오전/오후 구분이 없어 wf{n} 하나로 온다. rnSt 도 마찬가지.
+            String wf   = pick(land, "wf" + day + "Am", "wf" + day);
+            String rnSt = pick(land, "rnSt" + day + "Am", "rnSt" + day);
+            String taMin = getTextSafe(ta, "taMin" + day);
+            String taMax = getTextSafe(ta, "taMax" + day);
+
+            int pop = parseIntSafe(rnSt);
+            String date = today.plusDays(day).format(YMD);
+            out.put(date, DayWeather.builder()
+                    .date(date).source("MID")
+                    .tempMin(parseIntSafe(taMin)).tempMax(parseIntSafe(taMax))
+                    .rainProb(pop).sky(skyText(wfToSky(wf)))
+                    .rainExpected(pop >= 60)
+                    .build());
+        }
+        return out;
+    }
+
+    private JsonNode firstItem(String raw) throws Exception {
+        JsonNode item = objectMapper.readTree(raw)
+                .path("response").path("body").path("items").path("item");
+        return (item.isArray() && !item.isEmpty()) ? item.get(0) : (item.isObject() ? item : null);
+    }
+
+    /** 여러 필드명 후보 중 값이 있는 첫 번째 반환 (중기예보 오전/오후 vs 단일 필드 대응). */
+    private String pick(JsonNode node, String... fields) {
+        for (String f : fields) {
+            JsonNode n = node.path(f);
+            if (!n.isMissingNode() && !n.asText().isBlank()) return n.asText();
+        }
+        return "";
+    }
+
+    private String skyText(int sky) {
+        return switch (sky) {
+            case 1 -> "맑음";
+            case 3 -> "구름많음";
+            case 4 -> "흐림";
+            default -> "구름많음";
+        };
     }
 }

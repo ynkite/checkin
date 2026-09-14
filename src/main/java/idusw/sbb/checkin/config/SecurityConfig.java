@@ -70,7 +70,8 @@ public class SecurityConfig {
                                 "/api/auth/verify-email",           //이메일 인증 확인
                                 "/api/auth/password/reset-request", //비밀번호 재설정 요청
                                 "/api/auth/password/reset",         //비밀번호 재설정 처리
-                                "/api/maps/weather",
+                                "/api/maps/weather",                //오늘 기준 예보
+                                "/api/maps/weather/**",             //날짜별·범위 날씨 (day, range)
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 
