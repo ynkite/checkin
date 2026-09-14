@@ -104,7 +104,6 @@
     var tl = $('ck_tl'), tw = $('ck_tw'), plans = $('ck_plans'), hero = $('ck_hero');
     if (!tl) return;
 
-    var chips = ['ck_c1', 'ck_c2', 'ck_c3'].map($).filter(Boolean);
     var bars = ['ck_p1', 'ck_p2', 'ck_p3'].map($).filter(Boolean);
     var route = [];
     var step = -1, timer = null;
@@ -114,7 +113,6 @@
       tl.innerHTML = s.line;
       if (tw) tw.textContent = s.why;
       if (plans) plans.classList.toggle('ck-sw', !!s.sw);
-      chips.forEach(function (c) { c.classList.toggle('ck-on', !!s.chips); });
       bars.forEach(function (b, k) {
         b.className = k < i ? 'ck-done' : (k === i ? 'ck-on' : '');
       });

@@ -53,10 +53,6 @@
 .ck-plans.ck-sw .ck-plan.ck-a{transform:translateY(-100%); opacity:0}
 .ck-plans.ck-sw .ck-plan.ck-b{transform:none; opacity:1}
 .ck-tell .ck-chips{display:flex; gap:7px; margin-top:12px; min-height:32px; flex-wrap:wrap}
-.ck-tell .ck-chips b{font-family:var(--fig); font-size:13px; font-weight:600; padding:5px 11px 6px;
-  border-radius:99px; background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--panel-2);
-  opacity:0; transform:translateY(6px); transition:opacity .4s, transform .4s}
-.ck-tell .ck-chips b.ck-on{opacity:1; transform:none}
 .ck-tell .ck-chips b.ck-hot{background:var(--sig); color:var(--on-sig); box-shadow:none}
 
 /* 관광지 카드 두 장 */
@@ -626,12 +622,6 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-chips2{ display:none; flex-basis:100%; margin-top:4px }
 .ck-home .ck-chips2.ck-open{ display:flex }
 
-@media (max-width:1000px){
-  .ck-scene{ height:clamp(300px, 56vw, 470px) }
-  .ck-frame{ width:min(1560px, 148%); left:58%; top:0 }
-  .ck-home .ck-form{ margin-top:clamp(34px, 7vw, 90px) }
-  .ck-lead h1, .ck-lead .ck-sub{ max-width:none }
-  .ck-pin .ck-bub{ font-size:12px; padding:5px 10px 6px }
 }
 
 /* ── 좁은 화면 — 도시를 통째로 위에 깔고 글을 그 아래로 내린다 ──
@@ -641,8 +631,10 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
    여기서는 장면을 확대하지 않는다. 폭을 꽉 채워 도시 전체가 들어오게
    하면 어중간하게 잘린 단면이 생기지 않고, 핀도 화면 안에 남는다. */
-@media (max-width:760px){
-  /* 폭을 꽉 채우면 도시가 대각선 조각이 되고 나머지가 빈 모래밭이다.
+@media (max-width:1180px){
+  /* 1180 아래에서는 글 옆에 지도를 두면 가림막이 지도를 다 먹는다.
+     실측 1108px — 지도가 오른쪽 구석에만 남았다.
+     폭을 꽉 채우면 도시가 대각선 조각이 되고 나머지가 빈 모래밭이다.
      건물이 몰린 구간(가로 10~65%, 세로 18~68%)만 잘라 담는다.
      값은 mass_hero.json 의 핀 좌표에서 역산했다 — 세 핀이 모두 화면
      안에 들어오고 말풍선도 잘리지 않는 범위다. */
@@ -1170,3 +1162,37 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home #ck_pane_place .ck-tabs{ margin-top:0 }
 .ck-home #ck_pane_trip[hidden],
 .ck-home #ck_pane_place[hidden]{ display:none }
+
+
+/* 숙박비 — 표와 판 두 개를 막대 하나로 */
+.ck-home .ck-conf2{ max-width:60ch }
+.ck-home .ck-conf2-bar{
+  display:flex; height:10px; border-radius:99px; overflow:hidden; background:var(--ui-line);
+}
+.ck-home .ck-conf2-bar i{ display:block; height:100%; background:var(--terra) }
+.ck-home .ck-conf2-lg{
+  display:flex; flex-wrap:wrap; gap:6px 22px; margin-top:14px;
+  font-size:15px; color:var(--ink-2);
+}
+.ck-home .ck-conf2-lg b{
+  font-family:var(--fig); font-weight:600; color:var(--ink);
+}
+.ck-home .ck-conf2-lg span{ color:var(--ink-3) }
+.ck-home .ck-conf2-note{ margin-top:10px; font-size:13.5px; color:var(--ink-3) }
+
+/* 돌아가는 순서 — 3열 카드 대신 번호 붙은 세 줄 */
+.ck-home .ck-flow{
+  list-style:none; margin:0; padding:0; counter-reset:f; max-width:66ch;
+}
+.ck-home .ck-flow li{
+  counter-increment:f; position:relative; padding:16px 0 16px 46px;
+  border-top:1px solid var(--ui-line);
+  font-size:16px; line-height:1.72; color:var(--ink-2); word-break:keep-all;
+}
+.ck-home .ck-flow li::before{
+  content:counter(f); position:absolute; left:0; top:18px;
+  width:26px; height:26px; border-radius:99px; text-align:center; line-height:26px;
+  background:var(--terra); color:var(--panel);
+  font-family:var(--fig); font-size:12px; font-weight:600;
+}
+.ck-home .ck-flow b{ color:var(--ink); font-weight:700 }
