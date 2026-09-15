@@ -258,7 +258,8 @@ public final class BandSplitter {
         return new DailyCandidatePool(dayIndex, DistanceBand.RETURN, lastDayPool, relaxed);
     }
 
-    private double resolveMaxDetourCost(GeoPoint anchorPoint, RouteConstraints constraints) {
+    /** 패키지 공개 — 테스트가 clamp 결과(계수가 아니라 상한이 값을 정하는지)를 직접 확인한다. */
+    double resolveMaxDetourCost(GeoPoint anchorPoint, RouteConstraints constraints) {
         if (maxDetourCostOverride != null) {
             return maxDetourCostOverride;
         }

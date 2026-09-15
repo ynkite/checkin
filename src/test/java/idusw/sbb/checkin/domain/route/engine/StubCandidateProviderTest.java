@@ -15,6 +15,8 @@ class StubCandidateProviderTest {
 
     private static final LocalDate START = LocalDate.of(2026, 10, 1);
     private static final LocalDate END = LocalDate.of(2026, 10, 3);
+    /** 09_시도_대표좌표.md 의 11번 — before 3도시가 전부 출발지 서울이다. */
+    private static final GeoPoint SEOUL = new GeoPoint(37.5665, 126.9780);
 
     private final StubCandidateProvider provider = new StubCandidateProvider();
 
@@ -89,11 +91,60 @@ class StubCandidateProviderTest {
         assertBandSplitterActuallySplits("강릉", new GeoPoint(37.8058, 128.8968));
     }
 
+    /**
+     * 부산 귀가 후보 셋은 거리로는 27·29·34km 로 고만고만한데, 서울로 돌아가는 방향이냐로 갈린다.
+     * 거리 대신 우회비용을 쓴 이유가 이 지점이다 (결정 2).
+     */
+    @Test
+    void 부산_귀가_후보는_거리가_아니라_서울_방향_우회비용으로_갈린다() {
+        GeoPoint anchorPoint = new GeoPoint(35.1587, 129.1604);
+        List<Candidate> candidates = provider.findCandidates("부산", START, END);
+        Anchor anchor = new Anchor("부산-anchor", "부산 숙소", anchorPoint, null, null);
+        RouteConstraints constraints = new RouteConstraints(
+                null, null, null, null, null, null, null, anchorPoint, SEOUL, null, null);
+
+        // 0.3 × 331km ≈ 99 라 계수가 아니라 clamp 상한이 값을 정한다 (09_시도_대표좌표.md)
+        assertThat(BandSplitter.withDefaults().resolveMaxDetourCost(anchorPoint, constraints)).isEqualTo(20.0);
+
+        GeoPoint suroTomb = locationOf(candidates, "김해수로왕릉");
+        GeoPoint ganjeolgot = locationOf(candidates, "간절곶");
+        GeoPoint gadeokdo = locationOf(candidates, "가덕도대항전망대");
+
+        // 거리는 셋 다 가드(36km) 안쪽인데 우회비용은 다섯 배까지 벌어진다
+        assertThat(anchorPoint.distanceKmTo(gadeokdo)).isLessThan(BandSplitter.MAX_RETURN_DISTANCE_KM);
+        assertThat(constraints.detourCostKm(suroTomb)).isLessThan(20.0);      // 약 5.6 — 서울 쪽
+        assertThat(constraints.detourCostKm(ganjeolgot)).isBetween(20.0, 25.0); // 약 22.2 — 북동
+        assertThat(constraints.detourCostKm(gadeokdo)).isGreaterThan(30.0);   // 약 30.8 — 남서, 반대편
+
+        // 스텁에 임계(20) 이내 후보가 수로왕릉 하나뿐이라 기본 minPerDay(8) 로는 완화 폴백이 셋을 다
+        // 끌어온다. 우회비용 순위가 실제로 작동하는지 보려면 최소치를 2로 낮춰야 한다.
+        BandSplitter splitter = new BandSplitter(BandSplitter.DEFAULT_NEAR_BOUNDARY,
+                BandSplitter.DEFAULT_MID_BOUNDARY, 2, null, Haversine::distanceKm);
+        DailyCandidatePool lastDay = splitter.split(anchor, constraints, candidates, 3).get(2);
+
+        assertThat(idsOf(lastDay))
+                .contains("busan-gimhae-suro-tomb", "busan-ganjeolgot")
+                .doesNotContain("busan-gadeokdo-daehang");
+    }
+
+    private static Set<String> idsOf(DailyCandidatePool pool) {
+        return pool.candidates().stream().map(Candidate::id).collect(Collectors.toSet());
+    }
+
+    private static GeoPoint locationOf(List<Candidate> candidates, String name) {
+        return candidates.stream()
+                .filter(c -> c.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("스텁에 없는 후보: " + name))
+                .location();
+    }
+
     private void assertBandSplitterActuallySplits(String region, GeoPoint anchorPoint) {
         List<Candidate> candidates = provider.findCandidates(region, START, END);
         Anchor anchor = new Anchor(region + "-anchor", region + " 숙소", anchorPoint, null, null);
+        // 귀가거점을 서울로 둔다 — 없으면 d(숙소,귀가거점)=0 이라 방향 정보가 아예 없다 (결정 10-8)
         RouteConstraints constraints = new RouteConstraints(
-                null, null, null, null, null, null, null, anchorPoint, null, null, null);
+                null, null, null, null, null, null, null, anchorPoint, SEOUL, null, null);
 
         List<DailyCandidatePool> result = BandSplitter.withDefaults().split(anchor, constraints, candidates, 3);
 
