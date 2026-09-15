@@ -3,6 +3,8 @@ package idusw.sbb.checkin.domain.route.engine;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -78,10 +80,9 @@ public final class DayPlanner {
     }
 
     /**
-     * @param budget 하루 카테고리 예산 (결정 11-(1)). 활동 슬롯은 <b>남은 활동 예산을 남은 활동
-     *               슬롯 수로 나눠</b> 가져간다 — 앞에서부터 다 쓰면 오전에 몰리고 저녁이 비는데,
-     *               그게 before 데이터에서 지적한 바로 그 모양이다. 예산이 0인 카테고리는 슬롯에
-     *               들어가기 전에 후보 풀에서 빠진다.
+     * @param budget 하루 카테고리 예산 (결정 11-(1)). 활동 슬롯은 <b>창 길이에 비례해</b> 몫을
+     *               나눠 갖는다 — 앞에서부터 다 쓰면 오전에 몰리고, 균등하게 쪼개면 창이 긴 오후가
+     *               헐거워진다. 예산이 0인 카테고리는 슬롯에 들어가기 전에 후보 풀에서 빠진다.
      */
     public DayPlan plan(List<TimeSlot> slots, GeoPoint startPoint, GeoPoint returnPoint,
                          RouteConstraints constraints, int dayIndex, int totalDays,
@@ -116,7 +117,7 @@ public final class DayPlanner {
         List<SlotPlan> results = new ArrayList<>();
 
         Map<CandidateCategory, Integer> remaining = budget.toRemaining();
-        int remainingActivitySlots = (int) slots.stream().filter(s -> isActivitySlot(s.type())).count();
+        int[] activityQuota = activityQuotas(slots, constraints, budget, isFirstDay, isLastDay);
 
         for (int i = 0; i < slots.size(); i++) {
             TimeSlot slot = affordable(slots.get(i), remaining);
@@ -124,9 +125,8 @@ public final class DayPlanner {
             LocalTime windowStart = constraints.windowStart(slot.type(), isFirstDay);
             LocalTime windowEnd = constraints.windowEnd(slot.type(), isLastDay);
             int cap = maxVisitsPolicy.apply(slot.type());
-            if (isActivitySlot(slot.type())) {
-                cap = Math.min(cap, activityShare(remaining, remainingActivitySlots));
-                remainingActivitySlots--;
+            if (activityQuota[i] >= 0) {
+                cap = Math.min(cap, activityQuota[i]);
             }
 
             SlotPlan accepted = null;
@@ -176,17 +176,66 @@ public final class DayPlanner {
     }
 
     /**
-     * 활동 슬롯 하나가 가져갈 몫 = ceil(남은 활동 예산 / 남은 활동 슬롯 수).
-     * 관광 예산 2에 활동 슬롯 3이면 1 · 1 · 0 으로 갈린다 — 오전에 몰아넣지 않는다.
+     * 활동 슬롯별 몫 = 활동 예산 × (그 슬롯 창 길이 / 활동 창 길이 합), 내림 후 나머지가 큰 순서로
+     * 잔여를 하나씩 얹는다(최대잔여법). 몫의 합은 예산과 정확히 같다.
+     *
+     * <p>균등 분배는 앞 몰아쓰기는 막지만 창이 긴 오후가 헐거워진다 — 4시간 30분짜리 창에 90분
+     * 관광 하나만 들어가면 3시간이 뜬다. before 데이터의 강릉 Day 3 이 그 모양이었다.
+     *
+     * @return 슬롯 위치별 몫. 활동 슬롯이 아니거나 예산이 무제한이면 -1 (상한 없음)
      */
-    private static int activityShare(Map<CandidateCategory, Integer> remaining, int remainingActivitySlots) {
-        if (remainingActivitySlots <= 0) {
-            return 0;
+    private static int[] activityQuotas(List<TimeSlot> slots, RouteConstraints constraints,
+                                         DailyCategoryBudget budget, boolean isFirstDay, boolean isLastDay) {
+        int[] quotas = new int[slots.size()];
+        Arrays.fill(quotas, -1);
+        if (budget.isUnlimited()) {
+            return quotas;
         }
-        // 무제한 예산이 Integer.MAX_VALUE 라 합이 int 를 넘는다 — 슬롯 상한으로 어차피 잘린다.
-        long activityBudget = (long) remaining.get(CandidateCategory.TOUR) + remaining.get(CandidateCategory.CAFE);
-        long share = (activityBudget + remainingActivitySlots - 1) / remainingActivitySlots;
-        return (int) Math.min(TimeSlot.MAX_CANDIDATES, share);
+
+        long[] windows = new long[slots.size()];
+        long totalWindow = 0;
+        for (int i = 0; i < slots.size(); i++) {
+            if (!isActivitySlot(slots.get(i).type())) {
+                continue;
+            }
+            quotas[i] = 0;
+            windows[i] = Math.max(0, Duration.between(
+                    constraints.windowStart(slots.get(i).type(), isFirstDay),
+                    constraints.windowEnd(slots.get(i).type(), isLastDay)).toMinutes());
+            totalWindow += windows[i];
+        }
+        if (totalWindow == 0) {
+            return quotas; // 활동 창이 하나도 안 열린 날 — 전부 0
+        }
+
+        final long windowSum = totalWindow;
+        final int activityBudget = budget.activityTotal();
+        int assigned = 0;
+        for (int i = 0; i < slots.size(); i++) {
+            if (quotas[i] < 0) {
+                continue;
+            }
+            quotas[i] = (int) (activityBudget * windows[i] / windowSum);
+            assigned += quotas[i];
+        }
+
+        // 잔여는 나머지가 큰 순서로. 나머지가 같으면 창이 긴 쪽, 그래도 같으면 앞 슬롯.
+        List<Integer> byRemainder = new ArrayList<>();
+        for (int i = 0; i < slots.size(); i++) {
+            if (quotas[i] >= 0) {
+                byRemainder.add(i);
+            }
+        }
+        byRemainder.sort(Comparator
+                .comparingLong((Integer i) -> (long) activityBudget * windows[i] % windowSum).reversed()
+                .thenComparing(Comparator.comparingLong((Integer i) -> windows[i]).reversed())
+                .thenComparingInt(i -> i));
+
+        for (int i = 0; i < byRemainder.size() && assigned < activityBudget; i++) {
+            quotas[byRemainder.get(i)]++;
+            assigned++;
+        }
+        return quotas;
     }
 
     /** 예산이 0인 카테고리 후보는 슬롯에 들어가기 전에 뺀다 — SlotOptimizer 는 예산을 모른다. */

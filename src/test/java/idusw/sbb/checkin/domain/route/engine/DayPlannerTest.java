@@ -3,7 +3,9 @@ package idusw.sbb.checkin.domain.route.engine;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ToDoubleBiFunction;
 
@@ -49,6 +51,25 @@ class DayPlannerTest {
                         candidate("tour-evening-2", nearby(1.7), CandidateCategory.TOUR, 90))));
     }
 
+    /**
+     * 활동 슬롯 셋만. 후보는 체류 10분짜리로 촘촘히 둬서 <b>시간이 아니라 예산이</b> 방문 수를
+     * 정하게 한다 — 몫 계산만 보려는 것이다.
+     */
+    private static List<TimeSlot> activityOnlySlots(int perSlot) {
+        return List.of(
+                cheapSlot(SlotType.MORNING_ACTIVITY, "morning", perSlot),
+                cheapSlot(SlotType.AFTERNOON_ACTIVITY, "afternoon", perSlot),
+                cheapSlot(SlotType.EVENING_ACTIVITY, "evening", perSlot));
+    }
+
+    private static TimeSlot cheapSlot(SlotType type, String prefix, int count) {
+        List<Candidate> candidates = new ArrayList<>();
+        for (int k = 0; k < count; k++) {
+            candidates.add(candidate(prefix + "-" + k, nearby(0.1 * (k + 1)), CandidateCategory.TOUR, 10));
+        }
+        return new TimeSlot(type, candidates);
+    }
+
     private static RouteConstraints fullDayConstraints() {
         return constraints(LocalTime.of(12, 0), LocalTime.of(13, 30),
                 LocalTime.of(18, 0), LocalTime.of(19, 30),
@@ -71,11 +92,49 @@ class DayPlannerTest {
     }
 
     @Test
-    void 관광_예산이_3이면_오전1_오후1_저녁1_이_된다() {
+    void 관광_예산이_3이면_창이_긴_오후가_두_곳을_가져간다() {
+        // 창은 오전 3h(09:00~12:00) · 오후 4.5h(13:30~18:00) · 저녁 1.5h(19:30~21:00) = 9h.
+        // 3 × (3/9, 4.5/9, 1.5/9) = 1.0, 1.5, 0.5 → 내림 1·1·0, 잔여 1은 나머지가 같으면 창이 긴 오후로.
         DayPlan plan = DayPlanner.withDefaults().plan(fullDaySlots(), ANCHOR_POINT, ANCHOR_POINT,
                 fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 3));
 
-        assertThat(visitCounts(plan)).containsExactly(1, 1, 1, 1, 1);
+        assertThat(visitCounts(plan)).containsExactly(1, 1, 2, 1, 0);
+    }
+
+    @Test
+    void 활동_예산이_1이면_가장_긴_창_하나만_가져간다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(activityOnlySlots(5), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 1));
+
+        assertThat(visitCounts(plan)).containsExactly(0, 1, 0); // 오후(4.5h)만
+    }
+
+    @Test
+    void 오전_창이_없는_첫날은_오후와_저녁으로_몰린다() {
+        // 12:00 도착 → 오전 창이 [12:00, 12:00] 으로 접힌다. 창 길이 0 이라 몫도 0 이다.
+        RouteConstraints lateArrival = new RouteConstraints(
+                LocalDateTime.of(2026, 9, 19, 12, 0), null,
+                LocalTime.of(12, 0), LocalTime.of(13, 30),
+                LocalTime.of(18, 0), LocalTime.of(19, 30),
+                null, ANCHOR_POINT, null, LocalTime.of(9, 0), LocalTime.of(21, 0));
+
+        DayPlan plan = DayPlanner.withDefaults().plan(activityOnlySlots(5), ANCHOR_POINT, ANCHOR_POINT,
+                lateArrival, 0, 3, new DailyCategoryBudget(3, 0, 4));
+
+        assertThat(plan.slotPlans().get(0).visitCount()).isZero();
+        assertThat(visitCounts(plan).stream().mapToInt(Integer::intValue).sum()).isEqualTo(4);
+    }
+
+    @Test
+    void 몫의_합은_언제나_활동_예산과_같다() {
+        for (int budget = 1; budget <= 6; budget++) {
+            DayPlan plan = DayPlanner.withDefaults().plan(activityOnlySlots(5), ANCHOR_POINT, ANCHOR_POINT,
+                    fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, budget));
+
+            assertThat(visitCounts(plan).stream().mapToInt(Integer::intValue).sum())
+                    .as("활동 예산 " + budget)
+                    .isEqualTo(budget);
+        }
     }
 
     @Test

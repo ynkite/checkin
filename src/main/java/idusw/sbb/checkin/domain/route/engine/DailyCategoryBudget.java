@@ -30,6 +30,15 @@ public record DailyCategoryBudget(int food, int cafe, int tour) {
         return new DailyCategoryBudget(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE);
     }
 
+    public boolean isUnlimited() {
+        return food == Integer.MAX_VALUE && cafe == Integer.MAX_VALUE && tour == Integer.MAX_VALUE;
+    }
+
+    /** 활동 슬롯(관광·카페)에 쓸 수 있는 하루 총량. 식사는 슬롯 상한 1로 따로 묶인다. */
+    public int activityTotal() {
+        return isUnlimited() ? Integer.MAX_VALUE : cafe + tour;
+    }
+
     /** 하루를 돌며 깎아 쓸 잔여 예산. 원본은 그대로 둔다. */
     public Map<CandidateCategory, Integer> toRemaining() {
         Map<CandidateCategory, Integer> remaining = new EnumMap<>(CandidateCategory.class);
