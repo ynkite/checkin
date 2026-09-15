@@ -58,6 +58,15 @@ public class AiRouteService {
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRouteService.class);
+
+    /**
+     * 동선 엔진 경로 사용 여부. 기본값 false — 켜는 건 {@code application-local.properties} 에서만 한다
+     * ({@code application.properties} 는 skip-worktree 라 팀에 안 나간다).
+     */
+    @org.springframework.beans.factory.annotation.Value("${route.engine.enabled:false}")
+    private boolean routeEngineEnabled;
+
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
     private final ChatClient primaryClient;   // Groq (1차 생성 / 장소 교체)
@@ -1268,7 +1277,21 @@ public class AiRouteService {
         String json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
         if (json == null || json.isBlank() || !json.contains("[")) return java.util.Collections.emptyList();
 
-        // 1) 한 방향 정렬
+        // 1) 한 방향 정렬 — ★엔진 경로에서는 건너뛴다 (결정 10-(2)).
+        //    reorderWithinTimeBlocks 는 최근접 이웃 그리디라, SlotOptimizer 가 완전탐색으로 찾은
+        //    순서를 뒤에서 덮어쓴다. 테스트는 통과하는데 화면 결과만 안 바뀌는 형태로 망가진다.
+        //    2) 의 후처리·최종 저장은 두 경로가 똑같이 탄다.
+        if (routeEngineEnabled) {
+            try {
+                log.info("[route.engine] tripId={} 엔진 경로 — 그리디 재정렬을 건너뛴다", tripId);
+                return postProcessRoute(tripId, json, userRequested, density);
+            } catch (RuntimeException e) {
+                // 조용한 폴백은 "엔진이 돌았다고 믿는데 화면은 before" 가 되는 길이다.
+                log.error("[route.engine] tripId={} 실패 지점=finalizeRoute/postProcessRoute(엔진 순서 유지)"
+                        + " — 기존 경로로 폴백한다", tripId, e);
+            }
+        }
+
         String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);
