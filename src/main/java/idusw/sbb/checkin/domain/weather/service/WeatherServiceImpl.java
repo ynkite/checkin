@@ -66,149 +66,45 @@ public class WeatherServiceImpl implements WeatherService {
             "제주",  "11G00201"
     );
 
+    /** 화면이 한 번에 보는 날수. 단기 3일 + 중기 4일. */
+    private static final int FORECAST_DAYS = 7;
+
     @Override
     public List<WeatherResponseDto> getForecast(String region) {
-        // 단기예보 (오늘~3일차)
-        List<WeatherResponseDto> shortTerm = getShortTermForecast(region);
-
-        // 중기예보 (4~7일차)
-        List<WeatherResponseDto> midTerm = getMidTermForecast(region, shortTerm.size());
-
-        // 합치기
-        List<WeatherResponseDto> result = new ArrayList<>(shortTerm);
-        result.addAll(midTerm);
-        return result;
-    }
-
-
-    // 단기예보 (getVilageFcst) - 오늘~3일치
-    private List<WeatherResponseDto> getShortTermForecast(String region) {
-        int[] grid = REGION_GRID.getOrDefault(region, REGION_GRID.get("서울"));
-
-        LocalDateTime base = getBaseDateTime(LocalDateTime.now());
-        String baseDate = base.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        String baseTime = base.format(DateTimeFormatter.ofPattern("HHmm"));
-
-        String url = "https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst"
-                + "?pageNo=1&numOfRows=1000&dataType=JSON"
-                + "&base_date=" + baseDate
-                + "&base_time=" + baseTime
-                + "&nx=" + grid[0]
-                + "&ny=" + grid[1]
-                + "&authKey=" + apiKey;
-
-        try {
-            String raw = restTemplate.getForObject(url, String.class);
-            return parseShortTerm(raw);
-        } catch (Exception e) {
-            throw new RuntimeException("단기예보 호출 실패: " + e.getMessage(), e);
-        }
-    }
-
-    private List<WeatherResponseDto> parseShortTerm(String raw) throws Exception {
-        JsonNode items = objectMapper.readTree(raw)
-                .path("response").path("body").path("items").path("item");
-
-        Map<String, Map<String, String>> byDate = new LinkedHashMap<>();
-        for (JsonNode item : items) {
-            String time     = item.path("fcstTime").asText();
-            if (!"1200".equals(time)) continue;
-            String date     = item.path("fcstDate").asText();
-            String category = item.path("category").asText();
-            String value    = item.path("fcstValue").asText();
-            byDate.computeIfAbsent(date, k -> new HashMap<>()).put(category, value);
-        }
-
-        List<WeatherResponseDto> result = new ArrayList<>();
-        for (Map.Entry<String, Map<String, String>> entry : byDate.entrySet()) {
-            if (result.size() >= 3) break;  // 단기는 3일치만
-            Map<String, String> v = entry.getValue();
-            result.add(WeatherResponseDto.builder()
-                    .date(entry.getKey())
-                    .time("1200")
-                    .tmp(parseIntSafe(v.get("TMP")))
-                    .pop(parseIntSafe(v.get("POP")))
-                    .sky(parseIntSafe(v.get("SKY")))
-                    .pty(parseIntSafe(v.get("PTY")))
-                    .build());
-        }
-        return result;
-    }
-
-
-    // 중기예보 (getMidLandFcst + getMidTa) - 4~7일치
-
-    private List<WeatherResponseDto> getMidTermForecast(String region, int shortTermSize) {
-        String landCode = MID_LAND_CODE.getOrDefault(region, "11B00000");
-        String taCode   = MID_TA_CODE.getOrDefault(region,   "11B10101");
-
-        // 중기예보 발표 기준시각: 06시 또는 18시
-        LocalDateTime now = LocalDateTime.now();
-        String tmFc = getMidBaseTime(now);
-
-        String landUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidLandFcst"
-                + "?numOfRows=10&pageNo=1&dataType=JSON"
-                + "&regId=" + landCode
-                + "&tmFc=" + tmFc
-                + "&authKey=" + apiKey;
-
-        String taUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidTa"
-                + "?numOfRows=10&pageNo=1&dataType=JSON"
-                + "&regId=" + taCode
-                + "&tmFc=" + tmFc
-                + "&authKey=" + apiKey;
-
-        try {
-            String landRaw = restTemplate.getForObject(landUrl, String.class);
-            String taRaw   = restTemplate.getForObject(taUrl,   String.class);
-            return parseMidTerm(landRaw, taRaw, shortTermSize);
-        } catch (Exception e) {
-            // 중기예보 실패 시 빈 리스트 반환 (단기만이라도 보여줌)
-            return Collections.emptyList();
-        }
-    }
-
-    private List<WeatherResponseDto> parseMidTerm(String landRaw, String taRaw, int shortTermSize) throws Exception {
-        // 중기육상예보 파싱 → 강수확률(rnSt), 날씨(wf) by day index
-        JsonNode landItem = objectMapper.readTree(landRaw)
-                .path("response").path("body").path("items").path("item");
-        JsonNode taItem   = objectMapper.readTree(taRaw)
-                .path("response").path("body").path("items").path("item");
-
-        if (!landItem.isArray() || landItem.isEmpty()) return Collections.emptyList();
-        if (!taItem.isArray()   || taItem.isEmpty())   return Collections.emptyList();
-
-        JsonNode land = landItem.get(0);
-        JsonNode ta   = taItem.get(0);
-
-        // 중기예보는 3일 후부터 10일 후까지 제공
-        // shortTermSize=3이면 4일차(index 4)부터 7일차(index 7)까지 추출
-        List<WeatherResponseDto> result = new ArrayList<>();
+        /* 전에는 단기 목록 뒤에 중기를 이어 붙였는데, 중기를 4일차부터
+           채워서 3일차가 빠진 채로 일곱 칸이 나왔다. 날짜로 채운다 —
+           같은 날짜에 단기와 중기가 다 있으면 단기가 이긴다. */
         LocalDate today = LocalDate.now();
+        List<DayWeather> days = getDailyRange(region, today, today.plusDays(FORECAST_DAYS - 1));
 
-        for (int day = shortTermSize + 1; day <= 7; day++) {
-            String rnSt = getTextSafe(land, "rnSt" + day);       // 강수확률
-            String wf   = getTextSafe(land, "wf"   + day);       // 날씨 텍스트 (맑음/구름많음 등)
-            String taMin = getTextSafe(ta, "taMin" + day);        // 최저기온
-            String taMax = getTextSafe(ta, "taMax" + day);        // 최고기온
-
-            int pop = parseIntSafe(rnSt);
-            int tmp = (parseIntSafe(taMin) + parseIntSafe(taMax)) / 2;  // 최고+최저 평균
-            int sky = wfToSky(wf);
-            int pty = pop >= 60 ? 1 : 0;  // 강수확률 60% 이상이면 비로 표시
-
-            String date = today.plusDays(day).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        List<WeatherResponseDto> result = new ArrayList<>(days.size());
+        for (DayWeather d : days) {
+            int min = d.getTempMin() != null ? d.getTempMin() : 0;
+            int max = d.getTempMax() != null ? d.getTempMax() : min;
             result.add(WeatherResponseDto.builder()
-                    .date(date)
+                    .date(d.getDate())
                     .time("1200")
-                    .tmp(tmp)
-                    .pop(pop)
-                    .sky(sky)
-                    .pty(pty)
+                    .tmp(Math.round((min + max) / 2f))
+                    .pop(d.getRainProb() != null ? d.getRainProb() : 0)
+                    .sky(skyCode(d.getSky()))
+                    .pty(d.isRainExpected() ? 1 : 0)
                     .build());
         }
         return result;
     }
+
+    /** 하늘상태 글자 → 단기예보 SKY 코드. 화면이 아이콘을 고를 때 쓴다. */
+    private int skyCode(String sky) {
+        if (sky == null) return 3;
+        if (sky.contains("맑음")) return 1;
+        if (sky.contains("흐림")) return 4;
+        return 3;
+    }
+
+
+    /* getForecast 가 getDailyRange 로 넘어가면서
+       여기 있던 단기·중기 복사팝 네 개를 지웠다.
+       날짜별 함수(parseShortDaily · parseMidDaily)만 남긴다. */
 
     // 중기예보 날씨텍스트 → SKY 코드 변환
     private int wfToSky(String wf) {
@@ -219,10 +115,19 @@ public class WeatherServiceImpl implements WeatherService {
         return 3; // 기본값
     }
 
-    // 중기예보 발표 기준시각: 0600 또는 1800
+    /* 중기예보는 06시와 18시에 나온다.
+       06시 전에 오늘 06시 발표를 달라고 하면 빈 응답이 온다 —
+       그러면 4일차부터가 통째로 사라진다. 그때는 어제 18시 발표를 쓴다. */
+    private LocalDateTime midBase(LocalDateTime now) {
+        LocalDateTime t = now.withMinute(0).withSecond(0).withNano(0);
+        if (now.getHour() >= 18) return t.withHour(18);
+        if (now.getHour() >= 6)  return t.withHour(6);
+        return t.minusDays(1).withHour(18);
+    }
+
     private String getMidBaseTime(LocalDateTime now) {
-        String date = now.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        return now.getHour() >= 18 ? date + "1800" : date + "0600";
+        LocalDateTime b = midBase(now);
+        return b.format(DateTimeFormatter.ofPattern("yyyyMMddHH")) + "00";
     }
 
     // 단기예보 발표 기준시각 계산
@@ -237,9 +142,11 @@ public class WeatherServiceImpl implements WeatherService {
         return result;
     }
 
+    /* 없는 값을 "0" 으로 바꾸지 않는다. 0은 영도라는 말이지
+       모른다는 말이 아니다. 부를 쏪이 판단한다. */
     private String getTextSafe(JsonNode node, String field) {
         JsonNode n = node.path(field);
-        return n.isMissingNode() ? "0" : n.asText();
+        return n.isMissingNode() || n.isNull() ? "" : n.asText();
     }
 
     private int parseIntSafe(String val) {
@@ -285,13 +192,12 @@ public class WeatherServiceImpl implements WeatherService {
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             long ahead = ChronoUnit.DAYS.between(today, d);
             String key = d.format(YMD);
-            String src = sourceFor(ahead);
-            DayWeather dw = switch (src) {
-                case "SHORT" -> shortMap.get(key);
-                case "MID"   -> midMap.get(key);
-                default      -> null;
-            };
-            // 예보가 비면(호출 실패·경계일) 평년값으로 폴백
+            /* 종류로 갈라 고르지 않는다. 단기가 있으면 단기가 이긴다 —
+               중기예보는 단기가 덮는 사흘을 뱈 값으로 내려준다.
+               그걸 그대로 쓰면 사흘째가 0°C 로 보인다. */
+            DayWeather dw = shortMap.get(key);
+            if (dw == null) dw = midMap.get(key);
+            // 예보가 아에 없으면(열흘 뒤·호출 실패) 평년값으로 말한다
             result.add(dw != null ? dw : normalDay(d));
         }
         return result;
@@ -372,6 +278,7 @@ public class WeatherServiceImpl implements WeatherService {
     private Map<String, DayWeather> parseMidDaily(String region) throws Exception {
         String landCode = MID_LAND_CODE.getOrDefault(region, "11B00000");
         String taCode   = MID_TA_CODE.getOrDefault(region,   "11B10101");
+        LocalDateTime base = midBase(LocalDateTime.now());
         String tmFc = getMidBaseTime(LocalDateTime.now());
 
         String landUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidLandFcst"
@@ -383,7 +290,9 @@ public class WeatherServiceImpl implements WeatherService {
         JsonNode ta   = firstItem(restTemplate.getForObject(taUrl,   String.class));
         if (land == null || ta == null) return Collections.emptyMap();
 
-        LocalDate today = LocalDate.now();
+        /* dayN 은 발표일로부터 N일 뒤다. 오늘 기준으로 매기면
+           어제 18시 발표를 쓸 때 하루씩 밀린다. */
+        LocalDate from = base.toLocalDate();
         Map<String, DayWeather> out = new LinkedHashMap<>();
         for (int day = 3; day <= 10; day++) {
             // 중기육상예보는 8일차부터 오전/오후 구분이 없어 wf{n} 하나로 온다. rnSt 도 마찬가지.
@@ -392,8 +301,12 @@ public class WeatherServiceImpl implements WeatherService {
             String taMin = getTextSafe(ta, "taMin" + day);
             String taMax = getTextSafe(ta, "taMax" + day);
 
+            /* 단기가 덮는 날짜는 중기 칸이 미음으로 온다.
+               getTextSafe 가 "0" 을 돌려서 0°C 로 나갔다. 모를 때는 담지 않는다. */
+            if (taMin.isBlank() || taMax.isBlank() || "0".equals(taMin) && "0".equals(taMax)) continue;
+
             int pop = parseIntSafe(rnSt);
-            String date = today.plusDays(day).format(YMD);
+            String date = from.plusDays(day).format(YMD);
             out.put(date, DayWeather.builder()
                     .date(date).source("MID")
                     .tempMin(parseIntSafe(taMin)).tempMax(parseIntSafe(taMax))
