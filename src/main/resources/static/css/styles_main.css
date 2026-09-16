@@ -4212,3 +4212,9 @@ nav {
     transform: none;
     z-index: 1;
 }
+/* 관리 화면 내비 아래쪽 — 메인으로 돌아가는 자리 */
+.admin-nav-foot {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid rgba(var(--w-rgb), .12)
+}
