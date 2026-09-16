@@ -331,6 +331,23 @@ public final class AreaCode {
         return s == null ? "" : s.replaceAll("[\\s()·,.-]", "");
     }
 
+    /* 관광공사 KorService2 의 areaCode 는 법정동 코드와 다른 번호를 산다.
+       지역코드조회(areaCode2)로 하나하나 확인한 것이다 (2026-09-17) —
+       1 강남구(서울) · 2 강화군(인천) · 6 강서구(부산) 이 돌아왔다.
+       축제·숙소·장소 조회가 이 번호를 받는다. */
+    private static final Map<String, String> TOUR_AREA = Map.ofEntries(
+            Map.entry("서울", "1"),  Map.entry("인천", "2"),  Map.entry("대전", "3"),
+            Map.entry("대구", "4"),  Map.entry("광주", "5"),  Map.entry("부산", "6"),
+            Map.entry("울산", "7"),  Map.entry("세종", "8"),  Map.entry("경기", "31"),
+            Map.entry("강원", "32"), Map.entry("충북", "33"), Map.entry("충남", "34"),
+            Map.entry("경북", "35"), Map.entry("경남", "36"), Map.entry("전북", "37"),
+            Map.entry("전남", "38"), Map.entry("제주", "39"));
+
+    /** 관광공사 KorService2 areaCode. 모르면 null. */
+    public static String tourAreaCode(Area a) {
+        return a == null ? null : TOUR_AREA.get(a.sido());
+    }
+
     /**
      * 이름으로 찾는다. 「부산 해운대구」 · 「해운대구」 · 「해운대」 · 「부산」 모두 받는다.
      * 못 찾으면 null — 부르는 쪽이 「지원하지 않는 지역」이라고 말해야 한다.
@@ -380,6 +397,10 @@ public final class AreaCode {
         assert find("없는동네123") == null : "없으면 null";
         assert !hasCrowdData(find("여수시")) : "전남은 집중률 데이터가 없다";
         assert hasCrowdData(find("해운대구")) : "부산은 있다";
+        assert "6".equals(tourAreaCode(find("해운대구"))) : "부산 관광공사 6";
+        assert "39".equals(tourAreaCode(find("제주시"))) : "제주 39";
+        assert "32".equals(tourAreaCode(find("강릉시"))) : "강원 32";
+        assert "33".equals(tourAreaCode(find("제천시"))) : "충북 33";
         System.out.println("OK 지역코드 " + BY_NAME.size() + "개 이름");
     }
 }

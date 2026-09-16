@@ -90,6 +90,8 @@ public class SecurityConfig {
                                 "/api/route/status",                //TMAP 연동 여부
                                 "/api/crowd/**",                    //날짜별 혼잡도 예측
                                 "/api/budget/estimate",             //성수기·축제 반영 예산 산출
+                                "/api/budget/festivals",            //여행 기간에 열리는 축제
+                                "/api/budget/season",               //성수기 판정
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 
