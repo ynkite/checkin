@@ -105,10 +105,21 @@ function _populateLedgerTripCards() {
     const container = document.getElementById('ledger-trip-cards');
     if (!container) return;
     if (!_myTrips || !_myTrips.length) {
-        container.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">등록된 여행이 없습니다.</div>';
+        /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        container.innerHTML =
+            '<div class="lg-empty">' +
+            '<p>아직 만든 여행이 없습니다.</p>' +
+            '<p class="lg-empty-sub">경로를 만들면 숙박비와 이동비가 여기에 쌓입니다.</p>' +
+            '<button type="button" class="btn-f" onclick="goNewPlanner()">경로 만들기</button>' +
+            '</div>';
         _drawLedgerCardPager(0);
+        /* 고를 것이 없으면 버튼을 켜 두지 않는다 */
+        var go = document.getElementById('ledger-go');
+        if (go) go.style.display = 'none';
         return;
     }
+    var goBtn = document.getElementById('ledger-go');
+    if (goBtn) goBtn.style.display = '';
     const total = _myTrips.length;
     const totalPages = Math.ceil(total / _LEDGER_CARD_PAGE_SIZE);
     if (_ledgerCardPage > totalPages) _ledgerCardPage = totalPages;

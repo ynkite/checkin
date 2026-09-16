@@ -152,3 +152,10 @@
 .pager-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
 .pager-btn:hover:not(.on):not(:disabled) { border-color: var(--sage-l); color: var(--sage); }
 .pager-btn:disabled { opacity: .45; cursor: default; }
+
+/* 빈 상태 — 안내 한 줄과 갈 곳 하나 */
+.lg-empty{ padding:26px 0 8px; text-align:center; word-break:keep-all }
+.lg-empty p{ margin:0; font-size:14px; font-weight:700; color:var(--ink) }
+.lg-empty .lg-empty-sub{
+  margin:6px 0 16px; font-size:12.5px; font-weight:400; color:var(--ink-3);
+}
