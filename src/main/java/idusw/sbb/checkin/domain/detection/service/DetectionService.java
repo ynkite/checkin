@@ -3,6 +3,7 @@ package idusw.sbb.checkin.domain.detection.service;
 import idusw.sbb.checkin.domain.detection.DetectionRules;
 import idusw.sbb.checkin.domain.detection.dto.DetectionContext;
 import idusw.sbb.checkin.domain.detection.dto.DetectionResult;
+import idusw.sbb.checkin.domain.detection.privacy.GeoMasker;
 import idusw.sbb.checkin.domain.tour.dto.ConcentrationRate;
 import idusw.sbb.checkin.domain.tour.service.ConcentrationService;
 import idusw.sbb.checkin.domain.weather.dto.DayWeather;
@@ -32,14 +33,26 @@ public class DetectionService {
     @Value("${detection.route.delay-threshold:1.3}")
     private double routeDelayThreshold;
 
+    // 위치정보 가명처리 격자 자릿수 (2 ≈ 1.1km). 정밀 좌표는 서버에 남기지 않는다.
+    @Value("${privacy.geo.grid-decimals:2}")
+    private int geoGridDecimals;
+
     private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     public DetectionResult detect(DetectionContext ctx) {
+        // 정밀 좌표가 들어오면 입구에서 즉시 격자화. 이후 정밀값은 절대 쓰거나 남기지 않는다.
+        Double maskedLat = null, maskedLon = null;
+        if (ctx.lat() != null && ctx.lon() != null) {
+            double[] grid = GeoMasker.toGrid(ctx.lat(), ctx.lon(), geoGridDecimals);
+            maskedLat = grid[0];
+            maskedLon = grid[1];
+        }
+
         List<DetectionRules.Signal> signals = new ArrayList<>();
         signals.add(detectCrowd(ctx));
         signals.add(detectWeather(ctx));
         signals.add(DetectionRules.route(ctx.routeDelayRatio(), routeDelayThreshold));
-        return DetectionResult.of(signals);
+        return DetectionResult.of(signals, maskedLat, maskedLon);
     }
 
     // 혼잡 — 집중률 예측에서 다음 관광지·날짜의 예측값을 찾아 판정
