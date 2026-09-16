@@ -85,3 +85,6 @@ tmap.api.base-url=https://apis.openapi.sk.com
 detection.crowd.rate-threshold=70
 detection.weather.rain-prob-threshold=60
 detection.route.delay-threshold=1.3
+
+# ---------- 위치정보 가명처리 ----------
+privacy.geo.grid-decimals=2
