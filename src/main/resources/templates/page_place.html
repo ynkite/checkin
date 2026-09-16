@@ -44,7 +44,7 @@
                 <button class="btn-o" style="padding:4px 10px;font-size:11px"
                         onclick="doReviewLike()">좋아요</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px"
-                        onclick="doReviewScrap()">★스크랩</button>
+                        onclick="doReviewScrap()">담기</button>
                 <button class="btn-o" style="padding:4px 10px;font-size:11px;color:var(--coral);border-color:var(--coral)"
                         onclick="doReviewReport()">신고</button>
                 <button class="btn-o community-owner-edit-btn"
@@ -505,7 +505,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/scraps`, {});
-        toast(res.success ? '★ 스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
+        toast(res.success ? '담았습니다.' : (res.message || '스크랩 처리 실패'));
     }
 
     /* ────────────────────────────────────────────────
@@ -712,13 +712,13 @@
       </div>
     </div>
     <button class="btn-o" style="padding:6px 14px;font-size:12px"
-            onclick="doPlaceScrap()">★스크랩</button>`;
+            onclick="doPlaceScrap()">담기</button>`;
 
         // 통계
         _setHTML('place-stats-grid', `
     <div class="prev-stat-card">
       <div class="psc-val">${avg ? avg.toFixed(1) : '—'}</div>
-      <div class="psc-label">★★★★★평균 평점</div>
+      <div class="psc-label">평균 평점</div>
     </div>
     <div class="prev-stat-card">
       <div class="psc-val">${reviews.length}</div>
@@ -789,7 +789,7 @@
         const scrapped = res?.data === true;
         toast(res?.success === false
             ? (res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.')
-            : (scrapped ? '★ 스크랩했습니다.' : '스크랩을 취소했습니다.'));
+            : (scrapped ? '담았습니다.' : '스크랩을 취소했습니다.'));
     }
 
     /* ────────────────────────────────────────────────

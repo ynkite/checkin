@@ -3485,7 +3485,7 @@ window._handleWriteImageSelect = function(input) {
     function renderStars(rating) {
         const n = Math.round(Number(rating) || 0);
         let s = '';
-        for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆';
+        s = Number(n).toFixed(1);
         return s;
     }
 
@@ -3804,7 +3804,7 @@ window._handleWriteImageSelect = function(input) {
 
     function starsHtml(rating) {
         let s = '';
-        for (let i = 1; i <= 5; i++) s += i <= rating ? '★' : '☆';
+        s = Number(rating).toFixed(1);
         return s;
     }
 
@@ -4980,7 +4980,7 @@ window._handleWriteImageSelect = function(input) {
         const starHtml = function (avg) {
             if (!avg) return '';
             const filled = Math.round(avg);
-            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + Number(avg).toFixed(1) + '</b>';
+            return '<b>' + Number(avg).toFixed(1) + '</b>';
         };
 
         return '<div class="place-card" style="cursor:pointer" ' +

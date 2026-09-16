@@ -615,7 +615,7 @@ async function loadMyScrap(tabKey) {
           '<div class="post-foot">' +
           '<div class="post-stats">' +
           '<span class="post-stat">' + _esc(s.address || '') + '</span>' +
-          (s.avgRating ? '<span class="post-stat">★ ' + s.avgRating + '</span>' : '') +
+          (s.avgRating ? '<span class="post-stat">평점 ' + s.avgRating + '</span>' : '') +
           '</div>' +
           '<button onclick="deleteScrap(event,' + s.scrapId + ',\'' + tabKey + '\')" ' +
           'style="font-size:11px;background:none;border:1px solid var(--border2);' +

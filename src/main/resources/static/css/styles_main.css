@@ -176,39 +176,43 @@ nav {
     flex-shrink: 0
 }
 
+/* 알약 하나로 통일한다. 12px 글자 + radius 14px 상자는 작고 둥글어서
+   눌러야 할 것으로 안 읽혔다. 높이를 맞추면 줄이 정렬된다. */
 .btn-o {
-    padding: 7px 14px;
-    border-radius: var(--r-sm);
-    font-size: 12px;
+    height: 34px;
+    padding: 0 15px;
+    border-radius: 99px;
+    font-size: 12.5px;
     font-weight: 600;
-    border: 1.5px solid var(--border);
-    background: var(--surface);
-    color: var(--text2);
+    border: 1px solid var(--ui-line);
+    background: var(--panel);
+    color: var(--ink-2);
     cursor: pointer;
-    transition: all .18s;
+    transition: border-color .16s, color .16s;
     white-space: nowrap
 }
 
 .btn-o:hover {
-    border-color: var(--sage);
-    color: var(--sage)
+    border-color: var(--ink-3);
+    color: var(--ink)
 }
 
 .btn-f {
-    padding: 8px 16px;
-    border-radius: var(--r-sm);
-    font-size: 12px;
+    height: 34px;
+    padding: 0 17px;
+    border-radius: 99px;
+    font-size: 12.5px;
     font-weight: 700;
     border: none;
-    background: var(--sage);
-    color: #fff;
+    background: var(--terra);
+    color: var(--panel);
     cursor: pointer;
-    transition: all .18s;
+    transition: filter .16s;
     white-space: nowrap
 }
 
 .btn-f:hover {
-    background: var(--sage-d)
+    filter: brightness(1.16)
 }
 
 /* PAGES */
@@ -338,29 +342,31 @@ nav {
 }
 
 .form-label {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text2);
     margin-bottom: 5px;
     display: block
 }
 
+/* 상자를 두르면 칸이 여덟 개일 때 화면이 격자가 된다.
+   밑줄 하나로 바꾼다. 경로 만들기 화면이 이미 그렇게 쓴다. */
 .form-input {
     width: 100%;
-    padding: 10px 12px;
-    border-radius: var(--r-sm);
-    border: 1.5px solid var(--border2);
-    background: var(--cream);
-    font-size: 14px;
-    color: var(--text);
+    padding: 9px 2px 10px;
+    border: 0;
+    border-bottom: 1.5px solid var(--ui-line);
+    border-radius: 0;
+    background: none;
+    font-size: 15.5px;
+    color: var(--ink);
     outline: none;
     transition: border-color .18s;
     font-family: inherit
 }
 
 .form-input:focus {
-    border-color: var(--sage);
-    background: var(--surface)
+    border-bottom-color: var(--terra)
 }
 
 .form-input::placeholder {
@@ -476,25 +482,26 @@ nav {
 }
 
 .btn-social {
-    padding: 10px;
-    border-radius: 9px;
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 99px;
     font-size: 13px;
     font-weight: 600;
-    border: 1.5px solid var(--border);
-    background: var(--surface);
+    border: 1px solid var(--ui-line);
+    background: var(--panel);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 7px;
-    color: var(--text);
-    transition: all .18s;
+    color: var(--ink);
+    transition: border-color .18s, color .18s;
     flex: 1
 }
 
 .btn-social:hover {
-    border-color: var(--sage);
-    color: var(--sage)
+    border-color: var(--ink-3);
+    color: var(--ink)
 }
 
 .other-input {
@@ -1490,13 +1497,13 @@ nav {
 }
 
 .auth-card {
-    background: var(--surface);
-    border-radius: var(--r-lg);
-    padding: 36px;
-    width: 500px;
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 34px 32px 30px;
+    width: 420px;
     max-width: 100%;
-    box-shadow: var(--sh);
-    border: 1px solid var(--border2)
+    box-shadow: var(--lift);
+    border: 0
 }
 
 .auth-ttl {
@@ -1670,19 +1677,21 @@ nav {
     white-space: nowrap
 }
 
+/* 카드 열 장이 쌓이면 테두리 열 줄이 내용보다 먼저 보인다.
+   헤어라인 한 줄로 줄인다. */
 .post-card {
-    background: var(--surface);
-    border-radius: var(--r);
-    border: 1px solid var(--border2);
-    padding: 18px;
-    margin-bottom: 10px;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--ui-line-2);
+    border-radius: 0;
+    padding: 16px 6px 17px;
+    margin: 0;
     cursor: pointer;
-    transition: all .22s
+    transition: background .16s
 }
 
 .post-card:hover {
-    border-color: var(--sage-l);
-    box-shadow: var(--sh)
+    background: var(--ui-plate)
 }
 
 .post-ttl {
@@ -3503,26 +3512,29 @@ nav {
     margin-bottom: 18px
 }
 
+/* 2px 테두리로 고른 것을 표시하면 카드 네 장이 격자로 보인다.
+   테두리를 빼고 채움으로 바꾼다. */
 .ts-card {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 13px;
-    background: var(--cream);
-    border-radius: 9px;
+    padding: 13px 15px;
+    background: var(--panel);
+    border-radius: 12px;
     cursor: pointer;
-    border: 2px solid transparent;
-    transition: all .22s;
-    margin-bottom: 9px
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--ui-line-2);
+    transition: box-shadow .18s, background .18s;
+    margin-bottom: 8px
 }
 
 .ts-card:hover {
-    border-color: var(--sage-l)
+    box-shadow: inset 0 0 0 1px var(--ui-line)
 }
 
 .ts-card.on {
-    border-color: var(--sage);
-    background: var(--sage-pale)
+    background: var(--terra-pale);
+    box-shadow: inset 0 0 0 1px var(--terra)
 }
 
 .ts-thumb {

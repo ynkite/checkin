@@ -516,7 +516,7 @@ function updateNav() {
                 const tid = window._currentTripId;
                 if (!tid) return;
 
-                saveInviteBtn.innerHTML = '⏳ 저장 중...';
+                saveInviteBtn.innerHTML = '저장 중';
                 saveInviteBtn.style.opacity = '0.7';
                 saveInviteBtn.style.pointerEvents = 'none';
 
@@ -1609,7 +1609,7 @@ async function showMapPlacePopup(key, type) {
 
     let h = `<div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--sage-d)">방문 후기 (${reviews.length}개)</div>`;
     reviews.forEach(r => {
-        const stars = '★'.repeat(Math.floor(r.rating || 0)) + '☆'.repeat(5 - Math.floor(r.rating || 0));
+        const stars = r.rating ? Number(r.rating).toFixed(1) : '';
         h += `<div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer"
                onclick="showReviewDetail('${(place.name||key).replace(/'/g,"\\'")}','${tl}','${stars} ${r.rating}','${(r.content||'').replace(/'/g,"\\'")}')">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
@@ -2993,7 +2993,7 @@ async function execAllReplace() {
 
     if (loadingOverlay) loadingOverlay.style.display = 'flex';
     if (btn) {
-        btn.innerHTML = '⏳ AI 부분 교체 중...';
+        btn.innerHTML = '바꿀 곳을 찾는 중';
         btn.disabled = true;
     }
 
@@ -3342,7 +3342,7 @@ async function inviteShareMember(btn) {
 
     const originalText = btn ? btn.innerHTML : '초대';
     if (btn) {
-        btn.innerHTML = '⏳ 발송중...';
+        btn.innerHTML = '보내는 중';
         btn.disabled = true;
         btn.style.opacity = '0.6';
         btn.style.cursor = 'not-allowed';

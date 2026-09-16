@@ -1015,47 +1015,10 @@
     overflow: hidden;
 }
 
-/* 왼쪽 세로 포인트 라인 공통 */
-.comm-post-item .post-card::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 4px;
-    height: 100%;
-    border-radius: 12px 0 0 12px;
-    background: var(--sage);
-}
-
-/* 여행 경로 */
-.comm-post-item .post-card:has(.cat-route)::before {
-    background: #F97316;
-}
-
-/* 숙소 */
-.comm-post-item .post-card:has(.cat-stay)::before {
-    background: var(--terra);
-}
-
-/* 맛집 */
-.comm-post-item .post-card:has(.cat-food)::before {
-    background: #FF6B6B;
-}
-
-/* 관광지 */
-.comm-post-item .post-card:has(.cat-tour)::before {
-    background: #3B82F6;
-}
-
-/* 카페 */
-.comm-post-item .post-card:has(.cat-cafe)::before {
-    background: #A78BFA;
-}
-
-/* 왼쪽 라인이 생기면서 내용이 너무 붙지 않도록 살짝 보정 */
-.comm-post-item .post-card {
-    padding-left: 22px;
-}
+/* 왼쪽 4px 색 바를 지웠다. 종류는 글머리 배지(.cat-*)가 이미 말한다.
+   카드가 열 장 쌓이면 색 바 열 줄이 내용보다 먼저 눈에 들었다. */
+.comm-post-item .post-card::before{ content:none }
+.comm-post-item .post-card{ padding-left:6px }
 
 /* =========================================================
  * community v3 - 후기 작성 장소별 별점 폼

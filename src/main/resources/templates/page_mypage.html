@@ -31,26 +31,26 @@
 
     // 5. 스크랩한 숙소 데이터
     const MOCK_MYPAGE_SCRAP_STAY = [
-      { action: "go('place-hyeopjae')", icon: "숙소", iconBg: "#E8F5F2", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "3,241번 담김", stats2: "★ 스크랩 412" },
-      { action: "go('place-reviews')", icon: "숙소", iconBg: "#E8F5F2", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "2,718번 담김", stats2: "★ 스크랩 287" }
+      { action: "go('place-hyeopjae')", icon: "숙소", iconBg: "var(--slate-pale)", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "var(--num)", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "3,241번 담김", stats2: "담은 사람 412" },
+      { action: "go('place-reviews')", icon: "숙소", iconBg: "var(--slate-pale)", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "var(--num)", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "2,718번 담김", stats2: "담은 사람 287" }
     ];
 
     // 6. 스크랩한 맛집 데이터
     const MOCK_MYPAGE_SCRAP_FOOD = [
-      { action: "go('place-teraroasa')", icon: "카페", iconBg: "#FEF3F2", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "2,941번 담김", stats2: "★ 스크랩 318" },
-      { action: "go('place-reviews')", icon: "맛집", iconBg: "#FEF3F2", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "#F5A623", ratingStar: "★★★★☆", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "2,512번 담김", stats2: "★ 스크랩 241" }
+      { action: "go('place-teraroasa')", icon: "카페", iconBg: "var(--terra-pale)", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "var(--num)", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "2,941번 담김", stats2: "담은 사람 318" },
+      { action: "go('place-reviews')", icon: "맛집", iconBg: "var(--terra-pale)", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "var(--num)", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "2,512번 담김", stats2: "담은 사람 241" }
     ];
 
     // 7. 스크랩한 관광지 데이터
     const MOCK_MYPAGE_SCRAP_TOUR = [
-      { action: "go('place-t-seongsan')", icon: "관광", iconBg: "#EEF6FF", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "4,102번 담김", stats2: "★ 스크랩 521" },
-      { action: "go('place-t-udo')", icon: "관광", iconBg: "#EEF6FF", name: "우도", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "3,560번 담김", stats2: "★ 스크랩 448" }
+      { action: "go('place-t-seongsan')", icon: "관광", iconBg: "var(--slate-pale)", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "var(--num)", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "4,102번 담김", stats2: "담은 사람 521" },
+      { action: "go('place-t-udo')", icon: "관광", iconBg: "var(--slate-pale)", name: "우도", meta: "제주도 · 관광지", ratingColor: "var(--num)", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "3,560번 담김", stats2: "담은 사람 448" }
     ];
 
     // 8. 스크랩한 카페 데이터
     const MOCK_MYPAGE_SCRAP_CAFE = [
-      { action: "go('place-c-handam')", icon: "카페", iconBg: "#F5F0FF", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "2,341번 담김", stats2: "★ 스크랩 312" },
-      { action: "go('place-c-arario')", icon: "카페", iconBg: "#F5F0FF", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "1,980번 담김", stats2: "★ 스크랩 267" }
+      { action: "go('place-c-handam')", icon: "카페", iconBg: "var(--ui-plate-2)", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "var(--num)", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "2,341번 담김", stats2: "담은 사람 312" },
+      { action: "go('place-c-arario')", icon: "카페", iconBg: "var(--ui-plate-2)", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "var(--num)", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "1,980번 담김", stats2: "담은 사람 267" }
     ];
 
     // 8. 가계부 데이터
@@ -273,7 +273,7 @@
           <h3 class="my-sec-ttl">회원 탈퇴</h3>
 
           <div id="withdraw-warn-txt"
-               style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8">
+               style="background:var(--terra-pale);border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8">
           </div>
 
           <div id="withdraw-social-box" style="display:none" class="form-group">
@@ -310,7 +310,7 @@
           <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
             <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">정말 탈퇴하시겠습니까?</h3>
 
-            <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
+            <div style="background:var(--terra-pale);border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
               • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
               • 탈퇴하면 되돌릴 수 없습니다.<br>
               • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.

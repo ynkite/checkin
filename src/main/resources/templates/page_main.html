@@ -16,7 +16,7 @@
               : (item.rating != null ? Number(item.rating).toFixed(1) : '0.0');
       var ratingNum = parseFloat(rating);
       var stars = item.stars ||
-              ('★'.repeat(Math.round(ratingNum)) + '☆'.repeat(5 - Math.round(ratingNum)));
+              rating);
       var reviewCnt = item.reviewCount != null ? item.reviewCount
               : (item.saveCount != null ? item.saveCount : 0);
       var tags = Array.isArray(item.tags) ? item.tags
@@ -150,7 +150,7 @@
        여기서 style 로 직접 칠하면 팔레트가 바뀌어도 따라오지 않는다. */
     function _applyMainScrapStyle(btn, scrapped) {
       if (!btn) return;
-      btn.textContent = '★스크랩';
+      btn.textContent = '담기';
       btn.classList.toggle('scrapped', !!scrapped);
     }
 
@@ -163,7 +163,7 @@
       if (!el) return;
       const cur = parseInt((el.textContent.match(/\d+/) || [0])[0], 10) || 0;
       const next = Math.max(0, scrapped ? cur + 1 : cur - 1);
-      el.textContent = '★ ' + next;
+      el.textContent = String(next);
     }
 
     async function toggleMainPlaceScrap(e, placeId, category, btnId) {
