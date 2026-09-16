@@ -85,6 +85,11 @@ public class SecurityConfig {
                                 "/api/maps/weather",                //오늘 기준 예보
                                 "/api/maps/weather/**",             //날짜별·범위 날씨 (day, range)
                                 "/api/tour/**",                     //관광공사 API 실호출 (호출 이력 확보)
+                                "/api/route/travel-time",           //출발지 기준 구간 이동시간 (TMAP)
+                                "/api/route/origin",                //출발지 후보 검색 (TMAP POI)
+                                "/api/route/status",                //TMAP 연동 여부
+                                "/api/crowd/**",                    //날짜별 혼잡도 예측
+                                "/api/budget/estimate",             //성수기·축제 반영 예산 산출
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 
