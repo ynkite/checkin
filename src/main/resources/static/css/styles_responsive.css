@@ -400,7 +400,7 @@ table {
         z-index: 1200;
         background: var(--surface);
         border-top: 1px solid var(--border2);
-        box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+        box-shadow: 0 -2px 12px rgba(var(--sh-rgb),.08);
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 

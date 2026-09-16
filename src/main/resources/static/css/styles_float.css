@@ -31,7 +31,6 @@ img{ max-width:100%; height:auto }
   display:block; font-size:10px; font-weight:700; letter-spacing:.14em;
   text-transform:uppercase; color:var(--terra); margin:0 0 6px;
 }
-.fl-eye-ko{ letter-spacing:.02em; text-transform:none; font-size:11px }
 
 /* 제목 — 일차 숫자 + 제목이 한 줄에 선다 */
 .fl-hd{ display:flex; align-items:baseline; gap:10px; margin:0 }
@@ -112,11 +111,11 @@ img{ max-width:100%; height:auto }
   font-family:var(--fig); font-size:10.5px; font-weight:600;
 }
 .fl-pill[aria-pressed="true"] > b,
-.fl-pill.on > b{ background:rgba(255,255,255,.22); color:var(--panel) }
+.fl-pill.on > b{ background:rgba(var(--w-rgb),.22); color:var(--panel) }
 
 /* 붐비는 정거장은 알약 자체가 신호다 */
 .fl-pill.fl-hot{ background:var(--terra); color:var(--panel) }
-.fl-pill.fl-hot > b{ background:rgba(255,255,255,.24); color:var(--panel) }
+.fl-pill.fl-hot > b{ background:rgba(var(--w-rgb),.24); color:var(--panel) }
 
 /* 판 안에 들어가는 알약 줄은 그림자를 뺀다 */
 .fl .fl-pill{ box-shadow:inset 0 0 0 1px var(--ui-line) }
@@ -189,7 +188,7 @@ img{ max-width:100%; height:auto }
   width:22px; height:22px; border-radius:99px; display:grid; place-items:center;
   background:var(--ink); color:var(--panel);
   font-family:var(--fig); font-size:11px; font-weight:600;
-  box-shadow:0 1px 4px rgba(40,30,22,.4);
+  box-shadow:0 1px 4px rgba(var(--sh-rgb),.4);
   transition:transform .34s ease, background .24s ease;
 }
 .fl-mp.fl-now{ background:var(--terra); width:26px; height:26px; font-size:12px }

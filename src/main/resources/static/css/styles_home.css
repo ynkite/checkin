@@ -23,7 +23,7 @@
 .ck-hero{position:relative; padding:104px 0 26px; overflow:hidden}
 .ck-hero::before{content:""; position:absolute; right:-14%; top:-24%; width:76%; height:150%;
   z-index:0; pointer-events:none; border-radius:50%;
-  background:radial-gradient(closest-side, rgba(255,255,255,.9), rgba(255,255,255,0))}
+  background:radial-gradient(closest-side, rgba(var(--w-rgb),.9), rgba(var(--w-rgb),0))}
 .ck-hero .ck-grid{position:relative; z-index:2; display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1.08fr); gap:42px; align-items:start}
 .ck-hero h1{font-size:clamp(34px,4.4vw,56px); max-width:14ch}
@@ -69,10 +69,10 @@
 .ck-place .ck-win{position:relative; height:196px; overflow:hidden; background:var(--plate)}
 .ck-place .ck-win .ck-in{width:100%; transform:translateY(var(--sy,0))}
 .ck-place .ck-win::after{content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(255,255,255,.5) 0, rgba(255,255,255,0) 26%)}
+  background:linear-gradient(180deg, rgba(var(--w-rgb),.5) 0, rgba(var(--w-rgb),0) 26%)}
 .ck-place .ck-glow{position:absolute; inset:0; z-index:3; opacity:0; pointer-events:none;
   transition:opacity .5s ease;
-  background:radial-gradient(60% 54% at 50% 58%, rgba(255,158,18,.5), rgba(255,158,18,0) 72%)}
+  background:radial-gradient(60% 54% at 50% 58%, rgba(var(--sig-rgb),.5), rgba(var(--sig-rgb),0) 72%)}
 .ck-place.ck-busy .ck-glow{opacity:1}
 .ck-place .ck-meta{padding:15px 17px 17px}
 .ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:-.04em}
@@ -577,7 +577,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   background:var(--terra); color:var(--panel);
   font-family:var(--fig); font-size:11.5px; font-weight:600;
   line-height:21px; text-align:center;
-  box-shadow:0 0 0 2.5px var(--panel), 0 2px 5px rgba(40,30,22,.28);
+  box-shadow:0 0 0 2.5px var(--panel), 0 2px 5px rgba(var(--sh-rgb),.28);
 }
 .ck-pin .ck-bub{
   display:flex; align-items:baseline; gap:7px;
@@ -622,7 +622,6 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-chips2{ display:none; flex-basis:100%; margin-top:4px }
 .ck-home .ck-chips2.ck-open{ display:flex }
 
-}
 
 /* ── 좁은 화면 — 도시를 통째로 위에 깔고 글을 그 아래로 내린다 ──
    넓은 화면은 글이 왼쪽, 도시가 오른쪽이다. 좁은 화면에는 왼쪽 칸이
@@ -850,7 +849,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home .ck-sync p{ max-width:none }
 }
 
-/* 별점 — 예전에는 템플릿에 색을 직접 적었다(#F5A623).
+/* 별점 — 예전에는 템플릿에 색을 직접 적었다(호박색).
    밝은 바탕에 --sig 로 글자를 쓰지 않는다. --num 을 쓴다. */
 .ck-home .pop-stars{ color:var(--num); letter-spacing:.04em }
 

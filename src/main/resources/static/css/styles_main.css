@@ -123,7 +123,7 @@ nav {
     z-index: 1000;
     /* height: 60px; <- 제거하거나 auto로 변경 */
     height: auto;
-    background: rgba(255, 255, 255, .95);
+    background: rgba(var(--w-rgb),.95);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border2);
     display: flex;
@@ -233,7 +233,7 @@ nav {
     left: 50%;
     transform: translateX(-50%) translateY(80px);
     background: var(--text);
-    color: #fff;
+    color: var(--panel);
     padding: 11px 22px;
     border-radius: 12px;
     font-size: 13px;
@@ -255,7 +255,7 @@ nav {
     position: fixed;
     inset: 0;
     z-index: 2000;
-    background: rgba(28, 43, 42, .45);
+    background: var(--scrim);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -280,7 +280,7 @@ nav {
     overflow-y: auto;
     transform: translateY(20px) scale(.97);
     transition: all .3s;
-    box-shadow: 0 24px 60px rgba(28, 43, 42, .18);
+    box-shadow: var(--lift);
 
     position: relative;
     /* 💡 X 버튼이 이 하얀 박스 오른쪽 위 구석을 기준으로 움직이도록 기준점을 잡습니다. */
@@ -563,23 +563,23 @@ nav {
 }
 
 .cat-stay {
-    background: #EBF4FC;
+    background: var(--slate-pale);
     color: var(--sky)
 }
 
 .cat-food {
-    background: #FEF3F2;
+    background: var(--tile-pale);
     color: var(--coral)
 }
 
 .cat-tour {
-    background: #EBF4FC;
+    background: var(--slate-pale);
     color: var(--sky)
 }
 
 .cat-cafe {
-    background: #F3F0FF;
-    color: #7C3AED
+    background: var(--panel-2);
+    color: var(--ink-2)
 }
 
 /* 커뮤니티 페이지네이션 */
@@ -615,7 +615,7 @@ nav {
 .page-btn.on {
     background: var(--sage);
     border-color: var(--sage);
-    color: #fff
+    color: var(--panel)
 }
 
 .sec {
@@ -668,7 +668,7 @@ nav {
 }
 
 .star-btn.lit {
-    color: #F5A623
+    color: var(--num)
 }
 
 .one-line {
@@ -703,36 +703,12 @@ nav {
     border-radius: 22px;
     border: 1px solid var(--border2);
     padding: 28px;
-    box-shadow: 0 6px 32px rgba(45, 158, 138, .09);
+    box-shadow: var(--lift2);
     position: relative;
     overflow: hidden
 }
 
-.hsc::before {
-    content: '';
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(45, 158, 138, .07) 0%, transparent 70%);
-    pointer-events: none
-}
 
-.hsc-ey {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: var(--sage-pale);
-    border: 1px solid var(--sage-l);
-    color: var(--sage-d);
-    padding: 4px 11px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-bottom: 12px
-}
 
 .hsc-ttl {
     font-family: var(--sans);
@@ -751,38 +727,9 @@ nav {
     line-height: 1.6
 }
 
-.hsc-search {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    background: var(--cream);
-    border: 2px solid var(--sage-l);
-    border-radius: 13px;
-    padding: 4px 4px 4px 12px;
-    margin-bottom: 12px;
-    transition: border-color .2s;
-    box-shadow: 0 2px 10px rgba(45, 158, 138, .08)
-}
 
-.hsc-search:focus-within {
-    border-color: var(--sage);
-    box-shadow: 0 4px 18px rgba(45, 158, 138, .16)
-}
 
-.hsc-inp {
-    flex: 1;
-    border: none;
-    background: transparent;
-    font-size: 14px;
-    font-family: inherit;
-    color: var(--text);
-    outline: none;
-    padding: 6px 0
-}
 
-.hsc-inp::placeholder {
-    color: var(--text3)
-}
 
 .hsc-go {
     padding: 9px 18px;
@@ -790,7 +737,7 @@ nav {
     font-size: 13px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     transition: all .2s;
@@ -881,7 +828,7 @@ nav {
     min-height: 300px;
     position: relative;
     overflow: visible;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, .09)
+    box-shadow: 0 6px 24px rgba(var(--sh-rgb),.09)
 }
 
 .slide {
@@ -899,38 +846,31 @@ nav {
     display: flex
 }
 
-.slide-tag-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 14px
-}
-
 .slide-tag {
     display: inline-block;
     padding: 5px 13px;
     border-radius: 20px;
-    background: rgba(255, 255, 255, .22);
+    background: rgba(var(--w-rgb),.22);
     backdrop-filter: blur(6px);
-    color: rgba(255, 255, 255, .95);
+    color: rgba(var(--w-rgb),.95);
     font-size: 11px;
     font-weight: 700;
-    border: 1px solid rgba(255, 255, 255, .3);
+    border: 1px solid rgba(var(--w-rgb),.3);
     letter-spacing: .2px
 }
 
 .slide-ttl {
     font-size: 22px;
     font-weight: 900;
-    color: #fff;
+    color: var(--panel);
     line-height: 1.2;
     margin-bottom: 5px;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, .15)
+    text-shadow: 0 2px 8px rgba(var(--sh-rgb),.15)
 }
 
 .slide-sub {
     font-size: 12px;
-    color: rgba(255, 255, 255, .75);
+    color: rgba(var(--w-rgb),.75);
     margin-bottom: 10px;
     font-weight: 500
 }
@@ -954,8 +894,8 @@ nav {
 
 .slide-note {
     font-size: 11px;
-    color: rgba(255, 255, 255, .75);
-    background: rgba(0, 0, 0, .15);
+    color: rgba(var(--w-rgb),.75);
+    background: rgba(var(--sh-rgb),.15);
     padding: 6px 12px;
     border-radius: 8px;
     display: inline-flex;
@@ -969,45 +909,6 @@ nav {
     display: flex;
     gap: 9px;
     align-items: center
-}
-
-.btn-slide-prev {
-    padding: 10px 20px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    background: #fff;
-    color: var(--sage-d);
-    border: none;
-    cursor: pointer;
-    transition: all .18s;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, .15)
-}
-
-.btn-slide-prev:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, .2)
-}
-
-.btn-slide-plan {
-    padding: 10px 18px;
-    border-radius: 12px;
-    font-size: 13px;
-    font-weight: 700;
-    background: var(--sage);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    transition: all .18s;
-    box-shadow: 0 3px 10px rgba(30, 122, 105, .22)
-}
-
-.btn-slide-plan:hover {
-    background: var(--sage-d);
-    transform: translateY(-1px)
 }
 
 /* ================= 수정된 영역 시작 ================= */
@@ -1041,7 +942,7 @@ nav {
     /* 블러 효과 강제 제거 */
 
 
-    color: rgba(0, 0, 0, 0.3) !important;
+    color: rgba(var(--sh-rgb),0.3) !important;
 
     font-size: 46px;
     /* 기호를 시원하게 키움 */
@@ -1064,7 +965,7 @@ nav {
     transform: scale(1.15);
 
 
-    color: rgba(0, 0, 0, 0.9) !important;
+    color: rgba(var(--sh-rgb),0.9) !important;
     opacity: 1;
     /* 기존 투명도 저하 기능은 무력화 */
 }
@@ -1087,29 +988,14 @@ nav {
     width: 6px;
     height: 6px;
     border-radius: 3px;
-    background: rgba(0, 0, 0, 0.2);
+    background: rgba(var(--sh-rgb),0.2);
     cursor: pointer;
     transition: all .3s
 }
 
 .dot.on {
     width: 18px;
-    background: rgba(0, 0, 0, 0.5);
-}
-
-/* guest bar */
-.guest-bar {
-    background: var(--warm-pale);
-    border: 1px solid #F0CBA8;
-    color: #8A5A2A;
-    padding: 8px 16px;
-    border-radius: 9px;
-    font-size: 12px;
-    margin: 0 56px 30px;
-    margin-right: calc(56px + 120px);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px
+    background: rgba(var(--sh-rgb),0.5);
 }
 
 /* TOP3 */
@@ -1137,29 +1023,6 @@ nav {
     box-shadow: var(--sh-h)
 }
 
-.card-num {
-    /* 💡 카드의 패딩이 18px이므로, 정확히 딱 -18px만큼만 확장시켜서 카드가 더 늘어나지 않게 제어합니다 */
-    margin-top: -18px !important;
-    margin-left: -18px !important;
-    margin-right: -18px !important;
-
-    /* 배너 내부의 여백 조절 (높이가 너무 비대해지지 않도록 상하 패딩을 슬림하게 조정) */
-    padding: 12px 18px;
-
-    background: linear-gradient(135deg, #1060a8, #4090d8);
-    /* 그라데이션 배너 배경색 */
-    color: #fff;
-    /* 글자색 흰색 */
-    text-align: left;
-
-    font-size: 42px;
-    /* 카드가 작아진 만큼 숫자 크기도 살짝 밸런스를 맞춤 */
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 14px;
-    /* 배너 아래 본문 글자들과의 고정 간격 */
-    font-family: var(--sans);
-}
 
 .card-ttl {
     font-size: 15px;
@@ -1186,25 +1049,6 @@ nav {
 .preview-box:hover {
     background: var(--cream2);
     border-color: var(--sage-l)
-}
-
-.pvb-label {
-    font-size: 11px;
-    font-weight: 700;
-    color: var(--sage);
-    margin-bottom: 2px;
-    display: flex;
-    align-items: center;
-    gap: 3px
-}
-
-.pvb-text {
-    font-size: 11px;
-    color: var(--text2);
-    line-height: 1.5;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .card-foot {
@@ -1252,7 +1096,7 @@ nav {
 
 .btn-scrap:hover {
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border-color: var(--sage)
 }
 
@@ -1277,41 +1121,11 @@ nav {
     /* 배너 모서리가 카드 라운딩 밖으로 깨져나가지 않도록 커팅 */
 }
 
-.pop-rank {
-    /* 💡 카드의 패딩이 18px이므로, 정확히 딱 -18px만큼만 확장시켜서 카드가 더 늘어나지 않게 제어합니다 */
-    margin-top: -18px !important;
-    margin-left: -18px !important;
-    margin-right: -18px !important;
-
-    /* 배너 내부의 여백 조절 (높이가 너무 비대해지지 않도록 상하 패딩을 슬림하게 조정) */
-    padding: 12px 18px;
-
-    background: linear-gradient(135deg, #1060a8, #4090d8);
-    /* 그라데이션 배너 배경색 */
-    color: #fff;
-    /* 글자색 흰색 */
-    text-align: left;
-
-    font-size: 42px;
-    /* 카드가 작아진 만큼 숫자 크기도 살짝 밸런스를 맞춤 */
-    font-weight: 900;
-    line-height: 1;
-    margin-bottom: 14px;
-    /* 배너 아래 본문 글자들과의 고정 간격 */
-    font-family: var(--sans);
-}
 
 .pop-card:hover {
     border-color: var(--sage-l);
     transform: translateY(-3px);
     box-shadow: var(--sh-h)
-}
-
-.pop-icon-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px
 }
 
 .pop-icon {
@@ -1395,7 +1209,7 @@ nav {
 
 .pop-scrap-btn:hover {
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border-color: var(--sage)
 }
 
@@ -1435,43 +1249,10 @@ nav {
     backdrop-filter: blur(8px)
 }
 
-.slide-badge-date {
-    background: rgba(255, 255, 255, .2);
-    border: 1px solid rgba(255, 255, 255, .3);
-    color: rgba(255, 255, 255, .95)
-}
-
-.slide-badge-hot {
-    background: rgba(255, 200, 80, .22);
-    border: 1px solid rgba(255, 200, 80, .38);
-    color: #ffe080
-}
-
-.slide-info-row {
-    display: flex;
-    gap: 7px;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-    position: relative;
-    z-index: 2
-}
-
-.slide-info-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    color: rgba(255, 255, 255, .82);
-    background: rgba(0, 0, 0, .18);
-    padding: 4px 10px;
-    border-radius: 8px;
-    backdrop-filter: blur(4px)
-}
-
 /* 화살표는 slide-arr-wrap 기준 좌우 자동 배치 */
 .active-tag {
     background: var(--sage) !important;
-    color: #fff !important;
+    color: var(--panel) !important;
     border-color: var(--sage-d) !important
 }
 
@@ -1522,8 +1303,8 @@ nav {
     display: flex;
     align-items: center;
     gap: 7px;
-    background: #FEF3F2;
-    border: 1px solid #FECACA;
+    background: var(--tile-pale);
+    border: 1px solid var(--tile);
     color: var(--coral);
     padding: 9px 12px;
     border-radius: 8px;
@@ -1562,7 +1343,7 @@ nav {
     justify-content: center;
     font-size: 24px;
     font-weight: 700;
-    color: #fff;
+    color: var(--panel);
     margin: 0 auto 11px
 }
 
@@ -1731,7 +1512,7 @@ nav {
     align-items: center;
     justify-content: center;
     font-size: 10px;
-    color: #fff;
+    color: var(--panel);
     font-weight: 700;
     flex-shrink: 0
 }
@@ -1796,7 +1577,7 @@ nav {
 }
 
 .prc-stars {
-    color: #F5A623;
+    color: var(--num);
     font-size: 12px
 }
 
@@ -1862,7 +1643,7 @@ nav {
     cursor: pointer;
     transition: all .2s;
     border-right: 1px solid var(--border2);
-    background: #fff;
+    background: var(--panel);
 }
 .step-item:last-child {
     border-right: none
@@ -1890,7 +1671,7 @@ nav {
 .step-item.done .step-num,
 .step-item.active .step-num {
     background: var(--sage);
-    color: #fff
+    color: var(--panel)
 }
 
 .step-lbl {
@@ -1971,7 +1752,7 @@ nav {
     font-size: 14px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     transition: all .2s
@@ -2128,12 +1909,12 @@ nav {
 
 .cav.bot {
     background: linear-gradient(135deg, var(--sage), var(--sage-l));
-    color: #fff
+    color: var(--panel)
 }
 
 .cav.user {
     background: var(--warm);
-    color: #fff
+    color: var(--panel)
 }
 
 .cbubble {
@@ -2151,7 +1932,7 @@ nav {
 
 .cbubble.user {
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border-radius: 12px 3px 12px 12px
 }
 
@@ -2188,7 +1969,7 @@ nav {
 
 .qr-btn:hover {
     background: var(--sage);
-    color: #fff
+    color: var(--panel)
 }
 
 .chat-inp-area {
@@ -2225,7 +2006,7 @@ nav {
     background: var(--sage);
     border: none;
     cursor: pointer;
-    color: #fff;
+    color: var(--panel);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -2262,12 +2043,12 @@ nav {
 .asc-ttl {
     font-size: 13px;
     font-weight: 700;
-    color: #fff
+    color: var(--panel)
 }
 
 .asc-sub {
     font-size: 10px;
-    color: rgba(255, 255, 255, .75)
+    color: rgba(var(--w-rgb),.75)
 }
 
 .asc-row {
@@ -2316,7 +2097,7 @@ nav {
     padding: 11px;
     background: var(--sage);
     border: none;
-    color: #fff;
+    color: var(--panel);
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
@@ -2385,107 +2166,6 @@ nav {
     background: var(--sage-d)
 }
 
-/* result (step4) */
-.result-info {
-    background: var(--sage-pale);
-    border: 1px solid var(--sage-l);
-    border-radius: 9px;
-    padding: 10px 14px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: var(--sage-d)
-}
-
-.rdb {
-    background: var(--surface);
-    border: 1px solid var(--border2);
-    border-radius: var(--r);
-    margin-bottom: 11px;
-    overflow: hidden
-}
-
-.rdb-hd {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 11px 16px;
-    background: var(--sage-pale);
-    border-bottom: 1px solid var(--border2)
-}
-
-.rdb-label {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--sage-d)
-}
-
-.rdb-budget {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--sage)
-}
-
-.rdb-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 9px;
-    padding: 11px 16px;
-    border-bottom: 1px solid var(--border2);
-    transition: background .15s
-}
-
-.rdb-item:last-child {
-    border-bottom: none
-}
-
-.rdb-item:hover {
-    background: var(--cream)
-}
-
-.rdb-drag {
-    color: var(--text3);
-    font-size: 13px;
-    cursor: grab;
-    flex-shrink: 0;
-    padding-top: 2px
-}
-
-.rdb-thumb {
-    width: 38px;
-    height: 38px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0
-}
-
-.rdb-info {
-    flex: 1;
-    min-width: 0
-}
-
-.rdb-name {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 2px
-}
-
-.rdb-meta {
-    font-size: 11px;
-    color: var(--text3)
-}
-
-.rdb-time {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    margin-right: 7px;
-    white-space: nowrap;
-    flex-shrink: 0
-}
-
 .btn-exc {
     padding: 4px 9px;
     border-radius: 6px;
@@ -2516,39 +2196,6 @@ nav {
     border-bottom: 1px solid var(--border2)
 }
 
-.result-queue-note {
-    background: #FBF0E6;
-    border: 1px solid #F0CBA8;
-    border-radius: 9px;
-    padding: 9px 14px;
-    margin-bottom: 16px;
-    font-size: 12px;
-    color: #8A5A2A
-}
-
-.result-acts {
-    display: flex;
-    gap: 8px;
-    margin-top: 4px;
-    flex-wrap: wrap
-}
-
-.btn-to-map {
-    padding: 11px 20px;
-    border-radius: var(--r);
-    font-size: 13px;
-    font-weight: 700;
-    background: var(--sage);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    transition: all .18s
-}
-
-.btn-to-map:hover {
-    background: var(--sage-d)
-}
-
 .btn-bk {
     padding: 11px 16px;
     border-radius: var(--r);
@@ -2566,7 +2213,7 @@ nav {
     font-size: 12px;
     font-weight: 700;
     background: var(--warm);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer
 }
@@ -2612,7 +2259,7 @@ nav {
 }
 
 /* 지도 필터 칩은 styles_map.css 가 정한다.
-   여기 있던 규칙은 옛 팔레트(--sage/--coral/--sky/보라 #7C3AED)를 참조했다.
+   여기 있던 규칙은 옛 팔레트(--sage/--coral/--sky/보라 var(--ink-2))를 참조했다.
    그 토큰들은 이제 없다. 첫 칩은 배경이 사라지고 카페는 보라로 남았다. */
 
 .day-tabs {
@@ -2643,7 +2290,7 @@ nav {
 
 .day-tab.on {
     background: var(--sage);
-    color: #fff
+    color: var(--panel)
 }
 
 .queue-box {
@@ -2684,7 +2331,7 @@ nav {
 
 .q-badge {
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     padding: 2px 7px;
     border-radius: 10px;
     font-size: 10px
@@ -2727,7 +2374,7 @@ nav {
     font-size: 12px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     margin-top: 6px
@@ -2746,12 +2393,12 @@ nav {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #FBF0E6;
-    border: 1.5px solid #F0CBA8;
+    background: var(--terra-pale);
+    border: 1.5px solid var(--ui-line);
     padding: 7px 10px;
     border-radius: 7px;
     font-size: 11px;
-    color: #8A5A2A;
+    color: var(--num);
     font-weight: 600;
     margin: 4px 10px;
     animation: pulse 1.5s ease-in-out infinite
@@ -2820,17 +2467,6 @@ nav {
     background: var(--sage-pale)
 }
 
-.place-row.place-row-active {
-    border-color: var(--sage-d);
-    background: var(--sage);
-    box-shadow: 0 2px 10px rgba(45, 158, 138, .35)
-}
-
-.place-row.place-row-active .pr-name,
-.place-row.place-row-active .pr-sub,
-.place-row.place-row-active .pr-stars {
-    color: #fff !important
-}
 
 .pr-icon {
     width: 30px;
@@ -2844,15 +2480,15 @@ nav {
 }
 
 .pr-stay {
-    background: #E8F5F2
+    background: var(--plate)
 }
 
 .pr-food {
-    background: #FEF3F2
+    background: var(--tile-pale)
 }
 
 .pr-tour {
-    background: #EBF4FC
+    background: var(--slate-pale)
 }
 
 .pr-drag {
@@ -2880,7 +2516,7 @@ nav {
 
 .pr-stars {
     font-size: 10px;
-    color: #F5A623
+    color: var(--num)
 }
 
 .btn-replace {
@@ -2903,7 +2539,7 @@ nav {
 }
 
 .replace-area {
-    background: #FBF0E6;
+    background: var(--terra-pale);
     border-radius: 8px;
     padding: 8px;
     margin: 2px 0 4px;
@@ -2913,7 +2549,7 @@ nav {
 .replace-label {
     font-size: 11px;
     font-weight: 700;
-    color: #8A5A2A;
+    color: var(--num);
     margin-bottom: 5px
 }
 
@@ -2926,8 +2562,8 @@ nav {
     flex: 1;
     padding: 6px 8px;
     border-radius: 6px;
-    border: 1.5px solid #F0CBA8;
-    background: #fff;
+    border: 1.5px solid var(--ui-line);
+    background: var(--panel);
     font-size: 11px;
     font-family: inherit;
     outline: none
@@ -2939,7 +2575,7 @@ nav {
     font-size: 10px;
     font-weight: 700;
     background: var(--warm);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     white-space: nowrap
@@ -3014,7 +2650,7 @@ nav {
 /*  font-size: 12px;*/
 /*  font-weight: 700;*/
 /*  background: var(--sage);*/
-/*  color: #fff;*/
+/*  color: var(--panel);*/
 /*  border: none;*/
 /*  cursor: pointer;*/
 /*  white-space: nowrap;*/
@@ -3038,7 +2674,7 @@ nav {
     content: '';
     position: absolute;
     inset: 0;
-    background: repeating-linear-gradient(0deg, rgba(45, 158, 138, .03) 0, rgba(45, 158, 138, .03) 1px, transparent 1px, transparent 36px), repeating-linear-gradient(90deg, rgba(45, 158, 138, .03) 0, rgba(45, 158, 138, .03) 1px, transparent 1px, transparent 36px)
+    background: repeating-linear-gradient(0deg, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent 36px), repeating-linear-gradient(90deg, var(--grid) 0, var(--grid) 1px, transparent 1px, transparent 36px)
 }
 
 .map-subtabs {
@@ -3046,7 +2682,7 @@ nav {
     top: 0;
     left: 0;
     right: 0;
-    background: rgba(255, 255, 255, .92);
+    background: rgba(var(--w-rgb),.92);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--border2);
     padding: 7px 12px;
@@ -3094,7 +2730,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 3px 9px rgba(0, 0, 0, .18)
+    box-shadow: 0 3px 9px rgba(var(--sh-rgb),.18)
 }
 
 .pin-inner {
@@ -3111,15 +2747,7 @@ nav {
     font-weight: 600;
     margin-top: 3px;
     white-space: nowrap;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .07)
-}
-
-.map-route-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none
+    box-shadow: 0 2px 6px rgba(var(--sh-rgb),.07)
 }
 
 .map-zoom {
@@ -3130,30 +2758,8 @@ nav {
     border-radius: 8px;
     border: 1px solid var(--border2);
     overflow: hidden;
-    box-shadow: 0 2px 9px rgba(0, 0, 0, .07);
+    box-shadow: 0 2px 9px rgba(var(--sh-rgb),.07);
     z-index: 5
-}
-
-.zoom-btn {
-    display: block;
-    width: 32px;
-    height: 32px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 16px;
-    color: var(--text2);
-    line-height: 32px;
-    text-align: center;
-    transition: background .18s
-}
-
-.zoom-btn:hover {
-    background: var(--cream)
-}
-
-.zoom-btn+.zoom-btn {
-    border-top: 1px solid var(--border2)
 }
 
 .map-mf {
@@ -3164,7 +2770,7 @@ nav {
     border-radius: 9px;
     border: 1px solid var(--border2);
     padding: 10px;
-    box-shadow: 0 2px 9px rgba(0, 0, 0, .07);
+    box-shadow: 0 2px 9px rgba(var(--sh-rgb),.07);
     z-index: 5
 }
 
@@ -3201,7 +2807,7 @@ nav {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #fff;
+    background: var(--panel);
     top: 2px;
     right: 2px;
     transition: right .18s
@@ -3232,7 +2838,7 @@ nav {
     border-radius: 11px;
     border: 1.5px solid var(--warm);
     padding: 11px 14px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .1);
+    box-shadow: 0 4px 16px rgba(var(--sh-rgb),.1);
     max-width: 260px;
     cursor: pointer;
     z-index: 5
@@ -3345,17 +2951,6 @@ nav {
     color: var(--sage)
 }
 
-.budget-status-bar {
-    background: var(--sage-pale);
-    border: 1.5px solid var(--sage-l);
-    border-radius: 9px;
-    padding: 10px 16px;
-    margin-top: 12px;
-    font-size: 14px;
-    color: var(--sage-d);
-    font-weight: 600
-}
-
 .ledger-add {
     display: flex;
     align-items: center;
@@ -3384,7 +2979,7 @@ nav {
     padding: 9px 16px;
     border-radius: var(--r-sm);
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     font-size: 13px;
     font-weight: 700;
@@ -3396,7 +2991,7 @@ nav {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: conic-gradient(var(--sage) 0deg 137deg, var(--coral) 137deg 216deg, var(--slate) 216deg 266deg, #F5A623 266deg 309deg, #9CA3AF 309deg 360deg);
+    background: conic-gradient(var(--sage) 0deg 137deg, var(--coral) 137deg 216deg, var(--slate) 216deg 266deg, var(--num) 266deg 309deg, var(--ink-3) 309deg 360deg);
     flex-shrink: 0
 }
 
@@ -3425,53 +3020,6 @@ nav {
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0
-}
-
-.compare-section {
-    background: var(--cream);
-    border-radius: 11px;
-    padding: 14px;
-    margin-top: 16px
-}
-
-.compare-ttl {
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 12px
-}
-
-.cmp-row {
-    margin-bottom: 11px
-}
-
-.cmp-bar {
-    height: 9px;
-    border-radius: 5px;
-    margin-bottom: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 5px;
-    font-size: 8px;
-    color: #fff;
-    font-weight: 700;
-    max-width: 100%
-}
-
-.over-alert {
-    background: #FEF3F2;
-    border-left: 3px solid var(--coral);
-    padding: 6px 10px;
-    border-radius: 0 7px 7px 0;
-    font-size: 11px;
-    color: var(--coral);
-    margin-top: 5px
-}
-
-.budget-export-btns {
-    display: flex;
-    gap: 8px;
-    margin-top: 14px
 }
 
 .btn-export {
@@ -3623,7 +3171,7 @@ nav {
 .comm-tab.on {
     background: var(--surface);
     color: var(--sage-d);
-    box-shadow: 0 1px 5px rgba(0, 0, 0, .07)
+    box-shadow: 0 1px 5px rgba(var(--sh-rgb),.07)
 }
 
 .search-bar {
@@ -3656,37 +3204,14 @@ nav {
     font-size: 12px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     white-space: nowrap
 }
 
-/* post rank */
-.post-rank-num {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: var(--sage);
-    color: #fff;
-    font-size: 10px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0
-}
-
-.post-rank-num.r1 {
-    background: var(--warm)
-}
-
 .post-rank-num.r2 {
     background: var(--sage-d)
-}
-
-.post-rank-num.r3 {
-    background: var(--sky)
 }
 
 /* place cards (숙소/맛집) */
@@ -3774,26 +3299,6 @@ nav {
     flex-wrap: nowrap
 }
 
-.pc-scrap-n {
-    color: var(--warm);
-    font-weight: 700;
-    white-space: nowrap
-}
-
-.comm-sidebar-widget {
-    background: var(--surface);
-    border-radius: var(--r);
-    border: 1px solid var(--border2);
-    padding: 15px;
-    margin-bottom: 15px
-}
-
-.widget-ttl {
-    font-size: 13px;
-    font-weight: 700;
-    margin-bottom: 10px
-}
-
 /* ADMIN */
 .admin-layout {
     display: grid;
@@ -3812,7 +3317,7 @@ nav {
 .admin-logo {
     font-size: 13px;
     font-weight: 800;
-    color: #fff;
+    color: var(--panel);
     margin-bottom: 22px
 }
 
@@ -3821,7 +3326,7 @@ nav {
     border-radius: 7px;
     font-size: 12px;
     font-weight: 500;
-    color: rgba(255, 255, 255, .65);
+    color: rgba(var(--w-rgb),.65);
     background: none;
     border: none;
     cursor: pointer;
@@ -3836,8 +3341,8 @@ nav {
 
 .admin-link:hover,
 .admin-link.on {
-    color: #fff;
-    background: rgba(255, 255, 255, .12)
+    color: var(--panel);
+    background: rgba(var(--w-rgb),.12)
 }
 
 .admin-body {
@@ -3911,13 +3416,13 @@ nav {
 }
 
 .badge-a {
-    background: #DCFCE7;
+    background: var(--slate-pale);
     color: var(--terra)
 }
 
 .badge-s {
-    background: #FEE2E2;
-    color: #DC2626
+    background: var(--tile-pale);
+    color: var(--tile)
 }
 
 .badge-d {
@@ -4113,7 +3618,7 @@ nav {
     align-items: center;
     justify-content: center;
     font-size: 11px;
-    color: #fff;
+    color: var(--panel);
     font-weight: 700;
     flex-shrink: 0
 }
@@ -4156,13 +3661,13 @@ nav {
 .rcta-ttl {
     font-size: 18px;
     font-weight: 800;
-    color: #fff;
+    color: var(--panel);
     margin-bottom: 5px
 }
 
 .rcta-sub {
     font-size: 13px;
-    color: rgba(255, 255, 255, .78);
+    color: rgba(var(--w-rgb),.78);
     margin-bottom: 14px
 }
 
@@ -4171,7 +3676,7 @@ nav {
     border-radius: var(--r);
     font-size: 14px;
     font-weight: 800;
-    background: #fff;
+    background: var(--panel);
     color: var(--sage-d);
     border: none;
     cursor: pointer;
@@ -4306,15 +3811,6 @@ nav {
     min-width: 80px
 }
 
-/* SHARE MODAL */
-.share-modal-ttl {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    border-bottom: 1px solid var(--border2);
-    padding-bottom: 10px
-}
-
 .share-tabs {
     display: flex;
     gap: 0;
@@ -4339,12 +3835,6 @@ nav {
     border-bottom-color: var(--sage)
 }
 
-.share-search-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px
-}
-
 .share-search {
     flex: 1;
     padding: 9px 12px;
@@ -4367,7 +3857,7 @@ nav {
     font-size: 13px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     white-space: nowrap
@@ -4390,7 +3880,7 @@ nav {
     justify-content: center;
     font-size: 14px;
     font-weight: 700;
-    color: #fff;
+    color: var(--panel);
     flex-shrink: 0
 }
 
@@ -4413,7 +3903,7 @@ nav {
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 10px;
-    background: #F0CBA8;
+    background: var(--ui-line);
     color: var(--warm)
 }
 
@@ -4448,36 +3938,10 @@ nav {
     font-size: 12px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     white-space: nowrap
-}
-
-/* CONFIRM DONE MODAL */
-.confirm-done-banner {
-    background: linear-gradient(135deg, var(--sage), var(--sage-l));
-    border-radius: 16px;
-    padding: 24px;
-    text-align: center;
-    margin-bottom: 16px
-}
-
-.cdb-icon {
-    font-size: 40px;
-    margin-bottom: 8px
-}
-
-.cdb-ttl {
-    font-size: 20px;
-    font-weight: 800;
-    color: #fff;
-    margin-bottom: 4px
-}
-
-.cdb-sub {
-    font-size: 13px;
-    color: rgba(255, 255, 255, .8)
 }
 
 /* PREVIEW MODAL */
@@ -4534,17 +3998,9 @@ nav {
     position: relative;
     margin-bottom: 14px;
     overflow: hidden;
-    background: #e8f5f2
+    background: var(--plate)
 }
 
-.prev-map-label {
-    position: absolute;
-    bottom: 7px;
-    right: 9px;
-    font-size: 10px;
-    color: rgba(45, 158, 138, .7);
-    font-weight: 600
-}
 
 .prev-section-ttl {
     font-size: 12px;
@@ -4587,7 +4043,7 @@ nav {
 }
 
 .pfi-rating {
-    color: #F5A623;
+    color: var(--num);
     font-size: 12px;
     font-weight: 700
 }
@@ -4605,7 +4061,7 @@ nav {
     font-size: 13px;
     font-weight: 700;
     background: var(--sage);
-    color: #fff;
+    color: var(--panel);
     border: none;
     cursor: pointer;
     display: flex;
@@ -4634,7 +4090,7 @@ nav {
 
 .btn-prev-scrap:hover {
     background: var(--sage);
-    color: #fff
+    color: var(--panel)
 }
 
 /* ─── 플래너 날씨 버튼 ─── */
@@ -4656,7 +4112,7 @@ nav {
 .weather-date-btn:hover {
     background: var(--sage);
     border-color: var(--sage);
-    color: #fff;
+    color: var(--panel);
     transform: translateY(-1px);
 }
 @keyframes fadeInBtn {
@@ -4668,7 +4124,7 @@ nav {
 .typing-dot {
     width: 6px;
     height: 6px;
-    background-color: var(--sage, #9ca3af);
+    background-color: var(--ink-3);
     border-radius: 50%;
     animation: typingBounce 1.4s infinite ease-in-out both;
 }
@@ -4709,22 +4165,22 @@ nav {
     transition: all .15s;
     white-space: nowrap;
 }
-.nps-btn:hover { background: rgba(45, 158, 138, .12); color: var(--sage); }
-.nps-btn.active { background: var(--sage); color: #fff; }
+.nps-btn:hover { background: var(--terra-pale); color: var(--terra); }
+.nps-btn.active { background: var(--sage); color: var(--panel); }
 .nps-btn.done   { color: var(--sage-d); }
 .nps-btn.locked { color: var(--coral); cursor: not-allowed; opacity: .75; }
 
 .nps-num {
     width: 17px; height: 17px;
     border-radius: 50%;
-    background: rgba(0,0,0,.08);
+    background: rgba(var(--sh-rgb),.08);
     display: flex; align-items: center; justify-content: center;
     font-size: 10px; font-weight: 700;
     flex-shrink: 0;
 }
-.nps-btn.active .nps-num { background: rgba(255,255,255,.3); }
-.nps-btn.done   .nps-num { background: var(--sage); color: #fff; }
-.nps-btn.locked .nps-num { background: var(--coral); color: #fff; }
+.nps-btn.active .nps-num { background: rgba(var(--w-rgb),.3); }
+.nps-btn.done   .nps-num { background: var(--sage); color: var(--panel); }
+.nps-btn.locked .nps-num { background: var(--coral); color: var(--panel); }
 
 .nps-lbl { font-weight: 500; }
 .nps-arrow { color: var(--border); font-size: 14px; }
