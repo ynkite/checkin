@@ -60,9 +60,15 @@ public class SecurityConfig {
                                          "/**/*.jpeg", "/**/*.gif", "/**/*.webp", "/**/*.ico",
                                          "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.map").permitAll()
                         .requestMatchers("/plan/**", "/plan/view/**", "/trip/**").permitAll()
+                        // 캘린더 구독 피드 — 인증 없이 열리는 .ics (토큰으로 보호)
+                        .requestMatchers("/cal/**").permitAll()
 
                         // 업로드된 이미지 파일 비로그인 접근 허용
                         .requestMatchers("/uploads/**").permitAll()
+
+                        // PWA·푸시 공개 리소스 (서비스워커는 루트 스코프라야 전체 제어 가능)
+                        .requestMatchers("/sw.js", "/manifest.json").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/push/public-key").permitAll()
 
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
@@ -76,7 +82,9 @@ public class SecurityConfig {
                                 "/api/auth/verify-email",           //이메일 인증 확인
                                 "/api/auth/password/reset-request", //비밀번호 재설정 요청
                                 "/api/auth/password/reset",         //비밀번호 재설정 처리
-                                "/api/maps/weather",
+                                "/api/maps/weather",                //오늘 기준 예보
+                                "/api/maps/weather/**",             //날짜별·범위 날씨 (day, range)
+                                "/api/tour/**",                     //관광공사 API 실호출 (호출 이력 확보)
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 
@@ -89,6 +97,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/*/place-reviews").permitAll() // 게시글별 장소 리뷰
                         .requestMatchers(HttpMethod.GET, "/api/places").permitAll()                // 장소 카드 탭 목록
                         .requestMatchers(HttpMethod.GET, "/api/places/**").permitAll()             // 장소 상세 (후기·리뷰)
+                        .requestMatchers(HttpMethod.GET, "/api/trips/scrapped").authenticated()     // 내 스크랩 목록(로그인 필수). /api/trips/* permitAll 보다 먼저
                         .requestMatchers(HttpMethod.GET, "/api/trips/*").permitAll()               // 비회원 공유 링크
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll()        // 공유 링크 읽기 전용
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/input-form").permitAll()     // 비회원 인원수/이동수단 정보

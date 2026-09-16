@@ -8,26 +8,31 @@
      <link rel="stylesheet" th:href="@{/css/tokens.css}">
      <link rel="stylesheet" th:href="@{/css/styles_main.css}">
 
-   하늘(시간대) 전환
-     <html data-sky="day">  ... 10~16시
-     <html data-sky="dusk"> ... 17~19시
-     <html data-sky="night">... 20시~
-   3D 매싱 SVG 는 색을 클래스로만 내보내므로
-   data-sky 만 바꾸면 SVG 를 다시 만들지 않고 낮/노을/밤이 바뀐다.
+   하늘(시간대) — 풍경은 연속, 읽는 판은 계단
+     <html data-sky="dawn"  style="--mix:42%">   05:00~13:00  밤 -> 낮
+     <html data-sky="day"   style="--mix:0%">    13:00~18:30  낮 -> 노을
+     <html data-sky="dusk"  style="--mix:70%">   18:30~23:00  노을 -> 밤
+     <html data-sky="night">                     23:00~05:00  밤
+
+   지도·건물·바다 같은 풍경만 --mix 로 섞어 분 단위로 흐르게 한다.
+   판·글자·버튼(--panel --ink --ui 계열)은 섞지 않는다. 둘을 같이 섞으면
+   중간에서 판과 글자가 같은 회색이 되어 글자가 사라진다(측정 대비 1.36).
+   읽는 면은 밤에 한 번만 바뀐다.
    ============================================================ */
 
 :root{
   /* ── 글꼴 ───────────────────────────────────────────────── */
-  --sans:"IBM Plex Sans KR", system-ui, "Malgun Gothic", sans-serif;
+  --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+         system-ui, "Malgun Gothic", sans-serif;
   --fig:"IBM Plex Mono", ui-monospace, monospace;   /* 시각·금액·집중률만 */
 
   /* ── 타입 스케일 ────────────────────────────────────────── */
   --t-hero:clamp(34px, 4.4vw, 56px);
   --t-h2:clamp(23px, 2.9vw, 33px);
   --t-h3:19px;
-  --t-body:15px;
-  --t-sm:13.5px;
-  --t-xs:12px;
+  --t-body:17px;
+  --t-sm:14px;
+  --t-xs:11px;
   --tracking-tight:-.042em;   /* 제목 */
   --tracking-num:-.02em;      /* 숫자 */
 
@@ -42,16 +47,16 @@
   --r-panel:16px;
   --r-pill:99px;
   --r-field:9px;
-  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
-  --lift2:0 3px 12px rgba(16,24,38,.10);
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --lift2:0 3px 12px rgba(40,30,22,.09);
 
   /* ── 판·글자 (하늘과 무관하게 기본은 밝은 판) ─────────── */
   --panel:#FFFFFF;
-  --panel-2:#E6EAEF;
-  --ink:#101620;
-  --ink-2:#556071;
-  --ink-3:#7C8798;
-  --hair:rgba(16,22,32,.09);
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --ink-3:#766E67;   /* 흰 바탕 5.00 · 연한 판 위 4.56. 이전 #8B827A 는 3.77 이었다 */
+  --hair:rgba(26,21,18,.10);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
      「지금」과 「바뀜」에만. 장식으로 쓰지 않는다.
@@ -67,20 +72,20 @@
      주색을 신호색(--sig)으로 쓰지 않는다. --sig 는 「지금」과 「바뀜」
      전용이고, 버튼 198곳에 깔면 신호가 신호가 아니게 된다. */
 
-  --ui:#1D2635;          /* 주 버튼 · 활성 상태 */
-  --ui-d:#0D131E;        /* hover */
-  --ui-l:#47536A;        /* 보조 테두리 · 아이콘 */
-  --ui-pale:#EEF1F5;     /* 옅은 배경 */
+  --ui:#241D18;          /* 주 버튼 · 활성 상태 */
+  --ui-d:#120E0B;        /* hover */
+  --ui-l:#5A5149;        /* 보조 테두리 · 아이콘 */
+  --ui-pale:#F2EEE9;     /* 옅은 배경 */
 
-  --ui-line:#DBE0E7;     /* 테두리 */
-  --ui-line-2:#EDEFF3;   /* 옅은 구분선 */
-  --ui-plate:#F4F6F9;    /* 옅은 판 (이전 웜크림 자리) */
-  --ui-plate-2:#E8ECF1;
+  --ui-line:#DED7CF;     /* 테두리 */
+  --ui-line-2:#EFEAE4;   /* 옅은 구분선 */
+  --ui-plate:#F7F4F0;    /* 옅은 판 (이전 웜크림 자리) */
+  --ui-plate-2:#ECE6DF;
 
   /* 강조 3색 — 미니어처 세계의 지붕 계열에서 뽑았다.
      지도와 UI 가 같은 색족을 쓰면 한 덩어리로 읽힌다.
      세 값 모두 흰 배경 위 글자와 흰 글자 배경 양쪽으로 대비 4.5:1 이상. */
-  --terra:#BC5219;       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
+  --terra:#B64F18;   /* --terra-pale 위 4.58. 이전 #B64F18 는 4.33 이었다 */       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
   --terra-pale:#FDF1E3;
   --tile:#C8402A;        /* 오류 · 잠김      (진한 기와 --d0 계열) */
   --tile-pale:#FCEBE7;
@@ -93,125 +98,472 @@
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
 
+  /* 페이지 바닥 — 풍경(--void)과 분리한다.
+     --void 는 하늘 팔레트라 오후가 되면 노을색으로 물든다. 페이지 배경에
+     그걸 쓰면 화면 전체가 베이지가 된다. 읽는 면은 시간과 무관해야 한다. */
+  --page:#FFFFFF;
+  --page-2:#F7F5F2;
+
   /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
-  --void-veil:rgba(237,241,245,.82);
-  --void-veil-2:rgba(237,241,245,.95);
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
 
   /* 그림자 — 청록 rgba 를 걷어냈다 */
-  --sh-ui:0 2px 16px rgba(16,22,32,.07);
-  --sh-ui-h:0 10px 34px -8px rgba(16,22,32,.18);
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
-/* ══════════════════ 낮 (10~16시) ══════════════════ */
+/* ══════════════════ 하늘 — 연속 보간 ══════════════════
+   세 팔레트를 앵커로 두고 이웃한 둘 사이를 --mix 로 섞는다.
+   계단이 아니라 분 단위로 조금씩 어두워진다.
+
+     data-sky="day"    13:00 -> 18:30   낮에서 노을로
+     data-sky="dusk"   18:30 -> 23:00   노을에서 밤으로
+     data-sky="night"  23:00 -> 05:00   밤 고정
+     data-sky="dawn"   05:00 -> 13:00   밤에서 낮으로
+
+   --mix 만 바뀌므로 갱신 비용이 없다. app_home.js 가 분 단위로 넣는다.
+   이 아래는 생성된 블록이다. 손으로 고치지 말고 앵커 값을 고칠 것. */
+
+/* ══════════════════ 하늘 — 앵커 세 벌 ══════════════════
+   낮·노을·밤 팔레트를 평범한 색값으로 둔다.
+
+   사이 시각의 색은 app_home.js 가 oklab 에서 섞어 :root 에 인라인으로 넣는다.
+   CSS 에서 color-mix 로 하지 않는 이유 — 커스텀 속성은 모든 요소가 상속하므로
+   요소 1,118개에 대해 11만 번을 다시 풀어야 했다. 렌더러가 죽었다.
+
+   앵커 값을 고치면 scratchpad/gen_sky2.py 를 다시 돌려
+   tokens.css 와 js/sky-anchors.js 를 함께 갱신한다. 한쪽만 고치지 말 것. */
+
 [data-sky="day"]{
-  --void:#EDF1F5; --plate:#EEF1F4; --water:#A9D2E8; --beach:#F0E1C4; --green:#D8E3CD;
+  /* 13:00 기준 */
+  --void:#FFFFFF;
+  --plate:#F0EEEA;
+  --water:#A9D2E8;
+  --beach:#F0E1C4;
+  --green:#D8E3CD;
   --shore:#7FA8C4;
-  --rdc:#D9E0E8; --rd1:#FFFFFF; --rd2:#FCFDFE; --rd3:#F2F5F8; --rdpv:#EADFC9;
+  --rdc:#D9E0E8;
+  --rd1:#FFFFFF;
+  --rd2:#FCFDFE;
+  --rd3:#F2F5F8;
+  --rdpv:#EADFC9;
   --lane:#F5C93F;
-  --a0:#E8734A; --a1:#CE5D36; --a2:#AC4A28;   /* 붉은 기와 */
-  --b0:#A5B4C8; --b1:#8C9CB2; --b2:#74849A;   /* 청회 (아파트) */
-  --c0:#F3EDE0; --c1:#DCD5C6; --c2:#BFB8A9;   /* 크림 (상가) */
-  --d0:#D2543A; --d1:#B5432C; --d2:#94341F;   /* 진한 기와 */
-  --e0:#D4DBE3; --e1:#B8C0CA; --e2:#9BA4AF;   /* 회백 */
-  --f0:#EDD6AE; --f1:#D5BC91; --f2:#B4A079;   /* 모래 */
-  --g0:#7C9BCB; --g1:#6885B3; --g2:#556F98;   /* 파란 슬레이트 */
-  --h0:#B5825E; --h1:#9A6A49; --h2:#7D5436;   /* 갈색 */
-  --m0:#FFC53D; --m1:#E9AC1F; --m2:#BC8714;   /* 랜드마크 */
-  --tc:#6F9463; --tc2:#8DB07A; --td:#4E7645; --tk:#8A7351;
-  --bush:#7FA46E; --bush2:#628B55;
-  --sh1c:rgba(64,86,112,.20); --sh2c:rgba(64,86,112,.10);
-  --wave:rgba(255,255,255,.78); --tuft:#7E9B6E; --stip:rgba(178,152,110,.5);
+  --a0:#E8734A;
+  --a1:#CE5D36;
+  --a2:#AC4A28;
+  --b0:#A5B4C8;
+  --b1:#8C9CB2;
+  --b2:#74849A;
+  --c0:#F3EDE0;
+  --c1:#DCD5C6;
+  --c2:#BFB8A9;
+  --d0:#D2543A;
+  --d1:#B5432C;
+  --d2:#94341F;
+  --e0:#D4DBE3;
+  --e1:#B8C0CA;
+  --e2:#9BA4AF;
+  --f0:#EDD6AE;
+  --f1:#D5BC91;
+  --f2:#B4A079;
+  --g0:#7C9BCB;
+  --g1:#6885B3;
+  --g2:#556F98;
+  --h0:#B5825E;
+  --h1:#9A6A49;
+  --h2:#7D5436;
+  --m0:#FFC53D;
+  --m1:#E9AC1F;
+  --m2:#BC8714;
+  --tc:#6F9463;
+  --tc2:#8DB07A;
+  --td:#4E7645;
+  --tk:#8A7351;
+  --bush:#7FA46E;
+  --bush2:#628B55;
+  --sh1c:rgba(64,86,112,.20);
+  --sh2c:rgba(64,86,112,.10);
+  --wave:rgba(255,255,255,.78);
+  --tuft:#7E9B6E;
+  --stip:rgba(178,152,110,.5);
   --gedge:rgba(104,124,100,.32);
-  --u1:#FF8A2B; --u2:#FBFCFD; --u3:#E14B2E; --uk:#8F9AA8;   /* 파라솔 */
-  --v1:#FBFCFD; --v2:#3E4956; --v3:#D84F33; --vt:rgba(255,255,255,.6);  /* 차량 */
-  --bo1:#FBFCFD; --bo2:#4E5A68; --wake:rgba(255,255,255,.8);            /* 보트 */
-  --ru0:#BCC4CE; --ru1:#9EA7B2;                                        /* 옥상설비 */
-  --bnc:#8A6E4E; --bnc2:#6F573C;                                       /* 벤치 */
-  --pp:#39424F; --skin:#D2A278;
-  --pc1:#E14B2E; --pc2:#2E6FC4; --pc3:#F6F8FA; --pc4:#FFAE1A; --pc5:#3C4756;
-  --onmap:#151C28; --halo:rgba(255,255,255,.94);
+  --u1:#FF8A2B;
+  --u2:#FBFCFD;
+  --u3:#E14B2E;
+  --uk:#8F9AA8;
+  --v1:#FBFCFD;
+  --v2:#3E4956;
+  --v3:#D84F33;
+  --vt:rgba(255,255,255,.6);
+  --bo1:#FBFCFD;
+  --bo2:#4E5A68;
+  --wake:rgba(255,255,255,.8);
+  --ru0:#BCC4CE;
+  --ru1:#9EA7B2;
+  --bnc:#8A6E4E;
+  --bnc2:#6F573C;
+  --pp:#39424F;
+  --skin:#D2A278;
+  --pc1:#E14B2E;
+  --pc2:#2E6FC4;
+  --pc3:#F6F8FA;
+  --pc4:#FFAE1A;
+  --pc5:#3C4756;
+  --onmap:#151C28;
+  --halo:rgba(255,255,255,.94);
+  --num:#B05F00;
+  --panel:#FFFFFF;
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
+  --sig-deep:#8A5000;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
+  --terra:#B64F18;
+  --terra-pale:#FDF1E3;
+  --tile:#C8402A;
+  --tile-pale:#FCEBE7;
+  --slate:#4A6A9E;
+  --slate-pale:#ECF1F8;
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
+  --on-sig:#331C00;
+  --on-sig-2:#6B3C00;
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
-/* ══════════════════ 노을 (17~19시) ══════════════════ */
 [data-sky="dusk"]{
-  --void:#DDCFC8; --plate:#DCCFC8; --water:#8E96B4; --beach:#D9BFA0; --green:#B9BDA8;
+  /* 18:30 기준 */
+  --void:#DDCFC8;
+  --plate:#DCCFC8;
+  --water:#8E96B4;
+  --beach:#D9BFA0;
+  --green:#B9BDA8;
   --shore:#7E8AA0;
-  --rdc:#C2B7B2; --rd1:#F4E9E1; --rd2:#E9DCD4; --rd3:#DBCCC3; --rdpv:#D8C6AC;
+  --rdc:#C2B7B2;
+  --rd1:#F4E9E1;
+  --rd2:#E9DCD4;
+  --rd3:#DBCCC3;
+  --rdpv:#D8C6AC;
   --lane:#E8B44A;
-  --a0:#D66A4C; --a1:#B4553B; --a2:#8E402C;
-  --b0:#8E93AE; --b1:#767B96; --b2:#5E637C;
-  --c0:#E4D5C0; --c1:#CBBBA6; --c2:#AC9C88;
-  --d0:#B84E36; --d1:#99402B; --d2:#7A3221;
-  --e0:#B9BCCA; --e1:#A0A3B2; --e2:#868999;
-  --f0:#DDC29B; --f1:#C3A881; --f2:#A48D6B;
-  --g0:#77879F; --g1:#63728A; --g2:#505D72;
-  --h0:#9E6C4C; --h1:#85573B; --h2:#6B442D;
-  --m0:#FFC53D; --m1:#E0A420; --m2:#B07F14;
-  --tc:#5F7458; --tc2:#74855F; --td:#44553E; --tk:#6E5F49;
-  --bush:#6C8C5C; --bush2:#54744A;
-  --sh1c:rgba(86,60,74,.26); --sh2c:rgba(86,60,74,.13);
-  --wave:rgba(255,238,218,.5); --tuft:#7B8C6E; --stip:rgba(160,134,98,.5);
+  --a0:#D66A4C;
+  --a1:#B4553B;
+  --a2:#8E402C;
+  --b0:#8E93AE;
+  --b1:#767B96;
+  --b2:#5E637C;
+  --c0:#E4D5C0;
+  --c1:#CBBBA6;
+  --c2:#AC9C88;
+  --d0:#B84E36;
+  --d1:#99402B;
+  --d2:#7A3221;
+  --e0:#B9BCCA;
+  --e1:#A0A3B2;
+  --e2:#868999;
+  --f0:#DDC29B;
+  --f1:#C3A881;
+  --f2:#A48D6B;
+  --g0:#77879F;
+  --g1:#63728A;
+  --g2:#505D72;
+  --h0:#9E6C4C;
+  --h1:#85573B;
+  --h2:#6B442D;
+  --m0:#FFC53D;
+  --m1:#E0A420;
+  --m2:#B07F14;
+  --tc:#5F7458;
+  --tc2:#74855F;
+  --td:#44553E;
+  --tk:#6E5F49;
+  --bush:#6C8C5C;
+  --bush2:#54744A;
+  --sh1c:rgba(86,60,74,.26);
+  --sh2c:rgba(86,60,74,.13);
+  --wave:rgba(255,238,218,.5);
+  --tuft:#7B8C6E;
+  --stip:rgba(160,134,98,.5);
   --gedge:rgba(104,96,96,.34);
-  --u1:#F58A32; --u2:#EFE2D4; --u3:#CE4832; --uk:#8C8087;
-  --v1:#E9DCD2; --v2:#42414F; --v3:#B8452F; --vt:rgba(255,240,224,.5);
-  --bo1:#E7DACE; --bo2:#4E4A58; --wake:rgba(255,238,218,.55);
-  --ru0:#A6A6B4; --ru1:#8B8B99;
-  --bnc:#7A5F42; --bnc2:#5F4A32;
-  --pp:#35303A; --skin:#B4855F;
-  --pc1:#CE4832; --pc2:#3A5F9C; --pc3:#E2DAD2; --pc4:#F0A028; --pc5:#3E4250;
-  --onmap:#221C24; --halo:rgba(255,248,240,.9); --num:#8A4A00;
+  --u1:#F58A32;
+  --u2:#EFE2D4;
+  --u3:#CE4832;
+  --uk:#8C8087;
+  --v1:#E9DCD2;
+  --v2:#42414F;
+  --v3:#B8452F;
+  --vt:rgba(255,240,224,.5);
+  --bo1:#E7DACE;
+  --bo2:#4E4A58;
+  --wake:rgba(255,238,218,.55);
+  --ru0:#A6A6B4;
+  --ru1:#8B8B99;
+  --bnc:#7A5F42;
+  --bnc2:#5F4A32;
+  --pp:#35303A;
+  --skin:#B4855F;
+  --pc1:#CE4832;
+  --pc2:#3A5F9C;
+  --pc3:#E2DAD2;
+  --pc4:#F0A028;
+  --pc5:#3E4250;
+  --onmap:#221C24;
+  --halo:rgba(255,248,240,.9);
+  --num:#B05F00;
+  --panel:#FFFFFF;
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
+  --sig-deep:#8A5000;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
+  --terra:#B64F18;
+  --terra-pale:#FDF1E3;
+  --tile:#C8402A;
+  --tile-pale:#FCEBE7;
+  --slate:#4A6A9E;
+  --slate-pale:#ECF1F8;
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
+  --on-sig:#331C00;
+  --on-sig-2:#6B3C00;
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
 
-/* ══════════════════ 밤 (20시~) ══════════════════
-   밤에는 판까지 어두워진다. 판 토큰을 덮어쓴다. */
 [data-sky="night"]{
-  --void:#141A26; --plate:#1B2230; --water:#0C121C; --beach:#3A3B44; --green:#1A2430;
+  /* 23:00 기준 */
+  --void:#141A26;
+  --plate:#1B2230;
+  --water:#0C121C;
+  --beach:#3A3B44;
+  --green:#1A2430;
   --shore:#2E3A4A;
-  --rdc:#141A26; --rd1:#3C4658; --rd2:#2E3646; --rd3:#252C3A; --rdpv:#2A3140;
+  --rdc:#141A26;
+  --rd1:#3C4658;
+  --rd2:#2E3646;
+  --rd3:#252C3A;
+  --rdpv:#2A3140;
   --lane:#7A6A3C;
-  --a0:#6E4A44; --a1:#5A3B37; --a2:#462D2B;
-  --b0:#46536A; --b1:#3A4557; --b2:#2E3746;
-  --c0:#5E5C58; --c1:#4E4C49; --c2:#3E3C3A;
-  --d0:#63382F; --d1:#512E27; --d2:#3F231E;
-  --e0:#545C68; --e1:#464D57; --e2:#383E47;
-  --f0:#6A5C4A; --f1:#574C3D; --f2:#443C31;
-  --g0:#3B4A62; --g1:#313E52; --g2:#283242;
-  --h0:#54402F; --h1:#443328; --h2:#352820;
-  --m0:#FFC53D; --m1:#D79E22; --m2:#9E7318;
-  --tc:#2E4032; --tc2:#3A4C36; --td:#1E2A1C; --tk:#3A3228;
-  --bush:#2A3A28; --bush2:#1F2C1E;
-  --sh1c:rgba(0,0,0,.5); --sh2c:rgba(0,0,0,.24);
-  --wave:rgba(140,172,204,.3); --tuft:#2A3A28; --stip:rgba(120,124,136,.32);
+  --a0:#6E4A44;
+  --a1:#5A3B37;
+  --a2:#462D2B;
+  --b0:#4A423B;
+  --b1:#3A4557;
+  --b2:#2E3746;
+  --c0:#5E5C58;
+  --c1:#4E4C49;
+  --c2:#3E3C3A;
+  --d0:#63382F;
+  --d1:#512E27;
+  --d2:#3F231E;
+  --e0:#545C68;
+  --e1:#464D57;
+  --e2:#383E47;
+  --f0:#6A5C4A;
+  --f1:#574C3D;
+  --f2:#443C31;
+  --g0:#3B4A62;
+  --g1:#313E52;
+  --g2:#283242;
+  --h0:#54402F;
+  --h1:#443328;
+  --h2:#352820;
+  --m0:#FFC53D;
+  --m1:#D79E22;
+  --m2:#9E7318;
+  --tc:#2E4032;
+  --tc2:#3A4C36;
+  --td:#1E2A1C;
+  --tk:#3A3228;
+  --bush:#2A3A28;
+  --bush2:#1F2C1E;
+  --sh1c:rgba(0,0,0,.5);
+  --sh2c:rgba(0,0,0,.24);
+  --wave:rgba(140,172,204,.3);
+  --tuft:#2A3A28;
+  --stip:rgba(120,124,136,.32);
   --gedge:rgba(0,0,0,.4);
-  --u1:#7A4E20; --u2:#6E7480; --u3:#6B2D22; --uk:#4A5260;
-  --v1:#FFE9B0; --v2:#2C333E; --v3:#8A3427; --vt:rgba(255,233,176,.5);
-  --bo1:#4A5464; --bo2:#2A303C; --wake:rgba(150,180,210,.28);
-  --ru0:#3E4654; --ru1:#333A46;
-  --bnc:#3E3428; --bnc2:#2E271E;
-  --pp:#C9D2DE; --skin:#C6CEDA;
-  --pc1:#D8DEE8; --pc2:#AEB8C6; --pc3:#EFF3F8; --pc4:#FFD37A; --pc5:#8E9AAA;
-  --onmap:#F0F4F8; --halo:rgba(10,14,22,.92); --num:#FFC53D;
-  /* 밤 전용 판 */
-  --panel:#1C2432; --panel-2:#2E3846; --ink:#EFF3F8; --ink-2:#9BA7B5;
-  --hair:rgba(255,255,255,.13); --sig-deep:#FFD066;
-  --lift:0 18px 44px -14px rgba(0,0,0,.62), 0 2px 8px -2px rgba(0,0,0,.5);
-
-  /* 밤 UI 크롬.
-     --ui 를 밝히지 않는다 — 「background:var(--sage)+color:#fff」 규칙이 37곳
-     있어서 버튼을 밝히면 흰 글자가 사라진다. 판보다 밝고 흰 글자는 살아 있는
-     중간 잉크를 쓴다 (흰 글자 대비 7.76 · 밤판 대비 2.01).
-     강조 3색은 반대로 밝혀야 어두운 판에서 읽힌다. */
-  --ui:#46536A; --ui-d:#566580; --ui-l:#8A97AA; --ui-pale:#252E3D;
-  --ui-line:rgba(255,255,255,.14); --ui-line-2:rgba(255,255,255,.08);
-  --ui-plate:#222B39; --ui-plate-2:#2C3644;
-  --terra:#E8845A; --terra-pale:#3A2A20;
-  --tile:#E3705A;  --tile-pale:#3A241F;
-  --slate:#8FA9D4; --slate-pale:#232C3C;
-  --void-veil:rgba(20,26,38,.82); --void-veil-2:rgba(20,26,38,.95);
-  --on-sig:#331C00; --on-sig-2:#6B3C00;
-  --sh-ui:0 2px 16px rgba(0,0,0,.45);
-  --sh-ui-h:0 10px 34px -8px rgba(0,0,0,.6);
+  --u1:#7A4E20;
+  --u2:#6E7480;
+  --u3:#6B2D22;
+  --uk:#4A5260;
+  --v1:#FFE9B0;
+  --v2:#2C333E;
+  --v3:#8A3427;
+  --vt:rgba(255,233,176,.5);
+  --bo1:#4A5464;
+  --bo2:#2A303C;
+  --wake:rgba(150,180,210,.28);
+  --ru0:#3E4654;
+  --ru1:#333A46;
+  --bnc:#3E3428;
+  --bnc2:#2E271E;
+  --pp:#C9D2DE;
+  --skin:#C6CEDA;
+  --pc1:#D8DEE8;
+  --pc2:#AEB8C6;
+  --pc3:#F4F1EC;
+  --pc4:#FFD37A;
+  --pc5:#8E9AAA;
+  --onmap:#F0F4F8;
+  --halo:rgba(10,14,22,.92);
+  --num:#8A4A00;
+  --panel:#FFFFFF;
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
+  --sig-deep:#8A5000;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
+  --terra:#B64F18;
+  --terra-pale:#FDF1E3;
+  --tile:#C8402A;
+  --tile-pale:#FCEBE7;
+  --slate:#4A6A9E;
+  --slate-pale:#ECF1F8;
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
+  --on-sig:#331C00;
+  --on-sig-2:#6B3C00;
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
+
+[data-sky="dawn"]{
+  /* 05:00 — 밤과 같다. 사이 값은 JS 가 넣는다 */
+  --void:#141A26;
+  --plate:#1B2230;
+  --water:#0C121C;
+  --beach:#3A3B44;
+  --green:#1A2430;
+  --shore:#2E3A4A;
+  --rdc:#141A26;
+  --rd1:#3C4658;
+  --rd2:#2E3646;
+  --rd3:#252C3A;
+  --rdpv:#2A3140;
+  --lane:#7A6A3C;
+  --a0:#6E4A44;
+  --a1:#5A3B37;
+  --a2:#462D2B;
+  --b0:#4A423B;
+  --b1:#3A4557;
+  --b2:#2E3746;
+  --c0:#5E5C58;
+  --c1:#4E4C49;
+  --c2:#3E3C3A;
+  --d0:#63382F;
+  --d1:#512E27;
+  --d2:#3F231E;
+  --e0:#545C68;
+  --e1:#464D57;
+  --e2:#383E47;
+  --f0:#6A5C4A;
+  --f1:#574C3D;
+  --f2:#443C31;
+  --g0:#3B4A62;
+  --g1:#313E52;
+  --g2:#283242;
+  --h0:#54402F;
+  --h1:#443328;
+  --h2:#352820;
+  --m0:#FFC53D;
+  --m1:#D79E22;
+  --m2:#9E7318;
+  --tc:#2E4032;
+  --tc2:#3A4C36;
+  --td:#1E2A1C;
+  --tk:#3A3228;
+  --bush:#2A3A28;
+  --bush2:#1F2C1E;
+  --sh1c:rgba(0,0,0,.5);
+  --sh2c:rgba(0,0,0,.24);
+  --wave:rgba(140,172,204,.3);
+  --tuft:#2A3A28;
+  --stip:rgba(120,124,136,.32);
+  --gedge:rgba(0,0,0,.4);
+  --u1:#7A4E20;
+  --u2:#6E7480;
+  --u3:#6B2D22;
+  --uk:#4A5260;
+  --v1:#FFE9B0;
+  --v2:#2C333E;
+  --v3:#8A3427;
+  --vt:rgba(255,233,176,.5);
+  --bo1:#4A5464;
+  --bo2:#2A303C;
+  --wake:rgba(150,180,210,.28);
+  --ru0:#3E4654;
+  --ru1:#333A46;
+  --bnc:#3E3428;
+  --bnc2:#2E271E;
+  --pp:#C9D2DE;
+  --skin:#C6CEDA;
+  --pc1:#D8DEE8;
+  --pc2:#AEB8C6;
+  --pc3:#F4F1EC;
+  --pc4:#FFD37A;
+  --pc5:#8E9AAA;
+  --onmap:#F0F4F8;
+  --halo:rgba(10,14,22,.92);
+  --num:#8A4A00;
+  --panel:#FFFFFF;
+  --panel-2:#EAE5DF;
+  --ink:#1A1512;
+  --ink-2:#5E564F;
+  --hair:rgba(26,21,18,.10);
+  --sig-deep:#8A5000;
+  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
+  --ui:#241D18;
+  --ui-d:#120E0B;
+  --ui-l:#5A5149;
+  --ui-pale:#F2EEE9;
+  --ui-line:#DED7CF;
+  --ui-line-2:#EFEAE4;
+  --ui-plate:#F7F4F0;
+  --ui-plate-2:#ECE6DF;
+  --terra:#B64F18;
+  --terra-pale:#FDF1E3;
+  --tile:#C8402A;
+  --tile-pale:#FCEBE7;
+  --slate:#4A6A9E;
+  --slate-pale:#ECF1F8;
+  --void-veil:rgba(255,255,255,.86);
+  --void-veil-2:rgba(255,255,255,.97);
+  --on-sig:#331C00;
+  --on-sig-2:#6B3C00;
+  --sh-ui:0 2px 16px rgba(40,30,22,.07);
+  --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
+}
+
+
 
 /* ============================================================
    3D 매싱 SVG 팔레트
@@ -314,3 +666,56 @@ svg.mass{display:block; shape-rendering:geometricPrecision}
    4. 색을 CSS 에 직접 적지 않는다. 새 색이 필요하면 이 파일에 토큰을 먼저 만든다.
    5. 한국어 줄바꿈: 본문 컨테이너에 word-break:keep-all 을 반드시 넣는다.
    ============================================================ */
+
+/* ══════════════════════════════════════════════════════════════
+   옛 이름 잇기
+
+   이름을 checkin 으로 바꾸기 전 화면들(커뮤니티·가계부·장소·마이페이지)이
+   아직 옛 팔레트 이름을 쓴다. 실측 — 정의되지 않은 var() 참조 789곳.
+   그 선언들은 통째로 무효가 되어 색이 빠진 채 그려지고 있었다.
+   (지도 필터의 카페 칩만 하드코딩 보라 #7C3AED 로 남아 혼자 튀었다.)
+
+   789곳을 다 고치는 대신 이름을 잇는다. 새 화면에서는 쓰지 않는다.
+   초록 계열(--sage)은 주황(--terra)으로 받는다 — 이 제품에 초록은 없다.
+   ══════════════════════════════════════════════════════════════ */
+:root{
+  --text:var(--ink);         --text1:var(--ink);
+  --text2:var(--ink-2);      --text3:var(--ink-3);
+  --surface:var(--panel);    --surface2:var(--ui-plate);
+  --cream:var(--ui-plate);   --cream2:var(--ui-plate-2);
+  --border:var(--ui-line);   --border2:var(--ui-line-2);
+
+  /* --sage 계열은 styles_main.css 의 어댑터가 정한다.
+     여기서 또 정하면 출처가 둘이 된다. */
+  --primary:var(--terra);
+  --coral:var(--tile);       --sky:var(--slate);
+  --warm:var(--num);         --warm-pale:var(--terra-pale);
+
+  --r:8px;  --r-sm:6px;  --r-lg:12px;
+  --sh:var(--lift2);  --sh-h:var(--lift);
+}
+
+/* 날씨 선 아이콘 — page_weather / page_planner 의 wxIcon() 이 그린다.
+   이모지는 기기마다 다르게 그려지고 색을 팔레트에 맞출 수 없다. */
+.wx{
+  width:26px; height:26px; display:block; margin:0 auto;
+  fill:none; stroke:var(--ink-2); stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.w-warn .wx{ stroke:var(--num) }
+
+/* 날씨 화면 — 바깥 서비스 링크는 보조 동작이다 */
+.wx-links{ display:flex; gap:8px; margin-top:12px }
+.wx-links a{
+  flex:1; text-align:center; padding:9px 0 10px; border-radius:99px;
+  text-decoration:none; font-size:13px; font-weight:600; letter-spacing:-.02em;
+  color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
+  transition:color .15s, box-shadow .15s;
+}
+.wx-links a:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+.wx-more{ margin:12px 0 0; font-size:12px; color:var(--ink-3) }
+.wx-alert{
+  margin-top:11px; padding:11px 12px; border-radius:8px;
+  background:var(--tile-pale); box-shadow:inset 0 0 0 1px var(--tile);
+  font-size:12.5px; line-height:1.6; color:var(--ink);
+}

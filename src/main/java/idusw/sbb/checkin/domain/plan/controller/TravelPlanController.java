@@ -148,6 +148,53 @@ public class TravelPlanController {
 
 
 
+    // 경로 스크랩 — 남의 공개 경로를 스냅샷으로 저장
+    @PostMapping("/{planId}/scrap")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> scrapPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long planId) {
+        try {
+            Long scrapId = travelPlanService.scrapPlan(userDetails.getUserId(), planId);
+            return ResponseEntity.ok(ApiResponse.success("경로를 스크랩했습니다.", Map.of("scrapId", scrapId)));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    // 스크랩한 경로 목록 (「가고 싶은 여행」)
+    @GetMapping("/scrapped")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getScrappedPlans(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(ApiResponse.success(travelPlanService.getScrappedPlans(userDetails.getUserId())));
+    }
+
+    // 스크랩 해제
+    @DeleteMapping("/scrapped/{scrapPlanId}")
+    public ResponseEntity<ApiResponse<Void>> deleteScrappedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long scrapPlanId) {
+        travelPlanService.deleteScrappedPlan(userDetails.getUserId(), scrapPlanId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // 스크랩본을 내 것으로 복제 — 날짜만 받고 나머지는 스냅샷에서 복사
+    @PostMapping("/scrapped/{scrapPlanId}/clone")
+    public ResponseEntity<ApiResponse<Map<String, Long>>> cloneScrappedPlan(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable Long scrapPlanId,
+            @RequestBody Map<String, String> body) {
+        try {
+            java.time.LocalDate start = java.time.LocalDate.parse(body.get("startDate"));
+            java.time.LocalDate end = java.time.LocalDate.parse(body.get("endDate"));
+            Long tripId = travelPlanService.cloneScrappedPlan(userDetails.getUserId(), scrapPlanId, start, end);
+            return ResponseEntity.ok(ApiResponse.success("내 여행으로 복제했습니다.", Map.of("tripId", tripId)));
+        } catch (java.time.format.DateTimeParseException | NullPointerException e) {
+            return ResponseEntity.ok(ApiResponse.error("여행 날짜를 올바르게 지정해주세요."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // 내 여행 기록 일반 삭제
     @DeleteMapping("/{tripId}")
     public ResponseEntity<ApiResponse<Void>> deletePlan(

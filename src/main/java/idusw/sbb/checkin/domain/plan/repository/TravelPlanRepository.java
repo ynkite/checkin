@@ -50,6 +50,9 @@ public interface TravelPlanRepository extends JpaRepository<TravelPlan, Long> {
     // 보관해둔 복사본(INVITED)들을 찾기
     List<TravelPlan> findByScrapedFromPlanId(Long scrapedFromPlanId);
 
+    // 같은 원본을 이미 스크랩했는지 (중복 스크랩 방지)
+    boolean existsByUserIdAndScrapedFromPlanIdAndStatus(Long userId, Long scrapedFromPlanId, String status);
+
     // 공유 토큰으로 플랜 조회 (인증 없이 열리는 링크 진입점)
     Optional<TravelPlan> findByShareReadToken(String shareReadToken);
     Optional<TravelPlan> findByShareEditToken(String shareEditToken);

@@ -40,8 +40,8 @@
             <p id="ledger-trip-dest" class="ldh-dest"></p>
           </div>
           <div class="ledger-header-export">
-            <button class="btn-export-header" onclick="exportBudgetPDF()">📄 PDF</button>
-            <button class="btn-export-header" onclick="exportBudgetCSV()">📊 Excel</button>
+            <button class="btn-export-header" onclick="exportBudgetPDF()">PDF</button>
+            <button class="btn-export-header" onclick="exportBudgetCSV()">Excel</button>
           </div>
         </div>
       </div>
@@ -69,8 +69,8 @@
 
       <!-- 탭 네비게이션 -->
       <div class="ledger-tabs">
-        <button class="ledger-tab on" onclick="switchLedgerTab('charts', this)">📊 그래프</button>
-        <button class="ledger-tab" onclick="switchLedgerTab('history', this)">📝 지출 내역</button>
+        <button class="ledger-tab on" onclick="switchLedgerTab('charts', this)">그래프</button>
+        <button class="ledger-tab" onclick="switchLedgerTab('history', this)">지출 내역</button>
       </div>
 
       <!-- 탭1: 그래프 -->
@@ -81,7 +81,7 @@
 
           <!-- 왼쪽: 예상 지출 파이 -->
           <div class="ledger-chart-card">
-            <div style="font-size:14px;font-weight:700;margin-bottom:12px">📊 예상 지출 (AI 산출)</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">예상 지출 (AI 산출)</div>
             <div class="pie-wrap">
               <div id="pie-estimated" class="pie-ring" style="background:#E5E7EB"></div>
               <div id="pie-est-legend" class="pie-legend"></div>
@@ -90,7 +90,7 @@
 
           <!-- 오른쪽: 실제 지출 파이 -->
           <div class="ledger-chart-card">
-            <div style="font-size:14px;font-weight:700;margin-bottom:12px">💳 실제 지출</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:12px">실제 지출</div>
             <div class="pie-wrap">
               <div id="pie-actual" class="pie-ring" style="background:#E5E7EB"></div>
               <div id="pie-act-legend" class="pie-legend">

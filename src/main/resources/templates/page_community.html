@@ -60,9 +60,9 @@
               </div>
               <div class="post-foot">
                 <div class="post-stats">
-                  <span class="post-stat">❤️ ${p.likes}</span>
-                  <span class="post-stat">🔖 ${p.scrap}</span>
-                  <span class="post-stat">👁 ${p.views}</span>
+                  <span class="post-stat">좋아요 ${p.likes}</span>
+                  <span class="post-stat">스크랩 ${p.scrap}</span>
+                  <span class="post-stat">조회 ${p.views}</span>
                 </div>
               </div>
             </div>
@@ -114,7 +114,7 @@
       }
     }
 
-    // ⭕ 인텔리제이 에러 방지 및 안전한 화면 초기화 코드 (실행 순서 완전 해결!)
+    // 인텔리제이 에러 방지 및 안전한 화면 초기화 코드 (실행 순서 완전 해결!)
     document.addEventListener("DOMContentLoaded", async () => {
       try {
         // 1. [가장 중요] 화면에 그릴 뼈대와 데이터를 가장 먼저 주입합니다.
@@ -125,7 +125,7 @@
         window.doSearch = function() {
           var type = document.getElementById('searchType').value;
           var q = (document.getElementById('searchInp').value||'').trim().toLowerCase();
-          if (!q) { toast('검색어를 입력해주세요'); return; }
+          if (!q) { toast('무엇을 찾을지 적어 주세요'); return; }
           var found = 0;
           document.querySelectorAll('.comm-post-item').forEach(function(item) {
             var title  = (item.querySelector('.post-ttl')  ? item.querySelector('.post-ttl').textContent  : '').toLowerCase();
@@ -176,7 +176,7 @@
     <div class="comm-layout">
       <div class="comm-main">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <h2 style="font-size:22px;font-weight:800">👥 커뮤니티</h2>
+          <h2 style="font-size:22px;font-weight:800">커뮤니티</h2>
           <button class="btn-f" style="padding:7px 14px;font-size:12px" onclick="checkAndOpenWrite()">+ 후기 작성</button>
         </div>
 
@@ -222,14 +222,14 @@
 
       <div class="comm-side">
         <div class="comm-side-sec">
-          <div class="comm-side-ttl">🔥 이번 주 인기 태그</div>
+          <div class="comm-side-ttl">이번 주 인기 태그</div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px" id="popular-tags-list">
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
         </div>
 
         <div class="comm-side-sec">
-          <div class="comm-side-ttl">✦ AI 취향 추천</div>
+          <div class="comm-side-ttl">✦AI 취향 추천</div>
           <div style="font-size:12px;color:var(--text2);margin-bottom:12px" id="ai-reco-title"></div>
           <div id="ai-reco-list">
           </div>
@@ -240,7 +240,7 @@
 
   <div id="notifPopup" style="display:none;position:fixed;top:58px;right:190px;width:360px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border2);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:1500">
     <div style="padding:14px 16px;border-bottom:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:14px;font-weight:700">🔔 알림</div>
+      <div style="font-size:14px;font-weight:700">알림</div>
       <button style="background:none;border:none;font-size:16px;cursor:pointer;color:var(--text3)" onclick="document.getElementById('notifPopup').style.display='none'">✕</button>
     </div>
     <div id="notifList" style="max-height:400px;overflow-y:auto;padding:8px"></div>
@@ -249,20 +249,20 @@
   <div class="overlay" id="writeModal" onclick="if(event.target===this)closeWrite()">
     <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
       <div class="modal-hd">
-        <div class="modal-ttl">✍️ 후기 작성</div>
+        <div class="modal-ttl">후기 작성</div>
         <button class="modal-x" onclick="closeWrite()">✕</button>
       </div>
       <div class="modal-bd" style="overflow-y:auto;flex:1;padding:20px">
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">제목</label>
-          <input class="form-input" placeholder="제목을 입력해주세요" id="writeTitle">
+          <input class="form-input" placeholder="제목을 적어 주세요" id="writeTitle">
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">내 여행 기록 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(방문 장소 자동 바인딩)</span></label>
           <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value; onWritePlanSelect(this.value)">
           </select>
           <div id="placeReviewsSection">
-            <div class="plr-section-title">📍 장소별 별점 &amp; 한줄평 <span style="font-size:10px;font-weight:400;color:var(--text3)">(선택 사항)</span></div>
+            <div class="plr-section-title">장소별 별점 &amp; 한줄평 <span style="font-size:10px;font-weight:400;color:var(--text3)">(선택 사항)</span></div>
             <div id="placeReviewsBody">
               <div class="plr-empty">플랜을 선택하면 방문 장소가 표시됩니다.</div>
             </div>
@@ -372,23 +372,23 @@
     const container = document.getElementById('page-' + pageId);
     if (!container) return;
 
-    const starsHtml = '⭐'.repeat(data.rating || 4);
+    const starsHtml = '★'.repeat(data.rating || 4);
     const placesHtml = data.places ? `
       <div class="bcard" style="margin-bottom:18px;padding:16px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px">📍 방문한 장소</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">방문한 장소</div>
         ${data.places.map(p => `
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border2)">
             <div>
               <div style="font-size:13px;font-weight:700">${p.name}</div>
               <div style="font-size:11px;color:var(--text3)">${p.type}</div>
             </div>
-            <div style="font-size:12px;color:var(--warm)">⭐ ${p.rating}</div>
+            <div style="font-size:12px;color:var(--warm)">★ ${p.rating}</div>
           </div>
         `).join('')}
       </div>
     ` : (data.info ? `
       <div class="bcard" style="margin-bottom:18px;padding:16px">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px">🏨 숙소 정보</div>
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">숙소 정보</div>
         ${Object.entries(data.info).map(([k,v]) => `
           <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--border2)">
             <span style="color:var(--text3)">${k === 'price' ? '가격' : k === 'location' ? '위치' : '편의시설'}</span>
@@ -406,7 +406,7 @@
       <h1 class="review-h1">${data.title}</h1>
       <div class="review-meta-row" style="margin-bottom:12px">
         <span style="font-size:12px;color:var(--text3)">
-          ${data.author} · ${data.date} · ❤️ ${data.likes} · 🔖 ${data.scraps} · 👁 ${data.views}
+          ${data.author} · ${data.date} · 좋아요 ${data.likes} · 스크랩 ${data.scraps} · 조회 ${data.views}
         </span>
       </div>
       ${data.rating ? `<div style="margin-bottom:14px;font-size:14px">${starsHtml} <span style="font-size:12px;color:var(--text3)">(${data.rating}.0)</span></div>` : ''}
@@ -435,7 +435,7 @@
     // const allPlaces = { ...MOCK_TOUR_PLACES, ...MOCK_CAFE_PLACES };
     // const data = allPlaces[pageId];
     // if (!data) return;
-    return; // 👇 API 연동까지 기본 HTML 유지
+    return; // API 연동까지 기본 HTML 유지
 
     const container = document.getElementById('page-' + pageId);
     if (!container) return;
@@ -443,11 +443,10 @@
     container.querySelector('.place-review-wrap').innerHTML = `
       <button class="review-back" onclick="go('community')">← 커뮤니티</button>
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
-        <div style="font-size:36px">📍</div>
         <div>
           <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">${data.name}</h2>
           <div style="font-size:12px;color:var(--text3)">${data.region} · ${data.type}</div>
-          <div style="font-size:13px;margin-top:4px">⭐ <strong>${data.rating}</strong> <span style="color:var(--text3)">(리뷰 ${data.reviews.toLocaleString()}개)</span></div>
+          <div style="font-size:13px;margin-top:4px">★ <strong>${data.rating}</strong> <span style="color:var(--text3)">(리뷰 ${data.reviews.toLocaleString()}개)</span></div>
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px">
@@ -456,7 +455,7 @@
       <div class="bcard" style="margin-bottom:18px;padding:18px">
         <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">${data.desc}</p>
         <div style="border-top:1px dashed var(--border2);padding-top:12px">
-          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">📋 방문 정보</div>
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--text)">방문 정보</div>
           ${Object.entries(data.info).map(([k,v]) => `
             <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--border2)">
               <span style="color:var(--text3)">${k === 'hours' ? '운영시간' : k === 'price' ? '입장료/가격' : '팁'}</span>

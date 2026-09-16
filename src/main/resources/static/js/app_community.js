@@ -206,14 +206,14 @@ function _renderPostList(posts, reset) {
         '<div class="post-ttl" style="margin-top:5px">' + _esc(post.title) + '</div>' +
         '<div class="post-foot">' +
         '<div class="post-stats">' +
-        '<span class="post-stat" id="like-cnt-' + pid + '">❤️ ' + (post.likeCount  || 0) + '</span>' +
-        '<span class="post-stat">👁 '                          + (post.viewCount  || 0) + '</span>' +
-        '<span class="post-stat" id="scrap-cnt-' + pid + '">🔖 ' + (post.scrapCount || 0) + '</span>' +
+        '<span class="post-stat" id="like-cnt-' + pid + '">좋아요 ' + (post.likeCount  || 0) + '</span>' +
+        '<span class="post-stat">조회 '                          + (post.viewCount  || 0) + '</span>' +
+        '<span class="post-stat" id="scrap-cnt-' + pid + '">스크랩 ' + (post.scrapCount || 0) + '</span>' +
         '</div>' +
         '<div style="display:flex;gap:6px">' +
-        '<button onclick="likePost(event,' + pid + ')"  class="btn-comm-sm">❤️ 좋아요</button>' +
-        '<button onclick="scrapPost(event,' + pid + ')" class="btn-comm-sm">🔖 스크랩</button>' +
-        '<button onclick="openReportPostModal(event,' + pid + ')" class="btn-comm-sm">🚨 신고</button>' +
+        '<button onclick="likePost(event,' + pid + ')"  class="btn-comm-sm">좋아요</button>' +
+        '<button onclick="scrapPost(event,' + pid + ')" class="btn-comm-sm">스크랩</button>' +
+        '<button onclick="openReportPostModal(event,' + pid + ')" class="btn-comm-sm">신고</button>' +
         '</div>' +
         '</div>' +
         '</div>';
@@ -256,7 +256,7 @@ async function doSearch() {
   const type   = typeEl ? typeEl.value : 'title';
   const q      = inpEl  ? inpEl.value.trim() : '';
 
-  if (!q) { toast('검색어를 입력해주세요'); return; }
+  if (!q) { toast('무엇을 찾을지 적어 주세요'); return; }
 
   const qs = new URLSearchParams({
     keyword:    q,
@@ -331,18 +331,18 @@ async function openPostDetail(postId) {
 async function likePost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/likes', {});
   if (res.success) {
     const el = document.getElementById('like-cnt-' + postId);
     if (el) {
       const n = parseInt(el.textContent.replace(/\D/g, '')) || 0;
-      el.textContent = '❤️ ' + (n + 1);
+      el.textContent = '좋아요 ' + (n + 1);
     }
-    toast('❤️ 좋아요!');
+    toast('좋아요!');
   } else {
-    toast(res.message || '⚠️ 좋아요 처리에 실패했습니다.');
+    toast(res.message || '좋아요를 누르지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   }
 }
 
@@ -353,18 +353,18 @@ async function likePost(e, postId) {
 async function scrapPost(e, postId) {
   e.stopPropagation();
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + postId + '/scraps', {});
   if (res.success) {
     const el = document.getElementById('scrap-cnt-' + postId);
     if (el) {
       const n = parseInt(el.textContent.replace(/\D/g, '')) || 0;
-      el.textContent = '🔖 ' + (n + 1);
+      el.textContent = '스크랩 ' + (n + 1);
     }
-    toast('🔖 스크랩했습니다.');
+    toast('스크랩했습니다.');
   } else {
-    toast(res.message || '⚠️ 스크랩 처리에 실패했습니다.');
+    toast(res.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   }
 }
 
@@ -388,7 +388,7 @@ async function submitReportPost() {
   const res = await api.post('/api/posts/' + _reportPostId + '/reports', { reason });
   const modal = document.getElementById('reportPostModal');
   if (modal) modal.classList.remove('open');
-  toast((res && res.success !== false) ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
+  toast((res && res.success !== false) ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportPostId = null;
 }
 
@@ -398,7 +398,7 @@ async function submitReportPost() {
  *      PATCH /api/posts/{postId}
  * ═══════════════════════════════════════════════════════════════════ */
 async function submitReview() {
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const titleEl   = document.getElementById('writeTitle');
@@ -413,7 +413,7 @@ async function submitReview() {
       : [];
   const isPublic = publicEl ? (publicEl.checked ? 1 : 0) : 1;
 
-  if (!title || !content) { toast('제목과 내용을 입력해주세요'); return; }
+  if (!title || !content) { toast('제목과 내용을 적어 주세요'); return; }
 
   const body = {
     title,
@@ -427,11 +427,11 @@ async function submitReview() {
 
   if (res.success) {
     closeWrite();
-    toast('후기가 등록되었습니다! 🎉');
+    toast('후기를 올렸습니다. ');
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
   } else {
-    toast('⚠️ ' + (res.message || '게시글 등록에 실패했습니다.'));
+    toast((res.message || '게시글 등록에 실패했습니다.'));
   }
 }
 
@@ -443,15 +443,15 @@ async function submitEditReview() {
   const title    = titleEl  ? titleEl.value.trim() : '';
   const content  = editorEl ? (editorEl.innerText || editorEl.value || '').trim() : '';
 
-  if (!title || !content) { toast('제목과 내용을 입력해주세요'); return; }
+  if (!title || !content) { toast('제목과 내용을 적어 주세요'); return; }
 
   const res = await api.patch('/api/posts/' + _openedPostId, { title, content });
   if (res.success) {
-    toast('✅ 후기가 수정되었습니다.');
+    toast('후기가 수정되었습니다.');
     go('review');
     openPostDetail(_openedPostId);
   } else {
-    toast('⚠️ ' + (res.message || '수정에 실패했습니다.'));
+    toast((res.message || '수정에 실패했습니다.'));
   }
 }
 
@@ -465,7 +465,7 @@ async function deleteMyPost(postId) {
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
   } else {
-    toast('⚠️ ' + (res.message || '삭제에 실패했습니다.'));
+    toast((res.message || '삭제에 실패했습니다.'));
   }
 }
 
@@ -485,7 +485,7 @@ async function loadComments(postId) {
   if (!comments.length) {
     list.innerHTML =
         '<div style="color:var(--text3);font-size:13px;padding:10px 0;text-align:center">' +
-        '첫 댓글을 남겨보세요!</div>';
+        '첫 댓글을 남겨 보세요.</div>';
     return;
   }
 
@@ -504,7 +504,7 @@ async function loadComments(postId) {
       '<button onclick="openReportCommentModal(' + c.commentId + ', ' + postId + ')" ' +
       'style="margin-left:auto;font-size:10px;background:none;border:1px solid var(--border2);' +
       'border-radius:4px;padding:1px 7px;cursor:pointer;color:var(--text3)" ' +
-      'title="댓글 신고">🚨 신고</button>' +
+      'title="댓글 신고">신고</button>' +
       '</div>' +
       '<div style="font-size:13px;color:var(--text2);line-height:1.6">' + _esc(c.content || '') + '</div>' +
       '</div>'
@@ -541,7 +541,7 @@ async function submitReportComment() {
   if (!_reportCommentPostId) {
     _reportCommentPostId = window._currentPostId || window._openedPostId;
   }
-  if (!_reportCommentPostId) { toast('⚠️ 신고 대상 게시글을 찾을 수 없습니다.'); return; }
+  if (!_reportCommentPostId) { toast('신고 대상 게시글을 찾을 수 없습니다.'); return; }
 
   const modal = document.getElementById('reportCommentModal');
   if (modal) modal.style.display = 'none';
@@ -552,27 +552,27 @@ async function submitReportComment() {
     commentId: _reportCommentId
   });
   const ok = res && res.success !== false;
-  toast(ok ? '🚨 신고가 접수되었습니다.' : '⚠️ 신고 처리에 실패했습니다.');
+  toast(ok ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportCommentId     = null;
   _reportCommentPostId = null;
 }
 
 async function submitComment() {
-  if (_isSuspended) { toast('⛔ 해당 계정은 커뮤니티 기능이 제한되었습니다.'); return; }
+  if (_isSuspended) { toast('이 계정은 커뮤니티를 쓸 수 없습니다.'); return; }
   if (!_loggedIn)   { toast('로그인이 필요합니다'); return; }
 
   const inp     = document.getElementById('commentInput');
   const content = inp ? inp.value.trim() : '';
-  if (!content)  { toast('댓글 내용을 입력해주세요'); return; }
+  if (!content)  { toast('댓글을 적어 주세요'); return; }
   if (!_openedPostId) { toast('게시글 정보가 없습니다.'); return; }
 
   const res = await api.post('/api/posts/' + _openedPostId + '/comments', { content });
   if (res.success) {
     if (inp) inp.value = '';
-    toast('댓글이 등록되었습니다!');
+    toast('댓글을 올렸습니다.');
     await loadComments(_openedPostId);
   } else {
-    toast('⚠️ ' + (res.message || '댓글 등록에 실패했습니다.'));
+    toast((res.message || '댓글 등록에 실패했습니다.'));
   }
 }
 
@@ -588,7 +588,7 @@ function _scrapDbCategory(tabKey) {
   return { stay: 'STAY', food: 'FOOD', tour: 'TOUR', cafe: 'CAFE' }[tabKey] || null;
 }
 function _scrapCatIcon(tabKey) {
-  return { stay: '🏨', food: '🍽️', tour: '🗺️', cafe: '☕' }[tabKey] || '📍';
+  return { stay: '숙', food: '맛', tour: '관', cafe: '카' }[tabKey] || '곳';
 }
 
 // 숙소/맛집/관광지/카페 스크랩 목록 (Place 스크랩)
@@ -615,12 +615,12 @@ async function loadMyScrap(tabKey) {
           '<div class="post-foot">' +
           '<div class="post-stats">' +
           '<span class="post-stat">' + _esc(s.address || '') + '</span>' +
-          (s.avgRating ? '<span class="post-stat">⭐ ' + s.avgRating + '</span>' : '') +
+          (s.avgRating ? '<span class="post-stat">★ ' + s.avgRating + '</span>' : '') +
           '</div>' +
           '<button onclick="deleteScrap(event,' + s.scrapId + ',\'' + tabKey + '\')" ' +
           'style="font-size:11px;background:none;border:1px solid var(--border2);' +
           'border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral)">' +
-          '🗑️ 삭제' +
+          '삭제' +
           '</button>' +
           '</div>' +
           '</div>'
@@ -646,13 +646,13 @@ async function loadMyRouteScrap() {
           '<div class="post-ttl" style="margin-top:5px">' + _esc(p.title || '') + '</div>' +
           '<div class="post-foot">' +
           '<div class="post-stats">' +
-          '<span class="post-stat">❤️ ' + (p.likes || 0) + '</span>' +
-          '<span class="post-stat">👁 '  + (p.views || 0) + '</span>' +
+          '<span class="post-stat">좋아요 ' + (p.likes || 0) + '</span>' +
+          '<span class="post-stat">조회 '  + (p.views || 0) + '</span>' +
           '</div>' +
           '<button onclick="cancelRouteScrap(event,' + p.postId + ')" ' +
           'style="font-size:11px;background:none;border:1px solid var(--border2);' +
           'border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral)">' +
-          '🗑️ 스크랩 취소' +
+          '스크랩 취소' +
           '</button>' +
           '</div>' +
           '</div>'
@@ -666,10 +666,10 @@ async function cancelRouteScrap(e, postId) {
   e.stopPropagation();
   const res = await api.post('/api/posts/' + postId + '/scraps', {});
   if (res.success) {
-    toast('🔖 스크랩을 취소했습니다.');
+    toast('스크랩을 취소했습니다.');
     loadMyRouteScrap();
   } else {
-    toast(res.message || '⚠️ 취소에 실패했습니다.');
+    toast(res.message || '취소에 실패했습니다.');
   }
 }
 
@@ -677,10 +677,10 @@ async function deleteScrap(e, scrapId, tabKey) {
   e.stopPropagation();
   const res = await api.del('/api/scraps/' + scrapId);
   if (res.success) {
-    toast('🔖 스크랩을 삭제했습니다.');
+    toast('스크랩을 삭제했습니다.');
     if (tabKey) loadMyScrap(tabKey);
     else ['stay', 'food', 'tour', 'cafe'].forEach(loadMyScrap);
-  } else             { toast('⚠️ 삭제에 실패했습니다.'); }
+  } else             { toast('삭제에 실패했습니다.'); }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -703,8 +703,8 @@ async function loadMyReviews() {
               '<span class="post-cat">' + _catLabel((x.styleTags || [])[0] || 'route') + '</span>' +
               '<div class="post-ttl" style="margin-top:5px">' + _esc(x.title || '') + '</div>' +
               '<div class="post-foot"><div class="post-stats">' +
-              '<span class="post-stat">❤️ ' + (x.likeCount || 0) + '</span>' +
-              '<span class="post-stat">👁 '  + (x.viewCount || 0) + '</span>' +
+              '<span class="post-stat">좋아요 ' + (x.likeCount || 0) + '</span>' +
+              '<span class="post-stat">조회 '  + (x.viewCount || 0) + '</span>' +
               '</div></div>' +
               '</div>'
           ).join('')
@@ -896,14 +896,14 @@ function renderDestBars(dests) {
     const msg = document.getElementById('su-notify-msg') && document.getElementById('su-notify-msg').value;
     const res = await api.patch('/api/admin/users/' + uid + '/suspend', {reason: r, notifyMessage: msg});
     closeSuspendModal();
-    toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '⚠️ 정지 처리에 실패했습니다.');
+    toast(res.success ? '계정 정지 처리 완료 · 알림 전송됨' : '정지하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminUsers();
   }
 
   /* ─── 정지 해제 ─── */
   async function unsuspendUser(userId) {
     const res = await api.patch('/api/admin/users/' + userId + '/unsuspend', {});
-    toast(res.success ? '✅ 계정 정지가 해제되었습니다.' : '⚠️ 처리에 실패했습니다.');
+    toast(res.success ? '계정 정지가 해제되었습니다.' : '하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminUsers();
   }
 
@@ -961,7 +961,7 @@ function renderDestBars(dests) {
     const isDelete = (type === 'delete');
 
     const el = (eid) => document.getElementById(eid);
-    if (el('reportActionTitle')) el('reportActionTitle').textContent = isDelete ? '🗑️ 게시글 삭제 처리' : '↩️ 신고 반려 처리';
+    if (el('reportActionTitle')) el('reportActionTitle').textContent = isDelete ? '게시글 삭제 처리' : '↩신고 반려 처리';
     if (el('ra-id')) el('ra-id').textContent = id;
     if (el('ra-post')) el('ra-post').textContent = post;
     if (el('ra-reporter')) el('ra-reporter').textContent = reporter;
@@ -1031,7 +1031,7 @@ function renderDestBars(dests) {
         ? (_reportAction === 'delete'
             ? '게시글 삭제 완료 · 작성자 알림 전송됨'
             : '신고 반려 완료 · 신고자 알림 전송됨')
-        : '⚠️ 처리에 실패했습니다.');
+        : '하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     if (res.success) loadAdminReports();
   }
 
@@ -1080,7 +1080,7 @@ function renderDestBars(dests) {
     const planId = get('cur-plan-id');
 
     if (!title) {
-      toast('큐레이션 제목을 입력해주세요');
+      toast('큐레이션 제목을 적어 주세요');
       return;
     }
 
@@ -1102,12 +1102,12 @@ function renderDestBars(dests) {
     }
 
     if (res.success) {
-      toast(_editCurationId ? '✅ 큐레이션이 수정되었습니다.' : '✅ 큐레이션이 등록되었습니다.');
+      toast(_editCurationId ? '큐레이션이 수정되었습니다.' : '큐레이션을 올렸습니다.');
       _editCurationId = null;
       _clearCurationForm();
       loadAdminCurations();
     } else {
-      toast('⚠️ ' + (res.message || '처리에 실패했습니다.'));
+      toast((res.message || '하지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
     }
   }
 
@@ -1142,10 +1142,10 @@ function renderDestBars(dests) {
     if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/admin/curations/' + curationId);
     if (res.success) {
-      toast('✅ 큐레이션이 삭제되었습니다.');
+      toast('큐레이션이 삭제되었습니다.');
       loadAdminCurations();
     } else {
-      toast('⚠️ 삭제에 실패했습니다.');
+      toast('삭제에 실패했습니다.');
     }
   }
 
@@ -1202,19 +1202,19 @@ function renderDestBars(dests) {
     div.className = 'pdb-item';
     div.style.cssText = 'flex-direction:column;align-items:flex-start;gap:8px;margin-top:6px';
 
-    /* ✅ 수정: <select> 태그를 문자열 안에 올바르게 포함 */
+    /* 수정: <select> 태그를 문자열 안에 올바르게 포함 */
     div.innerHTML =
         '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
-        '<span class="pdb-type-icon">📍</span>' +
+        '<span class="pdb-type-icon">곳</span>' +
         '<input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">' +
         '<button class="btn-pdb-rm" onclick="this.closest(\'.pdb-item\').remove()" style="flex-shrink:0">✕</button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">' +
         '<select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
-        '<option value="관광지">📍 관광지</option>' +
-        '<option value="숙소">🏨 숙소</option>' +
-        '<option value="맛집">🍽️ 맛집</option>' +
-        '<option value="카페">☕ 카페</option>' +
+        '<option value="관광지">관광지</option>' +
+        '<option value="숙소">숙소</option>' +
+        '<option value="맛집">맛집</option>' +
+        '<option value="카페">카페</option>' +
         '</select>' +
         '<input type="time" value="10:00" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +
         '<input type="number" placeholder="금액(원)" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +

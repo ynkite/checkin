@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="CheckinApplication" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="idusw.sbb.checkin.CheckinApplication" />
+    <module name="checkin.main" />
+    <!-- Windows 명령줄 길이 한계 회피: classpath를 @argfile 로 전달 -->
+    <option name="SHORTEN_COMMAND_LINE" value="ARGS_FILE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

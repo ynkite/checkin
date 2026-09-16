@@ -14,15 +14,150 @@
     const MAP_PLAN_INFO = {
       title:     '제주도 3박4일 힐링 여행',
       meta:      '2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차',
-      statusTag: '✏️ 수정 중',
+      statusTag: '수정 중',
     };
 
-    // ── 지도 필터 칩 ──
+    /* ════════════════════════════════════════════════════════
+     *  레일·경로 공통 도우미
+     *
+     *  시각은 "HH:MM" 문자열, 이동 정보는 백엔드가
+     *  "자차 · 12.4km · 약 24분 · 2,000원" 꼴로 채운다.
+     *  (AiRouteService.recalcTransitWithKakao 의 포맷)
+     *  파싱에 실패한 값은 화면에 만들지 않는다 — 가짜 자리표시자를 두지 않는다.
+     * ════════════════════════════════════════════════════════ */
+
+    // 여행 시작일(YYYY-MM-DD). trip API 가 주고, 없으면 플래너 입력값을 쓴다.
+    window._mpTripStart = window._mpTripStart || null;
+
+    function _mpParseHm(s) {
+      var m = /(\d{1,2})\s*:\s*(\d{2})/.exec(s || '');
+      if (!m) return null;
+      var h = parseInt(m[1], 10), mi = parseInt(m[2], 10);
+      if (h > 23 || mi > 59) return null;
+      return h * 60 + mi;
+    }
+
+    function _mpFmtMin(min) {
+      if (min == null || !isFinite(min) || min <= 0) return null;
+      var h = Math.floor(min / 60), m = Math.round(min % 60);
+      if (h && m) return h + '시간 ' + m + '분';
+      if (h) return h + '시간';
+      return m + '분';
+    }
+
+    // 이동 문자열 하나를 뜯는다. 못 뜯은 항목은 null 로 남긴다.
+    function _mpParseTransit(raw) {
+      var s = String(raw || '');
+      var o = { raw: s, km: null, min: null, cost: null, mode: null };
+      var mk = /([\d.]+)\s*km/i.exec(s);
+      if (mk) o.km = parseFloat(mk[1]);
+      var mh = /(\d+)\s*시간/.exec(s);
+      var mm = /(\d+)\s*분/.exec(s);
+      if (mh || mm) o.min = (mh ? parseInt(mh[1], 10) * 60 : 0) + (mm ? parseInt(mm[1], 10) : 0);
+      var mc = /₩\s*([\d,]+)/.exec(s);
+      if (mc) o.cost = mc[1] + '원';
+      if (s.indexOf('도보') >= 0) o.mode = '도보';
+      else if (s.indexOf('대중교통') >= 0 || s.indexOf('🚌') >= 0) o.mode = '대중교통';
+      else if (s.indexOf('자차') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
+      return o;
+    }
+
+    // 연결 문구 — "차로 24분" / "대중교통 18분" / 못 읽으면 "이동"
+    function _mpTransitLabel(t) {
+      var d = _mpFmtMin(t.min);
+      if (t.mode && d) return t.mode + ' ' + d;
+      if (d) return d + ' 이동';
+      if (t.mode) return t.mode + ' 이동';
+      return '이동';
+    }
+
+    function _mpTransitMeta(t) {
+      var bits = [];
+      if (t.km != null && t.km > 0) bits.push(t.km.toFixed(1) + 'km');
+      if (t.cost) bits.push(t.cost);
+      return bits.join(' · ');
+    }
+
+    // 하루 합계 — 셀 수 있는 것만 센다. 하나도 없으면 빈 문자열.
+    function _mpDaySummary(places) {
+      var n = 0, min = 0, km = 0, hasMin = false, hasKm = false;
+      (places || []).forEach(function (p) {
+        if (!p.transit) return;
+        n++;
+        var t = _mpParseTransit(p.transit);
+        if (t.min != null) { min += t.min; hasMin = true; }
+        if (t.km != null) { km += t.km; hasKm = true; }
+      });
+      if (n === 0) return '';
+      var bits = ['이동 ' + n + '회'];
+      if (hasMin) { var d = _mpFmtMin(min); if (d) bits.push('총 ' + d); }
+      if (hasKm && km > 0) bits.push(km.toFixed(1) + 'km');
+      return bits.join(' · ');
+    }
+
+    var _MP_DOW = ['일', '월', '화', '수', '목', '금', '토'];
+
+    // N일차의 실제 날짜. 시작일을 모르면 null.
+    function _mpDayDate(dayNum) {
+      var s = window._mpTripStart;
+      if (!s) return null;
+      var d = new Date(String(s).slice(0, 10) + 'T00:00:00');
+      if (isNaN(d.getTime())) return null;
+      d.setDate(d.getDate() + (parseInt(dayNum, 10) - 1));
+      return d;
+    }
+
+    /* 그날의 현재 위치 인덱스.
+     *   >= 0  : 지금 그 장소에 있다(또는 그 장소에서 출발했다)
+     *   -1    : 오늘이지만 아직 첫 일정 전
+     *   -2    : 아직 오지 않은 날 (또는 날짜를 모름)
+     *   -3    : 이미 지나간 날                                   */
+    function _mpLiveIndex(dayNum, places) {
+      var d = _mpDayDate(dayNum);
+      if (!d) return -2;
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var t0 = new Date(d); t0.setHours(0, 0, 0, 0);
+      if (t0.getTime() < today.getTime()) return -3;
+      if (t0.getTime() > today.getTime()) return -2;
+      var now = new Date();
+      var mins = now.getHours() * 60 + now.getMinutes();
+      var idx = -1;
+      for (var i = 0; i < places.length; i++) {
+        var m = _mpParseHm(places[i].time);
+        if (m == null) continue;
+        if (m <= mins) idx = i; else break;
+      }
+      return idx;
+    }
+
+    // 구간 상태: 'past' | 'live' | 'next'
+    function _mpSegState(liveIdx, segIdx, segCount) {
+      if (liveIdx === -3) return 'past';
+      if (liveIdx < 0) return 'next';
+      if (liveIdx >= segCount) return 'past';
+      if (segIdx < liveIdx) return 'past';
+      if (segIdx === liveIdx) return 'live';
+      return 'next';
+    }
+
+    function _mpEsc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    // 작은따옴표 안에 들어가는 JS 문자열 — 먼저 JS 로 escape 하고, 속성값이므로 HTML 로 한 번 더.
+    function _mpQ(s) {
+      return String(s == null ? '' : s)
+        .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ── 지도 필터 칩 (색 점은 CSS 가 붙인다) ──
     const MAP_FILTERS = [
-      { id: 'filter-stay', cls: 'mf-stay', type: 'stay', icon: '🏨', label: '숙소' },
-      { id: 'filter-food', cls: 'mf-food', type: 'food', icon: '🍽️', label: '맛집' },
-      { id: 'filter-tour', cls: 'mf-tour', type: 'tour', icon: '📍', label: '관광지' },
-      { id: 'filter-cafe', cls: 'mf-cafe', type: 'cafe', icon: '☕', label: '카페' },
+      { id: 'filter-stay', cls: 'mf-stay', type: 'stay', label: '숙소' },
+      { id: 'filter-food', cls: 'mf-food', type: 'food', label: '맛집' },
+      { id: 'filter-tour', cls: 'mf-tour', type: 'tour', label: '관광지' },
+      { id: 'filter-cafe', cls: 'mf-cafe', type: 'cafe', label: '카페' },
     ];
 
     // ── [변경] 하드코딩 배열들을 let으로 바꾸어 AI 데이터가 덮어쓸 수 있도록 수정 ──
@@ -40,30 +175,30 @@
 
     // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
     const MAP_BUDGET_ITEMS = [
-      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '₩180,000', color: 'var(--sage)',  barPct: 78 },
-      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '₩96,000',  color: 'var(--coral)', barPct: 42 },
-      { label: '교통비', sub: '이동거리 ÷ 연비 × ₩2,000', amount: '₩80,000',  color: '#22B5C4',       barPct: 35 },
-      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '₩48,000',  color: '#F5A623',       barPct: 21 },
+      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '180,000원', color: 'var(--sage)',  barPct: 78 },
+      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '96,000원',  color: 'var(--coral)', barPct: 42 },
+      { label: '교통비', sub: '이동거리 ÷ 연비 × 2,000원', amount: '80,000원',  color: '#22B5C4',       barPct: 35 },
+      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '48,000원',  color: '#F5A623',       barPct: 21 },
     ];
-    const MAP_BUDGET_TOTAL     = '₩404,000';
-    const MAP_BUDGET_REMAINING = '₩96,000';
+    const MAP_BUDGET_TOTAL     = '404,000원';
+    const MAP_BUDGET_REMAINING = '96,000원';
 
     // ── 날씨 알림 ──
     const MAP_WEATHER_ALERT = {
-      title: '🌧️ 06/16 오후 날씨 악화 예보',
-      body:  '태그 유사도 분석 기반 실내 대체 장소 제안',
-      cta:   'AI 대체 일정 제안 보기 →',
-      toastMsg: "AI 대체 일정: 실내 장소 우선 배치 (PLACES.is_indoor=1)",
+      title: '여행 기간에 비 소식이 있습니다',
+      body:  '그날 야외 일정을 실내로 바꿔 볼 수 있습니다.',
+      cta:   '대체 일정 보기',
+      toastMsg: '실내 장소를 먼저 배치했습니다.',
     };
 
     // ── 맵 하단 액션 버튼 ──
     const MAP_ACTION_BTNS = [
-      { id: 'mapTabMap',    tab: 'map',    icon: '🗺', label: '지도', default: true },
-      { id: 'mapTabBudget', tab: 'budget', icon: '💰', label: '예산', default: false },
+      { id: 'mapTabMap',    tab: 'map',    label: '지도', default: true },
+      { id: 'mapTabBudget', tab: 'budget', label: '예산', default: false },
     ];
 
     // ── 총 예산 표시 초기값 ──
-    const MAP_TOTAL_BUDGET_DISPLAY = '₩ 404,000';
+    const MAP_TOTAL_BUDGET_DISPLAY = '404,000원';
 
 
     // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
@@ -84,40 +219,16 @@
     });
     window.addEventListener('resize', syncNavHeight);
 
-    // ── 모바일 탭 전환 ──
-    function switchMobileMapTab(tab) {
-      var left = document.querySelector('.map-left');
-      var right = document.getElementById('mapRightArea');
-      var mapView = document.getElementById('mapView');
-      var budgetView = document.getElementById('budgetView');
-      var btns = ['mobTabItinerary', 'mobTabMap', 'mobTabBudget'];
-      btns.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el) el.classList.remove('on');
-      });
-
-      if (tab === 'itinerary') {
-        left.classList.remove('mob-hidden');
-        right.classList.add('mob-hidden');
-        document.getElementById('mobTabItinerary').classList.add('on');
-      } else if (tab === 'map') {
-        left.classList.add('mob-hidden');
-        right.classList.remove('mob-hidden');
-        if (mapView) mapView.style.display = 'block';
-        if (budgetView) budgetView.style.display = 'none';
-        document.getElementById('mobTabMap').classList.add('on');
-        setTimeout(function() {
-          if (window._kakaoMap) window._kakaoMap.relayout();
-        }, 50);
-      } else if (tab === 'budget') {
-        left.classList.add('mob-hidden');
-        right.classList.remove('mob-hidden');
-        if (mapView) mapView.style.display = 'none';
-        if (budgetView) budgetView.style.display = 'block';
-        if (typeof _loadMapBudget === 'function') _loadMapBudget();
-        document.getElementById('mobTabBudget').classList.add('on');
-      }
-    }
+    // 좁은 화면에서는 지도 아래에 레일이 이어지므로 탭 전환이 필요 없다.
+    // 지도 크기만 다시 잡아 주면 된다.
+    window.addEventListener('resize', function () {
+      clearTimeout(window._mpResizeT);
+      window._mpResizeT = setTimeout(function () {
+        if (window._kakaoMap) window._kakaoMap.relayout();
+        if (typeof drawRouteLayer === 'function') drawRouteLayer();
+        if (typeof _mpApplyFold === 'function') _mpApplyFold();
+      }, 140);
+    });
 
     // ── 확정/수정 상태 관리 ──────────────────────────────────
     // window._planConfirmed: true=확정(잠금) / false=수정 중(편집 가능)
@@ -131,13 +242,11 @@
       const left  = document.querySelector('.map-left');
 
       if (badge) {
-        badge.innerHTML = isConfirmed ? '✅ 확정됨' : '✏️ 수정 중';
-        badge.style.background = isConfirmed ? '#E8F5E9' : 'var(--sage-pale)';
-        badge.style.color      = isConfirmed ? '#2E7D32' : 'var(--sage-d)';
+        badge.textContent = isConfirmed ? '확정됨' : '수정 중';
+        badge.classList.toggle('mp-fixed', !!isConfirmed);
       }
       if (btn) {
-        btn.innerHTML = isConfirmed ? '✏️ 수정' : '✅ 확정';
-        btn.style.background = isConfirmed ? 'var(--coral)' : 'var(--sage)';
+        btn.textContent = isConfirmed ? '수정' : '확정';
       }
       // 확정 상태면 일정 영역(드래그·교체·추가)을 잠금 처리
       if (left) left.classList.toggle('plan-locked', isConfirmed);
@@ -166,7 +275,7 @@
               const params = new URLSearchParams(window.location.search);
               const hasShareToken = params.has('token');
 
-              // 🎯 백틱(`) 대신 작은따옴표(')를 사용하여 템플릿 깨짐을 방지합니다.
+              // 백틱(`) 대신 작은따옴표(')를 사용하여 템플릿 깨짐을 방지합니다.
               if (window._isInvitedEditView || hasShareToken) {
                 descEl.innerHTML = '해당 여행 플랜은 링크 보관하기 클릭시<br>초대받은 일정에서 언제든지 다시 확인할 수 있습니다.';
               } else {
@@ -179,7 +288,7 @@
           toast('수정 모드로 전환되었습니다.');
         }
       } catch (e) {
-        toast('서버 오류가 발생했습니다.');
+        toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.');
       }
     }
 
@@ -202,7 +311,7 @@
         }
       }
 
-      // 🎯 [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
+      // [순서 보정] 전역 tripId 확보를 최상단으로 끌어올려 변수 락(Lock)을 방지합니다.
       if (!window._currentTripId) {
         window._currentTripId = parsedTripId || sessionStorage.getItem('plannerDraftId');
       }
@@ -222,7 +331,7 @@
           const metaEl  = document.querySelector('.ml-plan-meta') || document.getElementById('mapPlanMeta');
 
           if (!r.success || !r.data) {
-            // 🔒 [공유 링크 비회원 예외 가드]
+            // [공유 링크 비회원 예외 가드]
             // 다른 계정이거나 비회원이어서 인증이 실패해도, 세션 창고 정보를 스캔해 상단바를 강제 업데이트합니다!
             try {
               const draft = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
@@ -231,13 +340,20 @@
                 titleEl.textContent = draft['dest-prov'] ? (draft['dest-prov'] + " 여행 플랜") : "공유받은 여행 플랜";
               }
 
+              // 플래너 1단계 입력(#s1-date-start / #s1-date-end)이 세션에 남아 있으면
+              // 그것이 여행 시작일이다. 경로의 지난/진행/예정 구분에 쓴다.
+              if (draft['s1-date-start'] && !window._mpTripStart) {
+                window._mpTripStart = draft['s1-date-start'];
+                if (typeof _mpRefreshLive === 'function') _mpRefreshLive();
+              }
+
               if (metaEl && draft['s1-date-start']) {
                 const fmt = d => d ? d.replace(/-/g, '.') : '';
                 let pax = draft['s1-pax'] || '2';
                 let trans = '자차';
 
                 if (draft['chips_chip-trans']) {
-                  const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
+                  const transArr = ['자차', '대중교통', '기타'];
                   const idx = draft['chips_chip-trans'].findIndex(Boolean);
                   if (idx !== -1) {
                     trans = transArr[idx];
@@ -255,7 +371,11 @@
           // ── 이하 재민님의 오리지널 순정 코드 100% 보존 및 화면 주입 버그 완전 정정 ──
           const t = r.data;
           if (titleEl) titleEl.textContent = t.title || '여행 플랜';
-          // 🔒 플랜 상태(FIXED=확정 / 그 외=수정 중)를 버튼·배지·잠금에 반영
+          if (t.startDate) {
+            window._mpTripStart = t.startDate;
+            if (typeof _mpRefreshLive === 'function') _mpRefreshLive();
+          }
+          // 플랜 상태(FIXED=확정 / 그 외=수정 중)를 버튼·배지·잠금에 반영
           if (typeof applyPlanConfirmState === 'function') {
             applyPlanConfirmState(t.status === 'FIXED');
           }
@@ -269,7 +389,7 @@
               let pax   = fr.data?.companionCount || t.pax || '';
               let trans = fr.data?.transportType  || '';
 
-              // ★숙소 딥링크용 여행 기본정보 전역 저장
+              // 숙소 딥링크용 여행 기본정보 전역 저장
               window._stayBookingInfo = {
                 dest:  t.destination || '',
                 start: t.startDate || '',
@@ -284,7 +404,7 @@
                 }
                 if (!trans || trans.includes('자차')) {
                   if (draft['chips_chip-trans']) {
-                    const transArr = ['🚗 자차', '🚌 대중교통', '기타'];
+                    const transArr = ['자차', '대중교통', '기타'];
                     const idx = draft['chips_chip-trans'].findIndex(Boolean);
                     if (idx !== -1) {
                       trans = transArr[idx];
@@ -298,7 +418,7 @@
                 console.error("세션 데이터 읽기 오류:", e);
               }
 
-              // 🎯 [정정 핵심]: 조립 완료된 정식 텍스트를 화면 엘리먼트에 정상 주입합니다!
+              // [정정 핵심]: 조립 완료된 정식 텍스트를 화면 엘리먼트에 정상 주입합니다!
               metaEl.textContent = `${fmt(t.startDate)} ${startDow} – ${fmt(t.endDate)} ${endDow} · ${pax}인 · ${trans}`;
             });
           }
@@ -318,7 +438,7 @@
         if (res.success && res.data) {
           try {
             routeData = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
-            // 🔑 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
+            // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
             //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
             if (routeData) {
               sessionStorage.setItem('ai_generated_route',
@@ -347,20 +467,29 @@
       // 필터 칩 UI 작동
       document.querySelector('.map-filters').innerHTML = MAP_FILTERS.map(f =>
               `<button class="mf-chip ${f.cls} on" id="${f.id}"
-    onclick="toggleMarker(this,'${f.type}')">${f.icon} ${f.label}</button>`).join('');
+    onclick="toggleMarker(this,'${f.type}')">${f.label}</button>`).join('');
 
 
-      // 3. AI 데이터가 성공적으로 로드되었을 때 처리
+      // 3. AI 데이터를 받았을 때
       if (routeData && routeData.length > 0) {
         MAP_ITINERARY = routeData; // 전역 스코프에 데이터 주입
 
-        // ✨ [기능 추가]: AI가 만든 코스 기간에 맞춰 Day 탭 일수 동적 매핑 생성
+        // [기능 추가]: AI가 만든 코스 기간에 맞춰 Day 탭 일수 동적 매핑 생성
+        //    탭에 그날의 기준 장소(첫 장소 ~ 마지막 장소)를 같이 보여준다.
         MAP_DAYS = [{ key: 'all', label: '전체', default: true }];
         routeData.forEach(d => {
-          MAP_DAYS.push({ key: d.day, label: `Day ${d.day}` });
+          const names = (d.places || []).filter(p => !p.transit && p.name).map(p => p.name);
+          const anchor = names.length > 1
+                  ? names[0] + ' ~ ' + names[names.length - 1]
+                  : (names[0] || '');
+          MAP_DAYS.push({ key: d.day, label: `${d.day}일차`, anchor: anchor });
         });
+        MAP_DAYS[0].anchor = routeData.length + '일';
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
-                `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">${d.label}</button>`
+                `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
+                + `<span class="dt-n">${_mpEsc(d.label)}</span>`
+                + (d.anchor ? `<span class="dt-an">${_mpEsc(d.anchor)}</span>` : '')
+                + `</button>`
         ).join('');
 
         const catSums = { stay: 0, food: 0, transit: 0, tour: 0 };
@@ -372,7 +501,7 @@
             day.places.forEach(p => {
               // 1. 일반 장소 금액 계산 (x, X, ×, * 대소문자 특수문자 모두 허용)
               if (p.sub) {
-                const amountMatch = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
+                const amountMatch = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
                 if (amountMatch) {
                   const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
                   const qty  = parseInt(amountMatch[2] || '1');
@@ -385,7 +514,7 @@
               }
               // 2. 이동 수단(transit) 금액 계산
               if (p.transit) {
-                const m = p.transit.match(/₩\s*([\d,]+)/);
+                const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
                 if (m) {
                   const cost = parseInt(m[1].replace(/,/g,'')) || 0;
                   catSums.transit += cost;
@@ -394,57 +523,51 @@
               }
             });
           }
-          // ✨ 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
-          day.budget = `₩${dailySum.toLocaleString()}`;
+          // 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
+          day.budget = `${dailySum.toLocaleString()}원`;
           realTotalBudget += dailySum;
         });
 
-        const finalBudgetStr = '₩' + realTotalBudget.toLocaleString();
+        const finalBudgetStr = realTotalBudget.toLocaleString() + '원';
         if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
         if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = finalBudgetStr;
 
         const catTotal = realTotalBudget || 1;
         const pct = v => Math.round((v / catTotal) * 100);
 
+        // 항목별 — 가장 큰 항목만 앰버로 두고 나머지는 잉크. 색을 네 개 쓰지 않는다.
+        const cats = [
+          { label:'숙박비', val: catSums.stay,    tok:'var(--slate)' },
+          { label:'식비',   val: catSums.food,    tok:'var(--terra)' },
+          { label:'교통비', val: catSums.transit, tok:'var(--num)'   },
+          { label:'입장료', val: catSums.tour,    tok:'var(--ui-l)'  },
+        ];
+        const leadVal = Math.max.apply(null, cats.map(c => c.val));
+
         const budgetItemsEl = document.getElementById('map-budget-items');
         if (budgetItemsEl) {
-          const cats = [
-            { label:'숙박비', val: catSums.stay,    color:'var(--sage)'  },
-            { label:'식비',   val: catSums.food,    color:'var(--coral)' },
-            { label:'교통비', val: catSums.transit, color:'#22B5C4'      },
-            { label:'입장료', val: catSums.tour,    color:'#F5A623'      },
-          ];
           budgetItemsEl.innerHTML = cats.map(c => `
-        <div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
-            <span style="font-weight:700">${c.label}</span>
-            <span style="font-weight:700;color:${c.color}">₩${c.val.toLocaleString()}</span>
-          </div>
-          <div style="background:var(--border2);border-radius:4px;height:6px">
-            <div style="width:${pct(c.val)}%;background:${c.color};height:6px;border-radius:4px;transition:width .4s"></div>
-          </div>
+        <div class="mp-bg-row${(c.val === leadVal && leadVal > 0) ? ' mp-lead' : ''}">
+          <div class="mp-bg-top"><span>${c.label}</span><span>${c.val.toLocaleString()}원</span></div>
+          <div class="mp-bg-bar"><i style="width:${pct(c.val)}%"></i></div>
         </div>`).join('');
         }
 
-        // ✨ 파이차트 원(색상 비율) & 범례 완벽 동기화
+        // 비중 원 & 범례
         const pieRing = document.querySelector('.pie-ring');
         const pieLegend = document.querySelector('.pie-legend');
-        let pStay = pct(catSums.stay);
-        let pFood = pct(catSums.food);
-        let pTrans = pct(catSums.transit);
-        let pTour = pct(catSums.tour);
+        const pv = cats.map(c => pct(c.val));
+        let acc = 0;
+        const stops = cats.map((c, i) => {
+          const from = acc; acc += pv[i];
+          return `${c.tok} ${from}% ${acc}%`;
+        }).join(', ');
 
-        if (pieRing) {
-          pieRing.style.background = `conic-gradient(var(--sage) 0% ${pStay}%, var(--coral) ${pStay}% ${pStay+pFood}%, #22B5C4 ${pStay+pFood}% ${pStay+pFood+pTrans}%, #F5A623 ${pStay+pFood+pTrans}% 100%)`;
-          pieRing.style.borderRadius = '50%';
-        }
+        if (pieRing) pieRing.style.background = `conic-gradient(${stops})`;
         if (pieLegend) {
-          pieLegend.innerHTML = `
-            <div class="pie-leg-item"><div class="pie-dot" style="background:var(--sage)"></div>숙박 ${pStay}%</div>
-            <div class="pie-leg-item"><div class="pie-dot" style="background:var(--coral)"></div>식비 ${pFood}%</div>
-            <div class="pie-leg-item"><div class="pie-dot" style="background:#22B5C4"></div>교통 ${pTrans}%</div>
-            <div class="pie-leg-item"><div class="pie-dot" style="background:#F5A623"></div>입장료 ${pTour}%</div>
-          `;
+          pieLegend.innerHTML = cats.map((c, i) =>
+                  `<div class="pie-leg-item"><span class="pie-dot" style="background:${c.tok}"></span>${c.label} ${pv[i]}%</div>`
+          ).join('');
         }
 
         const remainEl = document.getElementById('map-budget-remaining');
@@ -454,58 +577,96 @@
         if (remainEl && inputBudget > 0) {
           const remain = inputBudget - realTotalBudget;
           remainEl.textContent = remain >= 0
-                  ? `예산 범위 내 ✓ 잔여 ₩${remain.toLocaleString()}`
-                  : `⚠️ 예산 ₩${Math.abs(remain).toLocaleString()} 초과`;
-          remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : '#FEF3F2';
-          remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : '#FECACA';
-          remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
+                  ? `정한 예산 안쪽입니다. ${remain.toLocaleString()}원 남았습니다.`
+                  : `정한 예산보다 ${Math.abs(remain).toLocaleString()}원 많습니다.`;
+          remainEl.classList.toggle('mp-over', remain < 0);
         }
 
-        // 원본 마크업 구조 100% 동일하게 동적 주입 (불필요한 팝업 제거)
-        listEl.innerHTML = routeData.map(day => `
-      <div class="day-section" data-day="${day.day}">
-        <div class="ds-hd">
-          <span class="ds-label">${day.label || `📅 Day ${day.day}`}</span>
-          <div class="ds-budget"><span>${day.budget || ''}</span></div>
-        </div>
-        ${day.places ? day.places.map(p => p.transit ? `<div class="transit-map-row">${p.transit}</div>` : `
-          <div class="place-row" data-key="${p.key}">
-            <div class="pr-drag">⋮⋮</div>
-            <div class="pr-icon pr-${p.type}">${p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍')))}</div>
-            <div class="pr-info" style="cursor:pointer" onclick="showMapPlacePopup('${(p.name || p.key).replace(/'/g, "\\'")}','${p.type}')">
-              <div class="pr-name" style="font-weight:700; color:#333;">${p.name}</div>
-              <div class="pr-sub" style="font-size:12px; color:var(--text3); margin-top:2px;">${p.sub || ''}</div>
-              <div class="pr-stars" style="color:#F5A623; font-size:11px; margin-top:4px; font-weight:600;">${p.stars || ''}</div>
+        /* 레일 — 시각(작게) / 장소 이름(크게) / 메타(작게) 한 벌,
+           행 사이에는 이동 연결 문구. 선택된 행만 흰 카드로 들뜬다. */
+        listEl.innerHTML = routeData.map(day => {
+          const spots   = (day.places || []).filter(p => !p.transit);
+          const liveIdx = _mpLiveIndex(day.day, spots);
+          const dt      = _mpDayDate(day.day);
+          const dateTxt = dt
+                  ? `${dt.getMonth() + 1}/${dt.getDate()} (${_MP_DOW[dt.getDay()]})`
+                  : ((/(\d{1,2}\/\d{1,2}(\s*\([^)]{1,3}\))?)/.exec(day.label || '') || [])[1] || '');
+          const summary = _mpDaySummary(day.places);
+
+          let ord = 0, segIdx = -1;
+          const body = (day.places || []).map(p => {
+            if (p.transit) {
+              segIdx++;
+              const t = _mpParseTransit(p.transit);
+              const meta = _mpTransitMeta(t);
+              const live = _mpSegState(liveIdx, segIdx, spots.length - 1) === 'live';
+              return `<div class="transit-map-row${live ? ' mp-tr-live' : ''}">`
+                      + `<b>${_mpEsc(_mpTransitLabel(t))}</b>`
+                      + (meta ? `<i>${_mpEsc(meta)}</i>` : '')
+                      + `</div>`;
+            }
+            ord++;
+            const isNow  = (ord - 1) === liveIdx;
+            const stars  = (p.stars && p.stars.indexOf('정보 없음') < 0) ? p.stars : '';
+            const kq     = _mpQ(p.key);
+            return `
+          <div class="place-row${isNow ? ' mp-now' : ''}" data-key="${_mpEsc(p.key)}"
+               onclick="selectPlaceRow(this)">
+            <div class="pr-drag" title="끌어서 순서 바꾸기">⋮⋮</div>
+            <span class="mp-ord">${ord}</span>
+            <div class="pr-info">
+              ${p.time ? `<div class="mp-time">${_mpEsc(p.time)}</div>` : ''}
+              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}</div>
+              ${p.sub ? `<div class="pr-sub">${_mpEsc(p.sub)}</div>` : ''}
+              ${stars ? `<div class="pr-stars">${_mpEsc(stars)}</div>` : ''}
             </div>
-            <div style="font-size:10px;font-weight:600;color:var(--text2);margin-right:5px;white-space:nowrap">${p.time || ''}</div>
-            <button class="btn-replace" onclick="showReplaceInput(this,'${p.key}')">교체</button>
+            <div class="pr-acts">
+              <button class="btn-detail"
+                      onclick="event.stopPropagation();showMapPlacePopup('${_mpQ(p.name || p.key)}','${_mpEsc(p.type)}')">상세</button>
+              <button class="btn-replace" onclick="event.stopPropagation();showReplaceInput(this,'${kq}')">교체</button>
+            </div>
           </div>
           ${p.type === 'stay' ? `
           <div class="stay-action-row">
             ${p.actualPrice
-                ? `<button class="btn-stay-book" onclick="openSiteModal('${p.key}')">예약하기</button>
-                 <button class="btn-stay-edit" onclick="openPriceModal('${p.key}')">금액 수정</button>`
-                : `<button class="btn-stay-check" onclick="openSiteModal('${p.key}')">금액확인 / 예약하기</button>`}
+                ? `<button class="btn-stay-book" onclick="openSiteModal('${kq}')">예약하기</button>
+                 <button class="btn-stay-edit" onclick="openPriceModal('${kq}')">금액 수정</button>`
+                : `<button class="btn-stay-check" onclick="openSiteModal('${kq}')">금액 확인하고 예약</button>`}
           </div>
           ` : ''}
-          <div class="replace-area" id="ri-${p.key}" style="display:none;">
-            <div class="replace-label">AI에게 교체 요구사항 입력</div>
+          <div class="replace-area" id="ri-${_mpEsc(p.key)}">
+            <div class="replace-label">어떻게 바꿀까요</div>
             <div class="replace-row">
-              <input class="replace-inp" id="rt-${p.key}" type="text" placeholder="${p.replacePh || '교체 요구사항 입력'}">
-              <button class="btn-queue-add" onclick="addQueue('${p.key}')">등록</button>
+              <input class="replace-inp" id="rt-${_mpEsc(p.key)}" type="text"
+                     placeholder="${_mpEsc(p.replacePh || '예: 바다가 보이는 조용한 곳으로')}">
+              <button class="btn-queue-add" onclick="addQueue('${kq}')">등록</button>
             </div>
-          </div>
-        `).join('') : ''}
+          </div>`;
+          }).join('');
+
+          return `
+      <div class="day-section" data-day="${day.day}" data-live="${liveIdx}">
+        <div class="ds-hd">
+          <div class="ds-label">${day.day}일차${dateTxt ? `<span class="ds-date">${_mpEsc(dateTxt)}</span>` : ''}</div>
+          <div class="ds-budget"><span>${_mpEsc(day.budget || '')}</span></div>
+        </div>
+        ${summary ? `<div class="mp-sum">${_mpEsc(summary)}</div>` : ''}
+        ${body}
+        <button class="mp-more" type="button" onclick="_mpUnfold(this)">일정 전체 보기</button>
       </div>
-    `).join('');
+    `;
+        }).join('');
+
+        _mpApplyFold();
+        _mpSelectInitial();
 
         MAP_PINS = [];
         DAY_ROUTES = [];
-        const colors = ['#2D9E8A', '#A78BFA', '#22B5C4', '#F5A623', '#F472B6'];
 
         routeData.forEach(d => {
           let currentDayKeys = [];
-          let currentDayPaths = [];   // ★구간별 도로 경로 좌표(transit.pathCoords) 모음
+          let currentDayPaths = [];   // 구간별 도로 경로 좌표(transit.pathCoords) 모음
+          let ordInDay = 0;
           if(d.places) {
             d.places.forEach(p => {
               if(p.transit) {
@@ -518,15 +679,15 @@
                 return;
               }
               if(!p.transit && p.name) {
-                let pinColor = p.type === 'stay' ? '#2D9E8A' : (p.type === 'food' ? '#F87171' : (p.type === 'cafe' ? '#7C3AED' : '#22B5C4'));
+                ordInDay++;
                 MAP_PINS.push({
                   key: p.key,
                   type: p.type,
-                  icon: p.icon || (p.type === 'stay' ? '🏨' : (p.type === 'food' ? '🍽️' : (p.type === 'cafe' ? '☕' : '📍'))),
-                  color: pinColor,
+                  ord: ordInDay,          // 핀 안에 찍는 그날의 순번 (이모지 대신 숫자)
                   label: p.name,
+                  time: p.time || '',
                   day: d.day,
-                  // ★백엔드(recalcTransitWithKakao)가 이미 카카오 좌표를 박아줬으면 그대로 사용한다.
+                  // 백엔드(recalcTransitWithKakao)가 이미 카카오 좌표를 박아줬으면 그대로 사용한다.
                   //   (없을 때만 지도 init 단계에서 keywordSearch로 보조 검색)
                   lat: (typeof p.lat === 'number') ? p.lat : null,
                   lng: (typeof p.lng === 'number') ? p.lng : null,
@@ -538,7 +699,7 @@
               }
             });
           }
-          DAY_ROUTES.push({ day: d.day, color: colors[(d.day - 1) % colors.length], keys: currentDayKeys, segPaths: currentDayPaths });
+          DAY_ROUTES.push({ day: d.day, keys: currentDayKeys, segPaths: currentDayPaths });
         });
 
         if (typeof initDragAndDrop === 'function') initDragAndDrop();
@@ -554,7 +715,7 @@
             setTimeout(function() {
               if (typeof renderQ === 'function') {
                 renderQ();
-                toast('⚠️ AI가 자동 정정에 실패한 장소들이 교체 목록에 추가되었습니다.', 4000);
+                toast('지도에서 못 찾은 장소가 있어 교체 목록에 넣어 뒀습니다.', 4000);
                 const qBox = document.getElementById('queueBox');
                 const qToggle = document.getElementById('queueToggle');
                 if (qBox) { qBox.classList.add('has'); qBox.style.display = 'block'; }
@@ -567,8 +728,16 @@
         }
 
       } else {
-        document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d => `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">${d.label}</button>`).join('');
-        listEl.innerHTML = '<div style="padding:20px;color:var(--text3);">생성된 일정이 없습니다. 챗봇 화면에서 일정을 생성해주세요.</div>';
+        document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
+                `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
+                + `<span class="dt-n">${_mpEsc(d.label)}</span></button>`).join('');
+        /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        listEl.innerHTML =
+          '<div class="mp-empty">' +
+          '<p>아직 만들어진 일정이 없습니다.</p>' +
+          '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
+          '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>' +
+          '</div>';
       }
     }
 
@@ -578,7 +747,7 @@
       initMapPage();
     }
 
-    // ── ✨ [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
+    // ── [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
     function showDay(day, btn) {
       if(btn) {
         document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('on'));
@@ -645,7 +814,7 @@
         // (이전: 제주도 하드코딩 → 합안군 여행인데 제주도가 뜨던 버그 수정)
         var _initLat = 36.5, _initLng = 127.8, _initLevel = 8; // 한반도 중심(기본)
         if (MAP_PINS && MAP_PINS.length > 0 && typeof kakao !== 'undefined') {
-          // ★백엔드 좌표가 있는 첫 핀으로 초기 중심을 즉시 잡는다(검색 응답 전 한반도 중심이 잠깐 보이던 깜빡임 방지)
+          // 백엔드 좌표가 있는 첫 핀으로 초기 중심을 즉시 잡는다(검색 응답 전 한반도 중심이 잠깐 보이던 깜빡임 방지)
           var _firstFixed = MAP_PINS.find(function(p) {
             return p.isFound && typeof p.lat === 'number' && typeof p.lng === 'number';
           });
@@ -699,7 +868,7 @@
 
         if (totalPlaces === 0) {
           window._isKakaoMapInitRunning = false;
-          // 🩹 [빈 지도 보정] 마커가 0개여도 회색 빈 화면이 되지 않도록 한반도 중심으로 타일을 깔아준다
+          // [빈 지도 보정] 마커가 0개여도 회색 빈 화면이 되지 않도록 한반도 중심으로 타일을 깔아준다
           setTimeout(function() {
             if (window._kakaoMap) {
               window._kakaoMap.relayout();
@@ -710,7 +879,7 @@
           return;
         }
 
-        // 🎯 [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
+        // [지역 반경 검증] 동명(同名) 타지역 장소 오탐 차단.
         //   여행지 중심 좌표를 먼저 구하고, 각 장소는 그 반경 안 후보만 채택한다.
         function _haversineKm(lat1, lng1, lat2, lng2) {
           var R = 6371;
@@ -731,14 +900,13 @@
           pin.placeUrl = place.place_url;
           pin.category = place.category_name ? place.category_name.split(' > ').pop() : null;
 
-          var content = '<div onclick="focusPlaceRow(\'' + String(pin.key).replace(/'/g, "\\'") + '\')" '
-                  + 'style="cursor:pointer; position:relative; width:0; height:0;">'
-                  + '<div style="position:absolute; left:-18px; top:-18px; width:36px; height:36px; box-sizing:border-box; border-radius:50%; background:' + pin.color + ';'
-                  + 'display:flex; align-items:center; justify-content:center; font-size:16px;'
-                  + 'box-shadow:0 2px 8px rgba(0,0,0,.3); border:2.5px solid #fff; z-index:2;">' + pin.icon + '</div>'
-                  + '<div style="position:absolute; top:20px; left:0; transform:translateX(-50%); background:#ffffff; border-radius:8px; padding:3px 8px;'
-                  + 'font-size:10px; font-weight:800; color:#111111; box-shadow:0 2px 6px rgba(0,0,0,.35);'
-                  + 'white-space:nowrap; border:1px solid rgba(0,0,0,.08); z-index:1;">' + pin.label + '</div></div>';
+          // 핀 안에는 그날의 순번을 찍는다. 색·테두리는 CSS(styles_map.css)가 정한다.
+          var content = '<div class="mp-pin mp-pin-' + _mpEsc(pin.type || 'tour') + '" '
+                  + 'data-key="' + _mpEsc(pin.key) + '" '
+                  + 'onclick="focusPlaceRow(\'' + _mpQ(pin.key) + '\')">'
+                  + '<b class="mp-pd">' + (pin.ord || '') + '</b>'
+                  + '<span class="mp-pl">' + _mpEsc(pin.label) + '</span>'
+                  + '</div>';
 
           var overlay = new kakao.maps.CustomOverlay({
             position: new kakao.maps.LatLng(realLat, realLng), content: content, xAnchor: 0, yAnchor: 0
@@ -747,13 +915,13 @@
           var storedPin = MAP_PINS.find(function(p) { return p.key === pin.key; });
           window._kakaoOverlays.push({ key: pin.key, overlay: overlay, type: storedPin ? storedPin.type : pin.type, day: pin.day });
           bounds.extend(new kakao.maps.LatLng(realLat, realLng));
-          window._kakaoBounds = bounds; // 🩹 선 깜빡임 보정용 — relayout 후 재적용에 사용
+          window._kakaoBounds = bounds; // 선 깜빡임 보정용 — relayout 후 재적용에 사용
           pin.isFound = true;
         }
 
         // 미발견(또는 반경 밖) 시 교체 큐로 — 기존 로직 그대로
         function _onNotFound(pin) {
-          console.error("❌ [지도 배제] 미존재/타지역 장소: " + pin.label);
+          console.warn("[지도 배제] 미존재/타지역 장소: " + pin.label);
           pin.isFound = false;
           var isAlreadyInQueue = window._q.some(function(item) { return item.place === pin.label; });
           if (!isAlreadyInQueue) {
@@ -791,7 +959,7 @@
             checkActualWeatherAlert(window._currentTripId);
           }, 100);
 
-// 🩹 [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
+// [첫 생성 진입 보정] SPA 전환 직후엔 지도 컨테이너 크기가 늦게 확보돼
           //   bounds·폴리라인이 0px 기준으로 계산되어 안 보이는 사고가 있었다.
           //   relayout 후 한 박자 늦춰 setBounds·폴리라인을 적용하면 첫 진입에도 정상 동작한다.
           var _applyBoundsAndLines = function() {
@@ -814,7 +982,7 @@
         // 장소별 검색: '여행지명 + 장소명'으로 좁히고, 반경 안 후보만 채택
         function _startPinSearch(destRegion, regionCenter, maxRadiusKm) {
           MAP_PINS.forEach(function(pin) {
-            // ★백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
+            // 백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
             //   (프론트 재검색이 백엔드와 다른 좌표를 잡아 시점이 튀던 문제 + 비동기 타이밍 문제 차단)
             if (pin.isFound && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
               _onResolved(pin, { y: pin.lat, x: pin.lng, place_url: pin.placeUrl, category_name: '' });
@@ -854,7 +1022,7 @@
         // 여행지 중심 좌표 확보 후 검색 루프 기동
         function _runWithRegion(destRegion) {
           var hasCity = !!(destRegion && destRegion.trim().split(/\s+/).length >= 2);
-          // 🩹 [반경 완화] 인접 시·군(예: 속초↔양양↔고성) 장소가 경계에서 배제되지 않도록 여유를 둔다
+          // [반경 완화] 인접 시·군(예: 속초↔양양↔고성) 장소가 경계에서 배제되지 않도록 여유를 둔다
           var maxRadiusKm = (destRegion && destRegion.indexOf('제주') >= 0) ? 60 : (hasCity ? 60 : 90);
           var geocoder = (kakao.maps.services && kakao.maps.services.Geocoder)
                   ? new kakao.maps.services.Geocoder() : null;
@@ -900,7 +1068,7 @@
       const alertBanner = document.querySelector('.weather-alert');
       if (!alertBanner) return;
 
-      // 🎯 기본값은 숨김 처리
+      // 기본값은 숨김 처리
       alertBanner.style.display = 'none';
 
       try {
@@ -935,9 +1103,8 @@
           const titleEl = alertBanner.querySelector('.wa-ttl');
           const bodyEl = alertBanner.querySelector('.wa-body');
 
-          // 🎯 2번 사진 구조와 토시 하나 안 틀리고 정확하게 매핑
-          if (titleEl) titleEl.textContent = '🌧️ 날씨 악화 예보 감지';
-          if (bodyEl) bodyEl.textContent = '태그 유사도 분석 기반 실내 대체 장소 제안';
+          if (titleEl) titleEl.textContent = '여행 기간에 비 소식이 있습니다';
+          if (bodyEl) bodyEl.textContent = '그날 야외 일정을 실내로 바꿔 볼 수 있습니다.';
 
           alertBanner.style.display = 'block'; // 배너 온(ON)
         }
@@ -946,179 +1113,404 @@
       }
     }
 
-    // ── 💡 동적 좌표 기반 폴리라인 빌더 서브루틴 추가 ──
-    function drawLivePolylines() {
-      // ★중복 그리기 방지: 기존 폴리라인·화살표를 먼저 모두 제거한다.
-      //   (이게 없으면 직선→도로경로 등 여러 번 호출 시 선이 겹쳐 이상한 선이 남는다)
-      if (window._kakaoPolylines) {
-        window._kakaoPolylines.forEach(function(item) { if (item.line) item.line.setMap(null); });
+    /* ════════════════════════════════════════════════════════
+     *  경로 — 점선 브레드크럼
+     *
+     *  카카오 폴리라인의 파선(strokeStyle) 값은 이 저장소 코드에 'solid' 만
+     *  쓰여 있고 개발 환경에서 문서를 열 수 없어 확인하지 못했다.
+     *  그래서 지도 위에 SVG 레이어를 얹어 그린다 — 파선 모양과 색은 CSS
+     *  (styles_map.css)가 정하므로 tokens.css 변수를 그대로 쓸 수 있다.
+     *
+     *    지난 구간   점선 · --ui-l   흐리게
+     *    진행 중     실선 · --sig    진하게
+     *    예정 구간   점선 · --ui-line
+     *
+     *  좌표 → 화면 픽셀 변환은 지도가 멈출 때(idle)마다 다시 계산한다.
+     * ════════════════════════════════════════════════════════ */
+
+    var MP_SVG_NS = 'http://www.w3.org/2000/svg';
+
+    function _mpRouteSvg() {
+      var mv = document.getElementById('mapView');
+      if (!mv) return null;
+      var svg = document.getElementById('mapRouteLayer');
+      if (!svg) {
+        svg = document.createElementNS(MP_SVG_NS, 'svg');
+        svg.setAttribute('id', 'mapRouteLayer');
+        svg.setAttribute('class', 'mp-route');
+        svg.setAttribute('aria-hidden', 'true');
+        mv.appendChild(svg);
       }
-      window._kakaoPolylines = [];
-      if (window._kakaoArrows) {
-        window._kakaoArrows.forEach(function(a) { a.setMap(null); });
-        window._kakaoArrows = [];
+      return svg;
+    }
+
+    // 좌표 → 지도 컨테이너 픽셀.
+    //   containerPointFromCoords 가 있으면 그대로 쓰고, 없으면 중심 기준으로 환산한다.
+    //   (pointFromCoords / getProjection 은 이 파일의 기존 화살표 코드에서 쓰던 것)
+    function _mpProjector() {
+      var map = window._kakaoMap;
+      var cont = document.getElementById('kakaoMap');
+      if (!map || !cont || typeof kakao === 'undefined') return null;
+      var proj = map.getProjection && map.getProjection();
+      if (!proj) return null;
+      var w = cont.offsetWidth, h = cont.offsetHeight;
+      if (!w || !h) return null;
+
+      var useContainer = typeof proj.containerPointFromCoords === 'function';
+      var cp = null;
+      if (!useContainer) {
+        if (typeof proj.pointFromCoords !== 'function' || typeof map.getCenter !== 'function') return null;
+        cp = proj.pointFromCoords(map.getCenter());
+        if (!cp) return null;
       }
+      return {
+        w: w, h: h,
+        px: function (lat, lng) {
+          var ll = new kakao.maps.LatLng(lat, lng);
+          if (useContainer) {
+            var q = proj.containerPointFromCoords(ll);
+            return q ? [q.x, q.y] : null;
+          }
+          var p = proj.pointFromCoords(ll);
+          return p ? [p.x - cp.x + w / 2, p.y - cp.y + h / 2] : null;
+        }
+      };
+    }
+
+    // 그날의 구간 좌표 묶음 — 도로 경로(segPaths)가 있으면 그것, 없으면 두 핀 직선.
+    function _mpDaySegments(route, pinByKey) {
+      var keys = route.keys || [];
+      var hasRoad = Array.isArray(route.segPaths)
+              && route.segPaths.some(function (s) { return Array.isArray(s) && s.length >= 2; });
+      var out = [];
+      for (var i = 0; i < keys.length - 1; i++) {
+        var a = pinByKey[keys[i]], b = pinByKey[keys[i + 1]];
+        if (!a || !b || !a.isFound || !b.isFound) { out.push(null); continue; }
+        var coords = [];
+        var seg = hasRoad ? route.segPaths[i] : null;
+        if (Array.isArray(seg) && seg.length >= 2) {
+          coords.push([a.lat, a.lng]);
+          seg.forEach(function (c) { coords.push([c[0], c[1]]); });
+          coords.push([b.lat, b.lng]);
+        } else {
+          coords.push([a.lat, a.lng], [b.lat, b.lng]);
+        }
+        out.push(coords);
+      }
+      return out;
+    }
+
+    function _mpPathD(pts) {
+      var d = '', n = 0;
+      for (var i = 0; i < pts.length; i++) {
+        var q = pts[i];
+        if (!q) continue;
+        d += (n === 0 ? 'M' : 'L') + q[0].toFixed(1) + ' ' + q[1].toFixed(1);
+        n++;
+      }
+      return n >= 2 ? d : '';
+    }
+
+    // 구간 가운데에 진행 방향 갈매기 하나. 화살표를 수백 개 찍던 것을 대신한다.
+    function _mpChevron(pts) {
+      var live = [];
+      for (var k = 0; k < pts.length; k++) if (pts[k]) live.push(pts[k]);
+      if (live.length < 2) return '';
+
+      // 가운데에서 시작해, 방향이 흔들리지 않을 만큼(14px) 벌어질 때까지 양옆으로 넓힌다.
+      var mid = Math.floor(live.length / 2);
+      var i = Math.max(0, mid - 1), j = Math.min(live.length - 1, mid);
+      var dx, dy, len;
+      while (true) {
+        dx = live[j][0] - live[i][0];
+        dy = live[j][1] - live[i][1];
+        len = Math.sqrt(dx * dx + dy * dy);
+        if (len >= 14) break;
+        if (i === 0 && j === live.length - 1) return '';
+        if (i > 0) i--;
+        if (j < live.length - 1) j++;
+      }
+
+      var ang = Math.atan2(dy, dx), s = 5.5, off = Math.PI * 0.78;
+      var cx = (live[i][0] + live[j][0]) / 2, cy = (live[i][1] + live[j][1]) / 2;
+      var lx = cx + Math.cos(ang - off) * s, ly = cy + Math.sin(ang - off) * s;
+      var rx = cx + Math.cos(ang + off) * s, ry = cy + Math.sin(ang + off) * s;
+      return 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1)
+              + 'L' + cx.toFixed(1) + ' ' + cy.toFixed(1)
+              + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1);
+    }
+
+    // 「지금 여기」 — 앰버 링 + 사람. 오늘 일정이 진행 중일 때만 만든다.
+    function _mpDrawHere(pin) {
+      var key = (pin && pin.isFound) ? String(pin.key) : '';
+      // 같은 자리면 다시 만들지 않는다 — 지도를 움직일 때마다 링 애니메이션이 처음부터 돌지 않게.
+      if (window._mpHere && window._mpHereKey === key) return;
+      if (window._mpHere) { window._mpHere.setMap(null); window._mpHere = null; }
+      window._mpHereKey = key;
+      if (!key || typeof kakao === 'undefined' || !window._kakaoMap) return;
+      var html = '<div class="mp-here">'
+              + '<i class="mp-hping"></i>'
+              + '<svg class="mp-hfig" viewBox="0 0 20 20">'
+              + '<circle cx="10" cy="4.6" r="2.9"/>'
+              + '<path d="M10 8.4c-2.1 0-3.5 1.2-3.8 3.2L5.9 14h2.1l.4 4.4h3.2L12 14h2.1l-.3-2.4c-.3-2-1.7-3.2-3.8-3.2Z"/>'
+              + '</svg>'
+              + '<span class="mp-hlb">지금 여기</span>'
+              + '</div>';
+      window._mpHere = new kakao.maps.CustomOverlay({
+        position: new kakao.maps.LatLng(pin.lat, pin.lng),
+        content: html, xAnchor: 0, yAnchor: 0, zIndex: 6
+      });
+      window._mpHere.setMap(window._kakaoMap);
+    }
+
+    // 날짜 탭이 켜고 끄는 대상. showDay 는 _kakaoPolylines 의 line.setMap 을
+    // 부르므로, 같은 모양의 손잡이를 만들어 SVG 그룹을 켜고 끈다.
+    function _mpApplyRouteVisibility() {
+      var svg = document.getElementById('mapRouteLayer');
+      if (!svg) return;
+      var state = {};
+      (window._kakaoPolylines || []).forEach(function (h) {
+        if (h && h.line && typeof h.line._mpOn === 'boolean') state[h.day] = h.line._mpOn;
+      });
+      Array.prototype.forEach.call(svg.querySelectorAll('g[data-day]'), function (g) {
+        var on = state[g.getAttribute('data-day')];
+        g.style.display = (on === false) ? 'none' : '';
+      });
+    }
+
+    // 지도가 움직이면 경로도 따라와야 한다.
+    //   initMapPage 가 다시 돌면 지도 객체가 새로 만들어지므로, 어느 지도에 걸었는지
+    //   기억해 두고 바뀌었을 때만 다시 건다.
+    function _mpRedrawSoon() {
+      if (window._mpRaf) return;
+      window._mpRaf = requestAnimationFrame(function () {
+        window._mpRaf = 0;
+        drawRouteLayer();
+      });
+    }
+
+    function _mpBindMapEvents() {
+      var map = window._kakaoMap;
+      if (!map || typeof kakao === 'undefined' || window._mpBoundMap === map) return;
+      window._mpBoundMap = map;
+      // 지도가 새로 만들어졌으면 「지금 여기」 표식도 새 지도에 다시 올려야 한다
+      window._mpHere = null;
+      window._mpHereKey = null;
+      ['idle', 'center_changed', 'zoom_changed', 'bounds_changed'].forEach(function (ev) {
+        try { kakao.maps.event.addListener(map, ev, _mpRedrawSoon); } catch (e) {}
+      });
+    }
+
+    function drawRouteLayer() {
+      var svg = _mpRouteSvg();
+      if (!svg) return;
+      var pr = _mpProjector();
+      if (!pr) { svg.innerHTML = ''; return; }
+
+      svg.setAttribute('width', pr.w);
+      svg.setAttribute('height', pr.h);
+      svg.setAttribute('viewBox', '0 0 ' + pr.w + ' ' + pr.h);
 
       var pinByKey = {};
-      MAP_PINS.forEach(function(p) { if(p.lat && p.lng) pinByKey[p.key] = p; });
+      (MAP_PINS || []).forEach(function (p) { if (p.lat && p.lng) pinByKey[p.key] = p; });
 
-      DAY_ROUTES.forEach(function(route) {
-        var keys = route.keys;
-        var hasRoad = Array.isArray(route.segPaths) && route.segPaths.some(function(s){ return Array.isArray(s) && s.length >= 2; });
+      var out = '';
+      var herePin = null;
 
-        // 구간(장소 i → 장소 i+1) 단위로 좌표 배열을 만든다.
-        //   도로 경로(segPaths[i])가 있으면 그걸, 없으면 두 마커 직선을 쓴다.
-        var segments = [];
-        for (var i = 0; i < keys.length - 1; i++) {
-          var a = pinByKey[keys[i]], b = pinByKey[keys[i + 1]];
-          if (!a || !b || !a.isFound || !b.isFound) continue;
-          var segCoords = [];
-          var seg = hasRoad ? route.segPaths[i] : null;
-          if (Array.isArray(seg) && seg.length >= 2) {
-            segCoords.push([a.lat, a.lng]);
-            seg.forEach(function(c){ segCoords.push([c[0], c[1]]); });
-            segCoords.push([b.lat, b.lng]);
-          } else {
-            segCoords.push([a.lat, a.lng], [b.lat, b.lng]);
-          }
-          segments.push(segCoords);
-        }
-        if (segments.length === 0) return;
+      (DAY_ROUTES || []).forEach(function (route) {
+        var segs = _mpDaySegments(route, pinByKey);
+        if (!segs.length) return;
 
-        // ★왕복(겹침) 구간 분리: 진행 방향의 수직으로 살짝 평행 이동(offset).
-        //   같은 도로를 갔다가 오면 가는 길/오는 길이 나란히 보여 화살표가 안 엉킨다.
-        //   offset 양은 위경도 기준 약 8m. (지도 줌과 무관한 고정 물리거리)
-        var OFFSET_DEG = 0.00007; // 약 8m
-        function offsetSeg(coords) {
-          if (coords.length < 2) return coords.map(function(c){ return new kakao.maps.LatLng(c[0], c[1]); });
-          // 구간 전체의 평균 진행방향 벡터
-          var dLat = coords[coords.length-1][0] - coords[0][0];
-          var dLng = coords[coords.length-1][1] - coords[0][1];
-          var len = Math.sqrt(dLat*dLat + dLng*dLng) || 1;
-          // 진행방향의 오른쪽 법선(수직) 단위벡터 → 항상 진행방향 오른쪽으로 민다.
-          //   왕복이면 가는 길과 오는 길은 진행방향이 반대라 서로 반대쪽으로 밀려 분리됨.
-          var nLat = (dLng / len) * OFFSET_DEG;
-          var nLng = (-dLat / len) * OFFSET_DEG;
-          return coords.map(function(c){ return new kakao.maps.LatLng(c[0] + nLat, c[1] + nLng); });
-        }
+        var spots = (route.keys || []).map(function (k) { return pinByKey[k]; });
+        var liveIdx = _mpLiveIndex(route.day, spots.map(function (p) {
+          return { time: p ? p.time : '' };
+        }));
+        if (liveIdx >= 0 && spots[liveIdx]) herePin = spots[liveIdx];
 
-        segments.forEach(function(segCoords) {
-          var p = offsetSeg(segCoords);
-          if (p.length < 2) return;
-
-          var bg = new kakao.maps.Polyline({
-            path: p, strokeWeight: 10, strokeColor: '#000000', strokeOpacity: 0.6, strokeStyle: 'solid'
-          });
-          bg.setMap(window._kakaoMap);
-          window._kakaoPolylines.push({ day: route.day, line: bg, path: null });
-
-          var main = new kakao.maps.Polyline({
-            path: p, strokeWeight: 6, strokeColor: route.color, strokeOpacity: 1.0, strokeStyle: 'solid'
-          });
-          main.setMap(window._kakaoMap);
-          // 화살표는 실제 그려진(offset된) 경로 위에 찍어 방향을 표시한다.
-          window._kakaoPolylines.push({ day: route.day, line: main, path: p });
+        var cases = '', lines = '', chevs = '';
+        segs.forEach(function (coords, i) {
+          if (!coords) return;
+          var pts = coords.map(function (c) { return pr.px(c[0], c[1]); });
+          var d = _mpPathD(pts);
+          if (!d) return;
+          var st = _mpSegState(liveIdx, i, segs.length);
+          if (st === 'live') cases += '<path class="mp-rt mp-rt-case" d="' + d + '"/>';
+          lines += '<path class="mp-rt mp-rt-' + st + '" d="' + d + '"/>';
+          var cd = _mpChevron(pts);
+          if (cd) chevs += '<path class="mp-chev' + (st === 'live' ? ' mp-chev-live' : '') + '" d="' + cd + '"/>';
         });
+        if (!lines) return;
+        out += '<g data-day="' + route.day + '">' + cases + lines + chevs + '</g>';
       });
 
-      setTimeout(renderArrows, 100);
+      svg.innerHTML = out;
+      _mpApplyRouteVisibility();
+      _mpDrawHere(herePin);
+      _mpSyncPinHighlight();
+    }
 
-      if (!window._arrowEventRegistered && window._kakaoMap) {
-        kakao.maps.event.addListener(window._kakaoMap, 'idle', function() {
-          renderArrows();
-        });
-        window._arrowEventRegistered = true;
-      }
-      // 브라우저가 DOM을 완전히 그리고 스타일(CSS)을 바인딩할 때까지 150ms 대기한 후
-      // 깨진 지도 크기를 재정렬(relayout)하고 선을 다시 표출하도록 강제 갱신합니다
+    // ── 경로 다시 그리기 진입점 ──
+    //    이름과 호출 규약은 그대로 두고 내부만 SVG 레이어로 바꿨다.
+    function drawLivePolylines() {
+      // 옛 폴리라인·화살표가 남아 있으면 걷어낸다.
+      (window._kakaoPolylines || []).forEach(function (item) {
+        if (item && item.line && typeof item.line.setMap === 'function'
+                && typeof item.line._mpOn !== 'boolean') {
+          try { item.line.setMap(null); } catch (e) {}
+        }
+      });
+      (window._kakaoArrows || []).forEach(function (a) { try { a.setMap(null); } catch (e) {} });
+      window._kakaoArrows = [];
+
+      // 날짜 탭용 손잡이를 일차마다 하나씩 새로 만든다.
+      window._kakaoPolylines = (DAY_ROUTES || []).map(function (route) {
+        var handle = {
+          _mpOn: true,
+          setMap: function (m) { this._mpOn = !!m; _mpApplyRouteVisibility(); },
+          getMap: function () { return this._mpOn ? window._kakaoMap : null; }
+        };
+        return { day: route.day, line: handle, path: null };
+      });
+
+      _mpBindMapEvents();
+      drawRouteLayer();
+
+      // 컨테이너 크기가 늦게 잡히는 경우가 있어 한 박자 뒤 다시 맞춘다.
       if (window._kakaoMap) {
-        setTimeout(function() {
+        setTimeout(function () {
           window._kakaoMap.relayout();
           if (window._kakaoOverlays && window._kakaoOverlays.length > 0 && window._kakaoBounds) {
             window._kakaoMap.setBounds(window._kakaoBounds);
           }
+          drawRouteLayer();
         }, 150);
       }
     }
 
-    // ── (구) redrawDayRoute 1차 정의는 아래 2차 정의(좌표 재검색·relayout 보강판)로 통합되어 제거됨 ──
-    //    동일 이름 함수가 두 번 선언되면 뒤의 것이 앞을 덮어써 디버깅이 어려우므로 단일화한다.
+    // 기존 호출 지점(초기화·재정렬·relayout 뒤)이 부르던 이름. 이제 경로 레이어를 다시 투영한다.
+    function renderArrows() { drawRouteLayer(); }
 
-    // ── 🎯 화면 픽셀 기준으로 화살표를 완벽하게 정렬하는 함수 ──
-    function renderArrows() {
-      if (window._kakaoArrows) {
-        window._kakaoArrows.forEach(function(overlay) { overlay.setMap(null); });
-      }
-      window._kakaoArrows = [];
+    /* ── 여행 날짜가 뒤늦게 들어왔을 때 지난/진행/예정 표시를 다시 계산 ── */
+    function _mpRefreshLive() {
+      document.querySelectorAll('.day-section').forEach(function (sec) {
+        var dayNum = sec.getAttribute('data-day');
+        var rows = Array.prototype.slice.call(sec.querySelectorAll('.place-row[data-key]'));
+        var spots = rows.map(function (r) {
+          var t = r.querySelector('.mp-time');
+          return { time: t ? t.textContent : '' };
+        });
+        var liveIdx = _mpLiveIndex(dayNum, spots);
+        sec.setAttribute('data-live', liveIdx);
 
-      if (!window._kakaoMap || !window._kakaoPolylines) return;
-
-      var proj = window._kakaoMap.getProjection();
-      if (!proj) return;
-
-
-      window._kakaoPolylines.forEach(function(polyObj) {
-        if (!polyObj.line.getMap() || !polyObj.path) return;
-
-        var path = polyObj.path;
-
-        for (var i = 0; i < path.length - 1; i++) {
-          var p1 = path[i];
-          var p2 = path[i + 1];
-
-          var px1 = proj.pointFromCoords(p1);
-          var px2 = proj.pointFromCoords(p2);
-
-          if (!px1 || !px2) continue;
-
-          var dx = px2.x - px1.x;
-          var dy = px2.y - px1.y;
-          var distPx = Math.sqrt(dx * dx + dy * dy);
-
-          // ★확대할수록 촘촘하게: 화면상 35px마다 화살표 1개(픽셀 고정 간격).
-          //   줌인하면 같은 구간의 픽셀거리가 늘어 화살표 수가 자동으로 증가한다.
-          //   상한을 200으로 크게 둬 30개에서 막히지 않게 한다.
-          var arrowCount = Math.min(Math.floor(distPx / 35), 200);
-          if (arrowCount < 1) continue;
-
-          var angle = Math.atan2(dy, dx);
-
-          for (var j = 1; j <= arrowCount; j++) {
-            var ratio = j / (arrowCount + 1);
-
-            var cx = px1.x + dx * ratio;
-            var cy = px1.y + dy * ratio;
-
-            // 화살표 크기(px). coordsFromPoint로 현재 줌 기준 좌표로 되돌리므로
-            // 매 렌더마다 화면상 동일한 픽셀 크기로 보인다(줌인해도 작게 유지).
-            var arrowSize = 5;
-            var angleOffset = Math.PI * 0.8;
-
-            var tipX = cx + Math.cos(angle) * (arrowSize / 2);
-            var tipY = cy + Math.sin(angle) * (arrowSize / 2);
-
-            var leftX = tipX + Math.cos(angle - angleOffset) * arrowSize;
-            var leftY = tipY + Math.sin(angle - angleOffset) * arrowSize;
-
-            var rightX = tipX + Math.cos(angle + angleOffset) * arrowSize;
-            var rightY = tipY + Math.sin(angle + angleOffset) * arrowSize;
-
-            var pTip = proj.coordsFromPoint(new kakao.maps.Point(tipX, tipY));
-            var pLeft = proj.coordsFromPoint(new kakao.maps.Point(leftX, leftY));
-            var pRight = proj.coordsFromPoint(new kakao.maps.Point(rightX, rightY));
-
-            var arrowLine = new kakao.maps.Polyline({
-              path: [pLeft, pTip, pRight],
-              strokeWeight: 2,
-              strokeColor: '#FFFFFF',
-              strokeOpacity: 1.0,
-              strokeStyle: 'solid'
-            });
-
-            arrowLine.setMap(window._kakaoMap);
-            window._kakaoArrows.push(arrowLine);
-          }
+        // 날짜를 이제 알게 됐으면 일차 옆에 붙여 준다
+        var lb = sec.querySelector('.ds-label');
+        var dt = _mpDayDate(dayNum);
+        if (lb && dt && !lb.querySelector('.ds-date')) {
+          var sp = document.createElement('span');
+          sp.className = 'ds-date';
+          sp.textContent = (dt.getMonth() + 1) + '/' + dt.getDate() + ' (' + _MP_DOW[dt.getDay()] + ')';
+          lb.appendChild(sp);
         }
+
+        rows.forEach(function (r, i) {
+          var on = (i === liveIdx);
+          r.classList.toggle('mp-now', on);
+          var name = r.querySelector('.pr-name');
+          if (!name) return;
+          var tag = name.querySelector('.mp-nowtag');
+          if (on && !tag) {
+            tag = document.createElement('b');
+            tag.className = 'mp-nowtag';
+            tag.textContent = '지금';
+            name.appendChild(tag);
+          } else if (!on && tag) {
+            tag.parentNode.removeChild(tag);
+          }
+        });
+
+        Array.prototype.forEach.call(sec.querySelectorAll('.transit-map-row'), function (tr, i) {
+          tr.classList.toggle('mp-tr-live', _mpSegState(liveIdx, i, rows.length - 1) === 'live');
+        });
+      });
+      if (!document.querySelector('.place-row.mp-on')) _mpSelectInitial();
+      _mpApplyFold();
+      drawRouteLayer();
+    }
+
+    /* ── 행 선택 — 선택된 행만 흰 카드로 들뜬다 ── */
+    // 지도 핀은 나중에 만들어지므로, 선택 표시는 따로 맞춘다.
+    function _mpSyncPinHighlight() {
+      var on = document.querySelector('.place-row.mp-on');
+      var key = on ? (on.getAttribute('data-key') || '') : '';
+      Array.prototype.forEach.call(document.querySelectorAll('.mp-pin[data-key]'), function (p) {
+        p.classList.toggle('mp-pin-on', p.getAttribute('data-key') === key);
+      });
+    }
+
+    function selectPlaceRow(row) {
+      if (!row) return;
+      document.querySelectorAll('.place-row.mp-on').forEach(function (r) { r.classList.remove('mp-on'); });
+      row.classList.add('mp-on');
+      _mpSyncPinHighlight();
+
+      var key = row.getAttribute('data-key') || '';
+      var pin = (MAP_PINS || []).find(function (p) { return p.key === key; });
+      if (pin && pin.isFound && window._kakaoMap && typeof kakao !== 'undefined') {
+        window._kakaoMap.panTo(new kakao.maps.LatLng(pin.lat, pin.lng));
+      }
+    }
+
+    // 첫 렌더 뒤 기본 선택 — 진행 중인 곳이 있으면 그곳, 없으면 첫 장소.
+    function _mpSelectInitial() {
+      var now = document.querySelector('.day-section .place-row.mp-now');
+      var row = now || document.querySelector('.day-section .place-row[data-key]');
+      if (!row) return;
+      document.querySelectorAll('.place-row.mp-on').forEach(function (r) { r.classList.remove('mp-on'); });
+      row.classList.add('mp-on');
+    }
+
+    /* ── 좁은 화면(620px 이하) 접기 — 현재 구간 앞뒤만 남긴다 ── */
+    function _mpApplyFold() {
+      var narrow = window.matchMedia && window.matchMedia('(max-width:620px)').matches;
+      document.querySelectorAll('.day-section').forEach(function (sec) {
+        sec.querySelectorAll('.mp-near').forEach(function (el) { el.classList.remove('mp-near'); });
+        if (!narrow || sec.dataset.unfolded === '1') { sec.classList.remove('mp-folded'); return; }
+
+        var rows = Array.prototype.slice.call(sec.querySelectorAll('.place-row[data-key]'));
+        if (rows.length <= 4) { sec.classList.remove('mp-folded'); return; }
+
+        var liveIdx = parseInt(sec.getAttribute('data-live'), 10);
+        if (!(liveIdx >= 0)) liveIdx = 0;
+        var from = Math.max(0, liveIdx - 1), to = Math.min(rows.length - 1, liveIdx + 1);
+
+        sec.classList.add('mp-folded');
+        for (var i = from; i <= to; i++) {
+          var r = rows[i];
+          r.classList.add('mp-near');
+          // 이 행에 딸린 예약 줄·교체 입력칸도 같이 남긴다
+          var n = r.nextElementSibling;
+          while (n && !n.classList.contains('place-row') && !n.classList.contains('transit-map-row')) {
+            n.classList.add('mp-near');
+            n = n.nextElementSibling;
+          }
+          if (i < to && n && n.classList.contains('transit-map-row')) n.classList.add('mp-near');
+        }
+      });
+    }
+
+    function _mpUnfold(btn) {
+      var sec = btn && btn.closest('.day-section');
+      if (!sec) return;
+      sec.dataset.unfolded = '1';
+      sec.classList.remove('mp-folded');
+    }
+
+    // 끌어서 순서를 바꾸면 순번이 어긋난다. 화면 순서대로 다시 매긴다.
+    function _mpRenumber(section) {
+      if (!section) return;
+      var n = 0;
+      section.querySelectorAll('.place-row[data-key] .mp-ord').forEach(function (el) {
+        el.textContent = ++n;
       });
     }
 
@@ -1147,7 +1539,7 @@
       var pinByKey = {};
       MAP_PINS.forEach(function(p) { pinByKey[p.key] = p; });
 
-      // 🩹 [핵심 수정] 이 날 경로에 '좌표가 아직 없는' 핀이 있으면, 그것부터 카카오 검색으로
+      // [핵심 수정] 이 날 경로에 '좌표가 아직 없는' 핀이 있으면, 그것부터 카카오 검색으로
       //    좌표를 채운 뒤에 그린다. (좌표 누락으로 path가 비어 지도가 깨지고 새로고침해야 하던 버그 차단)
       var needResolve = keys
               .map(function(k) { return pinByKey[k]; })
@@ -1164,7 +1556,7 @@
           return (p && p.lat && p.lng && p.isFound) ? new kakao.maps.LatLng(p.lat, p.lng) : null;
         }).filter(Boolean);
 
-        // ★도로 경로 우선(segPaths) — 없으면 마커 직선 폴백
+        // 도로 경로 우선(segPaths) — 없으면 마커 직선 폴백
         var path = [];
         var hasRoad = route && Array.isArray(route.segPaths) && route.segPaths.some(function(s){ return Array.isArray(s) && s.length >= 2; });
         if (hasRoad) {
@@ -1178,7 +1570,7 @@
           path = straightPath;
         }
 
-        // 🩹 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
+        // 지도 자체는 항상 살아있도록 relayout + (이 날 핀 기준) bounds 재적용
         if (window._kakaoMap) {
           window._kakaoMap.relayout();
           var dayPins = keys.map(function(k) { return pinByKey[k]; })
@@ -1191,7 +1583,7 @@
         }
         if (path.length < 2) { setTimeout(renderArrows, 50); return; }
 
-        // ★폴리라인은 drawLivePolylines로 일원화(구간별 offset·왕복 분리 로직 공유).
+        // 폴리라인은 drawLivePolylines로 일원화(구간별 offset·왕복 분리 로직 공유).
         //   여기서 직접 통짜 path로 그리면 왕복 겹침·중복선이 생기므로 전체 재렌더를 호출한다.
         drawLivePolylines();
 
@@ -1242,14 +1634,14 @@
         });
         row.addEventListener('dragover', function(e) { e.preventDefault(); });
         row.addEventListener('dragenter', function() {
-          if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
+          if (dragSrc !== this) this.style.outline = '1.5px dashed var(--ink-3)';
         });
         row.addEventListener('dragenter', function(e) {
           e.preventDefault();
-          if (dragSrc !== this) this.style.outline = '2px dashed var(--sage)';
+          if (dragSrc !== this) this.style.outline = '1.5px dashed var(--ink-3)';
         });
         row.addEventListener('dragleave', function(e) {
-          // 🎯 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
+          // 중요: 마우스가 자식 노드(글자, 아이콘 등)로 이동한 게 아니라, 진짜로 해당 칸을 완전히 벗어났을 때만 점선을 지웁니다.
           if (e.relatedTarget && this.contains(e.relatedTarget)) {
             return; // 자식 노드로 들어간 거라면 점선 유지하고 무시!
           }
@@ -1269,6 +1661,8 @@
           // 1. DOM 스왑
           var tmpHtml = dragSrc.innerHTML; dragSrc.innerHTML = this.innerHTML; this.innerHTML = tmpHtml;
           var tmpKey  = dragSrc.dataset.key; dragSrc.dataset.key = this.dataset.key; this.dataset.key = tmpKey;
+          // 순번은 화면 순서를 따라가야 한다 (내용만 바꿔치기했으므로 다시 매긴다)
+          if (typeof _mpRenumber === 'function') _mpRenumber(tgtSection);
 
           // 2. MAP_ITINERARY 글로벌 배열 강제 동기화 (가장 중요)
           var dayData = MAP_ITINERARY.find(function(d) { return d.day == dayNum; });
@@ -1297,10 +1691,10 @@
           // 4. 세션 & DB 저장 호출
           sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
           if (window._currentTripId) {
-            // 🎯 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
+            // 순서 변경 시 저장 + 카카오 보정된 결과를 받아 화면을 다시 그린다
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
-                      if (!res.success) { toast('⚠️ DB 저장 실패: ' + res.message); return; }
+                      if (!res.success) { toast('순서를 저장하지 못했습니다. ' + (res.message || '')); return; }
                       // 보정된 JSON으로 화면 전체 재렌더 (transit 거리·시간·비용 + 동선 갱신)
                       if (typeof initMapPage === 'function') initMapPage();
                     })
@@ -1338,28 +1732,18 @@
         }
 
         var prev = document.querySelectorAll('.place-row.row-focus');
-        for (var j = 0; j < prev.length; j++) {
-          prev[j].classList.remove('row-focus');
-          prev[j].style.outline = '';
-          prev[j].style.background = '';
-        }
+        for (var j = 0; j < prev.length; j++) prev[j].classList.remove('row-focus');
         row.classList.add('row-focus');
-        row.style.outline = '2px solid var(--sage)';
-        row.style.borderRadius = '10px';
-        row.style.background = 'var(--sage-pale)';
+        if (typeof selectPlaceRow === 'function') selectPlaceRow(row);
         row.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        setTimeout(function () {
-          row.classList.remove('row-focus');
-          row.style.outline = '';
-          row.style.background = '';
-        }, 2200);
+        setTimeout(function () { row.classList.remove('row-focus'); }, 2200);
       } catch (e) {
         console.warn('focusPlaceRow 강조 실패:', e);
       }
     }
 
-    // ── 🔥 [기능 해결]: AI가 동적으로 뿌려준 유니크 키(uniq1, uniq2) 클릭 시 데이터 누락 방지 팝업 가드 ──
+    // ── [기능 해결]: AI가 동적으로 뿌려준 유니크 키(uniq1, uniq2) 클릭 시 데이터 누락 방지 팝업 가드 ──
     function showMapPlacePopup(nameOrKey, type) {
       var realName = nameOrKey;
       var realSub = "추천 장소";
@@ -1385,9 +1769,9 @@
       if (!modal) return;
 
       // 카테고리 텍스트 요약 규격화
-      var tl = type === 'stay' ? '🏨 숙소' : (type === 'food' ? '🍽️ 맛집' : (type === 'cafe' ? '☕ 카페' : '📍 관광지'));
+      var tl = type === 'stay' ? '숙소' : (type === 'food' ? '맛집' : (type === 'cafe' ? '카페' : '관광지'));
 
-      // ✨ [수정] 정의되지 않았던 name 대신 realName으로 깨진 DOM 안전하게 바인딩
+      // [수정] 정의되지 않았던 name 대신 realName으로 깨진 DOM 안전하게 바인딩
       document.getElementById('mpPlace').textContent = realName;
       document.getElementById('mpType').textContent  = tl;
 
@@ -1395,24 +1779,23 @@
       var naviEl = document.getElementById('mpNavi');
       if (naviEl) {
         if (pin && pin.lat && pin.lng) {
-          naviEl.innerHTML = '<button onclick="openKakaoNavi(\'' + realName.replace(/'/g, "\\'") + '\',' + pin.lat + ',' + pin.lng + ')" '
-                  + 'style="width:100%;padding:10px;border-radius:9px;background:#FEE500;color:#3C1E1E;border:none;'
-                  + 'cursor:pointer;font-size:13px;font-weight:700;margin-bottom:12px">🚗 카카오맵으로 길찾기</button>';
+          naviEl.innerHTML = '<button class="mp-navi" onclick="openKakaoNavi(\'' + _mpQ(realName) + '\',' + pin.lat + ',' + pin.lng + ')">'
+                  + '카카오맵에서 길찾기</button>';
         } else {
-          naviEl.innerHTML = '<div style="font-size:12px;color:var(--coral);text-align:center;padding:10px;background:#FEF3F2;border-radius:8px;margin-bottom:12px;">⚠️ 카카오 지도에서 정확한 좌표를 탐색하지 못했습니다.</div>';
+          naviEl.innerHTML = '<div class="mp-nocoord">이 장소의 좌표를 카카오 지도에서 찾지 못했습니다.</div>';
         }
       }
 
-      document.getElementById('mpReviews').innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">아직 후기가 없습니다.</div>';
+      document.getElementById('mpReviews').innerHTML = '<div class="mp-noreview">아직 후기가 없습니다.</div>';
       document.getElementById('mpLinks').innerHTML = getMapLinks(realName);
       modal.classList.add('open');
     }
 
     function getMapLinks(q) {
       var e = encodeURIComponent(q);
-      return '<a href="https://map.naver.com/v5/search/'+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 네이버 지도</a>'
-              + '<a href="https://map.kakao.com/?q='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">🗺️ 카카오맵</a>'
-              + '<a href="https://www.google.com/maps/search/?api=1&query='+e+'" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">🗺️ 구글 맵</a>';
+      return '<a class="mp-maplink" href="https://map.naver.com/v5/search/'+e+'" target="_blank" rel="noopener">네이버 지도</a>'
+              + '<a class="mp-maplink" href="https://map.kakao.com/?q='+e+'" target="_blank" rel="noopener">카카오맵</a>'
+              + '<a class="mp-maplink" href="https://www.google.com/maps/search/?api=1&query='+e+'" target="_blank" rel="noopener">구글 지도</a>';
     }
 
     function showReviewDetail(place, type, stars, text) {
@@ -1426,7 +1809,7 @@
 
 
 
-    // ── 💡 1. 큐(대기열) 전역 변수 및 렌더링 (사용자가 직접 텍스트 수정 가능) ──
+    // ── 1. 큐(대기열) 전역 변수 및 렌더링 (사용자가 직접 텍스트 수정 가능) ──
     window._q = window._q || [];
 
     function showReplaceInput(btn, key) {
@@ -1438,7 +1821,7 @@
 
     function addQueue(key) {
       const txt = document.getElementById('rt-' + key)?.value.trim();
-      if (!txt) { toast('요구사항을 입력해주세요.'); return; }
+      if (!txt) { toast('무엇을 바꿀지 적어 주세요.'); return; }
 
       // key → 실제 장소명 역참조 (MAP_PINS 우선, 없으면 MAP_ITINERARY 탐색)
       let placeName = key; // fallback
@@ -1467,7 +1850,7 @@
       if (area) area.style.display = 'none';
 
       renderQ();
-      toast('교체 요청이 등록됐습니다 ✓');
+      toast('교체 요청에 넣었습니다.');
     }
 
     function renderQ() {
@@ -1496,16 +1879,15 @@
       cnt.textContent = _q.length;
       if (btn) btn.disabled = false;
 
-      // ✨ [수정] 텍스트 박스가 아니라 타이핑 가능한 <input> 폼으로 교체!
+      // 요구사항은 등록한 뒤에도 고칠 수 있게 input 으로 둔다
       items.innerHTML = _q.map((q, i) =>
-              `<div class="q-item" style="display:flex; flex-direction:column; gap:6px; background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="q-place" style="font-weight:700; font-size:12px; color:var(--coral);">🎯 타겟: ${q.place}</div>
-            <button class="q-rm" onclick="rmQ(${i})" style="background:none; border:none; color:var(--text3); cursor:pointer; font-size:14px; line-height:1;">✕</button>
+              `<div class="q-item">
+          <div class="q-itop">
+            <div class="q-place">${_mpEsc(q.place)}</div>
+            <button class="q-rm" onclick="rmQ(${i})">✕</button>
           </div>
-          <input type="text" value="${q.req}" oninput="updateQueueReq(${i}, this.value)"
-                 style="width:100%; border:1px solid var(--border2); border-radius:4px; padding:6px 8px; font-size:11px; outline:none; box-sizing:border-box; background:#F9FAFB;"
-                 placeholder="예: 바다가 보이는 조용한 카페로 바꿔주세요">
+          <input class="q-inp" type="text" value="${_mpEsc(q.req)}" oninput="updateQueueReq(${i}, this.value)"
+                 placeholder="예: 바다가 보이는 조용한 카페로">
         </div>`
       ).join('');
     }
@@ -1522,7 +1904,7 @@
       }
     }
 
-    // ✨ 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
+    // 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
     function updateQueueReq(idx, newVal) {
       if (_q[idx]) _q[idx].req = newVal;
     }
@@ -1541,27 +1923,27 @@
       if (_q[idx]) _q[idx].req = newVal;
     }
 
-    // ── 💡 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
+    // ── 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
 
     async function execAllReplace() {
       const tripId = window._currentTripId;
       if (!tripId || _q.length === 0) return;
 
       const btn = document.getElementById('btnAll');
-      const originalText = btn.innerHTML; // 원래 버튼 텍스트('✅ 전체 교체하기') 저장
+      const originalText = btn.innerHTML; // 원래 버튼 텍스트 보관
       const loadingOverlay = document.getElementById('replaceLoadingOverlay');
 
       // 화면 잠그고 로딩창 띄우기 & 버튼 텍스트 변경
       if (loadingOverlay) loadingOverlay.style.display = 'flex';
-      btn.innerHTML = '⏳ AI 부분 교체 중...';
+      btn.innerHTML = '바꾸는 중';
       btn.disabled = true;
 
       try {
-        // ✨ 올바른 백엔드 주소로 연결!
+        // 올바른 백엔드 주소로 연결!
         const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
 
         if (res.success && res.data) {
-          toast('✅ AI 부분 교체가 완료되었습니다! 화면을 갱신합니다.');
+          toast('바꿨습니다. 화면을 다시 불러옵니다.');
 
           // 1.5초 뒤 완벽하게 새로고침
           setTimeout(() => {
@@ -1569,13 +1951,13 @@
           }, 1500);
 
         } else {
-          toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+          toast('교체하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
           if (loadingOverlay) loadingOverlay.style.display = 'none';
           btn.innerHTML = originalText;
           btn.disabled = false;
         }
       } catch(e) {
-        toast('<span style="color: black;">⚠️ 교체처리에 실패했습니다.</span>');
+        toast('교체하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -1583,7 +1965,7 @@
     }
 
 
-    /* ── 🌤️ 지도 화면 전용: 날씨 팝업 열기 ── */
+    /* ── 지도 화면 전용: 날씨 팝업 열기 ── */
     async function openMapWeatherPopup() {
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
@@ -1596,7 +1978,7 @@
       const e = t.endDate;
       const locStr = t.destination ? t.destination.split(' ')[0] : '서울';
 
-      document.getElementById('mwp-title').textContent = `🌤️ ${locStr} 여행 날씨 예보`;
+      document.getElementById('mwp-title').textContent = `${locStr} 여행 날씨`;
 
       const ds = new Date(s);
       const de = new Date(e);
@@ -1632,8 +2014,6 @@
 
         grid.style.gridTemplateColumns = `repeat(${previewDays.length}, 1fr)`;
 
-        const skyIconMap = { 1:'☀️', 3:'⛅', 4:'☁️' };
-        const ptyIconMap = { 1:'🌧️', 2:'🌧️', 3:'🌨️', 4:'🌦️' };
         const skyDescMap = { 1:'맑음', 3:'구름많음', 4:'흐림' };
         const ptyDescMap = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
         const DAYS_KO = ['일','월','화','수','목','금','토'];
@@ -1648,7 +2028,6 @@
           if (!dto) return '';
 
           const warn = (dto.pop && dto.pop >= 60) || (dto.pty && dto.pty > 0);
-          const icon = (dto.pty && dto.pty > 0) ? (ptyIconMap[dto.pty] || '🌧️') : (skyIconMap[dto.sky] || '⛅');
           const desc = (dto.pty && dto.pty > 0) ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '맑음');
 
           allDayNums.push(i + 1);
@@ -1658,12 +2037,10 @@
           }
 
           return `<div class="w-item${warn ? ' w-warn' : ''}">
-        <div class="w-icon">${icon}</div>
         <div class="w-day">${fmt(d)}</div>
-        <div class="w-temp">${dto.tmp || 0}°C</div>
+        <div class="w-temp">${dto.tmp || 0}°</div>
         <div class="w-desc">${desc}</div>
-        ${dto.pop > 0 ? `<div style="font-size:9px;color:var(--sky);margin-top:2px">💧 ${dto.pop}%</div>` : ''}
-        ${warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px;font-weight:700">실내 추천</div>' : ''}
+        ${dto.pop > 0 ? `<div class="w-pop">강수 ${dto.pop}%</div>` : ''}
       </div>`;
         }).join('');
 
@@ -1671,40 +2048,32 @@
         const replaceWrap = document.getElementById('mwp-ai-replace-wrap');
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
-        // 🎯 [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
+        // [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
         if (location.pathname.includes('/plan/view')) {
           replaceWrap.style.display = 'block';
-          replaceWrap.style.background = '#F3F4F6';
-          replaceWrap.style.borderColor = '#D1D5DB';
+          replaceWrap.classList.add('mp-mswap-off');
 
           if (alertEl) alertEl.style.display = 'none';
 
-          // 알림 타이틀 변경 및 버튼 구역을 가드용 안내 문구로 동적 갈아끼우기
-          replaceWrap.querySelector('div').innerHTML = '🔒 읽기 전용 열람 모드 안내';
-          replaceBtns.innerHTML = '<div style="font-size:12px; color:var(--text3); font-weight:600; padding:4px 2px;">현재 읽기 전용 링크로 접속 중이므로 AI 일정 교체 기능이 제한됩니다.</div>';
+          replaceWrap.querySelector('div').textContent = '보기 전용 링크입니다';
+          replaceBtns.innerHTML = '<div class="mp-mhint" style="margin:0">링크로 열었기 때문에 일정을 바꿀 수는 없습니다.</div>';
           return;
         }
 
-        // ── 편집 권한이 있는 원래 유저 전용 화면 렌더링 로직 (원래 원본 유지) ──
+        // ── 편집 권한이 있는 원래 유저 전용 화면 렌더링 로직 ──
         replaceWrap.style.display = 'block';
+        replaceWrap.classList.remove('mp-mswap-off');
+        const swapBtns = nums => nums.map(dayNum =>
+                `<button class="mp-swapbtn" onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');">`
+                + `${dayNum}일차 실내로</button>`).join('');
+
         if (warnDayNums.length > 0) {
           alertEl.style.display = 'block';
-          alertEl.textContent = `⚠️ ${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
-
-          replaceBtns.innerHTML = warnDayNums.map(dayNum =>
-                  `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
-               style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
-             ✨ Day ${dayNum} 실내 일정으로 교체
-           </button>`
-          ).join('');
+          alertEl.textContent = `${warnDays.join(', ')}에 비 소식이 있습니다.`;
+          replaceBtns.innerHTML = swapBtns(warnDayNums);
         } else {
           alertEl.style.display = 'none';
-          replaceBtns.innerHTML = allDayNums.map(dayNum =>
-                  `<button onclick="requestMapIndoorAlternative(${dayNum}); document.getElementById('mapWeatherPopup').classList.remove('open');"
-               style="padding:8px 14px; background:var(--sage); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">
-             ✨ Day ${dayNum} 실내 일정으로 교체 (테스트)
-           </button>`
-          ).join('');
+          replaceBtns.innerHTML = swapBtns(allDayNums);
         }
 
       } catch (err) {
@@ -1714,7 +2083,7 @@
     async function requestMapIndoorAlternative(dayNum) {
 
       if (window._planConfirmed) {
-        toast('🔒 일정이 확정되어 있습니다. 좌측 상단의 [수정] 버튼을 눌러 수정 모드로 전환한 뒤 진행해 주세요.');
+        toast('확정된 일정입니다. 위쪽 수정 버튼을 먼저 눌러 주세요.');
         return;
       }
 
@@ -1722,7 +2091,7 @@
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
       // 로딩을 알리기 위해 임시 토스트 창 띄우기
-      toast(`🤖 AI가 Day ${dayNum} 일정을 실내 코스로 전면 교체 중입니다...`, 6000);
+      toast(`${dayNum}일차를 실내 일정으로 다시 짜는 중입니다.`, 6000);
 
       try {
         // 백엔드 컨트롤러 경로: @PostMapping("/indoor-replace") 형식에 완벽 매핑
@@ -1730,7 +2099,7 @@
         const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`, {});
 
         if (res.success && res.data) {
-          toast(`✨ Day ${dayNum} 실내 일정 전환 완료! 동선을 재구성합니다.`);
+          toast(`${dayNum}일차를 실내 일정으로 바꿨습니다.`);
 
           // 백엔드에서 새로 업데이트되어 내려온 경로 JSON 확보
           let cleanJson = res.data;
@@ -1749,16 +2118,16 @@
           }, 1000);
 
         } else {
-          toast('⚠️ 실내 일정 교체 처리에 실패했습니다.');
+          toast('실내 일정으로 바꾸지 못했습니다.');
         }
       } catch (err) {
         console.error('[IndoorReplace] 통신 에러:', err);
-        toast('⚠️ AI 서버 응답 지연이 발생했습니다. 잠시 후 다시 시도해 주세요.');
+        toast('응답이 늦습니다. 잠시 뒤에 다시 시도해 주세요.');
       }
     }
 
     // ════════════════════════════════════════════════════════
-    //  ★숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·카카오)
+    // 숙소 실제 금액 확인/입력 + 예약 딥링크 (여기어때·카카오)
     // ════════════════════════════════════════════════════════
 
     function findStayByKey(key) {
@@ -1783,7 +2152,7 @@
       (day.places || []).forEach(p => {
         total += p.transit ? extractAmount(p.transit) : extractAmount(p.sub);
       });
-      day.budget = '₩' + total.toLocaleString();
+      day.budget = total.toLocaleString();
     }
 
     // ── 모달 1: 사이트 선택 ──
@@ -1793,10 +2162,10 @@
       const overlay = document.getElementById('staySiteOverlay');
       overlay.dataset.key = key;
       document.getElementById('staySiteName').textContent = found.place.name || '숙소';
-      overlay.style.display = 'flex';
+      overlay.classList.add('open');
     }
     function closeSiteModal() {
-      document.getElementById('staySiteOverlay').style.display = 'none';
+      document.getElementById('staySiteOverlay').classList.remove('open');
     }
 
     function gotoSite(site) {
@@ -1838,11 +2207,11 @@
       document.getElementById('otherStayBox').style.display = 'none';
       document.getElementById('otherStayArrow').textContent = '▸';
 
-      overlay.style.display = 'flex';
+      overlay.classList.add('open');
       setTimeout(() => document.getElementById('stayPriceInput').focus(), 50);
     }
     function closePriceModal() {
-      document.getElementById('stayPriceOverlay').style.display = 'none';
+      document.getElementById('stayPriceOverlay').classList.remove('open');
     }
 
     function onTopPriceInput() {
@@ -1897,11 +2266,11 @@
       const oldName = found.place.name;   // 이름 변경 전 기준으로 동일 숙소를 찾기 위해 보관
 
       found.place.name = finalName;
-      found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
+      found.place.sub = `숙소 · ${finalVal.toLocaleString()}원`;
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
 
-      // ★같은 숙소(이름 동일) 전체 동기화: Day1에서 예약/금액입력하면 Day2 등 동일 숙소도 같이 반영
+      // 같은 숙소(이름 동일) 전체 동기화: Day1에서 예약/금액입력하면 Day2 등 동일 숙소도 같이 반영
       MAP_ITINERARY.forEach((day, di) => {
         if (!day.places) return;
         day.places.forEach(pl => {
@@ -1911,8 +2280,8 @@
             pl.actualPrice = finalVal;
             // 출발/조식 등 기존 sub 설명이 있으면 보존하고 금액만 교체
             pl.sub = pl.sub && pl.sub.includes('·')
-                    ? pl.sub.replace(/₩[\d,]+/, `₩${finalVal.toLocaleString()}`)
-                    : `숙소 · ₩${finalVal.toLocaleString()}`;
+                    ? pl.sub.replace(/₩?[\d,]+\s*원?/, `${finalVal.toLocaleString()}원`)
+                    : `숙소 · ${finalVal.toLocaleString()}원`;
             recalcDayBudget(di);
           }
         });
@@ -1933,58 +2302,15 @@
   </script>
 
   <div class="page" id="page-map">
-    <style>
-      /* 확정(FIXED) 상태일 때 일정 영역의 편집 조작을 잠금 */
-      .map-left.plan-locked .pr-drag,
-      .map-left.plan-locked .btn-replace,
-      .map-left.plan-locked .replace-area,
-      .map-left.plan-locked .queue-box,
-      .map-left.plan-locked #queueToggle {
-        display: none !important;
-      }
-      .map-left.plan-locked .place-row {
-        cursor: default !important;
-      }
-      .map-left.plan-locked .place-row[draggable] {
-        pointer-events: auto;
-      }
-
-      /* ★숙소 카드 아래 액션 버튼 줄 */
-      .stay-action-row { display:flex; gap:6px; padding:6px 10px 10px 44px; }
-      .stay-action-row button {
-        flex:1; border:none; border-radius:6px; padding:7px 0;
-        font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
-      .btn-stay-check, .btn-stay-book { background:#2D9E8A; color:#fff; }
-      .btn-stay-edit { background:#F5A623; color:#fff; }
-      .map-left.plan-locked .btn-stay-edit,
-      .map-left.plan-locked .btn-stay-check { display:none !important; }
-
-      /* ★모달 사이트 선택 버튼 */
-      .site-btn {
-        flex:1; border:1px solid #2D9E8A; background:#fff; color:#2D9E8A;
-        border-radius:8px; padding:10px 0; font-size:13px; font-weight:700; cursor:pointer; }
-      .site-btn:hover { background:#2D9E8A; color:#fff; }
-    </style>
     <div class="map-wrap">
-      <!-- 모바일 전용 탭 바 -->
-      <div class="map-mobile-tabs">
-        <button class="map-mob-tab on" id="mobTabItinerary" onclick="switchMobileMapTab('itinerary')">📋 일정</button>
-        <button class="map-mob-tab" id="mobTabMap" onclick="switchMobileMapTab('map')">🗺️ 지도</button>
-        <button class="map-mob-tab" id="mobTabBudget" onclick="switchMobileMapTab('budget')">💰 예산</button>
-        <button class="map-mob-tab" id="mobTabShare" onclick="openShareModal()">🔗 공유</button>
-      </div>
       <div class="map-left">
         <div class="ml-hd">
+          <div class="mp-eyebrow">여행 동선</div>
           <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
           <div class="ml-plan-meta" id="mapPlanMeta">2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차</div>
-          <div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <div id="planStatusBadge" style="display:inline-flex;align-items:center;gap:4px;background:var(--sage-pale);color:var(--sage-d);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700">
-              ✏️ 수정 중
-            </div>
-            <button id="btnConfirmToggle" onclick="togglePlanConfirm()"
-                    style="padding:5px 14px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">
-              ✅ 확정
-            </button>
+          <div class="mp-state">
+            <div id="planStatusBadge">수정 중</div>
+            <button id="btnConfirmToggle" onclick="togglePlanConfirm()">확정</button>
           </div>
         </div>
         <!-- 필터 칩: JS initMapPage() 로 동적 주입 -->
@@ -1993,77 +2319,58 @@
         <div class="day-tabs"></div>
         <!-- Queue -->
         <div class="queue-box" id="queueBox">
-          <div class="q-hd"><span>📋 교체 요청 <span class="q-badge" id="qCnt">0</span></span><button onclick="closeQueue()" style="background:none;border:none;cursor:pointer;font-size:10px;color:var(--text3)">접기</button></div>
+          <div class="q-hd"><span>교체 요청<span class="q-badge" id="qCnt">0</span></span><button onclick="closeQueue()">접기</button></div>
           <div id="qItems"></div>
-          <button class="btn-all" id="btnAll" onclick="execAllReplace()" disabled>✅ 전체 교체하기</button>
+          <button class="btn-all" id="btnAll" onclick="execAllReplace()" disabled>모두 교체하기</button>
         </div>
-        <div id="queueToggle" style="margin:5px 10px;display:none">
-          <button style="width:100%;padding:7px;border-radius:7px;font-size:11px;font-weight:700;background:var(--sage-pale);border:1.5px solid var(--sage-l);color:var(--sage-d);cursor:pointer" onclick="openQueue()">📋 교체 요청 목록 보기</button>
+        <div id="queueToggle" style="display:none">
+          <button onclick="openQueue()">교체 요청 목록 열기</button>
         </div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
         <div class="map-budget-bar">
           <div class="mbb-label">전체 여행 예산</div>
-          <div class="mbb-amount" id="totalBudget">₩ 404,000</div>
+          <div class="mbb-amount" id="totalBudget">404,000원</div>
         </div>
-        <!-- 액션 버튼: JS initMapPage() 로 동적 주입 -->
         <div class="map-acts">
-          <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)" style="font-size:11px">🗺 지도</button>
-          <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)" style="font-size:11px">💰 예산</button>
-          <button class="btn-map-act" onclick="openShareModal()" style="font-size:11px">🔗 공유</button>
-          <!--          <button class="btn-map-cfm" onclick="openConfirmDone()" style="font-size:11px">✅ 확정</button>-->
+          <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
+          <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
+          <button class="btn-map-act" onclick="openShareModal()">공유</button>
         </div>
       </div>
       <!-- MAP RIGHT -->
-      <div class="map-right mob-hidden" id="mapRightArea">
-        <!-- Map view -->
-        <div id="mapView" style="position:absolute;inset:0">
-          <div id="kakaoMap" style="width:100%;height:100%"></div>
-          <div class="weather-alert" style="z-index:20; cursor:pointer;" onclick="openMapWeatherPopup()">
-            <div class="wa-ttl">🌧️ 날씨 악화 예보 감지</div>
-            <div class="wa-body">태그 유사도 분석 기반 실내 대체 장소 제안</div>
-            <div class="wa-cta">AI 대체 일정 제안 보기 →</div>
+      <div class="map-right" id="mapRightArea">
+        <!-- Map view — 경로 SVG 레이어는 drawRouteLayer() 가 여기에 넣는다 -->
+        <div id="mapView">
+          <div id="kakaoMap"></div>
+          <div class="weather-alert" style="z-index:20" onclick="openMapWeatherPopup()">
+            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
+            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
+            <div class="wa-cta">대체 일정 보기</div>
           </div>
         </div>
         <!-- Budget view -->
-        <div id="budgetView" style="display:none;position:absolute;inset:0;background:var(--cream);overflow-y:auto;padding:20px 24px;z-index:8">
+        <div id="budgetView" style="display:none;position:absolute;inset:0;overflow-y:auto;z-index:8">
+          <div style="max-width:760px;margin:0 auto">
+            <div class="mp-bg-eyebrow">예상 지출</div>
+            <h3>가계부</h3>
 
-          <div style="max-width:800px; margin:0 auto;">
-
-            <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">BUDGET · EXPENSE REPORT</div>
-            <h3 style="font-size:16px;font-weight:800;margin-bottom:14px">가계부</h3>
-
-            <!-- 💡 기존 1fr 1fr 분할을 위아래 수직 나열(flex-column)로 변경했습니다 -->
-            <div style="display:flex; flex-direction:column; gap:24px;">
-
-              <!-- 상단: 항목별 바 차트 및 총액/잔여예산 -->
-              <div>
-                <div id="map-budget-items"></div>
-                <div style="display:flex;justify-content:space-between;border-top:2px solid var(--border2);padding-top:10px">
-                  <div id="map-budget-total-label" style="font-size:13px;font-weight:700">예상 총액</div>
-                  <div id="map-budget-total" style="font-size:20px;font-weight:900;color:var(--sage)">₩0</div>
-                </div>
-                <div id="map-budget-remaining" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 10px;margin-top:8px;font-size:11px;color:var(--sage-d);font-weight:600">
-                  예산 계산 중...
-                </div>
+            <div class="mp-bg-card">
+              <div id="map-budget-items"></div>
+              <div class="mp-bg-total">
+                <div id="map-budget-total-label">예상 총액</div>
+                <div id="map-budget-total">0원</div>
               </div>
+              <div id="map-budget-remaining">정한 예산을 입력하면 남는 금액을 같이 보여줍니다.</div>
+            </div>
 
-              <!-- 하단: 파이차트 및 저장 버튼 -->
-              <div style="padding-top:10px;">
-                <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:10px">카테고리별 지출 비중</div>
-                <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-                  <div class="pie-ring" style="width:90px;height:90px"></div>
-                  <div class="pie-legend">
-                  </div>
-                </div>
-
-                <button onclick="goToLedgerFromMap()"
-                        style="width:100%;margin-top:4px;padding:10px;border-radius:8px;font-size:13px;font-weight:700;
-                             background:var(--sage);border:none;color:#fff;cursor:pointer;letter-spacing:.3px">
-                  📝 실제 지출 입력 / 자세히 보기
-                </button>
+            <div class="mp-bg-card" style="margin-top:14px">
+              <div class="mp-bg-eyebrow" style="margin-bottom:14px">항목별 비중</div>
+              <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+                <div class="pie-ring" style="width:92px;height:92px"></div>
+                <div class="pie-legend"></div>
               </div>
-
+              <button class="mp-ledger" onclick="goToLedgerFromMap()">실제로 쓴 돈 적기</button>
             </div>
           </div>
         </div>
@@ -2084,9 +2391,9 @@
           <div class="modal-bd">
             <div id="mpNavi"></div>
             <div id="mpReviews"></div>
-            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border2)">
-              <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px">지도 앱에서 보기</div>
-              <div style="display:flex;gap:8px" id="mpLinks"></div>
+            <div class="mp-linkwrap">
+              <div class="mp-linklb">다른 지도에서 보기</div>
+              <div class="mp-links" id="mpLinks"></div>
             </div>
           </div>
         </div>
@@ -2115,68 +2422,46 @@
         <div class="modal" style="width:480px">
           <div class="modal-hd">
             <div>
-              <div class="modal-ttl">🔗 플랜 공유</div>
-              <div style="font-size:12px;color:var(--text3);margin-top:2px">멤버 초대 또는 링크로 공유하세요</div>
+              <div class="modal-ttl">플랜 공유</div>
+              <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px">같이 편집할 사람을 부르거나, 링크만 보낼 수 있습니다.</div>
             </div>
             <button class="modal-x" onclick="document.getElementById('shareModal').classList.remove('open')">✕</button>
           </div>
           <div class="modal-bd">
 
             <!-- 탭 -->
-            <div style="display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:16px">
-              <button class="share-tab on" onclick="setShareTab(this,'members')"
-                      style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:700;color:var(--sage-d);border-bottom:3px solid var(--sage)">
-                👥 멤버 초대
-              </button>
-              <button class="share-tab" onclick="setShareTab(this,'post')"
-                      style="flex:1;padding:10px;background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--text3)">
-                🔗 링크 공유
-              </button>
+            <div class="mp-mtabs">
+              <button class="share-tab on" onclick="setShareTab(this,'members')">멤버 초대</button>
+              <button class="share-tab" onclick="setShareTab(this,'post')">링크 공유</button>
             </div>
 
             <!-- 멤버 초대 탭 -->
             <div id="share-members">
-              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">
-                이메일로 초대 — 초대받은 멤버는 <strong style="color:var(--sage-d)">편집 권한</strong>을 가집니다
-              </div>
-              <div style="display:flex;gap:8px;margin-bottom:16px">
-                <input id="share-email-inp" type="email" placeholder="초대할 이메일 입력"
-                       style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;outline:none">
-                <button onclick="inviteShareMember(this)"
-                        style="padding:9px 16px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.2s;">
-                  초대
-                </button>
+              <div class="mp-mnote">초대받은 사람은 일정을 같이 고칠 수 있습니다.</div>
+              <div class="mp-mrow">
+                <input class="mp-minp" id="share-email-inp" type="email" placeholder="초대할 이메일">
+                <button class="mp-mbtn" onclick="inviteShareMember(this)">초대</button>
               </div>
 
-              <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">현재 멤버</div>
+              <div class="mp-mlb">함께하는 사람</div>
               <div id="share-member-list" style="display:flex;flex-direction:column;gap:10px;min-height:50px">
-                <div style="font-size:13px;color:var(--text3)">불러오는 중...</div>
+                <div style="font-size:13px;color:var(--ink-3)">불러오는 중</div>
               </div>
             </div>
 
             <!-- 링크 공유 탭 -->
             <div id="share-post" style="display:none">
-              <div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">
-                링크로 공유 — 링크를 받은 사람은 <strong style="color:var(--coral)">읽기 전용</strong>으로만 볼 수 있습니다
-              </div>
-              <div style="display:flex;gap:8px;margin-bottom:12px">
-                <input id="share-link-val" readonly
-                       style="flex:1;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:12px;background:var(--cream);color:var(--text2);outline:none"
-                       placeholder="플랜을 먼저 생성해주세요">
-                <button onclick="copyShareLink()"
-                        style="padding:9px 16px;background:var(--sage);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">
-                  복사
-                </button>
+              <div class="mp-mnote">링크를 받은 사람은 보기만 할 수 있습니다.</div>
+              <div class="mp-mrow">
+                <input class="mp-minp" id="share-link-val" readonly placeholder="플랜을 먼저 만들어 주세요">
+                <button class="mp-mbtn" onclick="copyShareLink()">복사</button>
               </div>
 
-              <button onclick="shareInviteToKakaoTalk()"
-                      style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; border:none; border-radius:8px; background:#FEE500; color:#3C1E1E; font-size:13px; font-weight:700; cursor:pointer; margin-bottom:18px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                카카오톡으로 링크 공유하기
-              </button>
+              <button class="mp-kakao" onclick="shareInviteToKakaoTalk()">카카오톡으로 보내기</button>
 
-              <div style="background:var(--cream);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--text3);line-height:1.7">
-                📌 링크를 받은 사람은 로그인 없이도 지도와 일정을 볼 수 있습니다.<br>
-                📌 수정 권한이 필요하면 왼쪽 <strong>멤버 초대</strong> 탭에서 이메일로 초대하세요.
+              <div class="mp-mhint">
+                로그인하지 않아도 지도와 일정은 열립니다.<br>
+                같이 고칠 사람은 멤버 초대 쪽에서 이메일로 부르세요.
               </div>
             </div>
 
@@ -2188,36 +2473,29 @@
       <div class="overlay" id="mapWeatherPopup" onclick="if(event.target===this)this.classList.remove('open')">
         <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
           <button class="modal-x" onclick="document.getElementById('mapWeatherPopup').classList.remove('open')">✕</button>
-          <div style="padding:4px 0 14px">
-            <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">TRIP WEATHER</div>
-            <div style="font-size:16px;font-weight:800" id="mwp-title">🌤️ 여행 날씨 예보</div>
+          <div style="padding:4px 0 16px">
+            <div class="mp-bg-eyebrow">여행 날씨</div>
+            <div class="mp-mttl" id="mwp-title">여행 날씨 예보</div>
           </div>
 
           <!-- 예보 범위 초과 시 -->
-          <div id="mwp-no-data" style="display:none;text-align:center;padding:30px 16px">
-            <div style="font-size:40px;margin-bottom:14px">🌐</div>
-            <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
-            <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
-              <div style="font-size:13px;color:var(--text2);line-height:1.8">
-                📌 날씨 예보는 <strong>오늘로부터 최대 14일 이내</strong>의 기간만 제공됩니다.<br>
-                📌 너무 먼 미래의 일정은 현재 예보를 확인할 수 없습니다.
-              </div>
+          <div id="mwp-no-data" style="display:none;padding:24px 0 8px">
+            <div class="mp-mttl" style="margin-bottom:10px">아직 예보가 나오지 않은 날짜입니다</div>
+            <div class="mp-mhint">
+              기상청 예보는 오늘부터 14일까지만 나옵니다.<br>
+              출발이 가까워지면 이 자리에 날씨가 들어옵니다.
             </div>
           </div>
 
-          <!-- 날씨 그리드 및 AI 교체 제안 영역 -->
+          <!-- 날씨 그리드 및 실내 대체 영역 -->
           <div id="mwp-data-wrap">
             <div class="weather-grid" id="mwp-grid" style="margin-top:0"></div>
 
-            <!-- 악천후 경고 텍스트 -->
-            <div id="mwp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
+            <div id="mwp-alert" class="mp-malert" style="display:none"></div>
 
-            <!-- ✨ [AI 실내 일정 교체 버튼 래퍼] -->
-            <div id="mwp-ai-replace-wrap" style="display:none; margin-top:10px; padding:12px; border-radius:8px; background:var(--sage-pale); border:1px solid var(--sage-l);">
-              <div style="font-size:12px; font-weight:800; color:var(--sage-d); margin-bottom:8px;">🤖 비가 오는 날의 야외 일정을 실내로 바꿀까요?</div>
-              <div id="mwp-ai-replace-btns" style="display:flex; gap:8px; flex-wrap:wrap;">
-                <!-- 버튼 동적 생성 -->
-              </div>
+            <div id="mwp-ai-replace-wrap" class="mp-mswap" style="display:none">
+              <div>비가 오는 날 야외 일정을 실내로 바꿀까요?</div>
+              <div id="mwp-ai-replace-btns" style="display:flex;gap:8px;flex-wrap:wrap"></div>
             </div>
 
           </div>
@@ -2225,20 +2503,17 @@
       </div>
 
       <div class="overlay" id="confirmDoneModal" onclick="if(event.target===this)this.classList.remove('open')">
-        <div class="modal" style="width:400px; text-align:center; padding:30px 20px;">
-          <div style="font-size:48px; margin-bottom:15px;">🎉</div>
-          <div style="font-size:18px; font-weight:800; margin-bottom:10px;">여행 일정이 확정되었습니다!</div>
-          <div id="confirmDoneDesc" style="font-size:13px; color:var(--text2); line-height:1.6; margin-bottom:24px;">
+        <div class="modal" style="width:400px; padding:30px 26px 26px;">
+          <div class="mp-mttl" style="margin-bottom:9px">일정을 확정했습니다</div>
+          <div id="confirmDoneDesc" class="mp-mhint" style="margin-bottom:22px">
             완성된 여행 플랜은 마이페이지와 가계부에서<br>언제든지 다시 확인할 수 있습니다.
           </div>
-          <div style="display:flex; gap:10px; justify-content:center;">
-            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open')"
-                    style="padding:10px 24px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
+          <div style="display:flex; gap:9px">
+            <button class="mp-mbtn mp-mbtn-q" onclick="document.getElementById('confirmDoneModal').classList.remove('open')">
               지도 더 보기
             </button>
-            <button onclick="document.getElementById('confirmDoneModal').classList.remove('open'); go('mypage'); setTimeout(function(){ if(typeof showMySection==='function') showMySection('trips', document.querySelector('.my-menu')); }, 150);"
-                    style="padding:10px 24px; background:var(--sage); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;">
-              마이페이지로 이동
+            <button class="mp-mbtn" onclick="document.getElementById('confirmDoneModal').classList.remove('open'); go('mypage'); setTimeout(function(){ if(typeof showMySection==='function') showMySection('trips', document.querySelector('.my-menu')); }, 150);">
+              마이페이지로
             </button>
           </div>
         </div>
@@ -2247,70 +2522,49 @@
     </div>
 
     <!-- ★모달 1: 예약 사이트 선택 -->
-    <div id="staySiteOverlay" style="display:none;position:fixed;inset:0;z-index:9998;
-         background:rgba(0,0,0,0.5);align-items:center;justify-content:center;"
-         onclick="if(event.target===this)closeSiteModal()">
-      <div style="background:#fff;border-radius:16px;padding:24px;width:340px;max-width:90%;
-           box-shadow:0 10px 40px rgba(0,0,0,0.2);">
-        <div style="font-weight:700;font-size:16px;margin-bottom:6px;">🏨 실제 금액 확인</div>
-        <div id="staySiteName" style="font-size:13px;color:#888;margin-bottom:10px;"></div>
-        <div style="font-size:13px;color:#555;margin-bottom:16px;line-height:1.5;">
-          실제 사이트에서 해당 숙소와 금액을 확인하세요.
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:14px;">
+    <div id="staySiteOverlay" class="overlay" onclick="if(event.target===this)closeSiteModal()">
+      <div class="modal mp-sheet">
+        <div class="mp-mttl">금액은 예약 사이트에서</div>
+        <div id="staySiteName" class="mp-sheet-sub"></div>
+        <p class="mp-mhint" style="margin:0 0 16px">
+          AI가 적어 둔 값은 어림잡은 금액입니다. 실제로 묵을 날짜와 인원으로 확인해 보세요.
+        </p>
+        <div class="mp-sheet-row">
           <button onclick="gotoSite('yeogi')" class="site-btn">여기어때</button>
           <button onclick="gotoSite('kakao')" class="site-btn">카카오</button>
         </div>
-        <div style="font-size:11px;color:#E07A5F;background:#FDF1EE;border-radius:8px;
-             padding:8px 10px;line-height:1.5;">
-          ⚠ 카카오는 인원과 필터를 직접 설정해야 합니다.
-        </div>
+        <div class="mp-warn">카카오는 인원과 조건을 직접 골라야 합니다.</div>
       </div>
     </div>
 
     <!-- ★모달 2: 실제 금액 입력 -->
-    <div id="stayPriceOverlay" style="display:none;position:fixed;inset:0;z-index:9999;
-         background:rgba(0,0,0,0.5);align-items:center;justify-content:center;"
-         onclick="if(event.target===this)closePriceModal()">
-      <div style="background:#fff;border-radius:16px;padding:24px;width:340px;max-width:90%;
-           box-shadow:0 10px 40px rgba(0,0,0,0.2);">
-        <div style="font-weight:700;font-size:16px;margin-bottom:6px;">💰 실제 숙박 금액 입력</div>
-        <div id="stayPriceName" style="font-size:13px;color:#888;margin-bottom:12px;"></div>
-        <div style="font-size:11px;color:#E07A5F;background:#FDF1EE;border-radius:8px;
-             padding:8px 10px;line-height:1.5;margin-bottom:14px;">
-          ⚠ 금액을 입력하지 않으면 AI가 예상 비용을 작성합니다 (정확도 낮음).
+    <div id="stayPriceOverlay" class="overlay" onclick="if(event.target===this)closePriceModal()">
+      <div class="modal mp-sheet">
+        <div class="mp-mttl">숙박비 적기</div>
+        <div id="stayPriceName" class="mp-sheet-sub"></div>
+        <div class="mp-warn" style="margin-bottom:16px">
+          비워 두면 AI가 어림잡은 금액이 그대로 남습니다.
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">
-          <span style="font-weight:700;">₩</span>
-          <input id="stayPriceInput" type="number" min="1" placeholder="실제 금액 (예: 150000)"
-                 oninput="onTopPriceInput()"
-                 style="flex:1;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:15px;">
+        <label class="mp-flab" for="stayPriceInput">1박 금액</label>
+        <div class="mp-fmoney">
+          <input id="stayPriceInput" type="number" min="1" placeholder="150000" oninput="onTopPriceInput()">
+          <span>원</span>
         </div>
-        <div onclick="toggleOtherStay()" style="font-size:13px;color:#2D9E8A;
-             cursor:pointer;font-weight:600;margin-bottom:8px;user-select:none;">
-          <span id="otherStayArrow">▸</span> 혹시 다른 숙소가 마음에 드셨나요?
-        </div>
-        <div id="otherStayBox" style="display:none;background:#f7f7f7;border-radius:8px;
-             padding:12px;margin-bottom:14px;">
-          <div style="font-size:12px;color:#888;margin-bottom:8px;">
-            숙소명과 금액을 입력해주세요. (입력 시 위쪽 금액은 무시됩니다)
-          </div>
-          <input id="otherStayName" type="text" placeholder="숙소명 (예: 해운대 그랜드호텔)"
-                 oninput="onOtherStayInput()"
-                 style="width:100%;padding:9px;border:1px solid #ddd;border-radius:8px;
-                 font-size:14px;margin-bottom:8px;box-sizing:border-box;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-weight:700;">₩</span>
-            <input id="otherStayPrice" type="number" min="1" placeholder="예: 180000"
-                   oninput="onOtherStayInput()"
-                   style="flex:1;padding:9px;border:1px solid #ddd;border-radius:8px;font-size:14px;">
-          </div>
-        </div>
-        <button onclick="saveStayPrice()"
-                style="width:100%;padding:12px;background:#2D9E8A;color:#fff;border:none;
-                border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;">
-          저장
+        <button type="button" class="mp-disc" onclick="toggleOtherStay()">
+          <span id="otherStayArrow">▸</span> 다른 숙소로 잡았다면
         </button>
+        <div id="otherStayBox" class="mp-subbox" style="display:none">
+          <p class="mp-mhint" style="margin:0 0 12px">여기에 적으면 위쪽 금액 대신 이 값이 들어갑니다.</p>
+          <label class="mp-flab" for="otherStayName">숙소 이름</label>
+          <input id="otherStayName" class="mp-finp" type="text" placeholder="해운대 그랜드호텔"
+                 oninput="onOtherStayInput()">
+          <label class="mp-flab" for="otherStayPrice" style="margin-top:12px">1박 금액</label>
+          <div class="mp-fmoney" style="margin-bottom:0">
+            <input id="otherStayPrice" type="number" min="1" placeholder="180000" oninput="onOtherStayInput()">
+            <span>원</span>
+          </div>
+        </div>
+        <button class="mp-mbtn" style="width:100%;margin-top:18px" onclick="saveStayPrice()">저장</button>
       </div>
     </div>
   </div>

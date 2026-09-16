@@ -10,18 +10,20 @@
    ========================================================= */
 
 .site-footer {
-    /* ===== [색상 설정] - 여기 값만 바꾸면 됩니다 ===== */
-    --foot-bg:        #14403A;   /* 푸터 배경 (딥틸) */
-    --foot-accent:    #2D9E8A;   /* 상단 경계선 / 포인트 */
-    --foot-heading:   #4DB8A4;   /* 컬럼 제목(바로가기·고객지원 등) */
-    --foot-text:      #CDE0DB;   /* 일반 본문 글자 / 링크 */
-    --foot-text-bold: #FFFFFF;   /* 강조 글자(슬로건·팀장·팀원) */
-    --foot-muted:     #9FBAB4;   /* 보조 설명 글자(소속 등) */
-    --foot-credits:   #7FA39C;   /* 하단 출처·저작권 글자 */
-    --foot-line:      rgba(255,255,255,.10);  /* 하단 구분선 */
-    --foot-divider:   rgba(255,255,255,.25);  /* 출처 사이 | 기호 */
-    /* 로고 반전: 어두운 배경이면 1, 밝은 배경으로 바꾸면 0 으로 */
-    --foot-logo-invert: 1;
+    /* ===== [색상 설정] - 여기 값만 바꾸면 됩니다 =====
+       근검은색 슬래브를 버렸다. 어디서나 쓰는 색이라 이 제품의 것으로
+       읽히지 않는다. 대신 미니어처가 놓인 판(--ui-plate)의 색을 쓴다.
+       화면 전체가 모형이고 푸터는 그 모형이 놓인 바닥이다.
+       이 토큰들은 시간대에 따라 함께 움직이므로 밤에도 대비가 유지된다. */
+    --foot-bg:        var(--ui-plate);   /* 모형이 놓인 판 */
+    --foot-accent:    var(--terra);      /* 상단 경계선 / 포인트 */
+    --foot-heading:   var(--terra);      /* 컬럼 제목 */
+    --foot-text:      var(--ink-2);      /* 일반 본문 글자 / 링크 */
+    --foot-text-bold: var(--ink);        /* 강조 글자 */
+    --foot-muted:     var(--ink-2);      /* 보조 설명 — 크기로 낮춘다 */
+    --foot-credits:   var(--ink-2);      /* 하단 출처 — 크기로 낮춘다 */
+    --foot-line:      var(--ui-line);    /* 하단 구분선 */
+    --foot-divider:   var(--ink-3);      /* 출처 사이 구분 기호 — 글이 아니라 표식 */
     /* ================================================ */
 
     margin-top: 64px;
@@ -51,11 +53,15 @@
 
 /* 브랜드 블록 */
 .foot-brand { max-width: 360px; }
+/* 이 규칙은 <img> 로고를 쓰던 시절 것이다. 지금은 인라인 SVG + 글자
+   묶음이라 height:30px 이 통째로 눌리고 brightness(0) 이 글자까지
+   까맣게 칠했다. 실측 — 로고 자리에 검은 쐐기가 하나 생겼다. */
 .foot-brand .foot-logo {
-    height: 30px;
+    display: block;
+    height: 44px;
     width: auto;
-    margin-bottom: 12px;
-    filter: brightness(0) invert(var(--foot-logo-invert));
+    margin-bottom: 16px;
+    filter: none;
 }
 .foot-slogan {
     font-size: 14px;
@@ -178,3 +184,6 @@
 body:has(#page-map.active) .site-footer {
     display: none;
 }
+
+/* 밝은 판으로 바꾸면서 — 로고 글자가 흰색으로 남아 사라졌다.
+   .brand-tx 는 상단 바용 색을 그대로 물려받는다. 여기서 다시 정한다. */

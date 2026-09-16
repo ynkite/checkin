@@ -1,0 +1,218 @@
+/*
+ * 체크인 — 경로 만들기 화면 (styles_planner.css)
+ *
+ * 메인 화면(styles_home.css)에서 정한 것을 그대로 가져온다.
+ *   입력   투명 바탕에 실선 한 겹. 채운 회색 상자를 쓰지 않는다
+ *   라벨   아주 작게, 본문은 크게 — 역할을 뒤집는다
+ *   판     흰 바닥에 실선 한 겹. 판 안에 판을 겹치지 않는다
+ * 색은 tokens.css 변수만 쓴다. styles_main.css 의 옛 규칙을 덮어쓰므로
+ * index.html 에서 styles_main.css 보다 뒤에 둔다.
+ */
+
+/* ── 머리 ─────────────────────────────────────────────────── */
+#page-planner .planner-ey{
+  font-family:var(--fig); font-size:11px; font-weight:600;
+  letter-spacing:.14em; color:var(--num); text-transform:none; margin-bottom:9px;
+}
+#page-planner .planner-ttl{
+  font-size:clamp(24px, 2.6vw, 30px); font-weight:700;
+  letter-spacing:-.042em; line-height:1.15;
+}
+#page-planner .planner-sub{
+  margin:9px 0 0; font-size:14.5px; line-height:1.7; color:var(--ink-2);
+  max-width:46ch; word-break:keep-all;
+}
+
+/* ── 단계 표시 — 네 단계다. 옛 규칙은 세 칸으로 잡고 있었다 ── */
+/* 네 번째 단계는 JS 가 필요할 때만 켠다. 격자를 4칸으로 고정하면
+   꺼져 있을 때 오른쪽 한 칸이 빈 채로 선만 남는다. */
+#page-planner .step-bar{
+  display:flex; gap:0;
+  border:0; border-top:1px solid var(--ui-line); border-radius:0;
+  background:none; overflow:visible; margin-bottom:26px;
+}
+#page-planner .step-item{ flex:1 1 0; min-width:0 }
+#page-planner .step-item{
+  position:relative; padding:14px 14px 0 0; border:0; background:none;
+  display:flex; align-items:baseline; gap:9px; cursor:pointer;
+}
+#page-planner .step-item::before{
+  content:""; position:absolute; top:-4px; left:0;
+  width:7px; height:7px; border-radius:99px;
+  background:var(--ui-line); box-shadow:0 0 0 3px var(--page);
+}
+#page-planner .step-item.active::before,
+#page-planner .step-item.done::before{ background:var(--terra) }
+#page-planner .step-num{
+  font-family:var(--fig); font-size:12px; font-weight:600;
+  letter-spacing:.06em; color:var(--ink-3); background:none;
+  width:auto; height:auto; border-radius:0; line-height:1;
+}
+#page-planner .step-lbl{
+  font-size:14px; font-weight:600; letter-spacing:-.03em; color:var(--ink-3);
+}
+#page-planner .step-item.active .step-num,
+#page-planner .step-item.active .step-lbl{ color:var(--ink) }
+
+/* ── 판 ───────────────────────────────────────────────────── */
+#page-planner .pl-card{
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:8px;
+  padding:24px 26px 26px; margin-bottom:14px; box-shadow:none;
+}
+#page-planner .pl-card-ttl{
+  font-size:17px; font-weight:700; letter-spacing:-.035em;
+  color:var(--ink); margin-bottom:18px;
+}
+
+/* ── 입력 — 채운 상자를 버린다 ───────────────────────────── */
+#page-planner .form-group{ margin-bottom:20px }
+#page-planner .form-label{
+  display:flex; align-items:baseline; gap:8px;
+  font-size:12px; font-weight:600; letter-spacing:.02em;
+  color:var(--ink-3); margin-bottom:6px;
+}
+#page-planner .form-hint{
+  font-style:normal; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  opacity:.85;
+}
+#page-planner .form-input,
+#page-planner select.form-input{
+  padding:9px 2px 10px; border:0; border-radius:0;
+  border-bottom:1.5px solid var(--ui-line); background:transparent;
+  font-size:17px; font-weight:600; letter-spacing:-.03em; color:var(--ink);
+  transition:border-color .15s;
+}
+#page-planner select.form-input{
+  appearance:none; -webkit-appearance:none;
+  padding-right:22px; cursor:pointer;
+  background-image:linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                   linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-size:5px 5px, 5px 5px;
+  background-position:right 8px center, right 3px center;
+  background-repeat:no-repeat;
+}
+#page-planner .form-input:hover{ border-bottom-color:var(--ink-3) }
+#page-planner .form-input:focus{
+  outline:none; background:transparent;
+  border-bottom-color:var(--ink); border-bottom-width:2px;
+}
+#page-planner .form-input::placeholder{ color:var(--ink-3); opacity:.5; font-weight:500 }
+#page-planner .form-input.err{ border-bottom-color:var(--tile) }
+#page-planner .form-input.ok{ border-bottom-color:var(--terra) }
+
+/* ── 버튼 ─────────────────────────────────────────────────── */
+#page-planner .btn-load-pref,
+#page-planner .weather-date-btn{
+  padding:9px 16px 10px; border-radius:99px; border:0; cursor:pointer;
+  font-family:inherit; font-size:13px; font-weight:600; letter-spacing:-.02em;
+  background:var(--panel); color:var(--ink-2);
+  box-shadow:inset 0 0 0 1px var(--ui-line); transition:color .15s, box-shadow .15s;
+}
+#page-planner .btn-load-pref:hover,
+#page-planner .weather-date-btn:hover{
+  color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3);
+}
+
+/* 지역 고르기 — .form-input 이 아니라 .loc-big 이다. 같은 모양으로 맞춘다 */
+#page-planner .loc-selector{ gap:14px; margin-bottom:0 }
+#page-planner .loc-big{
+  padding:9px 22px 10px 2px; border:0; border-radius:0;
+  border-bottom:1.5px solid var(--ui-line); background-color:transparent;
+  font-size:17px; font-weight:600; letter-spacing:-.03em; color:var(--ink);
+  transition:border-color .15s;
+  background-image:linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                   linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+  background-size:5px 5px, 5px 5px;
+  background-position:right 8px center, right 3px center;
+  background-repeat:no-repeat;
+}
+#page-planner .loc-big:hover{ border-bottom-color:var(--ink-3) }
+#page-planner .loc-big:focus{
+  background-color:transparent;
+  border-bottom-color:var(--ink); border-bottom-width:2px;
+}
+
+/* ── 날짜 칸 — 판 안에 판을 겹치지 않는다 ────────────────── */
+#page-planner .cal{
+  background:none; border:0; border-radius:0; padding:0;
+}
+#page-planner .cal-months{
+  background:var(--ui-plate); border-radius:8px; padding:14px 12px 10px;
+}
+
+@media (max-width:720px){
+  #page-planner .step-bar{ flex-wrap:wrap; row-gap:4px }
+  #page-planner .step-item{ flex:1 1 45% }
+  #page-planner .pl-card{ padding:20px 18px 22px }
+  #page-planner .planner-sub{ max-width:none }
+}
+
+/* 한 판 안의 줄 — 이름표를 왼쪽에 두고 알약을 오른쪽에 */
+#page-planner .pl-row{
+  display:grid; grid-template-columns:96px minmax(0,1fr);
+  gap:14px; align-items:center;
+  padding:14px 0; border-top:1px solid var(--ui-line-2);
+}
+#page-planner .pl-row:first-of-type{ border-top:0; padding-top:0 }
+#page-planner .pl-row-lb{
+  font-size:13px; font-weight:600; letter-spacing:-.02em; color:var(--ink-3);
+}
+#page-planner .pl-row .chip-row{ margin:0 }
+#page-planner .pl-row .other-input{ grid-column:2; margin-top:8px }
+
+/* 다음으로 가는 버튼은 메인과 같은 주황 알약이다 */
+#page-planner .btn-next{
+  padding:13px 26px 14px; border-radius:99px; border:0; cursor:pointer;
+  background:var(--terra); color:var(--panel);
+  font-family:inherit; font-size:15px; font-weight:700; letter-spacing:-.02em;
+  transition:filter .15s;
+}
+#page-planner .btn-next:hover{ filter:brightness(1.2) }
+#page-planner .btn-prev-step{
+  padding:12px 20px 13px; border-radius:99px; border:0; cursor:pointer;
+  background:var(--panel); color:var(--ink-2);
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+  font-family:inherit; font-size:14px; font-weight:600;
+}
+#page-planner .btn-prev-step:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+
+/* 고른 알약 */
+#page-planner .chip{
+  padding:8px 15px 9px; border-radius:99px; border:0; cursor:pointer;
+  background:var(--panel); color:var(--ink-2);
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+  font-family:inherit; font-size:13.5px; font-weight:600; letter-spacing:-.03em;
+  transition:color .15s, box-shadow .15s, background .15s;
+}
+#page-planner .chip:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
+#page-planner .chip.on{
+  background:var(--ink); color:var(--panel); box-shadow:none;
+}
+
+@media (max-width:620px){
+  #page-planner .pl-row{ grid-template-columns:1fr; gap:8px }
+  #page-planner .pl-row .other-input{ grid-column:1 }
+}
+
+/* 줄 안쪽 — 알약과 「기타」 입력이 같이 들어간다 */
+#page-planner .pl-row-bd{ min-width:0 }
+#page-planner .pl-row-bd .chip-row{ margin:0 }
+#page-planner .pl-row-bd .other-input{ margin-top:9px }
+#page-planner .pl-row-lb{
+  display:flex; flex-direction:column; gap:3px; align-items:flex-start;
+}
+#page-planner .pl-row-note{
+  font-style:normal; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  line-height:1.35; word-break:keep-all;
+}
+
+/* 여러 개 고를 수 있는 칸은 켜졌을 때 체크가 붙는다.
+   「(다중 선택 가능)」 이라고 적어 두는 대신 고른 모양으로 보인다. */
+#page-planner .chip[data-multi].on::before{
+  content:"✓"; margin-right:6px; font-size:11px; font-weight:700;
+  vertical-align:1px;
+}
+
+@media (max-width:620px){
+  #page-planner .pl-row-lb{ flex-direction:row; align-items:baseline; gap:8px; flex-wrap:wrap }
+}
