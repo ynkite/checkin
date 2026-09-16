@@ -158,6 +158,44 @@
     });
   }
 
+  /* ── 카메라 ──────────────────────────────────────────
+     레퍼런스는 정거장마다 카메라가 그 장소로 옮겨 간다.
+     우리 모형은 SVG 한 장이라 실제 카메라가 없다. 대신 그 장소가
+     화면 가운데로 오도록 판을 옮기고 조금 당긴다.
+     transform 하나만 바꾸므로 합성으로 끝난다. */
+  var cam = { z: 1, x: 0, y: 0, user: false };
+
+  function camApply() {
+    var f = $('ck_frame');
+    if (!f) return;
+    f.style.setProperty('--st-z', cam.z.toFixed(3));
+    f.style.setProperty('--st-x', Math.round(cam.x) + 'px');
+    f.style.setProperty('--st-y', Math.round(cam.y) + 'px');
+  }
+
+  /* 핀의 %좌표를 화면 가운데로 보내는 이동량.
+     가운데를 45% 로 두는 이유 — 아래쪽에 경로 만들기 바가 있다. */
+  function camTo(p, zoom) {
+    if (!p || cam.user) return;                 /* 사람이 시점을 만졌으면 건드리지 않는다 */
+    /* 좁은 화면에서는 장면 상자가 330px 밖에 안 된다. 당기면 핀이 화면 밖으로
+       밀려난다. 모형 전체가 보이는 쪽이 낫다. */
+    if (w.innerWidth <= 1180) { camReset(); return; }
+    var f = $('ck_frame');
+    if (!f) return;
+    var r = f.getBoundingClientRect();
+    if (!r.width) return;
+    cam.z = zoom || 1.32;
+    /* 판이 확대된 만큼 이동량도 늘어난다 */
+    cam.x = (50 - p.x) / 100 * r.width * cam.z;
+    cam.y = (45 - p.y) / 100 * r.height * cam.z;
+    camApply();
+  }
+
+  function camReset() {
+    cam.z = 1; cam.x = 0; cam.y = 0; cam.user = false;
+    camApply();
+  }
+
   /* ── 도구 ────────────────────────────────────────── */
   function initTools() {
     var stage = d.querySelector('.ck-stage');
@@ -186,19 +224,17 @@
       });
     }
 
-    /* 시점 — 모형에 변수만 준다. 레이아웃은 건드리지 않는다 */
-    var z = 1, x = 0, y = 0;
-    var frame = $('ck_frame');
-    function apply() {
-      if (!frame) return;
-      frame.style.setProperty('--st-z', z.toFixed(2));
-      frame.style.setProperty('--st-x', x + 'px');
-      frame.style.setProperty('--st-y', y + 'px');
-    }
+    /* 시점 도구 — 카메라와 같은 변수를 쓴다.
+       사람이 한 번 만지면 장면이 넘어가도 카메라가 따라 움직이지 않는다.
+       보고 있는 자리를 화면이 제멋대로 옮기면 안 된다. */
     var zin = $('st_v_in'), zout = $('st_v_out'), zr = $('st_v_reset');
-    if (zin) zin.addEventListener('click', function () { z = Math.min(2.2, z * 1.25); apply(); });
-    if (zout) zout.addEventListener('click', function () { z = Math.max(.75, z / 1.25); apply(); });
-    if (zr) zr.addEventListener('click', function () { z = 1; x = 0; y = 0; apply(); });
+    if (zin) zin.addEventListener('click', function () {
+      cam.user = true; cam.z = Math.min(2.4, cam.z * 1.25); camApply();
+    });
+    if (zout) zout.addEventListener('click', function () {
+      cam.user = true; cam.z = Math.max(.8, cam.z / 1.25); camApply();
+    });
+    if (zr) zr.addEventListener('click', camReset);
 
     /* 작은 지도 접기 */
     var fold = $('st_fold'), box = $('st_mini');
@@ -234,6 +270,8 @@
         if (isNaN(i)) return;
         state.hot = i;
         stops(); mapPins();
+        cam.user = false;                        /* 눌러서 고른 것이므로 카메라가 따라간다 */
+        camTo(route[i]);
       });
     }
   }
@@ -248,6 +286,9 @@
         state.cand = !!st.cand;
       }
       path(); stops(); side();
+      /* 장면이 바뀌면 카메라가 그 장소로 간다. 붐비는 곳이 없으면 전체를 본다. */
+      if (state.hot >= 0 && route[state.hot]) camTo(route[state.hot]);
+      else if (!cam.user) camReset();
       ready(function () { makeMini(); mapPins(); });
     }
   };
