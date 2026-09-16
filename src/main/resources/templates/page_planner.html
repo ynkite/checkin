@@ -75,11 +75,110 @@
                 });
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initPlannerMBTI);
-        } else {
-            initPlannerMBTI();
+        /* ── 출발지 찾기 ─────────────────────────────────────
+           티맵 POI 검색으로 후보를 띄우고 고른 것의 좌표를 기억한다.
+           좌표가 있어야 첫 구간 이동시간을 잴 수 있다. */
+        function initOriginPicker() {
+            const input = document.getElementById('s1-origin');
+            const list  = document.getElementById('s1-origin-list');
+            const hint  = document.getElementById('s1-origin-hint');
+            if (!input || input.dataset.wired) return;
+            input.dataset.wired = '1';
+
+            let timer = null, lastQuery = '';
+
+            function clearPick() {
+                window._plannerOrigin = null;
+                try { sessionStorage.removeItem('plannerOrigin'); } catch (e) {}
+            }
+
+            function pick(p) {
+                input.value = p.name;
+                window._plannerOrigin = { name: p.name, lat: p.lat, lng: p.lng, address: p.address };
+                try { sessionStorage.setItem('plannerOrigin', JSON.stringify(window._plannerOrigin)); } catch (e) {}
+                list.hidden = true;
+                list.innerHTML = '';
+                if (hint) hint.textContent = p.address || p.name;
+                if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
+            }
+            window._plannerPickOrigin = pick;
+
+            async function search(q) {
+                try {
+                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
+                    const json = await res.json();
+                    const arr = (json && json.success && json.data) || [];
+                    if (!arr.length) {
+                        list.hidden = true;
+                        if (hint) hint.textContent = 'TMAP 연동 전이거나 찾지 못했습니다. 그대로 두면 도/시로만 잡습니다.';
+                        return;
+                    }
+                    list.hidden = false;
+                    list.innerHTML = arr.map(function (p, i) {
+                        return '<button type="button" class="og-item" data-i="' + i + '">' +
+                               '<b>' + p.name + '</b><span>' + (p.address || '') + '</span></button>';
+                    }).join('');
+                    list.querySelectorAll('.og-item').forEach(function (b) {
+                        b.addEventListener('click', function () { pick(arr[+this.dataset.i]); });
+                    });
+                } catch (e) {
+                    list.hidden = true;
+                }
+            }
+
+            input.addEventListener('input', function () {
+                clearPick();
+                const q = this.value.trim();
+                if (hint) hint.textContent = '넣으면 첫 장소까지 걸리는 시간을 티맵으로 재서 출발 시각을 잡아 줍니다.';
+                clearTimeout(timer);
+                if (q.length < 2) { list.hidden = true; return; }
+                /* 한 글자마다 부르지 않는다. 멈추고 나서 한 번 */
+                timer = setTimeout(function () {
+                    if (q === lastQuery) return;
+                    lastQuery = q;
+                    search(q);
+                }, 350);
+            });
+
+            input.addEventListener('blur', function () {
+                setTimeout(function () { list.hidden = true; }, 180);
+            });
+
+            /* 돌아왔을 때 고른 값을 되살린다 */
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('plannerOrigin') || 'null');
+                if (saved && saved.name) {
+                    input.value = saved.name;
+                    window._plannerOrigin = saved;
+                    if (hint && saved.address) hint.textContent = saved.address;
+                }
+            } catch (e) {}
+
+            /* 티맵이 아직 안 붙었으면 먼저 말한다. 넣어 보고 나서
+               「찾지 못했습니다」를 보는 것보다 낫다. */
+            fetch('/api/route/status').then(r => r.json()).then(j => {
+                if (j && j.success && j.data && j.data.tmapReady === false) {
+                    window._tmapReady = false;
+                    if (hint && !input.value) {
+                        hint.textContent = '이동시간 연동(티맵)은 준비 중입니다. ' +
+                            '지금 넣어 두면 연동되는 대로 첫 장소까지 걸리는 시간을 잡아 줍니다.';
+                    }
+                    input.placeholder = '어디서 떠나나요 (예: 부산역, 집 주소)';
+                } else {
+                    window._tmapReady = true;
+                }
+            }).catch(() => {});
         }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                initPlannerMBTI(); initOriginPicker();
+            });
+        } else {
+            initPlannerMBTI(); initOriginPicker();
+        }
+        /* SPA 니 이 조각이 다시 들어오는 경우가 있다. go('planner') 가 부른다 */
+        window.initOriginPicker = initOriginPicker;
 
         /* ─────────────────────────────────────────────────────────
          * 이전 플랜 불러오기
@@ -617,7 +716,10 @@
 
             const depProv   = document.getElementById('dep-prov')?.value || '';
             const depCity   = document.getElementById('dep-city')?.value  || '';
-            const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+            const depArea   = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+            /* 정확한 출발지를 넣었으면 그것이 출발지다. 도/시는 그 앞에 붙는다 */
+            const originName = (document.getElementById('s1-origin')?.value || '').trim();
+            const departure = originName ? (depArea ? depArea + ' ' + originName : originName) : depArea;
 
             // 4. 백엔드로 보낼 Payload 생성
             const payload = {
@@ -1566,6 +1668,14 @@
                                 <option value="제주">제주</option>
                             </select>
                             <select class="loc-big" id="dep-city"></select>
+                        </div>
+                        <!-- 정확한 출발지. 도/시만으로는 이동시간을 잴 수 없다 -->
+                        <div class="og-wrap">
+                            <input class="form-input og-input" id="s1-origin" type="text"
+                                   autocomplete="off" placeholder="어디서 떠나나요 (예: 부산역, 집 주소)">
+                            <div class="og-list" id="s1-origin-list" hidden></div>
+                            <p class="og-hint" id="s1-origin-hint">넣으면 첫 장소까지 걸리는 시간을
+                                티맵으로 재서 출발 시각을 잡아 줍니다.</p>
                         </div>
                     </div>
 

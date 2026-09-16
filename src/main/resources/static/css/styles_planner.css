@@ -216,3 +216,28 @@
 @media (max-width:620px){
   #page-planner .pl-row-lb{ flex-direction:row; align-items:baseline; gap:8px; flex-wrap:wrap }
 }
+
+/* ── 출발지 ─────────────────────────────────────────────────
+   도/시 두 칸만으로는 이동시간을 잴 수 없다. 「서울 강남구」에는
+   떠나는 지점이 없다. 글자를 받아 티맵 POI 로 좌표를 찾는다. */
+.og-wrap{ position:relative; margin-top:10px }
+.og-input{ width:100% }
+.og-hint{
+  margin:6px 0 0; font-size:11.5px; line-height:1.5;
+  color:var(--ink-3); word-break:keep-all;
+}
+.og-list{
+  position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:20;
+  display:flex; flex-direction:column;
+  background:var(--panel); border-radius:12px; box-shadow:var(--lift);
+  overflow:hidden;
+}
+.og-item{
+  display:block; width:100%; padding:10px 14px 11px;
+  border:0; background:none; text-align:left; cursor:pointer;
+  font-family:inherit; word-break:keep-all;
+}
+.og-item + .og-item{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
+.og-item:hover{ background:var(--ui-plate) }
+.og-item b{ display:block; font-size:13.5px; font-weight:600; color:var(--ink) }
+.og-item span{ display:block; margin-top:2px; font-size:11.5px; color:var(--ink-3) }

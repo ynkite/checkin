@@ -51,7 +51,7 @@
       if (mc) o.cost = mc[1] + '원';
       if (s.indexOf('도보') >= 0) o.mode = '도보';
       else if (s.indexOf('대중교통') >= 0 || s.indexOf('🚌') >= 0) o.mode = '대중교통';
-      else if (s.indexOf('자차') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
+      else if (s.indexOf('자차') >= 0 || s.indexOf('차로') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
       return o;
     }
 
@@ -252,6 +252,162 @@
     }
 
     /* ════════════════════════════════════════════════════════
+     *  이동시간 — 출발지에서 순서대로.
+     *
+     *  동선의 「도보 12분」은 AI 가 쓴 글자다. 신호도 교통량도 모른다.
+     *  티맵이 잰 값으로 덮는다. 출발지에서 첫 장소까지는 동선에 없던
+     *  구간이라 따로 한 줄 만든다 — 여행 당일 아침에 제일 먼저 필요한
+     *  값이 「몇 시에 나가야 하는가」다.
+     * ════════════════════════════════════════════════════════ */
+
+    function _mpOrigin() {
+      if (window._plannerOrigin && window._plannerOrigin.name) return window._plannerOrigin;
+      try {
+        var o = JSON.parse(sessionStorage.getItem('plannerOrigin') || 'null');
+        if (o && o.name) return o;
+      } catch (e) {}
+      return null;
+    }
+
+    function _mpMin(n) {
+      if (n == null) return null;
+      return n >= 60 ? (Math.floor(n / 60) + '시간' + (n % 60 ? ' ' + (n % 60) + '분' : ''))
+                     : (n + '분');
+    }
+
+    async function _mpLoadTravel() {
+      var box = document.getElementById('mpDepart');
+      var origin = _mpOrigin();
+      if (!origin || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) {
+        if (box) box.hidden = true;
+        return;
+      }
+
+      var day = MAP_ITINERARY[0];
+      var stops = (day.places || []).filter(function (p) {
+        return !p.transit && p.name && isFinite(p.lat) && isFinite(p.lng);
+      }).map(function (p) {
+        return { name: p.name, lat: p.lat, lng: p.lng, time: p.time };
+      });
+      if (!stops.length) { if (box) box.hidden = true; return; }
+
+      /* 첫 장소 시각에 도착하려면 그 시각에 떠나는 교통량으로 재야 한다 */
+      var iso = _mpDayIso(day.day || 1);
+      var departAt = null;
+      if (iso && stops[0].time && /^\d{1,2}:\d{2}/.test(stops[0].time)) {
+        var hm = stops[0].time.match(/^(\d{1,2}):(\d{2})/);
+        departAt = iso + 'T' + String(hm[1]).padStart(2, '0') + ':' + hm[2] + ':00+0900';
+      }
+
+      var body = {
+        originName: origin.name,
+        originLat: origin.lat || null,
+        originLng: origin.lng || null,
+        mode: _mpTransportCode(),
+        departAt: departAt,
+        stops: stops
+      };
+
+      var plan = null;
+      try {
+        var res = await fetch('/api/route/travel-time', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var json = await res.json();
+        plan = (json && json.success) ? json.data : null;
+      } catch (e) {
+        console.warn('[지도] 이동시간 조회 실패:', e);
+      }
+      if (!plan) { if (box) box.hidden = true; return; }
+
+      _mpPaintDepart(plan, stops[0]);
+      _mpApplyLegs(plan, day);
+
+      /* 잰 거리·요금을 예산에 넘긴다. 하루 60km 가정을 실측으로 바꾼다 */
+      if (plan.totalMeters > 0) window._mpTravelMeters = plan.totalMeters;
+      if (plan.totalFare > 0 && plan.mode === 'TRANSIT') window._mpTransitFare = plan.totalFare;
+      if (plan.totalMeters > 0 || plan.totalFare > 0) _mpLoadBudget();
+    }
+
+    function _mpPaintDepart(plan, first) {
+      var box = document.getElementById('mpDepart');
+      if (!box) return;
+      var leg = (plan.legs || [])[0];
+
+      if (!plan.ready) {
+        box.hidden = false;
+        box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
+          '<p class="mp-dp-2">이동시간 연동(티맵)은 준비 중입니다. ' +
+          '연동되면 몇 시에 나가야 하는지 여기에 적습니다.</p>';
+        return;
+      }
+      if (!leg || leg.minutes == null) {
+        box.hidden = false;
+        box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
+          '<p class="mp-dp-2">' + _mpEsc(leg && leg.note ? leg.note : '길을 찾지 못했습니다') + '</p>';
+        return;
+      }
+
+      /* 도착 시각에서 거꾸로 세어 나갈 시각을 낸다 */
+      var leaveTxt = '';
+      if (first && first.time && /^\d{1,2}:\d{2}/.test(first.time)) {
+        var hm = first.time.match(/^(\d{1,2}):(\d{2})/);
+        var mins = parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10) - leg.minutes;
+        if (mins < 0) mins += 1440;
+        leaveTxt = '<b>' + String(Math.floor(mins / 60)).padStart(2, '0') + ':' +
+                   String(mins % 60).padStart(2, '0') + '</b>에 나가면 됩니다. ';
+      }
+
+      box.hidden = false;
+      box.innerHTML =
+        '<p class="mp-dp-1">' + _mpEsc(plan.originName) + ' → ' + _mpEsc(leg.toName) +
+          ' <em>' + _mpMin(leg.minutes) + '</em></p>' +
+        '<p class="mp-dp-2">' + leaveTxt +
+          (leg.meters ? (leg.meters / 1000).toFixed(1) + 'km · ' : '') +
+          _mpEsc(leg.note || '') +
+          (leg.fare ? ' · ' + leg.fare.toLocaleString() + '원' : '') + '</p>';
+    }
+
+    /* 잰 값으로 동선의 이동 문구를 덮는다. 목록을 다시 그려야 보인다 */
+    function _mpApplyLegs(plan, day) {
+      if (!plan.ready) return;
+      var legs = (plan.legs || []).slice(1);      /* 0번은 출발지 -> 첫 장소 */
+      if (!legs.length) return;
+
+      var ps = day.places || [];
+      var seg = 0, changed = false;
+      for (var i = 0; i < ps.length; i++) {
+        if (!ps[i].transit) continue;
+        var leg = legs[seg++];
+        if (!leg || leg.minutes == null) continue;
+        var mode = leg.mode === 'TRANSIT' ? '대중교통' : leg.mode === 'WALK' ? '도보' : '차로';
+        ps[i].transit = mode + ' ' + _mpMin(leg.minutes) +
+          (leg.meters ? ' · ' + (leg.meters / 1000).toFixed(1) + 'km' : '') +
+          (leg.fare ? ' · ₩' + leg.fare.toLocaleString() : '');
+        changed = true;
+      }
+      if (!changed) return;
+      try { sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY)); } catch (e) {}
+
+      /* 목록을 통짜로 다시 그리지 않는다. _mpRedrawList 는 initMapPage 를
+         다시 부르고, 그것이 다시 _mpLoadTravel 을 부른다 — 맞물린다.
+         이동 줄만 제자리에서 고친다. */
+      var rows = document.querySelectorAll('#page-map .transit-map-row');
+      var k = 0;
+      (day.places || []).forEach(function (p) {
+        if (!p.transit) return;
+        var row = rows[k++];
+        if (!row) return;
+        var parsed = _mpParseTransit(p.transit);
+        var meta = _mpTransitMeta(parsed);
+        row.innerHTML = '<b>' + _mpEsc(_mpTransitLabel(parsed)) + '</b>' +
+                        (meta ? '<i>' + _mpEsc(meta) + '</i>' : '');
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════
      *  예산 — 서버가 낸다.
      *
      *  전에는 AI 가 장소 설명에 적어 둔 금액 글자를 긁어 더했다. AI 가
@@ -293,8 +449,10 @@
             if (m) sum += (parseInt(m[1].replace(/,/g, ''), 10) || 0) * parseInt(m[2] || '1', 10);
           }
           if (p.transit) {
-            var t2 = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
-            if (t2) sum += parseInt(t2[1].replace(/,/g, ''), 10) || 0;
+            /* ₩ 나 「원」이 붙은 숫자만 금액이다. 표시를 빼면 「9분」의 9 를
+               9원으로 읽는다 — 실제로 하루 32원이 나왔다. */
+            var t2 = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
+            if (t2) sum += parseInt((t2[1] || t2[2]).replace(/,/g, ''), 10) || 0;
           }
         });
       });
@@ -1032,9 +1190,10 @@
               }
               // 2. 이동 수단(transit) 금액 계산
               if (p.transit) {
-                const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
+                /* ₩ 나 「원」이 붙은 숫자만 금액이다 (위 _mpWrittenSum 과 같은 이유) */
+                const m = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
                 if (m) {
-                  const cost = parseInt(m[1].replace(/,/g,'')) || 0;
+                  const cost = parseInt((m[1] || m[2]).replace(/,/g,'')) || 0;
                   catSums.transit += cost;
                   dailySum += cost;
                 }
@@ -1235,6 +1394,7 @@
           });
         }
         if (typeof _mpLoadBudget === 'function') _mpLoadBudget();
+        if (typeof _mpLoadTravel === 'function') _mpLoadTravel();
 
         try {
           const fallbackQ = sessionStorage.getItem('map_fallback_queue');
@@ -2871,6 +3031,8 @@
         </div>
         <!-- 혼잡 안내 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
         <div class="mp-alert" id="mpAlert" hidden></div>
+        <!-- 출발 — 출발지에서 첫 장소까지. _mpLoadTravel() 이 채운다 -->
+        <div class="mp-depart" id="mpDepart" hidden></div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
         <div class="map-budget-bar">

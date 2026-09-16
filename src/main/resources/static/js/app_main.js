@@ -333,6 +333,11 @@ async function go(id, addToHistory) {
         }, 100);
     }
 
+    /* 출발지 칸 — 이 조각이 다시 들어오면 리스너가 사라진다 */
+    if (id === 'planner' && typeof window.initOriginPicker === 'function') {
+        setTimeout(window.initOriginPicker, 60);
+    }
+
     //가계부 페이지 진입 시 항상 실제 데이터로 갱신
     if (id === 'ledger') {
         loadPageCSS('/css/styles_budget.css');
@@ -3524,7 +3529,8 @@ function _savePlannerDraft() {
     }
     sessionStorage.setItem('plannerDraftStep', _currentPlanStep());
     const state = {};
-    ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+    ['dest-prov','dest-city','dep-prov','dep-city','s1-origin',
+     's1-date-start','s1-date-end','s1-pax','s1-budget']
         .forEach(id => { const el = document.getElementById(id); if (el) state[id] = el.value; });
     ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
         .forEach(id => {
@@ -3543,7 +3549,8 @@ function _restorePlannerDraft() {
     if (!raw) return;
     try {
         const state = JSON.parse(raw);
-        ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget']
+        ['dest-prov','dest-city','dep-prov','dep-city','s1-origin',
+         's1-date-start','s1-date-end','s1-pax','s1-budget']
             .forEach(id => { const el = document.getElementById(id); if (el && state[id] !== undefined) el.value = state[id]; });
         ['chip-trans','chip-acc','chip-comp','chip-style','chip-food','chip-special','chip-density','chip-accopts']
             .forEach(id => {
