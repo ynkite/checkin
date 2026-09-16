@@ -165,29 +165,49 @@
      transform 하나만 바꾸므로 합성으로 끝난다. */
   var cam = { z: 1, x: 0, y: 0, user: false };
 
+  /* 판이 무대를 덮고 남는 여유. 이 범위를 넘겨 밀면 무대 가장자리에
+     바닥색이 드러난다 — 도시가 끊겨 보이는 그 자리다. */
+  function camSlack() {
+    var f = $('ck_frame');
+    if (!f) return null;
+    var st = f.parentElement;
+    if (!st || !f.offsetWidth) return null;
+    return {
+      w: f.offsetWidth, h: f.offsetHeight,
+      x: Math.max(0, (f.offsetWidth * cam.z - st.clientWidth) / 2),
+      y: Math.max(0, (f.offsetHeight * cam.z - st.clientHeight) / 2)
+    };
+  }
+
   function camApply() {
     var f = $('ck_frame');
     if (!f) return;
+    var s = camSlack();
+    if (s) {
+      cam.x = Math.max(-s.x, Math.min(s.x, cam.x));
+      cam.y = Math.max(-s.y, Math.min(s.y, cam.y));
+    }
     f.style.setProperty('--st-z', cam.z.toFixed(3));
     f.style.setProperty('--st-x', Math.round(cam.x) + 'px');
     f.style.setProperty('--st-y', Math.round(cam.y) + 'px');
   }
 
   /* 핀의 %좌표를 화면 가운데로 보내는 이동량.
-     가운데를 45% 로 두는 이유 — 아래쪽에 경로 만들기 바가 있다. */
+     가운데를 45% 로 두는 이유 — 아래쪽에 경로 만들기 바가 있다.
+     덮는 범위를 넘으면 camApply 가 잘라 낸다. 정거장이 정확히 가운데
+     오지 않더라도 도시가 끊기는 쪽이 더 나쁘다. */
   function camTo(p, zoom) {
     if (!p || cam.user) return;                 /* 사람이 시점을 만졌으면 건드리지 않는다 */
     /* 좁은 화면에서는 장면 상자가 330px 밖에 안 된다. 당기면 핀이 화면 밖으로
        밀려난다. 모형 전체가 보이는 쪽이 낫다. */
     if (w.innerWidth <= 1180) { camReset(); return; }
     var f = $('ck_frame');
-    if (!f) return;
-    var r = f.getBoundingClientRect();
-    if (!r.width) return;
+    if (!f || !f.offsetWidth) return;
     cam.z = zoom || 1.32;
-    /* 판이 확대된 만큼 이동량도 늘어난다 */
-    cam.x = (50 - p.x) / 100 * r.width * cam.z;
-    cam.y = (45 - p.y) / 100 * r.height * cam.z;
+    /* 변형이 안 걸린 레이아웃 크기로 잰다. getBoundingClientRect 를 쓰면
+       지난번 확대가 값에 섞여 장면을 넘길수록 이동량이 부푼다. */
+    cam.x = (50 - p.x) / 100 * f.offsetWidth * cam.z;
+    cam.y = (45 - p.y) / 100 * f.offsetHeight * cam.z;
     camApply();
   }
 

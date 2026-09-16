@@ -625,12 +625,6 @@
     margin-bottom: 16px;
 }
 .review-place-item,
-.place-review-item {
-    padding: 12px 14px !important;
-    border-radius: 14px !important;
-    min-height: auto !important;
-    margin-bottom: 10px !important;
-}
 .review-place-main {
     gap: 10px !important;
     align-items: center;
@@ -1045,215 +1039,41 @@
 .place-card-scrap { font-size: .78rem; color: var(--num); font-weight: 700; white-space: nowrap; }
 
 /* 뒤로 가기 */
-.place-back-btn {
-    background: none;
-    border: 1px solid var(--border2);
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: .85rem;
-    cursor: pointer;
-    margin-bottom: 12px;
-    color: var(--text2);
-    transition: background .12s;
-}
 .place-back-btn:hover { background: var(--surface2); }
-.place-back-title {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 6px;
-}
 
 /* ── 장소 후기 드릴다운 전체 래퍼 ── */
-.place-review-wrap {
-    background: var(--panel);
-    border-radius: 14px;
-    padding: 20px 18px 24px;
-    box-shadow: 0 1px 6px rgba(var(--sh-rgb),.07);
-}
 
 /* ── 평균 별점 헤더 (가운데 정렬, 크게) ── */
-.place-review-header {
-    text-align: center;
-    padding: 16px 0 20px;
-    margin-bottom: 18px;
-    border-bottom: 1px solid var(--border2);
-}
 /* 지도 링크 섹션이 들어가면 헤더 자체의 하단 구분선/여백은 지도 섹션이 대신하므로 정리 */
-.place-review-header:has(.place-map-links) {
-    padding-bottom: 16px;
-    margin-bottom: 16px;
-    border-bottom: none;
-}
-.place-review-name {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text1);
-    margin-bottom: 12px;
-}
-.place-avg-stars {
-    font-size: 2rem;
-    color: var(--num);
-    letter-spacing: 3px;
-    display: block;
-    margin-bottom: 4px;
-}
-.place-avg-score {
-    font-size: 2.6rem;
-    font-weight: 800;
-    color: var(--text1);
-    display: block;
-    line-height: 1.1;
-    margin-bottom: 4px;
-}
-.place-avg-count {
-    font-size: .85rem;
-    color: var(--text3);
-    display: block;
-}
 
 /* ── 평균 별점 아래 스크랩 버튼 (가운데, 알약형) ── */
-.place-review-scrap-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    margin: 12px auto 0;
-    padding: 7px 18px;
-    border: 1.5px solid var(--border2);
-    border-radius: 999px;
-    background: var(--panel);
-    color: var(--text2);
-    font-size: .85rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .15s ease;
-}
 .place-review-scrap-btn:hover {
     border-color: var(--terra);
     color: var(--terra);
 }
-.place-review-scrap-btn .prs-star { font-size: .95rem; line-height: 1; }
 .place-review-scrap-btn.scrapped {
     background: var(--terra);
     border-color: var(--terra);
     color: var(--panel);
 }
-.place-review-scrap-btn.scrapped:hover {
-    background: var(--sig-deep);
-    border-color: var(--sig-deep);
-    color: var(--panel);
-}
 
 /* ── 지도 앱 링크 섹션 ── */
-.place-map-links {
-    margin-top: 20px;
-    padding-top: 18px;
-    border-top: 1px solid var(--border2);
-}
-.place-map-links .pml-title {
-    font-size: .8rem;
-    color: var(--text3);
-    text-align: center;
-    margin-bottom: 12px;
-    letter-spacing: .02em;
-}
-.place-map-links .pml-btns {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.place-map-links .pml-btn {
-    flex: 1 1 0;
-    min-width: 92px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 11px 8px;
-    border-radius: 10px;
-    text-decoration: none;
-    font-size: .82rem;
-    font-weight: 700;
-    transition: transform .1s ease, box-shadow .15s ease, filter .15s ease;
-}
 /* 바깥 지도로 나가는 링크. 브랜드색으로 꽉 채우면 세 개가 화면을
    다 먹는다. 장소가 주인공이고 이건 보조 동작이다. 테두리만 두른다. */
-.place-map-links .pml-btn {
-    background: var(--panel);
-    color: var(--ink-2);
-    box-shadow: inset 0 0 0 1px var(--ui-line);
-    transition: color .15s, box-shadow .15s;
-}
-.place-map-links .pml-btn:hover {
-    transform: none;
-    color: var(--ink);
-    box-shadow: inset 0 0 0 1px var(--ink-3);
-    filter: none;
-}
 
 /* ── 리뷰 목록 ── */
-.place-review-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
 
 /* ── 개별 리뷰 카드 ── */
-.place-review-item {
-    background: var(--ui-plate);
-    border: 1px solid var(--border2);
-    border-radius: 10px;
-    padding: 14px 16px;
-}
-.pri-top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-}
-.pri-stars  { color: var(--num); font-size: 1rem; }
-.pri-writer { font-size: .82rem; color: var(--text3); }
 
 /* 한줄평 — 기본 2줄 클램프 */
-.pri-comment {
-    font-size: .9rem;
-    color: var(--text1);
-    line-height: 1.55;
-    margin-bottom: 6px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-}
 .pri-comment.expanded {
     display: block;
     overflow: visible;
     -webkit-line-clamp: unset;
 }
-.pri-toggle-btn {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: .8rem;
-    color: var(--primary);
-    cursor: pointer;
-    margin-bottom: 6px;
-    display: block;
-}
 .pri-toggle-btn:hover { text-decoration: underline; }
 
 /* 해당 후기로 이동 버튼 */
-.pri-goto {
-    display: inline-block;
-    margin-top: 4px;
-    padding: 4px 12px;
-    border: 1px solid var(--primary);
-    border-radius: 6px;
-    background: none;
-    font-size: .8rem;
-    color: var(--primary);
-    cursor: pointer;
-    transition: background .12s, color .12s;
-}
 .pri-goto:hover {
     background: var(--primary);
     color: var(--panel);

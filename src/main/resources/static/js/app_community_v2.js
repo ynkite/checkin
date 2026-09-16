@@ -3453,7 +3453,7 @@ window._handleWriteImageSelect = function(input) {
 
     async function loadRouteSearchOrSorted(pageNo) {
         const tabEl = document.getElementById('tab-route');
-        if (tabEl) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
+        if (tabEl) tabEl.innerHTML = '<div class="pl-none">불러오는 중</div>';
 
         try {
             const keyword = getSearchKeyword();
@@ -3991,10 +3991,11 @@ window._handleWriteImageSelect = function(input) {
             tabEl.innerHTML = '';
 
             const wrap = document.createElement('div');
-            wrap.className = 'place-review-wrap';
+            wrap.className = 'pl-wrap';
 
             const back = document.createElement('button');
-            back.className = 'place-back-btn'; back.textContent = '← 목록으로';
+            back.type = 'button';
+            back.className = 'pl-back'; back.textContent = '← 목록으로';
             back.addEventListener('click', function () {
                 /* 목록으로 돌아오면 검색/정렬 바 복원 */
                 const sb = document.querySelector('#page-community .search-bar');
@@ -4031,70 +4032,84 @@ window._handleWriteImageSelect = function(input) {
             } catch (e) {}
 
             const header = document.createElement('div');
-            header.className = 'place-review-header';
+            header.className = 'pl-head';
             const mapQuery = encodeURIComponent(placeName || '');
+            /* 별을 늘어놓지 않는다. 읽기만 하는 평점은 숫자가 빠르다.
+               바깥 지도로 나가는 것은 보조 동작이라 링크로 둔다 —
+               알약 버튼 세 개가 장소 이름보다 크게 보였다. */
             header.innerHTML = [
-                `<div class="place-review-name">${escapeHtml(placeName)}</div>`,
-                `<div class="place-avg-stars">${starsHtml(Math.round(avg))}</div>`,
-                `<div class="place-avg-score">${avg.toFixed(1)}</div>`,
-                `<div class="place-avg-count">${cnt}개 후기</div>`,
-                `<button class="place-review-scrap-btn${alreadyScrapped ? ' scrapped' : ''}"`,
-                `        onclick="doCommPlaceScrapToggle(this, ${placeId},'${type}')">`,
-                `  <span class="prs-star">★</span> <span class="prs-label">스크랩</span>`,
-                `</button>`,
-                `<div class="place-map-links">`,
-                `  <div class="pml-title">지도 앱에서 보기</div>`,
-                `  <div class="pml-btns">`,
-                `    <a class="pml-btn pml-naver"  href="https://map.naver.com/v5/search/${mapQuery}" target="_blank" rel="noopener">네이버 지도</a>`,
-                `    <a class="pml-btn pml-kakao"  href="https://map.kakao.com/?q=${mapQuery}" target="_blank" rel="noopener">카카오맵</a>`,
-                `    <a class="pml-btn pml-google" href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" rel="noopener">구글 지도</a>`,
-                `  </div>`,
-                `</div>`
+                '<span class="pl-eye">장소</span>',
+                '<h2 class="pl-name">' + escapeHtml(placeName) + '</h2>',
+                '<div class="pl-figs">',
+                '  <div class="pl-fig"><b>' + (avg ? avg.toFixed(1) : '—') + '</b><span>평점</span></div>',
+                '  <div class="pl-fig pl-dim"><b>' + cnt + '</b><span>개의 후기</span></div>',
+                '</div>',
+                '<button class="pl-keep' + (alreadyScrapped ? ' on' : '') + '" type="button"',
+                '        onclick="doCommPlaceScrapToggle(this, ' + placeId + ",'" + type + "')\">",
+                (alreadyScrapped ? '담은 장소' : '담기'),
+                '</button>',
+                '<div class="pl-maps">',
+                '  <p class="pl-maps-t">지도 앱에서 열기</p>',
+                '  <div class="pl-maps-l">',
+                '    <a href="https://map.naver.com/v5/search/' + mapQuery + '" target="_blank" rel="noopener">네이버 지도</a>',
+                '    <a href="https://map.kakao.com/?q=' + mapQuery + '" target="_blank" rel="noopener">카카오맵</a>',
+                '    <a href="https://www.google.com/maps/search/?api=1&query=' + mapQuery + '" target="_blank" rel="noopener">구글 지도</a>',
+                '  </div>',
+                '</div>'
             ].join('');
             wrap.appendChild(header);
 
             if (!reviews.length) {
                 const empty = document.createElement('div');
-                empty.className = 'comm-empty'; empty.textContent = '이 장소에 대한 후기가 없습니다.';
+                empty.className = 'pl-none';
+                empty.innerHTML = '<b>아직 후기가 없습니다.</b>' +
+                    '이 장소를 다녀오면 후기를 남길 수 있습니다.';
                 wrap.appendChild(empty); tabEl.appendChild(wrap); return;
             }
 
+            const bar = document.createElement('div');
+            bar.className = 'pl-bar';
+            bar.innerHTML = '<h3>후기 ' + reviews.length + '개</h3>';
+            wrap.appendChild(bar);
+
             const listEl = document.createElement('div');
-            listEl.className = 'place-review-list';
+            listEl.className = 'pl-list';
 
             reviews.forEach(function (r) {
                 const el = document.createElement('div');
-                el.className = 'place-review-item';
-                const hasComment = r.comment && r.comment.trim();
+                el.className = 'pl-item';
+                const say = r.comment && r.comment.trim();
 
                 el.innerHTML = [
-                    `<div class="pri-top">`,
-                    `  <span class="pri-stars">${starsHtml(r.rating)}</span>`,
-                    `  <span class="pri-writer">${escapeHtml(r.writerName || '')}</span>`,
-                    `</div>`,
-                    hasComment
-                        ? `<div class="pri-comment">${escapeHtml(r.comment.trim())}</div>` +
-                        `<button class="pri-toggle-btn" data-expanded="false">자세히 보기</button>`
-                        : '',
-                    r.postId ? `<button class="pri-goto">해당 후기로 이동 →</button>` : ''
+                    '<div class="pl-top">',
+                    '  <span class="pl-score">' +
+                        (r.rating != null ? Number(r.rating).toFixed(1) : '—') + '</span>',
+                    '  <span class="pl-who">' + escapeHtml(r.writerName || '익명') + '</span>',
+                    '  <span class="pl-when">' +
+                        String(r.createdAt || '').substring(0, 10).replace(/-/g, '.') + '</span>',
+                    '</div>',
+                    say ? '<p class="pl-say">' + escapeHtml(say) + '</p>' : '',
+                    r.postId ? '<button class="pl-goto" type="button">이 후기 전체 보기</button>' : ''
                 ].join('');
 
-                if (hasComment) {
-                    const commentEl = el.querySelector('.pri-comment');
-                    const toggleBtn = el.querySelector('.pri-toggle-btn');
-                    toggleBtn.addEventListener('click', function () {
-                        const expanded = this.dataset.expanded === 'true';
-                        commentEl.classList.toggle('expanded', !expanded);
-                        this.textContent = expanded ? '자세히 보기' : '접기';
-                        this.dataset.expanded = String(!expanded);
-                    });
+                /* 두 줄이 넘는 것만 「자세히 보기」를 붙인다.
+                   짧은 한 줄평 밑에 접기 버튼이 붙으면 눌러도 아무 일이 없다 */
+                if (say) {
+                    const sayEl = el.querySelector('.pl-say');
                     requestAnimationFrame(function () {
-                        if (commentEl.scrollHeight <= commentEl.clientHeight + 2) toggleBtn.style.display = 'none';
+                        if (sayEl.scrollHeight <= sayEl.clientHeight + 2) return;
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'pl-more'; b.textContent = '자세히 보기';
+                        b.addEventListener('click', function () {
+                            const open = sayEl.classList.toggle('on');
+                            b.textContent = open ? '접기' : '자세히 보기';
+                        });
+                        sayEl.insertAdjacentElement('afterend', b);
                     });
                 }
 
                 if (r.postId) {
-                    el.querySelector('.pri-goto').addEventListener('click', function () {
+                    el.querySelector('.pl-goto').addEventListener('click', function () {
                         if (typeof window.openPostDetail === 'function') window.openPostDetail(r.postId);
                     });
                 }
@@ -4107,7 +4122,7 @@ window._handleWriteImageSelect = function(input) {
 
         } catch (e) {
             console.error('[place-tab] 장소 후기 로드 실패:', e);
-            tabEl.innerHTML = '<div class="comm-empty">후기를 불러오지 못했습니다.</div>';
+            tabEl.innerHTML = '<div class="pl-none"><b>후기를 불러오지 못했습니다.</b>잠시 뒤에 다시 열어 보세요.</div>';
         }
     }
 
