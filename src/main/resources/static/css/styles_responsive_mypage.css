@@ -72,3 +72,15 @@
         gap: 8px;
     }
 }
+
+/* ── 아무것도 없을 때 ───────────────────────────────────────
+   자리 채움 데이터를 걷어 낸 자리다. 없다고 말하고 갈 곳을 준다. */
+.my-none{
+  margin:0; padding:26px 2px; font-size:13.5px; line-height:1.7;
+  color:var(--ink-3); word-break:keep-all;
+}
+.my-none b{
+  display:block; font-size:15px; font-weight:700;
+  color:var(--ink); margin-bottom:5px;
+}
+.my-none-go{ display:block; margin-top:14px }
