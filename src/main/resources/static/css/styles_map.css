@@ -125,7 +125,9 @@
 
 /* ── 일정 레일 ─────────────────────────────────────────────── */
 .map-list{
-  flex:1; min-height:210px; overflow-y:auto; overflow-x:hidden;
+  /* min-height 를 210 -> 120 으로. 안내판이 여름 때 목록과 둘이
+     701px 를 나눠 갖는다. 210 을 고지하면 안내판이 눌렸다. */
+  flex:1 1 auto; min-height:120px; overflow-y:auto; overflow-x:hidden;
   padding:0 16px 22px; scrollbar-width:thin;
 }
 .day-section + .day-section{ margin-top:6px }
@@ -703,8 +705,14 @@
    혼잡 안내 — 알려 주고 끝내지 않는다. 세 갈래를 고르게 한다.
    문구는 사용자가 불러준 3박자다.
    ============================================================ */
+/* 왜 flex:0 0 auto 인가 — .map-left 이 세로 flex 기둥이다.
+   기본값(0 1 auto)이면 자리가 부족할 때 이 안내판이 줄어들면서
+   대응 버튼 세 개가 잠긴다. 실제로 267px 가 86px 로 눌려
+   「생갈래」가 하나도 안 보이고 있었다. 알리기만 하면 쓸모가 없다. */
 .mp-alert{
-  margin:0 0 4px; padding:15px 17px 16px; max-height:42vh; overflow-y:auto;
+  flex:0 0 auto;
+  margin:0 0 4px; padding:15px 17px 16px;
+  max-height:min(46vh, 340px); overflow-y:auto;
   background:var(--terra-pale); border-radius:14px; word-break:keep-all;
 }
 .mp-al-1{
@@ -750,7 +758,23 @@
 .mp-cw.cw-low,
 .mp-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
 
+/* 다른 곳으로 — 그 날 한적한 곳 목록.
+   알약 목록이다. 카드를 만들지 않는다 — 이름과 등급뿐이다. */
+.mp-quiet{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px }
+.mp-q{
+  display:inline-flex; align-items:center; gap:2px;
+  padding:7px 11px 8px; border:0; border-radius:99px;
+  background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line);
+  font-family:inherit; cursor:pointer; text-align:left;
+  transition:box-shadow .15s;
+}
+.mp-q:hover{ box-shadow:inset 0 0 0 1px var(--terra) }
+.mp-q b{ font-size:12.5px; font-weight:600; color:var(--ink) }
+.mp-q .mp-cw{ margin-left:5px }
+
 @media (max-width:760px){
   .mp-alert{ padding:13px 14px 14px; border-radius:12px }
   .mp-al-1{ font-size:14px }
+  .mp-quiet{ gap:5px }
+  .mp-q b{ font-size:12px }
 }
