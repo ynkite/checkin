@@ -98,6 +98,30 @@ tour.api.base-url=https://apis.data.go.kr/B551011
 tmap.api.key=${TMAP_APP_KEY:}
 tmap.api.base-url=https://apis.openapi.sk.com
 
+# ── SK 실시간 인원 (키를 받으면 주소와 경로만 적으면 붙는다) ──
+#   url 의 {q} 자리에 장소 이름, {lat} {lng} 자리에 좌표가 들어간다.
+#   path.level  응답에서 혼잡 단계를 꺼낼 경로 (점으로 구분. 배열은 a.0.b)
+#   path.count  인원수를 꺼낼 경로
+#   level-scale 단계가 1~N 중 N
+#   비어 있으면 꺼진 상태로 돈다 — 화면은 관광공사 예측으로 답한다.
+sk.realtime.url=${SK_REALTIME_URL:}
+sk.realtime.key=${SK_REALTIME_KEY:}
+sk.realtime.key-header=appKey
+sk.realtime.path.level=
+sk.realtime.path.count=
+sk.realtime.level-scale=4
+
+# ── 예산 단가 (2026년 국내 여행 평균에 대한 우리 가정) ──
+#   결과의 basis 에 「가정」이라고 적어 보낸다. 물가가 바뀌면 값만 바꾼다.
+budget.meal-per-person=12000
+budget.meals-per-day=3
+budget.admission-per-place=8000
+budget.lodging-fallback=80000
+budget.rental-per-day=70000
+budget.fuel-per-km=130
+budget.transit-per-leg=1500
+budget.km-per-day-assumed=60
+
 # ---------- 실시간 감지 임계값 ----------
 detection.crowd.rate-threshold=70
 detection.weather.rain-prob-threshold=60
