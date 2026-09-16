@@ -493,7 +493,7 @@ async function loadComments(postId) {
       '<div class="comment-item" style="padding:10px 0;border-bottom:1px solid var(--border2)">' +
       '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">' +
       '<div style="width:22px;height:22px;border-radius:50%;background:var(--sage);' +
-      'color:#fff;display:flex;align-items:center;justify-content:center;' +
+      'color:var(--panel);display:flex;align-items:center;justify-content:center;' +
       'font-size:10px;font-weight:700">' +
       _esc((c.authorName || c.writerName || '?')[0]) +
       '</div>' +
@@ -1186,7 +1186,7 @@ function renderDestBars(dests) {
         '<span style="font-weight:800;color:var(--sage-d)">Day ' + _curDayN + '</span>' +
         '<div style="display:flex;gap:6px">' +
         '<button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>' +
-        '<button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>' +
+        '<button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>' +
         '</div>' +
         '</div>' +
         '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>';

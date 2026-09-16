@@ -1,3 +1,14 @@
+/* 토큰 값을 진짜 색 문자열로 읽는다.
+   카카오 SDK 같은 바깥 라이브러리는 var(--x) 를 모른다. 그런 자리에만 쓴다.
+   한 번 읽고 기억한다 — :root 를 읽는 것이 싸지 않다. */
+var _ckColorCache = {};
+function ckColor(name) {
+    if (_ckColorCache[name]) return _ckColorCache[name];
+    var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return (_ckColorCache[name] = v || 'var(--terra)');
+}
+window.ckColor = ckColor;
+
 /* =============================================================================
  * 체크인 - 메인 애플리케이션 로직 (app_main.js) — API 연동 버전
  *
@@ -949,7 +960,7 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
     <h3 class="my-sec-ttl" style="margin:0;">초대받은 일정</h3>
     <div style="display:flex; gap:8px; margin-left:auto;">
       ${window._invitedDeleteMode ? `
-        <button onclick="execInvitedBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="execInvitedBulkDelete()" style="padding:4px 10px; background:var(--coral); color:var(--panel); border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
         <button onclick="toggleInvitedDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
       ` : `
         <button onclick="toggleInvitedDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
@@ -1056,7 +1067,7 @@ function _renderMyTrips(trips = null, page = 1) {
     <h3 class="my-sec-ttl" style="margin:0;">내 여행 기록</h3>
     <div style="display:flex; gap:8px; margin-left:auto;">
       ${window._myTripsDeleteMode ? `
-        <button onclick="execMyTripsBulkDelete()" style="padding:4px 10px; background:var(--coral); color:#fff; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
+        <button onclick="execMyTripsBulkDelete()" style="padding:4px 10px; background:var(--coral); color:var(--panel); border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
         <button onclick="toggleMyTripsDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
       ` : `
         <button onclick="toggleMyTripsDeleteMode(true)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">삭제하기</button>
@@ -1301,7 +1312,7 @@ function buildEditHTML(u, isSocial) {
     const regionHtml = `<div class="form-group"><label class="form-label">거주 지역</label><div style="display:flex;gap:8px;margin-top:4px"><select class="form-input" id="edit-region-big" onchange="updateCity(this,'edit-region-city')" style="flex:1"><option value="">도/시 선택</option>${provinceOpts}</select><select class="form-input" id="edit-region-city" style="flex:1">${cityOpts}</select></div></div>`;
     const pwHtml = isSocial ? '' : `<hr style="border:none;border-top:1px solid var(--border2);margin:14px 0"><div class="form-group"><label class="form-label">새 비밀번호</label><input class="form-input" type="password" id="edit-newpw" placeholder="새 비밀번호 8자 이상"></div><div class="form-group"><label class="form-label">새 비밀번호 확인</label><input class="form-input" type="password" id="edit-newpw2" placeholder="새 비밀번호 재입력"></div>`;
     const ds = 'style="background:var(--cream2);color:var(--text3);cursor:not-allowed"';
-    const socialNotice = isSocial ? `<div style="background:#FFF9E6;border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:#6B5A00;margin-bottom:14px">카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
+    const socialNotice = isSocial ? `<div style="background:var(--terra-pale);border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:var(--num);margin-bottom:14px">카카오 계정: 아이디·이메일·비밀번호는 카카오에서 관리됩니다.</div>` : '';
     return socialNotice
         + `<div class="form-row"><div class="form-group"><label class="form-label">아이디 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${u.username||''}" disabled ${ds}></div><div class="form-group"><label class="form-label">이름</label><input class="form-input" id="edit-name" value="${u.name||''}"></div></div>`
         + `<div class="form-group"><label class="form-label">이메일 <span style="font-size:10px;color:var(--text3)">(변경 불가)</span></label><input class="form-input" value="${_maskEmail(u.email||'')}" disabled ${ds}></div>`
@@ -1618,9 +1629,9 @@ async function showMapPlacePopup(key, type) {
         h += `<div style="background:var(--cream);border-radius:10px;padding:12px;margin-bottom:9px;cursor:pointer"
                onclick="showReviewDetail('${(place.name||key).replace(/'/g,"\\'")}','${tl}','${stars} ${r.rating}','${(r.content||'').replace(/'/g,"\\'")}')">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-        <div style="width:26px;height:26px;border-radius:50%;background:var(--sage);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${(r.reviewerName||'?')[0]}</div>
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--sage);color:var(--panel);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${(r.reviewerName||'?')[0]}</div>
         <span style="font-size:12px;font-weight:700">${r.reviewerName||'익명'}</span>
-        <span style="color:#F5A623;font-size:12px">${stars}</span>
+        <span style="color:var(--num);font-size:12px">${stars}</span>
         <span style="font-size:11px;font-weight:700">${r.rating||''}</span>
       </div>
       <p style="font-size:12px;color:var(--text2);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${r.content||''}</p>
@@ -1633,9 +1644,9 @@ async function showMapPlacePopup(key, type) {
 
 function getMapLinks(q) {
     const e = encodeURIComponent(q);
-    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:#fff;text-decoration:none;font-size:12px;font-weight:700">네이버 지도</a>`
+    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:var(--panel);text-decoration:none;font-size:12px;font-weight:700">네이버 지도</a>`
         + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">카카오맵</a>`
-        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:#fff;text-decoration:none;font-size:12px;font-weight:700">구글 맵</a>`;
+        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:var(--panel);text-decoration:none;font-size:12px;font-weight:700">구글 맵</a>`;
 }
 
 function showReviewDetail(place, type, stars, text) {
@@ -2269,7 +2280,7 @@ function checkEmail(inp) {
 function checkPw(inp) {
     const v=inp.value, m=document.getElementById('pw-msg'), bar=document.getElementById('pw-bar');
     let sc=0; if(v.length>=8)sc++; if(/[A-Za-z]/.test(v))sc++; if(/[0-9]/.test(v))sc++; if(/[^A-Za-z0-9]/.test(v))sc++;
-    const cols=['#e5e7eb','var(--coral)','#F5A623','var(--sage)','var(--sage-d)'], lbls=['','약함','보통','강함','매우 강함'];
+    const cols=['var(--ui-line-2)','var(--coral)','var(--num)','var(--sage)','var(--sage-d)'], lbls=['','약함','보통','강함','매우 강함'];
     if(bar){bar.style.width=(sc*25)+'%';bar.style.background=cols[sc];}
     if(m){m.textContent=sc?'강도: '+lbls[sc]:'';m.className='form-msg '+(sc<3?'err':'ok');}
 }
@@ -3070,7 +3081,7 @@ function addDay() {
     <span style="font-weight:800;color:var(--sage-d)">Day ${_dayN}</span>
     <div style="display:flex;gap:6px">
       <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
-      <button style="font-size:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
+      <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
     </div></div>
     <div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>`;
     document.getElementById('curDays').appendChild(div);
@@ -3107,7 +3118,7 @@ function openReportAction(type, id, post, reporter, reason) {
     document.getElementById('ra-reporter').textContent=reporter; document.getElementById('ra-reason').textContent=reason;
     document.getElementById('ra-reason-label').innerHTML=(isDelete?'숨김 사유':'반려 사유')+' <span style="color:var(--coral)">*</span>';
     const sel=document.getElementById('ra-reason-select');
-    if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 숨김 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='#757575'; document.getElementById('ra-confirm-btn').textContent='숨김 완료';}
+    if(isDelete){sel.innerHTML='<option value="">사유 선택...</option><option>허위 정보 게시</option><option>스팸/광고성 콘텐츠</option><option>불법 정보 포함</option><option>욕설/혐오 표현</option><option>개인정보 침해</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글이 운영 정책에 따라 숨김 처리되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--ink-2)'; document.getElementById('ra-confirm-btn').textContent='숨김 완료';}
     else        {sel.innerHTML='<option value="">사유 선택...</option><option>신고 증거 불충분</option><option>허용된 표현 범위 내</option><option>중복 신고</option><option>사실과 다른 신고</option><option value="other">직접 입력</option>'; document.getElementById('ra-notify-msg').value='귀하의 게시글에 대한 신고가 검토 후 반려되었습니다.'; document.getElementById('ra-confirm-btn').style.background='var(--sage)'; document.getElementById('ra-confirm-btn').textContent='반려 완료';}
     document.getElementById('ra-detail').value=''; document.getElementById('reportActionModal').classList.add('open');
 }
@@ -3317,8 +3328,8 @@ async function loadShareMembersData() {
             listEl.innerHTML = res.data.map(m => `
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
-            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:var(--ink);">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
           </div>
           <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
         </div>`).join('');
@@ -3327,8 +3338,8 @@ async function loadShareMembersData() {
             listEl.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
-            <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+            <div style="font-weight:700; font-size:14px; color:var(--ink);">${me} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
           </div>
           <div style="font-size:12px; color:var(--text3);">소유자</div>
         </div>`;
@@ -3690,13 +3701,13 @@ function initPreviewMap(coords) {
         _prevMap.setZoomable(false);
         new kakao.maps.Polyline({
             map: _prevMap, path: latlngs,
-            strokeWeight: 2, strokeColor: '#2D9E8A', strokeOpacity: 0.85, strokeStyle: 'solid'
+            strokeWeight: 2, strokeColor: ckColor('--terra'), strokeOpacity: 0.85, strokeStyle: 'solid'
         });
         latlngs.forEach((pos, i) => {
             const edge = i === 0 || i === latlngs.length - 1;
             new kakao.maps.CustomOverlay({
                 map: _prevMap, position: pos, zIndex: edge ? 2 : 1,
-                content: `<div style="width:${edge?9:6}px;height:${edge?9:6}px;background:${edge?'#E85D5D':'#2D9E8A'};border-radius:50%;border:1.5px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transform:translate(-50%,-50%)"></div>`
+                content: `<div style="width:${edge?9:6}px;height:${edge?9:6}px;background:${edge?'var(--tile)':'var(--terra)'};border-radius:50%;border:1.5px solid var(--panel);box-shadow:0 1px 3px rgba(0,0,0,.3);transform:translate(-50%,-50%)"></div>`
             });
         });
         _prevMap.setBounds(bounds);
@@ -3709,13 +3720,13 @@ function _geocodeAndDrawPreview(placeNames, region) {
     const container = document.getElementById('prevKakaoMap');
     if (!container) return;
     if (typeof kakao === 'undefined' || !placeNames || !placeNames.length) {
-        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">지도를 표시할 수 없습니다.</div>';
+        container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-3);font-size:13px">지도를 표시할 수 없습니다.</div>';
         return;
     }
     kakao.maps.load(function() {
         if (!kakao.maps.services) {
             // services 라이브러리가 없으면 지도 생략
-            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">지도를 표시할 수 없습니다.</div>';
+            container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-3);font-size:13px">지도를 표시할 수 없습니다.</div>';
             return;
         }
         const ps = new kakao.maps.services.Places();
@@ -3727,7 +3738,7 @@ function _geocodeAndDrawPreview(placeNames, region) {
             if (done < placeNames.length) return;
             const coords = results.filter(Boolean);
             if (coords.length < 1) {
-                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:13px">지도를 표시할 수 없습니다.</div>';
+                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink-3);font-size:13px">지도를 표시할 수 없습니다.</div>';
                 return;
             }
             initPreviewMap(coords);
@@ -3793,7 +3804,7 @@ function openPreview(key) {
         const foods = en.adminRecommendedRestaurants || [];
         const foodHtml = foods.length
             ? foods.map(f => `<div class="prev-food-item"><div class="pfi-left"><span class="pfi-icon">맛</span>${_escSafe(f)}</div></div>`).join('')
-            : '<div style="color:#888;font-size:13px;padding:4px 0">등록된 맛집 정보가 없습니다.</div>';
+            : '<div style="color:var(--ink-3);font-size:13px;padding:4px 0">등록된 맛집 정보가 없습니다.</div>';
 
         if (el('prevTags'))     el('prevTags').innerHTML      = tags.map(t => `<span class="prev-tag">${_escSafe(t)}</span>`).join('');
         if (el('prevPlanTtl'))  el('prevPlanTtl').textContent = real.title || '';
@@ -4101,7 +4112,7 @@ window.addEventListener('popstate', async e => {
                         tryBtn.target = '_blank';              // 무조건 새 창으로 열기
                         tryBtn.style.textDecoration = 'none';
                         tryBtn.style.pointerEvents = 'auto';   // 버튼은 클릭 되도록 허용
-                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">체크인 사용해보기</span>';
+                        tryBtn.innerHTML = '<span style="display:inline-block; background:var(--sage); color:var(--panel); padding:6px 14px; border-radius:20px; font-size:12px; font-weight:800; margin-left:15px; cursor:pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">체크인 사용해보기</span>';
 
                         // 로고 바로 오른쪽에 버튼 삽입
                         logoEl.parentNode.insertBefore(tryBtn, logoEl.nextSibling);

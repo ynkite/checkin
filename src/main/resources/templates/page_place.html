@@ -249,7 +249,7 @@
             <div id="share-members">
                 <div style="display:flex; gap:8px; margin-bottom:24px;">
                     <input type="email" id="share-email-inp" placeholder="이메일로 그룹 멤버 초대 (편집 권한)" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
-                    <button onclick="inviteShareMember()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
+                    <button onclick="inviteShareMember()" style="background:var(--sage); color:var(--panel); border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
                 </div>
 
                 <div id="share-member-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:30px; min-height:60px;">
@@ -258,7 +258,7 @@
                 <div style="font-size:11px; font-weight:700; color:var(--text3); margin-bottom:8px;">읽기 전용 링크 복사</div>
                 <div style="display:flex; gap:8px; background:var(--cream); padding:6px; border-radius:8px;">
                     <input type="text" id="share-link-url" readonly style="flex:1; background:none; border:none; padding:4px 8px; font-size:13px; color:var(--text2); outline:none;">
-                    <button onclick="doShareLinkCopy()" style="background:var(--sage); color:#fff; border:none; border-radius:6px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">링크 복사</button>
+                    <button onclick="doShareLinkCopy()" style="background:var(--sage); color:var(--panel); border:none; border-radius:6px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">링크 복사</button>
                 </div>
             </div>
 
@@ -313,7 +313,7 @@
         // 관리자 배지 포함 작성자명 렌더링
         const _adminBadgeHtml = (role) =>
             role === 'ADMIN'
-                ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
+                ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
                 : '';
         const _authorEl = document.getElementById('pr-author-name');
         if (_authorEl) {
@@ -440,14 +440,14 @@
                     const isHidden = c.status === 'HIDDEN';
                     if (isHidden) return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
-        <div class="comm-av" style="opacity:0.5;background:#FFEBEE;color:#E53935">${(c.writerName||c.authorName||'?')[0]}</div>
-        <div class="comm-bubble" style="background:#FFF3F3;border-color:#FFCDD2;flex:1">
+        <div class="comm-av" style="opacity:0.5;background:var(--tile-pale);color:var(--tile)">${(c.writerName||c.authorName||'?')[0]}</div>
+        <div class="comm-bubble" style="background:var(--tile-pale);border-color:var(--tile-pale);flex:1">
           <div class="comm-hd">
-            <span class="comm-author" style="color:#9E9E9E">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
+            <span class="comm-author" style="color:var(--ink-3)">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
-            <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
+            <span style="font-size:10px;color:var(--tile);background:var(--tile-pale);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
           </div>
-          <div class="comm-text" style="color:#9E9E9E">${c.content||''}</div>
+          <div class="comm-text" style="color:var(--ink-3)">${c.content||''}</div>
         </div>
       </div>`;
                     return `
@@ -455,7 +455,7 @@
         <div class="comm-av">${(c.writerName||c.authorName||'?')[0]}</div>
         <div class="comm-bubble">
           <div class="comm-hd">
-            <span class="comm-author">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
+            <span class="comm-author">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
             <span class="comm-date">${c.createdAt||''}</span>
           </div>
           <div class="comm-text">${c.content||''}</div>
@@ -845,8 +845,8 @@
                 listEl.innerHTML = membersRes.data.map(m => `
                         <div style="display:flex; align-items:center; justify-content:space-between;">
                           <div style="display:flex; align-items:center; gap:12px;">
-                            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : '#E5E7EB'}; color:${m.role === 'OWNER' ? '#fff' : '#333'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
-                            <div style="font-weight:700; font-size:14px; color:#111;">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:#2563EB; font-weight:800;">(소유자)</span>' : ''}</div>
+                            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
+                            <div style="font-weight:700; font-size:14px; color:var(--ink);">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
                           </div>
                           <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
                         </div>`).join('');
@@ -856,8 +856,8 @@
                 listEl.innerHTML = `
                       <div style="display:flex; align-items:center; justify-content:space-between;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
-                          <div style="font-weight:700; font-size:14px; color:#111;">${me} <span style="color:#2563EB; font-weight:800;">(소유자)</span></div>
+                          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
+                          <div style="font-weight:700; font-size:14px; color:var(--ink);">${me} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
                         </div>
                         <div style="font-size:12px; color:var(--text3);">소유자</div>
                       </div>`;

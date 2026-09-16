@@ -273,7 +273,7 @@
           <h3 class="my-sec-ttl">회원 탈퇴</h3>
 
           <div id="withdraw-warn-txt"
-               style="background:var(--terra-pale);border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8">
+               style="background:var(--terra-pale);border:1px solid var(--tile);border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--tile);line-height:1.8">
           </div>
 
           <div id="withdraw-social-box" style="display:none" class="form-group">
@@ -299,7 +299,7 @@
             </div>
           </div>
 
-          <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;margin-top:10px;"
+          <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:var(--panel);border:none;cursor:pointer;font-size:13px;font-weight:700;margin-top:10px;"
                   onclick="doWithdraw()">회원 탈퇴</button>
         </div>
 
@@ -307,10 +307,10 @@
         <div id="withdraw-confirm-modal"
              style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
              onclick="if(event.target===this)closeWithdrawModal()">
-          <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
-            <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">정말 탈퇴하시겠습니까?</h3>
+          <div style="background:var(--panel);border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
+            <h3 style="margin:0 0 12px;font-size:17px;color:var(--tile)">정말 탈퇴하시겠습니까?</h3>
 
-            <div style="background:var(--terra-pale);border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
+            <div style="background:var(--terra-pale);border:1px solid var(--tile);border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:var(--tile);line-height:1.9">
               • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
               • 탈퇴하면 되돌릴 수 없습니다.<br>
               • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.
@@ -318,7 +318,7 @@
 
             <div style="display:flex;gap:8px">
               <button onclick="confirmWithdraw()"
-                      style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
+                      style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:var(--panel);border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
               <button onclick="closeWithdrawModal()"
                       style="flex:1;padding:11px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:700">취소</button>
             </div>

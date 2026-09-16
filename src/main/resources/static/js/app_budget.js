@@ -204,8 +204,8 @@ function returnToLedgerSelector() {
 const _CATEGORY_MAP = {
     STAY: { label: '숙박', color: 'var(--sage)' },
     FOOD: { label: '식비', color: 'var(--coral)' },
-    TOUR: { label: '관광', color: '#F5A623' },
-    CAFE: { label: '카페', color: '#22B5C4' }
+    TOUR: { label: '관광', color: 'var(--num)' },
+    CAFE: { label: '카페', color: 'var(--slate)' }
 };
 
 function _fmtWon(n) {
@@ -282,7 +282,7 @@ async function _loadExpenses(tripId) {
         const totalEst = d.totalEstimatedAmount || 1;
         if (estLegEl) {
             estLegEl.innerHTML = cats.map(c => {
-                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const pct  = Math.round((c.estimatedAmount || 0) / totalEst * 100) + '%';
                 return `<div class="pie-leg-item"><div class="pie-dot" style="background:${info.color}"></div>${info.label} ${pct}</div>`;
             }).join('');
@@ -290,7 +290,7 @@ async function _loadExpenses(tripId) {
         if (estPieEl) {
             let deg = 0;
             const segs = cats.map(c => {
-                const info  = _CATEGORY_MAP[c.category] || { color: '#aaa' };
+                const info  = _CATEGORY_MAP[c.category] || { color: 'var(--ink-3)' };
                 const start = deg;
                 deg += ((c.estimatedAmount || 0) / totalEst) * 360;
                 return `${info.color} ${Math.round(start)}deg ${Math.round(deg)}deg`;
@@ -307,7 +307,7 @@ async function _loadExpenses(tripId) {
     if (totalAct > 0 && actCats.length > 0) {
         if (actLegEl) {
             actLegEl.innerHTML = actCats.map(c => {
-                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const pct  = Math.round((c.actualAmount || 0) / totalAct * 100) + '%';
                 return `<div class="pie-leg-item"><div class="pie-dot" style="background:${info.color}"></div>${info.label} ${pct}</div>`;
             }).join('');
@@ -315,7 +315,7 @@ async function _loadExpenses(tripId) {
         if (actPieEl) {
             let deg = 0;
             const segs = actCats.map(c => {
-                const info  = _CATEGORY_MAP[c.category] || { color: '#aaa' };
+                const info  = _CATEGORY_MAP[c.category] || { color: 'var(--ink-3)' };
                 const start = deg;
                 deg += ((c.actualAmount || 0) / totalAct) * 360;
                 return `${info.color} ${Math.round(start)}deg ${Math.round(deg)}deg`;
@@ -323,7 +323,7 @@ async function _loadExpenses(tripId) {
             actPieEl.style.background = `conic-gradient(${segs.join(', ')})`;
         }
     } else {
-        if (actPieEl) actPieEl.style.background = '#E5E7EB';
+        if (actPieEl) actPieEl.style.background = 'var(--ui-line-2)';
         if (actLegEl) actLegEl.innerHTML = '<div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>';
     }
 
@@ -335,7 +335,7 @@ async function _loadExpenses(tripId) {
             listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
         } else {
             const items = cats.map(c => {
-                const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+                const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const estW   = Math.round((c.estimatedAmount || 0) / maxAmt * 100) + '%';
                 const actW   = Math.round((c.actualAmount   || 0) / maxAmt * 100) + '%';
                 const noAct  = !actCatSet.has(c.category);   // 0원 입력도 "입력됨"으로 처리
@@ -345,7 +345,7 @@ async function _loadExpenses(tripId) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
               <div style="display:flex;align-items:center;gap:7px">
                 <div style="width:10px;height:10px;border-radius:50%;background:${info.color};flex-shrink:0"></div>
-                <span class="bi-label" style="margin:0">${info.label}${noAct ? ' <span style="font-size:10px;color:#9CA3AF;font-weight:400">미입력</span>' : ''}</span>
+                <span class="bi-label" style="margin:0">${info.label}${noAct ? ' <span style="font-size:10px;color:var(--ink-3);font-weight:400">미입력</span>' : ''}</span>
               </div>
               <div style="font-size:11px;color:var(--text3);text-align:right">
                 예상 <strong style="color:var(--text2)">${_fmtWon(c.estimatedAmount)}</strong>
@@ -536,7 +536,7 @@ async function _loadMapBudget() {
             itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
         } else {
             itemsEl.innerHTML = cats.map(c => {
-                const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+                const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const estW   = Math.round((c.estimatedAmount || 0) / maxAmt * 100) + '%';
                 const actW   = Math.round((c.actualAmount   || 0) / maxAmt * 100) + '%';
                 const isOver = (c.actualAmount || 0) > (c.estimatedAmount || 0);
@@ -583,8 +583,8 @@ async function _loadMapBudget() {
             remainEl.textContent       = remain >= 0
                 ? `예산 범위 내 ✓잔여 ${_fmtWon(remain)}`
                 : `예산 ${_fmtWon(-remain)} 초과`;
-            remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : '#FEF3F2';
-            remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : '#FECACA';
+            remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : 'var(--tile-pale)';
+            remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : 'var(--tile)';
             remainEl.style.color       = remain >= 0 ? 'var(--sage-d)'    : 'var(--coral)';
         } else {
             remainEl.textContent = hasAct ? '실제 지출 기준' : '예상 지출 기준';
@@ -599,7 +599,7 @@ async function _loadMapBudget() {
     if (chartTotal > 0 && chartCats.length > 0) {
         let deg = 0;
         const segs = chartCats.map(c => {
-            const info  = _CATEGORY_MAP[c.category] || { color: '#aaa' };
+            const info  = _CATEGORY_MAP[c.category] || { color: 'var(--ink-3)' };
             const amt   = hasAct ? (c.actualAmount || 0) : (c.estimatedAmount || 0);
             const start = deg;
             deg += (amt / chartTotal) * 360;
@@ -611,14 +611,14 @@ async function _loadMapBudget() {
         }
         if (pieLegend) {
             pieLegend.innerHTML = chartCats.map(c => {
-                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: '#aaa' };
+                const info = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const amt  = hasAct ? (c.actualAmount || 0) : (c.estimatedAmount || 0);
                 const pct  = Math.round(amt / chartTotal * 100);
                 return `<div class="pie-leg-item"><div class="pie-dot" style="background:${info.color}"></div>${info.label} ${pct}%</div>`;
             }).join('');
         }
     } else {
-        if (pieRing)   pieRing.style.background = '#E5E7EB';
+        if (pieRing)   pieRing.style.background = 'var(--ui-line-2)';
         if (pieLegend) pieLegend.innerHTML = '<div class="pie-leg-item" style="color:var(--text3)">데이터 없음</div>';
     }
 }
@@ -647,7 +647,7 @@ function _drawExpensePage() {
         </thead>
         <tbody>
           ${pageExps.map(e => {
-            const info = _CATEGORY_MAP[e.category] || { label: e.category, color: '#aaa' };
+            const info = _CATEGORY_MAP[e.category] || { label: e.category, color: 'var(--ink-3)' };
             const safeDesc = (e.description || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
             return `<tr id="exp-row-${e.id}" style="border-bottom:1px solid var(--border)">
               <td style="padding:7px 4px;color:var(--text3)">${e.date || '-'}</td>
@@ -656,7 +656,7 @@ function _drawExpensePage() {
               <td style="padding:7px 4px;text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
               <td style="padding:7px 4px;white-space:nowrap">
                 <button onclick="startEditExpense(${e.id},'${e.category}',${e.amount},'${e.date || ''}','${safeDesc}')" style="font-size:11px;padding:3px 10px;background:var(--sage-pale);border:1.5px solid var(--sage-l);border-radius:5px;cursor:pointer;color:var(--sage-d);font-weight:600">수정</button>
-                <button onclick="deleteExpense(${e.id})" style="font-size:11px;padding:3px 10px;background:#FEF2F2;border:1.5px solid #FECACA;border-radius:5px;cursor:pointer;color:#DC2626;font-weight:600;margin-left:4px">삭제</button>
+                <button onclick="deleteExpense(${e.id})" style="font-size:11px;padding:3px 10px;background:var(--tile-pale);border:1.5px solid var(--tile);border-radius:5px;cursor:pointer;color:var(--tile);font-weight:600;margin-left:4px">삭제</button>
               </td>
             </tr>`;
         }).join('')}
@@ -722,7 +722,7 @@ function startEditExpense(id, category, amount, date, desc) {
     <td><input type="text" id="edit-desc-${id}" value="${desc}" placeholder="메모" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
     <td><input type="number" id="edit-amt-${id}" value="${amount}" min="0" style="width:80px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
     <td style="white-space:nowrap">
-      <button onclick="saveEditExpense(${id})" style="font-size:10px;padding:2px 7px;background:var(--sage);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:2px">저장</button>
+      <button onclick="saveEditExpense(${id})" style="font-size:10px;padding:2px 7px;background:var(--sage);color:var(--panel);border:none;border-radius:4px;cursor:pointer;margin-right:2px">저장</button>
       <button onclick="_loadExpenses(_budgetSelectedTripId)" style="font-size:10px;padding:2px 7px;background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text2)">취소</button>
     </td>
   `;
@@ -798,35 +798,35 @@ async function exportBudgetPDF() {
         const info = _CATEGORY_MAP[c.category] || { label: c.category };
         const diff = (c.actualAmount || 0) - (c.estimatedAmount || 0);
         return `<tr>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${info.label}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right">${_fmtWon(c.estimatedAmount)}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right">${_fmtWon(c.actualAmount)}</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right;color:${diff > 0 ? '#EF4444' : '#10B981'}">${diff > 0 ? '+' + _fmtWon(diff) : diff < 0 ? '-' + _fmtWon(-diff) : '-'}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${info.label}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2);text-align:right">${_fmtWon(c.estimatedAmount)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2);text-align:right">${_fmtWon(c.actualAmount)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2);text-align:right;color:${diff > 0 ? 'var(--tile)' : 'var(--slate)'}">${diff > 0 ? '+' + _fmtWon(diff) : diff < 0 ? '-' + _fmtWon(-diff) : '-'}</td>
     </tr>`;
     }).join('');
 
     const actRows = (d.actualExpenses || []).length === 0
-        ? '<tr><td colspan="4" style="padding:10px;text-align:center;color:#9CA3AF">실제 지출 내역 없음</td></tr>'
+        ? '<tr><td colspan="4" style="padding:10px;text-align:center;color:var(--ink-3)">실제 지출 내역 없음</td></tr>'
         : (d.actualExpenses || []).map(e => {
             const info = _CATEGORY_MAP[e.category] || { label: e.category };
             return `<tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${e.date || '-'}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${info.label}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB">${e.description || '-'}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #E5E7EB;text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${e.date || '-'}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${info.label}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${e.description || '-'}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2);text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
         </tr>`;
         }).join('');
 
     const pdfDiv = document.getElementById('budget-pdf-content');
     if (!pdfDiv) return;
 
-    const thStyle = 'padding:8px 10px;text-align:left;background:#F9FAFB;font-weight:700;border-bottom:2px solid #E5E7EB';
+    const thStyle = 'padding:8px 10px;text-align:left;background:var(--ui-plate);font-weight:700;border-bottom:2px solid var(--ui-line-2)';
     pdfDiv.innerHTML = `
     <h1 style="font-size:22px;font-weight:900;margin:0 0 4px">가계부 리포트</h1>
-    <p style="color:#6B7280;margin:0 0 6px;font-size:13px">${d.tripTitle || ''}${d.destination ? ' · ' + d.destination : ''}${d.startDate ? ' · ' + d.startDate + ' ~ ' + d.endDate : ''}</p>
-    ${d.budget ? `<p style="color:#6B7280;margin:0 0 20px;font-size:12px">설정 예산: ${_fmtWon(d.budget)}</p>` : '<div style="margin-bottom:20px"></div>'}
+    <p style="color:var(--ink-2);margin:0 0 6px;font-size:13px">${d.tripTitle || ''}${d.destination ? ' · ' + d.destination : ''}${d.startDate ? ' · ' + d.startDate + ' ~ ' + d.endDate : ''}</p>
+    ${d.budget ? `<p style="color:var(--ink-2);margin:0 0 20px;font-size:12px">설정 예산: ${_fmtWon(d.budget)}</p>` : '<div style="margin-bottom:20px"></div>'}
 
-    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid #E5E7EB;padding-bottom:6px">카테고리별 예산 비교</h3>
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid var(--ui-line-2);padding-bottom:6px">카테고리별 예산 비교</h3>
     <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:28px">
       <thead><tr>
         <th style="${thStyle}">카테고리</th>
@@ -835,15 +835,15 @@ async function exportBudgetPDF() {
         <th style="${thStyle};text-align:right">차이</th>
       </tr></thead>
       <tbody>${catRows}</tbody>
-      <tfoot><tr style="font-weight:900;background:#F9FAFB">
-        <td style="padding:8px 10px;border-top:2px solid #E5E7EB">합계</td>
-        <td style="padding:8px 10px;border-top:2px solid #E5E7EB;text-align:right">${_fmtWon(d.totalEstimatedAmount)}</td>
-        <td style="padding:8px 10px;border-top:2px solid #E5E7EB;text-align:right">${_fmtWon(d.totalActualAmount)}</td>
-        <td style="padding:8px 10px;border-top:2px solid #E5E7EB"></td>
+      <tfoot><tr style="font-weight:900;background:var(--ui-plate)">
+        <td style="padding:8px 10px;border-top:2px solid var(--ui-line-2)">합계</td>
+        <td style="padding:8px 10px;border-top:2px solid var(--ui-line-2);text-align:right">${_fmtWon(d.totalEstimatedAmount)}</td>
+        <td style="padding:8px 10px;border-top:2px solid var(--ui-line-2);text-align:right">${_fmtWon(d.totalActualAmount)}</td>
+        <td style="padding:8px 10px;border-top:2px solid var(--ui-line-2)"></td>
       </tr></tfoot>
     </table>
 
-    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid #E5E7EB;padding-bottom:6px">실제 지출 상세 내역</h3>
+    <h3 style="font-size:14px;font-weight:700;margin:0 0 8px;border-bottom:2px solid var(--ui-line-2);padding-bottom:6px">실제 지출 상세 내역</h3>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr>
         <th style="${thStyle}">날짜</th>
@@ -856,7 +856,7 @@ async function exportBudgetPDF() {
 
     toast('PDF 생성 중...');
     try {
-        const canvas   = await html2canvas(pdfDiv, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+        const canvas   = await html2canvas(pdfDiv, { scale: 2, useCORS: true, backgroundColor: 'var(--panel)' });
         const { jsPDF } = window.jspdf;
         const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         const pageW    = doc.internal.pageSize.getWidth();
@@ -946,39 +946,39 @@ function exportBudgetCSV() {
   xmlns:x="urn:schemas-microsoft-com:office:excel">
 <Styles>
   <Style ss:ID="ttl">
-    <Font ss:Bold="1" ss:Size="14" ss:Color="#FFFFFF"/>
-    <Interior ss:Color="#5B8272" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Size="14" ss:Color="var(--panel)"/>
+    <Interior ss:Color="var(--num)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
   </Style>
   <Style ss:ID="meta">
-    <Font ss:Bold="1" ss:Size="12" ss:Color="#2C5F4E"/>
+    <Font ss:Bold="1" ss:Size="12" ss:Color="var(--sig-deep)"/>
     <Alignment ss:Horizontal="Left"/>
   </Style>
   <Style ss:ID="lbl">
-    <Font ss:Bold="1" ss:Color="#555555"/>
-    <Interior ss:Color="#F2F2F2" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--ink-2)"/>
+    <Interior ss:Color="var(--ui-plate)" ss:Pattern="Solid"/>
   </Style>
   <Style ss:ID="metaV">
-    <Font ss:Color="#333333"/>
+    <Font ss:Color="var(--ink)"/>
   </Style>
   <Style ss:ID="sec">
-    <Font ss:Bold="1" ss:Size="11" ss:Color="#FFFFFF"/>
-    <Interior ss:Color="#7FAF97" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Size="11" ss:Color="var(--panel)"/>
+    <Interior ss:Color="var(--ui-l)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
   </Style>
   <Style ss:ID="hdr">
-    <Font ss:Bold="1" ss:Color="#2C5F4E"/>
-    <Interior ss:Color="#C8DDD6" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--sig-deep)"/>
+    <Interior ss:Color="var(--ui-line)" ss:Pattern="Solid"/>
     <Borders>
-      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#7FAF97"/>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="var(--ui-l)"/>
     </Borders>
   </Style>
   <Style ss:ID="hdrR">
-    <Font ss:Bold="1" ss:Color="#2C5F4E"/>
-    <Interior ss:Color="#C8DDD6" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--sig-deep)"/>
+    <Interior ss:Color="var(--ui-line)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Right"/>
     <Borders>
-      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#7FAF97"/>
+      <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="var(--ui-l)"/>
     </Borders>
   </Style>
   <Style ss:ID="numR">
@@ -987,39 +987,39 @@ function exportBudgetCSV() {
   </Style>
   <Style ss:ID="over">
     <Alignment ss:Horizontal="Right"/>
-    <Font ss:Color="#CC3333"/>
+    <Font ss:Color="var(--tile)"/>
     <NumberFormat ss:Format="#,##0"/>
   </Style>
   <Style ss:ID="sumLbl">
-    <Font ss:Bold="1" ss:Color="#2C5F4E"/>
-    <Interior ss:Color="#E4F0EB" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--sig-deep)"/>
+    <Interior ss:Color="var(--terra-pale)" ss:Pattern="Solid"/>
     <Borders>
-      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#7FAF97"/>
+      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="var(--ui-l)"/>
     </Borders>
   </Style>
   <Style ss:ID="sumNum">
-    <Font ss:Bold="1" ss:Color="#2C5F4E"/>
-    <Interior ss:Color="#E4F0EB" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--sig-deep)"/>
+    <Interior ss:Color="var(--terra-pale)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Right"/>
     <NumberFormat ss:Format="#,##0"/>
     <Borders>
-      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#7FAF97"/>
+      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="var(--ui-l)"/>
     </Borders>
   </Style>
   <Style ss:ID="sumOver">
-    <Font ss:Bold="1" ss:Color="#CC3333"/>
-    <Interior ss:Color="#E4F0EB" ss:Pattern="Solid"/>
+    <Font ss:Bold="1" ss:Color="var(--tile)"/>
+    <Interior ss:Color="var(--terra-pale)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Right"/>
     <NumberFormat ss:Format="#,##0"/>
     <Borders>
-      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#7FAF97"/>
+      <Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="var(--ui-l)"/>
     </Borders>
   </Style>
   <Style ss:ID="stripe">
-    <Interior ss:Color="#F5F9F7" ss:Pattern="Solid"/>
+    <Interior ss:Color="var(--ui-plate)" ss:Pattern="Solid"/>
   </Style>
   <Style ss:ID="stripeR">
-    <Interior ss:Color="#F5F9F7" ss:Pattern="Solid"/>
+    <Interior ss:Color="var(--ui-plate)" ss:Pattern="Solid"/>
     <Alignment ss:Horizontal="Right"/>
     <NumberFormat ss:Format="#,##0"/>
   </Style>

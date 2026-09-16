@@ -39,7 +39,7 @@
           { id: 'tab-stay', key: 'stay', label: '숙소', color: 'var(--sage)', catClass: 'cat-stay', catStyle: '', borderClass: 'comm-tab-stay' },
           { id: 'tab-food', key: 'food', label: '맛집', color: 'var(--coral)', catClass: 'cat-food', catStyle: '', borderClass: 'comm-tab-food' },
           { id: 'tab-tour', key: 'tour', label: '관광지', color: 'var(--sky)', catClass: 'cat-tour', catStyle: '', borderClass: 'comm-tab-tour' },
-          { id: 'tab-cafe', key: 'cafe', label: '카페', color: '#A78BFA', catClass: '', catStyle: 'background:#F3F0FF;color:#7C3AED', borderClass: 'comm-tab-cafe' }
+          { id: 'tab-cafe', key: 'cafe', label: '카페', color: 'var(--ink-3)', catClass: '', catStyle: 'background:var(--panel-2);color:var(--ink-2)', borderClass: 'comm-tab-cafe' }
         ];
 
         tabsData.forEach(tab => {
@@ -163,12 +163,12 @@
   </script>
 
   <style>
-    .active-tag { background: var(--sage) !important; color: #fff !important; border-color: var(--sage-d) !important }
+    .active-tag { background: var(--sage) !important; color: var(--panel) !important; border-color: var(--sage-d) !important }
     #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
     #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
     .comm-tab-food  { border-left: 3px solid var(--coral) }
     .comm-tab-tour  { border-left: 3px solid var(--sky) }
-    .comm-tab-cafe  { border-left: 3px solid #A78BFA }
+    .comm-tab-cafe  { border-left: 3px solid var(--ink-3) }
     .comm-tab-stay  { border-left: 3px solid var(--sage) }
     .comm-tab-route { border-left: 3px solid var(--warm) }
   </style>
@@ -275,7 +275,7 @@
         </div>
         <div class="form-group" style="margin-bottom:12px">
           <label class="form-label">내용</label>
-          <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:200px">
+          <div style="border:1px solid var(--border2);border-radius:var(--r);background:var(--panel);display:flex;flex-direction:column;min-height:200px">
             <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
               <button type="button"
                       data-editor-id="blogEditor"

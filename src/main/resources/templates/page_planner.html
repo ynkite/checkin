@@ -793,10 +793,10 @@
                         + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
                         + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
                         + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
-                        + 'border-top-color:#2D9E8A;border-radius:50%;animation:genSpin .8s linear infinite}'
-                        + '#genLoadOverlay .gl-txt{color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+                        + 'border-top-color:var(--terra);border-radius:50%;animation:genSpin .8s linear infinite}'
+                        + '#genLoadOverlay .gl-txt{color:var(--panel);font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
                         + '#genLoadOverlay .gl-cancel{margin-top:6px;padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.5);'
-                        + 'background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:700;cursor:pointer}'
+                        + 'background:rgba(255,255,255,.12);color:var(--panel);font-size:13px;font-weight:700;cursor:pointer}'
                         + '#genLoadOverlay .gl-cancel:hover{background:rgba(255,255,255,.22)}';
                     document.head.appendChild(st);
                 }
@@ -905,18 +905,18 @@
             const html = `
           <div id="over50Overlay" style="position:fixed;inset:0;z-index:10000;
                background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;border-radius:16px;padding:24px;width:360px;max-width:90%;
+            <div style="background:var(--panel);border-radius:16px;padding:24px;width:360px;max-width:90%;
                  box-shadow:0 10px 40px rgba(0,0,0,0.2);">
               <div style="font-weight:700;font-size:16px;margin-bottom:8px;">너무 먼 장소가 있어요</div>
-              <div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:12px;">
+              <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">
                 아래 장소가 다른 일정과 50km 이상 떨어져 있습니다.<br>${list}
               </div>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <button id="over50Change" style="padding:11px;background:#F5A623;color:#fff;border:none;
+                <button id="over50Change" style="padding:11px;background:var(--num);color:var(--panel);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">변경 (가까운 곳으로 교체)</button>
-                <button id="over50Ignore" style="padding:11px;background:#2D9E8A;color:#fff;border:none;
+                <button id="over50Ignore" style="padding:11px;background:var(--terra);color:var(--panel);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">무시하고 생성</button>
-                <button id="over50Cancel" style="padding:11px;background:#eee;color:#555;border:none;
+                <button id="over50Cancel" style="padding:11px;background:var(--ui-line-2);color:var(--ink-2);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">취소</button>
               </div>
             </div>
@@ -1068,25 +1068,25 @@
 
             if (issues.missing.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
-                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
+                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
             }
             if (issues.closed && issues.closed.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
-                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
+                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
                     + '<div style="display:flex;flex-direction:column;gap:6px">'
-                    + issues.closed.map(c => '<div style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:#a04">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
+                    + issues.closed.map(c => '<div style="background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:var(--tile)">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
                     + '</div></div>';
             }
             if (issues.budgetShort) {
                 bodyHtml += '<div style="margin-bottom:6px">'
-                    + '<div style="font-weight:800;color:#b9770e;margin-bottom:6px">예산이 부족할 수 있어요</div>'
-                    + '<div style="font-size:12px;color:#555;line-height:1.6">'
+                    + '<div style="font-weight:800;color:var(--num);margin-bottom:6px">예산이 부족할 수 있어요</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);line-height:1.6">'
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
-                    + '이 일정의 예상 최소 비용은 약 <b style="color:#b9770e">' + won(issues.estimated) + '</b>입니다.<br>'
-                    + '예산을 올리지 않으면 <b style="color:#c0392b">일정이 제대로 안 나올 수 있습니다.</b><br>'
-                    + '<span style="color:#888;font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
+                    + '이 일정의 예상 최소 비용은 약 <b style="color:var(--num)">' + won(issues.estimated) + '</b>입니다.<br>'
+                    + '예산을 올리지 않으면 <b style="color:var(--tile)">일정이 제대로 안 나올 수 있습니다.</b><br>'
+                    + '<span style="color:var(--ink-3);font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
                     + '</div></div>';
             }
 
@@ -1094,14 +1094,14 @@
             wrap.id = 'preGenGate';
             wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
             wrap.innerHTML =
-                '<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+                '<div style="background:var(--panel);border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
                 + '<div style="font-size:17px;font-weight:800;margin-bottom:4px">생성 전 확인이 필요해요</div>'
-                + '<div style="font-size:12px;color:#888;margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
+                + '<div style="font-size:12px;color:var(--ink-3);margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
                 + bodyHtml
                 + '<div style="display:flex;gap:8px;margin-top:20px">'
-                + '<button id="preGenCancel" style="flex:1;padding:11px 6px;border-radius:10px;border:1px solid #ddd;background:#fff;font-size:13px;font-weight:700;cursor:pointer">취소</button>'
-                + '<button id="preGenChange" style="flex:1.4;padding:11px 6px;border-radius:10px;border:none;background:#2D9E8A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">변경</button>'
-                + '<button id="preGenIgnore" style="flex:1.5;padding:11px 6px;border-radius:10px;border:1px solid #bbb;background:#f5f5f5;color:#333;font-size:11px;font-weight:700;cursor:pointer">무시하고 생성</button>'
+                + '<button id="preGenCancel" style="flex:1;padding:11px 6px;border-radius:10px;border:1px solid var(--ui-line);background:var(--panel);font-size:13px;font-weight:700;cursor:pointer">취소</button>'
+                + '<button id="preGenChange" style="flex:1.4;padding:11px 6px;border-radius:10px;border:none;background:var(--terra);color:var(--panel);font-size:13px;font-weight:800;cursor:pointer">변경</button>'
+                + '<button id="preGenIgnore" style="flex:1.5;padding:11px 6px;border-radius:10px;border:1px solid var(--ink-3);background:var(--ui-plate);color:var(--ink);font-size:11px;font-weight:700;cursor:pointer">무시하고 생성</button>'
                 + '</div></div>';
             document.body.appendChild(wrap);
 
@@ -2073,18 +2073,18 @@
                     ℹ출발일 기준 <strong>최대 7일</strong>까지의 날씨 예보만 표시됩니다. 그 이후 일정은 외부 날씨 서비스를 이용해 주세요.
                 </div>
                 <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
-                <div id="wp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
+                <div id="wp-alert" style="display:none;margin-top:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:8px;padding:10px;font-size:12px;color:var(--tile)"></div>
             </div>
 
             <!-- 네이버·구글 날씨 이동 버튼 -->
             <div style="display:flex;gap:10px;margin-top:18px">
                 <a href="https://weather.naver.com" target="_blank"
-                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
+                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:var(--panel);font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
                     <img src="https://ssl.pstatic.net/static/common/favicon/2023/0328/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
                     네이버 날씨
                 </a>
                 <a href="https://www.google.com/search?q=날씨" target="_blank"
-                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#4285F4;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
+                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#4285F4;color:var(--panel);font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
                     <img src="https://www.google.com/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
                     구글 날씨
                 </a>

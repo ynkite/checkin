@@ -226,10 +226,10 @@
 <!-- 게시글 신고 모달 -->
 <div id="reportPostModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportPostModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+  <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">게시글 신고</div>
-    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
-    <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
@@ -240,19 +240,19 @@
     </select>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="document.getElementById('reportPostModal').style.display='none'"
-              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+              style="padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
       <button onclick="submitReportPost()"
-              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+              style="padding:8px 16px;background:var(--coral);color:var(--panel);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
     </div>
   </div>
 </div>
 <!-- 댓글 신고 모달 -->
 <div id="reportCommentModal" style="display:none;position:fixed;inset:0;z-index:2100;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportCommentModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+  <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">댓글 신고</div>
-    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
-    <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
@@ -263,9 +263,9 @@
     </select>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="document.getElementById('reportCommentModal').style.display='none'"
-              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+              style="padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
       <button onclick="submitReportComment()"
-              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+              style="padding:8px 16px;background:var(--coral);color:var(--panel);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
     </div>
   </div>
 </div>
@@ -358,17 +358,17 @@
 <!-- 수정 중 이탈 경고 모달 -->
 <div id="unsavedChangesModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
   <div onclick="closeUnsavedChangesModal()" style="position:absolute; inset:0; background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative; background:var(--surface,#fff); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
-    <div style="font-size:16px; font-weight:700; color:var(--text,#111); margin-bottom:10px;">저장되지 않은 변경사항</div>
-    <div style="font-size:13px; color:var(--text3,#888); line-height:1.5; margin-bottom:22px;">
+  <div style="position:relative; background:var(--surface); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
+    <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:10px;">저장되지 않은 변경사항</div>
+    <div style="font-size:13px; color:var(--text3); line-height:1.5; margin-bottom:22px;">
       수정 중인 내용이 아직 확정되지 않았습니다.<br>현재 상태로 저장하고 이동하시겠습니까?
     </div>
     <div style="display:flex; gap:8px; justify-content:center;">
       <button onclick="confirmLeaveAndSave()"
-              style="flex:1; padding:10px 14px; background:var(--sage); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; box-shadow:0 2px 4px rgba(0,0,0,0.08);">저장 후
+              style="flex:1; padding:10px 14px; background:var(--sage); color:var(--panel); border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; box-shadow:0 2px 4px rgba(0,0,0,0.08);">저장 후
         이동</button>
       <button onclick="closeUnsavedChangesModal()"
-              style="flex:1; padding:10px 14px; border:1px solid var(--border2,#e0e0e0); border-radius:8px; background:none; cursor:pointer; font-size:13px; color:var(--text2,#555);">취소</button>
+              style="flex:1; padding:10px 14px; border:1px solid var(--border2); border-radius:8px; background:none; cursor:pointer; font-size:13px; color:var(--text2);">취소</button>
     </div>
   </div>
 </div>
