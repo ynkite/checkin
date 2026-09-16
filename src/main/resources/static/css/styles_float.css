@@ -14,6 +14,10 @@
  * 색·간격은 tokens.css 변수만 쓴다.
  */
 
+/* 사용자가 올린 사진이 폭을 넘어 나갔다 (256px 짜리가 375px 화면에서 616 까지).
+   전역 안전장치를 둔다. 로고는 CSS 에서 height 를 직접 주므로 영향이 없다. */
+img{ max-width:100%; height:auto }
+
 /* ── 판 ─────────────────────────────────────────────── */
 .fl{
   background:var(--panel); border-radius:18px; box-shadow:var(--lift);

@@ -15,8 +15,7 @@
       var rating = item.avgRating != null ? Number(item.avgRating).toFixed(1)
               : (item.rating != null ? Number(item.rating).toFixed(1) : '0.0');
       var ratingNum = parseFloat(rating);
-      var stars = item.stars ||
-              rating);
+      var stars = item.stars || rating;
       var reviewCnt = item.reviewCount != null ? item.reviewCount
               : (item.saveCount != null ? item.saveCount : 0);
       var tags = Array.isArray(item.tags) ? item.tags
