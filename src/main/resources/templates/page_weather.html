@@ -115,10 +115,20 @@
                         return (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getDate().toString().padStart(2,'0');
                     };
 
-                    if (titleEl) titleEl.textContent = '' + targetRegion + ' 날씨 예보 (' + fmt(days[0]) + '~' + fmt(days[6]) + ')';
-
                     // 백엔드 응답 7일치 slice → 화면용 변환
                     const weatherItems = json.data.slice(0, 7).map(toDisplayItem);
+
+                    /* 제목은 실제로 그린 날짜만 말한다. 7일이라고 써 두고 세 칸만
+                       오면 빈 칸 네 개가 남는다. */
+                    const last = days[Math.max(0, weatherItems.length - 1)];
+                    if (titleEl) {
+                        titleEl.textContent = targetRegion + ' 날씨 · '
+                            + fmt(days[0]) + (weatherItems.length > 1 ? ' ~ ' + fmt(last) : '');
+                    }
+                    if (grid) {
+                        grid.style.gridTemplateColumns =
+                            'repeat(' + Math.max(1, weatherItems.length) + ', minmax(0, 1fr))';
+                    }
                     const { html, warnDays } = buildGridHTML(weatherItems, days);
                     grid.innerHTML = html;
 

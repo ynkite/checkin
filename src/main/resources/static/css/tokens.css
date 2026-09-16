@@ -639,15 +639,16 @@
 .w-warn .wx{ stroke:var(--num) }
 
 /* 날씨 화면 — 바깥 서비스 링크는 보조 동작이다 */
-.wx-links{ display:flex; gap:8px; margin-top:12px }
+/* 바깥 서비스 링크. 알약 버튼으로 두면 예보보다 커 보인다.
+   예보가 주인공이고 이건 그 다음이다. */
+.wx-links{ display:flex; flex-wrap:wrap; gap:16px; margin-top:12px }
 .wx-links a{
-  flex:1; text-align:center; padding:9px 0 10px; border-radius:99px;
-  text-decoration:none; font-size:13px; font-weight:600; letter-spacing:-.02em;
-  color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
-  transition:color .15s, box-shadow .15s;
+  font-size:11.5px; color:var(--ink-2); text-decoration:underline;
+  text-underline-offset:3px; text-decoration-color:var(--ui-line);
 }
-.wx-links a:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.wx-more{ margin:12px 0 0; font-size:12px; color:var(--ink-3) }
+.wx-links a::after{ content:" \2197"; text-decoration:none }
+.wx-links a:hover{ color:var(--ink); text-decoration-color:var(--ink-3) }
+.wx-more{ margin:16px 0 0; font-size:11.5px; color:var(--ink-3) }
 .wx-alert{
   margin-top:11px; padding:11px 12px; border-radius:8px;
   background:var(--tile-pale); box-shadow:inset 0 0 0 1px var(--tile);
