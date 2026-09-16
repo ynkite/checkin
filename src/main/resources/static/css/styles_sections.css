@@ -1,0 +1,47 @@
+/*
+ * 체크인 — 히어로 아래 절 (styles_sections.css)
+ *
+ * 무대는 판이 떠 있는 앱 화면이고, 아래는 읽는 면이다. 결을 하나로 묶는 것은
+ * 두 가지 — 눈썹 라벨의 테라코타, 그리고 숫자의 모노.
+ *
+ * styles_stage.css 뒤에 둔다. 색·간격은 tokens.css 변수만 쓴다.
+ */
+
+/* 절 눈썹 — 판 눈썹(.fl-eye)과 같은 결 */
+.ck-home .ck-hd[data-label]::before{
+  color:var(--terra); font-size:10px; font-weight:700; letter-spacing:.14em;
+}
+
+/* ── 지금 한가한 곳 ──────────────────────────────────
+   숫자만 크게 두면 64가 높은 건지 낮은 건지 모른다. 등급을 붙인다. */
+.ck-home .ck-vv{ display:flex; align-items:baseline; gap:8px; margin-top:12px }
+.ck-home .ck-vv .ck-fig{
+  font-family:var(--fig); font-size:26px; font-weight:500; line-height:1;
+  color:var(--ink); letter-spacing:var(--tracking-num);
+  font-variant-numeric:tabular-nums;
+}
+.ck-home .ck-vv i{
+  font-style:normal; font-size:11px; font-weight:700; padding:3px 8px 4px;
+  border-radius:99px; white-space:nowrap;
+}
+.ck-home .ck-vv i.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
+.ck-home .ck-vv i.cw-high { background:var(--terra-pale); color:var(--terra) }
+.ck-home .ck-vv i.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.ck-home .ck-vv i.cw-low,
+.ck-home .ck-vv i.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+.ck-home .ck-spot .ck-bar{ margin-top:11px; height:4px }
+.ck-home .ck-spot .ck-bar i.cw-vhigh{ background:var(--tile) }
+.ck-home .ck-spot .ck-bar i.cw-high{ background:var(--terra) }
+.ck-home .ck-spot .ck-bar i.cw-low,
+.ck-home .ck-spot .ck-bar i.cw-vlow{ background:var(--slate) }
+
+/* ── 바로 떠날 수 있는 경로 ──────────────────────────
+   오른쪽 판 옆이 비어 있었다. 판이 남는 폭을 다 쓴다. */
+.ck-home .ck-cur{ align-items:start }
+.ck-home .curation-panel{ width:100%; max-width:none }
+.ck-home .ck-sl{ width:100% }
+
+/* 화살표와 점은 목록이 이미 다 보여 주므로 필요 없다 */
+.ck-home .slide-arr-wrap,
+.ck-home .slide-dots{ display:none }

@@ -72,7 +72,6 @@
      주색을 신호색(--sig)으로 쓰지 않는다. --sig 는 「지금」과 「바뀜」
      전용이고, 버튼 198곳에 깔면 신호가 신호가 아니게 된다. */
 
-  --ui:#241D18;          /* 주 버튼 · 활성 상태 */
   --ui-d:#120E0B;        /* hover */
   --ui-l:#5A5149;        /* 보조 테두리 · 아이콘 */
   --ui-pale:#F2EEE9;     /* 옅은 배경 */
@@ -124,6 +123,16 @@
 
    --mix 만 바뀌므로 갱신 비용이 없다. app_home.js 가 분 단위로 넣는다.
    이 아래는 생성된 블록이다. 손으로 고치지 말고 앵커 값을 고칠 것. */
+
+/* ══════════════════ 하늘 — 앵커 세 벌 ══════════════════
+   낮·노을·밤 팔레트를 평범한 색값으로 둔다.
+
+   사이 시각의 색은 app_home.js 가 oklab 에서 섞어 :root 에 인라인으로 넣는다.
+   CSS 에서 color-mix 로 하지 않는 이유 — 커스텀 속성은 모든 요소가 상속하므로
+   요소 1,118개에 대해 11만 번을 다시 풀어야 했다. 렌더러가 죽었다.
+
+   앵커 값을 고치면 scratchpad/gen_sky2.py 를 다시 돌려
+   tokens.css 와 js/sky-anchors.js 를 함께 갱신한다. 한쪽만 고치지 말 것. */
 
 /* ══════════════════ 하늘 — 앵커 세 벌 ══════════════════
    낮·노을·밤 팔레트를 평범한 색값으로 둔다.
@@ -232,7 +241,6 @@
   --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
   --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
   --ui-d:#120E0B;
   --ui-l:#5A5149;
   --ui-pale:#F2EEE9;
@@ -341,7 +349,6 @@
   --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
   --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
   --ui-d:#120E0B;
   --ui-l:#5A5149;
   --ui-pale:#F2EEE9;
@@ -365,83 +372,83 @@
 
 [data-sky="night"]{
   /* 23:00 기준 */
-  --void:#DDCFC8;
-  --plate:#DCCFC8;
-  --water:#8E96B4;
-  --beach:#D9BFA0;
-  --green:#B9BDA8;
-  --shore:#7E8AA0;
-  --rdc:#B0A49F;
-  --rd1:#CFC2BB;
-  --rd2:#D6C9C2;
-  --rd3:#C4B7B0;
-  --rdpv:#D8C6AC;
-  --lane:#E8B44A;
-  --w1:#E0D2C0;
-  --w2:#C3B29E;
-  --a0:#D66A4C;
-  --a1:#B4553B;
-  --a2:#8E402C;
-  --b0:#8E93AE;
-  --b1:#767B96;
-  --b2:#5E637C;
-  --c0:#E4D5C0;
-  --c1:#CBBBA6;
-  --c2:#AC9C88;
-  --d0:#B84E36;
-  --d1:#99402B;
-  --d2:#7A3221;
-  --e0:#B9BCCA;
-  --e1:#A0A3B2;
-  --e2:#868999;
-  --f0:#DDC29B;
-  --f1:#C3A881;
-  --f2:#A48D6B;
-  --g0:#77879F;
-  --g1:#63728A;
-  --g2:#505D72;
-  --h0:#9E6C4C;
-  --h1:#85573B;
-  --h2:#6B442D;
+  --void:#FFFFFF;
+  --plate:#F0EEEA;
+  --water:#A9D2E8;
+  --beach:#F0E1C4;
+  --green:#D8E3CD;
+  --shore:#7FA8C4;
+  --rdc:#CDCBC4;
+  --rd1:#E2E0D9;
+  --rd2:#EAE8E2;
+  --rd3:#D8D6CF;
+  --rdpv:#EADFC9;
+  --lane:#F5C93F;
+  --w1:#F2ECE1;
+  --w2:#DCD3C4;
+  --a0:#E8734A;
+  --a1:#CE5D36;
+  --a2:#AC4A28;
+  --b0:#A5B4C8;
+  --b1:#8C9CB2;
+  --b2:#74849A;
+  --c0:#F3EDE0;
+  --c1:#DCD5C6;
+  --c2:#BFB8A9;
+  --d0:#D2543A;
+  --d1:#B5432C;
+  --d2:#94341F;
+  --e0:#D4DBE3;
+  --e1:#B8C0CA;
+  --e2:#9BA4AF;
+  --f0:#EDD6AE;
+  --f1:#D5BC91;
+  --f2:#B4A079;
+  --g0:#7C9BCB;
+  --g1:#6885B3;
+  --g2:#556F98;
+  --h0:#B5825E;
+  --h1:#9A6A49;
+  --h2:#7D5436;
   --m0:#FFC53D;
-  --m1:#E0A420;
-  --m2:#B07F14;
-  --tc:#5F7458;
-  --tc2:#74855F;
-  --td:#44553E;
-  --tk:#6E5F49;
-  --bush:#6C8C5C;
-  --bush2:#54744A;
-  --sh1c:rgba(86,60,74,.26);
-  --sh2c:rgba(86,60,74,.13);
-  --wave:rgba(255,238,218,.5);
-  --tuft:#7B8C6E;
-  --stip:rgba(160,134,98,.5);
-  --gedge:rgba(104,96,96,.34);
-  --u1:#F58A32;
-  --u2:#EFE2D4;
-  --u3:#CE4832;
-  --uk:#8C8087;
-  --v1:#E9DCD2;
-  --v2:#42414F;
-  --v3:#B8452F;
-  --vt:rgba(255,240,224,.5);
-  --bo1:#E7DACE;
-  --bo2:#4E4A58;
-  --wake:rgba(255,238,218,.55);
-  --ru0:#A6A6B4;
-  --ru1:#8B8B99;
-  --bnc:#7A5F42;
-  --bnc2:#5F4A32;
-  --pp:#35303A;
-  --skin:#B4855F;
-  --pc1:#CE4832;
-  --pc2:#3A5F9C;
-  --pc3:#E2DAD2;
-  --pc4:#F0A028;
-  --pc5:#3E4250;
-  --onmap:#221C24;
-  --halo:rgba(255,248,240,.9);
+  --m1:#E9AC1F;
+  --m2:#BC8714;
+  --tc:#6F9463;
+  --tc2:#8DB07A;
+  --td:#4E7645;
+  --tk:#8A7351;
+  --bush:#7FA46E;
+  --bush2:#628B55;
+  --sh1c:rgba(64,86,112,.20);
+  --sh2c:rgba(64,86,112,.10);
+  --wave:rgba(255,255,255,.78);
+  --tuft:#7E9B6E;
+  --stip:rgba(178,152,110,.5);
+  --gedge:rgba(104,124,100,.32);
+  --u1:#FF8A2B;
+  --u2:#FBFCFD;
+  --u3:#E14B2E;
+  --uk:#8F9AA8;
+  --v1:#FBFCFD;
+  --v2:#3E4956;
+  --v3:#D84F33;
+  --vt:rgba(255,255,255,.6);
+  --bo1:#FBFCFD;
+  --bo2:#4E5A68;
+  --wake:rgba(255,255,255,.8);
+  --ru0:#BCC4CE;
+  --ru1:#9EA7B2;
+  --bnc:#8A6E4E;
+  --bnc2:#6F573C;
+  --pp:#39424F;
+  --skin:#D2A278;
+  --pc1:#E14B2E;
+  --pc2:#2E6FC4;
+  --pc3:#F6F8FA;
+  --pc4:#FFAE1A;
+  --pc5:#3C4756;
+  --onmap:#151C28;
+  --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
   --panel-2:#EAE5DF;
@@ -450,7 +457,6 @@
   --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
   --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
   --ui-d:#120E0B;
   --ui-l:#5A5149;
   --ui-pale:#F2EEE9;
@@ -474,83 +480,83 @@
 
 [data-sky="dawn"]{
   /* 05:00 — 밤과 같다. 사이 값은 JS 가 넣는다 */
-  --void:#DDCFC8;
-  --plate:#DCCFC8;
-  --water:#8E96B4;
-  --beach:#D9BFA0;
-  --green:#B9BDA8;
-  --shore:#7E8AA0;
-  --rdc:#B0A49F;
-  --rd1:#CFC2BB;
-  --rd2:#D6C9C2;
-  --rd3:#C4B7B0;
-  --rdpv:#D8C6AC;
-  --lane:#E8B44A;
-  --w1:#E0D2C0;
-  --w2:#C3B29E;
-  --a0:#D66A4C;
-  --a1:#B4553B;
-  --a2:#8E402C;
-  --b0:#8E93AE;
-  --b1:#767B96;
-  --b2:#5E637C;
-  --c0:#E4D5C0;
-  --c1:#CBBBA6;
-  --c2:#AC9C88;
-  --d0:#B84E36;
-  --d1:#99402B;
-  --d2:#7A3221;
-  --e0:#B9BCCA;
-  --e1:#A0A3B2;
-  --e2:#868999;
-  --f0:#DDC29B;
-  --f1:#C3A881;
-  --f2:#A48D6B;
-  --g0:#77879F;
-  --g1:#63728A;
-  --g2:#505D72;
-  --h0:#9E6C4C;
-  --h1:#85573B;
-  --h2:#6B442D;
+  --void:#FFFFFF;
+  --plate:#F0EEEA;
+  --water:#A9D2E8;
+  --beach:#F0E1C4;
+  --green:#D8E3CD;
+  --shore:#7FA8C4;
+  --rdc:#CDCBC4;
+  --rd1:#E2E0D9;
+  --rd2:#EAE8E2;
+  --rd3:#D8D6CF;
+  --rdpv:#EADFC9;
+  --lane:#F5C93F;
+  --w1:#F2ECE1;
+  --w2:#DCD3C4;
+  --a0:#E8734A;
+  --a1:#CE5D36;
+  --a2:#AC4A28;
+  --b0:#A5B4C8;
+  --b1:#8C9CB2;
+  --b2:#74849A;
+  --c0:#F3EDE0;
+  --c1:#DCD5C6;
+  --c2:#BFB8A9;
+  --d0:#D2543A;
+  --d1:#B5432C;
+  --d2:#94341F;
+  --e0:#D4DBE3;
+  --e1:#B8C0CA;
+  --e2:#9BA4AF;
+  --f0:#EDD6AE;
+  --f1:#D5BC91;
+  --f2:#B4A079;
+  --g0:#7C9BCB;
+  --g1:#6885B3;
+  --g2:#556F98;
+  --h0:#B5825E;
+  --h1:#9A6A49;
+  --h2:#7D5436;
   --m0:#FFC53D;
-  --m1:#E0A420;
-  --m2:#B07F14;
-  --tc:#5F7458;
-  --tc2:#74855F;
-  --td:#44553E;
-  --tk:#6E5F49;
-  --bush:#6C8C5C;
-  --bush2:#54744A;
-  --sh1c:rgba(86,60,74,.26);
-  --sh2c:rgba(86,60,74,.13);
-  --wave:rgba(255,238,218,.5);
-  --tuft:#7B8C6E;
-  --stip:rgba(160,134,98,.5);
-  --gedge:rgba(104,96,96,.34);
-  --u1:#F58A32;
-  --u2:#EFE2D4;
-  --u3:#CE4832;
-  --uk:#8C8087;
-  --v1:#E9DCD2;
-  --v2:#42414F;
-  --v3:#B8452F;
-  --vt:rgba(255,240,224,.5);
-  --bo1:#E7DACE;
-  --bo2:#4E4A58;
-  --wake:rgba(255,238,218,.55);
-  --ru0:#A6A6B4;
-  --ru1:#8B8B99;
-  --bnc:#7A5F42;
-  --bnc2:#5F4A32;
-  --pp:#35303A;
-  --skin:#B4855F;
-  --pc1:#CE4832;
-  --pc2:#3A5F9C;
-  --pc3:#E2DAD2;
-  --pc4:#F0A028;
-  --pc5:#3E4250;
-  --onmap:#221C24;
-  --halo:rgba(255,248,240,.9);
+  --m1:#E9AC1F;
+  --m2:#BC8714;
+  --tc:#6F9463;
+  --tc2:#8DB07A;
+  --td:#4E7645;
+  --tk:#8A7351;
+  --bush:#7FA46E;
+  --bush2:#628B55;
+  --sh1c:rgba(64,86,112,.20);
+  --sh2c:rgba(64,86,112,.10);
+  --wave:rgba(255,255,255,.78);
+  --tuft:#7E9B6E;
+  --stip:rgba(178,152,110,.5);
+  --gedge:rgba(104,124,100,.32);
+  --u1:#FF8A2B;
+  --u2:#FBFCFD;
+  --u3:#E14B2E;
+  --uk:#8F9AA8;
+  --v1:#FBFCFD;
+  --v2:#3E4956;
+  --v3:#D84F33;
+  --vt:rgba(255,255,255,.6);
+  --bo1:#FBFCFD;
+  --bo2:#4E5A68;
+  --wake:rgba(255,255,255,.8);
+  --ru0:#BCC4CE;
+  --ru1:#9EA7B2;
+  --bnc:#8A6E4E;
+  --bnc2:#6F573C;
+  --pp:#39424F;
+  --skin:#D2A278;
+  --pc1:#E14B2E;
+  --pc2:#2E6FC4;
+  --pc3:#F6F8FA;
+  --pc4:#FFAE1A;
+  --pc5:#3C4756;
+  --onmap:#151C28;
+  --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
   --panel-2:#EAE5DF;
@@ -559,7 +565,6 @@
   --hair:rgba(26,21,18,.10);
   --sig-deep:#8A5000;
   --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
   --ui-d:#120E0B;
   --ui-l:#5A5149;
   --ui-pale:#F2EEE9;
@@ -580,6 +585,7 @@
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
+
 
 
 

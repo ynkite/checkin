@@ -125,7 +125,7 @@
 
 /* ── 일정 레일 ─────────────────────────────────────────────── */
 .map-list{
-  flex:1; min-height:100px; overflow-y:auto; overflow-x:hidden;
+  flex:1; min-height:210px; overflow-y:auto; overflow-x:hidden;
   padding:0 16px 22px; scrollbar-width:thin;
 }
 .day-section + .day-section{ margin-top:6px }
@@ -698,3 +698,59 @@
   transition:filter .15s;
 }
 .mp-empty-go:hover{ filter:brightness(1.2) }
+
+/* ============================================================
+   혼잡 안내 — 알려 주고 끝내지 않는다. 세 갈래를 고르게 한다.
+   문구는 사용자가 불러준 3박자다.
+   ============================================================ */
+.mp-alert{
+  margin:0 0 4px; padding:15px 17px 16px; max-height:42vh; overflow-y:auto;
+  background:var(--terra-pale); border-radius:14px; word-break:keep-all;
+}
+.mp-al-1{
+  margin:0; font-size:15px; font-weight:800; line-height:1.4;
+  letter-spacing:-.03em; color:var(--ink);
+}
+.mp-al-1 em{ font-style:normal; color:var(--terra) }
+.mp-al-2{
+  margin:6px 0 0; font-size:12.5px; line-height:1.66; color:var(--ink-2);
+}
+.mp-al-note{ margin:11px 0 0; font-size:10.5px; line-height:1.5; color:var(--ink-3) }
+
+/* 세 갈래를 두 줄씩 쓰면 안내판이 330px 을 먹고 일정 목록이 눌린다.
+   한 줄에 「무엇을」 + 「어떻게」 로 붙인다. */
+.mp-opts{ display:grid; gap:5px; margin-top:12px }
+.mp-opt{
+  display:flex; align-items:baseline; gap:9px;
+  padding:9px 12px 10px; text-align:left; cursor:pointer;
+  border:0; border-radius:9px; background:var(--panel); color:var(--ink);
+  font-family:inherit; word-break:keep-all;
+  transition:box-shadow .16s ease;
+}
+.mp-opt:hover{ box-shadow:inset 0 0 0 1px var(--terra) }
+.mp-opt b{ font-size:13px; font-weight:700; white-space:nowrap }
+.mp-opt span{
+  font-size:11.5px; color:var(--ink-3); margin-left:auto; white-space:nowrap;
+}
+.mp-opt.mp-undo b{ color:var(--ink-2) }
+
+/* 줄마다 붙는 혼잡도 배지 */
+.mp-cw{
+  display:inline-flex; align-items:baseline; gap:5px; margin-left:7px;
+  padding:2px 7px 3px; border-radius:99px;
+  font-size:10.5px; font-weight:700; vertical-align:middle; white-space:nowrap;
+}
+.mp-cw i{
+  font-style:normal; font-family:var(--fig); font-size:10px; font-weight:500;
+  opacity:.75; font-variant-numeric:tabular-nums;
+}
+.mp-cw.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
+.mp-cw.cw-high { background:var(--terra-pale); color:var(--terra) }
+.mp-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.mp-cw.cw-low,
+.mp-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+@media (max-width:760px){
+  .mp-alert{ padding:13px 14px 14px; border-radius:12px }
+  .mp-al-1{ font-size:14px }
+}

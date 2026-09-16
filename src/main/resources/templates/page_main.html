@@ -483,67 +483,137 @@
   <div class="page active" id="page-main">
     <div class="ck-home">
       <section class="ck-hero ck-stage" id="ck_hero">
-        <!-- 무대. app_home.js 가 mass_hero.svg 를 여기 넣는다. -->
+        <!-- 무대. 기본은 3D 모형, 「지도」를 누르면 카카오맵으로 바뀐다.
+             app_home.js 가 mass_hero.svg 를 #ck_scene 에 넣는다. -->
         <div class="ck-scene" aria-hidden="true">
-          <!-- svg·경로·핀이 한 상자 안에 있어야 좌표계가 맞는다.
-               바깥 섹션 기준으로 %를 주면 장면이 확대·중앙정렬된 만큼 어긋난다. -->
           <div class="ck-frame" id="ck_frame">
             <div id="ck_scene"></div>
             <div class="ck-pins" id="ck_pinlayer"></div>
           </div>
         </div>
+        <div class="st-bigmap" id="st_bigmap" hidden></div>
 
-        <div class="ck-wr ck-lead">
-          <h1>줄 서려고<br>간 건 아니잖아요</h1>
-          <p class="ck-sub">붐비는 곳을 실시간으로 보고, 그 자리에서 순서를 다시 잡아 드립니다.</p>
-            <div class="ck-tell" role="status" aria-live="polite">
-              <div class="ck-ph" id="ck_play">
-                <button type="button" class="ck-phbtn" id="ck_playbtn" aria-label="순서 따라가기 멈춤">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
-                </button>
-                <i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i>
-              </div>
-              <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
-              <p class="ck-why" id="ck_tw">전통시장에서 점심을 먹고 해수욕장, 동백섬 순으로 갈 계획이었습니다.</p>
-              <!-- 혼잡이 잡히면 여기가 열린다. 하나로 정해 주지 않고 세 갈래를 준다 —
-                   순서를 바꾸거나, 다른 곳으로 가거나, 가는 길만 바꾸거나. -->
-              <div class="ck-opts" id="ck_opts" hidden>
-                <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
-                  <b>순서 바꾸기</b>
-                  <span>동백섬 먼저, 해수욕장은 17시 10분에</span>
-                  <em>대기 40분 줄어듦<i>추가 비용 없음</i></em>
-                </button>
-                <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
-                  <b>다른 곳으로</b>
-                  <span>해수욕장 대신 해운대 전통시장으로</span>
-                  <em>지금 한적<i>걸어서 9분</i></em>
-                </button>
-                <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
-                  <b>가는 길 바꾸기</b>
-                  <span>해변길 대신 안쪽 도로 · 티맵 실시간</span>
-                  <em>11분 빠름<i>1.2km 더</i></em>
-                </button>
-              </div>
+        <!-- 왼쪽 위 — 지금 무엇을 보고 있나 -->
+        <div class="st-tl">
+          <div class="fl st-head">
+            <span class="fl-eye">부산 2박 3일 · 1일차 오후</span>
+            <h1 class="fl-ttl fl-ttl-lg st-h1">줄 서려고<br>간 건 아니잖아요</h1>
+            <p class="fl-sub">붐비는 곳을 실시간으로 보고, 그 자리에서 순서를 다시 잡습니다.</p>
+            <p class="fl-path" id="st_path"></p>
+          </div>
+
+          <!-- 정거장. 붐비는 곳은 알약 자체가 신호다 -->
+          <div class="fl-pills st-stops" id="st_stops"></div>
+
+          <!-- 지금 상황 + 대응 세 갈래 -->
+          <div class="fl st-note" role="status" aria-live="polite">
+            <div class="ck-ph" id="ck_play">
+              <button type="button" class="ck-phbtn" id="ck_playbtn" aria-label="순서 따라가기 멈춤">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
+              </button>
+              <i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i>
             </div>
+            <p class="st-line" id="ck_tl">부산 1일차, 오후 순서입니다</p>
+            <p class="fl-tx" id="ck_tw">미포에서 출발해 해수욕장, 동백섬 순으로 갈 계획이었습니다.</p>
+            <!-- 혼잡이 잡히면 열린다. 하나로 정해 주지 않고 세 갈래를 준다 -->
+            <div class="ck-opts" id="ck_opts" hidden>
+              <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
+                <b>순서 바꾸기</b>
+                <span>동백섬 먼저, 해수욕장은 17시 10분에</span>
+                <em>대기 40분 줄어듦<i>추가 비용 없음</i></em>
+              </button>
+              <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
+                <b>다른 곳으로</b>
+                <span>해수욕장 대신 해운대 전통시장으로</span>
+                <em>지금 한적<i>걸어서 9분</i></em>
+              </button>
+              <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
+                <b>가는 길 바꾸기</b>
+                <span>해변길 대신 안쪽 도로 · 티맵 실시간</span>
+                <em>11분 빠름<i>1.2km 더</i></em>
+              </button>
             </div>
+          </div>
         </div>
 
+        <!-- 오른쪽 위 — 무대를 바꾸는 도구. 전부 실제로 동작한다 -->
+        <div class="fl-tools st-tools">
+          <button type="button" class="fl-tool" id="st_t_model" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 8v8l-9 5-9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>모형
+          </button>
+          <button type="button" class="fl-tool" id="st_t_map" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>지도
+          </button>
+          <button type="button" class="fl-tool" id="st_t_walk" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v5l-3 8M12 13l3 8M8 11l8-1"/></svg>사람 움직임
+          </button>
         </div>
 
-        <div class="ck-wr ck-form">
+        <!-- 왼쪽 아래 — 작은 지도. 큰 무대와 서로 바꿔 볼 수 있다 -->
+        <div class="fl fl-tight fl-mini st-mini" id="st_mini">
+          <div class="fl-mini-hd">
+            <b id="st_mini_ttl">지금 위치 지도</b>
+            <button type="button" id="st_fold" aria-expanded="true">접기</button>
+          </div>
+          <div class="fl-mini-map" id="st_minimap"></div>
+          <div class="fl-mini-ft">숫자는 방문 순서입니다. 순서를 바꾸면 핀도 같이 움직입니다.</div>
+        </div>
+
+        <!-- 오른쪽 아래 — 시점 -->
+        <div class="fl-tools st-view">
+          <button type="button" class="fl-tool" id="st_v_in" aria-label="확대">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>
+          </button>
+          <button type="button" class="fl-tool" id="st_v_out" aria-label="축소">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>
+          </button>
+          <button type="button" class="fl-tool" id="st_v_reset">시점 초기화</button>
+        </div>
+
+        <!-- 오른쪽 판 — 오늘 순서 · 지금 상황 -->
+        <aside class="fl st-side" id="st_side">
+          <div class="st-sidehd">
+            <b class="fl-no">01<em>일차</em></b>
+            <span>9월 19일 금요일<i>부산 해운대</i></span>
+          </div>
+          <div class="st-tabs">
+            <button type="button" class="fl-pill on" id="st_tab_day" aria-pressed="true">오늘 순서</button>
+            <button type="button" class="fl-pill" id="st_tab_now" aria-pressed="false">지금 상황</button>
+          </div>
+
+          <div id="st_pane_day">
+            <dl class="fl-rows" id="st_plan"></dl>
+            <p class="fl-h">시각은 넣는 값이 아니라 나오는 값입니다</p>
+            <p class="fl-tx">숙소 체크인 시각과 장소별 영업시간, 이동시간을 넣고 풀면
+              하루가 채워집니다. 순서를 바꾸면 뒤 시각이 전부 다시 계산됩니다.</p>
+          </div>
+
+          <div id="st_pane_now" hidden>
+            <dl class="fl-rows" id="st_crowd"></dl>
+            <p class="fl-h">혼잡도는 다섯 단계입니다</p>
+            <p class="fl-tx">100이 그 장소, 그 시각의 평소입니다.
+              매우 혼잡 · 혼잡 · 정상 · 한적 · 매우 한적으로 나눠 보여드립니다.</p>
+            <div class="fl-links">
+              <a href="https://datalab.visitkorea.or.kr" target="_blank" rel="noopener">한국관광 데이터랩</a>
+            </div>
+          </div>
+        </aside>
+
+        <!-- 아래 가운데 — 경로 만들기 -->
+        <div class="st-form">
           <form class="ck-bar" id="ck_mk" onsubmit="return false">
             <div class="ck-fr">
-              <div class="ck-fld"><label for="f1">어디로</label>
+              <div class="ck-fld"><label for="ck_f1">어디로</label>
                 <select id="ck_f1"><option>부산</option><option>서울</option><option>제주</option><option>강릉</option><option>경주</option></select></div>
-              <div class="ck-fld"><label for="f2">며칠</label>
+              <div class="ck-fld"><label for="ck_f2">며칠</label>
                 <select id="ck_f2"><option>2박 3일</option><option>1박 2일</option><option>3박 4일</option><option>당일</option></select></div>
-              <div class="ck-fld"><label for="f3">언제부터</label>
+              <div class="ck-fld"><label for="ck_f3">언제부터</label>
                 <input id="ck_f3" type="date" value="2026-09-19"></div>
-              <div class="ck-fld"><label for="f4">몇 명</label>
+              <div class="ck-fld"><label for="ck_f4">몇 명</label>
                 <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
             </div>
             <div class="ck-cond">
-            <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
+              <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
               <div class="ck-chips2" id="ck_cc">
                 <button type="button" aria-pressed="false">반려동물</button>
                 <button type="button" aria-pressed="false">노약자</button>
@@ -556,6 +626,7 @@
           </form>
         </div>
       </section>
+
       <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
       <section class="ck-wr ck-blk ck-mine" id="ck_mine">
         <div class="ck-hd" data-label="이어서 보는">
@@ -597,17 +668,33 @@
       <section class="ck-wr ck-blk" id="ck_free">
         <div class="ck-hd" data-label="오늘 이 시각의">
           <h2>지금 한가한 곳</h2>
-          <p class="ck-side">100이 평소 수준입니다.</p>
+          <p class="ck-side">100이 그 장소, 그 시각의 평소입니다.</p>
         </div>
         <div class="ck-free">
-          <article class="ck-spot"><div class="ck-nm">다대포</div><div class="ck-why">낙조, 모래사장 · 차로 32분</div>
-            <div class="ck-vv"><b class="ck-fig">64</b><i>평소의 64%</i></div><div class="ck-bar"><i style="width:43%"></i></div></article>
-          <article class="ck-spot"><div class="ck-nm">흰여울문화마을</div><div class="ck-why">골목, 전망 · 차로 24분</div>
-            <div class="ck-vv"><b class="ck-fig">71</b><i>평소의 71%</i></div><div class="ck-bar"><i style="width:47%"></i></div></article>
-          <article class="ck-spot"><div class="ck-nm">태종대</div><div class="ck-why">해안 절벽, 등대 · 차로 27분</div>
-            <div class="ck-vv"><b class="ck-fig">78</b><i>평소의 78%</i></div><div class="ck-bar"><i style="width:52%"></i></div></article>
-          <article class="ck-spot ck-hot"><div class="ck-nm">해운대</div><div class="ck-why">지금 붐빔 · 저녁에 가세요</div>
-            <div class="ck-vv"><b class="ck-fig">142</b><i>평소의 1.4배</i></div><div class="ck-bar"><i style="width:95%"></i></div></article>
+          <article class="ck-spot">
+            <div class="ck-nm">다대포</div>
+            <div class="ck-why">낙조, 모래사장 · 차로 32분</div>
+            <div class="ck-vv"><b class="ck-fig">64</b><i class="cw-low">한적</i></div>
+            <div class="ck-bar"><i class="cw-low" style="width:36%"></i></div>
+          </article>
+          <article class="ck-spot">
+            <div class="ck-nm">흰여울문화마을</div>
+            <div class="ck-why">골목, 전망 · 차로 24분</div>
+            <div class="ck-vv"><b class="ck-fig">71</b><i class="cw-low">한적</i></div>
+            <div class="ck-bar"><i class="cw-low" style="width:39%"></i></div>
+          </article>
+          <article class="ck-spot">
+            <div class="ck-nm">태종대</div>
+            <div class="ck-why">해안 절벽, 등대 · 차로 27분</div>
+            <div class="ck-vv"><b class="ck-fig">78</b><i class="cw-low">한적</i></div>
+            <div class="ck-bar"><i class="cw-low" style="width:43%"></i></div>
+          </article>
+          <article class="ck-spot ck-hot">
+            <div class="ck-nm">해운대</div>
+            <div class="ck-why">지금 붐빔 · 저녁에 가세요</div>
+            <div class="ck-vv"><b class="ck-fig">142</b><i class="cw-vhigh">매우 혼잡</i></div>
+            <div class="ck-bar"><i class="cw-vhigh" style="width:79%"></i></div>
+          </article>
         </div>
       </section>
 

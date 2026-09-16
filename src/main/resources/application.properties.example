@@ -74,8 +74,25 @@ spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=30MB
 
 # ── 한국관광공사 OpenAPI (이수환) ──
+# 한국관광공사 OpenAPI - 10종을 같은 호스트·같은 인증키로 부른다.
+#   TourApiClient.items("<서비스>", "<오퍼레이션>", params)
+#   serviceKey 는 디코딩키를 넣는다. 인코딩키를 넣으면
+#   SERVICE_KEY_IS_NOT_REGISTERED_ERROR 가 온다.
+#
+#   쓰는 중
+#     KorService2           국문 관광정보          KorTourService · LodgingRateService
+#     TatsCnctrRateService  관광지 집중률 예측     ConcentrationService
+#     DataLabService        지역별 방문자수        VisitorService
+#     LocgoHubTarService1   기초지자체 중심 관광지 LocgoHubService
+#     TarRlteTarService1    관광지별 연관 관광지   RelatedTourService
+#
+#   받아 놓고 아직 안 붙인 것
+#     KorWithService2       무장애 여행            (장애인·어르신 동반)
+#     KorPetTourService2    반려동물 동반여행      (화면에 칩은 이미 있다)
+#     GoCamping             고캠핑                 (백패킹 여행지)
+#     Durunubi              두루누비               (도보·자전거 코스)
 tour.api.key=${TOUR_API_KEY:}
-tour.api.base-url=http://apis.data.go.kr/B551011
+tour.api.base-url=https://apis.data.go.kr/B551011
 
 # ── SK open API / TMAP (이수환) ──
 tmap.api.key=${TMAP_APP_KEY:}

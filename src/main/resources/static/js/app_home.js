@@ -112,9 +112,9 @@
        cand  다른 곳으로 가면 후보 핀이 켜지고 원래 핀이 흐려진다
        live  가는 길을 바꾸면 해변길(1)에서 안쪽 도로(2)로 선이 넘어간다 */
   var OPTS = [
-    { swap: 1, cand: 0, live: 1 },
-    { swap: 0, cand: 1, live: 1 },
-    { swap: 0, cand: 0, live: 2 }
+    { swap: 1, cand: 0, live: 1, order: [0, 2, 1] },
+    { swap: 0, cand: 1, live: 1, order: [0, 1, 2] },
+    { swap: 0, cand: 0, live: 2, order: [0, 1, 2] }
   ];
 
   function initHero() {
@@ -143,6 +143,13 @@
         }
       }
       drawTrail(route, o.live);
+      stage({ order: o.order, hot: 1, cand: !!o.cand });
+    }
+
+    /* 무대 주변 판(정거장 알약·오른쪽 판·작은 지도)은 app_stage.js 가 맡는다.
+       없어도 나레이션은 돌아야 하므로 있을 때만 부른다. */
+    function stage(st) {
+      if (window.ckStage) window.ckStage.render(route, alt, st);
     }
 
     function draw(i) {
@@ -155,7 +162,13 @@
       if (box) box.hidden = !s.opts;
       if (route.length) {
         drawPins(route, s.hot, alt);
-        if (s.opts) applyOpt(pick); else { resetScene(); drawTrail(route, s.live); }
+        if (s.opts) {
+          applyOpt(pick);
+        } else {
+          resetScene();
+          drawTrail(route, s.live);
+          stage({ order: [0, 1, 2], hot: s.hot, cand: false });
+        }
       }
 
       var tr = $('ck_track'), nw = $('ck_playnow');
@@ -214,6 +227,7 @@
       .then(function (j) { route = (j && j.route) || []; alt = (j && j.alt) || null; })
       .catch(function () { route = []; })
       .then(function () {
+        stage({ order: [0, 1, 2], hot: -1, cand: false });
         if (reduce) { draw(SCENE.length - 1); return; }
         tick();
         if (hero && window.IntersectionObserver) {
@@ -520,6 +534,9 @@
 /* 「많이 담긴 곳」 탭 — 네 종류를 한 절에 넣고 하나씩 보여 준다.
    그리드는 initMainPage() 가 모두 채운다. 여기서는 보이기만 바꾼다. */
 (function () {
+  /* $ 가 위 IIFE 안에만 있어서 이 블록이 통째로 죽어 있었다. 탭이 안 먹던 원인이다. */
+  var $ = function (id) { return document.getElementById(id); };
+
   /* 탭 두 벌 — 바깥은 일정/장소, 안쪽은 맛집·숙소·관광지·카페.
      둘 다 「고른 것만 보인다」라 한 곳에서 처리한다. */
   function initKindTabs() {

@@ -10,13 +10,6 @@
      * [page_map.html] AI 연동 대응 변수 (const -> let으로 전환)
      * ============================================================ */
 
-    // ── 플랜 헤더 정보 ──
-    const MAP_PLAN_INFO = {
-      title:     '제주도 3박4일 힐링 여행',
-      meta:      '2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차',
-      statusTag: '수정 중',
-    };
-
     /* ════════════════════════════════════════════════════════
      *  레일·경로 공통 도우미
      *
@@ -173,6 +166,178 @@
       if (!c) return '';
       return '<span class="mp-cw cw-' + c.key + '">' + _mpEsc(c.label)
               + '<i>' + c.idx + '</i></span>';
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  혼잡 안내 — 알려 주고 끝내지 않는다. 세 갈래를 고르게 한다.
+     *  문구는 사용자가 불러준 3박자를 지킨다.
+     * ════════════════════════════════════════════════════════ */
+
+    var _mpUndo = null;          /* 되돌리기용 이전 순서 */
+
+    /* 그날 가장 붐비는 장소와 그 뒤에 올 후보를 찾는다 */
+    function _mpWorst(day) {
+      var spots = (day.places || []).filter(function (p) {
+        return !p.transit && p.type !== 'stay' && p.name;
+      });
+      var worst = null, next = null;
+      spots.forEach(function (p, i) {
+        var idx = _mpCrowdIdx(p.name);
+        if (!worst || idx > worst.idx) { worst = { p: p, i: i, idx: idx }; next = spots[i + 1] || spots[i - 1] || null; }
+      });
+      if (!worst || worst.idx < 115) return null;      /* 혼잡 미만이면 말 걸지 않는다 */
+      return { worst: worst.p, next: next, idx: worst.idx };
+    }
+
+    function _mpCrowdPanel() {
+      var box = document.getElementById('mpAlert');
+      if (!box || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      var day = MAP_ITINERARY[0];
+      var f = _mpWorst(day);
+      if (!f || !f.next) { box.hidden = true; return; }
+
+      var c = (typeof crowd === 'function') ? crowd(f.idx) : null;
+      var grade = c ? c.label : '혼잡';
+      var a = f.worst.name, b = f.next.name;
+      var ease = _mpEaseHour(f.worst.time);
+
+      box.hidden = false;
+      box.innerHTML =
+        '<p class="mp-al-1">' + _mpEsc(a) + _mpJosa(a, '이', '가') +
+          ' 지금 <em>' + _mpEsc(grade) + '</em>합니다</p>' +
+        '<p class="mp-al-2">추후 ' + ease + '시 이후에는 지금보다 한산할 것으로 추정됩니다. ' +
+          _mpEsc(a) + _mpJosa(a, '과', '와') + ' ' + _mpEsc(b) +
+          _mpJosa(b, '의', '의') + ' 순서를 변경하면 쾌적한 여행이 가능합니다.</p>' +
+        '<div class="mp-opts">' +
+          '<button type="button" class="mp-opt" onclick="_mpSwapOrder()">' +
+            '<b>순서 바꾸기</b><span>' + _mpEsc(b) + ' 먼저</span></button>' +
+          '<button type="button" class="mp-opt" onclick="_mpAskReplace()">' +
+            '<b>다른 곳으로</b><span>한적한 곳 찾기</span></button>' +
+          '<button type="button" class="mp-opt" onclick="_mpAskRoute()">' +
+            '<b>가는 길 바꾸기</b><span>구간 보기</span></button>' +
+        '</div>' +
+        '<p class="mp-al-note">혼잡도는 시연용 예시입니다. 실제 값은 한국관광공사 집중률 예측을 씁니다.</p>';
+    }
+
+    /* 다른 곳으로 — 이미 있는 교체 입력을 그 장소에서 연다 */
+    function _mpAskReplace() {
+      var f = _mpWorst(MAP_ITINERARY[0] || {});
+      if (!f) return;
+      var row = _mpRowOf(f.worst);
+      if (!row) return;
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      var btn = row.querySelector('.btn-replace');
+      if (btn) btn.click();
+      else if (typeof toast === 'function') toast('확정된 플랜은 교체할 수 없습니다. 위의 「수정」을 먼저 누르세요.');
+    }
+
+    /* 가는 길 바꾸기 — 그 구간을 지도에 띄운다.
+       다른 경로 비교는 티맵 연동 뒤에 붙는다. 없는 것을 있는 척하지 않는다. */
+    function _mpAskRoute() {
+      var f = _mpWorst(MAP_ITINERARY[0] || {});
+      if (!f) return;
+      var row = _mpRowOf(f.worst);
+      if (row && typeof selectPlaceRow === 'function') selectPlaceRow(row);
+      if (typeof drawRouteLayer === 'function') drawRouteLayer();
+      if (typeof toast === 'function') {
+        toast('이동 구간을 지도에 표시했습니다. 다른 경로 비교는 티맵 연동 뒤에 붙습니다.', 4200);
+      }
+    }
+
+    function _mpRowOf(place) {
+      if (!place || !place.key) return null;
+      return document.querySelector('.place-row[data-key="' + place.key + '"]');
+    }
+
+    /* 붐빔이 풀릴 시각 — 그 장소 시각보다 뒤, 17시 이후로 본다 */
+    function _mpEaseHour(time) {
+      var hm = _mpParseHm(time);
+      var h = hm != null ? Math.floor(hm / 60) : 14;
+      return Math.max(17, h + 3);
+    }
+
+    /* 순서 바꾸기 — 목록과 지도 핀이 같이 바뀐다. 되돌릴 수 있다 */
+    function _mpSwapOrder() {
+      if (!Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      var day = MAP_ITINERARY[0];
+      var f = _mpWorst(day);
+      if (!f || !f.next) return;
+
+      var ps = day.places || [];
+      var ia = ps.indexOf(f.worst), ib = ps.indexOf(f.next);
+      if (ia < 0 || ib < 0) return;
+
+      /* 객체가 아니라 자리를 기억한다. 다시 그릴 때 배열이 새로 생기므로
+         옛 객체를 들고 있으면 되돌려도 화면과 무관해진다. */
+      _mpUndo = { d: 0, ia: ia, ib: ib, ta: f.worst.time, tb: f.next.time };
+
+      /* 자리를 맞바꾸고 시각은 자리에 남긴다 — 시각은 나오는 값이다 */
+      var tmp = ps[ia]; ps[ia] = ps[ib]; ps[ib] = tmp;
+      var t2 = ps[ia].time; ps[ia].time = ps[ib].time; ps[ib].time = t2;
+
+      _mpAfterOrder('순서를 바꿨습니다. 뒤 시각도 다시 잡았습니다.');
+    }
+
+    function _mpUndoOrder() {
+      if (!_mpUndo) return;
+      var u = _mpUndo;
+      var day = (MAP_ITINERARY || [])[u.d];
+      var ps = day && day.places;
+      if (!ps || !ps[u.ia] || !ps[u.ib]) { _mpUndo = null; return; }
+      var tmp = ps[u.ia]; ps[u.ia] = ps[u.ib]; ps[u.ib] = tmp;
+      ps[u.ia].time = u.ta; ps[u.ib].time = u.tb;
+      _mpUndo = null;
+      _mpAfterOrder('원래 순서로 되돌렸습니다.');
+    }
+
+    /* 바뀐 순서를 화면 전체에 반영한다.
+       목록은 initMapPage 가 그리고, 지도 핀 번호는 여기서 다시 매긴다. */
+    function _mpAfterOrder(msg) {
+      try {
+        sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
+        window._planDirty = true;
+      } catch (e) {}
+      _mpRenumberPins();
+      if (typeof drawRouteLayer === 'function') drawRouteLayer();
+      _mpRedrawList();
+      if (typeof toast === 'function') toast(msg, 3600);
+      var box = document.getElementById('mpAlert');
+      if (box && _mpUndo) {
+        box.innerHTML = '<p class="mp-al-1">바꾼 순서로 보고 있습니다</p>' +
+          '<p class="mp-al-2">아직 확정하지 않았습니다. 위의 「확정」을 누르면 저장됩니다.</p>' +
+          '<div class="mp-opts"><button type="button" class="mp-opt mp-undo" ' +
+          'onclick="_mpUndoOrder()"><b>되돌리기</b><span>원래 순서로</span></button></div>';
+      } else if (box) {
+        _mpCrowdPanel();
+      }
+    }
+
+    /* 지도 핀 번호를 새 순서로 다시 매긴다 */
+    function _mpRenumberPins() {
+      if (!window._kakaoOverlays || !Array.isArray(MAP_ITINERARY)) return;
+      var order = {};
+      MAP_ITINERARY.forEach(function (d) {
+        var n = 0;
+        (d.places || []).forEach(function (p) {
+          if (p.transit || !p.key) return;
+          order[p.key] = ++n;
+        });
+      });
+      window._kakaoOverlays.forEach(function (it) {
+        var el = it.overlay && it.overlay.getContent && it.overlay.getContent();
+        var no = order[it.key];
+        if (no == null) return;
+        if (typeof el === 'string') return;            /* 문자열 내용은 건드리지 않는다 */
+        var b = el && el.querySelector && el.querySelector('.mp-pin-no, .mk-no, b');
+        if (b) b.textContent = no;
+      });
+    }
+
+    /* 목록만 다시 그린다. 자료는 이미 MAP_ITINERARY 에 있다 */
+    function _mpRedrawList() {
+      var keep = window._currentTripId;
+      window._currentTripId = null;        /* DB 를 다시 읽으면 바꾼 순서가 날아간다 */
+      try { initMapPage(); } finally { window._currentTripId = keep; }
     }
 
     // 받침에 따라 조사를 고른다 — 「해운대가」 / 「동백섬이」
@@ -614,7 +779,7 @@
             <span class="mp-ord">${ord}</span>
             <div class="pr-info">
               ${p.time ? `<div class="mp-time">${_mpEsc(p.time)}</div>` : ''}
-              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}</div>
+              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}</div>
               ${p.sub ? `<div class="pr-sub">${_mpEsc(p.sub)}</div>` : ''}
               ${stars ? `<div class="pr-stars">${_mpEsc(stars)}</div>` : ''}
             </div>
@@ -702,6 +867,7 @@
 
         if (typeof initDragAndDrop === 'function') initDragAndDrop();
         if (typeof initKakaoMap === 'function') initKakaoMap();
+        if (typeof _mpCrowdPanel === 'function') _mpCrowdPanel();
 
         try {
           const fallbackQ = sessionStorage.getItem('map_fallback_queue');
@@ -2312,8 +2478,8 @@
       <div class="map-left">
         <div class="ml-hd">
           <div class="mp-eyebrow">여행 동선</div>
-          <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
-          <div class="ml-plan-meta" id="mapPlanMeta">2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차</div>
+          <div class="ml-plan-ttl" id="mapPlanTitle">여행 플랜</div>
+          <div class="ml-plan-meta" id="mapPlanMeta"></div>
           <div class="mp-state">
             <div id="planStatusBadge">수정 중</div>
             <button id="btnConfirmToggle" onclick="togglePlanConfirm()">확정</button>
@@ -2332,6 +2498,8 @@
         <div id="queueToggle" style="display:none">
           <button onclick="openQueue()">교체 요청 목록 열기</button>
         </div>
+        <!-- 혼잡 안내 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
+        <div class="mp-alert" id="mpAlert" hidden></div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
         <div class="map-budget-bar">
