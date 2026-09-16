@@ -109,6 +109,8 @@
   <link rel="stylesheet" th:href="@{/css/styles_community.css}">
   <link rel="stylesheet" th:href="@{/css/styles_calendar.css}">
   <link rel="stylesheet" th:href="@{/css/styles_home.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_hero.css}">
+  <link rel="stylesheet" th:href="@{/css/styles_saved.css}">
   <link rel="stylesheet" th:href="@{/css/styles_map.css}">
   <link rel="stylesheet" th:href="@{/css/styles_planner.css}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive.css}">
@@ -120,8 +122,6 @@
   <link rel="stylesheet" th:href="@{/css/styles_nav.css}">
   <link rel="stylesheet" th:href="@{/css/styles_focus.css}">
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=50a304fa42a0bd2d294ac871e3acae14&autoload=false&libraries=services"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </head>
 <body style="visibility: hidden">
@@ -194,6 +194,7 @@
 <th:block th:insert="~{page_weather :: weather}"></th:block>
 
 <!-- ===== JS ===== -->
+<script th:src="@{/js/crowd.js}"></script>
 <script th:src="@{/js/app_main.js(v=20260620a)}"></script>
   <script th:src="@{/js/app_home.js}"></script>
 <script th:src="@{/js/app_budget.js}"></script>
@@ -315,17 +316,6 @@
       </p>
     </div>
 
-    <!-- 바로가기 -->
-    <div class="foot-col">
-      <h4>바로가기</h4>
-      <ul>
-        <li><a onclick="goHomeRefresh()" style="cursor:pointer">홈</a></li>
-        <li><a onclick="navPlannerClick()" style="cursor:pointer">여행 플래너</a></li>
-        <li><a onclick="go('weather')" style="cursor:pointer">날씨</a></li>
-        <li><a onclick="goRefresh('community')" style="cursor:pointer">커뮤니티</a></li>
-      </ul>
-    </div>
-
     <!-- 고객지원 -->
     <div class="foot-col">
       <h4>고객지원</h4>
@@ -333,7 +323,6 @@
         <!-- 팀 메일 주소가 생기면 아래 한 줄을 mailto 로 바꾼다.
              옛 이름으로 만든 주소가 걸려 있어 지웠다. -->
         <li><a href="https://github.com/ynkite/checkin/issues" target="_blank" rel="noopener">문의 남기기</a></li>
-        <li><a href="https://github.com/ynkite/checkin" target="_blank" rel="noopener">소스 코드</a></li>
       </ul>
     </div>
 
@@ -353,7 +342,7 @@
       <div class="foot-credits">
         <span>지도 © Kakao · Esri · OpenStreetMap 기여자</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>날씨 정보 © 기상청</span><span class="foot-divider" aria-hidden="true">|</span>
-        <span>장소·집중률 © 한국관광공사 · 경로 © 카카오모빌리티 · TMAP</span><span class="foot-divider" aria-hidden="true">|</span>
+        <span>장소·혼잡도 © 한국관광공사 · 경로 © 카카오모빌리티 · TMAP</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>한국관광공사 2026 관광데이터 활용 공모전 출품작</span>
       </div>
       <div class="foot-copy">© 2026 체크인</div>

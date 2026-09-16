@@ -58,81 +58,147 @@
 
   /* 핀도 마찬가지다. 다시 만들면 들어오는 애니메이션이 매번 처음부터
      돌고, 붐비는 곳이 바뀌는 순간이 안 보인다. 클래스만 바꾼다. */
-  function drawPins(route, hotIdx) {
+  function drawPins(route, hotIdx, alt) {
     var layer = $('ck_pinlayer');
     if (!layer) return;
     if (!layer.firstElementChild) {
       /* 도쿄 앱 프레임에서 읽은 모양 — 번호가 든 동그라미가 지점에 박히고
          이름표는 위가 아니라 옆에 붙는다. 번호가 있어야 순서가 보인다. */
-      layer.innerHTML = route.map(function (p, i) {
-        return '<div class="ck-pin" style="--i:' + i +
-               ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
-               '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
-               '<span class="ck-bub">' + esc(p.name) +
-               (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
-               '</div>';
-      }).join('');
+      var html = route.map(function (p, i) { return pinHTML(p, i, ''); }).join('');
+      /* 대체 후보는 같이 만들어 두고 CSS 로 숨긴다. 고를 때 새로 만들면
+         들어오는 순간이 안 보인다. */
+      if (alt) html += pinHTML(alt, route.length, ' ck-cand');
+      layer.innerHTML = html;
     }
     var pins = layer.children;
-    for (var i = 0; i < pins.length; i++) {
+    for (var i = 0; i < route.length; i++) {
       pins[i].classList.toggle('ck-hot', i === hotIdx);
     }
   }
 
-  /* ─────────────── 2. 나레이션 ───────────────
-     장면 위의 핀과 아래 문구가 같은 장면을 설명한다.
-     3장면: 원래 순서 -> 붐빔 감지 -> 순서 교체 */
+  function pinHTML(p, i, extra) {
+    return '<div class="ck-pin' + extra + '" style="--i:' + i +
+           ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
+           '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
+           '<span class="ck-bub">' + esc(p.name) +
+           (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
+           '</div>';
+  }
 
-  /* at  — 재생 바에서 지금 어디쯤인지 (0~1)
+  /* ─────────────── 2. 나레이션 ───────────────
+     세 장면을 순서대로 읽으면 이 제품이 하는 일이 한 문장씩 나온다.
+       ① 오늘 순서  ② 어디가 얼마나 혼잡하고 언제 풀리는지  ③ 무엇을 바꿀 수 있는지
+     혼잡도 등급은 crowd.js 가 정한다 (매우 혼잡 · 혼잡 · 정상 · 한적 · 매우 한적).
+
+     at  — 재생 바에서 지금 어디쯤인지 (0~1)
      now — 재생 바 오른쪽에 적는 지금 자리 */
   var SCENE = [
-    { at: 0,   now: '남포동',
+    { at: 0,  now: '미포',
       line: '부산 1일차, 오후 순서입니다',
-      why: '남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.',
-      hot: -1, live: 1, chips: 0, sw: 0 },
-    { at: .5,  now: '해변 한가운데',
-      line: '해운대가 지금 <em>집중률 142</em>',
-      why: '평소 이 시각의 1.4배입니다. 두 시간 뒤에도 비슷할 것으로 봅니다. 광안리는 71, 한가한 편입니다.',
-      hot: 1, live: 1, chips: 0, sw: 0 },
-    { at: 1,   now: '해변 서쪽 끝',
-      line: '광안리를 <em>먼저 가는 쪽으로</em> 바꿨습니다',
-      why: '해운대는 17시 40분으로 미뤘습니다. 그 시각이면 96까지 내려갑니다.',
-      hot: 1, live: 2, chips: 1, sw: 1 }
+      why: '미포에서 출발해 해수욕장, 동백섬 순으로 갈 계획이었습니다.',
+      hot: -1, live: 1, opts: 0 },
+    { at: .5, now: '해운대 해수욕장',
+      line: '해운대 해수욕장이 지금 <em>매우 혼잡</em>합니다',
+      why: '평소 이 시각의 1.4배입니다. 17시 이후에는 지금보다 한산할 것으로 봅니다.',
+      hot: 1, live: 1, opts: 0 },
+    { at: 1,  now: '동백섬',
+      line: '바꾸는 방법은 <em>세 가지</em>입니다',
+      why: '고르면 그 자리에서 순서와 시각을 다시 잡고, 일행에게도 같은 화면이 갑니다.',
+      hot: 1, live: 1, opts: 1 }
+  ];
+
+  /* 세 갈래. 고른 것이 모형 위에서 각각 다르게 보여야 고른 값이 있다.
+       swap  순서를 바꾸면 핀 번호가 바뀐다
+       cand  다른 곳으로 가면 후보 핀이 켜지고 원래 핀이 흐려진다
+       live  가는 길을 바꾸면 해변길(1)에서 안쪽 도로(2)로 선이 넘어간다 */
+  var OPTS = [
+    { swap: 1, cand: 0, live: 1 },
+    { swap: 0, cand: 1, live: 1 },
+    { swap: 0, cand: 0, live: 2 }
   ];
 
   function initHero() {
-    var tl = $('ck_tl'), tw = $('ck_tw'), plans = $('ck_plans'), hero = $('ck_hero');
+    var tl = $('ck_tl'), tw = $('ck_tw'), hero = $('ck_hero'), box = $('ck_opts');
     if (!tl) return;
 
     var bars = ['ck_p1', 'ck_p2', 'ck_p3'].map($).filter(Boolean);
-    var route = [];
-    var step = -1, timer = null;
+    var opts = box ? [].slice.call(box.querySelectorAll('.ck-opt')) : [];
+    var route = [], alt = null;
+    var step = -1, timer = null, pick = 0, paused = false;
+    var btn = $('ck_playbtn'), play = $('ck_play');
+
+    /* 고른 방법을 모형에 반영한다. 장면 3에서만 부른다. */
+    function applyOpt(n) {
+      pick = n;
+      opts.forEach(function (b, k) { b.setAttribute('aria-pressed', k === n ? 'true' : 'false'); });
+      var o = OPTS[n], layer = $('ck_pinlayer');
+      if (layer) {
+        layer.classList.toggle('ck-cand-on', !!o.cand);
+        var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+        for (var i = 0; i < pins.length; i++) {
+          var no = pins[i].querySelector('.ck-no');
+          /* 순서를 바꾸면 2번과 3번이 자리를 맞바꾼다 */
+          if (no) no.textContent = o.swap && i >= 1 ? (i === 1 ? 3 : 2) : i + 1;
+          pins[i].classList.toggle('ck-off', !!o.cand && i === 1);
+        }
+      }
+      drawTrail(route, o.live);
+    }
 
     function draw(i) {
       var s = SCENE[i];
       tl.innerHTML = s.line;
       if (tw) tw.textContent = s.why;
-      if (plans) plans.classList.toggle('ck-sw', !!s.sw);
       bars.forEach(function (b, k) {
         b.className = k < i ? 'ck-done' : (k === i ? 'ck-on' : '');
       });
-      if (route.length) { drawPins(route, s.hot); drawTrail(route, s.live); }
+      if (box) box.hidden = !s.opts;
+      if (route.length) {
+        drawPins(route, s.hot, alt);
+        if (s.opts) applyOpt(pick); else { resetScene(); drawTrail(route, s.live); }
+      }
 
       var tr = $('ck_track'), nw = $('ck_playnow');
       if (tr) tr.style.setProperty('--at', (s.at * 100).toFixed(1) + '%');
       if (nw) nw.textContent = s.now;
     }
 
+    function resetScene() {
+      var layer = $('ck_pinlayer');
+      if (!layer) return;
+      layer.classList.remove('ck-cand-on');
+      var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+      for (var i = 0; i < pins.length; i++) {
+        var no = pins[i].querySelector('.ck-no');
+        if (no) no.textContent = i + 1;
+        pins[i].classList.remove('ck-off');
+      }
+    }
+
     function tick() {
       step = (step + 1) % SCENE.length;
+      if (step === 0) pick = 0;          /* 한 바퀴 돌면 처음 고른 것으로 */
       draw(step);
-      timer = setTimeout(tick, step === SCENE.length - 1 ? 4200 : 2800);
+      timer = setTimeout(tick, step === SCENE.length - 1 ? 6200 : 2800);
     }
+
+    /* 방법을 고르면 재생은 멈춘다. 고른 것을 보고 있는데 화면이 넘어가면
+       무엇을 고른 건지 사라진다. */
+    opts.forEach(function (b, k) {
+      b.addEventListener('click', function () {
+        clearTimeout(timer); timer = null;
+        paused = true;
+        /* 고르는 순간 장면이 넘어가 있으면 문구와 고른 것이 어긋난다.
+           방법을 고를 수 있는 장면으로 고정한다. */
+        pick = k; step = SCENE.length - 1; draw(step);
+        if (play) play.classList.add('ck-paused');
+        if (btn) btn.setAttribute('aria-label', '순서 따라가기 시작');
+        applyOpt(k);
+      });
+    });
 
     /* 재생 바 — 멈춤은 사람이 누른 것이고, 화면 밖으로 나가 멈춘 것과 다르다.
        둘을 섞으면 다시 스크롤했을 때 멈춰 둔 것이 저절로 돌아간다. */
-    var paused = false;
-    var btn = $('ck_playbtn'), play = $('ck_play');
     if (btn) {
       btn.addEventListener('click', function () {
         paused = !paused;
@@ -143,9 +209,9 @@
       });
     }
 
-    fetch(HERO_JSON, { cache: 'force-cache' })
+    fetch(HERO_JSON, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (j) { route = (j && j.route) || []; })
+      .then(function (j) { route = (j && j.route) || []; alt = (j && j.alt) || null; })
       .catch(function () { route = []; })
       .then(function () {
         if (reduce) { draw(SCENE.length - 1); return; }
@@ -341,7 +407,7 @@
   /* ─────────────────────────── 시작 ─────────────────────────── */
 
   /* ─────────────── 6. 숫자가 차오른다 ───────────────
-     집중률과 확정 비율은 이 제품이 파는 것이다. 다 그려진 채로
+     혼잡도와 확정 비율은 이 제품이 파는 것이다. 다 그려진 채로
      스크롤에 들어오면 그냥 인쇄물이다. 화면에 들어올 때 0 에서
      실제 값까지 올린다.
 

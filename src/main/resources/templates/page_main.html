@@ -40,35 +40,25 @@
       /* 이미 스크랩한 장소면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 → 새로고침/재진입 시에도 유지 */
       var _alreadyScrapped = !item.isMock && placeId !== '' &&
               window._scrappedPlaceIds && window._scrappedPlaceIds.has(String(placeId));
-      var scrapBtnCls   = 'pop-scrap-btn' + (_alreadyScrapped ? ' scrapped' : '');
+      var scrapBtnCls   = 'ck-sv-s' + (_alreadyScrapped ? ' scrapped' : '');
       var scrapBtnStyle = '';   /* 색은 .scrapped 가 정한다 */
 
       var tagHtml = tags.length
               ? '<div class="pop-tags">' + tags.map(function(t){ return '<span class="pop-tag">' + _esc(t) + '</span>'; }).join('') + '</div>'
               : '';
 
-      return '<div class="pop-card" onclick="' + onClickAction + '">' +
-              '<div class="pop-rank">' + rank + '</div>' +
-              '<div class="pop-icon-row">' +
-              '<div>' +
-              '<div class="pop-name">' + _esc(item.name) + '</div>' +
-              '<div class="pop-meta">' + _esc(item.address || item.roadAddress || '') + '</div>' +
+      return '<article class="ck-sv" onclick="' + onClickAction + '">' +
+              '<b class="ck-sv-n">' + rank + '</b>' +
+              '<div class="ck-sv-b">' +
+              '<h3>' + _esc(item.name) + '</h3>' +
+              '<p>' + _esc(item.address || item.roadAddress || '') + '</p>' +
+              (tags.length ? '<p class="ck-sv-tag">' + tags.map(_esc).join(' · ') + '</p>' : '') +
               '</div>' +
-              '</div>' +
-              '<div class="pop-rating">' +
-              '<span class="pop-stars">' + stars + '</span>' +
-              '<span style="font-size:12px;font-weight:700;margin-left:3px">' + rating + '</span>' +
-              '</div>' +
-              tagHtml +
-              '<div class="pop-foot">' +
-              '<span class="pop-stats">' +
-              '<span class="pop-saves">' + reviewCnt + '번 담김</span>' +
-              '<span class="pop-scrap-n">★ ' + (item.scrapCount || 0) + '</span>' +
-              '</span>' +
-              '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '"' + scrapBtnStyle + ' ' +
-              'onclick="event.stopPropagation(); ' + onClickScrap + '">★스크랩</button>' +
-              '</div>' +
-              '</div>';
+              '<span class="ck-sv-m"><b>' + rating + '</b><i>평점</i></span>' +
+              '<span class="ck-sv-m"><b>' + reviewCnt + '</b><i>담김</i></span>' +
+              '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '" ' +
+              'onclick="event.stopPropagation(); ' + onClickScrap + '">담기</button>' +
+              '</article>';
     }
 
     function _esc(str) {
@@ -401,7 +391,7 @@
         top3Routes = res.success ? (res.data.content || res.data || []) : [];
       }
 
-      const top3Grid = document.querySelector('.top3-grid');
+      const top3Grid = document.getElementById('ck_top_trip');
       if (top3Grid && top3Routes) {
         top3Grid.innerHTML = top3Routes.length ? top3Routes.map((r, i) => {
           const rank = String(i + 1).padStart(2, '0');
@@ -430,27 +420,21 @@
           /* 이미 스크랩한 경로면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 */
           const _routeScrapped = !r.isMock && r.postId != null &&
                   window._scrappedPostIds && window._scrappedPostIds.has(String(r.postId));
-          const scrapBtnCls   = 'btn-scrap' + (_routeScrapped ? ' scrapped' : '');
+          const scrapBtnCls   = 'ck-sv-s' + (_routeScrapped ? ' scrapped' : '');
           const scrapBtnStyle = '';   /* 색은 .btn-scrap.scrapped 가 정한다 */
 
           return `
-        <div class="top3-card" onclick="${onClickCard}">
-          <div class="card-num">${rank}</div>
-          <div class="card-ttl">${title.replace(' — ', '<br>— ')}</div>
-          <div class="card-sub">${sub}</div>
-          <div class="preview-box" onclick="event.stopPropagation(); ${onClickPreview}">
-            <div class="pvb-label">${pvbLabel}</div>
-            <div class="pvb-text">${pvbText}</div>
+        <article class="ck-sv" onclick="${onClickCard}">
+          <b class="ck-sv-n">${rank}</b>
+          <div class="ck-sv-b">
+            <h3>${title}</h3>
+            <p>${sub}</p>
+            <p class="ck-sv-pv" onclick="event.stopPropagation(); ${onClickPreview}">${pvbText}</p>
           </div>
-          <div class="card-foot">
-            <div class="card-stats">
-              <span class="card-stat">좋아요 ${r.likes || r.likeCount || 0}</span>
-              <span class="card-stat">조회 ${r.views || r.viewCount || 0}</span>
-              <span class="card-scrap-n">★ ${r.scraps || r.scrapCount || 0}</span>
-            </div>
-            <button class="${scrapBtnCls}"${scrapBtnStyle} onclick="event.stopPropagation(); ${onClickScrap}">★스크랩</button>
-          </div>
-        </div>`;
+          <span class="ck-sv-m"><b>${r.views || r.viewCount || 0}</b><i>조회</i></span>
+          <span class="ck-sv-m"><b>${r.scraps || r.scrapCount || 0}</b><i>담김</i></span>
+          <button class="${scrapBtnCls}" onclick="event.stopPropagation(); ${onClickScrap}">담기</button>
+        </article>`;
         }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';
       }
 
@@ -490,198 +474,6 @@
 
 
 
-    /* ════════════════════════════════════════════════════════════
-     * 모바일 캐러셀 (인기 경로/맛집/숙소/관광지/카페)
-     *   - 큐레이션과 동일: 좌우 화살표(겹침) + 하단 점
-     *   - 동작: 스와이프(scroll-snap) + 화살표·점 클릭 시 해당 카드로 스크롤
-     *   - 모바일(≤768px)에서만 활성, 카드가 렌더된 뒤 자동 구성
-     * ════════════════════════════════════════════════════════════ */
-    var _mobCarouselMQ = window.matchMedia('(max-width: 1024px)');
-
-    function _buildOneCarousel(grid) {
-      if (!grid) return;
-      var cards = grid.children;
-      // .no-data 한 장만 있는 경우는 캐러셀 불필요
-      var onlyNoData = (cards.length === 1 && cards[0].className && cards[0].className.indexOf('no-data') !== -1);
-
-      // 이미 구성된 경우: 카드 개수가 바뀌었으면 점/화살표를 다시 만든다(탭 전환·비동기 재렌더 대응)
-      if (grid.dataset.carousel === '1') {
-        var existingWrap = grid.parentNode;
-        if (existingWrap && existingWrap.classList.contains('mob-carousel-wrap')) {
-          var existingDots = existingWrap.querySelector('.mob-carousel-dots');
-          var dotCount = existingDots ? existingDots.children.length : -1;
-          if (!onlyNoData && cards.length > 0 && dotCount !== cards.length) {
-            // 개수가 달라졌으니 래퍼를 해제하고 처음부터 다시 구성
-            grid.dataset.carousel = '';
-            var arrs = existingWrap.querySelectorAll('.mob-carousel-arr');
-            arrs.forEach(function (a) { a.remove(); });
-            if (existingDots) existingDots.remove();
-            existingWrap.parentNode.insertBefore(grid, existingWrap);
-            existingWrap.remove();
-          } else {
-            return; // 동일하면 그대로 둠
-          }
-        } else {
-          return;
-        }
-      }
-
-      if (!cards || cards.length === 0) return;
-      if (onlyNoData) return;
-
-      grid.dataset.carousel = '1';
-
-      // 래퍼로 감싸기
-      var wrap = document.createElement('div');
-      wrap.className = 'mob-carousel-wrap';
-      grid.parentNode.insertBefore(wrap, grid);
-      wrap.appendChild(grid);
-
-      // 화살표
-      var prev = document.createElement('button');
-      prev.className = 'mob-carousel-arr prev';
-      prev.type = 'button';
-      prev.innerHTML = '&#8249;';
-      var next = document.createElement('button');
-      next.className = 'mob-carousel-arr next';
-      next.type = 'button';
-      next.innerHTML = '&#8250;';
-      wrap.appendChild(prev);
-      wrap.appendChild(next);
-
-      // 점
-      var dotsWrap = document.createElement('div');
-      dotsWrap.className = 'mob-carousel-dots';
-      var n = cards.length;
-      for (var i = 0; i < n; i++) {
-        var d = document.createElement('div');
-        d.className = 'dot' + (i === 0 ? ' on' : '');
-        (function (idx) {
-          d.addEventListener('click', function () { _scrollToCard(grid, idx); });
-        })(i);
-        dotsWrap.appendChild(d);
-      }
-      wrap.appendChild(dotsWrap);
-
-      function _currentIndex() {
-        // 가장 가까운 카드 인덱스 계산 (카드 중심과 뷰포트 중심 비교)
-        var center = grid.scrollLeft + grid.clientWidth / 2;
-        var best = 0, bestDist = Infinity;
-        for (var k = 0; k < grid.children.length; k++) {
-          var c = grid.children[k];
-          var cc = c.offsetLeft + c.offsetWidth / 2;
-          var dist = Math.abs(cc - center);
-          if (dist < bestDist) { bestDist = dist; best = k; }
-        }
-        return best;
-      }
-
-      function _sync() {
-        var idx = _currentIndex();
-        var dots = dotsWrap.children;
-        for (var k = 0; k < dots.length; k++) dots[k].classList.toggle('on', k === idx);
-        prev.disabled = (idx === 0);
-        next.disabled = (idx === grid.children.length - 1);
-      }
-
-      // 스크롤 시 점/화살표 상태 동기화 (rAF 스로틀)
-      var ticking = false;
-      grid.addEventListener('scroll', function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () { _sync(); ticking = false; });
-      });
-
-      prev.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() - 1); });
-      next.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() + 1); });
-
-      _sync();
-    }
-
-    // 데스크톱(>768px)로 커지면 캐러셀 래퍼/점/화살표를 모두 해제해 원래 그리드로 복귀
-    function _teardownOneCarousel(grid) {
-      if (!grid) return;
-      var wrap = grid.parentNode;
-      if (!wrap || !wrap.classList || !wrap.classList.contains('mob-carousel-wrap')) {
-        grid.dataset.carousel = '';
-        return;
-      }
-      var arrs = wrap.querySelectorAll('.mob-carousel-arr');
-      arrs.forEach(function (a) { a.remove(); });
-      var dots = wrap.querySelector('.mob-carousel-dots');
-      if (dots) dots.remove();
-      // 그리드를 래퍼 밖(원래 위치)으로 되돌리고 래퍼 제거
-      wrap.parentNode.insertBefore(grid, wrap);
-      wrap.remove();
-      grid.dataset.carousel = '';
-      grid.scrollLeft = 0;
-    }
-
-    function _teardownCarousels() {
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) { _teardownOneCarousel(g); });
-    }
-
-    function _scrollToCard(grid, idx) {
-      if (idx < 0 || idx >= grid.children.length) return;
-      var card = grid.children[idx];
-      // 카드를 트랙 가운데로 스크롤
-      var target = card.offsetLeft - (grid.clientWidth - card.offsetWidth) / 2;
-      grid.scrollTo({ left: target, behavior: 'smooth' });
-    }
-
-    function initMobCarousels() {
-      if (!_mobCarouselMQ.matches) return;  // 모바일에서만
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) { _buildOneCarousel(g); });
-    }
-
-    // 카드가 비동기로 채워지므로, 각 그리드에 자식이 들어오면 자동 구성
-    function _watchCarouselGrids() {
-      if (!_mobCarouselMQ.matches) return;
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) {
-        if (g.dataset.carouselWatch === '1') return;
-        g.dataset.carouselWatch = '1';
-        var mo = new MutationObserver(function () {
-          if (_mobCarouselMQ.matches && g.children.length > 0) { _buildOneCarousel(g); }
-        });
-        mo.observe(g, { childList: true });
-        if (g.children.length > 0) _buildOneCarousel(g);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      // 카드 렌더 타이밍을 모두 커버: 감시 시작 + 약간의 지연 후 일괄 시도
-      _watchCarouselGrids();
-      setTimeout(initMobCarousels, 400);
-      setTimeout(initMobCarousels, 1200);
-      setTimeout(initMobCarousels, 2500);
-    });
-
-    // 화면 크기가 모바일/태블릿(≤768px)로 들어올 때도 캐러셀을 구성한다.
-    //    (데스크톱에서 열었다가 창을 줄이거나, 기기 회전 시 화살표·점이 안 나오던 문제 방지)
-    function _onMobMQChange() {
-      if (_mobCarouselMQ.matches) {
-        // 모바일/태블릿: 캐러셀 구성 (이미 있으면 카드수 변화에 맞춰 재구성됨)
-        _watchCarouselGrids();
-        initMobCarousels();
-        setTimeout(initMobCarousels, 300);
-      } else {
-        // 데스크톱: 캐러셀 잔재(점·화살표·래퍼) 완전 제거
-        _teardownCarousels();
-      }
-    }
-    if (_mobCarouselMQ.addEventListener) {
-      _mobCarouselMQ.addEventListener('change', _onMobMQChange);
-    } else if (_mobCarouselMQ.addListener) {
-      _mobCarouselMQ.addListener(_onMobMQChange);
-    }
-    window.addEventListener('resize', function () {
-      clearTimeout(window._mobCarouselResizeT);
-      window._mobCarouselResizeT = setTimeout(_onMobMQChange, 200);
-    });
-
     document.addEventListener('DOMContentLoaded', initMainPage);
 
 
@@ -703,44 +495,39 @@
 
         <div class="ck-wr ck-lead">
           <h1>줄 서려고<br>간 건 아니잖아요</h1>
-          <p class="ck-sub">다음에 갈 곳이 붐비면 미리 알려드립니다. 순서를 바꾸면 몇 분 줄고 얼마 더 드는지, 숫자로 같이 보여드립니다.</p>
+          <p class="ck-sub">붐비는 곳을 실시간으로 보고, 그 자리에서 순서를 다시 잡아 드립니다.</p>
             <div class="ck-tell" role="status" aria-live="polite">
-              <div class="ck-ph"><i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i></div>
+              <div class="ck-ph" id="ck_play">
+                <button type="button" class="ck-phbtn" id="ck_playbtn" aria-label="순서 따라가기 멈춤">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
+                </button>
+                <i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i>
+              </div>
               <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
-              <p class="ck-why" id="ck_tw">남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.</p>
-              <div class="ck-plans" id="ck_plans">
-                <div class="ck-plan ck-a">
-                  <span class="ck-stop"><b class="ck-t">14:30</b><i>해운대</i></span>
-                  <span class="ck-leg">3시간 뒤</span>
-                  <span class="ck-stop"><b class="ck-t">17:30</b><i>광안리</i></span>
-                </div>
-                <div class="ck-plan ck-b ck-now">
-                  <span class="ck-stop"><b class="ck-t">14:20</b><i>광안리</i></span>
-                  <span class="ck-leg">3시간 20분 뒤</span>
-                  <span class="ck-stop"><b class="ck-t">17:40</b><i>해운대</i></span>
-                </div>
+              <p class="ck-why" id="ck_tw">전통시장에서 점심을 먹고 해수욕장, 동백섬 순으로 갈 계획이었습니다.</p>
+              <!-- 혼잡이 잡히면 여기가 열린다. 하나로 정해 주지 않고 세 갈래를 준다 —
+                   순서를 바꾸거나, 다른 곳으로 가거나, 가는 길만 바꾸거나. -->
+              <div class="ck-opts" id="ck_opts" hidden>
+                <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
+                  <b>순서 바꾸기</b>
+                  <span>동백섬 먼저, 해수욕장은 17시 10분에</span>
+                  <em>대기 40분 줄어듦<i>추가 비용 없음</i></em>
+                </button>
+                <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
+                  <b>다른 곳으로</b>
+                  <span>해수욕장 대신 해운대 전통시장으로</span>
+                  <em>지금 한적<i>걸어서 9분</i></em>
+                </button>
+                <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
+                  <b>가는 길 바꾸기</b>
+                  <span>해변길 대신 안쪽 도로 · 티맵 실시간</span>
+                  <em>11분 빠름<i>1.2km 더</i></em>
+                </button>
               </div>
-              <div class="ck-chips" id="ck_tc">
-                <b id="ck_c1">−40분</b><b id="ck_c2">+3,200원</b><b class="ck-hot" id="ck_c3">일몰에 맞음</b>
-              </div>
+            </div>
             </div>
         </div>
 
-        <!-- 하루를 따라가는 막대. 장면 세 개가 이 진행선을 움직인다.
-             도쿄 앱의 재생 바 자리다. 장식이 아니라 실제로 장면을 돌린다. -->
-        <div class="ck-wr">
-          <div class="ck-play" id="ck_play">
-            <button type="button" class="ck-playbtn" id="ck_playbtn"
-                    aria-label="순서 따라가기 멈춤">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
-            </button>
-            <div class="ck-playtx">
-              <b id="ck_playttl">부산 1일차 오후를 순서대로 봅니다</b>
-              <i>세 곳 · 14:20 부터 19:05 까지</i>
-            </div>
-            <div class="ck-track" id="ck_track" aria-hidden="true"><i></i><em id="ck_trackdot"></em></div>
-            <span class="ck-playnow" id="ck_playnow">해변 한가운데</span>
-          </div>
         </div>
 
         <div class="ck-wr ck-form">
@@ -871,7 +658,7 @@
           <button type="button" role="tab" aria-selected="false" data-pane="ck_pane_place">장소</button>
         </div>
         <div id="ck_pane_trip">
-          <div class="top3-grid ck-cards"></div>
+          <div class="ck-svlist" id="ck_top_trip"></div>
         </div>
         <div id="ck_pane_place" hidden>
           <div class="ck-tabs" role="tablist">
@@ -880,10 +667,10 @@
           <button type="button" role="tab" aria-selected="false" data-pop="tour">관광지</button>
           <button type="button" role="tab" aria-selected="false" data-pop="cafe">카페</button>
         </div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-food-grid"></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-stay-grid" hidden></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-tour-grid" hidden></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-cafe-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-food-grid"></div>
+        <div class="ck-svlist ck-pop" id="popular-stay-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-tour-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-cafe-grid" hidden></div>
         </div>
       </section>
 
@@ -894,8 +681,8 @@
 
       <div class="ck-wr">
         <div class="ck-attr">
-          <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 집중률 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
-          <span>화면의 집중률과 금액은 시연용 예시입니다. 지도 위 사람은 실제 인원이 아니라 집중률을 밀도로 옮긴 것입니다.</span>
+          <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 혼잡도 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
+          <span>화면의 혼잡도와 금액은 시연용 예시입니다. 지도 위 사람은 실제 인원이 아니라 혼잡도를 밀도로 옮긴 것입니다.</span>
           <span>한국관광공사 2026 관광데이터 활용 공모전 출품작 · 팀 체크인</span>
         </div>
       </div>

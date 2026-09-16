@@ -20,20 +20,23 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .rdm{fill:none; stroke:var(--lane); stroke-width:1.3; stroke-dasharray:7 9;
   stroke-linecap:round; opacity:.9}
 .sh1{fill:var(--sh1c)} .sh2{fill:var(--sh2c)}
-.wv{fill:none; stroke:var(--wave); stroke-linecap:round}
+.wv{fill:none; stroke:var(--wave); stroke-linecap:round; stroke-dasharray:30 26}
 .wv.w1{stroke-width:2.5} .wv.w2{stroke-width:1.8; opacity:.72} .wv.w3{stroke-width:1.3; opacity:.46}
 .gt{fill:none; stroke:var(--tuft); stroke-width:1.1; stroke-linecap:round}
 .ss{fill:none; stroke:var(--stip); stroke-width:1.5; stroke-linecap:round}
 .ge{fill:none; stroke:var(--gedge); stroke-width:1.6; stroke-linejoin:round}
+/* 붉은 기와 계열(a·d)의 벽은 --w1/--w2 크림을 쓴다. 레퍼런스(이탈리아·도쿄)는
+   벽이 크림이고 지붕만 테라코타다. 벽까지 붉으면 마을이 한 덩어리로 뭉쳐
+   건물 모양이 안 읽힌다. */
 .rf,.rk,.s1,.s2{stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
 .fa.rf{fill:var(--a0); stroke:var(--a0)} .fa.rk{fill:var(--a1); stroke:var(--a1)}
-.fa.s1{fill:var(--a1); stroke:var(--a1)} .fa.s2{fill:var(--a2); stroke:var(--a2)}
+.fa.s1{fill:var(--w1); stroke:var(--w1)} .fa.s2{fill:var(--w2); stroke:var(--w2)}
 .fb.rf{fill:var(--b0); stroke:var(--b0)} .fb.rk{fill:var(--b1); stroke:var(--b1)}
 .fb.s1{fill:var(--b1); stroke:var(--b1)} .fb.s2{fill:var(--b2); stroke:var(--b2)}
 .fc.rf{fill:var(--c0); stroke:var(--c0)} .fc.rk{fill:var(--c1); stroke:var(--c1)}
 .fc.s1{fill:var(--c1); stroke:var(--c1)} .fc.s2{fill:var(--c2); stroke:var(--c2)}
 .fd.rf{fill:var(--d0); stroke:var(--d0)} .fd.rk{fill:var(--d1); stroke:var(--d1)}
-.fd.s1{fill:var(--d1); stroke:var(--d1)} .fd.s2{fill:var(--d2); stroke:var(--d2)}
+.fd.s1{fill:var(--w1); stroke:var(--w1)} .fd.s2{fill:var(--w2); stroke:var(--w2)}
 .fe.rf{fill:var(--e0); stroke:var(--e0)} .fe.rk{fill:var(--e1); stroke:var(--e1)}
 .fe.s1{fill:var(--e1); stroke:var(--e1)} .fe.s2{fill:var(--e2); stroke:var(--e2)}
 .ff.rf{fill:var(--f0); stroke:var(--f0)} .ff.rk{fill:var(--f1); stroke:var(--f1)}
@@ -81,3 +84,33 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .rb-hot,.rb-done,.rb-todo{stroke:var(--sig); stroke-width:3.8}
 .rt-case,.rb-case{transition:opacity .5s ease}
 
+/* ============================================================
+   움직임 — 사람이 멈춰 있으면 모형이 아니라 그림이 된다
+   ============================================================
+   사람 1,100명을 하나씩 움직이면 프레임마다 전부 다시 그려야 한다.
+   massing.py 가 사람을 다섯 무리(.cw b1~b5)로 나눠 두었으므로
+   무리 단위로만 옮긴다. 레이어 5장이면 합성으로 끝난다.
+   진폭은 미니어처 기준 1~2px 이다. 크게 주면 사람이 미끄러진다. */
+@media (prefers-reduced-motion:no-preference){
+  .crowd .cw{ will-change:transform }
+  .crowd .cw.b1{ animation:ck-mill-a 3.4s ease-in-out infinite alternate }
+  .crowd .cw.b2{ animation:ck-mill-b 4.1s ease-in-out infinite alternate }
+  .crowd .cw.b3{ animation:ck-mill-a 2.9s ease-in-out .4s infinite alternate }
+  .crowd .cw.b4{ animation:ck-mill-b 3.7s ease-in-out .9s infinite alternate }
+  .crowd .cw.b5{ animation:ck-mill-a 4.6s ease-in-out .2s infinite alternate }
+
+  /* 파도는 밀려 들어온다. 점선 오프셋만 흘린다 */
+  .wv{ animation:ck-swell 7s linear infinite }
+  /* 아직 안 간 구간은 앞으로 흐른다. 어디로 가는 중인지가 선에서 읽힌다 */
+  .rt-todo,.rb-todo{ animation:ck-march 1.9s linear infinite }
+  .wv.w2{ animation-duration:9s }
+  .wv.w3{ animation-duration:11s }
+
+  /* 차는 도로 위에서 아주 천천히 흔들린다 */
+  .cb,.ct{ animation:ck-idle 5.2s ease-in-out infinite alternate }
+}
+@keyframes ck-mill-a{ from{ transform:translate(-1.1px,.5px) } to{ transform:translate(1.4px,-.9px) } }
+@keyframes ck-mill-b{ from{ transform:translate(1.2px,-.6px) } to{ transform:translate(-1.3px,.8px) } }
+@keyframes ck-swell{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-56 } }
+@keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
+@keyframes ck-idle{ from{ transform:translateY(0) } to{ transform:translateY(-.7px) } }

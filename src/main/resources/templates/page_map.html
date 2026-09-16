@@ -152,6 +152,36 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    /* ════════════════════════════════════════════════════════
+     *  혼잡도
+     *
+     *  등급 나누기는 js/crowd.js 한 곳에서만 한다. 여기서는 부르기만 한다.
+     *  실제 혼잡도 API 가 아직 없어서 장소 이름을 해시해 60~165 사이 값을
+     *  만든다. 장소가 같으면 값도 같다. 진짜 관측값이 아니므로 화면 아래에
+     *  시연용이라고 적어 둔다.
+     * ════════════════════════════════════════════════════════ */
+
+    function _mpCrowdIdx(name) {
+      var s = String(name || ''), h = 0;
+      for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003;
+      return 60 + (h % 106);
+    }
+
+    function _mpCrowdBadge(name) {
+      if (typeof crowd !== 'function') return '';
+      var c = crowd(_mpCrowdIdx(name));
+      if (!c) return '';
+      return '<span class="mp-cw cw-' + c.key + '">' + _mpEsc(c.label)
+              + '<i>' + c.idx + '</i></span>';
+    }
+
+    // 받침에 따라 조사를 고른다 — 「해운대가」 / 「동백섬이」
+    function _mpJosa(s, withJong, without) {
+      var t = String(s || '').trim(), c = t ? t.charCodeAt(t.length - 1) : 0;
+      var jong = (c >= 0xAC00 && c <= 0xD7A3) && ((c - 0xAC00) % 28) > 0;
+      return jong ? withJong : without;
+    }
+
     // ── 지도 필터 칩 (색 점은 CSS 가 붙인다) ──
     const MAP_FILTERS = [
       { id: 'filter-stay', cls: 'mf-stay', type: 'stay', label: '숙소' },
@@ -161,44 +191,12 @@
     ];
 
     // ── [변경] 하드코딩 배열들을 let으로 바꾸어 AI 데이터가 덮어쓸 수 있도록 수정 ──
-    let MAP_DAYS = [
-      { key: 'all', label: '전체', default: true },
-      { key: 1, label: 'Day 1' },
-      { key: 2, label: 'Day 2' },
-      { key: 3, label: 'Day 3' },
-      { key: 4, label: 'Day 4' },
-    ];
+    let MAP_DAYS = [{ key: 'all', label: '전체', default: true }];
 
     let MAP_ITINERARY = [];
     let MAP_PINS = [];
     let DAY_ROUTES = [];
 
-    // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
-    const MAP_BUDGET_ITEMS = [
-      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '180,000원', color: 'var(--sage)',  barPct: 78 },
-      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '96,000원',  color: 'var(--coral)', barPct: 42 },
-      { label: '교통비', sub: '이동거리 ÷ 연비 × 2,000원', amount: '80,000원',  color: '#22B5C4',       barPct: 35 },
-      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '48,000원',  color: '#F5A623',       barPct: 21 },
-    ];
-    const MAP_BUDGET_TOTAL     = '404,000원';
-    const MAP_BUDGET_REMAINING = '96,000원';
-
-    // ── 날씨 알림 ──
-    const MAP_WEATHER_ALERT = {
-      title: '여행 기간에 비 소식이 있습니다',
-      body:  '그날 야외 일정을 실내로 바꿔 볼 수 있습니다.',
-      cta:   '대체 일정 보기',
-      toastMsg: '실내 장소를 먼저 배치했습니다.',
-    };
-
-    // ── 맵 하단 액션 버튼 ──
-    const MAP_ACTION_BTNS = [
-      { id: 'mapTabMap',    tab: 'map',    label: '지도', default: true },
-      { id: 'mapTabBudget', tab: 'budget', label: '예산', default: false },
-    ];
-
-    // ── 총 예산 표시 초기값 ──
-    const MAP_TOTAL_BUDGET_DISPLAY = '404,000원';
 
 
     // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
@@ -731,12 +729,20 @@
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
                 `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
                 + `<span class="dt-n">${_mpEsc(d.label)}</span></button>`).join('');
+        /* 일정이 없어도 지도는 뜬다. 여행지 위치만 잡아 준다. */
+        if (typeof initKakaoMap === 'function') initKakaoMap();
+
         /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        var _hasDraft = (typeof _hasPlannerDraft === 'function') && _hasPlannerDraft();
         listEl.innerHTML =
           '<div class="mp-empty">' +
-          '<p>아직 만들어진 일정이 없습니다.</p>' +
-          '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
-          '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>' +
+          (_hasDraft
+            ? '<p>이 플랜에는 아직 경로가 없습니다.</p>' +
+              '<p class="mp-empty-sub">3단계에서 일정 생성을 끝내면 여기에 시각별로 들어옵니다.</p>' +
+              '<button type="button" class="mp-empty-go" onclick="goResumePlanner()">만들던 곳으로</button>'
+            : '<p>아직 만들어진 일정이 없습니다.</p>' +
+              '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
+              '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>') +
           '</div>';
       }
     }
@@ -2330,7 +2336,7 @@
         <div class="map-list" id="mapDayList"></div>
         <div class="map-budget-bar">
           <div class="mbb-label">전체 여행 예산</div>
-          <div class="mbb-amount" id="totalBudget">404,000원</div>
+          <div class="mbb-amount" id="totalBudget">0원</div>
         </div>
         <div class="map-acts">
           <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>

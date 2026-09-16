@@ -763,8 +763,23 @@ function _updateExportButtons() {
 /** 가계부 PDF 자동 다운로드 (jsPDF + html2canvas) */
 async function exportBudgetPDF() {
     if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+    /* PDF 라이브러리는 누를 때 받는다. 모든 화면에서 미리 받으면 550KB 를
+       거저 쓴다 — 쓰는 곳은 이 함수 하나뿐이다. */
     if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
-        toast('PDF 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return;
+        toast('PDF 를 만드는 중입니다.');
+        const load = src => new Promise((ok, no) => {
+            const s = document.createElement('script');
+            s.src = src; s.onload = ok; s.onerror = no;
+            document.head.appendChild(s);
+        });
+        try {
+            await Promise.all([
+                load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+                load('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+            ]);
+        } catch (e) {
+            toast('PDF 를 만들지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return;
+        }
     }
     const d = _lastExpenseData;
 
