@@ -251,6 +251,181 @@
       });
     }
 
+    /* ════════════════════════════════════════════════════════
+     *  예산 — 서버가 낸다.
+     *
+     *  전에는 AI 가 장소 설명에 적어 둔 금액 글자를 긁어 더했다. AI 가
+     *  안 적으면 0원이다. 성수기도 축제도 모른다.
+     * ════════════════════════════════════════════════════════ */
+
+    var _mpBudget = null;
+
+    function _mpPeople() {
+      var n = (window._stayBookingInfo && parseInt(window._stayBookingInfo.pax, 10)) || 0;
+      if (n > 0) return n;
+      try {
+        var d = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+        n = parseInt(d['s1-pax'] || d.pax || '', 10);
+      } catch (e) {}
+      return n > 0 ? n : 2;
+    }
+
+    /* 이동수단 — 플래너가 쓴 말을 서버가 아는 말로 바꾼다 */
+    function _mpTransportCode() {
+      var s = '';
+      try {
+        var d = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+        s = String(d.transportType || d['s1-transport'] || '');
+      } catch (e) {}
+      s = s || String(window._mpTransportType || '');
+      if (s.indexOf('대중') >= 0 || s.indexOf('버스') >= 0 || s.indexOf('지하철') >= 0) return 'TRANSIT';
+      if (s.indexOf('렌트') >= 0 || s.indexOf('렌터') >= 0) return 'RENTAL';
+      return 'CAR';
+    }
+
+    /* 동선에 적힌 금액 합 — 비교용으로만 쓴다 */
+    function _mpWrittenSum() {
+      var sum = 0;
+      (MAP_ITINERARY || []).forEach(function (day) {
+        (day.places || []).forEach(function (p) {
+          if (p.sub) {
+            var m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+            if (m) sum += (parseInt(m[1].replace(/,/g, ''), 10) || 0) * parseInt(m[2] || '1', 10);
+          }
+          if (p.transit) {
+            var t2 = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
+            if (t2) sum += parseInt(t2[1].replace(/,/g, ''), 10) || 0;
+          }
+        });
+      });
+      return sum;
+    }
+
+    async function _mpLoadBudget() {
+      if (!Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+
+      var stops = [];
+      MAP_ITINERARY.forEach(function (d) {
+        (d.places || []).forEach(function (p) {
+          if (!p.transit && p.type !== 'stay' && p.name) stops.push(p.name);
+        });
+      });
+
+      var body = {
+        region: _mpRegion(),
+        from: _mpDayIso(1),
+        to: _mpDayIso(MAP_ITINERARY.length),
+        people: _mpPeople(),
+        transport: _mpTransportCode(),
+        stops: stops
+      };
+      if (window._mpTravelMeters > 0) body.totalMeters = window._mpTravelMeters;
+      if (window._mpTransitFare > 0) body.transitFare = window._mpTransitFare;
+      if (window._mpLodgingContentId) body.lodgingContentId = String(window._mpLodgingContentId);
+
+      try {
+        var res = await fetch('/api/budget/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var json = await res.json();
+        _mpBudget = (json && json.success) ? json.data : null;
+      } catch (e) {
+        _mpBudget = null;
+        console.warn('[지도] 예산 산출 실패:', e);
+      }
+      _mpPaintBudget();
+    }
+
+    var _MP_CAT_KO = { LODGING: '숙박비', FOOD: '식비', TRANSPORT: '교통비', TOUR: '입장료' };
+
+    function _mpPaintBudget() {
+      var b = _mpBudget;
+      if (!b) return;
+
+      var bar = document.getElementById('totalBudget');
+      if (bar) bar.textContent = b.total.toLocaleString() + '원';
+      var tot = document.getElementById('map-budget-total');
+      if (tot) tot.textContent = b.total.toLocaleString() + '원';
+      var lab = document.getElementById('map-budget-total-label');
+      if (lab) lab.textContent = '예상 총액 · 1인 ' + b.perPerson.toLocaleString() + '원';
+
+      /* 항목마다 근거를 같이 적는다. 37만원만 보여 주면 믿을지 말지 알 수 없다 */
+      var box = document.getElementById('map-budget-items');
+      if (box) {
+        var max = 1;
+        b.items.forEach(function (i) { if (i.amount > max) max = i.amount; });
+        box.innerHTML = b.items.map(function (i) {
+          return '<div class="mp-bg-row' + (i.amount === max ? ' mp-lead' : '') + '">' +
+            '<div class="mp-bg-top"><span>' + _mpEsc(i.label) + '</span>' +
+            '<span>' + i.amount.toLocaleString() + '원</span></div>' +
+            '<div class="mp-bg-bar"><i style="width:' +
+              Math.round(i.amount / max * 100) + '%"></i></div>' +
+            '<div class="mp-bg-why">' + _mpEsc(i.basis) +
+              (i.estimated ? '' : ' · 확정') + '</div>' +
+          '</div>';
+        }).join('') + _mpBudgetNote(b);
+      }
+
+      _mpPaintPie(b);
+    }
+
+    function _mpBudgetNote(b) {
+      var out = '<div class="mp-bg-note">';
+      if (b.season && b.season.key !== 'off') {
+        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. ' +
+               (b.season.carMultiplier > 1
+                 ? '렌터카가 평시의 ' + b.season.carMultiplier.toFixed(2) + '배로 붙습니다. ' : '') +
+               '숙소도 같이 오릅니다.</p>';
+      }
+      if (b.festivals && b.festivals.length) {
+        out += '<p>여행 기간에 <b>' + _mpEsc(b.festivals[0].title) + '</b>' +
+               (b.festivals.length > 1 ? ' 등 ' + b.festivals.length + '개' : '') +
+               '가 열립니다. 숙소가 빨리 찹니다.</p>';
+      }
+      if (b.accuracy) {
+        out += '<p class="mp-bg-acc">정확도 <b>' + _mpEsc(b.accuracy.label) + '</b> — ' +
+               _mpEsc(b.accuracy.why) + '</p>';
+      }
+      (b.notes || []).forEach(function (n) { out += '<p>' + _mpEsc(n) + '</p>'; });
+
+      var written = _mpWrittenSum();
+      if (written > 0 && Math.abs(written - b.total) > b.total * 0.15) {
+        out += '<p>동선에 적힌 금액을 다 더하면 ' + written.toLocaleString() +
+               '원입니다. 위 값은 성수기와 요금표를 본 산출입니다.</p>';
+      }
+      return out + '</div>';
+    }
+
+    function _mpPaintPie(b) {
+      var ring = document.querySelector('.pie-ring');
+      var legend = document.querySelector('.pie-legend');
+      if (!ring && !legend) return;
+
+      var tok = { LODGING: 'var(--slate)', FOOD: 'var(--terra)',
+                  TRANSPORT: 'var(--num)', TOUR: 'var(--ui-l)' };
+      var by = {};
+      b.items.forEach(function (i) { by[i.category] = (by[i.category] || 0) + i.amount; });
+      var total = b.total || 1;
+      var keys = Object.keys(by);
+
+      var acc = 0;
+      var stops = keys.map(function (k) {
+        var from = acc;
+        acc += Math.round(by[k] / total * 100);
+        return (tok[k] || 'var(--ui-l)') + ' ' + from + '% ' + acc + '%';
+      }).join(', ');
+      if (ring && stops) ring.style.background = 'conic-gradient(' + stops + ')';
+      if (legend) {
+        legend.innerHTML = keys.map(function (k) {
+          return '<div class="pie-leg-item"><span class="pie-dot" style="background:' +
+                 (tok[k] || 'var(--ui-l)') + '"></span>' + (_MP_CAT_KO[k] || k) + ' ' +
+                 Math.round(by[k] / total * 100) + '%</div>';
+        }).join('');
+      }
+    }
+
     /* 이름 물어 보기 — 서버의 CrowdService.norm 과 같은 기준 */
     function _mpNorm(s) {
       return String(s || '').replace(/[\s()\[\]·,.\-]/g, '');
@@ -866,8 +1041,11 @@
               }
             });
           }
-          // 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
-          day.budget = `${dailySum.toLocaleString()}원`;
+          /* AI 가 적어 둔 일차별 예산은 쓰지 않는다. 장소 설명에 적힌 금액을
+             더한 값만 쓴다. 금액이 하나도 안 적혀 있으면 「0원」이라고 쓰지 않고
+             비워 둔다 — 0원은 공짜라는 말이지 모른다는 말이 아니다.
+             전체 예산은 서버가 낸다(_mpLoadBudget). */
+          day.budget = dailySum > 0 ? `${dailySum.toLocaleString()}원` : '';
           realTotalBudget += dailySum;
         });
 
@@ -1056,6 +1234,7 @@
             if (typeof _mpCrowdPanel === 'function') _mpCrowdPanel();
           });
         }
+        if (typeof _mpLoadBudget === 'function') _mpLoadBudget();
 
         try {
           const fallbackQ = sessionStorage.getItem('map_fallback_queue');
