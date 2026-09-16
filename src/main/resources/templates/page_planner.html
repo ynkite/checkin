@@ -299,11 +299,6 @@
 
             // ── 특수 조건 chip (다중) — hasInfant / hasPet / extraNotes(노인, 기타) ──
             document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
-            if (d.hasInfant === 1) {
-                const chip = [...document.querySelectorAll('#chip-special .chip')]
-                    .find(c => c.textContent.trim() === '유아 동반');
-                if (chip) chip.classList.add('on');
-            }
             if (d.hasPet === 1) {
                 const chip = [...document.querySelectorAll('#chip-special .chip')]
                     .find(c => c.textContent.trim() === '반려동물 동반');
@@ -378,7 +373,6 @@
                         if (!label || !value) return false;
                         if (label === '노인 동반') return false;
                         if (label === '특수 조건') return false;
-                        if (label === '유아 동반') return false;
                         if (label === '반려동물 동반') return false;
                         return true;
                     });
@@ -1766,7 +1760,6 @@
                   <div class="pl-row">
                     <div class="pl-row-lb">따로 챙길 것</div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-special">
-                        <button data-multi class="chip" onclick="tog(this)">유아 동반</button>
                         <button data-multi class="chip" onclick="tog(this)">반려동물 동반</button>
                         <button data-multi class="chip" onclick="tog(this)">노인 동반</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-special',this)">기타</button>
