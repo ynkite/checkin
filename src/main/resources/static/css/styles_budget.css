@@ -159,3 +159,12 @@
 .lg-empty .lg-empty-sub{
   margin:6px 0 16px; font-size:12.5px; font-weight:400; color:var(--ink-3);
 }
+
+/* 성수기·축제 한 줄. 예상 총액이 왜 그 값인지 말한다 */
+.ledger-season{
+  margin:0 0 20px; padding:12px 15px 13px;
+  border-radius:var(--r-field); background:var(--terra-pale);
+  font-size:13px; line-height:1.66; color:var(--ink-2);
+  word-break:keep-all;
+}
+.ledger-season b{ color:var(--num); font-weight:600 }

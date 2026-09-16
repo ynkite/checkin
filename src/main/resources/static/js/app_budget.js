@@ -231,6 +231,9 @@ async function _loadExpenses(tripId) {
     const destEl = document.getElementById('ledger-trip-dest');
     if (destEl) destEl.textContent = [d.destination, (d.startDate && d.endDate) ? d.startDate + ' ~ ' + d.endDate : null].filter(Boolean).join(' · ');
 
+    /* 예상 총액이 왜 그 값인지 — 성수기·축제 한 줄 */
+    _loadLedgerSeason({ startDate: d.startDate, endDate: d.endDate, destination: d.destination });
+
     // 미입력 카테고리 경고
     const estCatSet  = new Set(estExps.map(e => e.category));
     const actCatSet  = new Set(actualExps.map(e => e.category));
@@ -1042,3 +1045,61 @@ function exportBudgetCSV() {
     a.click();
     toast('Excel 다운로드 시작...');
 }
+
+/* ── 성수기·축제 ────────────────────────────────────────────────
+   예상 총액이 왜 그 값인지 한 줄로 말한다. 8월 제주 여행의 예상이
+   높은 것은 렌터카가 두 배가 되기 때문인데 그 말이 없으면 숫자를 믿을
+   근거가 없다. 성수기도 축제도 없으면 줄 자체를 감춘다 —
+   「평시입니다」는 알려 줄 것이 없다는 말이다. */
+async function _loadLedgerSeason(trip) {
+    const el = document.getElementById('ledger-season');
+    if (!el) return;
+    el.hidden = true;
+    if (!trip || !trip.startDate) return;
+
+    const from = String(trip.startDate).slice(0, 10);
+    const to = String(trip.endDate || trip.startDate).slice(0, 10);
+    const region = String(trip.destination || '').trim();
+
+    let season = null, festivals = [];
+    try {
+        const r = await fetch('/api/budget/season?from=' + from + '&to=' + to);
+        const j = await r.json();
+        if (j && j.success) season = j.data;
+    } catch (e) {}
+    if (region) {
+        try {
+            const r2 = await fetch('/api/budget/festivals?region=' + encodeURIComponent(region) +
+                '&from=' + from + '&to=' + to);
+            const j2 = await r2.json();
+            if (j2 && j2.success) festivals = j2.data || [];
+        } catch (e) {}
+    }
+
+    const bits = [];
+    if (season && season.key !== 'off') {
+        let s = '<b>' + season.label + '</b>에 가는 여행입니다.';
+        if (season.carMultiplier > 1) {
+            s += ' 렌터카가 평시의 ' + season.carMultiplier.toFixed(2) + '배, ';
+        }
+        s += '숙소도 같이 오릅니다.';
+        bits.push(s);
+    } else if (season && season.weekendCheckIn) {
+        bits.push('금·토 체크인이라 숙박이 주말 요금입니다.');
+    }
+    if (festivals.length) {
+        bits.push('여행 기간에 <b>' + _ldEsc(festivals[0].title) + '</b>' +
+            (festivals.length > 1 ? ' 등 축제 ' + festivals.length + '개' : '') +
+            '가 열립니다. 숙소가 빨리 찹니다.');
+    }
+
+    if (!bits.length) return;          /* 알려 줄 것이 없으면 줄을 두지 않는다 */
+    el.innerHTML = bits.join(' ');
+    el.hidden = false;
+}
+
+function _ldEsc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+window._loadLedgerSeason = _loadLedgerSeason;
