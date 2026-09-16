@@ -386,8 +386,31 @@
       await _loadMyScrappedPlaceIds();
       let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
       if (!top3Routes && typeof api !== 'undefined') {
-        const res = await api.get('/api/posts?sort=scrap&size=3&category=ROUTE');
-        top3Routes = res.success ? (res.data.content || res.data || []) : [];
+        const res = await api.get('/api/posts?sort=scrap&size=12&category=ROUTE');
+        const all = res.success ? (res.data.content || res.data || []) : [];
+
+        /* 카드가 그려지려면 제목과 본문이 어느 정도 있어야 한다.
+           제목 「1111」에 자판 만진 본문은 화면에서 쓰레기로 보인다. */
+        const _plainLen = r => String(r.content || '')
+          .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')
+          .replace(/[\s\u00a0]+/g, ' ').trim().length;
+        const solid = all.filter(r =>
+          String(r.title || '').trim().length >= 4 && _plainLen(r) >= 30);
+        const pool = solid.length >= 3 ? solid : all;
+
+        /* 절 제목이 「스크랩이 많은 순서」다. 순서를 지키는지 말로도 지킨다 —
+           아무도 담은 것이 없으면 그런 순서가 아니다. */
+        const scrapped = pool.filter(r => (r.scraps || r.scrapCount || 0) > 0);
+        const byScrap = scrapped.length >= 3;
+        top3Routes = (byScrap ? scrapped : pool.slice().sort(
+          (a, b) => (b.views || b.viewCount || 0) - (a.views || a.viewCount || 0))).slice(0, 3);
+
+        const sideEl = document.querySelector('#ck_pop .ck-side');
+        if (sideEl) {
+          sideEl.textContent = byScrap
+            ? '커뮤니티에서 스크랩이 많은 순서입니다.'
+            : '커뮤니티에서 조회가 많은 순서입니다. 아직 담긴 글이 적습니다.';
+        }
       }
 
       const top3Grid = document.getElementById('ck_top_trip');
@@ -768,7 +791,9 @@
       <div class="ck-wr">
         <div class="ck-attr">
           <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 혼잡도 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
-          <span>화면의 혼잡도와 금액은 시연용 예시입니다. 지도 위 사람은 실제 인원이 아니라 혼잡도를 밀도로 옮긴 것입니다.</span>
+          <span>혼잡도는 한국관광공사 관광지 집중률 예측을 실시간으로 받아 씁니다.
+            금액은 공개 요금표가 있는 항목만 확정이고 나머지는 평균으로 낸 추정입니다.
+            지도 위 사람은 실제 인원이 아니라 혼잡도를 밀도로 옮긴 것입니다.</span>
           <span>한국관광공사 2026 관광데이터 활용 공모전 출품작 · 팀 체크인</span>
         </div>
       </div>
