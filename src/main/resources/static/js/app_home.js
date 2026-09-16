@@ -24,6 +24,26 @@
 
   var HERO_SVG = '/img/mass_hero.svg';
   var HERO_JSON = '/img/mass_hero.json';
+  /* 히어로가 보여 주는 곳. 혼잡도를 이 지역으로 묻는다 */
+  var HERO_REGION = '부산 해운대구';
+
+  /* 보여 주는 날 — 다가오는 토요일.
+     평일 값을 띄우면 「매우 혼잡합니다」라는 문구와 옆의 68(정상)이 싸운다.
+     주말은 실제로 붐비고, 사람이 여행 가는 날도 주말이다. */
+  function heroDate() {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    var add = (6 - d.getDay() + 7) % 7;      /* 6 = 토요일 */
+    d.setDate(d.getDate() + add);
+    return d;
+  }
+
+  function iso(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+           '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
   function injectScene() {
     var host = $('ck_scene');
@@ -222,10 +242,83 @@
       });
     }
 
+    /* 히어로의 혼잡도를 실제 값으로 덮는다.
+       json 에 박힌 값은 못 받을 때 쓰는 자리다. 메인은 제품이 무엇을 하는지
+       보여 주는 자리라 여기 숫자가 꾸민 값이면 나머지도 그렇게 보인다. */
+    function liveCrowd() {
+      var names = route.map(function (p) { return p.name; });
+      if (alt) names.push(alt.name);
+      if (!names.length) return Promise.resolve();
+
+      var when = heroDate();
+      return fetch('/api/crowd/day?region=' + encodeURIComponent(HERO_REGION) +
+                   '&date=' + iso(when) +
+                   '&places=' + encodeURIComponent(names.join(',')))
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (j) {
+          var list = (j && j.success && j.data) || [];
+          var got = 0;
+          list.forEach(function (f) {
+            if (f.rate == null) return;
+            var hit = route.filter(function (p) { return p.name === f.placeName; })[0];
+            if (!hit && alt && alt.name === f.placeName) hit = alt;
+            if (!hit) return;
+            hit.crowd = Math.round(f.rate);
+            hit.crowdLabel = f.levelLabel;
+            got++;
+          });
+          if (got) { window.__ckCrowdLive = true; retellHero(when); }
+        })
+        .catch(function () { /* 못 받으면 json 값을 그대로 쓴다 */ });
+    }
+
+    /* 받은 값으로 문구를 다시 쓴다. 붐비지 않으면 붐빈다고 말하지 않는다 */
+    function retellHero(when) {
+      var day = (when.getMonth() + 1) + '월 ' + when.getDate() + '일 ' +
+                DOW[when.getDay()] + '요일';
+      var eye = document.querySelector('.st-head .fl-eye');
+      if (eye) eye.textContent = '부산 해운대 · ' + day + ' 오후';
+
+      /* 오른쪽 판의 날짜도 같은 날이어야 한다. 전에는 「9월 19일 금요일」이
+         템플릿에 적혀 있었고 그 날은 토요일이었다. */
+      var whenEl = document.getElementById('st_when');
+      if (whenEl) whenEl.innerHTML = day + '<i>부산 해운대</i>';
+
+      var worst = null;
+      route.forEach(function (p) {
+        if (p.crowd != null && (!worst || p.crowd > worst.crowd)) worst = p;
+      });
+      if (!worst) return;
+
+      var g = (window.crowd && window.crowd(worst.crowd)) || null;
+      var grade = worst.crowdLabel || (g && g.label) || '';
+      var busy = worst.crowd >= 70;
+
+      SCENE[1].now = worst.name;
+      SCENE[1].line = esc(worst.name) + '이 그 날 <em>' + esc(grade) + '</em>합니다';
+      SCENE[1].why = busy
+        ? '집중률 ' + worst.crowd + '입니다. 0~100 눈금에서 70 위가 붐비는 자리입니다.'
+        : '집중률 ' + worst.crowd + '입니다. 붐비지는 않지만 순서를 바꿔 볼 수 있습니다.';
+
+      /* 대체 후보의 등급도 받은 값으로 */
+      if (alt && alt.crowd != null) {
+        var ag = (window.crowd && window.crowd(alt.crowd)) || null;
+        var cell = document.querySelector('.ck-opt[data-o="1"] em');
+        if (cell) {
+          cell.innerHTML = esc(alt.crowdLabel || (ag && ag.label) || '') +
+                           '<i>집중률 ' + alt.crowd + '</i>';
+        }
+        var sub = document.querySelector('.ck-opt[data-o="1"] span');
+        if (sub) sub.textContent = route[1]
+          ? (route[1].name + ' 대신 ' + alt.name + '으로') : alt.name + '으로';
+      }
+    }
+
     fetch(HERO_JSON, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (j) { route = (j && j.route) || []; alt = (j && j.alt) || null; })
       .catch(function () { route = []; })
+      .then(liveCrowd)
       .then(function () {
         stage({ order: [0, 1, 2], hot: -1, cand: false });
         if (reduce) { draw(SCENE.length - 1); return; }
@@ -239,6 +332,60 @@
           }, { threshold: 0.05 }).observe(hero);
         }
       });
+  }
+
+  /* ──────────────────────── 2.5 지금 한가한 곳 ────────────────────
+     64 · 71 · 78 · 142 가 템플릿에 적혀 있었다. 손으로 적은 값이다.
+     같은 지역에서 그 날 한적한 곳을 받아 채운다. 못 받으면 절을 감춘다 —
+     지어낸 숫자를 두는 것보다 없는 편이 낫다. */
+
+  function initQuiet() {
+    var box = document.querySelector('#ck_free .ck-free') || document.querySelector('.ck-free');
+    if (!box) return;
+    var sec = box.closest('section');
+
+    var when = heroDate();
+    fetch('/api/crowd/quiet?region=' + encodeURIComponent(HERO_REGION) +
+          '&date=' + iso(when) + '&limit=8')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (j) {
+        var list = (j && j.success && j.data) || [];
+        list = list.filter(function (x) { return x.rate != null; });
+
+        /* 「한가한 곳」에는 한가한 곳만 넣는다. 가장 낮은 순으로 와도
+           그것들이 70 을 넘으면 붐비는 곳이다 — 71 을 「여유 있습니다」로
+           적어 두면 가서 줄을 선다. */
+        var quiet = list.filter(function (x) { return x.rate < 70; }).slice(0, 3);
+        var busy = list[list.length - 1];        /* 가장 붐비는 곳 하나를 같이 */
+        if (quiet.length < 2) { if (sec) sec.hidden = true; return; }
+
+        var side = document.querySelector('#ck_free .ck-side') ||
+                   (sec && sec.querySelector('.ck-side'));
+        if (side) {
+          side.textContent = (when.getMonth() + 1) + '월 ' + when.getDate() + '일 ' +
+                             DOW[when.getDay()] + '요일 기준. 0~100 눈금입니다.';
+        }
+        var hd = sec && sec.querySelector('.ck-hd');
+        if (hd) hd.setAttribute('data-label', '한국관광공사 집중률 예측');
+
+        function card(x, hot) {
+          var g = (window.crowd && window.crowd(x.rate)) || { key: 'mid', label: '정상' };
+          var k = 'cw-' + g.key;
+          return '<article class="ck-spot' + (hot ? ' ck-hot' : '') + '">' +
+            '<div class="ck-nm">' + esc(x.placeName) + '</div>' +
+            '<div class="ck-why">' + esc(x.sigunguName || '') +
+              (hot ? ' · 다른 날을 보세요' : ' · 그 날 여유 있습니다') + '</div>' +
+            '<div class="ck-vv"><b class="ck-fig">' + Math.round(x.rate) + '</b>' +
+              '<i class="' + k + '">' + esc(x.levelLabel || g.label) + '</i></div>' +
+            '<div class="ck-bar"><i class="' + k + '" style="width:' +
+              Math.min(100, Math.max(6, Math.round(x.rate))) + '%"></i></div>' +
+          '</article>';
+        }
+
+        box.innerHTML = quiet.map(function (x) { return card(x, false); }).join('') +
+                        (busy && busy.rate >= 70 ? card(busy, true) : '');
+      })
+      .catch(function () { if (sec) sec.hidden = true; });
   }
 
   /* ────────────────────────── 3. 내 여행 ──────────────────────────
@@ -519,6 +666,7 @@
     initNav();                          // 상단 바는 모든 화면에 있다
     if (!$('ck_hero')) return;          // 나머지는 메인페이지에서만
     initHero();
+    initQuiet();
     initForm();
     initMine();
     initSky();

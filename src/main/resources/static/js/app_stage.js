@@ -50,7 +50,7 @@
         return '<div class="fl-row"><dt>' + esc(times[n] || '') + '</dt>' +
                '<dd><b>' + esc(p.name) + '</b>' +
                (p.crowd != null ? '<span class="st-cwbar"><i class="' + lv(p.crowd).key +
-                '" style="width:' + Math.min(100, Math.round(p.crowd / 1.8)) + '%"></i></span>' : '') +
+                '" style="width:' + Math.min(100, Math.max(6, Math.round(p.crowd))) + '%"></i></span>' : '') +
                '</dd></div>';
       }).join('');
     }
@@ -62,8 +62,12 @@
         var g = lv(p.crowd);
         return '<div class="fl-row"><dt>' + esc(p.name.slice(0, 4)) + '</dt>' +
                '<dd><span class="st-cw"><b>' + p.crowd + '</b>' +
-               '<i class="' + g.key + '">' + g.label + '</i></span></dd></div>';
-      }).join('');
+               '<i class="' + g.key + '">' + esc(p.crowdLabel || g.label) + '</i></span></dd></div>';
+      }).join('') +
+      /* 값이 어디서 왔는지 한 줄. 받은 값과 예시 값을 같은 얼굴로 두지 않는다 */
+      '<p class="st-src">' + (w.__ckCrowdLive
+        ? '한국관광공사 관광지 집중률 예측 · 0~100'
+        : '예시 값입니다. 실제 값은 한국관광공사 집중률 예측을 씁니다.') + '</p>';
     }
   }
 
