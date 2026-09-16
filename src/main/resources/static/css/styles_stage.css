@@ -149,14 +149,18 @@
     height:auto; min-height:0; padding-bottom:26px;
     display:grid; gap:12px;
   }
+  /* 좁은 화면에서는 장면을 확대하지 않는다. 140% 로 당기면 왼쪽이 잘려
+     세 번째 정거장(동백섬, x 15%)이 화면 밖으로 나간다 — 실측 left -77px.
+     폰에서는 하루 동선이 다 보이는 쪽이 낫다. 비율만큼 낮아진다. */
+  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 460px) }
   .ck-home .ck-stage .ck-scene{
-    position:relative; inset:auto; height:clamp(260px, 52vw, 460px);
+    position:relative; inset:auto; height:var(--sc-h);
     grid-row:1; border-radius:0;
   }
   .ck-home .ck-stage .ck-frame{
-    width:max(140%, calc(52vw * 1.3892)); left:46%;
+    width:100%; left:50%;
   }
-  .st-bigmap{ position:relative; inset:auto; height:clamp(260px, 52vw, 460px); grid-row:1 }
+  .st-bigmap{ position:relative; inset:auto; height:calc(100vw / 1.3892); max-height:460px; grid-row:1 }
 
   .st-tl,.st-side,.st-mini,.st-view,.st-form{
     position:static; width:auto; max-height:none; transform:none;
@@ -168,16 +172,23 @@
   .st-mini{ grid-row:5 }
   .st-view{ grid-row:6; justify-content:flex-end }
 
-  /* 도구줄은 모형 위에 그대로 띄운다 — 모형을 바꾸는 것이니 모형 옆이 맞다 */
+  /* 도구줄은 모형 위에 그대로 띄운다 — 모형을 바꾸는 것이니 모형 옆이 맞다.
+     위쪽에 두면 핀 이름표와 겹친다(375px 실측: 「해운대 해수욕장 14:20」과
+     같은 줄에 섰다). 장면 아래 오른쪽으로 내린다. */
   .st-tools{
-    position:absolute; right:var(--st-m); top:calc(var(--nav-h, 62px) + 8px);
+    position:absolute; right:var(--st-m);
+    top:calc(var(--sc-h, 270px) - 41px);
   }
 }
 
 @media (max-width:760px){
+  /* 폰에서도 폭을 꽉 채운다. 170% 로 당기면 왼쪽이 잘려 세 번째 정거장이
+     화면 밖으로 나간다 — 375px 실측 동백섬 핀 left -77px.
+     비율(1.3892)만큼 낮아지는 대신 하루 동선이 다 보인다. */
+  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 330px) }
   .ck-home .ck-stage .ck-scene,
-  .st-bigmap{ height:clamp(230px, 62vw, 330px) }
-  .ck-home .ck-stage .ck-frame{ width:max(170%, calc(62vw * 1.3892)); left:44% }
+  .st-bigmap{ height:var(--sc-h) }
+  .ck-home .ck-stage .ck-frame{ width:100%; left:50% }
   .st-tools .fl-tool{ height:27px; padding:0 9px; font-size:11px }
   .st-tools .fl-tool svg{ width:12px; height:12px }
 }

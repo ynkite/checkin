@@ -97,6 +97,10 @@
   }
 
   function pinHTML(p, i, extra) {
+    /* 오른쪽 절반에 있는 핀은 이름표를 왼쪽으로 돌린다.
+       55% 는 가장 긴 이름표(「해운대 해수욕장 14:20」 약 150px)가
+       1440px 무대에서 오른쪽 끝을 안 넘는 자리다. */
+    if (p.x > 55) extra += ' ck-lbl-left';
     return '<div class="ck-pin' + extra + '" style="--i:' + i +
            ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
            '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
