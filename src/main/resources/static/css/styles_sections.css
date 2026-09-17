@@ -45,3 +45,30 @@
 /* 화살표와 점은 목록이 이미 다 보여 주므로 필요 없다 */
 .ck-home .slide-arr-wrap,
 .ck-home .slide-dots{ display:none }
+
+/* ══════════════════════════════════════════════════════════════
+   절 제목 — 메인과 같은 규칙.
+
+   구조는 실선이 낸다. 라벨은 조용하다. 작고 굵은 라벨을 상자마다
+   하나씩 올리면 화면이 대시보드가 된다 — 갤러리에 올라온 작업물
+   중에 그렇게 생긴 것은 없었다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 페이지 단위 절 — 선을 긋고 그 아래 라벨 */
+.my-sec-ttl,
+.cadm-sec-ttl{
+  padding-top:15px; margin:0 0 15px;
+  border-top:1px solid var(--hair);
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+}
+/* 래퍼 요소가 없어서 첫 절만 빼낼 수가 없다. 첫 절 위의 선은
+   화면 머리와 본문을 가르는 선으로 읽히므로 그대로 둔다. */
+
+/* 카드·사이드바 안 — 라벨만. 안쪽에 또 선을 그으면 선이 두 겹이 된다 */
+.ledger-section-ttl,
+.comm-side-ttl,
+.prev-section-ttl{
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+}

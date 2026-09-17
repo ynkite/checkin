@@ -8,7 +8,9 @@
 
 /*가계부 배경*/
 #page-ledger {
-    background: linear-gradient(160deg, var(--sage-pale) 0%, var(--cream) 380px);
+    /* 위쪽에 아주 옅은 기운만. 전에는 크림(--terra-pale)이라 이 화면만
+       따뜻했다 — 팔레트는 쿨로 옮겨 놨는데 여기만 남아 있었다. */
+    background: linear-gradient(160deg, var(--slate-pale) 0%, var(--page-2) 340px);
     background-attachment: fixed;
 }
 

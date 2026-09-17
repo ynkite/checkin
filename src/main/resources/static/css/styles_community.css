@@ -539,13 +539,14 @@
     margin-top: 6px;
 }
 
+/* 태그 — 한 글에 네 개씩 붙는다. 색 알약 네 개면 제목이 안 읽힌다 */
 .community-card-tags span {
-    font-size: 10px;
-    color: var(--sage-d);
-    background: var(--sage-pale);
-    padding: 2px 6px;
-    border-radius: 10px;
+    font-size: 11px;
+    color: var(--ink-3);
+    background: none;
+    padding: 0;
 }
+.community-card-tags{ gap:9px }
 
 .review-place-snapshot {
     background: var(--panel);

@@ -186,8 +186,11 @@ async function saveCurrentChanges() {
 /** 이탈 시 모달 띄우고 승인 여부를 Promise로 반환 */
 function checkUnsavedChangesAndSave() {
     return new Promise((resolve) => {
-        // 일정이 확정(FIXED = true) 상태가 아닌 경우 (DRAFT = false) 모달창 띄움
-        if (window._planConfirmed === false) {
+        /* 저장할 것이 있을 때만 묻는다. 만들어진 일정이 하나도 없는데
+           「고친 내용이 남아 있습니다」라고 하면 없는 것을 있다고 하는 말이다. */
+        const hasPlan = Array.isArray(window.MAP_ITINERARY) &&
+            window.MAP_ITINERARY.some(d => (d.places || []).some(p => !p.transit && p.name));
+        if (window._planConfirmed === false && hasPlan) {
             const modal = document.getElementById('unsavedChangesModal');
             if (modal) {
                 modal.style.display = 'flex';

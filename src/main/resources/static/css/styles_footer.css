@@ -79,12 +79,14 @@
 
 /* 정보 컬럼 */
 .foot-col { min-width: 150px; }
+/* 칸 제목 — 12px / 700 / 자간 .06em / 대문자 / 테라코타였다.
+   한글은 대문자가 없고, 자간을 벌린 작은 색 글자는 읽히지 않는다.
+   다른 화면의 절 이름과 같은 모양으로 맞춘다. */
 .foot-col h4 {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--foot-heading);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .005em;
+    color: var(--ink-3);
     margin: 0 0 14px;
 }
 .foot-col ul {

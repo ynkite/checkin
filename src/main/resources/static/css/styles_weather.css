@@ -22,13 +22,10 @@
   margin-bottom: 26px;
 }
 
-.wx-eye {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: .14em;
-  color: var(--terra);
-  margin-bottom: 8px;
+.wx-eye{
+  display:block; margin:0 0 7px;
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
 }
 
 .wx-h1 {

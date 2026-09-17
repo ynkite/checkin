@@ -652,8 +652,8 @@
   --sh-rgb:16,24,38;
   --sig-rgb:255,158,18;
   --w-rgb:255,255,255;
-  --scrim:rgba(26,21,18,.46);
-  --grid:rgba(40,30,22,.05);
+  --scrim:rgba(16,24,38,.46);
+  --grid:rgba(16,24,38,.05);
   --sh:var(--lift2);  --sh-h:var(--lift);
 }
 

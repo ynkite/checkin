@@ -154,12 +154,12 @@
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
         <span class="nps-num">3</span>
-        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">AI</span></span>
+        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">대화</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
         <span class="nps-num">4</span>
-        <span class="nps-lbl"><span class="nps-lbl-full">경로 생성</span><span class="nps-lbl-short">경로</span></span>
+        <span class="nps-lbl"><span class="nps-lbl-full">일정 만들기</span><span class="nps-lbl-short">일정</span></span>
       </button>
     </div>
   </div>
@@ -356,19 +356,14 @@
 <!-- ===== /SITE FOOTER ===== -->
 
 <!-- 수정 중 이탈 경고 모달 -->
-<div id="unsavedChangesModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
-  <div onclick="closeUnsavedChangesModal()" style="position:absolute; inset:0; background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative; background:var(--surface); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
-    <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:10px;">저장되지 않은 변경사항</div>
-    <div style="font-size:13px; color:var(--text3); line-height:1.5; margin-bottom:22px;">
-      수정 중인 내용이 아직 확정되지 않았습니다.<br>현재 상태로 저장하고 이동하시겠습니까?
-    </div>
-    <div style="display:flex; gap:8px; justify-content:center;">
-      <button onclick="confirmLeaveAndSave()"
-              style="flex:1; padding:10px 14px; background:var(--sage); color:var(--panel); border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; box-shadow:0 2px 4px rgba(0,0,0,0.08);">저장 후
-        이동</button>
-      <button onclick="closeUnsavedChangesModal()"
-              style="flex:1; padding:10px 14px; border:1px solid var(--border2); border-radius:8px; background:none; cursor:pointer; font-size:13px; color:var(--text2);">취소</button>
+<div id="unsavedChangesModal" class="lv-wrap">
+  <div class="lv-scrim" onclick="closeUnsavedChangesModal()"></div>
+  <div class="lv-box" role="dialog" aria-modal="true" aria-labelledby="lvTtl">
+    <h2 class="lv-ttl" id="lvTtl">아직 저장하지 않았습니다</h2>
+    <p class="lv-bd">고친 내용이 남아 있습니다. 저장하고 넘어갈까요?</p>
+    <div class="lv-acts">
+      <button type="button" class="lv-go" onclick="confirmLeaveAndSave()">저장하고 넘어가기</button>
+      <button type="button" class="lv-no" onclick="closeUnsavedChangesModal()">여기 있기</button>
     </div>
   </div>
 </div>

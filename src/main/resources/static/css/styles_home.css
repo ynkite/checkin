@@ -11,7 +11,7 @@
   border-bottom:1px solid transparent; transition:border-color .2s, background .2s}
 .ck-top.ck-on{border-color:var(--hair); background:var(--void-veil-2)}
 .ck-top .ck-wr{display:flex; align-items:center; gap:24px}
-.ck-top .ck-bd{font-size:19px; font-weight:700; letter-spacing:-.07em; margin-right:auto}
+.ck-top .ck-bd{font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight); margin-right:auto}
 .ck-top nav{display:flex; gap:20px}
 .ck-top nav a{font-size:14px; font-weight:500; color:var(--ink-2); text-decoration:none}
 .ck-top nav a:hover{color:var(--ink)}
@@ -37,7 +37,7 @@
 .ck-tell .ck-ph i b{display:block; height:100%; width:0; background:var(--ink); border-radius:99px}
 .ck-tell .ck-ph i.ck-on b{width:100%; transition:width 2.5s linear}
 .ck-tell .ck-ph i.ck-done b{width:100%}
-.ck-tell .ck-line{font-size:17px; font-weight:700; letter-spacing:-.035em; min-height:1.55em}
+.ck-tell .ck-line{font-size:17px; font-weight:700; letter-spacing:var(--tracking-tight); min-height:1.55em}
 .ck-tell .ck-line em{font-style:normal; color:var(--num)}
 .ck-tell .ck-why{font-size:13.5px; line-height:1.62; color:var(--ink-2); margin-top:5px; min-height:2.7em}
 .ck-plans{position:relative; height:44px; margin-top:13px; overflow:hidden}
@@ -75,7 +75,7 @@
   background:radial-gradient(60% 54% at 50% 58%, rgba(var(--sig-rgb),.5), rgba(var(--sig-rgb),0) 72%)}
 .ck-place.ck-busy .ck-glow{opacity:1}
 .ck-place .ck-meta{padding:15px 17px 17px}
-.ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:-.04em}
+.ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-place .ck-meta .ck-stt{display:block; font-size:13px; color:var(--ink-2); margin-top:3px;
   min-height:2.6em}
 .ck-place .ck-meta .ck-stt strong{font-weight:700; color:var(--num)}
@@ -115,7 +115,7 @@ section.ck-blk{padding-top:70px}
 
 .ck-free{display:grid; grid-template-columns:repeat(auto-fit,minmax(206px,1fr)); gap:12px}
 .ck-spot{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 19px}
-.ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em}
+.ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-spot .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
 .ck-spot .ck-vv{display:flex; align-items:baseline; gap:8px; margin-top:14px}
 .ck-spot .ck-vv b{font-family:var(--fig); font-size:26px; font-weight:600; letter-spacing:-.05em}
@@ -135,7 +135,7 @@ table.ck-rows td:nth-child(2){text-align:right; font-family:var(--fig); font-var
 table.ck-rows td:nth-child(3){text-align:right; font-size:13px; color:var(--ink-2); width:82px}
 table.ck-rows tfoot td{border-bottom:0; border-top:1.5px solid var(--ink); padding-top:15px;
   font-weight:700; font-size:17px}
-table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
+table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--tracking-tight)}
 .ck-conf .ck-big{font-family:var(--fig); font-size:clamp(40px,5vw,60px); font-weight:600;
   letter-spacing:-.055em; line-height:.95}
 .ck-conf .ck-big span{font-size:.44em}
@@ -150,18 +150,18 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-st{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:22px 22px 24px}
 .ck-st .ck-no{font-family:var(--fig); font-size:29px; font-weight:600; letter-spacing:-.05em;
   color:var(--num); line-height:1}
-.ck-st h3{font-size:19px; font-weight:700; letter-spacing:-.035em; margin-top:12px}
+.ck-st h3{font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight); margin-top:12px}
 .ck-st p{font-size:14.5px; line-height:1.7; color:var(--ink-2); margin-top:7px}
 
 .ck-sync{display:flex; gap:14px; flex-wrap:wrap}
 .ck-sync > div{flex:1 1 210px; background:var(--panel); border-radius:8px; box-shadow:var(--lift2);
   padding:18px 20px 20px}
-.ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:-.03em}
+.ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-sync p{font-size:13.5px; color:var(--ink-2); margin-top:5px; line-height:1.62}
 
 .ck-data{display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:12px}
 .ck-src{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 18px}
-.ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:-.03em}
+.ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-src ul{margin:8px 0 0; padding-left:16px; font-size:13px; color:var(--ink-2); line-height:1.78}
 
 .ck-foot{margin-top:74px; border-top:1px solid var(--hair)}
@@ -188,7 +188,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 시안의 _palette.css 에 있던 유틸. 여기로 옮긴다. */
 .ck-wr{max-width:1300px; margin:0 auto; padding:0 30px}
 .ck-fig{font-family:var(--fig); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
-.ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:-.042em;
+.ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:var(--tracking-tight);
   line-height:1.13; text-wrap:balance}
 .ck-home p{margin:0; text-wrap:pretty}
 .ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--ui-plate); color:var(--ink)}
@@ -206,7 +206,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   padding:17px 19px 19px; text-align:left; width:100%}
 .ck-trip:hover{box-shadow:var(--lift)}
 .ck-trip .ck-when{font-family:var(--fig); font-size:12.5px; color:var(--num); font-weight:600}
-.ck-trip .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em; margin-top:4px}
+.ck-trip .ck-nm{font-size:18px; font-weight:700; letter-spacing:var(--tracking-tight); margin-top:4px}
 .ck-trip .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
 .ck-live{display:inline-flex; align-items:center; gap:6px; padding:4px 10px 5px;
   border-radius:99px; background:var(--sig); color:var(--on-sig);
@@ -245,7 +245,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .top3-grid > *:hover{ box-shadow:var(--lift) }
 
 .ck-home .post-ttl{
-  font-size:17px; font-weight:700; letter-spacing:-.035em; color:var(--ink);
+  font-size:17px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
   line-height:1.34; margin:0;
 }
 .ck-home .post-stats{
@@ -299,7 +299,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .hsc-dest{
   padding:9px 15px 10px; border-radius:99px; border:0; cursor:pointer;
   background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--ui-line);
-  font-family:inherit; font-size:14.5px; font-weight:600; letter-spacing:-.03em;
+  font-family:inherit; font-size:14.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink); transition:background .15s, box-shadow .15s;
 }
 .ck-home .hsc-dest:hover{ background:var(--terra-pale); box-shadow:inset 0 0 0 1px var(--terra) }
@@ -353,7 +353,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   background:var(--terra-pale); color:var(--terra);
   font-size:11.5px; font-weight:700; letter-spacing:-.02em;
 }
-.ck-home .ck-sl-hd h3{ font-size:22px; margin-top:11px; letter-spacing:-.042em }
+.ck-home .ck-sl-hd h3{ font-size:22px; margin-top:11px; letter-spacing:var(--tracking-tight) }
 .ck-home .ck-sl-sub{ font-size:13.5px; color:var(--ink-2); margin-top:5px }
 .ck-home .ck-sl-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px }
 .ck-home .ck-sl-tags span{
@@ -483,8 +483,8 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 
 /* ── 제목을 더 키운다. 본문과의 간격이 좁아 위계가 약했다 ── */
-.ck-home h1{ font-size:clamp(32px, 3.6vw, 46px); letter-spacing:-.042em; line-height:1.12 }
-.ck-home .ck-hd h2{ font-size:clamp(22px, 2.3vw, 29px); letter-spacing:-.04em }
+.ck-home h1{ font-size:clamp(32px, 3.6vw, 46px); letter-spacing:var(--tracking-tight); line-height:1.12 }
+.ck-home .ck-hd h2{ font-size:clamp(22px, 2.3vw, 29px); letter-spacing:var(--tracking-tight) }
 .ck-home .ck-sub{ font-size:17.5px; line-height:1.7 }
 
 /* 섹션 간격에 리듬을 준다. 전부 70px 이던 것을 역할별로 나눈다 */
@@ -847,7 +847,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 .ck-home .ck-tabs button{
   position:relative; padding:0 0 11px; border:0; background:none; cursor:pointer;
-  font-family:inherit; font-size:16px; font-weight:700; letter-spacing:-.035em;
+  font-family:inherit; font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight);
   color:var(--ink-3); transition:color .15s;
 }
 .ck-home .ck-tabs button:hover{ color:var(--ink-2) }
@@ -866,7 +866,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home table.ck-rows td:nth-child(2){ white-space:nowrap; font-size:13.5px }
   .ck-home table.ck-rows td:nth-child(3){ width:52px; font-size:12px }
   .ck-home table.ck-rows tfoot td{ font-size:15px; padding-top:13px }
-  .ck-home table.ck-rows tfoot td:nth-child(2){ font-size:15px; letter-spacing:-.05em }
+  .ck-home table.ck-rows tfoot td:nth-child(2){ font-size:15px; letter-spacing:var(--tracking-tight) }
   .ck-home .ck-card{ padding:18px 16px 20px }
 }
 
@@ -883,7 +883,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   font-family:inherit; color:var(--ink-3); transition:color .15s;
 }
 .ck-home .ck-rtlist b{
-  font-size:14.5px; font-weight:600; letter-spacing:-.03em; color:inherit;
+  font-size:14.5px; font-weight:600; letter-spacing:var(--tracking-tight); color:inherit;
 }
 .ck-home .ck-rtlist i{
   font-style:normal; font-size:12.5px; margin-left:auto; white-space:nowrap;
@@ -924,7 +924,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   border-color:var(--ink-3); transform:none; box-shadow:none;
 }
 .ck-home .card-ttl,
-.ck-home .pop-name{ font-size:16px; font-weight:700; letter-spacing:-.035em; line-height:1.35 }
+.ck-home .pop-name{ font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight); line-height:1.35 }
 .ck-home .card-sub,
 .ck-home .pop-meta{ font-size:12.5px; color:var(--ink-3); margin-top:4px }
 
@@ -1029,7 +1029,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 .ck-home .ck-stop i{
   font-style:normal; font-size:15px; font-weight:700;
-  letter-spacing:-.035em; color:var(--ink);
+  letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ck-home .ck-leg{
   display:flex; align-items:center; gap:9px; min-width:0;
@@ -1083,7 +1083,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 .ck-home .ck-playtx{ flex:0 0 auto; min-width:0; line-height:1.3 }
 .ck-home .ck-playtx b{
-  display:block; font-size:13.5px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+  display:block; font-size:13.5px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ck-home .ck-playtx i{
   font-style:normal; font-size:11.5px; color:var(--ink-3);
@@ -1105,7 +1105,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   transition:left .55s cubic-bezier(.4,.02,.2,1);
 }
 .ck-home .ck-playnow{
-  flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:-.03em;
+  flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink-2); white-space:nowrap;
 }
 
@@ -1220,7 +1220,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   letter-spacing:-.05em; line-height:1; color:var(--terra);
 }
 .ck-home .ck-flow b{
-  display:block; font-size:17.5px; font-weight:700; letter-spacing:-.035em;
+  display:block; font-size:17.5px; font-weight:700; letter-spacing:var(--tracking-tight);
   line-height:1.4; color:var(--ink);
 }
 .ck-home .ck-flow span{
@@ -1301,7 +1301,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-hd[data-meta]::after{
   position:absolute; top:12px;
   flex:none; order:0; margin:0; padding:0; background:none;
-  font-family:var(--fig); font-size:11.5px; font-weight:500;
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
   letter-spacing:.005em; color:var(--ink-3);
   white-space:nowrap;
 }
