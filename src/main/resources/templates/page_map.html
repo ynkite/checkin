@@ -1494,19 +1494,32 @@
         return;
       }
 
+      /* 들를 곳이 하나라도 있는 경로인가.
+         DB 가 빈 배열("[]")이나 빈 글자를 돌려주는 경우가 있다 —
+         플랜은 만들었는데 경로를 아직 저장하지 않은 때다. 그걸 「있다」로
+         보면 방금 3단계에서 만들어 세션에 넣어 둔 경로를 덮어써 지운다.
+         그러면 4단계가 빈 화면이 된다. */
+      function _mpUsable(d) {
+        return Array.isArray(d) && d.length > 0
+            && d.some(function (day) { return day && (day.places || []).length > 0; });
+      }
+
       // 1. DB에서 저장된 JSON 데이터 파싱해서 가져오기
       if (tripId) {
         const res = await api.get(`/api/trips/${tripId}/routes?t=${Date.now()}`);
         if (res.success && res.data) {
           try {
-            routeData = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
-            // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
-            //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
-            if (routeData) {
+            const fromDb = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
+            if (_mpUsable(fromDb)) {
+              routeData = fromDb;
+              // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
+              //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
               sessionStorage.setItem('ai_generated_route',
                       (typeof res.data === 'string') ? res.data : JSON.stringify(routeData));
               window._planDirty = false;
               if (typeof _syncStep4State === 'function') _syncStep4State();
+            } else {
+              console.info('[지도] DB 에 저장된 경로가 아직 없습니다. 세션 것을 씁니다.');
             }
           } catch(e) {
             console.error("DB 데이터 파싱 에러:", e);
@@ -1519,10 +1532,14 @@
         const aiRouteStr = sessionStorage.getItem('ai_generated_route');
         if (aiRouteStr) {
           try {
-            routeData = JSON.parse(aiRouteStr);
+            const fromSession = JSON.parse(aiRouteStr);
+            if (_mpUsable(fromSession)) routeData = fromSession;
+            else console.warn('[지도] 세션에 든 경로에 들를 곳이 없습니다.', fromSession);
           } catch(e) {
             console.error("세션 데이터 파싱 에러:", e);
           }
+        } else {
+          console.warn('[지도] 세션에도 경로가 없습니다. 3단계에서 저장이 안 됐습니다.');
         }
       }
 

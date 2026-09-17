@@ -1658,7 +1658,7 @@
                         <div class="loc-selector">
                             <select class="loc-big" id="dep-prov" onchange="updateCityDep(this)">
                                 <option value="">도/시 선택</option>
-                                <option value="서울" selected>서울</option>
+                                <option value="서울">서울</option>
                                 <option value="경기">경기</option>
                                 <option value="인천">인천</option>
                                 <option value="강원">강원</option>
@@ -1797,7 +1797,7 @@
                     <div class="pl-row">
                     <div class="pl-row-lb">무엇으로</div>
                     <div class="chip-row" id="chip-trans">
-                        <button class="chip on" onclick="pick(this,'trans')">자차</button>
+                        <button class="chip" onclick="pick(this,'trans')">자차</button>
                         <button class="chip" onclick="pick(this,'trans')">대중교통</button>
                         <button class="chip" onclick="pick(this,'trans');showOtherInput('other-trans',this)">기타</button>
                     </div>
@@ -1807,7 +1807,7 @@
                     <div class="pl-row">
                     <div class="pl-row-lb">어디서 자나요</div>
                     <div class="chip-row" id="chip-acc">
-                        <button class="chip on" onclick="pick(this,'acc')">호텔</button>
+                        <button class="chip" onclick="pick(this,'acc')">호텔</button>
                         <button class="chip" onclick="pick(this,'acc')">펜션</button>
                         <button class="chip" onclick="pick(this,'acc')">게스트하우스</button>
                         <button class="chip" onclick="pick(this,'acc')">리조트</button>
@@ -1820,7 +1820,7 @@
                     <div class="pl-row-lb">누구와</div>
                     <div class="chip-row" id="chip-comp">
                         <button class="chip" onclick="pick(this,'comp')">혼자</button>
-                        <button class="chip on" onclick="pick(this,'comp')">커플</button>
+                        <button class="chip" onclick="pick(this,'comp')">커플</button>
                         <button class="chip" onclick="pick(this,'comp')">가족</button>
                         <button class="chip" onclick="pick(this,'comp')">친구</button>
                         <button class="chip" onclick="pick(this,'comp');showOtherInput('other-comp',this)">기타</button>
@@ -1859,7 +1859,7 @@
                     <div class="pl-row-lb">먹는 것</div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-food">
                         <button data-multi class="chip" onclick="tog(this)">비건</button>
-                        <button data-multi class="chip on" onclick="tog(this)">해산물 선호</button>
+                        <button data-multi class="chip" onclick="tog(this)">해산물 선호</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알러지 있음</button>
                         <button data-multi class="chip" onclick="tog(this)">무관</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
@@ -1880,7 +1880,7 @@
                     <div class="pl-row-lb">하루 밀도<i class="pl-row-note">MBTI 로 먼저 골라 둡니다</i></div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-density">
                         <button class="chip" onclick="pick(this,'density')">빼곡하게</button>
-                        <button class="chip on" onclick="pick(this,'density')">여유롭게</button>
+                        <button class="chip" onclick="pick(this,'density')">여유롭게</button>
                     </div>
                     <div style="font-size:11px;color:var(--text3);margin-top:6px" id="planner-dens-note"></div></div>
                   </div>
