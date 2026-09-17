@@ -90,6 +90,7 @@ public class SecurityConfig {
                                 "/api/route/reverse",               //좌표 -> 주소 (TMAP)
                                 "/api/route/navi",                  //주행 네비 경로 (경로선+턴안내, TMAP)
                                 "/api/route/nearby",                //주변 검색 (주유소·화장실 등, TMAP)
+                                "/api/route/fuel",                  //싼 주유소 (오피넷 + 카카오 좌표변환)
                                 "/api/puzzle/**",                   //SK 지오비전 퍼즐
                                 "/api/live/**",                     //실시간 화면. 목록은 로그인한 사람 것만 나온다
                                                                     //  (익명이면 빈 배열). 경로 읽기는 이미
