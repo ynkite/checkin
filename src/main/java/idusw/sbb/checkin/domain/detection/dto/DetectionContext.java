@@ -9,5 +9,7 @@ public record DetectionContext(
         String signguCd,        // 시군구코드
         String nextPlaceName,   // 다음 관광지 이름 (집중률 매칭)
         LocalDate travelDate,   // 방문 날짜
-        Double routeDelayRatio  // 실측/예측 이동시간 비율 (없으면 null)
+        Double routeDelayRatio, // 실측/예측 이동시간 비율 (없으면 null)
+        Double lat,             // 브라우저 정밀 좌표 (선택) — 서버에서 즉시 격자화, 정밀값은 안 남긴다
+        Double lon
 ) {}
