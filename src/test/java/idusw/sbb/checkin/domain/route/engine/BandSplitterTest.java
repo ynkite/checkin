@@ -421,4 +421,38 @@ class BandSplitterTest {
     private static Set<String> idsOf(DailyCandidatePool pool) {
         return pool.candidates().stream().map(Candidate::id).collect(Collectors.toSet());
     }
+
+    // ── 필수 포함 : 36km 가드와 마지막 날 컷에서 면제한다 (결정 13) ───────
+
+    @Test
+    void 요청_장소는_36km_가드에서_면제된다() {
+        List<Candidate> all = new ArrayList<>(selfSufficientNear());
+        all.add(candidateAt("요청장소", northOf(ANCHOR_POINT, 55))); // 가드 밖
+
+        List<DailyCandidatePool> withoutRequirement = BandSplitter.withDefaults()
+                .split(ANCHOR, constraintsWithDeparture(FAR_HOME), all, 2);
+        assertThat(withoutRequirement).flatExtracting(DailyCandidatePool::candidates)
+                .extracting(Candidate::id).doesNotContain("요청장소");
+
+        List<DailyCandidatePool> withRequirement = BandSplitter.withDefaults()
+                .split(ANCHOR, constraintsWithDeparture(FAR_HOME), all, 2, Set.of("요청장소"));
+        assertThat(withRequirement).flatExtracting(DailyCandidatePool::candidates)
+                .extracting(Candidate::id).contains("요청장소");
+    }
+
+    @Test
+    void 요청_장소는_마지막_날_컷에서도_밀리지_않는다() {
+        // 귀가거점에 가까운 후보를 minPerDay 만큼 깔아두고, 요청 장소는 그 기준으로 꼴찌가 되게 둔다
+        List<Candidate> all = new ArrayList<>();
+        for (int k = 0; k < BandSplitter.DEFAULT_MIN_PER_DAY; k++) {
+            all.add(candidateAt("onpath" + k, northOf(ANCHOR_POINT, 30 - k)));
+        }
+        all.add(candidateAt("요청장소", northOf(ANCHOR_POINT, 1)));
+
+        DailyCandidatePool lastDay = BandSplitter.withDefaults()
+                .split(ANCHOR, constraintsWithDeparture(FAR_HOME), all, 2, Set.of("요청장소")).get(1);
+
+        assertThat(idsOf(lastDay)).contains("요청장소");
+        assertThat(lastDay.size()).isEqualTo(BandSplitter.DEFAULT_MIN_PER_DAY);
+    }
 }

@@ -299,4 +299,24 @@ class SlotBuilderTest {
         assertThatThrownBy(() -> builder.build(poolOf(0, List.of()), ANCHOR, noLunch, 3))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // ── 필수 포함 : 상위 5 컷에서 먼저 자리를 잡는다 (결정 13) ───────────
+
+    @Test
+    void 필수_후보는_상위_5_컷에서_안_잘린다() {
+        List<Candidate> pool = new java.util.ArrayList<>();
+        for (int k = 1; k <= 5; k++) {
+            pool.add(alwaysOpen("near" + k, northOf(ANCHOR_POINT, k), CandidateCategory.TOUR));
+        }
+        // 가장 멀어서 거리순으로는 6번째 — 컷에서 잘릴 자리다
+        pool.add(alwaysOpen("요청장소", northOf(ANCHOR_POINT, 20), CandidateCategory.TOUR));
+
+        List<TimeSlot> withoutRequirement =
+                SlotBuilder.withDefaults().build(poolOf(1, pool), ANCHOR, constraints(null, null), 3);
+        assertThat(withoutRequirement.get(0).candidates()).extracting(Candidate::id).doesNotContain("요청장소");
+
+        List<TimeSlot> withRequirement = SlotBuilder.withDefaults()
+                .build(poolOf(1, pool), ANCHOR, constraints(null, null), 3, java.util.Set.of("요청장소"));
+        assertThat(withRequirement.get(0).candidates()).extracting(Candidate::id).contains("요청장소");
+    }
 }

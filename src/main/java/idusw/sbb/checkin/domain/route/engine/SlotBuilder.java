@@ -74,6 +74,15 @@ public final class SlotBuilder {
      * @return 그 날 시간이 있는 슬롯만, 하루 리듬 순서대로
      */
     public List<TimeSlot> build(DailyCandidatePool pool, Anchor anchor, RouteConstraints constraints, int totalDays) {
+        return build(pool, anchor, constraints, totalDays, Set.of());
+    }
+
+    /**
+     * @param requiredIds 반드시 포함해야 하는 후보 id (사용자가 직접 요청한 장소). 상위 5 컷에서 먼저
+     *                    집어넣는다 — 여기서 잘리면 {@code SlotOptimizer} 는 그 후보를 볼 기회조차 없다.
+     */
+    public List<TimeSlot> build(DailyCandidatePool pool, Anchor anchor, RouteConstraints constraints,
+                                 int totalDays, Set<String> requiredIds) {
         if (pool == null) {
             throw new IllegalArgumentException("pool must not be null");
         }
@@ -105,7 +114,8 @@ public final class SlotBuilder {
                 continue; // 창이 0 이하로 접힘 — 이 슬롯은 만들지 않는다
             }
 
-            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, usedToday, referencePoint);
+            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, usedToday, referencePoint,
+                    requiredIds);
             for (Candidate candidate : cut) {
                 usedToday.add(candidate.id());
             }
@@ -121,7 +131,7 @@ public final class SlotBuilder {
 
     /** 결정 4 의 3단계: 카테고리 적합 → 필터 통과 → 영업시간 겹침 → 기준점에서 가까운 순 상위 5. */
     private List<Candidate> cut(List<Candidate> dayPool, SlotType type, LocalTime windowStart, LocalTime windowEnd,
-                                 Set<String> usedToday, GeoPoint referencePoint) {
+                                 Set<String> usedToday, GeoPoint referencePoint, Set<String> requiredIds) {
         boolean isMealSlot = type == SlotType.LUNCH || type == SlotType.DINNER;
 
         return dayPool.stream()
@@ -129,7 +139,9 @@ public final class SlotBuilder {
                 .filter(c -> isMealSlot == (c.category() == CandidateCategory.FOOD))
                 .filter(filter)
                 .filter(c -> overlapsWindow(c, windowStart, windowEnd))
-                .sorted(Comparator.comparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
+                .sorted(Comparator
+                        .comparingInt((Candidate c) -> requiredIds.contains(c.id()) ? 0 : 1)
+                        .thenComparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
                 .limit(TimeSlot.MAX_CANDIDATES)
                 .toList();
     }

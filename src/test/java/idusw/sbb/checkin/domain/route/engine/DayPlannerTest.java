@@ -407,4 +407,35 @@ class DayPlannerTest {
         assertThatThrownBy(() -> planner.plan(List.of(), ANCHOR_POINT, ANCHOR_POINT, c, 2, 2))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    // ── 필수 포함은 예산·상한보다 우선한다 (결정 13) ─────────────────────
+
+    @Test
+    void 예산이_0인_카테고리라도_필수_후보는_들어간다() {
+        List<TimeSlot> slots = List.of(new TimeSlot(SlotType.MORNING_ACTIVITY, List.of(
+                candidate("요청카페", nearby(1.0), CandidateCategory.CAFE, 40),
+                candidate("tour1", nearby(1.1), CandidateCategory.TOUR, 90))));
+
+        DayPlan withoutRequirement = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 5));
+        assertThat(withoutRequirement.slotPlans().get(0).visitOrder())
+                .extracting(Candidate::id).doesNotContain("요청카페");
+
+        DayPlan withRequirement = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 5), java.util.Set.of("요청카페"));
+        assertThat(withRequirement.slotPlans().get(0).visitOrder())
+                .extracting(Candidate::id).contains("요청카페");
+    }
+
+    @Test
+    void 활동_몫이_0인_슬롯이어도_필수_후보는_들어간다() {
+        // 관광 예산 1 → 창이 가장 긴 오후만 몫을 갖고 오전·저녁은 0 이다
+        List<TimeSlot> slots = activityOnlySlots(2);
+        String requiredId = slots.get(0).candidates().get(0).id();
+
+        DayPlan plan = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 0, 3, new DailyCategoryBudget(3, 0, 1), java.util.Set.of(requiredId));
+
+        assertThat(plan.slotPlans().get(0).visitOrder()).extracting(Candidate::id).contains(requiredId);
+    }
 }

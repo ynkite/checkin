@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.ToDoubleBiFunction;
 
@@ -87,6 +88,16 @@ public final class DayPlanner {
     public DayPlan plan(List<TimeSlot> slots, GeoPoint startPoint, GeoPoint returnPoint,
                          RouteConstraints constraints, int dayIndex, int totalDays,
                          DailyCategoryBudget budget) {
+        return plan(slots, startPoint, returnPoint, constraints, dayIndex, totalDays, budget, Set.of());
+    }
+
+    /**
+     * @param requiredIds 반드시 포함해야 하는 후보 id. 예산이 0인 카테고리라도 풀에서 빼지 않고,
+     *                    슬롯 상한도 필수 후보 수까지는 올린다 — 예산·상한보다 우선한다.
+     */
+    public DayPlan plan(List<TimeSlot> slots, GeoPoint startPoint, GeoPoint returnPoint,
+                         RouteConstraints constraints, int dayIndex, int totalDays,
+                         DailyCategoryBudget budget, Set<String> requiredIds) {
         if (budget == null) {
             throw new IllegalArgumentException("budget must not be null");
         }
@@ -120,7 +131,7 @@ public final class DayPlanner {
         int[] activityQuota = activityQuotas(slots, constraints, budget, isFirstDay, isLastDay);
 
         for (int i = 0; i < slots.size(); i++) {
-            TimeSlot slot = affordable(slots.get(i), remaining);
+            TimeSlot slot = affordable(slots.get(i), remaining, requiredIds);
             boolean isLastSlot = i == slots.size() - 1;
             LocalTime windowStart = constraints.windowStart(slot.type(), isFirstDay);
             LocalTime windowEnd = constraints.windowEnd(slot.type(), isLastDay);
@@ -128,13 +139,15 @@ public final class DayPlanner {
             if (activityQuota[i] >= 0) {
                 cap = Math.min(cap, activityQuota[i]);
             }
+            cap = Math.max(cap, (int) slot.candidates().stream()
+                    .filter(c -> requiredIds.contains(c.id())).count());
 
             SlotPlan accepted = null;
             double acceptedReturnLeg = 0.0;
 
             for (int maxVisits = cap; maxVisits >= 0; maxVisits--) {
                 SlotPlan candidate = slotOptimizer.optimize(
-                        slot, currentPoint, currentTime, windowStart, windowEnd, maxVisits);
+                        slot, currentPoint, currentTime, windowStart, windowEnd, maxVisits, requiredIds);
                 double returnLeg = isLastSlot
                         ? travelTimeMinutes.applyAsDouble(candidate.endPoint(), returnPoint)
                         : 0.0;
@@ -238,10 +251,11 @@ public final class DayPlanner {
         return quotas;
     }
 
-    /** 예산이 0인 카테고리 후보는 슬롯에 들어가기 전에 뺀다 — SlotOptimizer 는 예산을 모른다. */
-    private static TimeSlot affordable(TimeSlot slot, Map<CandidateCategory, Integer> remaining) {
+    /** 예산이 0인 카테고리 후보는 슬롯에 들어가기 전에 뺀다 — 단 필수 후보는 예산과 무관하게 남긴다. */
+    private static TimeSlot affordable(TimeSlot slot, Map<CandidateCategory, Integer> remaining,
+                                        Set<String> requiredIds) {
         List<Candidate> within = slot.candidates().stream()
-                .filter(c -> remaining.get(c.category()) > 0)
+                .filter(c -> remaining.get(c.category()) > 0 || requiredIds.contains(c.id()))
                 .toList();
         return within.size() == slot.size() ? slot : new TimeSlot(slot.type(), within);
     }
