@@ -1541,7 +1541,10 @@
           } catch(e) {
             console.error("세션 데이터 파싱 에러:", e);
           }
-        } else {
+        } else if (document.getElementById('page-map')
+                   && document.getElementById('page-map').classList.contains('active')) {
+          /* 홈에서도 initMapPage 가 한 번 돌아서 이 줄이 늘 떴다.
+             지도를 보고 있을 때만 말한다 */
           console.warn('[지도] 세션에도 경로가 없습니다. 3단계에서 저장이 안 됐습니다.');
         }
       }

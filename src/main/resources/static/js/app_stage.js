@@ -107,8 +107,23 @@
     var c = center();
     if (!c) return;
     mini = new w.kakao.maps.Map(host, { center: c, level: 6, draggable: false });
-    mini.setZoomable(false);
+    mini.setZoomable(false);      /* 휠은 막는다. +/- 버튼으로만 */
     mapPins();
+    fitMini();
+  }
+
+  /* 작은 지도 기본 크기 — 1·2·3 이 다 보여야 한다.
+     level 을 숫자로 박으면 화면 폭이 달라질 때 어떤 곳은 밖으로 나간다.
+     좌표에서 계산하게 두고 여백만 준다. */
+  function fitMini() {
+    if (!mini) return;
+    var pts = route.filter(function (p) { return p.lat && p.lng; });
+    if (pts.length < 2) return;
+    var b = new w.kakao.maps.LatLngBounds();
+    pts.forEach(function (p) { b.extend(new w.kakao.maps.LatLng(p.lat, p.lng)); });
+    mini.relayout();
+    /* 작은 판이라 여백을 적게. 핀 번호가 가장자리에 살짝 닿는 정도 */
+    mini.setBounds(b, 22, 22, 22, 22);
   }
 
   /* 핀은 다시 만들지 않는다. 다시 만들면 옮겨지는 순간이 안 보인다. */
@@ -364,6 +379,7 @@
     if (zr) zr.addEventListener('click', function () {
       cam.user = false;
       if (!camFit()) camReset();
+      fitMini();                 /* 작은 지도도 셋이 다 보이는 자리로 */
     });
 
     /* 작은 지도 — 여기도 버튼으로만. setZoomable(false) 로 휠은 막혀 있다.
@@ -384,7 +400,7 @@
         fold.setAttribute('aria-expanded', String(!open));
         fold.textContent = open ? '펼치기' : '접기';
         box.classList.toggle('fl-fold', open);
-        if (!open) ready(function () { if (mini) mini.relayout(); });
+        if (!open) ready(function () { if (mini) { mini.relayout(); fitMini(); } });
       });
     }
 
@@ -417,7 +433,75 @@
   }
 
   /* ── app_home.js 가 부른다 ───────────────────────── */
+  /* ── 들어오는 장면이 쓰는 손잡이 ──────────────────────
+     app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다.
+     둘을 한 파일에 합치면 서로를 못 읽는다. */
+
+  /* 지도를 띄우고 세 곳이 다 들어오게 맞춘다.
+     level 을 직접 주지 않는다 — 카카오가 좌표에서 계산하게 둔다.
+     그래야 화면 폭이 달라도 세 곳이 안 잘린다. */
+  function showWideMap() {
+    var stage = d.querySelector('.ck-stage');
+    var scene = stage && stage.querySelector('.ck-scene');
+    var bmap = $('st_bigmap');
+    if (!scene || !bmap) return false;
+
+    scene.hidden = true;
+    bmap.hidden = false;
+    makeBig();
+    if (!big) return false;
+
+    var pts = route.filter(function (p) { return p.lat && p.lng; });
+    if (pts.length < 2) return true;
+
+    var b = new w.kakao.maps.LatLngBounds();
+    pts.forEach(function (p) { b.extend(new w.kakao.maps.LatLng(p.lat, p.lng)); });
+    big.relayout();
+    /* 넉넉한 여백. 핀 번호가 가장자리에 닿으면 안 읽힌다 */
+    big.setBounds(b, 120, 120, 120, 120);
+    return true;
+  }
+
+  /* 지도를 한 곳으로 당긴다. 3D 로 넘어가기 직전에 쓴다 */
+  function zoomMapTo(i) {
+    var p = route[i];
+    if (!big || !p || !p.lat) return;
+    big.setLevel(3, { animate: { duration: 420 } });
+    big.panTo(new w.kakao.maps.LatLng(p.lat, p.lng));
+  }
+
+  function showModel() {
+    var stage = d.querySelector('.ck-stage');
+    var scene = stage && stage.querySelector('.ck-scene');
+    var bmap = $('st_bigmap');
+    if (!scene || !bmap) return;
+    bmap.hidden = true;
+    scene.hidden = false;
+    var mt = $('st_t_model'), mp = $('st_t_map');
+    if (mt) mt.setAttribute('aria-pressed', 'true');
+    if (mp) mp.setAttribute('aria-pressed', 'false');
+  }
+
+  /* 한 정거장을 화면 가운데로. 끊어 가는 연출이라 전환은 두지 않는다 —
+     부르는 쪽이 .ck-cut 으로 한 번 덮었다 걷는다 */
+  function camStop(i, zoom) {
+    var p = route[i];
+    var f = $('ck_frame');
+    if (!p || !f || !f.offsetWidth) return;
+    var st = f.parentElement;
+    cam.user = false;
+    cam.z = zoom || 1.9;
+    cam.x = st.clientWidth / 2 - (p.x / 100 * f.offsetWidth) * cam.z;
+    cam.y = st.clientHeight * .48 - (p.y / 100 * f.offsetHeight) * cam.z;
+    camApply();
+  }
+
   w.ckStage = {
+    showWideMap: showWideMap,
+    zoomMapTo: zoomMapTo,
+    showModel: showModel,
+    camStop: camStop,
+    camFit: function () { cam.user = false; if (!camFit()) camReset(); },
     render: function (r, a, st) {
       route = r || []; alt = a || null;
       if (st) {

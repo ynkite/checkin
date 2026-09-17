@@ -346,3 +346,14 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 @media (prefers-reduced-motion:reduce){
   .ck-wx::before,.ck-wx::after{ animation:none }
 }
+
+/* ── 구워진 경로를 숨긴다 ───────────────────────────────────
+   모형 SVG 안에 경로가 들어 있다(rt-case · rt-todo · rb-case · rb-hot).
+   그건 모형을 만들 때의 세 지점을 이은 선이다. 정거장을 옮긴 뒤로는
+   아무 데도 안 닿아서 해변 가운데서 끊긴 채로 보였다.
+   지금은 app_home.js 가 핀 좌표로 직접 긋는다 — 같은 좌표계라
+   끝점이 정확히 맞는다. */
+.mass .rt-case, .mass .rt-todo, .mass .rt-done, .mass .rt-hot,
+.mass .rb-case, .mass .rb-todo, .mass .rb-done, .mass .rb-hot{
+  display:none;
+}

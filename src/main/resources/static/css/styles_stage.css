@@ -436,3 +436,27 @@
   -webkit-backdrop-filter:none; backdrop-filter:none;
   background:var(--void-veil-2);
 }
+
+/* ── 화면이 바뀌는 전환 ─────────────────────────────────────
+   장소에서 장소로 미끄러지지 않고 끊어 간다. 미끄러지면
+   「코앞에서 조금 움직인」 것으로 보이고, 끊으면 「다른 데로 갔다」로
+   읽힌다. 실제 거리가 짧아도 그렇다.
+
+   덮는 것은 판이 아니라 장면이다. 글은 계속 읽혀야 한다. */
+.ck-home .ck-hero.ck-stage .ck-scene,
+.ck-home .ck-hero.ck-stage #st_bigmap{
+  transition:opacity .19s ease;
+}
+.ck-home .ck-hero.ck-cut .ck-scene,
+.ck-home .ck-hero.ck-cut #st_bigmap{ opacity:0 }
+
+/* 들어오는 동안은 판을 물려 둔다. 화면에 눈이 가야 한다 */
+.ck-home .ck-hero.ck-intro .st-tl,
+.ck-home .ck-hero.ck-intro .st-side,
+.ck-home .ck-hero.ck-intro .st-mini,
+.ck-home .ck-hero.ck-intro .st-form,
+.ck-home .ck-hero.ck-intro .st-view,
+.ck-home .ck-hero.ck-intro .st-cwkey,
+.ck-home .ck-hero.ck-intro .st-wx{
+  opacity:.12; transition:opacity .45s ease; pointer-events:none;
+}

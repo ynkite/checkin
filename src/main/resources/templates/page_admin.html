@@ -781,7 +781,7 @@
       const starBadges = starBadgesRaw ? starBadgesRaw.split(',').map(t=>t.trim()).filter(Boolean) : [];
 
       const extra_notes=JSON.stringify({
-        cardColor: document.getElementById('cur-card-color')?.value || 'var(--slate-pale)',
+        cardColor: document.getElementById('cur-card-color')?.value || '#ECF1F8',
         starBadges,
         tags,
         adminRecommendedAccommodations,
@@ -837,7 +837,7 @@
       const cityResetEl=document.getElementById('cur-dest-city');
       if(cityResetEl) cityResetEl.innerHTML='<option value="">구/군 선택</option>';
       const o=document.getElementById('cur-order');if(o)o.value='1';
-      const cc=document.getElementById('cur-card-color');if(cc)cc.value='var(--slate-pale)';
+      const cc=document.getElementById('cur-card-color');if(cc)cc.value='#ECF1F8';
       document.getElementById('curDays').innerHTML='';
       document.querySelector('#ad-curation .bcard-ttl').textContent=ADMIN_UI_TEXTS.curationForm.cardTitle;
       document.querySelector('#ad-curation .btn-next').textContent=ADMIN_UI_TEXTS.curationForm.btnSubmit;
@@ -873,7 +873,7 @@
 
         // 카드 색상 복원
         const ccEl=document.getElementById('cur-card-color');
-        if(ccEl) ccEl.value=en.cardColor||'var(--slate-pale)';
+        if(ccEl) ccEl.value=en.cardColor||'#ECF1F8';
 
         // 태그 복원 → cur-theme 필드에 (합친 필드)
         const themeEl=document.getElementById('cur-theme');
@@ -1088,7 +1088,9 @@
               <div class="form-group">
                 <label class="form-label">카드 배경색 <small style="color:var(--text3);font-weight:400">(메인 카드 색상)</small></label>
                 <div style="display:flex;align-items:center;gap:8px">
-                  <input type="color" id="cur-card-color" value="var(--slate-pale)"
+                  <!-- 색 고르개의 값은 CSS 변수를 못 받는다. 스타일이 아니라 값이다.
+                     #ECF1F8 은 --slate-pale 과 같은 색이다. -->
+                  <input type="color" id="cur-card-color" value="#ECF1F8"
                          style="width:44px;height:36px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;padding:2px">
                 </div>
               </div>

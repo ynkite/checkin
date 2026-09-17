@@ -224,122 +224,167 @@
     }
   }
 
-  /* 동선을 잇는 선 하나. 그리는 동안 dash 를 줄여 「그어지는」 것처럼 낸다 */
-  function trailSvg(route) {
-    var pts = route.filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
-    if (pts.length < 2) return null;
-    var layer = $('ck_pinlayer');
-    if (!layer) return null;
+  /* 동선을 잇는 선. 핀과 같은 좌표계(%)를 쓰므로 정거장을 어디로
+     옮겨도 끝점이 정확히 맞는다. 모형에 구워진 선은 CSS 로 숨겼다 —
+     그건 모형을 만들 때의 지점을 이은 것이라 지금은 안 닿는다.
 
-    var old = layer.querySelector('.ck-draw');
-    if (old) old.remove();
+     두 겹이다. 바깥 흰 테가 있어야 도시 위에 올라가도 선이 안 묻힌다.
+     지나온 구간은 채우고, 아직 안 간 구간은 점선으로 흐른다. */
+  function drawLine(route, upto) {
+    var layer = $('ck_pinlayer');
+    if (!layer) return;
+    var pts = route.filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    if (pts.length < 2) return;
 
     var ns = 'http://www.w3.org/2000/svg';
-    var svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('class', 'ck-draw');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('preserveAspectRatio', 'none');
-    var line = document.createElementNS(ns, 'polyline');
-    line.setAttribute('points', pts.map(function (p) {
-      return p.x.toFixed(2) + ',' + p.y.toFixed(2);
-    }).join(' '));
-    svg.appendChild(line);
-    layer.insertBefore(svg, layer.firstChild);
-    return line;
+    var svg = layer.querySelector('.ck-draw');
+    if (!svg) {
+      svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('class', 'ck-draw');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      layer.insertBefore(svg, layer.firstChild);
+    }
+
+    function pl(cls, from, to) {
+      var seg = pts.slice(from, to + 1);
+      if (seg.length < 2) return '';
+      return '<polyline class="' + cls + '" points="' +
+             seg.map(function (p) { return p.x.toFixed(2) + ',' + p.y.toFixed(2); })
+                .join(' ') + '" />';
+    }
+
+    /* upto 가 없으면 전체를 「지나온 것」으로 그린다 */
+    var n = pts.length - 1;
+    var k = (upto == null) ? n : Math.max(0, Math.min(n, upto));
+
+    svg.innerHTML =
+      pl('ck-ln-case', 0, n) +
+      pl('ck-ln-done', 0, k) +
+      (k < n ? pl('ck-ln-todo', k, n) : '');
   }
 
   /* 들어오는 장면 한 번. 이미 봤으면 다시 안 한다 —
-     같은 연출을 매번 보면 기다리는 시간이 된다. */
+     같은 연출을 매번 보면 기다리는 시간이 된다.
+
+     흐름 —
+       ① 지도   작게 축소해서 1·2·3 을 한눈에
+       ② 확대   1번 쪽으로 당기며 3D 로 넘어간다
+       ③④⑤ 1번 · 2번 · 3번을 끊어 가며 보여 준다
+       ⑥ 정리   세 곳이 다 보이는 자리로 물러나고 판이 들어온다
+
+     끊어 가는 이유 — 미끄러지면 「코앞에서 조금 움직인」 것으로 보인다.
+     끊으면 「다른 데로 갔다」로 읽힌다.
+
+     단계는 벽시계(setTimeout)로 넘어간다. requestAnimationFrame 은
+     탭이 뒤에 있으면 멈춰서 화면이 중간에 굳는다. */
   function intro(route, done) {
-    var layer = $('ck_pinlayer');
+    var stage = document.querySelector('.ck-stage');
     var reduce2 = matchMedia('(prefers-reduced-motion: reduce)').matches;
     var seen = false;
     try { seen = sessionStorage.getItem('ckIntroSeen') === '1'; } catch (e) {}
 
-    if (reduce2 || seen || !layer) { done(); return; }
+    if (reduce2 || seen || !stage || !window.ckStage || route.length < 2) {
+      drawLine(route);                 /* 연출을 건너뛰어도 선은 있어야 한다 */
+      if (window.ckStage) window.ckStage.camFit();
+      done();
+      return;
+    }
     try { sessionStorage.setItem('ckIntroSeen', '1'); } catch (e) {}
 
-    var line = trailSvg(route);
-    if (!line) { done(); return; }
-    skyHold = true;
-
+    var S = window.ckStage;
     var host = $('ck_hero');
-    if (host) host.classList.add('ck-intro');
-
-    /* 선 길이를 재서 그만큼 dash 로 덮었다가 걷는다 */
-    var len = 0;
-    try { len = line.getTotalLength(); } catch (e) { len = 260; }
-    line.style.strokeDasharray = len;
-    line.style.strokeDashoffset = len;
-
-    var DUR = 2600;
-    var t0 = performance.now();
-    var skyAt = 0;
-
-    /* 그리는 동안 하늘은 첫 정거장 시각에서 마지막 정거장 시각으로 */
-    var hFrom = 13.5, hTo = 17.5;
-    var m0 = /(\d{1,2}):(\d{2})/.exec(route[0] && route[0].note || '');
-    var m1 = /(\d{1,2}):(\d{2})/.exec(route[route.length - 1] &&
-                                      route[route.length - 1].note || '');
-    if (m0) hFrom = +m0[1] + (+m0[2]) / 60;
-    if (m1) hTo = +m1[1] + (+m1[2]) / 60;
-    if (hTo <= hFrom) hTo = hFrom + 3.5;
-
-    var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
-    for (var i = 0; i < pins.length; i++) pins[i].classList.add('ck-wait');
-
-    /* 끝내는 일은 한 번만. 어느 쪽이 먼저 와도 같은 자리에서 마친다 —
-       rAF 가 다 돌았거나, 벽시계 마감이 지났거나, 탭이 숨었거나. */
+    var pinLayer = $('ck_pinlayer');
+    var timers = [];
     var ended = false;
+
+    function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
     function finish() {
       if (ended) return;
       ended = true;
-      clearTimeout(guard);
+      timers.forEach(clearTimeout);
       document.removeEventListener('visibilitychange', onHide);
-      for (var q = 0; q < pins.length; q++) pins[q].classList.remove('ck-wait');
-      if (host) host.classList.remove('ck-intro');
-      line.style.strokeDasharray = '';
-      line.style.strokeDashoffset = '';
+      if (host) { host.classList.remove('ck-intro'); host.classList.remove('ck-cut'); }
+      S.showModel();
+      drawLine(route);                 /* 다 지나왔으니 전체를 채운다 */
+      S.camFit();
+      if (pinLayer) {
+        pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
+          p.classList.remove('ck-wait');
+        });
+      }
       skyHold = false;
-      if (window.ckSky) window.ckSky();      /* 지금 시각으로 되돌린다 */
+      if (window.ckSky) window.ckSky();
       done();
     }
-
-    /* 브라우저는 탭이 뒤에 있으면 rAF 를 멈춘다. 그대로 두면 핀이
-       안 보이는 채로, 판이 물린 채로 남는다. 벽시계로 마감을 둔다. */
-    var guard = setTimeout(finish, DUR + 900);
     function onHide() { if (document.hidden) finish(); }
     document.addEventListener('visibilitychange', onHide);
 
-    function step(now) {
-      var x = Math.min(1, (now - t0) / DUR);
-      var e = x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;   /* 부드럽게 */
-      line.style.strokeDashoffset = (len * (1 - e)).toFixed(1);
-
-      /* 선이 닿은 핀부터 선다 */
-      var reach = e * (pins.length - 1) + .35;
-      for (var k = 0; k < pins.length; k++) {
-        if (k <= reach) pins[k].classList.remove('ck-wait');
-      }
-
-      /* 하늘이 그 동선의 시각을 따라 흐른다.
-         ckSky 는 :root 에 변수를 106개 쓴다. 루트 변수 하나를 바꾸면
-         그걸 쓰는 문서 전체의 스타일이 무효가 된다 — 매 프레임 부르면
-         초당 6,360번 문서 전체를 다시 계산한다. 그게 끊김의 원인이었다.
-         하늘은 천천히 변하는 것이라 150ms 마다면 충분하다. */
-      if (window.ckSky && now - skyAt > 150) {
-        skyAt = now;
-        var h = hFrom + (hTo - hFrom) * e;
-        var d = new Date();
-        d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
-        window.ckSky(d);
-      }
-
-      if (ended) return;
-      if (x < 1) requestAnimationFrame(step);
-      else finish();
+    /* 화면을 한 번 덮었다 걷는다. 그 사이에 카메라를 옮기면
+       미끄러지지 않고 「바뀐」 것으로 보인다 */
+    function cut(fn) {
+      if (!host) { fn(); return; }
+      host.classList.add('ck-cut');
+      setTimeout(function () {
+        fn();
+        setTimeout(function () { host.classList.remove('ck-cut'); }, 40);
+      }, 190);
     }
-    requestAnimationFrame(step);
+
+    /* 하늘은 그 정거장의 시각으로. 단계마다 한 번만 바꾼다 —
+       매 프레임 바꾸면 :root 변수 106개를 초당 6,360번 쓴다 */
+    function skyAtStop(i) {
+      if (!window.ckSky) return;
+      var m = /(\d{1,2}):(\d{2})/.exec((route[i] && route[i].note) || '');
+      if (!m) return;
+      var d2 = new Date();
+      d2.setHours(+m[1], +m[2], 0, 0);
+      skyHold = true;
+      window.ckSky(d2);
+    }
+
+    if (host) host.classList.add('ck-intro');
+    if (pinLayer) {
+      pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
+        p.classList.add('ck-wait');
+      });
+    }
+
+    /* ① 지도 — 작게, 셋이 한눈에 */
+    var ok = S.showWideMap();
+    if (!ok) { finish(); return; }
+
+    var HOLD = 1500;      /* 한 장소에 머무는 시간 */
+    var T = 1700;         /* 지도를 보여 주는 시간 */
+
+    /* ② 지도를 1번 쪽으로 당긴다 */
+    at(T - 520, function () { S.zoomMapTo(0); });
+
+    /* ③④⑤ 3D 로 넘어가 정거장을 끊어 가며 */
+    route.forEach(function (p, i) {
+      at(T + HOLD * i, function () {
+        cut(function () {
+          if (i === 0) S.showModel();
+          S.camStop(i, 1.9);
+          skyAtStop(i);
+          drawLine(route, i);          /* 선을 그 정거장까지 늘린다 */
+          /* 지나온 정거장까지 핀을 세운다 */
+          if (pinLayer) {
+            var pins = pinLayer.querySelectorAll('.ck-pin:not(.ck-cand)');
+            for (var k = 0; k <= i && k < pins.length; k++) {
+              pins[k].classList.remove('ck-wait');
+            }
+          }
+        });
+      });
+    });
+
+    /* ⑥ 물러나서 전체를 보여 주고 판을 들인다 */
+    at(T + HOLD * route.length, function () { cut(finish); });
+
+    /* 아무리 늦어도 여기서는 끝낸다 */
+    at(T + HOLD * route.length + 1800, finish);
   }
 
   /* 밖에서 부를 수 있게 — 「다시 보기」 버튼이 쓴다 */

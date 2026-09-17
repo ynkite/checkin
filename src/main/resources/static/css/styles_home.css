@@ -1447,3 +1447,24 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 .ck-home .ck-hero.ck-intro .st-cwkey{
   opacity:.14; transition:opacity .5s ease;
 }
+
+/* ── 동선 선 ────────────────────────────────────────────────
+   핀과 같은 좌표계로 긋는다. 두 겹이라 도시 위에 올라가도 안 묻힌다.
+   지나온 구간은 채우고 안 간 구간은 점선으로 흐른다. */
+.ck-pins .ck-draw{
+  position:absolute; inset:0; width:100%; height:100%;
+  overflow:visible; pointer-events:none; z-index:1;
+}
+.ck-pins .ck-draw polyline{
+  fill:none; stroke-linecap:round; stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.ck-pins .ck-ln-case{ stroke:var(--halo); stroke-width:6 }
+.ck-pins .ck-ln-done{ stroke:var(--sig);  stroke-width:2.6 }
+.ck-pins .ck-ln-todo{
+  stroke:var(--ink-3); stroke-width:2.2; stroke-dasharray:5 5;
+  opacity:.85;
+}
+@media (prefers-reduced-motion:no-preference){
+  .ck-pins .ck-ln-todo{ animation:ck-march 1.9s linear infinite }
+}
