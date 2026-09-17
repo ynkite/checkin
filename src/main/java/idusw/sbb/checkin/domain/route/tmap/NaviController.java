@@ -27,6 +27,18 @@ public class NaviController {
         return ResponseEntity.ok(ApiResponse.success(route));
     }
 
+    // 주변 검색 — 「근처 주유소·화장실·편의점」
+    @GetMapping("/nearby")
+    public ResponseEntity<ApiResponse<java.util.List<Map<String, Object>>>> nearby(
+            @RequestParam double lat,
+            @RequestParam double lng,
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "5") int radiusKm,
+            @RequestParam(defaultValue = "5") int count) {
+        return ResponseEntity.ok(ApiResponse.success(
+                naviService.nearby(lat, lng, keyword, radiusKm, count)));
+    }
+
     private double num(Object o) {
         if (o == null) throw new IllegalArgumentException("좌표가 필요합니다.");
         return Double.parseDouble(o.toString());

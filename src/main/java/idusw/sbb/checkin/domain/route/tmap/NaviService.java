@@ -28,6 +28,28 @@ public class NaviService {
         return parsed != null ? parsed : NaviRoute.notReady("경로를 불러오지 못했습니다.");
     }
 
+    // 주변 검색 — 현재 위치 반경에서 키워드로 (「근처 주유소」 등)
+    public List<java.util.Map<String, Object>> nearby(double lat, double lon, String keyword, int radiusKm, int count) {
+        List<java.util.Map<String, Object>> out = new ArrayList<>();
+        if (!tmapClient.ready()) return out;
+        JsonNode res = tmapClient.poisAround(lat, lon, keyword, radiusKm, count);
+        if (res == null) return out;
+        JsonNode pois = res.path("searchPoiInfo").path("pois").path("poi");
+        if (!pois.isArray()) return out;
+        for (JsonNode p : pois) {
+            String plat = p.path("frontLat").asText(p.path("noorLat").asText(""));
+            String plon = p.path("frontLon").asText(p.path("noorLon").asText(""));
+            if (plat.isBlank() || plon.isBlank()) continue;
+            java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("name", p.path("name").asText(""));
+            m.put("lat", Double.parseDouble(plat));
+            m.put("lng", Double.parseDouble(plon));
+            m.put("distanceKm", p.path("radius").asDouble(0)); // 반경(거리) km
+            out.add(m);
+        }
+        return out;
+    }
+
     // GeoJSON FeatureCollection → NaviRoute.
     // LineString feature = 경로선, Point feature(description 있는 것) = 턴 안내점.
     static NaviRoute parse(JsonNode res) {
