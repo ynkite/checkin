@@ -24,6 +24,7 @@ import java.util.List;
 public class TourController {
 
     private final KorTourService korTourService;
+    private final idusw.sbb.checkin.domain.tour.service.TourExtraService tourExtraService;
     private final RelatedTourService relatedTourService;
     private final LocgoHubService locgoHubService;
     private final ConcentrationService concentrationService;
@@ -31,6 +32,38 @@ public class TourController {
     private final LodgingRateService lodgingRateService;
 
     /** 지역 기반 관광지·숙소 목록 (KorService2). */
+    /* ── 받아 놓고 안 쓰던 넷 ────────────────────────────────
+       플래너의 「따로 챙길 것」에 반려동물·노인 동반 칩이 이미 있는데
+       고른 값이 장소 고르는 데 아무 영향을 안 줬다. 이제 준다. */
+
+    @GetMapping("/barrier-free")
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> barrierFree(
+            @RequestParam(required = false) String areaCode,
+            @RequestParam(defaultValue = "10") int numOfRows) {
+        return ResponseEntity.ok(ApiResponse.success(tourExtraService.barrierFree(areaCode, numOfRows)));
+    }
+
+    @GetMapping("/pet")
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> pet(
+            @RequestParam(required = false) String areaCode,
+            @RequestParam(defaultValue = "10") int numOfRows) {
+        return ResponseEntity.ok(ApiResponse.success(tourExtraService.petFriendly(areaCode, numOfRows)));
+    }
+
+    @GetMapping("/camping")
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> camping(
+            @RequestParam(required = false) String areaCode,
+            @RequestParam(defaultValue = "10") int numOfRows) {
+        return ResponseEntity.ok(ApiResponse.success(tourExtraService.camping(areaCode, numOfRows)));
+    }
+
+    @GetMapping("/trails")
+    public ResponseEntity<ApiResponse<List<java.util.Map<String, Object>>>> trails(
+            @RequestParam(required = false) String areaCode,
+            @RequestParam(defaultValue = "10") int numOfRows) {
+        return ResponseEntity.ok(ApiResponse.success(tourExtraService.trails(areaCode, numOfRows)));
+    }
+
     @GetMapping("/spots")
     public ResponseEntity<ApiResponse<List<Spot>>> spots(
             @RequestParam(required = false) String areaCode,

@@ -43,6 +43,34 @@ public class TravelTimeController {
         return ResponseEntity.ok(ApiResponse.success(travelTimeService.compare(req)));
     }
 
+    /**
+     * 좌표 -> 주소. 플래너의 「지금 위치」 버튼이 쓴다.
+     * 키가 없으면 ready=false 로 답한다 — 화면은 조용히 넘어가고
+     * 직접 입력·검색 두 가지를 그대로 쓴다.
+     */
+    @GetMapping("/reverse")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> reverse(
+            @RequestParam double lat, @RequestParam double lng) {
+        Map<String, Object> out = new LinkedHashMap<>();
+        JsonNode r = tmap.reverseGeo(lat, lng);
+        if (r == null) {
+            out.put("ready", false);
+            out.put("note", "좌표를 주소로 바꾸는 연동은 준비 중입니다.");
+            return ResponseEntity.ok(ApiResponse.success(out));
+        }
+        JsonNode a = r.path("addressInfo");
+        String full = a.path("fullAddress").asText("");
+        String road = a.path("newRoadAddress").asText("");
+        out.put("ready", true);
+        out.put("lat", lat);
+        out.put("lng", lng);
+        /* 도로명이 있으면 그걸 쓴다. 사람이 아는 주소는 도로명 쪽이다 */
+        out.put("address", !road.isBlank() ? road : full);
+        out.put("city", a.path("city_do").asText(""));
+        out.put("gu", a.path("gu_gun").asText(""));
+        return ResponseEntity.ok(ApiResponse.success(out));
+    }
+
     /** 출발지 후보. 화면의 「출발지」 칸이 부른다. */
     @GetMapping("/origin")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> origin(

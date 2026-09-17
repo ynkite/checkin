@@ -129,3 +129,22 @@ detection.route.delay-threshold=1.3
 
 # ---------- 위치정보 가명처리 ----------
 privacy.geo.grid-decimals=2
+
+# SK 지오비전 퍼즐 - 지하철 혼잡도 / 장소 혼잡도 / 유동인구 /
+#   국내 여행 / 주거 생활 / 음식점 / 학원.
+#   TMAP 과 같은 SK 계정이지만 상품을 따로 신청하고 키도 따로 나온다.
+#   비워 두면 /api/puzzle/status 가 ready=false 로 답하고
+#   화면은 그 칸을 「연동 전」으로 둔다. 0 으로 채우지 않는다.
+sk.puzzle.api.key=${SK_PUZZLE_API_KEY:}
+sk.puzzle.api.base-url=https://apis.openapi.sk.com/puzzle
+
+# 상품마다 버전이 달라서 신청한 뒤 문서를 보고 맞춘다.
+#   맞추더라도 자바를 다시 빌드하지 않게 설정으로 빼 뒀다.
+#   {station} {poi} {area} 자리는 코드가 채운다.
+# sk.puzzle.path.subway=/subway/congestion/stat/hourly/stations/{station}
+# sk.puzzle.path.place=/place/congestion/stat/hourly/pois/{poi}
+# sk.puzzle.path.pop=/pop/congestion/stat/hourly/areas/{area}
+# sk.puzzle.path.travel=/travel/visitor/stat/monthly/areas/{area}
+# sk.puzzle.path.dining=/dining/sales/stat/monthly/areas/{area}
+# sk.puzzle.path.residence=/residence/pop/stat/monthly/areas/{area}
+# sk.puzzle.path.academy=/academy/sales/stat/monthly/areas/{area}

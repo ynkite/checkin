@@ -124,6 +124,18 @@ public class TmapClient {
         return post("/tmap/routes/pedestrian?version=1", body);
     }
 
+    /** 좌표 -> 주소. 「지금 위치」 버튼이 쓴다 */
+    public JsonNode reverseGeo(double lat, double lon) {
+        if (!ready()) return null;
+        Map<String, String> q = new java.util.LinkedHashMap<>();
+        q.put("version", "1");
+        q.put("lat", String.valueOf(lat));
+        q.put("lon", String.valueOf(lon));
+        q.put("coordType", "WGS84GEO");
+        q.put("addressType", "A10");
+        return get("/tmap/geo/reversegeocoding", q);
+    }
+
     /* ── 바닥 ──────────────────────────────────────────────── */
 
     /** TMAP 은 startName·endName 을 URL 인코딩한 값으로 받는다. */
