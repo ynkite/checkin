@@ -3652,15 +3652,14 @@ function resetPlannerForm() {
     const fields = ['dest-prov','dest-city','dep-prov','dep-city','s1-date-start','s1-date-end','s1-pax','s1-budget'];
     fields.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 
-    // 칩 초기화
-    document.querySelectorAll('#chip-trans .chip').forEach((c,i) => c.classList.toggle('on', i===0));
-    document.querySelectorAll('#chip-acc .chip').forEach((c,i) => c.classList.toggle('on', i===0));
-    document.querySelectorAll('#chip-comp .chip').forEach((c,i) => c.classList.toggle('on', i===1));
-    document.querySelectorAll('#chip-style .chip').forEach((c,i) => c.classList.toggle('on', i===0));
-    document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
-    document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
-    document.querySelectorAll('#chip-density .chip').forEach((c,i) => c.classList.toggle('on', i===1));
-    document.querySelectorAll('#chip-accopts .chip').forEach(c => c.classList.remove('on'));
+    // 칩 초기화 — 아무것도 골라 두지 않는다.
+    // 이동수단·숙소·동행·스타일·하루밀도가 첫 칩으로 켜져 있었다.
+    // 고른 적 없는 값이 고른 것처럼 보이면 그대로 동선에 들어간다.
+    // 이전 플랜에서 불러온 값일 때만 켜진다 — 그건 다른 경로가 맡는다.
+    ['#chip-trans', '#chip-acc', '#chip-comp', '#chip-style', '#chip-food',
+     '#chip-special', '#chip-density', '#chip-accopts'].forEach(sel => {
+        document.querySelectorAll(sel + ' .chip').forEach(c => c.classList.remove('on'));
+    });
 
     // other-input 초기화
     ['other-trans','other-acc','other-comp','other-style','other-food','other-allergy','other-special'].forEach(id => {

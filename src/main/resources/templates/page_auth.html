@@ -57,9 +57,9 @@
     idDuplicate:   '이미 사용 중인 아이디입니다.',
     idOk:          '쓸 수 있는 아이디입니다.',
     emailEmpty:    '이메일을 적어 주세요.',
-    emailInvalid:  '올바른 이메일 형식이 아닙니다. (@가 포함된 이메일을 적어 주세요.)',
-    emailDuplicate:'이미 가입된 이메일입니다. 다른 이메일을 사용해주세요.',
-    emailSending:  '메일을 발송 중입니다. 잠시만 기다려주세요...',
+    emailInvalid:  '이메일 주소에 @와 도메인을 포함해 주세요.',
+    emailDuplicate:'이미 가입된 이메일입니다. 다른 이메일을 입력해 주세요.',
+    emailSending:  '메일을 발송 중입니다. 잠시만 기다려 주세요.',
     emailSent:     '인증 메일을 보냈습니다. 메일함을 봐 주세요.',
     verifyOk:      '이메일을 확인했습니다.',
     verifyFail:    '인증번호가 틀렸거나 만료되었습니다.',
@@ -67,10 +67,10 @@
     emailEmptyForm:'이메일을 적어 주세요.',
     emailNotVerify:'이메일부터 확인해 주세요.',
     pwEmpty:       '비밀번호를 적어 주세요.',
-    birthEmpty:    '생년월일을 선택해주세요.',
-    regionEmpty:   '거주 지역(도/시)을 선택해주세요.',
-    genderEmpty:   '성별을 선택해주세요.',
-    mbtiIncomplete:'MBTI 4가지 항목을 모두 선택해주세요.',
+    birthEmpty:    '생년월일을 선택해 주세요.',
+    regionEmpty:   '거주 지역을 선택해 주세요.',
+    genderEmpty:   '성별을 선택해 주세요.',
+    mbtiIncomplete:'MBTI 4가지 항목을 모두 선택해 주세요.',
     signupSuccess: '체크인 가입 완료',
     signupFail:    '가입하지 못했습니다. 적은 내용을 다시 봐 주세요.',
   };
@@ -112,23 +112,6 @@
     `).join('');
     }
   }
-  // // MBTI 선택기 삭제예정
-  // const mbtiSel = document.getElementById('mbti-selector');
-  // if (mbtiSel) {
-  //   mbtiSel.innerHTML = MBTI_DIMS.map(d => `
-  //     <div style="display:flex;gap:6px;align-items:center">
-  //       <span style="font-size:11px;color:var(--text3);width:52px;font-weight:600">${d.label}</span>
-  //       ${d.pairs.map(p => `
-  //         <button class="chip chip-sm${p.val === d.default ? ' on' : ''}"
-  //           onclick="selectMbti(this,'${d.key}','${p.val}')"
-  //           data-pos="${MBTI_DIMS.findIndex(x => x.key === d.key)}"
-  //           data-val="${p.val}">${p.label}</button>
-  //       `).join('')}
-  //     </div>
-  //   `).join('');
-  // }
-  // }
-
   // ── 지역 select 업데이트 ──
   // page_auth.html 상단 스크립트 내 기존 함수를 아래와 같이 변경
   // 두 번째 인자로 하위 시군구 select의 ID를 받도록 확장 (기본값은 일반 폼의 'city-select')
@@ -177,13 +160,13 @@
 
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
                         .then(() => alert(AUTH_VALID_MSG.emailSent))
-                        .catch(() => alert("메일 발송에 실패했습니다. 다시 시도해주세요."))
+                        .catch(() => alert("메일을 보내지 못했습니다. 이메일 주소를 확인한 뒤 다시 시도해 주세요."))
                         .finally(() => {
                           // 3. 발송 완료 후(성공/실패 무관) 버튼을 원래대로 복구합니다.
                           if (btn) {
                             btn.innerText = "인증 받기";
                             btn.disabled = false;
-                            btn.style.background = ""; // 원래 CSS 색상(var(--sage))으로 복구
+                            btn.style.background = ""; // 공용 버튼 색상으로 복구
                             btn.style.cursor = "pointer";
                           }
                         });
@@ -253,7 +236,7 @@
         const errData = await response.json().catch(() => null);
         const msg = errData?.errors?.[0]?.defaultMessage
                 || AUTH_VALID_MSG.signupFail.split(': ')[1];
-        toast('가입 실패: ' + msg);
+        toast('가입 정보를 저장하지 못했습니다. ' + msg);
       }
     });
   }
@@ -310,7 +293,7 @@
   function prSetMsg(id, msg, ok) {
     const el = document.getElementById(id);
     el.textContent  = msg;
-    el.style.color  = ok ? 'var(--sage-d)' : 'var(--coral)';
+    el.style.color  = ok ? 'var(--slate)' : 'var(--tile)';
   }
 
   // 1단계: 이메일로 인증번호 발송
@@ -347,7 +330,7 @@
         prSetMsg('pr-code-msg', '인증되었습니다.', true);
         setTimeout(() => prShowStep(3), 800);
       } else {
-        prSetMsg('pr-code-msg', '인증번호가 틀렸거나 만료되었습니다.', false);
+        prSetMsg('pr-code-msg', '인증번호가 틀렸거나 만료되었습니다. 새 인증번호를 받아 입력해 주세요.', false);
       }
     }).catch(() => prSetMsg('pr-code-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
@@ -370,7 +353,7 @@
         setTimeout(() => { closePwResetModal(); }, 1500);
       } else {
         const msg = await res.text().catch(() => '');
-        prSetMsg('pr-pw-msg', '' + (msg || '변경에 실패했습니다. 다시 시도해주세요.'), false);
+        prSetMsg('pr-pw-msg', '' + (msg || '비밀번호를 바꾸지 못했습니다. 입력 조건을 확인한 뒤 다시 시도해 주세요.'), false);
       }
     }).catch(() => prSetMsg('pr-pw-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
@@ -451,7 +434,7 @@
         <label class="form-label">MBTI <small style="color:var(--text3);font-weight:400">(J/P → 일정 밀도 자동 설정)</small></label>
         <!-- MBTI 선택기: JS initAuthPage() 로 동적 주입 -->
         <div style="display:flex;flex-direction:column;gap:8px" id="mbti-selector"></div>
-        <div style="margin-top:9px;background:var(--sage-pale);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--sage-d);display:flex;align-items:center;gap:8px">
+        <div style="margin-top:9px;background:var(--slate-pale);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--slate);display:flex;align-items:center;gap:8px">
           <span style="font-weight:700">선택된 MBTI:</span>
           <span id="mbti-result" style="font-size:15px;font-weight:800">ESTP</span>
           <span id="mbti-density" style="font-size:11px;color:var(--text3)">→ P: 여유롭게 자동 설정</span>
@@ -479,7 +462,7 @@
           <span id="social-signup-icon" style="font-size:15px;font-weight:700">K</span>
           <h2 class="auth-ttl" style="margin-bottom:0">소셜 계정으로 가입</h2>
         </div>
-        <div id="social-signup-notice" style="background:var(--terra-pale);border:1px solid #FEE500;border-radius:9px;padding:10px 14px;font-size:12px;color:var(--num);margin-bottom:18px">
+        <div id="social-signup-notice" style="background:var(--terra-pale);border:1px solid var(--terra);border-radius:9px;padding:10px 14px;font-size:12px;color:var(--num);margin-bottom:18px">
           소셜 연결 완료 — 아이디·이메일·비밀번호는 소셜 계정으로 대체됩니다.
         </div>
 
@@ -553,7 +536,7 @@
 
 <div class="page" id="page-login">
   <div class="auth-wrap">
-    <div class="auth-card" style="width:400px">
+    <div class="auth-card auth-card-login">
       <h2 class="auth-ttl">로그인</h2>
       <p class="auth-sub">저장한 일정과 가계부를 다시 엽니다</p>
       <div class="login-warn" id="login-warn" style="display:none"></div>
@@ -565,18 +548,18 @@
         <label class="form-label">비밀번호</label>
         <input class="form-input" type="password" placeholder="비밀번호" id="lpw" onkeydown="if(event.key==='Enter')tryLogin()">
       </div>
-      <button class="btn-f" style="width:100%;padding:12px;font-size:14px;border-radius:var(--r);margin-bottom:9px" onclick="tryLogin()">로그인</button>
-      <div style="text-align:center;margin-bottom:12px">
+      <button class="btn-f auth-submit" onclick="tryLogin()">로그인</button>
+      <div class="auth-secondary-action">
         <button class="auth-link auth-q" onclick="openPwResetModal()">비밀번호 재설정</button>
       </div>
       <div class="social-sep">
         <div class="social-line"></div><span class="social-txt">소셜 로그인</span><div class="social-line"></div>
       </div>
-      <div style="display:flex;gap:9px">
+      <div class="auth-social-actions">
         <button class="btn-social" onclick="tryGoogleLogin()">구글</button>
         <button class="btn-social" onclick="tryKakaoLogin()">카카오</button>
       </div>
-      <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">
+      <div class="auth-switch">
         계정 없으신가요? <button class="auth-link" onclick="go('signup')">회원가입</button>
       </div>
     </div>
@@ -586,114 +569,8 @@
 <!-- ══════════════════════════════════════════════════
      비밀번호 재설정 모달
 ══════════════════════════════════════════════════ -->
-<style>
-  #pw-reset-modal, #signupSuccessModal, #pw-change-recommend-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(0,0,0,0.45);
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(3px);
-  }
-  .pr-card {
-    background: var(--panel);
-    border-radius: 18px;
-    width: 400px;
-    max-width: calc(100vw - 32px);
-    padding: 32px 28px 28px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
-    position: relative;
-    animation: prSlideIn .22s ease;
-  }
-  @keyframes prSlideIn {
-    from { opacity:0; transform:translateY(12px) scale(.97); }
-    to   { opacity:1; transform:none; }
-  }
-  .pr-close-btn {
-    position: absolute;
-    top: 14px; right: 16px;
-    background: none; border: none;
-    font-size: 20px; cursor: pointer;
-    color: var(--text3);
-    line-height: 1;
-    padding: 4px;
-  }
-  .pr-close-btn:hover { color: var(--text1); }
-  .pr-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text1);
-    margin-bottom: 4px;
-  }
-  .pr-sub {
-    font-size: 13px;
-    color: var(--text3);
-    margin-bottom: 22px;
-  }
-  .pr-steps-bar {
-    display: flex;
-    align-items: center;
-    margin-bottom: 24px;
-  }
-  .pr-step-dot {
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 700;
-    background: var(--ui-line-2);
-    color: var(--text3);
-    transition: background .2s, color .2s;
-    flex-shrink: 0;
-  }
-  .pr-step-dot.done  { background: var(--sage); color: var(--panel); }
-  .pr-step-dot.active{ background: var(--terra); color: var(--panel); box-shadow: 0 0 0 3px var(--terra-pale); }
-  .pr-step-line      { flex: 1; height: 2px; background: var(--ui-line-2); transition: background .2s; }
-  .pr-step-line.done { background: var(--sage); }
-  .pw-reset-step        { display: none; }
-  .pw-reset-step.active { display: block; }
-  .pr-label {
-    display: block;
-    font-size: 13px; font-weight: 600;
-    color: var(--text2);
-    margin-bottom: 6px;
-  }
-  .pr-input {
-    width: 100%; padding: 10px 12px;
-    border: 1.5px solid var(--border);
-    border-radius: 9px;
-    font-size: 14px;
-    box-sizing: border-box;
-    background: var(--ui-plate);
-    color: var(--text1);
-    outline: none;
-    transition: border-color .15s;
-  }
-  .pr-input:focus { border-color: var(--terra); background: var(--panel); }
-  .pr-msg { font-size: 12px; min-height: 18px; margin-top: 5px; }
-  .pr-btn {
-    width: 100%; padding: 11px;
-    background: var(--terra);
-    color: var(--panel);
-    border: none; border-radius: 9px;
-    font-size: 14px; font-weight: 600;
-    cursor: pointer;
-    margin-top: 12px;
-    transition: opacity .15s;
-  }
-  .pr-btn:hover { opacity: .88; }
-  .pr-back-btn {
-    background: none; border: none;
-    font-size: 12px; color: var(--text3);
-    cursor: pointer; margin-top: 10px;
-    display: block; width: 100%; text-align: center;
-  }
-  .pr-back-btn:hover { color: var(--text1); }
-</style>
-
-<div id="pw-reset-modal">
-  <div class="pr-card">
+<div class="auth-modal" id="pw-reset-modal">
+  <div class="auth-dialog">
     <button class="pr-close-btn" onclick="closePwResetModal()">✕</button>
     <div class="pr-title">비밀번호 재설정</div>
     <p class="pr-sub">가입한 이메일로 인증 후 비밀번호를 변경할 수 있습니다</p>
@@ -709,42 +586,42 @@
     <!-- Step 1: 이메일 입력 -->
     <div class="pw-reset-step active" id="pw-reset-step1">
       <label class="pr-label">가입된 이메일 주소</label>
-      <input class="pr-input" type="email" id="pr-email" placeholder="email@example.com"
+      <input class="form-input" type="email" id="pr-email" placeholder="email@example.com"
              onkeydown="if(event.key==='Enter')prSendCode()">
       <div class="pr-msg" id="pr-email-msg"></div>
-      <button class="pr-btn" onclick="prSendCode()">인증번호 발송</button>
+      <button class="btn-f auth-submit" onclick="prSendCode()">인증번호 발송</button>
     </div>
 
     <!-- Step 2: 인증번호 확인 -->
     <div class="pw-reset-step" id="pw-reset-step2">
       <label class="pr-label">이메일로 받은 6자리 인증번호</label>
-      <input class="pr-input" type="text" id="pr-code" placeholder="123456" maxlength="6"
+      <input class="form-input" type="text" id="pr-code" placeholder="123456" maxlength="6"
              onkeydown="if(event.key==='Enter')prVerifyCode()">
       <div class="pr-msg" id="pr-code-msg"></div>
-      <button class="pr-btn" onclick="prVerifyCode()">인증번호 확인</button>
+      <button class="btn-f auth-submit" onclick="prVerifyCode()">인증번호 확인</button>
       <button class="pr-back-btn" onclick="prShowStep(1)">← 이메일 다시 입력</button>
     </div>
 
     <!-- Step 3: 새 비밀번호 -->
     <div class="pw-reset-step" id="pw-reset-step3">
       <label class="pr-label">새 비밀번호</label>
-      <input class="pr-input" type="password" id="pr-new" placeholder="영문 대·소문자+숫자+특수문자 8~16자">
+      <input class="form-input" type="password" id="pr-new" placeholder="영문 대·소문자+숫자+특수문자 8~16자">
       <label class="pr-label" style="margin-top:12px">새 비밀번호 확인</label>
-      <input class="pr-input" type="password" id="pr-confirm" placeholder="비밀번호 재입력"
+      <input class="form-input" type="password" id="pr-confirm" placeholder="비밀번호 재입력"
              onkeydown="if(event.key==='Enter')prChangePassword()">
       <div class="pr-msg" id="pr-pw-msg"></div>
-      <button class="pr-btn" onclick="prChangePassword()">비밀번호 변경하기</button>
+      <button class="btn-f auth-submit" onclick="prChangePassword()">비밀번호 변경하기</button>
     </div>
   </div>
 </div>
 
-  <div id="signupSuccessModal">
-    <div class="pr-card" style="text-align: center; padding: 36px 24px 28px;">
-      <div class="pr-title" style="font-size: 20px; margin-bottom: 8px;">회원가입 완료!</div>
-      <p class="pr-sub" style="margin-bottom: 24px; line-height: 1.5;">
-        체크인 회원가입에 성공하셨습니다.<br>확인을 누르면 로그인 페이지로 이동합니다.
+  <div class="auth-modal" id="signupSuccessModal">
+    <div class="auth-dialog auth-dialog-center">
+      <div class="pr-title auth-dialog-title">회원가입 완료</div>
+      <p class="pr-sub auth-dialog-copy">
+        계정을 만들었습니다.<br>확인을 누르면 로그인 화면으로 이동합니다.
       </p>
-      <button class="pr-btn" style="margin-top: 0;" onclick="document.getElementById('signupSuccessModal').style.display='none'; go('login');">확인</button>
+      <button class="btn-f auth-submit" onclick="document.getElementById('signupSuccessModal').style.display='none'; go('login');">확인</button>
     </div>
   </div>
 
@@ -764,20 +641,18 @@
 </script>
 
 <!-- 비밀번호 90일 변경 권장 모달 -->
-<div id="pw-change-recommend-modal" onclick="if(event.target===this)closePwChangeRecommendModal()">
-  <div class="pr-card" style="text-align:center">
-    <div class="pr-title" style="margin-bottom:8px">비밀번호 변경을 권장합니다</div>
-    <p style="font-size:13px;color:var(--text3);line-height:1.7;margin-bottom:24px">
+<div class="auth-modal" id="pw-change-recommend-modal" onclick="if(event.target===this)closePwChangeRecommendModal()">
+  <div class="auth-dialog auth-dialog-center">
+    <div class="pr-title auth-dialog-title">비밀번호 변경을 권장합니다</div>
+    <p class="pr-sub auth-dialog-copy">
       마지막 비밀번호 변경 후 <strong>90일</strong>이 경과했습니다.<br>
       보안을 위해 비밀번호를 변경해 주세요.
     </p>
-    <div style="display:flex;gap:8px">
-      <button onclick="goChangePw()"
-              style="flex:1;padding:12px;border-radius:var(--r);background:var(--primary);color:var(--panel);border:none;cursor:pointer;font-size:14px;font-weight:700">
+    <div class="auth-dialog-actions">
+      <button class="btn-f auth-dialog-action" onclick="goChangePw()">
         지금 변경하기
       </button>
-      <button onclick="snoozeAndClosePwChangeModal()"
-              style="flex:1;padding:12px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:14px;font-weight:600">
+      <button class="btn-o auth-dialog-action" onclick="snoozeAndClosePwChangeModal()">
         다음에 변경
       </button>
     </div>

@@ -51,7 +51,7 @@
     <div class="ledger-body">
 
       <!-- 요약 3카드 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:22px">
+      <div class="ledger-summary-grid">
         <div class="ledger-summary-card">
           <div style="font-size:11px;color:var(--text3);margin-bottom:6px">예상 총액</div>
           <div id="ledger-total" style="font-size:20px;font-weight:800;color:var(--text)">-</div>
@@ -87,6 +87,11 @@
           </div>
           <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
             총액을 한 숫자로 주지 않습니다. 항목마다 어디까지가 공개 요금인지 표시합니다.
+          </div>
+          <div class="budget-basis-key" aria-label="금액 상태 구분">
+            <span data-status="confirmed">확정</span>
+            <span data-status="estimated">추정</span>
+            <span data-status="none">해당없음</span>
           </div>
           <div id="budget-basis-rows"></div>
         </div>

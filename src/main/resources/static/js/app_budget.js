@@ -448,7 +448,11 @@ async function _loadBudgetEstimate(tripId) {
              +     '<div style="font-size:11px;color:var(--ink-3);margin-top:2px">' + esc(it.basis) + '</div>'
              +   '</div>'
              +   '<div style="font-size:13px;font-weight:700;color:' + st.color + ';text-align:right;'
-             +     'font-variant-numeric:tabular-nums">' + _fmtWon(it.amount) + '</div>'
+             +     'font-variant-numeric:tabular-nums">'
+             /* 해당없음은 0원이 아니다. 값이 없는 것과 0원인 것을 같은
+                얼굴로 두면 「반려동물 요금 0원」이 「안 받는다」로 읽힌다.
+                _fmtWon 은 공통 포맷터라 여기서만 갈라 쓴다. */
+             +     (it.status === 'NONE' ? '\u2014' : _fmtWon(it.amount)) + '</div>'
              +   '<div style="font-size:11px;color:' + st.color + ';white-space:nowrap">'
              +     st.mark + ' ' + st.label + '</div>'
              + '</div>';

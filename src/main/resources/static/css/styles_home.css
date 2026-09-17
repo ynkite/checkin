@@ -1443,9 +1443,27 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 .ck-home .ck-hero.ck-intro .st-tl,
 .ck-home .ck-hero.ck-intro .st-side,
 .ck-home .ck-hero.ck-intro .st-mini,
-.ck-home .ck-hero.ck-intro .st-form,
 .ck-home .ck-hero.ck-intro .st-cwkey{
   opacity:.14; transition:opacity .5s ease;
+}
+
+/* 건너뛰기. 연출은 14초다. 기다릴 사람은 보고, 아닌 사람은 넘긴다.
+   연출이 도는 동안만 보인다. */
+.ck-home .ck-hero .ck-skipin{ display:none }
+.ck-home .ck-hero.ck-intro .ck-skipin{
+  display:inline-flex; align-items:center; gap:6px;
+  position:absolute; right:18px; bottom:18px; z-index:9;
+  padding:8px 14px 9px; border:0; cursor:pointer;
+  border-radius:var(--r-pill);
+  background:var(--glass); box-shadow:var(--glass-lift);
+  font-family:var(--sans); font-size:12.5px; font-weight:600;
+  color:var(--ink-2); letter-spacing:var(--tracking-tight);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+}
+.ck-home .ck-hero.ck-intro .ck-skipin:hover{ color:var(--ink) }
+.ck-home .ck-hero.ck-intro .ck-skipin:active{ transform:translateY(1px) }
+@media (max-width:900px){
+  .ck-home .ck-hero.ck-intro .ck-skipin{ right:12px; bottom:12px }
 }
 
 /* ── 갈래가 바뀌는 순간 ─────────────────────────────────────

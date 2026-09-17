@@ -427,6 +427,15 @@
     function onHide() { if (document.hidden) finish(); }
     document.addEventListener('visibilitychange', onHide);
 
+    /* 건너뛰기 — 연출은 14초다. 기다릴 사람은 보고, 아닌 사람은 넘긴다 */
+    window.ckSkipIntro = finish;
+    var skipBtn = $('ck_skipin');
+    if (skipBtn) skipBtn.addEventListener('click', finish, { once: true });
+    /* 판을 누르는 것도 「그만 보고 쓰겠다」는 뜻이다. 연출을 끝내고
+       그 클릭이 원래 하려던 일을 하게 둔다 — 막아 두면 화면은 멀쩡해
+       보이는데 아무것도 안 눌리는 상태가 된다. */
+    if (host) host.addEventListener('pointerdown', finish, { once: true });
+
     if (S.camLock) S.camLock(true);
     if (window.ckHeroHold) window.ckHeroHold(true);   /* 나레이션을 세운다 */
     if (host) host.classList.add('ck-intro');

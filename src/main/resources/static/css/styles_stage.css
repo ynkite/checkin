@@ -454,12 +454,18 @@
 .ck-home .ck-hero.ck-cut #st_bigmap{ opacity:0 }
 
 /* 들어오는 동안은 판을 물려 둔다. 화면에 눈이 가야 한다 */
+/* 「경로 만들기」 폼은 빠졌다. 이 화면의 주된 동작이라 연출이 도는
+     동안에도 쓸 수 있어야 한다 — 바로 일정을 짜러 온 사람이 14초를
+     기다려야 했다. 무대 주변 판만 물린다. */
 .ck-home .ck-hero.ck-intro .st-tl,
 .ck-home .ck-hero.ck-intro .st-side,
 .ck-home .ck-hero.ck-intro .st-mini,
-.ck-home .ck-hero.ck-intro .st-form,
 .ck-home .ck-hero.ck-intro .st-view,
 .ck-home .ck-hero.ck-intro .st-cwkey,
 .ck-home .ck-hero.ck-intro .st-wx{
-  opacity:.12; transition:opacity .45s ease; pointer-events:none;
+  /* pointer-events 를 막지 않는다. 막아 두면 화면은 멀쩡해 보이는데
+     14초 동안 아무것도 안 눌리는 상태가 된다 — 보이는 것과 되는 것이
+     어긋나는 게 흐릿한 것보다 나쁘다. 연출 중에 누르면 연출이 끝난다
+     (app_home.js 의 들어오는 장면이 무대에 한 번만 듣는 클릭을 건다). */
+  opacity:.12; transition:opacity .45s ease;
 }

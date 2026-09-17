@@ -23,7 +23,7 @@
         if (aiContainer && MOCK_AI_RECOMMENDATIONS.items) {
           aiContainer.innerHTML = MOCK_AI_RECOMMENDATIONS.items.map(item => `
         <div class="ai-reco-card" onclick="go(${item.url})">
-          <div style="font-size:11px;color:var(--sage-d);font-weight:700;margin-bottom:2px">${item.category}</div>
+          <div style="font-size:11px;color:var(--slate);font-weight:700;margin-bottom:2px">${item.category}</div>
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${item.title}</div>
           <div style="font-size:11px;color:var(--text3)">취향 일치 ${item.matchCount}개</div>
         </div>
@@ -35,11 +35,11 @@
       const posts = typeof MOCK_COMMUNITY_POSTS !== 'undefined' ? MOCK_COMMUNITY_POSTS : null;
       if (posts) {
         const tabsData = [
-          { id: 'tab-route', key: 'route', label: '여행 경로', color: 'var(--warm)', catClass: 'cat-route', catStyle: '', borderClass: 'comm-tab-route' },
-          { id: 'tab-stay', key: 'stay', label: '숙소', color: 'var(--sage)', catClass: 'cat-stay', catStyle: '', borderClass: 'comm-tab-stay' },
-          { id: 'tab-food', key: 'food', label: '맛집', color: 'var(--coral)', catClass: 'cat-food', catStyle: '', borderClass: 'comm-tab-food' },
-          { id: 'tab-tour', key: 'tour', label: '관광지', color: 'var(--sky)', catClass: 'cat-tour', catStyle: '', borderClass: 'comm-tab-tour' },
-          { id: 'tab-cafe', key: 'cafe', label: '카페', color: 'var(--ink-3)', catClass: '', catStyle: 'background:var(--panel-2);color:var(--ink-2)', borderClass: 'comm-tab-cafe' }
+          { id: 'tab-route', key: 'route', label: '여행 경로', catClass: 'cat-route' },
+          { id: 'tab-stay', key: 'stay', label: '숙소', catClass: 'cat-stay' },
+          { id: 'tab-food', key: 'food', label: '맛집', catClass: 'cat-food' },
+          { id: 'tab-tour', key: 'tour', label: '관광지', catClass: 'cat-tour' },
+          { id: 'tab-cafe', key: 'cafe', label: '카페', catClass: 'cat-cafe' }
         ];
 
         tabsData.forEach(tab => {
@@ -48,27 +48,29 @@
           if (container) {
             if (items.length > 0) {
               container.innerHTML = items.map(p => `
-            <div class="post-card comm-post-item ${tab.borderClass}" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
+            <article class="post-card comm-post-item" onclick="go(${p.url})" data-tags="${p.tags}" data-likes="${p.likes}"
               data-scrap="${p.scrap}" data-date="${p.dateVal}" data-author="${p.author}">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-                <span class="post-cat ${tab.catClass}" style="${tab.catStyle}">${tab.label}</span>
-                <span style="font-size:10px;color:var(--text3)">${p.author} · ${p.dateStr}</span>
+              <div class="post-leading">
+                <span class="post-cat ${tab.catClass}">${tab.label}</span>
               </div>
-              <div class="post-ttl">${p.title}</div>
-              <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
-                ${p.tagList.map(tag => `<span style="font-size:10px;color:var(--sage-d);background:var(--sage-pale);padding:2px 6px;border-radius:10px">#${tag}</span>`).join('')}
+              <div class="post-copy">
+                <div class="post-ttl">${p.title}</div>
+                <div class="post-tags">
+                  ${p.tagList.map(tag => `<span class="post-tag">#${tag}</span>`).join('')}
+                </div>
               </div>
-              <div class="post-foot">
+              <div class="post-trailing">
+                <span class="post-byline">${p.author} · ${p.dateStr}</span>
                 <div class="post-stats">
                   <span class="post-stat">좋아요 ${p.likes}</span>
                   <span class="post-stat">스크랩 ${p.scrap}</span>
                   <span class="post-stat">조회 ${p.views}</span>
                 </div>
               </div>
-            </div>
+            </article>
           `).join('');
             } else {
-              container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">등록된 게시글이 없습니다.</div>`;
+              container.innerHTML = `<div class="comm-empty"><b>아직 올라온 후기가 없습니다.</b><span>첫 여행 후기를 남겨 이 목록을 시작해 주세요.</span></div>`;
             }
           }
         });
@@ -162,22 +164,12 @@
     });
   </script>
 
-  <style>
-    .active-tag { background: var(--sage) !important; color: var(--panel) !important; border-color: var(--sage-d) !important }
-    #blogEditor:empty:before { content: attr(data-placeholder); color: var(--text3); pointer-events: none }
-    #blogEditor img { max-width: 100%; border-radius: 8px; margin: 8px 0; display: block }
-    .comm-tab-food  { border-left: 3px solid var(--coral) }
-    .comm-tab-tour  { border-left: 3px solid var(--sky) }
-    .comm-tab-cafe  { border-left: 3px solid var(--ink-3) }
-    .comm-tab-stay  { border-left: 3px solid var(--sage) }
-    .comm-tab-route { border-left: 3px solid var(--warm) }
-  </style>
   <div class="page" id="page-community">
     <div class="comm-layout">
       <div class="comm-main">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <h2 style="font-size:22px;font-weight:800">커뮤니티</h2>
-          <button class="btn-f" style="padding:7px 14px;font-size:12px" onclick="checkAndOpenWrite()">+ 후기 작성</button>
+        <div class="comm-heading">
+          <h2>커뮤니티</h2>
+          <button class="btn-f" onclick="checkAndOpenWrite()">후기 작성</button>
         </div>
 
         <div class="comm-tabs" id="commTabs">
@@ -205,11 +197,11 @@
           </select>
         </div>
 
-        <div id="tab-route"></div>
-        <div id="tab-stay" style="display:none"></div>
-        <div id="tab-food" style="display:none"></div>
-        <div id="tab-tour" style="display:none"></div>
-        <div id="tab-cafe" style="display:none"></div>
+        <div id="tab-route"><div class="comm-empty"><b>후기를 불러오는 중입니다.</b><span>잠시 뒤에도 목록이 보이지 않으면 다시 열어 주세요.</span></div></div>
+        <div id="tab-stay" style="display:none"><div class="comm-empty"><b>아직 올라온 숙소 후기가 없습니다.</b><span>첫 숙소 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
+        <div id="tab-food" style="display:none"><div class="comm-empty"><b>아직 올라온 맛집 후기가 없습니다.</b><span>첫 맛집 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
+        <div id="tab-tour" style="display:none"><div class="comm-empty"><b>아직 올라온 관광지 후기가 없습니다.</b><span>첫 관광지 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
+        <div id="tab-cafe" style="display:none"><div class="comm-empty"><b>아직 올라온 카페 후기가 없습니다.</b><span>첫 카페 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
 
         <div class="comm-pagination" id="commPagination">
           <button class="page-btn on">1</button>
@@ -223,9 +215,9 @@
       <div class="comm-side">
         <div class="comm-side-sec">
           <div class="comm-side-ttl">이번 주 인기 태그</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px" id="popular-tags-list">
+          <div class="popular-tags" id="popular-tags-list">
           </div>
-          <div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center">클릭하여 필터링 · 다시 클릭하면 해제</div>
+          <div class="tag-help">선택하면 해당 태그만 보고, 다시 선택하면 해제합니다.</div>
         </div>
 
         <div class="comm-side-sec">
@@ -411,7 +403,7 @@
       </div>
       ${data.rating ? `<div style="margin-bottom:14px;font-size:14px">${starsHtml} <span style="font-size:12px;color:var(--text3)">(${data.rating}.0)</span></div>` : ''}
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px">
-        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
+        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--slate);background:var(--slate-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
       </div>
       ${placesHtml}
       <div class="review-body">${data.body}</div>
@@ -450,7 +442,7 @@
         </div>
       </div>
       <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px">
-        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--sage-d);background:var(--sage-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
+        ${(data.tags || []).map(t => `<span style="font-size:11px;color:var(--slate);background:var(--slate-pale);padding:3px 8px;border-radius:10px">#${t}</span>`).join('')}
       </div>
       <div class="bcard" style="margin-bottom:18px;padding:18px">
         <p style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:14px">${data.desc}</p>
