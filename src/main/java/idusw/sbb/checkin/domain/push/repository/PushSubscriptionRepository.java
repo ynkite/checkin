@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface PushSubscriptionRepository extends JpaRepository<PushSubscription, Long> {
     List<PushSubscription> findByUserId(Long userId);
     Optional<PushSubscription> findByEndpoint(String endpoint);
-    void deleteByEndpoint(String endpoint);
+    // 소유권 결합 삭제 — 남의 구독을 endpoint 만으로 지우지 못하게 (IDOR 방지)
+    void deleteByUserIdAndEndpoint(Long userId, String endpoint);
 }

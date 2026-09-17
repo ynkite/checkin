@@ -44,10 +44,10 @@ public class PushNotificationService {
                 .user(user).endpoint(endpoint).p256dh(p256dh).auth(auth).build());
     }
 
-    // 구독 해제
+    // 구독 해제 — 로그인한 본인 구독만. 남의 구독은 endpoint 를 알아도 못 지운다.
     @Transactional
-    public void unsubscribe(String endpoint) {
-        subscriptionRepository.deleteByEndpoint(endpoint);
+    public void unsubscribe(Long userId, String endpoint) {
+        subscriptionRepository.deleteByUserIdAndEndpoint(userId, endpoint);
     }
 
     // 특정 사용자의 모든 기기로 푸시 전송
