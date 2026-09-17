@@ -81,7 +81,9 @@
   function drawPins(route, hotIdx, alt) {
     var layer = $('ck_pinlayer');
     if (!layer) return;
-    if (!layer.firstElementChild) {
+    /* 핀이 있나로 본다. firstElementChild 로 보면 drawLine 이 넣은
+       선 svg 가 첫 자식이라, 선을 먼저 그은 뒤에는 핀이 영영 안 생긴다. */
+    if (!layer.querySelector('.ck-pin')) {
       /* 도쿄 앱 프레임에서 읽은 모양 — 번호가 든 동그라미가 지점에 박히고
          이름표는 위가 아니라 옆에 붙는다. 번호가 있어야 순서가 보인다. */
       var html = route.map(function (p, i) { return pinHTML(p, i, ''); }).join('');
@@ -122,6 +124,39 @@
            (p.note ? '<em>' + esc(p.note) + '</em>' : '') +
            crowdChip(p) + '</span>' +
            '</div>';
+  }
+
+  /* 지금 보고 있는 한 곳만 남긴다.
+
+     모형은 동네마다 한 장이다. 해운대 모형 위에 남포동 핀을 찍으면
+     그 자리는 해운대 안의 어딘가일 뿐이다 — 「코앞 바다가 바뀌는 것
+     같다」는 말이 나온 곳이 여기다. 그래서 그 장소의 모형을 보고 있을
+     때는 그 핀 하나만 둔다. 선이 장소까지 안 닿는 문제도 같이 없어진다.
+
+     동선 전체는 지도에서 보여 준다. 거기서는 좌표가 실제 위경도라
+     선이 핀 가운데에 정확히 닿는다. */
+  function soloPin(p, no) {
+    var layer = $('ck_pinlayer');
+    if (!layer) return;
+    layer.innerHTML = pinHTML({
+      name: p.name, note: p.note, dist: p.dist,
+      crowd: p.crowd, crowdLabel: p.crowdLabel, no: no,
+      x: (p.sx != null ? p.sx : p.x),
+      y: (p.sy != null ? p.sy : p.y)
+    }, 0, ' ck-solo');
+  }
+
+  /* 전체로 돌아간다. 세 곳을 실제 방위대로 놓고 선으로 잇는다.
+     자리는 경도를 가로, 위도를 세로로 편 값이라 순서와 방향이 실제와
+     같다. 이름표가 겹치는 만큼만 벌렸고, 실제 거리는 핀에 글자로
+     적는다 — 가까워 보이는 두 곳이 몇 km 인지 화면에 못 박아 둔다. */
+  function allPins(route, alt) {
+    var layer = $('ck_pinlayer');
+    if (!layer) return;
+    layer.innerHTML =
+      route.map(function (p, i) { return pinHTML(p, i, ''); }).join('') +
+      (alt ? pinHTML(alt, route.length, ' ck-cand') : '');
+    drawLine(route);
   }
 
   /* ─────────────── 1-b. 들어오는 장면 ───────────────
@@ -264,158 +299,179 @@
       (k < n ? pl('ck-ln-todo', k, n) : '');
   }
 
-  /* 들어오는 장면 한 번. 이미 봤으면 다시 안 한다 —
-     같은 연출을 매번 보면 기다리는 시간이 된다.
+  /* 들어오는 장면. 한 번만 본다 — 같은 연출을 매번 보면 기다리는 시간이 된다.
 
-     흐름 —
-       ① 지도   작게 축소해서 1·2·3 을 한눈에
-       ② 확대   1번 쪽으로 당기며 3D 로 넘어간다
-       ③④⑤ 1번 · 2번 · 3번을 끊어 가며 보여 준다
-       ⑥ 정리   세 곳이 다 보이는 자리로 물러나고 판이 들어온다
+       0.0s  지도    세 곳과 선. 해운대에서 감천이 18km 라는 게 여기서 보인다
+       1.9s  1번     해운대 모형. 그 곳 핀 하나만 남고 카메라가 멈춘다
+       3.5s  2번     남포동 모형으로 컷
+       5.1s  3번     감천 모형으로 컷
+       6.7s  갈래1   길이 막혀서 — 지도로 컷, 선이 새 순서로 다시 그려진다
+       9.2s  갈래2   사람이 몰려서 — 해운대에서 광안리 모형으로 컷
+      11.7s  갈래3   비가 와서 — 비가 내리고 감천에서 실내로 컷
+      14.2s  정리    전체로 물러나고 판이 들어온다
+
+     갈래를 왜 이렇게 나눠 보여 주는가 —
+       순서를 바꾸는 것은 지도에서만 보인다. 모형에서는 어느 쪽이 먼저인지
+       안 보이니, 선이 다시 그려지는 지도로 넘긴다.
+       장소를 바꾸는 것은 반대다. 모형이 통째로 바뀌는 게 제일 크게 보인다.
 
      끊어 가는 이유 — 미끄러지면 「코앞에서 조금 움직인」 것으로 보인다.
      끊으면 「다른 데로 갔다」로 읽힌다.
 
-     단계는 벽시계(setTimeout)로 넘어간다. requestAnimationFrame 은
-     탭이 뒤에 있으면 멈춰서 화면이 중간에 굳는다. */
+     단계는 전부 벽시계(setTimeout)로 넘어간다. requestAnimationFrame 은
+     탭이 뒤에 있으면 멈춰서 화면이 중간에 굳는다 — 한 번 겪었다. */
   function intro(route, done) {
     var stage = document.querySelector('.ck-stage');
     var reduce2 = matchMedia('(prefers-reduced-motion: reduce)').matches;
     var seen = false;
     try { seen = sessionStorage.getItem('ckIntroSeen') === '1'; } catch (e) {}
 
-    if (reduce2 || seen || !stage || !window.ckStage || route.length < 2) {
-      drawLine(route);                 /* 연출을 건너뛰어도 선은 있어야 한다 */
-      if (window.ckStage) window.ckStage.camFit();
+    var S = window.ckStage;
+    var alt = window.__ckAlt || null;
+
+    if (reduce2 || seen || !stage || !S || route.length < 2) {
+      allPins(route, alt);             /* 연출을 건너뛰어도 선은 있어야 한다 */
+      if (S) S.camFit();
       done();
       return;
     }
     try { sessionStorage.setItem('ckIntroSeen', '1'); } catch (e) {}
 
-    var S = window.ckStage;
     var host = $('ck_hero');
-    var pinLayer = $('ck_pinlayer');
+    var cap = $('ck_fix');
+    var fixes = window.__ckFixes || [];
     var timers = [];
     var ended = false;
 
     function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+    /* 화면을 한 번 덮었다 걷는다. 그 사이에 바꾸면 미끄러지지 않고
+       「바뀌었다」로 읽힌다 */
+    function cut(fn) {
+      if (!host) { fn(); return; }
+      host.classList.add('ck-cut');
+      at(190, function () {
+        fn();
+        at(80, function () { host.classList.remove('ck-cut'); });
+      });
+    }
+
+    /* 갈래 자막. 왜 · 어떻게 · 얼마를 화면 안에서 말한다.
+       옆 판을 봐야 알면 모형이 데이터가 아니라 그림이 된다. */
+    function say(f) {
+      if (!cap || !f) return;
+      cap.hidden = false;
+      cap.innerHTML =
+        '<b>' + esc(f.label) + '</b>' +
+        '<span>' + esc(f.why) + '</span>' +
+        '<span class="ck-fix-how">' + esc(f.how) + '</span>' +
+        '<em>' + esc(f.gain) + '<i>' + esc(f.cost) + '</i></em>';
+      cap.classList.remove('ck-fix-in');
+      void cap.offsetWidth;                 /* 다시 처음부터 재생되게 */
+      cap.classList.add('ck-fix-in');
+    }
+
+    /* 그 장소의 시각으로 하늘을 맞춘다. 장면마다 한 번만 — 매 프레임
+       고치면 :root 변수 쓰기가 문서 전체 재계산을 부른다 */
+    function skyAt(note) {
+      if (!window.ckSky) return;
+      var m = /(\d{1,2}):(\d{2})/.exec(note || '');
+      if (!m) return;
+      var when = new Date();
+      when.setHours(+m[1], +m[2], 0, 0);
+      skyHold = true;
+      window.ckSky(when);
+    }
+
+    /* 한 장소로 들어간다. 모형을 갈아 끼우고, 그 핀 하나만 두고,
+       카메라를 그 자리에 맞춘다 */
+    function goPlace(p, no) {
+      cut(function () {
+        S.showModel();
+        function aim() {
+          soloPin(p, no);
+          if (S.camAt) {
+            S.camAt(p.sx != null ? p.sx : p.x,
+                    p.sy != null ? p.sy : p.y, 1.5);
+          }
+        }
+        if (p.scene && S.loadScene) S.loadScene(p.scene, aim);
+        else aim();
+        skyAt(p.note);
+      });
+    }
 
     function finish() {
       if (ended) return;
       ended = true;
       timers.forEach(clearTimeout);
       if (S.camFlyStop) S.camFlyStop();
-      if (S.camLock) S.camLock(false);   /* 카메라를 놓는다 */
       document.removeEventListener('visibilitychange', onHide);
       if (host) { host.classList.remove('ck-intro'); host.classList.remove('ck-cut'); }
-      S.showModel();
-      /* 히어로의 얼굴은 첫 장소 모형이다. 돌아와서 멈춘다 */
-      if (route[0] && route[0].scene && S.loadScene) {
-        S.loadScene(route[0].scene, function () { S.camFit(); });
-      } else {
-        S.camFit();
-      }
-      drawLine(route);
-      if (pinLayer) {
-        pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
-          p.classList.remove('ck-wait');
-        });
-      }
+      if (cap) { cap.hidden = true; cap.innerHTML = ''; }
+      setWx((window.__ckWx && window.__ckWx.kind) || 'clear');
       skyHold = false;
       if (window.ckSky) window.ckSky();
-      done();
+
+      function rest() {
+        S.showModel();
+        allPins(route, alt);
+        if (S.camLock) S.camLock(false);
+        S.camFit();
+        if (window.ckHeroHold) window.ckHeroHold(false);
+        done();
+      }
+      if (route[0] && route[0].scene && S.loadScene) S.loadScene(route[0].scene, rest);
+      else rest();
     }
     function onHide() { if (document.hidden) finish(); }
     document.addEventListener('visibilitychange', onHide);
 
-    /* 화면을 한 번 덮었다 걷는다. 그 사이에 카메라를 옮기면
-       미끄러지지 않고 「바뀐」 것으로 보인다 */
-    function cut(fn) {
-      if (!host) { fn(); return; }
-      host.classList.add('ck-cut');
-      setTimeout(function () {
-        fn();
-        setTimeout(function () { host.classList.remove('ck-cut'); }, 40);
-      }, 190);
-    }
-
-    /* 하늘은 그 정거장의 시각으로. 단계마다 한 번만 바꾼다 —
-       매 프레임 바꾸면 :root 변수 106개를 초당 6,360번 쓴다 */
-    function skyAtStop(i) {
-      if (!window.ckSky) return;
-      var m = /(\d{1,2}):(\d{2})/.exec((route[i] && route[i].note) || '');
-      if (!m) return;
-      var d2 = new Date();
-      d2.setHours(+m[1], +m[2], 0, 0);
-      skyHold = true;
-      window.ckSky(d2);
-    }
-
-    /* 오늘 비가 오면 「비가 와서」 갈래를 먼저 세운다.
-       화면이 오늘 날씨와 다른 말을 하고 있으면 안 믿긴다. */
-    var wx = (window.__ckWx && window.__ckWx.kind) || 'clear';
-    if (wx === 'rain' || wx === 'snow') {
-      var b1 = document.querySelector('.ck-opt[data-o="1"]');
-      if (b1) setTimeout(function () { b1.click(); }, 60);
-    }
-
-    if (S.camLock) S.camLock(true);      /* 카메라를 이 연출이 쥔다 */
+    if (S.camLock) S.camLock(true);
+    if (window.ckHeroHold) window.ckHeroHold(true);   /* 나레이션을 세운다 */
     if (host) host.classList.add('ck-intro');
-    if (pinLayer) {
-      pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
-        p.classList.add('ck-wait');
-      });
-    }
 
-    /* ① 지도 — 작게, 셋이 한눈에 */
-    var ok = S.showWideMap();
-    if (!ok) { finish(); return; }
+    /* ① 지도 — 세 곳과 선 */
+    if (!S.showWideMap(route)) { finish(); return; }
 
-    var HOLD = 2100;      /* 날아가는 1.15초 + 머무는 시간 */
-    var T = 1700;         /* 지도를 보여 주는 시간 */
+    var MAP = 1900, STOP = 1600, FIX = 2500;
+    var T = MAP;
 
-    /* ② 지도를 1번 쪽으로 당긴다 */
-    at(T - 520, function () { S.zoomMapTo(0); });
-
-    /* 핀을 지나온 것까지 세운다 */
-    function liftPins(i) {
-      if (!pinLayer) return;
-      var pins = pinLayer.querySelectorAll('.ck-pin:not(.ck-cand)');
-      for (var k = 0; k <= i && k < pins.length; k++) {
-        pins[k].classList.remove('ck-wait');
-      }
-    }
-
-    /* ③④⑤ 장소마다 자기 모형으로 갈아 끼운다.
-       한 모형을 훑으면 「코앞에서 조금 움직인」 것으로 보인다.
-       모형이 바뀌면 「다른 데로 갔다」가 된다 — 실제로 8.4km·11km 다. */
-    route.forEach(function (p, i) {
-      at(T + HOLD * i, function () {
-        /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
-        var nx = route[i + 1];
-        if (nx && nx.scene && S.preloadScene) S.preloadScene(nx.scene);
-
-        cut(function () {
-          S.showModel();
-          if (p.scene && S.loadScene) {
-            S.loadScene(p.scene, function () {
-              S.camStop(i, 1.35);
-              liftPins(i);
-            });
-          } else {
-            S.camStop(i, 1.35);
-            liftPins(i);
-          }
-          skyAtStop(i);
-        });
-      });
+    /* 넘어가기 직전에 1번 쪽으로 당기고, 첫 모형을 미리 받아 둔다 */
+    at(MAP - 520, function () {
+      S.zoomMapTo(0);
+      if (S.preloadScene && route[0]) S.preloadScene(route[0].scene);
     });
 
-    /* ⑥ 물러나서 전체를 보여 주고 판을 들인다 */
-    at(T + HOLD * route.length, function () { cut(finish); });
+    /* ②③④ 장소마다 자기 모형으로 */
+    route.forEach(function (p, i) {
+      at(T + STOP * i, function () {
+        var nx = route[i + 1];
+        if (nx && nx.scene && S.preloadScene) S.preloadScene(nx.scene);
+        goPlace(p, i + 1);
+      });
+    });
+    T += STOP * route.length;
 
-    /* 아무리 늦어도 여기서는 끝낸다 */
-    at(T + HOLD * route.length + 1800, finish);
+    /* ⑤ 세 갈래 — 순서대로. 누르지 않는다 */
+    fixes.forEach(function (f, i) {
+      at(T + FIX * i, function () {
+        say(f);
+        if (f.kind === 'reorder') {
+          var re = (f.order || []).map(function (k) { return route[k]; })
+                   .filter(Boolean);
+          cut(function () { S.showWideMap(re); });
+        } else if (f.to) {
+          if (f.key === 'rain') setWx('rain');
+          goPlace(f.to, f.at + 1);
+        }
+      });
+    });
+    T += FIX * Math.max(1, fixes.length);
+
+    /* ⑥ 정리 */
+    at(T, function () { cut(finish); });
+    at(T + 1600, finish);           /* 아무리 늦어도 여기서는 끝낸다 */
   }
 
   /* 밖에서 부를 수 있게 — 「다시 보기」 버튼이 쓴다 */
@@ -442,24 +498,19 @@
       hot: 1, live: 1, opts: 0 },
     { at: 1,  now: '동백섬',
       line: '바꾸는 방법은 <em>세 가지</em>입니다',
-      why: '고르면 순서와 시각을 다시 잡고, 일행 화면에도 그대로 반영됩니다.',
+      why: '하나씩 보여 드립니다. 누르면 그 상태로 멈춥니다.',
       hot: 1, live: 1, opts: 1 }
   ];
 
-  /* 세 갈래. 고른 것이 모형 위에서 각각 다르게 보여야 고른 값이 있다.
-       swap  순서를 바꾸면 핀 번호가 바뀐다
-       cand  다른 곳으로 가면 후보 핀이 켜지고 원래 핀이 흐려진다
-       live  가는 길을 바꾸면 해변길(1)에서 안쪽 도로(2)로 선이 넘어간다 */
-  /* 갈래는 「무엇 때문에 바꾸는가」다.
-       0 사람이 몰려서  순서를 바꾼다 (2번과 3번이 자리를 맞바꾼다)
-       1 비가 와서      실내 후보로 옮긴다 (대체 핀이 켜진다)
-       2 길이 막혀서    가는 길을 바꾼다 (해변길 -> 안쪽 도로)
-     화면에 보이는 결과가 셋 다 달라야 고른 값이 있다. */
-  var OPTS = [
-    { swap: 1, cand: 0, live: 1, order: [0, 2, 1] },
-    { swap: 0, cand: 1, live: 1, order: [0, 1, 2] },
-    { swap: 0, cand: 0, live: 2, order: [0, 1, 2] }
-  ];
+  /* 갈래는 mass_hero.json 의 fixes 가 갖는다. 문구와 바꿀 내용이
+     한 곳에 있어야 화면과 데이터가 어긋나지 않는다 — 전에는 버튼 문구는
+     마크업에, 바뀌는 동작은 이 파일에 있어서 한쪽만 고쳐지면 어긋났다.
+
+       reorder  순서를 바꾼다. 핀 번호와 오른쪽 판의 시각이 같이 바뀐다
+       swap     장소를 바꾼다. 그 핀이 대체지로 옮겨 가고 혼잡도가 바뀐다
+
+     셋 다 화면에서 결과가 달라야 고른 값이 있다. */
+  function fixList() { return window.__ckFixes || []; }
 
   function initHero() {
     var tl = $('ck_tl'), tw = $('ck_tw'), hero = $('ck_hero'), box = $('ck_opts');
@@ -469,25 +520,92 @@
     var opts = box ? [].slice.call(box.querySelectorAll('.ck-opt')) : [];
     var route = [], alt = null;
     var step = -1, timer = null, pick = 0, paused = false;
+    /* hold — 들어오는 장면이 도는 동안. paused 와 다르다.
+       paused 는 사람이 멈춘 것이고 hold 는 연출이 쥐고 있는 것이다.
+       섞으면 연출이 끝난 뒤에 멈춰 둔 것이 저절로 돌아간다. */
+    var hold = false;
     var btn = $('ck_playbtn'), play = $('ck_play');
 
-    /* 고른 방법을 모형에 반영한다. 장면 3에서만 부른다. */
+    /* 고른 갈래를 모형과 판에 반영한다. 장면 3에서만 부른다. */
     function applyOpt(n) {
+      var fx = fixList(), f = fx[n];
       pick = n;
-      opts.forEach(function (b, k) { b.setAttribute('aria-pressed', k === n ? 'true' : 'false'); });
-      var o = OPTS[n], layer = $('ck_pinlayer');
-      if (layer) {
-        layer.classList.toggle('ck-cand-on', !!o.cand);
-        var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
-        for (var i = 0; i < pins.length; i++) {
-          var no = pins[i].querySelector('.ck-no');
-          /* 순서를 바꾸면 2번과 3번이 자리를 맞바꾼다 */
-          if (no) no.textContent = o.swap && i >= 1 ? (i === 1 ? 3 : 2) : i + 1;
-          pins[i].classList.toggle('ck-off', !!o.cand && i === 1);
+      opts.forEach(function (b, k) {
+        b.setAttribute('aria-pressed', k === n ? 'true' : 'false');
+      });
+      if (!f || !route.length) return;
+      var layer = $('ck_pinlayer');
+      var base = (window.__ckWx && window.__ckWx.kind) || 'clear';
+
+      if (f.kind === 'reorder') {
+        /* 길이 막혀서 — 가는 곳은 그대로고 순서만 바뀐다 */
+        setWx(base);
+        var ord = f.order || [0, 1, 2];
+        var re = ord.map(function (k) { return route[k]; }).filter(Boolean);
+        allPins(route, alt);
+        if (layer) {
+          layer.classList.remove('ck-cand-on');
+          var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+          for (var i = 0; i < pins.length; i++) {
+            var no = pins[i].querySelector('.ck-no');
+            var slot = ord.indexOf(i);
+            if (no && slot >= 0) no.textContent = slot + 1;
+            /* 자리가 바뀐 핀만 표시한다. 무엇이 움직였는지가 요점이다 */
+            if (slot >= 0 && slot !== i) pins[i].classList.add('ck-moved');
+          }
         }
+        drawLine(re);
+        if (window.ckStage && window.ckStage.bigDraw) window.ckStage.bigDraw(re);
+        stage({ order: ord, hot: 0, cand: false });
+
+      } else if (f.to) {
+        /* 사람이 몰려서 · 비가 와서 — 그 자리를 다른 곳으로 */
+        setWx(f.key === 'rain' ? 'rain' : base);
+        var mix = route.slice();
+        mix[f.at] = f.to;
+        allPins(mix, null);
+        if (layer) {
+          var all = layer.querySelectorAll('.ck-pin');
+          /* 바뀐 핀을 표시하고, 원래 있던 곳은 흐린 핀으로 남긴다 —
+             「이거 대신 이거」가 한 화면에 같이 있어야 바뀐 게 보인다 */
+          if (all[f.at]) all[f.at].classList.add('ck-new');
+          var was = route[f.at];
+          layer.insertAdjacentHTML('beforeend',
+            pinHTML({ name: was.name, x: was.x, y: was.y, no: f.at + 1 },
+                    route.length, ' ck-was'));
+        }
+        drawLine(mix);
+        if (window.ckStage && window.ckStage.bigDraw) window.ckStage.bigDraw(mix);
+        stage({ order: [0, 1, 2], hot: f.at, cand: false });
       }
-      drawTrail(route, o.live);
-      stage({ order: o.order, hot: 1, cand: !!o.cand });
+    }
+
+    /* 갈래 버튼을 데이터로 만든다. 없으면 절을 감춘다 —
+       고를 수 없는 버튼을 세 개 두는 것보다 없는 편이 낫다 */
+    function drawOpts() {
+      if (!box) return;
+      var fx = fixList();
+      box.innerHTML = fx.map(function (f, i) {
+        return '<button type="button" class="ck-opt" data-o="' + i + '" ' +
+               'aria-pressed="' + (i === pick ? 'true' : 'false') + '">' +
+               '<b>' + esc(f.label) + '</b>' +
+               '<span>' + esc(f.why) + '</span>' +
+               '<em>' + esc(f.gain) + '<i>' + esc(f.cost) + '</i></em>' +
+               '</button>';
+      }).join('');
+      opts = [].slice.call(box.querySelectorAll('.ck-opt'));
+      opts.forEach(function (b, k) {
+        b.addEventListener('click', function () {
+          /* 고르는 순간 장면이 넘어가 있으면 문구와 고른 것이 어긋난다.
+             고를 수 있는 장면으로 고정하고 재생을 멈춘다. */
+          clearTimeout(timer); timer = null;
+          paused = true;
+          pick = k; step = SCENE.length - 1; draw(step);
+          if (play) play.classList.add('ck-paused');
+          if (btn) btn.setAttribute('aria-label', '순서 따라가기 시작');
+          applyOpt(k);
+        });
+      });
     }
 
     /* 무대 주변 판(정거장 알약·오른쪽 판·작은 지도)은 app_stage.js 가 맡는다.
@@ -503,13 +621,20 @@
       bars.forEach(function (b, k) {
         b.className = k < i ? 'ck-done' : (k === i ? 'ck-on' : '');
       });
-      if (box) box.hidden = !s.opts;
+      if (box) {
+        if (s.opts && !opts.length) drawOpts();
+        box.hidden = !s.opts || !opts.length;
+      }
       if (route.length) {
         drawPins(route, s.hot, alt);
         if (s.opts) {
           applyOpt(pick);
         } else {
           resetScene();
+          /* 「비가 와서」 갈래를 보여 준 뒤 이 장면으로 넘어오면 비가
+             계속 내리고 있었다. 갈래를 접었으면 날씨도 지금 날씨로
+             돌려놓는다 — 화면이 자기 데이터와 어긋나는 자리였다. */
+          setWx((window.__ckWx && window.__ckWx.kind) || 'clear');
           drawTrail(route, s.live);
           stage({ order: [0, 1, 2], hot: s.hot, cand: false });
         }
@@ -529,30 +654,38 @@
         var no = pins[i].querySelector('.ck-no');
         if (no) no.textContent = i + 1;
         pins[i].classList.remove('ck-off');
+        pins[i].classList.remove('ck-moved');
+        pins[i].classList.remove('ck-new');
       }
+      /* 대체지를 켜 둔 흐린 핀도 걷는다 */
+      var was = layer.querySelectorAll('.ck-was');
+      for (var k = 0; k < was.length; k++) was[k].remove();
     }
 
+    /* 갈래는 저절로 넘어간다. 「사용자가 클릭하는게 아닌 순서대로 쭉」 —
+       세 가지를 다 보여 준 뒤에 처음 장면으로 돌아간다. */
     function tick() {
+      if (hold) return;
+      var last = SCENE.length - 1;
+      if (step === last && pick < fixList().length - 1) {
+        pick++;
+        applyOpt(pick);
+        timer = setTimeout(tick, 2600);
+        return;
+      }
       step = (step + 1) % SCENE.length;
-      if (step === 0) pick = 0;          /* 한 바퀴 돌면 처음 고른 것으로 */
+      if (step === 0) pick = 0;          /* 한 바퀴 돌면 처음 갈래로 */
       draw(step);
-      timer = setTimeout(tick, step === SCENE.length - 1 ? 6200 : 2800);
+      timer = setTimeout(tick, 2600);
     }
 
-    /* 방법을 고르면 재생은 멈춘다. 고른 것을 보고 있는데 화면이 넘어가면
-       무엇을 고른 건지 사라진다. */
-    opts.forEach(function (b, k) {
-      b.addEventListener('click', function () {
-        clearTimeout(timer); timer = null;
-        paused = true;
-        /* 고르는 순간 장면이 넘어가 있으면 문구와 고른 것이 어긋난다.
-           방법을 고를 수 있는 장면으로 고정한다. */
-        pick = k; step = SCENE.length - 1; draw(step);
-        if (play) play.classList.add('ck-paused');
-        if (btn) btn.setAttribute('aria-label', '순서 따라가기 시작');
-        applyOpt(k);
-      });
-    });
+    /* 들어오는 장면이 도는 동안은 나레이션을 세운다. 안 세우면 장면이
+       넘어갈 때마다 핀 번호와 오른쪽 판을 다시 써서 연출과 부딪힌다. */
+    window.ckHeroHold = function (on) {
+      hold = !!on;
+      if (hold) { clearTimeout(timer); timer = null; }
+      else if (!paused && !timer) tick();
+    };
 
     /* 재생 바 — 멈춤은 사람이 누른 것이고, 화면 밖으로 나가 멈춘 것과 다르다.
        둘을 섞으면 다시 스크롤했을 때 멈춰 둔 것이 저절로 돌아간다. */
@@ -663,6 +796,8 @@
         route = (j && j.route) || []; alt = (j && j.alt) || null;
         window.__ckRoute = route;        /* 들어오는 장면이 이걸 쓴다 */
         window.__ckScenes = (j && j.scenes) || {};   /* 장소별 모형 */
+        window.__ckFixes = (j && j.fixes) || [];     /* 세 갈래 */
+        window.__ckAlt = alt;
       })
       .catch(function () { route = []; window.__ckRoute = []; })
       .then(liveCrowd)
@@ -673,7 +808,7 @@
         if (hero && window.IntersectionObserver) {
           new IntersectionObserver(function (es) {
             es.forEach(function (e) {
-              if (e.isIntersecting) { if (!timer && !paused) tick(); }
+              if (e.isIntersecting) { if (!timer && !paused && !hold) tick(); }
               else { clearTimeout(timer); timer = null; }
             });
           }, { threshold: 0.05 }).observe(hero);
