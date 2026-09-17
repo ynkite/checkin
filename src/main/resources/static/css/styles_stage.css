@@ -12,7 +12,10 @@
  */
 
 .ck-home .ck-hero.ck-stage{
-  position:relative; height:100dvh; min-height:680px; overflow:hidden;
+  /* 네비가 흐름 안에 있다. 100dvh 로 두면 무대가 네비 높이만큼 아래로
+     밀려 폼 바 아랫단이 화면 밖으로 나간다 — 1320x800 실측 831 > 800. */
+  position:relative; height:calc(100dvh - var(--nav-h, 62px));
+  min-height:620px; overflow:hidden;
   padding:0; margin:0; background:var(--page-2);
   /* 아래 모서리를 크게 굴려 땅이 말려 내려가게 한다.
      레퍼런스(도쿄)의 「접시 위 디오라마」가 이 선 하나에서 온다.
@@ -67,26 +70,34 @@
    --st-m 은 모서리 여백. 좁아지면 같이 줄어든다. */
 .ck-stage{ --st-m:clamp(14px, 2.2vw, 30px); --st-col:clamp(330px, 27vw, 396px) }
 
+/* 무대가 네비 아래에서 시작하므로 자리는 무대 기준(%)으로 잡는다.
+   전에는 dvh 에서 네비를 빼는 식이라 무대 높이가 바뀔 때마다 어긋났다 —
+   1320x800 실측에서 왼쪽 열이 폼 바를 84px 덮었다. */
 .st-tl{
-  position:absolute; left:var(--st-m); top:calc(var(--nav-h, 62px) + var(--st-m));
+  position:absolute; left:var(--st-m); top:var(--st-m);
   width:var(--st-col); display:grid; gap:9px; z-index:3;
   /* 아래 폼 바 위까지만. 넘치면 판이 폼을 덮는다 */
-  max-height:calc(100dvh - var(--nav-h, 62px) - var(--st-m) * 2 - 96px);
+  max-height:calc(100% - var(--st-m) * 2 - 100px);
   overflow:visible;
 }
 /* 오른쪽은 위에서 아래로 — 판 · 작은 지도 · 시점.
    왼쪽 열이 길어서(머리 + 정거장 + 대응 세 갈래) 작은 지도를 왼쪽에 두면 덮인다. */
+/* 오른쪽 열은 위에서 아래로 네 칸이다 — 도구줄 · 판 · 작은 지도 · 시점.
+   실측(1320x800): 판이 519 에서 끝나는데 작은 지도가 489 에서 시작하고,
+   작은 지도(727)와 시점 버튼(698)이 겹쳤다. 셋 다 bottom 을 같은 값으로
+   잡아 둔 탓이다. 아래에서부터 칸을 쌓아 올린다.
+     폼 바 104 + 시점 39 + 작은 지도 238 + 사이 여백 29 = 410 */
 .st-side{
-  position:absolute; right:var(--st-m); top:calc(var(--nav-h, 62px) + 52px);
+  position:absolute; right:var(--st-m); top:52px;
   width:var(--st-col); z-index:3;
-  max-height:calc(100dvh - var(--nav-h, 62px) - 330px);
+  max-height:calc(100% - 52px - 420px);
   overflow-y:auto; overscroll-behavior:contain;
 }
 .st-tools{
-  position:absolute; right:var(--st-m); top:calc(var(--nav-h, 62px) + 10px); z-index:4;
+  position:absolute; right:var(--st-m); top:12px; z-index:4;
 }
 .st-mini{
-  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 104px); z-index:3;
+  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 143px); z-index:3;
 }
 .st-view{
   position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 104px); z-index:3;
