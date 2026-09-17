@@ -1647,10 +1647,11 @@ async function showMapPlacePopup(key, type) {
 
 function getMapLinks(q) {
     const e = encodeURIComponent(q);
-    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#03C75A;color:var(--panel);text-decoration:none;font-size:12px;font-weight:700">네이버 지도</a>`
-        + `<a href="https://map.kakao.com/?q=${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#FEE500;color:#3C1E1E;text-decoration:none;font-size:12px;font-weight:700">카카오맵</a>`
-        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:9px;border-radius:9px;background:#4285F4;color:var(--panel);text-decoration:none;font-size:12px;font-weight:700">구글 맵</a>`;
+    return `<a href="https://map.naver.com/v5/search/${e}" target="_blank" rel="noopener">네이버 지도</a>`
+        + `<a href="https://map.kakao.com/?q=${e}" target="_blank" rel="noopener">카카오맵</a>`
+        + `<a href="https://www.google.com/maps/search/${e}" target="_blank" rel="noopener">구글 지도</a>`;
 }
+
 
 function showReviewDetail(place, type, stars, text) {
     document.getElementById('rdPlace').textContent = place;
