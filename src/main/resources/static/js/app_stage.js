@@ -184,6 +184,10 @@
      transform 하나만 바꾸므로 합성으로 끝난다. */
   var cam = { z: 1, x: 0, y: 0, user: false };
   var camFitted = false;   /* 처음 한 번만 전체를 맞춘다 */
+  /* 들어오는 장면이 도는 동안은 카메라를 그쪽이 독점한다.
+     나레이션이 장면을 넘길 때마다 camTo 를 부르는데, 그게 비행을
+     중간에 끊어서 배율이 튀었다(1.95 -> 1.14 -> 1.93). */
+  var camLocked = false;
 
   /* 판이 무대를 덮고 남는 여유. 이 범위를 넘겨 밀면 무대 가장자리에
      바닥색이 드러난다 — 도시가 끊겨 보이는 그 자리다. */
@@ -222,6 +226,7 @@
      덮는 범위를 넘으면 camApply 가 잘라 낸다. 정거장이 정확히 가운데
      오지 않더라도 도시가 끊기는 쪽이 더 나쁘다. */
   function camTo(p, zoom) {
+    if (camLocked) return;                      /* 들어오는 장면이 쥐고 있다 */
     if (!p || cam.user) return;                 /* 사람이 시점을 만졌으면 건드리지 않는다 */
     /* 좁은 화면에서는 장면 상자가 330px 밖에 안 된다. 당기면 핀이 화면 밖으로
        밀려난다. 모형 전체가 보이는 쪽이 낫다. */
@@ -236,7 +241,8 @@
     camApply();
   }
 
-  function camReset() {
+  function camReset(force) {
+    if (camLocked && !force) return;
     cam.z = 1; cam.x = 0; cam.y = 0; cam.user = false;
     camApply();
   }
@@ -263,7 +269,8 @@
 
      이름표까지 재는 이유 — 말풍선이 핀보다 옆으로 150px 넘게 나간다.
      핀 좌표만 맞추면 장소 이름이 가장자리에서 잘린다. */
-  function camFit() {
+  function camFit(force) {
+    if (camLocked && !force) return false;      /* 들어오는 장면이 쥐고 있다 */
     var f = $('ck_frame');
     var layer = $('ck_pinlayer');
     if (!f || !layer || !f.offsetWidth) return false;
@@ -482,26 +489,81 @@
     if (mp) mp.setAttribute('aria-pressed', 'false');
   }
 
-  /* 한 정거장을 화면 가운데로. 끊어 가는 연출이라 전환은 두지 않는다 —
-     부르는 쪽이 .ck-cut 으로 한 번 덮었다 걷는다 */
+  /* 한 정거장을 화면 가운데로 — 그냥 옮긴다 */
   function camStop(i, zoom) {
-    var p = route[i];
     var f = $('ck_frame');
+    var p = route[i];
     if (!p || !f || !f.offsetWidth) return;
     var st = f.parentElement;
     cam.user = false;
-    cam.z = zoom || 1.9;
+    cam.z = zoom || 1.95;
     cam.x = st.clientWidth / 2 - (p.x / 100 * f.offsetWidth) * cam.z;
     cam.y = st.clientHeight * .48 - (p.y / 100 * f.offsetHeight) * cam.z;
     camApply();
   }
+
+  /* 한 정거장에서 다음으로 날아간다.
+
+     같은 배율로 곧게 밀면 사진을 옆으로 미는 것처럼 보인다.
+     실제로 「갔다」고 느끼게 하려면 물러나면서 옮기고 도착해서 당겨야 한다 —
+     비행기에서 내려다보는 것과 같은 움직임이다. 그 물러남이 거리를 만든다.
+
+     transform 하나만 계속 바꾼다. 벽시계로 진행하므로 탭이 뒤에 있어도
+     중간에 굳지 않는다 — 굳으면 마지막 자리로 바로 간다. */
+  var flyTimer = null;
+
+  function camFly(i, ms, whenDone) {
+    var f = $('ck_frame');
+    var p = route[i];
+    if (!p || !f || !f.offsetWidth) { if (whenDone) whenDone(); return; }
+    var st = f.parentElement;
+
+    var NEAR = 1.95;            /* 도착해서 당기는 배율 */
+    var FAR = Math.max(.95, NEAR * .52);   /* 가는 동안 물러나는 배율 */
+    var dur = ms || 1150;
+
+    function place(z, t) {
+      /* t=0 출발점, t=1 도착점. 가는 동안 좌표도 같이 옮긴다 */
+      var from = route[Math.max(0, i - 1)] || p;
+      var x = from.x + (p.x - from.x) * t;
+      var y = from.y + (p.y - from.y) * t;
+      cam.z = z;
+      cam.x = st.clientWidth / 2 - (x / 100 * f.offsetWidth) * z;
+      cam.y = st.clientHeight * .48 - (y / 100 * f.offsetHeight) * z;
+      camApply();
+    }
+
+    cam.user = false;
+    clearInterval(flyTimer);
+    var t0 = Date.now();
+
+    flyTimer = setInterval(function () {
+      var e = Math.min(1, (Date.now() - t0) / dur);
+      /* 배율은 가운데서 가장 멀어진다 — 물러났다가 다시 당긴다 */
+      var arc = Math.sin(e * Math.PI);
+      var z = NEAR + (FAR - NEAR) * arc;
+      /* 좌표는 부드럽게 */
+      var s = e < .5 ? 2 * e * e : 1 - Math.pow(-2 * e + 2, 2) / 2;
+      place(z, s);
+      if (e >= 1) {
+        clearInterval(flyTimer);
+        flyTimer = null;
+        if (whenDone) whenDone();
+      }
+    }, 1000 / 50);
+  }
+
+  function camFlyStop() { clearInterval(flyTimer); flyTimer = null; }
 
   w.ckStage = {
     showWideMap: showWideMap,
     zoomMapTo: zoomMapTo,
     showModel: showModel,
     camStop: camStop,
-    camFit: function () { cam.user = false; if (!camFit()) camReset(); },
+    camFly: camFly,
+    camFlyStop: camFlyStop,
+    camLock: function (on) { camLocked = !!on; },
+    camFit: function () { cam.user = false; if (!camFit(true)) camReset(true); },
     render: function (r, a, st) {
       route = r || []; alt = a || null;
       if (st) {
