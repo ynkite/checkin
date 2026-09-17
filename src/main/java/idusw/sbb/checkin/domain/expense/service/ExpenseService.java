@@ -1,5 +1,6 @@
 package idusw.sbb.checkin.domain.expense.service;
 
+import idusw.sbb.checkin.domain.expense.dto.BudgetAccuracy;
 import idusw.sbb.checkin.domain.expense.dto.BudgetEstimate;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto.CategoryBudgetDto;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +37,38 @@ public class ExpenseService {
         TravelPlan plan = travelPlanRepository.findById(planId)
                 .orElseThrow(() -> new EntityNotFoundException("여행 플랜을 찾을 수 없습니다."));
         return budgetEstimator.estimate(plan);
+    }
+
+    /**
+     * 예측 vs 실측 검증 루프 (예산 엔진 3층).
+     * 새 테이블 없이 가계부의 예상/실제 두 줄만 여행별로 접는다.
+     * 한쪽이라도 비어 있으면 오차가 아니라 미입력이므로 표본에서 뺀다.
+     */
+    public BudgetAccuracy budgetAccuracy(Long userId) {
+        // ponytail: 여행 수만큼 plan 을 지연 로딩한다. 한 사용자의 여행 수는 두 자리라 그냥 둔다
+        LocalDate today = LocalDate.now();
+        Map<Long, long[]> byPlan = new LinkedHashMap<>();   // planId → {예측, 실측}
+        Map<Long, String> titles = new LinkedHashMap<>();
+
+        for (Expense e : expenseRepository.findByUserId(userId)) {
+            TravelPlan plan = e.getPlan();
+            // 아직 안 끝난 여행은 실측이 미완이다. 진행 중인 여행의 오차는 오차가 아니라 중간 집계다
+            // (「다녀온 여행」과 같은 기준 — TravelPlanRepository.findPastTrips)
+            if (plan.getEndDate() == null || !plan.getEndDate().isBefore(today)) continue;
+
+            Long planId = plan.getId();
+            titles.putIfAbsent(planId, plan.getTitle());
+            long[] sum = byPlan.computeIfAbsent(planId, k -> new long[2]);
+            sum[e.isEstimated() ? 0 : 1] += e.getAmount();
+        }
+
+        List<BudgetAccuracy.Row> rows = new ArrayList<>();
+        byPlan.forEach((planId, sum) -> {
+            if (sum[0] > 0 && sum[1] > 0) {
+                rows.add(BudgetAccuracy.Row.of(titles.get(planId), sum[0], sum[1]));
+            }
+        });
+        return BudgetAccuracy.of(rows);
     }
 
     public BudgetReportResponseDto getBudgetReport(Long planId) {

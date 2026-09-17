@@ -80,12 +80,24 @@
         <div class="ledger-chart-card" id="budget-basis-card" style="display:none;margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
             <div style="font-size:14px;font-weight:700">숙박비 근거</div>
-            <div style="font-size:11px;color:var(--text3)">시연용 예시</div>
+            <div style="font-size:11px;color:var(--ink-3)">시연용 예시</div>
           </div>
-          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+          <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
             총액을 한 숫자로 주지 않습니다. 항목마다 어디까지가 공개 요금인지 표시합니다.
           </div>
           <div id="budget-basis-rows"></div>
+        </div>
+
+        <!-- 예측 정확도 (예산 엔진 3층) — 예측이 맞았는지 사후에 되돌아본다 -->
+        <div class="ledger-chart-card" id="budget-accuracy-card" style="display:none;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+            <div style="font-size:14px;font-weight:700">예측 정확도</div>
+            <div style="font-size:11px;color:var(--ink-3)" id="budget-accuracy-n">현재 N=시연</div>
+          </div>
+          <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
+            실제 지출을 입력하면 예측이 얼마나 빗나갔는지 여행마다 남습니다.
+          </div>
+          <div id="budget-accuracy-rows"></div>
         </div>
 
         <!-- 파이 -->
