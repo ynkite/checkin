@@ -14,6 +14,27 @@
 .ck-home .ck-hero.ck-stage{
   position:relative; height:100dvh; min-height:680px; overflow:hidden;
   padding:0; margin:0; background:var(--page-2);
+  /* 아래 모서리를 크게 굴려 땅이 말려 내려가게 한다.
+     레퍼런스(도쿄)의 「접시 위 디오라마」가 이 선 하나에서 온다.
+     50% / 5.5% — 가로 반지름은 폭의 절반, 세로는 아주 얕게. 이 비율이라야
+     둥근 상자가 아니라 「휘어 내려가는 땅」으로 읽힌다. */
+  border-radius:0 0 50% 50% / 0 0 5.5% 5.5%;
+}
+
+/* 먼 쪽(위)의 안개와 가까운 쪽(아래)의 그늘.
+   미니어처가 깊이를 갖는 고전적인 방법이다. 판보다 아래(z-index 1)에 둬서
+   글을 흐리지 않는다. */
+.ck-home .ck-hero.ck-stage::after{
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  border-radius:inherit;
+  background:
+    linear-gradient(180deg,
+      rgba(var(--w-rgb),.42) 0,
+      rgba(var(--w-rgb),.10) 13%,
+      rgba(var(--w-rgb),0) 27%),
+    linear-gradient(0deg,
+      rgba(var(--sh-rgb),.09) 0,
+      rgba(var(--sh-rgb),0) 15%);
 }
 
 /* ── 무대 ────────────────────────────────────────────
@@ -153,6 +174,13 @@
      세 번째 정거장(동백섬, x 15%)이 화면 밖으로 나간다 — 실측 left -77px.
      폰에서는 하루 동선이 다 보이는 쪽이 낫다. 비율만큼 낮아진다. */
   .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 460px) }
+  /* 장면이 흐름으로 바뀌면 무대가 아니라 장면 상자가 휘어야 한다 */
+  .ck-home .ck-hero.ck-stage{ border-radius:0 }
+  .ck-home .ck-hero.ck-stage::after{ content:none }
+  .ck-home .ck-stage .ck-scene{
+    border-radius:0 0 50% 50% / 0 0 9% 9%;
+    box-shadow:0 14px 30px -22px rgba(var(--sh-rgb),.5);
+  }
   .ck-home .ck-stage .ck-scene{
     position:relative; inset:auto; height:var(--sc-h);
     grid-row:1; border-radius:0;

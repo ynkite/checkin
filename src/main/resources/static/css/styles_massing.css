@@ -28,25 +28,34 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 /* 붉은 기와 계열(a·d)의 벽은 --w1/--w2 크림을 쓴다. 레퍼런스(이탈리아·도쿄)는
    벽이 크림이고 지붕만 테라코타다. 벽까지 붉으면 마을이 한 덩어리로 뭉쳐
    건물 모양이 안 읽힌다. */
-.rf,.rk,.s1,.s2{stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
+/* 외곽선은 맞닿은 면 사이의 머리카락 틈을 막는 용도다. 색을 긋는 것이 아니다.
+   2.5 는 건물 하나를 5px 뚱뚱하게 만들어 각진 면이 뭉개졌다.
+   레퍼런스(이탈리아)는 외곽선이 아예 없고 면 색만 있다. */
+.rf,.rk,.s1,.s2{stroke-width:.55; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
+/* 지붕만 색을 갖는다. 벽은 전부 크림이다.
+   전에는 색족마다 벽까지 그 색이라 파란 지붕 건물은 벽도 파랗고 노란 지붕은
+   벽도 노랬다. 마을이 아니라 색 블록 더미로 보였다.
+   레퍼런스의 마을은 크림 벽 위에 테라코타·청회·노랑 지붕이 얹혀 있다. */
+.s1{fill:var(--w1); stroke:var(--w1)}
+.s2{fill:var(--w2); stroke:var(--w2)}
+
+/* 지붕 — 윗면(rf)과 다른 면(rk)의 값 차이를 뚜렷하게 둔다.
+   면 명암이 약하면 입체로 안 읽힌다. */
 .fa.rf{fill:var(--a0); stroke:var(--a0)} .fa.rk{fill:var(--a1); stroke:var(--a1)}
-.fa.s1{fill:var(--w1); stroke:var(--w1)} .fa.s2{fill:var(--w2); stroke:var(--w2)}
 .fb.rf{fill:var(--b0); stroke:var(--b0)} .fb.rk{fill:var(--b1); stroke:var(--b1)}
-.fb.s1{fill:var(--b1); stroke:var(--b1)} .fb.s2{fill:var(--b2); stroke:var(--b2)}
 .fc.rf{fill:var(--c0); stroke:var(--c0)} .fc.rk{fill:var(--c1); stroke:var(--c1)}
-.fc.s1{fill:var(--c1); stroke:var(--c1)} .fc.s2{fill:var(--c2); stroke:var(--c2)}
 .fd.rf{fill:var(--d0); stroke:var(--d0)} .fd.rk{fill:var(--d1); stroke:var(--d1)}
-.fd.s1{fill:var(--w1); stroke:var(--w1)} .fd.s2{fill:var(--w2); stroke:var(--w2)}
 .fe.rf{fill:var(--e0); stroke:var(--e0)} .fe.rk{fill:var(--e1); stroke:var(--e1)}
-.fe.s1{fill:var(--e1); stroke:var(--e1)} .fe.s2{fill:var(--e2); stroke:var(--e2)}
 .ff.rf{fill:var(--f0); stroke:var(--f0)} .ff.rk{fill:var(--f1); stroke:var(--f1)}
-.ff.s1{fill:var(--f1); stroke:var(--f1)} .ff.s2{fill:var(--f2); stroke:var(--f2)}
 .fg.rf{fill:var(--g0); stroke:var(--g0)} .fg.rk{fill:var(--g1); stroke:var(--g1)}
-.fg.s1{fill:var(--g1); stroke:var(--g1)} .fg.s2{fill:var(--g2); stroke:var(--g2)}
 .fh.rf{fill:var(--h0); stroke:var(--h0)} .fh.rk{fill:var(--h1); stroke:var(--h1)}
-.fh.s1{fill:var(--h1); stroke:var(--h1)} .fh.s2{fill:var(--h2); stroke:var(--h2)}
 .fm.rf{fill:var(--m0); stroke:var(--m0)} .fm.rk{fill:var(--m1); stroke:var(--m1)}
-.fm.s1{fill:var(--m1); stroke:var(--m1)} .fm.s2{fill:var(--m2); stroke:var(--m2)}
+
+/* 그늘면에 아주 옅은 기운만 남긴다 — 크림 하나로 695채를 칠하면 단조롭다.
+   색이 아니라 온도 차이다. */
+.fb.s2,.fe.s2,.fg.s2{fill:var(--w2c); stroke:var(--w2c)}
+.fm.s2,.ff.s2{fill:var(--w2w); stroke:var(--w2w)}
+
 .ru{fill:var(--ru0); stroke:var(--ru0)} .ru2{fill:var(--ru1); stroke:var(--ru1)}
 .ru,.ru2{stroke-width:2; stroke-linejoin:round; paint-order:stroke}
 .tc,.tp{fill:var(--tc); stroke:var(--tc); stroke-width:2.2; stroke-linejoin:round}
@@ -55,8 +64,8 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .tk{fill:none; stroke:var(--tk); stroke-width:1.9; stroke-linecap:round}
 .bu{fill:var(--bush); stroke:var(--bush); stroke-width:1.8; stroke-linejoin:round}
 .bu2{fill:var(--bush2); stroke:var(--bush2); stroke-width:1.4}
-.bn{fill:none; stroke:#8A6E4E; stroke-width:2.6; stroke-linecap:round}
-.bnb{fill:none; stroke:#6F573C; stroke-width:1.6; stroke-linecap:round}
+.bn{fill:none; stroke:var(--tk); stroke-width:2.6; stroke-linecap:round}
+.bnb{fill:none; stroke:var(--td); stroke-width:1.6; stroke-linecap:round}
 .us{stroke-width:1.4; stroke-linejoin:round; paint-order:stroke}
 .us.u1{fill:var(--u1); stroke:var(--u1)} .us.u2{fill:var(--u2); stroke:var(--u2)}
 .us.u3{fill:var(--u3); stroke:var(--u3)}
@@ -125,3 +134,17 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 @keyframes ck-step{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-1.1px) } }
 @keyframes ck-swell{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-56 } }
 @keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
+
+/* ── 시간대 ─────────────────────────────────────────────────
+   색은 tokens.css 의 하늘 네 벌이 정한다. 여기서는 색으로 말할 수 없는
+   것만 다룬다 — 밤에는 해변에 사람이 없고 파라솔도 접혀 있다. */
+[data-sky="night"] .crowd{ opacity:.26 }
+[data-sky="night"] .us{ opacity:.2 }            /* 파라솔 */
+[data-sky="dusk"] .crowd{ opacity:.72 }
+[data-sky="dusk"] .us{ opacity:.7 }
+[data-sky="dawn"] .crowd{ opacity:.3 }
+[data-sky="dawn"] .us{ opacity:.25 }
+.crowd,.us{ transition:opacity 1.2s linear }
+
+/* 밤에는 창문이 켜진다. 노란 지붕(--m) 계열이 그 자리다. */
+[data-sky="night"] .fm.rf,[data-sky="night"] .fm.rk{ filter:none }
