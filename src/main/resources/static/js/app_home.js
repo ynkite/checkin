@@ -304,11 +304,18 @@
       if (ended) return;
       ended = true;
       timers.forEach(clearTimeout);
+      if (S.camFlyStop) S.camFlyStop();
+      if (S.camLock) S.camLock(false);   /* 카메라를 놓는다 */
       document.removeEventListener('visibilitychange', onHide);
       if (host) { host.classList.remove('ck-intro'); host.classList.remove('ck-cut'); }
       S.showModel();
-      drawLine(route);                 /* 다 지나왔으니 전체를 채운다 */
-      S.camFit();
+      /* 히어로의 얼굴은 첫 장소 모형이다. 돌아와서 멈춘다 */
+      if (route[0] && route[0].scene && S.loadScene) {
+        S.loadScene(route[0].scene, function () { S.camFit(); });
+      } else {
+        S.camFit();
+      }
+      drawLine(route);
       if (pinLayer) {
         pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
           p.classList.remove('ck-wait');
@@ -344,6 +351,15 @@
       window.ckSky(d2);
     }
 
+    /* 오늘 비가 오면 「비가 와서」 갈래를 먼저 세운다.
+       화면이 오늘 날씨와 다른 말을 하고 있으면 안 믿긴다. */
+    var wx = (window.__ckWx && window.__ckWx.kind) || 'clear';
+    if (wx === 'rain' || wx === 'snow') {
+      var b1 = document.querySelector('.ck-opt[data-o="1"]');
+      if (b1) setTimeout(function () { b1.click(); }, 60);
+    }
+
+    if (S.camLock) S.camLock(true);      /* 카메라를 이 연출이 쥔다 */
     if (host) host.classList.add('ck-intro');
     if (pinLayer) {
       pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
@@ -355,27 +371,42 @@
     var ok = S.showWideMap();
     if (!ok) { finish(); return; }
 
-    var HOLD = 1500;      /* 한 장소에 머무는 시간 */
+    var HOLD = 2100;      /* 날아가는 1.15초 + 머무는 시간 */
     var T = 1700;         /* 지도를 보여 주는 시간 */
 
     /* ② 지도를 1번 쪽으로 당긴다 */
     at(T - 520, function () { S.zoomMapTo(0); });
 
-    /* ③④⑤ 3D 로 넘어가 정거장을 끊어 가며 */
+    /* 핀을 지나온 것까지 세운다 */
+    function liftPins(i) {
+      if (!pinLayer) return;
+      var pins = pinLayer.querySelectorAll('.ck-pin:not(.ck-cand)');
+      for (var k = 0; k <= i && k < pins.length; k++) {
+        pins[k].classList.remove('ck-wait');
+      }
+    }
+
+    /* ③④⑤ 장소마다 자기 모형으로 갈아 끼운다.
+       한 모형을 훑으면 「코앞에서 조금 움직인」 것으로 보인다.
+       모형이 바뀌면 「다른 데로 갔다」가 된다 — 실제로 8.4km·11km 다. */
     route.forEach(function (p, i) {
       at(T + HOLD * i, function () {
+        /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
+        var nx = route[i + 1];
+        if (nx && nx.scene && S.preloadScene) S.preloadScene(nx.scene);
+
         cut(function () {
-          if (i === 0) S.showModel();
-          S.camStop(i, 1.9);
-          skyAtStop(i);
-          drawLine(route, i);          /* 선을 그 정거장까지 늘린다 */
-          /* 지나온 정거장까지 핀을 세운다 */
-          if (pinLayer) {
-            var pins = pinLayer.querySelectorAll('.ck-pin:not(.ck-cand)');
-            for (var k = 0; k <= i && k < pins.length; k++) {
-              pins[k].classList.remove('ck-wait');
-            }
+          S.showModel();
+          if (p.scene && S.loadScene) {
+            S.loadScene(p.scene, function () {
+              S.camStop(i, 1.35);
+              liftPins(i);
+            });
+          } else {
+            S.camStop(i, 1.35);
+            liftPins(i);
           }
+          skyAtStop(i);
         });
       });
     });
@@ -419,6 +450,11 @@
        swap  순서를 바꾸면 핀 번호가 바뀐다
        cand  다른 곳으로 가면 후보 핀이 켜지고 원래 핀이 흐려진다
        live  가는 길을 바꾸면 해변길(1)에서 안쪽 도로(2)로 선이 넘어간다 */
+  /* 갈래는 「무엇 때문에 바꾸는가」다.
+       0 사람이 몰려서  순서를 바꾼다 (2번과 3번이 자리를 맞바꾼다)
+       1 비가 와서      실내 후보로 옮긴다 (대체 핀이 켜진다)
+       2 길이 막혀서    가는 길을 바꾼다 (해변길 -> 안쪽 도로)
+     화면에 보이는 결과가 셋 다 달라야 고른 값이 있다. */
   var OPTS = [
     { swap: 1, cand: 0, live: 1, order: [0, 2, 1] },
     { swap: 0, cand: 1, live: 1, order: [0, 1, 2] },
@@ -626,6 +662,7 @@
       .then(function (j) {
         route = (j && j.route) || []; alt = (j && j.alt) || null;
         window.__ckRoute = route;        /* 들어오는 장면이 이걸 쓴다 */
+        window.__ckScenes = (j && j.scenes) || {};   /* 장소별 모형 */
       })
       .catch(function () { route = []; window.__ckRoute = []; })
       .then(liveCrowd)

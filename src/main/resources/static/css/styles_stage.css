@@ -69,7 +69,10 @@
 }
 .ck-home .ck-stage .ck-frame{
   position:absolute; left:50%; top:50%;
-  width:max(100%, calc(100dvh * 1.3892)); height:auto;
+  /* 모형마다 가로세로 비가 다르다(해운대 1.389 · 광안리 1.725 ·
+     감천 1.901). loadScene 이 --st-ar 을 바꿔 준다. 고정으로 두면
+     비가 큰 모형에서 무대를 못 덮고 가장자리에 바닥색이 드러난다. */
+  width:max(100%, calc(100dvh * var(--st-ar, 1.3892))); height:auto;
   transform:translate(calc(-50% + var(--st-x, 0px)), calc(-50% + var(--st-y, 0px)))
             scale(var(--st-z, 1));
   transform-origin:50% 50%;
@@ -214,7 +217,7 @@
   /* 좁은 화면에서는 장면을 확대하지 않는다. 140% 로 당기면 왼쪽이 잘려
      세 번째 정거장(동백섬, x 15%)이 화면 밖으로 나간다 — 실측 left -77px.
      폰에서는 하루 동선이 다 보이는 쪽이 낫다. 비율만큼 낮아진다. */
-  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 460px) }
+  .ck-home .ck-stage{ --sc-h:min(calc(100vw / var(--st-ar, 1.3892)), 460px) }
   /* 장면이 흐름으로 바뀌면 무대가 아니라 장면 상자가 휘어야 한다 */
   .ck-home .ck-hero.ck-stage{ border-radius:0 }
   .ck-home .ck-hero.ck-stage::after{ content:none }
@@ -229,7 +232,7 @@
   .ck-home .ck-stage .ck-frame{
     width:100%; left:50%;
   }
-  .st-bigmap{ position:relative; inset:auto; height:calc(100vw / 1.3892); max-height:460px; grid-row:1 }
+  .st-bigmap{ position:relative; inset:auto; height:calc(100vw / var(--st-ar, 1.3892)); max-height:460px; grid-row:1 }
 
   .st-tl,.st-side,.st-mini,.st-view,.st-form{
     position:static; width:auto; max-height:none; transform:none;
