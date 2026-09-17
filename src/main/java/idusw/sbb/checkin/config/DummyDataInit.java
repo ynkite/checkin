@@ -22,6 +22,9 @@ import java.time.LocalDateTime;
 @Component
 @Profile("local")
 @RequiredArgsConstructor
+/* 확정 상태값은 FIXED 다. CONFIRMED 는 옛 이름이고 지금 코드에서
+   판정하는 곳이 없다 — TravelPlanServiceImpl 이 FIXED / DRAFT 만 받는다.
+   그래서 시드가 CONFIRMED 로 들어가면 「내 여행」에 안 떴다. */
 public class DummyDataInit implements CommandLineRunner {
 
     private final UserRepository userRepository;
@@ -103,7 +106,7 @@ public class DummyDataInit implements CommandLineRunner {
                 .destination("제주도")
                 .startDate(LocalDate.of(2025, 8, 1))
                 .endDate(LocalDate.of(2025, 8, 4))
-                .status("CONFIRMED")
+                .status("FIXED")
                 .build());
 
         //AI 예상 비용 (isEstimated = true)
