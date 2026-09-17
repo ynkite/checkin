@@ -704,9 +704,12 @@
       });
       window._mpTransportType = keep;
 
-      if (fail.length) console.error('[지도] 자체 점검 실패
-' + fail.join('
-'));
+      if (fail.length) {
+        /* 줄바꿈을 문자열 안에 쓰지 않는다 — 스크립트로 파일을 고칠 때
+           그 자리가 진짜 줄바꿈으로 바뀌면 블록이 통째로 죽는다.
+           실제로 한 번 죽어서 지도 화면 함수 전부가 안 돌았다. */
+        console.error(['[지도] 자체 점검 실패'].concat(fail).join(String.fromCharCode(10)));
+      }
       else console.log('[지도] 자체 점검 통과');
       return fail;
     }

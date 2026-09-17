@@ -128,6 +128,47 @@
      선이 그어지고 → 판이 들어오고 → 지금 시각·날씨로 돌아온다.
      핀의 %좌표를 그대로 쓰므로 모형이 바뀌어도 따라간다. */
 
+  /* ── 기계가 버티는지 한 번 재고 정한다 ──────────────────
+     모션을 고정으로 줄이면 좋은 기계에서도 심심해진다.
+     반대로 다 켜 두면 버거운 기계에서 뚝뚝 끊긴다.
+     그래서 들어온 뒤 한 번 재고 그 값을 이 창에서 계속 쓴다.
+     계속 재면 그게 또 비용이다.
+
+     기준 — 1초 동안 33ms(30프레임)를 넘긴 프레임이 넷 이상이면 버겁다.
+     하나둘은 다른 탭이 뭘 했을 수도 있으니 넘긴다. */
+  function gradeMotion() {
+    var r = document.documentElement;
+    if (reduce) { r.setAttribute('data-motion', 'lite'); return; }
+
+    /* 이 창에서 이미 정했으면 그대로 쓴다 */
+    try {
+      var seen = sessionStorage.getItem('ckMotion');
+      if (seen) { r.setAttribute('data-motion', seen); return; }
+    } catch (e) {}
+
+    r.setAttribute('data-motion', 'full');
+
+    var t0 = performance.now(), last = t0, slow = 0, n = 0;
+    function step(now) {
+      var dt = now - last; last = now; n++;
+      if (dt > 33) slow++;
+      if (now - t0 < 1000) { requestAnimationFrame(step); return; }
+
+      /* 프레임이 아예 안 돌았으면(탭이 숨어 있었다) 판단하지 않는다 */
+      if (n < 20) return;
+
+      var g = slow >= 4 ? 'lite' : 'full';
+      r.setAttribute('data-motion', g);
+      try { sessionStorage.setItem('ckMotion', g); } catch (e) {}
+      if (g === 'lite') {
+        console.info('[체크인] 프레임이 버거워서 움직임을 낮췄습니다 ' +
+                     '(' + slow + '/' + n + ' 프레임 지연). ' +
+                     'sessionStorage 의 ckMotion 을 지우면 다시 잽니다.');
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
   var WX_KO = { clear: '맑음', cloudy: '흐림', rain: '비', snow: '눈' };
 
   /* 기상청 하늘 상태를 우리 네 가지로 줄인다.
@@ -247,6 +288,29 @@
     var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
     for (var i = 0; i < pins.length; i++) pins[i].classList.add('ck-wait');
 
+    /* 끝내는 일은 한 번만. 어느 쪽이 먼저 와도 같은 자리에서 마친다 —
+       rAF 가 다 돌았거나, 벽시계 마감이 지났거나, 탭이 숨었거나. */
+    var ended = false;
+    function finish() {
+      if (ended) return;
+      ended = true;
+      clearTimeout(guard);
+      document.removeEventListener('visibilitychange', onHide);
+      for (var q = 0; q < pins.length; q++) pins[q].classList.remove('ck-wait');
+      if (host) host.classList.remove('ck-intro');
+      line.style.strokeDasharray = '';
+      line.style.strokeDashoffset = '';
+      skyHold = false;
+      if (window.ckSky) window.ckSky();      /* 지금 시각으로 되돌린다 */
+      done();
+    }
+
+    /* 브라우저는 탭이 뒤에 있으면 rAF 를 멈춘다. 그대로 두면 핀이
+       안 보이는 채로, 판이 물린 채로 남는다. 벽시계로 마감을 둔다. */
+    var guard = setTimeout(finish, DUR + 900);
+    function onHide() { if (document.hidden) finish(); }
+    document.addEventListener('visibilitychange', onHide);
+
     function step(now) {
       var x = Math.min(1, (now - t0) / DUR);
       var e = x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;   /* 부드럽게 */
@@ -271,16 +335,9 @@
         window.ckSky(d);
       }
 
+      if (ended) return;
       if (x < 1) requestAnimationFrame(step);
-      else {
-        for (var q = 0; q < pins.length; q++) pins[q].classList.remove('ck-wait');
-        if (host) host.classList.remove('ck-intro');
-        line.style.strokeDasharray = '';
-        line.style.strokeDashoffset = '';
-        skyHold = false;
-        if (window.ckSky) window.ckSky();      /* 지금 시각으로 되돌린다 */
-        done();
-      }
+      else finish();
     }
     requestAnimationFrame(step);
   }
@@ -511,9 +568,11 @@
           cell.innerHTML = esc(alt.crowdLabel || (ag && ag.label) || '') +
                            '<i>집중률 ' + alt.crowd + '</i>';
         }
-        var sub = document.querySelector('.ck-opt[data-o="1"] span');
-        if (sub) sub.textContent = route[1]
-          ? (route[1].name + ' 대신 ' + alt.name + '으로') : alt.name + '으로';
+        /* 문구는 마크업에 적어 둔 것을 쓴다.
+           「원래 광안리였어요. 8.4km, 차로 52분」처럼 왜 옮기는지를
+           말해야 하는데, 여기서 이름만 갈아 끼우면 그 이유가 사라진다.
+           전에는 「해수욕장 대신 동백섬으로」로 덮어써서, 거리 이야기가
+           화면에서 없어졌다. */
       }
     }
 
@@ -914,6 +973,9 @@
           intro(r || [], function () {
             var w = window.__ckWx || { kind: 'clear', temp: null };
             tellNow(w.kind, w.temp);
+            /* 인트로가 끝난 뒤에 잰다. 인트로 중에 재면 인트로를 보고
+               판단해 버린다 — 그건 한 번만 도는 것이다 */
+            setTimeout(gradeMotion, 400);
           });
         })();
       });

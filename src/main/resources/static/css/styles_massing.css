@@ -103,25 +103,37 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 @media (prefers-reduced-motion:no-preference){
   /* 무리마다 다른 고리를 다른 속도로 돈다. 주기가 서로 나누어떨어지지
      않으므로(23·31·27·37·29초) 언제 봐도 다섯이 같은 자리에 있지 않다. */
-  /* 움직이는 무리는 셋이다. 다섯이었는데, 무리 하나가 모형 폭을 거의
-     다 덮어서 레이어 다섯 장이 각각 1900×1350 텍스처가 됐다.
-     램이 넉넉하지 않은 기계에서 그게 돈다.
-     회전은 둘에만 남긴다 — 회전이 무리 안에서 사람마다 다르게 움직이는
-     느낌을 만드는 값이라 아주 버릴 수는 없다.
-     나머지 둘은 자리에 서 있다. 실제로도 모든 사람이 걷지는 않는다. */
-  .crowd .cw.b1,
-  .crowd .cw.b3,
-  .crowd .cw.b5{ will-change:transform }
+  /* 무리 다섯이 각각 다른 고리를 다른 속도로 돈다. 주기가 서로
+     나누어떨어지지 않아서(23·31·27·37·29초) 언제 봐도 다섯이 같은
+     자리에 없다. 회전을 조금 섞은 것이 무리 안에서 사람마다 다르게
+     움직이는 느낌을 만든다. */
+  .crowd .cw{ will-change:transform }
   .crowd .cw.b1{ animation:ck-walk-a 23s ease-in-out infinite }
+  .crowd .cw.b2{ animation:ck-walk-b 31s ease-in-out -6s infinite }
   .crowd .cw.b3{ animation:ck-walk-c 27s ease-in-out -13s infinite }
-  .crowd .cw.b5{ animation:ck-walk-flat 29s ease-in-out -4s infinite }
+  .crowd .cw.b4{ animation:ck-walk-flat 37s ease-in-out -21s infinite }
+  .crowd .cw.b5{ animation:ck-walk-a 29s ease-in-out -4s infinite }
 
-  /* 파도 — 전에는 stroke-dashoffset 을 흘렸다. 그건 「칠하기」 속성이라
-     합성으로 안 끝나고 매 프레임 긴 path 를 다시 칠한다.
-     transform 으로 바꿨다. 밀려오는 느낌은 그대로다. */
+  /* 파도 — transform 으로 밀려온다. 전에는 stroke-dashoffset 이었는데
+     해안선은 모형 폭을 다 덮는 긴 path 라 매 프레임 다시 칠하는 값이
+     실제로 컸다. 여기만은 transform 이 맞다. */
   .wv{ will-change:transform; animation:ck-wave 7s ease-in-out infinite alternate }
   .wv.w2{ animation-duration:9s; animation-delay:-2s }
   .wv.w3{ animation-duration:11s; animation-delay:-5s }
+
+  /* 아직 안 간 구간은 점선이 앞으로 흐른다. 어디로 가는 중인지가
+     선에서 읽힌다. 이건 되살린다 — 2px 굵기 선을 다시 칠하는 값은
+     칠하는 면적에 비례하고, 이 선은 작다. 비쌌던 건 해안선이었다. */
+  .rt-todo,.rb-todo{ animation:ck-march 1.9s linear infinite }
+
+  /* ── 기계가 버거우면 낮춘다 ─────────────────────────────
+     app_home.js 가 들어온 뒤 프레임을 한 번 재고 정한다.
+     좋은 기계에서는 위의 것이 다 돈다. */
+  [data-motion="lite"] .crowd .cw.b2,
+  [data-motion="lite"] .crowd .cw.b4{ animation:none; will-change:auto }
+  [data-motion="lite"] .rt-todo,
+  [data-motion="lite"] .rb-todo{ animation:none }
+  [data-motion="lite"] .wv.w3{ animation:none }
 
   /* 차 22대·파라솔 57개를 각각 움직이면 애니메이션 대상이 109개가 된다.
      SVG 는 요소마다 그 영역을 다시 그리므로 프레임이 떨어진다.
@@ -182,6 +194,9 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
   88%  { transform:translate(-1.8px, 1.0px) }
  100%  { transform:translate(0,0) }
 }
+/* 흐르는 점선 — 아직 안 간 구간 */
+@keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
+
 /* 파도 — 밀려오고 물러난다. 아주 조금 */
 @keyframes ck-wave{
   from{ transform:translate3d(0, 0, 0) }
