@@ -269,6 +269,165 @@
      여기서 정한 배율이 축소 하한이 된다. 그보다 줄이면 모형 전체가
      들어와 렉이 심해지고 동선을 보는 데 도움도 안 된다. */
 
+  function initCamTools() {
+    var rz = 0;
+    w.addEventListener('resize', function () {
+      clearTimeout(rz);
+      rz = setTimeout(function () { if (!cam.user) camFit(); }, 180);
+    });
+  }
+
+  function initTools() {
+    initCamTools();
+    var stage = d.querySelector('.ck-stage');
+    var model = $('st_t_model'), map = $('st_t_map'), walk = $('st_t_walk');
+    var scene = stage && stage.querySelector('.ck-scene'), bmap = $('st_bigmap');
+
+    function show(which) {
+      if (!scene || !bmap) return;
+      var isMap = which === 'map';
+      scene.hidden = isMap;
+      bmap.hidden = !isMap;
+      if (model) model.setAttribute('aria-pressed', String(!isMap));
+      if (map) map.setAttribute('aria-pressed', String(isMap));
+      var t = $('st_mini_ttl');
+      if (t) t.textContent = isMap ? '작은 모형' : '지금 위치 지도';
+      if (isMap) ready(function () { makeBig(); if (big) big.relayout(); });
+    }
+    if (model) model.addEventListener('click', function () { show('model'); });
+    if (map) map.addEventListener('click', function () { show('map'); });
+
+    if (walk) {
+      walk.addEventListener('click', function () {
+        var on = walk.getAttribute('aria-pressed') !== 'true';
+        walk.setAttribute('aria-pressed', String(on));
+        if (stage) stage.classList.toggle('st-still', !on);
+      });
+    }
+
+    /* 시점 도구 — 카메라와 같은 변수를 쓴다.
+       사람이 한 번 만지면 장면이 넘어가도 카메라가 따라 움직이지 않는다.
+       보고 있는 자리를 화면이 제멋대로 옮기면 안 된다. */
+    var zin = $('st_v_in'), zout = $('st_v_out'), zr = $('st_v_reset');
+    if (zin) zin.addEventListener('click', function () {
+      cam.user = true; cam.z = Math.min(CAM_MAX, cam.z * 1.22); camApply();
+    });
+    if (zout) zout.addEventListener('click', function () {
+      /* 하한은 「동선이 다 보이는 자리」다. 그보다 줄이면 모형 전체가
+         들어와 렉이 심해지고 동선을 보는 데 도움도 안 된다 */
+      cam.user = true; cam.z = Math.max(CAM_MIN, cam.z / 1.22); camApply();
+    });
+    if (zr) zr.addEventListener('click', function () {
+      cam.user = false;
+      if (!camFit()) camReset();
+      fitMini();                 /* 작은 지도도 셋이 다 보이는 자리로 */
+    });
+
+    /* 작은 지도 — 여기도 버튼으로만. setZoomable(false) 로 휠은 막혀 있다.
+       카카오는 숫자가 작을수록 확대다 */
+    var mi = $('st_m_in'), mo = $('st_m_out');
+    if (mi) mi.addEventListener('click', function () {
+      if (mini) mini.setLevel(Math.max(1, mini.getLevel() - 1), { animate: true });
+    });
+    if (mo) mo.addEventListener('click', function () {
+      if (mini) mini.setLevel(Math.min(12, mini.getLevel() + 1), { animate: true });
+    });
+
+    /* 작은 지도 접기 */
+    var fold = $('st_fold'), box = $('st_mini');
+    if (fold && box) {
+      fold.addEventListener('click', function () {
+        var open = fold.getAttribute('aria-expanded') === 'true';
+        fold.setAttribute('aria-expanded', String(!open));
+        fold.textContent = open ? '펼치기' : '접기';
+        box.classList.toggle('fl-fold', open);
+        if (!open) ready(function () { if (mini) { mini.relayout(); fitMini(); } });
+      });
+    }
+
+    /* 오른쪽 판 탭 */
+    var td = $('st_tab_day'), tn = $('st_tab_now');
+    var pd = $('st_pane_day'), pn = $('st_pane_now');
+    function tab(day) {
+      if (!pd || !pn) return;
+      pd.hidden = !day; pn.hidden = day;
+      if (td) { td.setAttribute('aria-pressed', String(day)); td.classList.toggle('on', day); }
+      if (tn) { tn.setAttribute('aria-pressed', String(!day)); tn.classList.toggle('on', !day); }
+    }
+    if (td) td.addEventListener('click', function () { tab(true); });
+    if (tn) tn.addEventListener('click', function () { tab(false); });
+
+    /* 정거장을 누르면 그 정거장이 지금이 된다 */
+    var sb = $('st_stops');
+    if (sb) {
+      sb.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.fl-pill') : null;
+        if (!b) return;
+        var i = parseInt(b.getAttribute('data-s'), 10);
+        if (isNaN(i)) return;
+        state.hot = i;
+        stops(); mapPins();
+        cam.user = false;                        /* 눌러서 고른 것이므로 카메라가 따라간다 */
+        camTo(route[i]);
+      });
+    }
+  }
+
+  /* ── app_home.js 가 부른다 ───────────────────────── */
+
+  /* ── 모형 갈아 끼우기 ────────────────────────────────
+     장소마다 자기 모형을 쓴다. 한 모형(해운대 2km)에 세 곳을 놓으면
+     아무리 벌려도 걸어서 갈 거리라서, 순서를 바꾸는 이유가 안 보인다.
+
+     미리 다 받지 않는다. 자기 차례 직전에 받는다 —
+     해운대 463KB · 광안리 1.1MB · 감천 954KB 를 한꺼번에 받으면
+     첫 화면이 늦는다. 받은 것은 들고 있다(두 번째부터는 즉시).
+
+     모형마다 가로세로 비가 달라서 판 크기를 같이 바꾼다.
+     안 바꾸면 무대를 덮지 못하고 가장자리에 바닥색이 드러난다. */
+  var sceneCache = {};
+  var sceneNow = null;
+
+  function sceneDefs() {
+    return (w.__ckScenes || {});
+  }
+
+  function loadScene(name, whenDone) {
+    var defs = sceneDefs();
+    var def = defs[name];
+    var host = $('ck_scene');
+    if (!def || !host) { if (whenDone) whenDone(false); return; }
+    if (sceneNow === name) { if (whenDone) whenDone(true); return; }
+
+    function put(svg) {
+      host.innerHTML = svg;
+      var el = host.querySelector('svg');
+      if (el) { el.classList.add('mass'); el.setAttribute('aria-hidden', 'true'); }
+      /* 판의 가로세로 비를 이 모형에 맞춘다 */
+      var f = $('ck_frame');
+      if (f && def.ar) f.style.setProperty('--st-ar', def.ar);
+      sceneNow = name;
+      if (whenDone) whenDone(true);
+    }
+
+    if (sceneCache[name]) { put(sceneCache[name]); return; }
+
+    fetch(def.svg, { cache: 'force-cache' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (svg) { sceneCache[name] = svg; put(svg); })
+      .catch(function () { if (whenDone) whenDone(false); });
+  }
+
+  /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
+  function preloadScene(name) {
+    var def = sceneDefs()[name];
+    if (!def || sceneCache[name]) return;
+    fetch(def.svg, { cache: 'force-cache' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (svg) { sceneCache[name] = svg; })
+      .catch(function () {});
+  }
+
   /* ── 들어오는 장면이 쓰는 손잡이 ──────────────────────
      app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다. */
 
@@ -473,6 +632,8 @@
     showWideMap: showWideMap,
     zoomMapTo: zoomMapTo,
     showModel: showModel,
+    loadScene: loadScene,
+    preloadScene: preloadScene,
     camStop: camStop,
     camFly: camFly,
     camFlyStop: camFlyStop,

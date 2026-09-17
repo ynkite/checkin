@@ -309,8 +309,13 @@
       document.removeEventListener('visibilitychange', onHide);
       if (host) { host.classList.remove('ck-intro'); host.classList.remove('ck-cut'); }
       S.showModel();
-      drawLine(route);                 /* 다 지나왔으니 전체를 채운다 */
-      S.camFit();
+      /* 히어로의 얼굴은 첫 장소 모형이다. 돌아와서 멈춘다 */
+      if (route[0] && route[0].scene && S.loadScene) {
+        S.loadScene(route[0].scene, function () { S.camFit(); });
+      } else {
+        S.camFit();
+      }
+      drawLine(route);
       if (pinLayer) {
         pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
           p.classList.remove('ck-wait');
@@ -381,29 +386,30 @@
       }
     }
 
-    /* ③ 1번 — 지도에서 3D 로 넘어오는 자리라 여기만 끊는다 */
-    at(T, function () {
-      cut(function () {
-        S.showModel();
-        S.camStop(0, 1.95);
-        skyAtStop(0);
-        drawLine(route, 0);
-        liftPins(0);
+    /* ③④⑤ 장소마다 자기 모형으로 갈아 끼운다.
+       한 모형을 훑으면 「코앞에서 조금 움직인」 것으로 보인다.
+       모형이 바뀌면 「다른 데로 갔다」가 된다 — 실제로 8.4km·11km 다. */
+    route.forEach(function (p, i) {
+      at(T + HOLD * i, function () {
+        /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
+        var nx = route[i + 1];
+        if (nx && nx.scene && S.preloadScene) S.preloadScene(nx.scene);
+
+        cut(function () {
+          S.showModel();
+          if (p.scene && S.loadScene) {
+            S.loadScene(p.scene, function () {
+              S.camStop(i, 1.35);
+              liftPins(i);
+            });
+          } else {
+            S.camStop(i, 1.35);
+            liftPins(i);
+          }
+          skyAtStop(i);
+        });
       });
     });
-
-    /* ④⑤ 다음 정거장으로 날아간다.
-       같은 배율로 곧게 밀면 사진을 옆으로 미는 것처럼 보인다.
-       물러나면서 옮기고 도착해서 당기면 「갔다」로 읽힌다. */
-    for (var i = 1; i < route.length; i++) {
-      (function (k) {
-        at(T + HOLD * k, function () {
-          skyAtStop(k);
-          drawLine(route, k);
-          S.camFly(k, 1150, function () { liftPins(k); });
-        });
-      })(i);
-    }
 
     /* ⑥ 물러나서 전체를 보여 주고 판을 들인다 */
     at(T + HOLD * route.length, function () { cut(finish); });
@@ -656,6 +662,7 @@
       .then(function (j) {
         route = (j && j.route) || []; alt = (j && j.alt) || null;
         window.__ckRoute = route;        /* 들어오는 장면이 이걸 쓴다 */
+        window.__ckScenes = (j && j.scenes) || {};   /* 장소별 모형 */
       })
       .catch(function () { route = []; window.__ckRoute = []; })
       .then(liveCrowd)
