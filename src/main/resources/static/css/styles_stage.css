@@ -32,7 +32,18 @@
 .ck-home .ck-hero.ck-stage::after{
   border-radius:0 0 50% 50% / 0 0 5.5% 5.5%;
 }
-.ck-home .ck-stage .ck-scene{ overflow:hidden }
+.ck-home .ck-stage .ck-scene{
+  overflow:hidden;
+  /* 축소하면 판 밖이 드러난다. 페이지 바닥색이 나오면 「잘렸다」로
+     보이지만, 모형의 바닥색을 깔아 두면 「멀어진 바다」로 읽힌다.
+     그래서 1 아래로도 줄일 수 있다. */
+  background:var(--void);
+}
+/* 드러난 가장자리를 흐린다. 경계가 선으로 보이지 않게 */
+.ck-home .ck-stage .ck-frame::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  box-shadow:inset 0 0 90px 30px rgba(var(--w-rgb), .28);
+}
 
 /* 먼 쪽(위)의 안개와 가까운 쪽(아래)의 그늘.
    미니어처가 깊이를 갖는 고전적인 방법이다. 판보다 아래(z-index 1)에 둬서

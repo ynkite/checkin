@@ -43,6 +43,12 @@ public class PuzzleClient {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final idusw.sbb.checkin.global.apikey.PaidGate gate;
+
+    /* 무료인 것. 이 셋은 문을 안 지난다.
+       나머지(장소 혼잡도·국내 여행·주거 생활·음식점·학원)는 돈이 든다. */
+    private static final java.util.Set<String> FREE =
+            java.util.Set.of("subway");
 
     public boolean ready() {
         return ring.ready();
@@ -54,7 +60,21 @@ public class PuzzleClient {
      * @return 응답 JSON. 키가 없거나 실패하면 null
      */
     public JsonNode get(String path, Map<String, String> query) {
+        return get(path, query, null);
+    }
+
+    /**
+     * @param product 상품 이름. 무료가 아니면 유료 문을 지난다.
+     *                null 이면 유료로 본다 — 모르는 것을 공짜로 치지 않는다.
+     */
+    public JsonNode get(String path, Map<String, String> query, String product) {
         if (!ready()) return null;
+        if (product == null || !FREE.contains(product)) {
+            if (!gate.allow(product == null ? "puzzle" : product)) {
+                /* 닫혀 있거나 오늘 상한을 넘겼다. 화면은 「연동 전」으로 둔다 */
+                return null;
+            }
+        }
 
         StringBuilder qs = new StringBuilder();
         if (query != null) {
@@ -88,7 +108,7 @@ public class PuzzleClient {
             int st = e.getStatusCode().value();
             if (ring.fail(st)) {
                 log.info("[puzzle] 다음 키로 다시 부릅니다 ({})", path);
-                return get(path, query);
+                return get(path, query, product);
             }
             log.warn("[puzzle] {} 실패 HTTP {}", path, st);
             return null;

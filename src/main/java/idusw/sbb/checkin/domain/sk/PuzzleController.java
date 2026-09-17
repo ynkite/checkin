@@ -22,15 +22,21 @@ import java.util.Map;
 public class PuzzleController {
 
     private final PuzzleService puzzle;
+    private final idusw.sbb.checkin.global.apikey.PaidGate gate;
 
     /** 연동 상태. 화면이 먼저 물어보고 칸을 만들지 말지 정한다 */
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<Map<String, Object>>> status() {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("ready", puzzle.ready());
-        m.put("note", puzzle.ready()
-                ? "지오비전 퍼즐이 연결돼 있습니다."
-                : "지오비전 퍼즐은 아직 연동 전입니다. 키를 넣으면 바로 씁니다.");
+        m.put("paidOpen", gate.enabled());
+        m.put("dailyCap", gate.cap());
+        m.put("note", !puzzle.ready()
+                ? "지오비전 퍼즐은 아직 연동 전입니다. 키를 넣으면 바로 씁니다."
+                : gate.enabled()
+                    ? "연결돼 있습니다. 유료 상품도 열려 있습니다 (하루 " + gate.cap() + "회)."
+                    : "연결돼 있습니다. 유료 상품은 닫아 뒀습니다 — "
+                      + "돈이 들어서 최종 테스트 때만 엽니다. 지하철 혼잡도는 무료라 그대로 씁니다.");
         return ResponseEntity.ok(ApiResponse.success(m));
     }
 

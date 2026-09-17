@@ -35,37 +35,37 @@ public class PuzzleService {
 
     /** 지하철 역별 시간대 혼잡도. 「지하철로 가면 그 시각에 얼마나 붐비나」 */
     public JsonNode subwayCongestion(String stationCode, String yyyymmdd) {
-        return client.get(paths.subway().replace("{station}", nz(stationCode)), q("date", yyyymmdd));
+        return client.get(paths.subway().replace("{station}", nz(stationCode)), q("date", yyyymmdd), "subway");
     }
 
     /** 장소(상권) 혼잡도. 관광공사 집중률과 교차 검증에 쓴다 */
     public JsonNode placeCongestion(String poiId, String yyyymmdd) {
-        return client.get(paths.place().replace("{poi}", nz(poiId)), q("date", yyyymmdd));
+        return client.get(paths.place().replace("{poi}", nz(poiId)), q("date", yyyymmdd), "place");
     }
 
     /** 유동인구. 그 지역에 사람이 실제로 얼마나 다녔는가 */
     public JsonNode population(String areaCode, String yyyymmdd) {
-        return client.get(paths.pop().replace("{area}", nz(areaCode)), q("date", yyyymmdd));
+        return client.get(paths.pop().replace("{area}", nz(areaCode)), q("date", yyyymmdd), "pop");
     }
 
     /** 국내 여행 — 방문 특성. 성수기 판단과 대체 후보 고를 때 */
     public JsonNode travel(String areaCode, String yyyymm) {
-        return client.get(paths.travel().replace("{area}", nz(areaCode)), q("month", yyyymm));
+        return client.get(paths.travel().replace("{area}", nz(areaCode)), q("month", yyyymm), "travel");
     }
 
     /** 음식점 — 상권 소비. 예산의 식비 단가를 실제 값으로 바꿀 때 */
     public JsonNode dining(String areaCode, String yyyymm) {
-        return client.get(paths.dining().replace("{area}", nz(areaCode)), q("month", yyyymm));
+        return client.get(paths.dining().replace("{area}", nz(areaCode)), q("month", yyyymm), "dining");
     }
 
     /** 주거 생활 — 그 동네가 관광지인지 생활권인지 가른다 */
     public JsonNode residence(String areaCode, String yyyymm) {
-        return client.get(paths.residence().replace("{area}", nz(areaCode)), q("month", yyyymm));
+        return client.get(paths.residence().replace("{area}", nz(areaCode)), q("month", yyyymm), "residence");
     }
 
     /** 학원 — 방학·학기 주기를 읽는다. 가족 여행 성수기와 겹친다 */
     public JsonNode academy(String areaCode, String yyyymm) {
-        return client.get(paths.academy().replace("{area}", nz(areaCode)), q("month", yyyymm));
+        return client.get(paths.academy().replace("{area}", nz(areaCode)), q("month", yyyymm), "academy");
     }
 
     private static String nz(String s) { return s == null ? "" : s; }

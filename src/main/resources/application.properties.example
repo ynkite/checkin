@@ -163,3 +163,19 @@ sk.puzzle.api.base-url=https://apis.openapi.sk.com/puzzle
 # sk.puzzle.path.dining=/dining/sales/stat/monthly/areas/{area}
 # sk.puzzle.path.residence=/residence/pop/stat/monthly/areas/{area}
 # sk.puzzle.path.academy=/academy/sales/stat/monthly/areas/{area}
+
+# ────────────────────────────────────────────────────────────
+#  유료 호출을 막는 문
+#
+#  지오비전 퍼즐 중 장소 혼잡도·국내 여행·주거 생활·음식점·학원은
+#  돈이 든다. 개발하면서 화면을 열 때마다 호출되면 심사 전에 예산이
+#  녹는다. 그래서 기본은 닫아 둔다.
+#
+#  닫혀 있으면 호출을 아예 안 하고 화면은 「연동 전」으로 둔다.
+#  0 으로 채우지 않는다.
+#
+#  최종 테스트 때만 true 로 바꾼다. 열어 둔 동안에도 하루 상한이 있다.
+#  무료인 것(TMAP · 관광공사 · 지하철 혼잡도)은 이 문을 지나지 않는다.
+# ────────────────────────────────────────────────────────────
+sk.paid.enabled=${SK_PAID_ENABLED:false}
+sk.paid.daily-cap=${SK_PAID_DAILY_CAP:200}
