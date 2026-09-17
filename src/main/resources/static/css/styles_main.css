@@ -546,6 +546,11 @@ nav {
 }
 .auth-link:hover { text-decoration-color: var(--ink-3) }
 
+/* 조용한 갈래 — 비밀번호 재설정처럼 「혹시」에 해당하는 것.
+   주 버튼 바로 밑에 잉크 600 으로 있으면 버튼과 둘이 싸운다. */
+.auth-link.auth-q{ font-size:12px; font-weight:400; color:var(--ink-3) }
+.auth-link.auth-q:hover{ color:var(--ink-2) }
+
 .vis-chip {
     padding: 7px 14px;
     border-radius: 20px;
