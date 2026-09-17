@@ -89,6 +89,7 @@ public class SecurityConfig {
                                 "/api/route/travel-time/compare",   //자차·대중교통·도보 비교 (TMAP)
                                 "/api/route/reverse",               //좌표 -> 주소 (TMAP)
                                 "/api/route/navi",                  //주행 네비 경로 (경로선+턴안내, TMAP)
+                                "/api/route/optimize",              //경유지 최적화 (방문 순서 재정렬, TMAP)
                                 "/api/route/nearby",                //주변 검색 (주유소·화장실 등, TMAP)
                                 "/api/route/fuel",                  //싼 주유소 (오피넷 + 카카오 좌표변환)
                                 "/api/puzzle/**",                   //SK 지오비전 퍼즐
