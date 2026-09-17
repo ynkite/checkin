@@ -166,3 +166,36 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
   opacity:calc(clamp(.25, calc(.25 + var(--cw, .8) * .75), 1) * var(--sky-a, 1));
   transition:opacity 1.2s ease;
 }
+
+/* ── 표면의 결 ──────────────────────────────────────────────
+   갤러리(b2tf · inspora)에 올라온 작업물 중 평평한 벡터 한 장으로
+   끝낸 것은 한 점도 없었다. 전부 물건이거나 흐린 덩이가 깔려 있다.
+   우리 모형은 SVG 라 완벽하게 평평해서 「3D 일러스트 스톡」처럼 보인다.
+   종이·석고 미니어처는 그렇지 않다.
+
+   결은 화면에 고정한다. 모형을 확대해도 결의 크기는 안 변해야
+   「표면」으로 읽힌다 — 같이 커지면 모형에 그려진 무늬가 된다.
+   그래서 변형이 걸리는 .ck-frame 이 아니라 .ck-scene 위에 얹는다.
+
+   tokens.css 가 금지한 SVG filter(feTurbulence 등)를 쓰지 않는다.
+   128x128 PNG 한 장이면 필터 없이 끝난다. */
+.ck-scene::after,
+.mv-scene::after{
+  content:""; position:absolute; inset:0; z-index:2;
+  pointer-events:none;
+  background-image:url("/img/grain.png");
+  background-size:128px 128px;
+  opacity:var(--grain, .5);
+  mix-blend-mode:soft-light;
+}
+[data-sky="dusk"] .ck-scene,
+[data-sky="dusk"] .mv-scene{ --grain:.38 }
+[data-sky="night"] .ck-scene,
+[data-sky="night"] .mv-scene{ --grain:.22 }
+
+/* 핀·말풍선은 결 위에 온다 */
+.ck-pins, .ck-pin{ position:relative; z-index:3 }
+
+@media (prefers-reduced-motion: reduce){
+  .ck-scene::after, .mv-scene::after{ opacity:calc(var(--grain, .5) * .6) }
+}
