@@ -445,10 +445,12 @@ async function _loadBudgetEstimate(tripId) {
         +   '<div style="font-size:18px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums">'
         +     _fmtWon(d.total) + '</div>'
         + '</div>'
-        + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text3)">'
-        +   '<div>예측 구간</div>'
-        +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
-        + '</div>'
+        // 추정 항목이 없으면 구간 폭이 0 이다 — 의미 없는 줄은 내보내지 않는다
+        + (d.low === d.high ? '' :
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text3)">'
+          +   '<div>예측 구간</div>'
+          +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
+          + '</div>')
         + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:6px">'
         +   '<div style="color:var(--text3)">신뢰도</div>'
         +   '<div style="font-weight:800;color:var(--terra)">' + (d.confidence || 0) + '%</div>'
