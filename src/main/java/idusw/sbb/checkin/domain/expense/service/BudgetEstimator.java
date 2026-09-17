@@ -95,7 +95,8 @@ public class BudgetEstimator {
                 .filter(i -> i.status() == BudgetEstimate.Status.ESTIMATED)
                 .mapToLong(Item::amount).sum();
 
-        int confidence = total == 0 ? 0 : (int) Math.round(confirmed * 100.0 / total);
+        // 내림이다. 99.5% 를 100% 로 올리면 「전부 확정」이라는 거짓말이 된다 — 신뢰도는 올려 말하지 않는다
+        int confidence = total == 0 ? 0 : (int) Math.floor(confirmed * 100.0 / total);
         long band = Math.round(estimated * ESTIMATE_BAND);
 
         String note = total == 0
@@ -131,7 +132,7 @@ public class BudgetEstimator {
         if (over <= 0) return Item.none("인원 추가", "기준인원 " + in.baseCount() + "명 이내");
 
         long amount = (long) over * EXTRA_PERSON_PER_NIGHT * Math.max(1, in.nights());
-        return Item.estimated("인원 추가 " + over, amount,
+        return Item.estimated("인원 추가 " + over + "명", amount,
                 "기준인원 " + in.baseCount() + "명 초과 · 1인 " + won(EXTRA_PERSON_PER_NIGHT) + " 추정");
     }
 

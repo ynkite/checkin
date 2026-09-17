@@ -42,7 +42,7 @@ class BudgetEstimatorTest {
         assertEquals(130_000, e.total());
         assertEquals(124_000, e.low(),  "추정 30,000 의 20% 인 6,000 만 흔들린다");
         assertEquals(136_000, e.high());
-        assertEquals(77, e.confidence());
+        assertEquals(76, e.confidence(), "100,000 ÷ 130,000 = 76.9% — 내림. 신뢰도는 올려 말하지 않는다");
     }
 
     @Test
