@@ -232,4 +232,80 @@ class RouteEngineAssemblerTest {
                 form("자차", null), Map.of(), Set.of()))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    // ── 결정 14 : 저녁이 굶지 않는다 ─────────────────────────────────────
+
+    /** 강릉 실제 좌표 — FOOD 6 / TOUR 10 / CAFE 3. 진단에 썼던 그 입력이다. */
+    private static Map<String, List<ObjectNode>> gangneungCandidates() {
+        Map<String, List<ObjectNode>> byType = new LinkedHashMap<>();
+        byType.put("stay", List.of(at("경포비치호텔", 37.8058, 128.8968, "숙소 · ₩120,000")));
+        byType.put("food", List.of(
+                at("초당순두부마을", 37.7956, 128.9075, "맛집 · 점심 · ₩10,000×4"),
+                at("강릉중앙시장", 37.7556, 128.8961, "맛집 · 점심 · ₩12,000×4"),
+                at("주문진해변회센터", 37.8935, 128.8290, "맛집 · 저녁 · ₩35,000×4"),
+                at("진부시장", 37.6470, 128.5570, "맛집 · 점심 · ₩9,000×4"),
+                at("횡계황태마을", 37.6700, 128.7100, "맛집 · 저녁 · ₩15,000×4"),
+                at("안목커피거리회집", 37.7730, 128.9470, "맛집 · 저녁 · ₩30,000×4")));
+        byType.put("cafe", List.of(
+                at("경포호수카페거리", 37.7930, 128.8960, "카페 · ₩6,500×4"),
+                at("안목커피거리", 37.7735, 128.9475, "카페 · ₩6,000×4"),
+                at("대관령카페", 37.6800, 128.7300, "카페 · ₩5,500×4")));
+        byType.put("tour", List.of(
+                at("경포대", 37.7960, 128.8960, "관광지 · 1h · ₩0×4"),
+                at("경포해변", 37.8030, 128.9100, "관광지 · 1h · ₩0×4"),
+                at("강문해변", 37.7890, 128.9180, "관광지 · 1h · ₩0×4"),
+                at("오죽헌", 37.7790, 128.8780, "관광지 · 1h · ₩3,000×4"),
+                at("정동진", 37.6900, 129.0340, "관광지 · 1h · ₩0×4"),
+                at("월정사", 37.7310, 128.5930, "관광지 · 1h · ₩5,000×4"),
+                at("소금강", 37.7700, 128.6800, "관광지 · 1h · ₩0×4"),
+                at("대관령양떼목장", 37.6900, 128.7300, "관광지 · 1h · ₩7,000×4"),
+                at("주문진해변", 37.8930, 128.8290, "관광지 · 1h · ₩0×4"),
+                at("안반데기", 37.6230, 128.7480, "관광지 · 1h · ₩0×4")));
+        return byType;
+    }
+
+    private static ObjectNode at(String name, double lat, double lng, String sub) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("name", name);
+        node.put("lat", lat);
+        node.put("lng", lng);
+        node.put("sub", sub);
+        node.put("stars", "평점 정보 없음");
+        return node;
+    }
+
+    @Test
+    void 강릉_사흘_전부_점심과_저녁이_한_곳씩_들어간다() throws Exception {
+        String json = assembler.assemble(plan(LocalDate.of(2026, 9, 19), LocalDate.of(2026, 9, 21)),
+                form("자차", null), gangneungCandidates(), Set.of());
+        JsonNode root = MAPPER.readTree(json);
+
+        assertThat(root).hasSize(3);
+        for (JsonNode day : root) {
+            List<JsonNode> meals = placesOf(day).stream()
+                    .filter(p -> p.path("type").asText().equals("food"))
+                    .toList();
+            assertThat(meals).as(day.path("label").asText() + " 식사").hasSize(2);
+
+            LocalTime lunch = LocalTime.parse(meals.get(0).path("time").asText());
+            LocalTime dinner = LocalTime.parse(meals.get(1).path("time").asText());
+            assertThat(lunch).isBetween(LocalTime.of(12, 0), LocalTime.of(13, 30));
+            assertThat(dinner).isBetween(LocalTime.of(18, 0), LocalTime.of(19, 30));
+            assertThat(meals.get(0).path("name").asText()).isNotEqualTo(meals.get(1).path("name").asText());
+        }
+    }
+
+    @Test
+    void 같은_장소가_하루에_두_번_나오지_않는다() throws Exception {
+        String json = assembler.assemble(plan(LocalDate.of(2026, 9, 19), LocalDate.of(2026, 9, 21)),
+                form("자차", null), gangneungCandidates(), Set.of());
+
+        for (JsonNode day : MAPPER.readTree(json)) {
+            List<String> names = placesOf(day).stream()
+                    .filter(p -> !p.path("type").asText().equals("stay"))
+                    .map(p -> p.path("name").asText())
+                    .toList();
+            assertThat(names).as(day.path("label").asText()).doesNotHaveDuplicates();
+        }
+    }
 }

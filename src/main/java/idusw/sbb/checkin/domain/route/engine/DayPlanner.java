@@ -5,6 +5,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,9 +130,11 @@ public final class DayPlanner {
 
         Map<CandidateCategory, Integer> remaining = budget.toRemaining();
         int[] activityQuota = activityQuotas(slots, constraints, budget, isFirstDay, isLastDay);
+        // 결정 14 : 소비는 여기서 한다. SlotBuilder 가 담은 풀은 서로 겹치고, 실제로 간 곳만 뺀다.
+        Set<String> visitedToday = new HashSet<>();
 
         for (int i = 0; i < slots.size(); i++) {
-            TimeSlot slot = affordable(slots.get(i), remaining, requiredIds);
+            TimeSlot slot = available(slots.get(i), remaining, requiredIds, visitedToday);
             boolean isLastSlot = i == slots.size() - 1;
             LocalTime windowStart = constraints.windowStart(slot.type(), isFirstDay);
             LocalTime windowEnd = constraints.windowEnd(slot.type(), isLastDay);
@@ -163,6 +166,7 @@ public final class DayPlanner {
             results.add(accepted);
             for (Candidate visited : accepted.visitOrder()) {
                 remaining.merge(visited.category(), -1, Integer::sum);
+                visitedToday.add(visited.id());
             }
             cumulativeCost += accepted.travelCost();
             currentPoint = accepted.endPoint();
@@ -251,10 +255,14 @@ public final class DayPlanner {
         return quotas;
     }
 
-    /** 예산이 0인 카테고리 후보는 슬롯에 들어가기 전에 뺀다 — 단 필수 후보는 예산과 무관하게 남긴다. */
-    private static TimeSlot affordable(TimeSlot slot, Map<CandidateCategory, Integer> remaining,
-                                        Set<String> requiredIds) {
+    /**
+     * 그 슬롯에서 실제로 고려할 후보. 오늘 이미 방문한 곳은 빼고(결정 14), 예산이 0인 카테고리도 뺀다.
+     * 필수 후보는 예산과 무관하게 남긴다 — 다만 이미 방문했으면 당연히 빠진다.
+     */
+    private static TimeSlot available(TimeSlot slot, Map<CandidateCategory, Integer> remaining,
+                                       Set<String> requiredIds, Set<String> visitedToday) {
         List<Candidate> within = slot.candidates().stream()
+                .filter(c -> !visitedToday.contains(c.id()))
                 .filter(c -> remaining.get(c.category()) > 0 || requiredIds.contains(c.id()))
                 .toList();
         return within.size() == slot.size() ? slot : new TimeSlot(slot.type(), within);

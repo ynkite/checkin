@@ -438,4 +438,85 @@ class DayPlannerTest {
 
         assertThat(plan.slotPlans().get(0).visitOrder()).extracting(Candidate::id).contains(requiredId);
     }
+
+    // ── 결정 14 : 소비는 DayPlanner 가 한다 ──────────────────────────────
+
+    /** 슬롯 풀이 겹치도록 SlotBuilder 를 실제로 태워 만든 하루. */
+    private static List<TimeSlot> overlappingDay(List<Candidate> dayPool) {
+        return SlotBuilder.withDefaults().build(
+                new DailyCandidatePool(1, DistanceBand.MID, dayPool, false),
+                new Anchor("hotel", "숙소", ANCHOR_POINT, null, null),
+                fullDayConstraints(), 3);
+    }
+
+    private static List<Candidate> foodAndTours() {
+        List<Candidate> pool = new ArrayList<>();
+        pool.add(candidate("food1", nearby(1.0), CandidateCategory.FOOD, 60));
+        pool.add(candidate("food2", nearby(1.1), CandidateCategory.FOOD, 60));
+        for (int k = 1; k <= 5; k++) {
+            pool.add(candidate("tour" + k, nearby(1.0 + k * 0.2), CandidateCategory.TOUR, 60));
+        }
+        return pool;
+    }
+
+    @Test
+    void 식당이_둘뿐이어도_점심과_저녁에_하나씩_들어간다() {
+        List<TimeSlot> slots = overlappingDay(foodAndTours());
+        // SlotBuilder 는 두 식사 슬롯에 같은 식당 둘을 담는다 — 겹쳐도 된다
+        assertThat(slots.get(1).candidates()).extracting(Candidate::id).containsExactlyInAnyOrder("food1", "food2");
+        assertThat(slots.get(3).candidates()).extracting(Candidate::id).containsExactlyInAnyOrder("food1", "food2");
+
+        DayPlan plan = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 1, 3, new DailyCategoryBudget(3, 1, 2));
+
+        assertThat(plan.slotPlans().get(1).visitCount()).isEqualTo(1); // LUNCH
+        assertThat(plan.slotPlans().get(3).visitCount()).isEqualTo(1); // DINNER
+        assertThat(plan.slotPlans().get(1).visitOrder().get(0).id())
+                .isNotEqualTo(plan.slotPlans().get(3).visitOrder().get(0).id());
+    }
+
+    @Test
+    void 오전에_5개를_담아도_한_곳만_가고_나머지는_뒤_슬롯에_남는다() {
+        List<TimeSlot> slots = overlappingDay(foodAndTours());
+        assertThat(slots.get(0).size()).isEqualTo(TimeSlot.MAX_CANDIDATES);
+
+        DayPlan plan = DayPlanner.withDefaults().plan(slots, ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 1, 3, new DailyCategoryBudget(3, 1, 2));
+
+        SlotPlan morning = plan.slotPlans().get(0);
+        assertThat(morning.visitCount()).isEqualTo(1);
+
+        // 오전에 담겼지만 안 간 후보들이 오후에 실제로 방문된다
+        String visitedInMorning = morning.visitOrder().get(0).id();
+        List<String> afternoon = plan.slotPlans().get(2).visitOrder().stream().map(Candidate::id).toList();
+        assertThat(afternoon).isNotEmpty().doesNotContain(visitedInMorning);
+        assertThat(slots.get(0).candidates()).extracting(Candidate::id).containsAll(afternoon);
+    }
+
+    @Test
+    void 같은_후보가_하루에_두_번_방문되지_않는다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(overlappingDay(foodAndTours()), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 1, 3, new DailyCategoryBudget(3, 1, 2));
+
+        List<String> visited = plan.slotPlans().stream()
+                .flatMap(sp -> sp.visitOrder().stream())
+                .map(Candidate::id)
+                .toList();
+
+        assertThat(visited).doesNotHaveDuplicates();
+    }
+
+    @Test
+    void 하루_방문_수는_밀도_상한을_넘지_않는다() {
+        DayPlan plan = DayPlanner.withDefaults().plan(overlappingDay(foodAndTours()), ANCHOR_POINT, ANCHOR_POINT,
+                fullDayConstraints(), 1, 3, new DailyCategoryBudget(3, 1, 2));
+
+        List<Candidate> visited = plan.slotPlans().stream().flatMap(sp -> sp.visitOrder().stream()).toList();
+        long food = visited.stream().filter(c -> c.category() == CandidateCategory.FOOD).count();
+        long activity = visited.stream().filter(c -> c.category() != CandidateCategory.FOOD).count();
+
+        assertThat(food).isLessThanOrEqualTo(2);      // 식사 슬롯 둘 × 1곳
+        assertThat(activity).isLessThanOrEqualTo(3);  // cafe 1 + tour 2
+        assertThat(visited).hasSizeLessThanOrEqualTo(5);
+    }
 }
