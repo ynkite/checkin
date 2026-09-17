@@ -4218,3 +4218,12 @@ nav {
     padding-top: 10px;
     border-top: 1px solid rgba(var(--w-rgb), .12)
 }
+
+/* 상단 바의 주 버튼 — 잉크. 미니어처가 주황을 다 갖고 있어
+   버튼까지 주황이면 화면에 주황이 두 겹이 된다 (데모가 잉크를 쓴 이유다) */
+.btn-nav-primary{
+    background: var(--ink);
+    color: var(--panel);
+    border: 0
+}
+.btn-nav-primary:hover{ background: var(--ui-d) }

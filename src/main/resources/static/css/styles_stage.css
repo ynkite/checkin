@@ -69,7 +69,10 @@
 
 .st-tl{
   position:absolute; left:var(--st-m); top:calc(var(--nav-h, 62px) + var(--st-m));
-  width:var(--st-col); display:grid; gap:8px; z-index:3;
+  width:var(--st-col); display:grid; gap:9px; z-index:3;
+  /* 아래 폼 바 위까지만. 넘치면 판이 폼을 덮는다 */
+  max-height:calc(100dvh - var(--nav-h, 62px) - var(--st-m) * 2 - 96px);
+  overflow:visible;
 }
 /* 오른쪽은 위에서 아래로 — 판 · 작은 지도 · 시점.
    왼쪽 열이 길어서(머리 + 정거장 + 대응 세 갈래) 작은 지도를 왼쪽에 두면 덮인다. */
@@ -83,16 +86,19 @@
   position:absolute; right:var(--st-m); top:calc(var(--nav-h, 62px) + 10px); z-index:4;
 }
 .st-mini{
-  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 41px); z-index:3;
+  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 104px); z-index:3;
 }
 .st-view{
-  position:absolute; right:var(--st-m); bottom:var(--st-m); z-index:3;
+  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 104px); z-index:3;
   justify-content:flex-end;
 }
 /* 경로 만들기 바는 가운데. 좌우 열 사이에 남는 폭만 쓴다 */
+/* 경로 만들기 바 — 아래를 가로지른다 (데모 「체크인 시작하기」가 그렇다).
+   왼쪽 칸 밑에 640px 짜리로 두니 어두운 상태 판과 겹쳤다 (실측 776 > 717).
+   가로로 눕히면 겹칠 일이 없고 「여기서 시작한다」가 분명해진다. */
 .st-form{
-  position:absolute; left:var(--st-m); bottom:var(--st-m);
-  z-index:3; width:min(640px, calc(100% - 2 * var(--st-m) - var(--st-col) - 26px));
+  position:absolute; left:var(--st-m); right:var(--st-m); bottom:var(--st-m);
+  z-index:4; width:auto;
 }
 
 /* ── 왼쪽 위 판 안쪽 ───────────────────────────────── */

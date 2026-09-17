@@ -70,11 +70,11 @@ nav .nav-user{
 nav .btn-nav-ghost:hover{ color:var(--ink) }
 nav .btn-nav-primary{
   padding:9px 18px 10px; border:0; border-radius:99px; cursor:pointer;
-  background:var(--terra); color:var(--panel);
+  background:var(--ink); color:var(--panel);
   font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.025em;
   transition:filter .15s;
 }
-nav .btn-nav-primary:hover{ filter:brightness(1.2) }
+nav .btn-nav-primary:hover{ background:var(--ui-d) }
 
 /* 알림 종 */
 nav #navBellBtn{ color:var(--ink-2) }

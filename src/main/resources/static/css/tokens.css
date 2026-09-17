@@ -27,13 +27,15 @@
   --fig:"IBM Plex Mono", ui-monospace, monospace;   /* 시각·금액·혼잡도만 */
 
   /* ── 타입 스케일 ────────────────────────────────────────── */
-  --t-hero:clamp(34px, 4.4vw, 56px);
-  --t-h2:clamp(23px, 2.9vw, 33px);
-  --t-h3:19px;
+  /* 레퍼런스 실측 — Linear h1 64px/510/-1.408px · 트리플 h1 60px/700 ·
+     h2 48px/700. 우리는 h1 56 / h2 33 이라 절 제목이 작아 화면이 밋밋했다. */
+  --t-hero:clamp(38px, 5.2vw, 66px);
+  --t-h2:clamp(27px, 3.6vw, 44px);
+  --t-h3:21px;
   --t-body:17px;
   --t-sm:14px;
   --t-xs:11px;
-  --tracking-tight:-.042em;   /* 제목 */
+  --tracking-tight:-.038em;   /* 제목 */
   --tracking-num:-.02em;      /* 숫자 */
 
   /* ── 간격 (8px 그리드) ─────────────────────────────────── */
@@ -43,20 +45,25 @@
   --pad-page:30px;
 
   /* ── 모서리 · 그림자 ───────────────────────────────────── */
-  --r-card:13px;
-  --r-panel:16px;
+  /* 데모는 카드 12 · 판 14 였다. 레퍼런스 18곳 중 대부분이 0~8 이다.
+     알약은 알약으로 둔다 — 트리플 CTA 가 radius 36 이다. */
+  --r-card:10px;
+  --r-panel:14px;
   --r-pill:99px;
-  --r-field:9px;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --lift2:0 3px 12px rgba(40,30,22,.09);
+  --r-field:8px;
+  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
+  --lift2:0 3px 12px rgba(16,24,38,.10);
 
-  /* ── 판·글자 (하늘과 무관하게 기본은 밝은 판) ─────────── */
+  /* ── 판·글자 ───────────────────────────────────────────
+     데모(체크인 시작하기)의 쿨 블루그레이다. 전에는 웜크림 + 갈색이었다.
+     미니어처가 따뜻한 색을 다 갖고 있으므로 읽는 면은 차갑고 조용해야
+     서로 안 싸운다. */
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --ink-3:#766E67;   /* 흰 바탕 5.00 · 연한 판 위 4.56. 이전 #8B827A 는 3.77 이었다 */
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --ink-3:#7C8798;   /* 흰 바탕 대비 4.54 */
+  --hair:rgba(16,22,32,.09);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
      「지금」과 「바뀜」에만. 장식으로 쓰지 않는다.
@@ -65,30 +72,25 @@
   --sig-deep:#8A5000;
   --num:#B05F00;
 
-  /* ── UI 크롬: 화면 부품 색 ──────────────────────────────
-     3D 매싱은 위의 하늘 팔레트를 쓰고, 화면 부품(버튼·카드·테두리)은
-     이 층을 쓴다. 부품이 조용해야 지도가 색을 낸다.
+  /* ── UI 크롬 ────────────────────────────────────────────
+     주 버튼은 잉크다. 데모가 그랬고, 미니어처가 주황을 다 갖고 있어
+     버튼까지 주황이면 화면에 주황이 두 겹이 된다. */
+  --ui-d:#0A0F17;        /* hover */
+  --ui-l:#5A6474;        /* 보조 테두리 · 아이콘 */
+  --ui-pale:#F2F5F8;     /* 옅은 배경 */
 
-     주색을 신호색(--sig)으로 쓰지 않는다. --sig 는 「지금」과 「바뀜」
-     전용이고, 버튼 198곳에 깔면 신호가 신호가 아니게 된다. */
+  --ui-line:#D7DDE5;     /* 테두리 */
+  --ui-line-2:#E9EDF2;   /* 옅은 구분선 */
+  --ui-plate:#F4F6F9;    /* 옅은 판 */
+  --ui-plate-2:#E6EAEF;
 
-  --ui-d:#120E0B;        /* hover */
-  --ui-l:#5A5149;        /* 보조 테두리 · 아이콘 */
-  --ui-pale:#F2EEE9;     /* 옅은 배경 */
-
-  --ui-line:#DED7CF;     /* 테두리 */
-  --ui-line-2:#EFEAE4;   /* 옅은 구분선 */
-  --ui-plate:#F7F4F0;    /* 옅은 판 (이전 웜크림 자리) */
-  --ui-plate-2:#ECE6DF;
-
-  /* 강조 3색 — 미니어처 세계의 지붕 계열에서 뽑았다.
-     지도와 UI 가 같은 색족을 쓰면 한 덩어리로 읽힌다.
+  /* 강조 — 테라코타는 버튼 색이 아니라 「혼잡」 단계 전용으로 내린다.
      세 값 모두 흰 배경 위 글자와 흰 글자 배경 양쪽으로 대비 4.5:1 이상. */
-  --terra:#B64F18;   /* --terra-pale 위 4.58. 이전 #B64F18 는 4.33 이었다 */       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
+  --terra:#B64F18;       /* 혼잡 · 보조 강조 */
   --terra-pale:#FDF1E3;
-  --tile:#C8402A;        /* 오류 · 잠김      (진한 기와 --d0 계열) */
+  --tile:#C8402A;        /* 매우 혼잡 · 오류 */
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;       /* 카테고리        (파란 슬레이트 --g0 계열) */
+  --slate:#3E63A8;       /* 한적 · 카테고리 */
   --slate-pale:#ECF1F8;
 
   /* 신호색 위에 얹는 글자.
@@ -97,11 +99,9 @@
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
 
-  /* 페이지 바닥 — 풍경(--void)과 분리한다.
-     --void 는 하늘 팔레트라 오후가 되면 노을색으로 물든다. 페이지 배경에
-     그걸 쓰면 화면 전체가 베이지가 된다. 읽는 면은 시간과 무관해야 한다. */
+  /* 페이지 바닥 — 풍경(--void)과 분리한다. 읽는 면은 시간과 무관해야 한다 */
   --page:#FFFFFF;
-  --page-2:#F7F5F2;
+  --page-2:#F4F6F9;
 
   /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
   --void-veil:rgba(255,255,255,.86);
@@ -156,16 +156,16 @@
 
 [data-sky="day"]{
   /* 13:00 — 해가 높다. 기준 팔레트다. 나머지 셋은 여기서 만든다 */
-  --void:#FFFFFF;
-  --plate:#F0EEEA;
+  --void:#EDF1F5;
+  --plate:#EEF1F4;
   --water:#A9D2E8;
   --beach:#F0E1C4;
   --green:#D8E3CD;
   --shore:#7FA8C4;
-  --rdc:#CDCBC4;
-  --rd1:#E2E0D9;
-  --rd2:#EAE8E2;
-  --rd3:#D8D6CF;
+  --rdc:#D9E0E8;
+  --rd1:#FFFFFF;
+  --rd2:#FCFDFE;
+  --rd3:#F2F5F8;
   --rdpv:#EADFC9;
   --lane:#F5C93F;
   --w1:#F2ECE1;
@@ -237,24 +237,24 @@
   --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.09);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -266,16 +266,16 @@
 
 [data-sky="dusk"]{
   /* 19:00 — 낮은 해가 옆에서 든다. 빛 받는 면은 호박빛, 그늘은 보라 */
-  --void:#FFE0C6;
-  --plate:#F3E4D7;
+  --void:#F8D9C1;
+  --plate:#F2E6E0;
   --water:#C0C5CE;
   --beach:#F3D9B7;
   --green:#E1DABE;
   --shore:#A8A6B2;
-  --rdc:#D6C8B9;
-  --rd1:#E7DACC;
-  --rd2:#EEE0D4;
-  --rd3:#DFD1C3;
+  --rdc:#E0DAD9;
+  --rd1:#FFF4EE;
+  --rd2:#FDF3ED;
+  --rd3:#F4ECE8;
   --rdpv:#EED9BE;
   --lane:#F7C64C;
   --w1:#F6DDC8;
@@ -347,24 +347,24 @@
   --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.09);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -377,15 +377,15 @@
 [data-sky="night"]{
   /* 23:00 — 푸른 어둠. 도로가 땅보다 밝다(가로등). 창문만 노랗다 */
   --void:#0F1A30;
-  --plate:#606169;
+  --plate:#60626B;
   --water:#4B5660;
   --beach:#5D5D61;
   --green:#585C61;
   --shore:#3A4552;
-  --rdc:#787C88;
-  --rd1:#838691;
-  --rd2:#878A94;
-  --rd3:#7E818D;
+  --rdc:#808593;
+  --rd1:#9295A0;
+  --rd2:#90949F;
+  --rd3:#8C909C;
   --rdpv:#84858E;
   --lane:#F8D470;
   --w1:#636369;
@@ -457,24 +457,24 @@
   --halo:rgba(18,26,46,0.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.09);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -486,16 +486,16 @@
 
 [data-sky="dawn"]{
   /* 06:00 — 차고 옅다. 채도도 대비도 낮다 */
-  --void:#C7C8CC;
-  --plate:#C4C3C6;
+  --void:#BDBFC5;
+  --plate:#C4C4CA;
   --water:#A1B0BE;
   --beach:#C2BBB5;
   --green:#B7BBB8;
   --shore:#8A98A8;
-  --rdc:#B5B4B8;
-  --rd1:#C3C1C4;
-  --rd2:#C8C7CA;
-  --rd3:#BDBBBE;
+  --rdc:#BFC1CA;
+  --rd1:#D6D6DB;
+  --rd2:#D4D4DA;
+  --rd3:#CECFD5;
   --rdpv:#C6C1BE;
   --lane:#E3CC95;
   --w1:#C5C2C2;
@@ -567,24 +567,24 @@
   --halo:rgba(18,26,46,0.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.09);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 16px 38px -14px rgba(16,24,38,.28), 0 2px 6px -2px rgba(16,24,38,.14);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -639,7 +639,7 @@
      전에는 청록 rgba(28,43,42,.45) 와 rgba(45,158,138,.03) 이었다. */
   /* 그림자·유리판의 알파는 자리마다 다르다. rgb 세 수만 토큰으로 두고
      알파는 쓰는 자리에서 정한다 — rgba(var(--sh-rgb),.08) 꼴. */
-  --sh-rgb:40,30,22;
+  --sh-rgb:16,24,38;
   --sig-rgb:255,158,18;
   --w-rgb:255,255,255;
   --scrim:rgba(26,21,18,.46);

@@ -1248,3 +1248,126 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-pin .ck-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
 .ck-pin .ck-cw.cw-low,
 .ck-pin .ck-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+/* ══════════════════════════════════════════════════════════════
+   데모와 섞기 — 주 버튼은 잉크, 절 제목은 크게, 상태 판은 어둡게.
+   이 블록이 위의 규칙들을 덮는다. 원본을 여기저기 고치는 것보다
+   무엇을 왜 바꿨는지가 한자리에 남는다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 주 버튼 ─────────────────────────────────────────────────
+   미니어처가 주황을 다 갖고 있다. 버튼까지 주황이면 화면에 주황이
+   두 겹이 되어 어느 쪽이 신호인지 알 수 없다. 데모가 잉크를 쓴 이유다. */
+.ck-home .ck-go,
+.ck-home .ck-go2,
+.ck-home .ck-cta,
+.ck-home .btn-f,
+.ck-home .ck-sl-b1{
+  background:var(--ink); color:var(--panel); border:0;
+}
+.ck-home .ck-go:hover,
+.ck-home .ck-go2:hover,
+.ck-home .ck-cta:hover,
+.ck-home .btn-f:hover,
+.ck-home .ck-sl-b1:hover{ background:var(--ui-d) }
+
+/* ── 절 제목 ─────────────────────────────────────────────────
+   29px -> 44px. 레퍼런스가 전부 48~60px 다. 눈썹은 더 작고 조용하게. */
+.ck-home .ck-hd h2{
+  font-size:var(--t-h2); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.16;
+  max-width:18ch;
+}
+.ck-home .ck-hd{ align-items:flex-end; gap:32px; margin-bottom:34px }
+.ck-home .ck-hd .ck-side{
+  font-size:15px; line-height:1.68; color:var(--ink-2);
+  max-width:34ch; padding-bottom:6px;
+}
+.ck-home .ck-hd[data-label]::before{
+  font-size:12px; font-weight:600; letter-spacing:0; color:var(--num);
+}
+.ck-home .ck-blk{ padding-block:clamp(56px, 7vw, 104px) }
+
+/* ── 히어로 제목 ─────────────────────────────────────────── */
+.ck-home .st-h1{
+  font-size:clamp(34px, 3.9vw, 54px); font-weight:700;
+  letter-spacing:-.042em; line-height:1.08;
+}
+.ck-home .st-head .fl-sub{ font-size:15px; line-height:1.66; margin-top:12px }
+.ck-home .st-head .fl-eye{ font-size:11px; letter-spacing:.02em; color:var(--num) }
+
+/* ── 상태 판을 어둡게 (체크인 데모) ──────────────────────────
+   밝은 모형 위에 어두운 판이 뜨면 읽을 것이 어디인지 한눈에 보인다.
+   흰 판 네 장을 쌓으면 어느 것이 중요한지 알 수 없다. */
+.ck-home .st-note{
+  background:var(--ink); box-shadow:0 20px 48px -18px rgba(16,24,38,.55);
+}
+.ck-home .st-note .st-line{ color:var(--panel) }
+.ck-home .st-note .st-line em{ color:var(--sig) }
+.ck-home .st-note .fl-tx{ color:rgba(255,255,255,.72) }
+.ck-home .st-note .ck-ph i{ background:rgba(255,255,255,.22) }
+.ck-home .st-note .ck-ph i.ck-on b,
+.ck-home .st-note .ck-ph i.ck-done b{ background:var(--sig) }
+.ck-home .st-note .ck-phbtn{
+  background:rgba(255,255,255,.12); border:0;
+}
+.ck-home .st-note .ck-phbtn svg{ stroke:var(--panel) }
+
+/* 대응 세 갈래 — 어두운 판 위에서 */
+.ck-home .st-note .ck-opt{
+  background:rgba(255,255,255,.07); border:0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.ck-home .st-note .ck-opt:hover{ background:rgba(255,255,255,.13) }
+.ck-home .st-note .ck-opt b{ color:var(--panel) }
+.ck-home .st-note .ck-opt span{ color:rgba(255,255,255,.62) }
+.ck-home .st-note .ck-opt em{ color:var(--sig) }
+.ck-home .st-note .ck-opt em i{ color:rgba(255,255,255,.55) }
+.ck-home .st-note .ck-opt[aria-pressed="true"]{
+  background:var(--sig); box-shadow:none;
+}
+.ck-home .st-note .ck-opt[aria-pressed="true"] b{ color:var(--on-sig) }
+.ck-home .st-note .ck-opt[aria-pressed="true"] span,
+.ck-home .st-note .ck-opt[aria-pressed="true"] em,
+.ck-home .st-note .ck-opt[aria-pressed="true"] em i{ color:var(--on-sig-2) }
+
+/* ── 정거장 알약 — 지금 보는 곳만 채운다 ─────────────────── */
+.ck-home .st-stops .fl-pill{ font-size:13px; font-weight:600 }
+.ck-home .st-stops .fl-pill.fl-hot{ background:var(--ink); color:var(--panel) }
+.ck-home .st-stops .fl-pill.fl-hot b{ color:var(--sig) }
+
+/* ── 경로 만들기 바 — 가로로 길어졌으니 안쪽도 다시 잡는다 ──
+   전폭이 되면서 칸 네 개가 화면 끝까지 벌어졌다. 고르는 것은 왼쪽에
+   모으고 버튼은 오른쪽 끝에 둔다. 데모가 그 구성이다. */
+/* 한 줄로 못 박는다. flex + wrap 으로는 조건 칩이 자꾸 아래로 내려가
+   바가 두 줄(169px)이 되고 버튼이 화면 밖으로 밀렸다. */
+.ck-home .st-form .ck-bar{
+  display:grid; grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:end; gap:16px; padding:12px 16px 13px;
+  border-radius:var(--r-panel);
+}
+.ck-home .st-form .ck-fr{
+  display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px;
+  flex:none; min-width:0;
+}
+.ck-home .st-form .ck-fld label{ font-size:11px; margin-bottom:3px; color:var(--ink-3) }
+.ck-home .st-form .ck-fld select,
+.ck-home .st-form .ck-fld input{
+  padding:9px 11px 10px; border-radius:var(--r-field); font-size:14.5px;
+}
+.ck-home .st-form .ck-cond{ flex:0 0 auto; align-self:flex-end }
+.ck-home .st-form .ck-cond > span{ display:none }
+.ck-home .st-form .ck-go{
+  margin-left:auto; padding:12px 30px 13px; border-radius:var(--r-pill);
+  font-size:15px;
+}
+.ck-home .st-form .ck-note{ display:none }
+
+/* ── 왼쪽 칸이 폼을 덮지 않게 ────────────────────────────────
+   어두운 상태 판이 길어지면 폼 위로 내려온다(실측 778 > 717).
+   칸 안에서 스크롤한다. 판을 잘라 내면 「가는 길 바꾸기」가 사라진다. */
+.ck-home .st-tl{ overflow-y:auto; overscroll-behavior:contain; padding-right:2px }
+.ck-home .st-tl::-webkit-scrollbar{ width:0 }
+
+/* ── 작은 지도 · 시점 도구 ──────────────────────────────── */
+.ck-home .st-mini{ width:230px }
