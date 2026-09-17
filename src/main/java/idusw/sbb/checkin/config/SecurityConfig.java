@@ -88,6 +88,7 @@ public class SecurityConfig {
                                 "/api/route/travel-time",           //출발지 기준 구간 이동시간 (TMAP)
                                 "/api/route/travel-time/compare",   //자차·대중교통·도보 비교 (TMAP)
                                 "/api/route/reverse",               //좌표 -> 주소 (TMAP)
+                                "/api/route/navi",                  //주행 네비 경로 (경로선+턴안내, TMAP)
                                 "/api/puzzle/**",                   //SK 지오비전 퍼즐
                                 "/api/live/**",                     //실시간 화면. 목록은 로그인한 사람 것만 나온다
                                                                     //  (익명이면 빈 배열). 경로 읽기는 이미
