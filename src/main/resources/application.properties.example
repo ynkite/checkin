@@ -113,6 +113,19 @@ tour.api.base-url=https://apis.data.go.kr/B551011
 tmap.api.key=${TMAP_APP_KEY:}
 tmap.api.base-url=https://apis.openapi.sk.com
 
+# ── 오피넷 유가 (한국석유공사) — 싼 주유소 추천 (유지환) ──
+#   opinet.co.kr 무료 발급. 좌표는 KATEC 이라 카카오 좌표변환
+#   (kakao.rest.api.key)으로 WGS84 를 바꿔 넣는다.
+opinet.api.key=${OPINET_API_KEY:}
+opinet.api.base-url=http://www.opinet.co.kr/api
+
+# ── Web Push VAPID — 재계획 알림 푸시 (유지환) ──
+#   web-push-codelab.glitch.me 등에서 키쌍 발급. subject 는 mailto: 주소.
+#   세 값 다 있어야 푸시 전송기가 뜬다.
+push.vapid.public-key=${VAPID_PUBLIC_KEY:}
+push.vapid.private-key=${VAPID_PRIVATE_KEY:}
+push.vapid.subject=${VAPID_SUBJECT:mailto:admin@checkin.local}
+
 # ── SK 실시간 인원 (키를 받으면 주소와 경로만 적으면 붙는다) ──
 #   url 의 {q} 자리에 장소 이름, {lat} {lng} 자리에 좌표가 들어간다.
 #   path.level  응답에서 혼잡 단계를 꺼낼 경로 (점으로 구분. 배열은 a.0.b)
