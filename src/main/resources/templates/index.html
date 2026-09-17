@@ -125,7 +125,7 @@
   <link rel="stylesheet" th:href="@{/css/styles_footer.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20260917e)}">
-  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=50a304fa42a0bd2d294ac871e3acae14&autoload=false&libraries=services"></script>
+  <script th:src="'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + ${kakaoMapKey} + '&autoload=false&libraries=services'"></script>
 
 </head>
 <body style="visibility: hidden">

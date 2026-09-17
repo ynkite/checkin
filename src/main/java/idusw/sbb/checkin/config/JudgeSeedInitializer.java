@@ -96,12 +96,12 @@ public class JudgeSeedInitializer implements CommandLineRunner {
     // 확정(isEstimated=false) + 추정(true) 을 섞는다 → 예산 신뢰도 계산이 보이게.
     private void seedExpenses(TravelPlan plan, User user) {
         LocalDate d1 = plan.getStartDate();
-        save(plan, user, "STAY", "파라다이스 호텔 부산", 220_000L, false, d1);  // 확정: 공개 요금
+        save(plan, user, "STAY", "파라다이스 호텔 부산", 530_000L, false, d1);  // 확정: 공개 요금 (근거표와 일치)
         save(plan, user, "FOOD", "자갈치 시장 점심",     36_000L, false, d1);  // 확정: 결제 완료
         save(plan, user, "TOUR", "감천문화마을",          4_000L, false, d1);  // 확정
         save(plan, user, "CAFE", "해운대 카페",          12_000L, true,  d1);  // 추정: 지역 평균
         save(plan, user, "FOOD", "해운대 저녁(회)",      60_000L, true,  d1);  // 추정
-        save(plan, user, "STAY", "파라다이스 호텔 부산", 220_000L, true,  d1.plusDays(1)); // 추정: 2박차
+        save(plan, user, "STAY", "파라다이스 호텔 부산", 530_000L, true,  d1.plusDays(1)); // 추정: 2박차 (근거표와 일치)
         save(plan, user, "TOUR", "광안리 유람선",        30_000L, true,  d1.plusDays(1)); // 추정
     }
 
@@ -119,7 +119,7 @@ public class JudgeSeedInitializer implements CommandLineRunner {
     private static final String ROUTE_JSON = """
         [
           {
-            "day": 1, "label": "Day 1 · 원도심에서 해운대까지", "budget": "₩332,000",
+            "day": 1, "label": "Day 1 · 원도심에서 해운대까지", "budget": "₩642,000",
             "places": [
               {"type":"tour","icon":"🚄","name":"부산역","sub":"관광지 · 도착","stars":"평점 정보 없음","key":"d1p1","time":"09:10","lat":35.1151,"lng":129.0413,"isFound":true},
               {"transit":"🚌 대중교통 · 8.4km · 약 25분 · ₩1,600","pathCoords":[[35.1151,129.0413],[35.0975,129.0107]]},
@@ -131,7 +131,7 @@ public class JudgeSeedInitializer implements CommandLineRunner {
               {"transit":"🚗 자차 · 4.7km · 약 15분 · ₩2,000","pathCoords":[[35.1532,129.1189],[35.1587,129.1604]]},
               {"type":"tour","icon":"🏖️","name":"해운대 해수욕장","sub":"관광지 · 저녁 산책","stars":"평점 정보 없음","key":"d1p5","time":"17:40","lat":35.1587,"lng":129.1604,"isFound":true},
               {"transit":"🚶 도보 · 0.4km · 약 6분 · ₩0","pathCoords":[[35.1587,129.1604],[35.1601,129.1601]]},
-              {"type":"stay","icon":"🏨","name":"파라다이스 호텔 부산","sub":"숙소 · ₩220,000","stars":"평점 정보 없음","key":"d1p6","time":"20:30","lat":35.1601,"lng":129.1601,"isFound":true}
+              {"type":"stay","icon":"🏨","name":"파라다이스 호텔 부산","sub":"숙소 · ₩530,000","stars":"평점 정보 없음","key":"d1p6","time":"20:30","lat":35.1601,"lng":129.1601,"isFound":true}
             ]
           },
           {
