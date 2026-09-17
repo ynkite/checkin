@@ -1,0 +1,211 @@
+/*
+ * 체크인 — 떠 있는 판 (styles_float.css)
+ *
+ * 레퍼런스(docs-private/레퍼런스/영상_이탈리아/048_12.00.png, 020_05.00.png)에서
+ * 읽은 규칙을 한 곳에 모은다. 모든 화면이 이 부품을 쓴다.
+ *
+ *   1. 모형이 화면을 채우고, 읽는 것은 전부 그 위에 뜬 흰 판이다
+ *   2. 판은 테두리가 없다. 흰 바탕 + 크고 흐린 그림자 + 큰 모서리
+ *   3. 글자는 작다. 본문 13px · 라벨 10~11px.
+ *      큰 것은 일차 숫자와 제목 둘뿐이다
+ *   4. 고르는 것은 전부 알약이다. 켜진 것은 잉크로 채우고 글자를 흰색으로
+ *   5. 눈에 띄는 색은 두 자리만 — 켜진 알약(잉크)과 작은 눈썹 라벨(테라코타)
+ *
+ * 색·간격은 tokens.css 변수만 쓴다.
+ */
+
+/* 사용자가 올린 사진이 폭을 넘어 나갔다 (256px 짜리가 375px 화면에서 616 까지).
+   전역 안전장치를 둔다. 로고는 CSS 에서 height 를 직접 주므로 영향이 없다. */
+img{ max-width:100%; height:auto }
+
+/* ── 판 ─────────────────────────────────────────────── */
+.fl{
+  background:var(--panel); border-radius:18px; box-shadow:var(--lift);
+  padding:16px 18px; word-break:keep-all;
+}
+.fl-sm{ padding:12px 14px; border-radius:14px; box-shadow:var(--lift2) }
+.fl-tight{ padding:0; overflow:hidden }
+
+/* 눈썹 — 아주 작은 대문자/라벨. 판이 무엇에 대한 것인지 한 줄 */
+.fl-eye{
+  display:block; margin:0 0 7px;
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+}
+
+/* 제목 — 일차 숫자 + 제목이 한 줄에 선다 */
+.fl-hd{ display:flex; align-items:baseline; gap:10px; margin:0 }
+.fl-no{
+  font-family:var(--fig); font-size:38px; font-weight:300; line-height:.9;
+  color:var(--ink); letter-spacing:var(--tracking-num); white-space:nowrap;
+}
+.fl-no em{
+  font-family:var(--sans); font-style:normal; font-size:11px; font-weight:600;
+  color:var(--ink-3); margin-left:3px; letter-spacing:0;
+}
+.fl-ttl{
+  margin:0; font-size:21px; font-weight:800; line-height:1.24;
+  letter-spacing:var(--tracking-tight); color:var(--ink);
+}
+.fl-ttl-lg{ font-size:26px }
+
+/* 부제 · 이동 경로 — 판 안에서 가장 조용한 줄 */
+.fl-sub{ margin:5px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-3) }
+.fl-path{
+  margin:8px 0 0; font-size:11.5px; color:var(--ink-3);
+  display:flex; flex-wrap:wrap; gap:4px; align-items:center;
+}
+.fl-path i{ font-style:normal; color:var(--ui-line) }
+
+/* 본문 */
+.fl-tx{ margin:8px 0 0; font-size:13px; line-height:1.68; color:var(--ink-2) }
+.fl-tx b{ color:var(--ink); font-weight:700 }
+
+/* 라벨 + 내용 두 열. 오전/오후/저녁 처럼 짧은 라벨이 왼쪽에 선다 */
+.fl-rows{ display:grid; gap:14px; margin-top:12px }
+.fl-row{ display:grid; grid-template-columns:38px minmax(0,1fr); gap:12px }
+.fl-row > dt{
+  font-size:11px; font-weight:600; color:var(--ink-3); padding-top:2px;
+}
+.fl-row > dd{ margin:0; font-size:13px; line-height:1.66; color:var(--ink-2) }
+
+/* 판 안의 작은 소제목 */
+/* 판 안 소제목. 테라코타로 하면 한 줄이 길게 깔려 경고처럼 읽힌다.
+   테라코타는 눈썹(.fl-eye)에만 남긴다. */
+.fl-h{
+  margin:16px 0 0; font-size:11px; font-weight:700; letter-spacing:.02em;
+  color:var(--ink);
+}
+.fl-h::before{
+  content:""; display:inline-block; width:4px; height:4px; margin:0 6px 2px 0;
+  border-radius:99px; background:var(--terra); vertical-align:middle;
+}
+.fl-h + .fl-tx{ margin-top:5px }
+
+/* 판 안의 링크 — 밑줄 + 화살표 */
+.fl-links{ display:flex; flex-wrap:wrap; gap:16px; margin-top:14px }
+.fl-links a{
+  font-size:11.5px; color:var(--ink-2); text-decoration:underline;
+  text-underline-offset:3px; text-decoration-color:var(--ui-line);
+}
+.fl-links a::after{ content:" \2197"; text-decoration:none }
+.fl-links a:hover{ color:var(--ink); text-decoration-color:var(--ink-3) }
+
+/* ── 알약 ───────────────────────────────────────────── */
+.fl-pills{ display:flex; flex-wrap:wrap; gap:6px }
+.fl-pill{
+  display:inline-flex; align-items:center; gap:7px;
+  height:33px; padding:0 14px; border:0; border-radius:99px; cursor:pointer;
+  background:var(--panel); color:var(--ink);
+  box-shadow:var(--lift2);
+  font-family:inherit; font-size:12.5px; font-weight:600; letter-spacing:-.02em;
+  white-space:nowrap; transition:background .16s ease, color .16s ease;
+}
+.fl-pill:hover{ background:var(--ui-plate) }
+.fl-pill[aria-pressed="true"],
+.fl-pill.on{ background:var(--ink); color:var(--panel) }
+
+/* 알약 앞의 번호 */
+.fl-pill > b{
+  display:grid; place-items:center; width:18px; height:18px; margin-left:-4px;
+  border-radius:99px; background:var(--ui-plate-2); color:var(--ink-3);
+  font-family:var(--fig); font-size:10.5px; font-weight:600;
+}
+.fl-pill[aria-pressed="true"] > b,
+.fl-pill.on > b{ background:rgba(var(--w-rgb),.22); color:var(--panel) }
+
+/* 붐비는 정거장은 알약 자체가 신호다 */
+.fl-pill.fl-hot{ background:var(--terra); color:var(--panel) }
+.fl-pill.fl-hot > b{ background:rgba(var(--w-rgb),.24); color:var(--panel) }
+
+/* 판 안에 들어가는 알약 줄은 그림자를 뺀다 */
+.fl .fl-pill{ box-shadow:inset 0 0 0 1px var(--ui-line) }
+.fl .fl-pill[aria-pressed="true"],
+.fl .fl-pill.on,
+.fl .fl-pill.fl-hot{ box-shadow:none }
+
+/* ── 도구줄 — 아이콘 + 글자, 아주 조용하게 ──────────── */
+.fl-tools{ display:flex; flex-wrap:wrap; gap:5px }
+.fl-tool{
+  display:inline-flex; align-items:center; gap:5px;
+  height:29px; padding:0 11px; border:0; border-radius:99px; cursor:pointer;
+  background:var(--void-veil); color:var(--ink-2); box-shadow:var(--lift2);
+  font-family:inherit; font-size:11.5px; font-weight:600;
+  backdrop-filter:blur(8px);
+  transition:background .16s ease, color .16s ease;
+}
+.fl-tool:hover{ background:var(--panel); color:var(--ink) }
+.fl-tool[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
+.fl-tool svg{ width:13px; height:13px; fill:none; stroke:currentColor;
+  stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round }
+
+/* ── 일차 페이지네이션 ──────────────────────────────── */
+.fl-pager{
+  display:inline-flex; align-items:center; gap:2px;
+  padding:6px 8px; border-radius:99px;
+  background:var(--void-veil-2); box-shadow:var(--lift);
+}
+.fl-pager button{
+  min-width:34px; height:30px; padding:0 8px; border:0; border-radius:99px;
+  background:none; color:var(--ink-3); cursor:pointer;
+  font-family:var(--fig); font-size:12.5px; font-weight:500;
+  transition:background .14s ease, color .14s ease;
+}
+.fl-pager button:hover{ background:var(--ui-plate); color:var(--ink) }
+.fl-pager button[aria-current="true"]{ background:var(--ink); color:var(--panel) }
+.fl-pager .fl-ar{ font-family:var(--sans); font-size:15px; min-width:28px }
+
+/* ── 모형 위 이름표 ─────────────────────────────────── */
+.fl-tag{
+  position:absolute; transform:translate(-50%,-100%);
+  padding:4px 9px 5px; border-radius:7px; white-space:nowrap;
+  background:var(--ink); color:var(--panel);
+  font-size:10.5px; font-weight:600; letter-spacing:-.01em;
+  box-shadow:var(--lift2); pointer-events:none;
+}
+
+/* ── 작은 지도 ──────────────────────────────────────── */
+.fl-mini{ width:230px }
+.fl-mini-hd{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 13px 9px;
+}
+.fl-mini-hd b{ font-size:11.5px; font-weight:700; color:var(--ink) }
+.fl-mini-hd button{
+  border:0; background:none; cursor:pointer; padding:0;
+  font-family:inherit; font-size:11px; color:var(--ink-3);
+}
+.fl-mini-hd button:hover{ color:var(--ink) }
+.fl-mini-map{ height:150px; background:var(--ui-plate-2); position:relative }
+.fl-mini-ft{
+  padding:9px 13px 11px; font-size:10px; line-height:1.5; color:var(--ink-3);
+}
+.fl-mini.fl-fold .fl-mini-map,
+.fl-mini.fl-fold .fl-mini-ft{ display:none }
+
+/* 작은 지도 위의 번호 핀 */
+.fl-mp{
+  position:absolute; transform:translate(-50%,-50%);
+  width:22px; height:22px; border-radius:99px; display:grid; place-items:center;
+  background:var(--ink); color:var(--panel);
+  font-family:var(--fig); font-size:11px; font-weight:600;
+  box-shadow:0 1px 4px rgba(var(--sh-rgb),.4);
+  transition:transform .34s ease, background .24s ease;
+}
+.fl-mp.fl-now{ background:var(--terra); width:26px; height:26px; font-size:12px }
+.fl-mp.fl-dim{ opacity:.35 }
+
+@media (prefers-reduced-motion:reduce){
+  .fl-pill,.fl-tool,.fl-pager button,.fl-mp{ transition:none }
+}
+
+/* ── 좁은 화면 ──────────────────────────────────────── */
+@media (max-width:760px){
+  .fl{ padding:14px 15px; border-radius:15px }
+  .fl-no{ font-size:31px }
+  .fl-ttl{ font-size:19px }
+  .fl-ttl-lg{ font-size:22px }
+  .fl-row{ grid-template-columns:34px minmax(0,1fr); gap:10px }
+  .fl-mini{ width:100% }
+  .fl-pager button{ min-width:30px; height:28px; padding:0 6px; font-size:12px }
+}

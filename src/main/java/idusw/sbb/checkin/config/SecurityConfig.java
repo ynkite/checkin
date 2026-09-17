@@ -85,6 +85,21 @@ public class SecurityConfig {
                                 "/api/maps/weather",                //오늘 기준 예보
                                 "/api/maps/weather/**",             //날짜별·범위 날씨 (day, range)
                                 "/api/tour/**",                     //관광공사 API 실호출 (호출 이력 확보)
+                                "/api/route/travel-time",           //출발지 기준 구간 이동시간 (TMAP)
+                                "/api/route/travel-time/compare",   //자차·대중교통·도보 비교 (TMAP)
+                                "/api/route/reverse",               //좌표 -> 주소 (TMAP)
+                                "/api/route/navi",                  //주행 네비 경로 (경로선+턴안내, TMAP)
+                                "/api/route/nearby",                //주변 검색 (주유소·화장실 등, TMAP)
+                                "/api/puzzle/**",                   //SK 지오비전 퍼즐
+                                "/api/live/**",                     //실시간 화면. 목록은 로그인한 사람 것만 나온다
+                                                                    //  (익명이면 빈 배열). 경로 읽기는 이미
+                                                                    //  /api/trips/*/routes 가 공유 링크용으로 열려 있다
+                                "/api/route/origin",                //출발지 후보 검색 (TMAP POI)
+                                "/api/route/status",                //TMAP 연동 여부
+                                "/api/crowd/**",                    //날짜별 혼잡도 예측
+                                "/api/budget/estimate",             //성수기·축제 반영 예산 산출
+                                "/api/budget/festivals",            //여행 기간에 열리는 축제
+                                "/api/budget/season",               //성수기 판정
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
 

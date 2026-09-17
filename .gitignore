@@ -20,6 +20,8 @@ bin/
 ### IntelliJ IDEA ###
 .idea/*
 !.idea/runConfigurations
+# 한글 주석이 IDE 에서만 깨져 보이던 것. 팀원 전부에게 필요하다
+!.idea/encodings.xml
 *.iws
 *.iml
 *.ipr

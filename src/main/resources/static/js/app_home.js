@@ -24,6 +24,26 @@
 
   var HERO_SVG = '/img/mass_hero.svg';
   var HERO_JSON = '/img/mass_hero.json';
+  /* 히어로가 보여 주는 곳. 혼잡도를 이 지역으로 묻는다 */
+  var HERO_REGION = '부산 해운대구';
+
+  /* 보여 주는 날 — 다가오는 토요일.
+     평일 값을 띄우면 「매우 혼잡합니다」라는 문구와 옆의 68(정상)이 싸운다.
+     주말은 실제로 붐비고, 사람이 여행 가는 날도 주말이다. */
+  function heroDate() {
+    var d = new Date();
+    d.setHours(0, 0, 0, 0);
+    var add = (6 - d.getDay() + 7) % 7;      /* 6 = 토요일 */
+    d.setDate(d.getDate() + add);
+    return d;
+  }
+
+  function iso(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+           '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  var DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
   function injectScene() {
     var host = $('ck_scene');
@@ -58,83 +78,484 @@
 
   /* 핀도 마찬가지다. 다시 만들면 들어오는 애니메이션이 매번 처음부터
      돌고, 붐비는 곳이 바뀌는 순간이 안 보인다. 클래스만 바꾼다. */
-  function drawPins(route, hotIdx) {
+  function drawPins(route, hotIdx, alt) {
     var layer = $('ck_pinlayer');
     if (!layer) return;
     if (!layer.firstElementChild) {
       /* 도쿄 앱 프레임에서 읽은 모양 — 번호가 든 동그라미가 지점에 박히고
          이름표는 위가 아니라 옆에 붙는다. 번호가 있어야 순서가 보인다. */
-      layer.innerHTML = route.map(function (p, i) {
-        return '<div class="ck-pin" style="--i:' + i +
-               ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
-               '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
-               '<span class="ck-bub">' + esc(p.name) +
-               (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
-               '</div>';
-      }).join('');
+      var html = route.map(function (p, i) { return pinHTML(p, i, ''); }).join('');
+      /* 대체 후보는 같이 만들어 두고 CSS 로 숨긴다. 고를 때 새로 만들면
+         들어오는 순간이 안 보인다. */
+      if (alt) html += pinHTML(alt, route.length, ' ck-cand');
+      layer.innerHTML = html;
     }
     var pins = layer.children;
-    for (var i = 0; i < pins.length; i++) {
+    for (var i = 0; i < route.length; i++) {
       pins[i].classList.toggle('ck-hot', i === hotIdx);
     }
   }
 
-  /* ─────────────── 2. 나레이션 ───────────────
-     장면 위의 핀과 아래 문구가 같은 장면을 설명한다.
-     3장면: 원래 순서 -> 붐빔 감지 -> 순서 교체 */
+  /* 핀에 붙는 혼잡도. 모형 위에서 바로 읽혀야 한다 —
+     옆 판을 봐야 알 수 있으면 모형이 데이터가 아니라 그림이 된다. */
+  function crowdChip(p) {
+    if (p.crowd == null) return '';
+    var g = (window.crowd && window.crowd(p.crowd)) || null;
+    if (!g) return '';
+    return '<i class="ck-cw cw-' + g.key + '">' + Math.round(p.crowd) + '</i>';
+  }
 
-  /* at  — 재생 바에서 지금 어디쯤인지 (0~1)
+  function pinHTML(p, i, extra) {
+    /* 오른쪽 절반에 있는 핀은 이름표를 왼쪽으로 돌린다.
+       55% 는 가장 긴 이름표(「해운대 해수욕장 14:20」 약 150px)가
+       1440px 무대에서 오른쪽 끝을 안 넘는 자리다. */
+    if (p.x > 55) extra += ' ck-lbl-left';
+    /* 모형 밖에 있는 곳. 가장자리에 붙이고 거리를 같이 적는다 —
+       화면 밖으로 나가는 선이 「멀리 왔다갔다」를 그대로 보여 준다.
+       없는 건물을 지어 넣는 것보다 정직하다. */
+    if (p.off) extra += ' ck-far';
+    return '<div class="ck-pin' + extra + '" style="--i:' + i +
+           ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
+           '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
+           '<span class="ck-bub">' + esc(p.name) +
+           (p.dist ? '<i class="ck-dist">' + esc(p.dist) + '</i>' : '') +
+           (p.note ? '<em>' + esc(p.note) + '</em>' : '') +
+           crowdChip(p) + '</span>' +
+           '</div>';
+  }
+
+  /* ─────────────── 1-b. 들어오는 장면 ───────────────
+     선이 그어지고 → 판이 들어오고 → 지금 시각·날씨로 돌아온다.
+     핀의 %좌표를 그대로 쓰므로 모형이 바뀌어도 따라간다. */
+
+  /* ── 기계가 버티는지 한 번 재고 정한다 ──────────────────
+     모션을 고정으로 줄이면 좋은 기계에서도 심심해진다.
+     반대로 다 켜 두면 버거운 기계에서 뚝뚝 끊긴다.
+     그래서 들어온 뒤 한 번 재고 그 값을 이 창에서 계속 쓴다.
+     계속 재면 그게 또 비용이다.
+
+     기준 — 1초 동안 33ms(30프레임)를 넘긴 프레임이 넷 이상이면 버겁다.
+     하나둘은 다른 탭이 뭘 했을 수도 있으니 넘긴다. */
+  function gradeMotion() {
+    var r = document.documentElement;
+    if (reduce) { r.setAttribute('data-motion', 'lite'); return; }
+
+    /* 이 창에서 이미 정했으면 그대로 쓴다 */
+    try {
+      var seen = sessionStorage.getItem('ckMotion');
+      if (seen) { r.setAttribute('data-motion', seen); return; }
+    } catch (e) {}
+
+    r.setAttribute('data-motion', 'full');
+
+    var t0 = performance.now(), last = t0, slow = 0, n = 0;
+    function step(now) {
+      var dt = now - last; last = now; n++;
+      if (dt > 33) slow++;
+      if (now - t0 < 1000) { requestAnimationFrame(step); return; }
+
+      /* 프레임이 아예 안 돌았으면(탭이 숨어 있었다) 판단하지 않는다 */
+      if (n < 20) return;
+
+      var g = slow >= 4 ? 'lite' : 'full';
+      r.setAttribute('data-motion', g);
+      try { sessionStorage.setItem('ckMotion', g); } catch (e) {}
+      if (g === 'lite') {
+        console.info('[체크인] 프레임이 버거워서 움직임을 낮췄습니다 ' +
+                     '(' + slow + '/' + n + ' 프레임 지연). ' +
+                     'sessionStorage 의 ckMotion 을 지우면 다시 잽니다.');
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  var WX_KO = { clear: '맑음', cloudy: '흐림', rain: '비', snow: '눈' };
+
+  /* 기상청 하늘 상태를 우리 네 가지로 줄인다.
+     화면이 그릴 수 있는 것만 남긴다 — 「구름많음」과 「흐림」을
+     따로 그려 봐야 눈으로 구분이 안 된다. */
+  function wxKind(d) {
+    if (!d) return 'clear';
+    if (d.rainExpected) {
+      var t = (d.tempMax != null ? d.tempMax : 10);
+      return t <= 2 ? 'snow' : 'rain';
+    }
+    var s = String(d.sky || '');
+    if (s.indexOf('눈') >= 0) return 'snow';
+    if (s.indexOf('비') >= 0) return 'rain';
+    if (s.indexOf('흐') >= 0 || s.indexOf('구름') >= 0) return 'cloudy';
+    return 'clear';
+  }
+
+  function setWx(kind) {
+    document.documentElement.setAttribute('data-wx', kind || 'clear');
+  }
+
+  /* 지금 시각·지금 날씨를 적는다. 배경이 왜 이 색인지 말해 주지 않으면
+     그냥 색이 이상한 화면이 된다. */
+  function tellNow(kind, temp) {
+    var box = document.getElementById('st_wx');
+    if (!box) return;
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    box.hidden = false;
+    box.innerHTML =
+      '<b>' + hh + ':' + mm + '</b>' +
+      '<span>' + (WX_KO[kind] || '맑음') +
+        (temp != null ? ' ' + Math.round(temp) + '°' : '') + '</span>' +
+      '<i>지금 시각과 날씨로 배경색을 맞췄습니다</i>';
+  }
+
+  /* 오늘 이 지역 날씨. 못 받으면 맑음으로 두고 조용히 넘어간다 */
+  async function liveWeather() {
+    try {
+      var d = new Date();
+      var iso = d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+      var r = await fetch('/api/maps/weather/day?region=' +
+                          encodeURIComponent(HERO_REGION) + '&date=' + iso);
+      var j = await r.json();
+      var w = (j && j.success && j.data) || null;
+      return { kind: wxKind(w), temp: w && w.tempMax };
+    } catch (e) {
+      return { kind: 'clear', temp: null };
+    }
+  }
+
+  /* 동선을 잇는 선. 핀과 같은 좌표계(%)를 쓰므로 정거장을 어디로
+     옮겨도 끝점이 정확히 맞는다. 모형에 구워진 선은 CSS 로 숨겼다 —
+     그건 모형을 만들 때의 지점을 이은 것이라 지금은 안 닿는다.
+
+     두 겹이다. 바깥 흰 테가 있어야 도시 위에 올라가도 선이 안 묻힌다.
+     지나온 구간은 채우고, 아직 안 간 구간은 점선으로 흐른다. */
+  function drawLine(route, upto) {
+    var layer = $('ck_pinlayer');
+    if (!layer) return;
+    var pts = route.filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    if (pts.length < 2) return;
+
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = layer.querySelector('.ck-draw');
+    if (!svg) {
+      svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('class', 'ck-draw');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('preserveAspectRatio', 'none');
+      layer.insertBefore(svg, layer.firstChild);
+    }
+
+    function pl(cls, from, to) {
+      var seg = pts.slice(from, to + 1);
+      if (seg.length < 2) return '';
+      return '<polyline class="' + cls + '" points="' +
+             seg.map(function (p) { return p.x.toFixed(2) + ',' + p.y.toFixed(2); })
+                .join(' ') + '" />';
+    }
+
+    /* upto 가 없으면 전체를 「지나온 것」으로 그린다 */
+    var n = pts.length - 1;
+    var k = (upto == null) ? n : Math.max(0, Math.min(n, upto));
+
+    svg.innerHTML =
+      pl('ck-ln-case', 0, n) +
+      pl('ck-ln-done', 0, k) +
+      (k < n ? pl('ck-ln-todo', k, n) : '');
+  }
+
+  /* 들어오는 장면 한 번. 이미 봤으면 다시 안 한다 —
+     같은 연출을 매번 보면 기다리는 시간이 된다.
+
+     흐름 —
+       ① 지도   작게 축소해서 1·2·3 을 한눈에
+       ② 확대   1번 쪽으로 당기며 3D 로 넘어간다
+       ③④⑤ 1번 · 2번 · 3번을 끊어 가며 보여 준다
+       ⑥ 정리   세 곳이 다 보이는 자리로 물러나고 판이 들어온다
+
+     끊어 가는 이유 — 미끄러지면 「코앞에서 조금 움직인」 것으로 보인다.
+     끊으면 「다른 데로 갔다」로 읽힌다.
+
+     단계는 벽시계(setTimeout)로 넘어간다. requestAnimationFrame 은
+     탭이 뒤에 있으면 멈춰서 화면이 중간에 굳는다. */
+  function intro(route, done) {
+    var stage = document.querySelector('.ck-stage');
+    var reduce2 = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var seen = false;
+    try { seen = sessionStorage.getItem('ckIntroSeen') === '1'; } catch (e) {}
+
+    if (reduce2 || seen || !stage || !window.ckStage || route.length < 2) {
+      drawLine(route);                 /* 연출을 건너뛰어도 선은 있어야 한다 */
+      if (window.ckStage) window.ckStage.camFit();
+      done();
+      return;
+    }
+    try { sessionStorage.setItem('ckIntroSeen', '1'); } catch (e) {}
+
+    var S = window.ckStage;
+    var host = $('ck_hero');
+    var pinLayer = $('ck_pinlayer');
+    var timers = [];
+    var ended = false;
+
+    function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+
+    function finish() {
+      if (ended) return;
+      ended = true;
+      timers.forEach(clearTimeout);
+      if (S.camFlyStop) S.camFlyStop();
+      if (S.camLock) S.camLock(false);   /* 카메라를 놓는다 */
+      document.removeEventListener('visibilitychange', onHide);
+      if (host) { host.classList.remove('ck-intro'); host.classList.remove('ck-cut'); }
+      S.showModel();
+      /* 히어로의 얼굴은 첫 장소 모형이다. 돌아와서 멈춘다 */
+      if (route[0] && route[0].scene && S.loadScene) {
+        S.loadScene(route[0].scene, function () { S.camFit(); });
+      } else {
+        S.camFit();
+      }
+      drawLine(route);
+      if (pinLayer) {
+        pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
+          p.classList.remove('ck-wait');
+        });
+      }
+      skyHold = false;
+      if (window.ckSky) window.ckSky();
+      done();
+    }
+    function onHide() { if (document.hidden) finish(); }
+    document.addEventListener('visibilitychange', onHide);
+
+    /* 화면을 한 번 덮었다 걷는다. 그 사이에 카메라를 옮기면
+       미끄러지지 않고 「바뀐」 것으로 보인다 */
+    function cut(fn) {
+      if (!host) { fn(); return; }
+      host.classList.add('ck-cut');
+      setTimeout(function () {
+        fn();
+        setTimeout(function () { host.classList.remove('ck-cut'); }, 40);
+      }, 190);
+    }
+
+    /* 하늘은 그 정거장의 시각으로. 단계마다 한 번만 바꾼다 —
+       매 프레임 바꾸면 :root 변수 106개를 초당 6,360번 쓴다 */
+    function skyAtStop(i) {
+      if (!window.ckSky) return;
+      var m = /(\d{1,2}):(\d{2})/.exec((route[i] && route[i].note) || '');
+      if (!m) return;
+      var d2 = new Date();
+      d2.setHours(+m[1], +m[2], 0, 0);
+      skyHold = true;
+      window.ckSky(d2);
+    }
+
+    /* 오늘 비가 오면 「비가 와서」 갈래를 먼저 세운다.
+       화면이 오늘 날씨와 다른 말을 하고 있으면 안 믿긴다. */
+    var wx = (window.__ckWx && window.__ckWx.kind) || 'clear';
+    if (wx === 'rain' || wx === 'snow') {
+      var b1 = document.querySelector('.ck-opt[data-o="1"]');
+      if (b1) setTimeout(function () { b1.click(); }, 60);
+    }
+
+    if (S.camLock) S.camLock(true);      /* 카메라를 이 연출이 쥔다 */
+    if (host) host.classList.add('ck-intro');
+    if (pinLayer) {
+      pinLayer.querySelectorAll('.ck-pin').forEach(function (p) {
+        p.classList.add('ck-wait');
+      });
+    }
+
+    /* ① 지도 — 작게, 셋이 한눈에 */
+    var ok = S.showWideMap();
+    if (!ok) { finish(); return; }
+
+    var HOLD = 2100;      /* 날아가는 1.15초 + 머무는 시간 */
+    var T = 1700;         /* 지도를 보여 주는 시간 */
+
+    /* ② 지도를 1번 쪽으로 당긴다 */
+    at(T - 520, function () { S.zoomMapTo(0); });
+
+    /* 핀을 지나온 것까지 세운다 */
+    function liftPins(i) {
+      if (!pinLayer) return;
+      var pins = pinLayer.querySelectorAll('.ck-pin:not(.ck-cand)');
+      for (var k = 0; k <= i && k < pins.length; k++) {
+        pins[k].classList.remove('ck-wait');
+      }
+    }
+
+    /* ③④⑤ 장소마다 자기 모형으로 갈아 끼운다.
+       한 모형을 훑으면 「코앞에서 조금 움직인」 것으로 보인다.
+       모형이 바뀌면 「다른 데로 갔다」가 된다 — 실제로 8.4km·11km 다. */
+    route.forEach(function (p, i) {
+      at(T + HOLD * i, function () {
+        /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
+        var nx = route[i + 1];
+        if (nx && nx.scene && S.preloadScene) S.preloadScene(nx.scene);
+
+        cut(function () {
+          S.showModel();
+          if (p.scene && S.loadScene) {
+            S.loadScene(p.scene, function () {
+              S.camStop(i, 1.35);
+              liftPins(i);
+            });
+          } else {
+            S.camStop(i, 1.35);
+            liftPins(i);
+          }
+          skyAtStop(i);
+        });
+      });
+    });
+
+    /* ⑥ 물러나서 전체를 보여 주고 판을 들인다 */
+    at(T + HOLD * route.length, function () { cut(finish); });
+
+    /* 아무리 늦어도 여기서는 끝낸다 */
+    at(T + HOLD * route.length + 1800, finish);
+  }
+
+  /* 밖에서 부를 수 있게 — 「다시 보기」 버튼이 쓴다 */
+  window.ckReplayIntro = function () {
+    try { sessionStorage.removeItem('ckIntroSeen'); } catch (e) {}
+    location.reload();
+  };
+
+  /* ─────────────── 2. 나레이션 ───────────────
+     세 장면을 순서대로 읽으면 이 제품이 하는 일이 한 문장씩 나온다.
+       ① 오늘 순서  ② 어디가 얼마나 혼잡하고 언제 풀리는지  ③ 무엇을 바꿀 수 있는지
+     혼잡도 등급은 crowd.js 가 정한다 (매우 혼잡 · 혼잡 · 정상 · 한적 · 매우 한적).
+
+     at  — 재생 바에서 지금 어디쯤인지 (0~1)
      now — 재생 바 오른쪽에 적는 지금 자리 */
   var SCENE = [
-    { at: 0,   now: '남포동',
-      line: '부산 1일차, 오후 순서입니다',
-      why: '남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.',
-      hot: -1, live: 1, chips: 0, sw: 0 },
-    { at: .5,  now: '해변 한가운데',
-      line: '해운대가 지금 <em>집중률 142</em>',
-      why: '평소 이 시각의 1.4배입니다. 두 시간 뒤에도 비슷할 것으로 봅니다. 광안리는 71, 한가한 편입니다.',
-      hot: 1, live: 1, chips: 0, sw: 0 },
-    { at: 1,   now: '해변 서쪽 끝',
-      line: '광안리를 <em>먼저 가는 쪽으로</em> 바꿨습니다',
-      why: '해운대는 17시 40분으로 미뤘습니다. 그 시각이면 96까지 내려갑니다.',
-      hot: 1, live: 2, chips: 1, sw: 1 }
+    { at: 0,  now: '미포',
+      line: '부산 첫날 오후 일정입니다',
+      why: '미포에서 출발해 해수욕장, 동백섬 순으로 갈 계획이었습니다.',
+      hot: -1, live: 1, opts: 0 },
+    { at: .5, now: '해운대 해수욕장',
+      line: '해운대 해수욕장이 지금 <em>매우 혼잡</em>합니다',
+      why: '평소 이 시각의 1.4배입니다. 17시 이후에는 지금보다 한산할 것으로 봅니다.',
+      hot: 1, live: 1, opts: 0 },
+    { at: 1,  now: '동백섬',
+      line: '바꾸는 방법은 <em>세 가지</em>입니다',
+      why: '고르면 순서와 시각을 다시 잡고, 일행 화면에도 그대로 반영됩니다.',
+      hot: 1, live: 1, opts: 1 }
+  ];
+
+  /* 세 갈래. 고른 것이 모형 위에서 각각 다르게 보여야 고른 값이 있다.
+       swap  순서를 바꾸면 핀 번호가 바뀐다
+       cand  다른 곳으로 가면 후보 핀이 켜지고 원래 핀이 흐려진다
+       live  가는 길을 바꾸면 해변길(1)에서 안쪽 도로(2)로 선이 넘어간다 */
+  /* 갈래는 「무엇 때문에 바꾸는가」다.
+       0 사람이 몰려서  순서를 바꾼다 (2번과 3번이 자리를 맞바꾼다)
+       1 비가 와서      실내 후보로 옮긴다 (대체 핀이 켜진다)
+       2 길이 막혀서    가는 길을 바꾼다 (해변길 -> 안쪽 도로)
+     화면에 보이는 결과가 셋 다 달라야 고른 값이 있다. */
+  var OPTS = [
+    { swap: 1, cand: 0, live: 1, order: [0, 2, 1] },
+    { swap: 0, cand: 1, live: 1, order: [0, 1, 2] },
+    { swap: 0, cand: 0, live: 2, order: [0, 1, 2] }
   ];
 
   function initHero() {
-    var tl = $('ck_tl'), tw = $('ck_tw'), plans = $('ck_plans'), hero = $('ck_hero');
+    var tl = $('ck_tl'), tw = $('ck_tw'), hero = $('ck_hero'), box = $('ck_opts');
     if (!tl) return;
 
-    var chips = ['ck_c1', 'ck_c2', 'ck_c3'].map($).filter(Boolean);
     var bars = ['ck_p1', 'ck_p2', 'ck_p3'].map($).filter(Boolean);
-    var route = [];
-    var step = -1, timer = null;
+    var opts = box ? [].slice.call(box.querySelectorAll('.ck-opt')) : [];
+    var route = [], alt = null;
+    var step = -1, timer = null, pick = 0, paused = false;
+    var btn = $('ck_playbtn'), play = $('ck_play');
+
+    /* 고른 방법을 모형에 반영한다. 장면 3에서만 부른다. */
+    function applyOpt(n) {
+      pick = n;
+      opts.forEach(function (b, k) { b.setAttribute('aria-pressed', k === n ? 'true' : 'false'); });
+      var o = OPTS[n], layer = $('ck_pinlayer');
+      if (layer) {
+        layer.classList.toggle('ck-cand-on', !!o.cand);
+        var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+        for (var i = 0; i < pins.length; i++) {
+          var no = pins[i].querySelector('.ck-no');
+          /* 순서를 바꾸면 2번과 3번이 자리를 맞바꾼다 */
+          if (no) no.textContent = o.swap && i >= 1 ? (i === 1 ? 3 : 2) : i + 1;
+          pins[i].classList.toggle('ck-off', !!o.cand && i === 1);
+        }
+      }
+      drawTrail(route, o.live);
+      stage({ order: o.order, hot: 1, cand: !!o.cand });
+    }
+
+    /* 무대 주변 판(정거장 알약·오른쪽 판·작은 지도)은 app_stage.js 가 맡는다.
+       없어도 나레이션은 돌아야 하므로 있을 때만 부른다. */
+    function stage(st) {
+      if (window.ckStage) window.ckStage.render(route, alt, st);
+    }
 
     function draw(i) {
       var s = SCENE[i];
       tl.innerHTML = s.line;
       if (tw) tw.textContent = s.why;
-      if (plans) plans.classList.toggle('ck-sw', !!s.sw);
-      chips.forEach(function (c) { c.classList.toggle('ck-on', !!s.chips); });
       bars.forEach(function (b, k) {
         b.className = k < i ? 'ck-done' : (k === i ? 'ck-on' : '');
       });
-      if (route.length) { drawPins(route, s.hot); drawTrail(route, s.live); }
+      if (box) box.hidden = !s.opts;
+      if (route.length) {
+        drawPins(route, s.hot, alt);
+        if (s.opts) {
+          applyOpt(pick);
+        } else {
+          resetScene();
+          drawTrail(route, s.live);
+          stage({ order: [0, 1, 2], hot: s.hot, cand: false });
+        }
+      }
 
       var tr = $('ck_track'), nw = $('ck_playnow');
       if (tr) tr.style.setProperty('--at', (s.at * 100).toFixed(1) + '%');
       if (nw) nw.textContent = s.now;
     }
 
+    function resetScene() {
+      var layer = $('ck_pinlayer');
+      if (!layer) return;
+      layer.classList.remove('ck-cand-on');
+      var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+      for (var i = 0; i < pins.length; i++) {
+        var no = pins[i].querySelector('.ck-no');
+        if (no) no.textContent = i + 1;
+        pins[i].classList.remove('ck-off');
+      }
+    }
+
     function tick() {
       step = (step + 1) % SCENE.length;
+      if (step === 0) pick = 0;          /* 한 바퀴 돌면 처음 고른 것으로 */
       draw(step);
-      timer = setTimeout(tick, step === SCENE.length - 1 ? 4200 : 2800);
+      timer = setTimeout(tick, step === SCENE.length - 1 ? 6200 : 2800);
     }
+
+    /* 방법을 고르면 재생은 멈춘다. 고른 것을 보고 있는데 화면이 넘어가면
+       무엇을 고른 건지 사라진다. */
+    opts.forEach(function (b, k) {
+      b.addEventListener('click', function () {
+        clearTimeout(timer); timer = null;
+        paused = true;
+        /* 고르는 순간 장면이 넘어가 있으면 문구와 고른 것이 어긋난다.
+           방법을 고를 수 있는 장면으로 고정한다. */
+        pick = k; step = SCENE.length - 1; draw(step);
+        if (play) play.classList.add('ck-paused');
+        if (btn) btn.setAttribute('aria-label', '순서 따라가기 시작');
+        applyOpt(k);
+      });
+    });
 
     /* 재생 바 — 멈춤은 사람이 누른 것이고, 화면 밖으로 나가 멈춘 것과 다르다.
        둘을 섞으면 다시 스크롤했을 때 멈춰 둔 것이 저절로 돌아간다. */
-    var paused = false;
-    var btn = $('ck_playbtn'), play = $('ck_play');
     if (btn) {
       btn.addEventListener('click', function () {
         paused = !paused;
@@ -145,11 +566,108 @@
       });
     }
 
-    fetch(HERO_JSON, { cache: 'force-cache' })
+    /* 히어로의 혼잡도를 실제 값으로 덮는다.
+       json 에 박힌 값은 못 받을 때 쓰는 자리다. 메인은 제품이 무엇을 하는지
+       보여 주는 자리라 여기 숫자가 꾸민 값이면 나머지도 그렇게 보인다. */
+    function liveCrowd() {
+      var names = route.map(function (p) { return p.name; });
+      if (alt) names.push(alt.name);
+      if (!names.length) return Promise.resolve();
+
+      var when = heroDate();
+      return fetch('/api/crowd/day?region=' + encodeURIComponent(HERO_REGION) +
+                   '&date=' + iso(when) +
+                   '&places=' + encodeURIComponent(names.join(',')))
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+        .then(function (j) {
+          var list = (j && j.success && j.data) || [];
+          var got = 0;
+          list.forEach(function (f) {
+            if (f.rate == null) return;
+            var hit = route.filter(function (p) { return p.name === f.placeName; })[0];
+            if (!hit && alt && alt.name === f.placeName) hit = alt;
+            if (!hit) return;
+            hit.crowd = Math.round(f.rate);
+            hit.crowdLabel = f.levelLabel;
+            got++;
+          });
+          if (got) { window.__ckCrowdLive = true; retellHero(when); }
+          setCrowdDensity();
+        })
+        .catch(function () { /* 못 받으면 json 값을 그대로 쓴다 */ });
+    }
+
+    /* 모형의 사람 수를 지금 보는 곳의 혼잡도에 맞춘다.
+       해변 군중은 해수욕장 값을 따른다 — 그 자리에 있는 사람들이다. */
+    function setCrowdDensity() {
+      var beach = null;
+      route.forEach(function (p) {
+        if (p.crowd == null) return;
+        if (!beach || p.crowd > beach.crowd) beach = p;
+      });
+      if (!beach) return;
+      var x = Math.max(0, Math.min(1, beach.crowd / 100));
+      /* 장면 상자에만 넣는다. 안쪽 무리·파라솔은 CSS 가 이 값을 물려받아
+         각자의 문턱으로 판단한다 — SVG 가 늦게 들어와도 따라온다. */
+      var scene = document.getElementById('ck_scene') || document.getElementById('ck_frame');
+      if (scene) scene.style.setProperty('--cw', x.toFixed(3));
+      window.__ckCw = x;
+    }
+
+    /* 받은 값으로 문구를 다시 쓴다. 붐비지 않으면 붐빈다고 말하지 않는다 */
+    function retellHero(when) {
+      var day = (when.getMonth() + 1) + '월 ' + when.getDate() + '일 ' +
+                DOW[when.getDay()] + '요일';
+      var eye = document.querySelector('.st-head .fl-eye');
+      if (eye) eye.textContent = '부산 해운대 · ' + day + ' 오후';
+
+      /* 오른쪽 판의 날짜도 같은 날이어야 한다. 전에는 「9월 19일 금요일」이
+         템플릿에 적혀 있었고 그 날은 토요일이었다. */
+      var whenEl = document.getElementById('st_when');
+      if (whenEl) whenEl.innerHTML = day + '<i>부산 해운대</i>';
+
+      var worst = null;
+      route.forEach(function (p) {
+        if (p.crowd != null && (!worst || p.crowd > worst.crowd)) worst = p;
+      });
+      if (!worst) return;
+
+      var g = (window.crowd && window.crowd(worst.crowd)) || null;
+      var grade = worst.crowdLabel || (g && g.label) || '';
+      var busy = worst.crowd >= 70;
+
+      SCENE[1].now = worst.name;
+      SCENE[1].line = esc(worst.name) + '이 그 날 <em>' + esc(grade) + '</em>합니다';
+      /* 등급은 윗줄에 있다. 여기서는 숫자만 */
+      SCENE[1].why = '집중률 ' + worst.crowd + (busy ? '' : ' · 순서는 그대로 둬도 됩니다');
+
+      /* 대체 후보의 등급도 받은 값으로 */
+      if (alt && alt.crowd != null) {
+        var ag = (window.crowd && window.crowd(alt.crowd)) || null;
+        var cell = document.querySelector('.ck-opt[data-o="1"] em');
+        if (cell) {
+          cell.innerHTML = esc(alt.crowdLabel || (ag && ag.label) || '') +
+                           '<i>집중률 ' + alt.crowd + '</i>';
+        }
+        /* 문구는 마크업에 적어 둔 것을 쓴다.
+           「원래 광안리였어요. 8.4km, 차로 52분」처럼 왜 옮기는지를
+           말해야 하는데, 여기서 이름만 갈아 끼우면 그 이유가 사라진다.
+           전에는 「해수욕장 대신 동백섬으로」로 덮어써서, 거리 이야기가
+           화면에서 없어졌다. */
+      }
+    }
+
+    fetch(HERO_JSON, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (j) { route = (j && j.route) || []; })
-      .catch(function () { route = []; })
+      .then(function (j) {
+        route = (j && j.route) || []; alt = (j && j.alt) || null;
+        window.__ckRoute = route;        /* 들어오는 장면이 이걸 쓴다 */
+        window.__ckScenes = (j && j.scenes) || {};   /* 장소별 모형 */
+      })
+      .catch(function () { route = []; window.__ckRoute = []; })
+      .then(liveCrowd)
       .then(function () {
+        stage({ order: [0, 1, 2], hot: -1, cand: false });
         if (reduce) { draw(SCENE.length - 1); return; }
         tick();
         if (hero && window.IntersectionObserver) {
@@ -161,6 +679,63 @@
           }, { threshold: 0.05 }).observe(hero);
         }
       });
+  }
+
+  /* ──────────────────────── 2.5 지금 한가한 곳 ────────────────────
+     64 · 71 · 78 · 142 가 템플릿에 적혀 있었다. 손으로 적은 값이다.
+     같은 지역에서 그 날 한적한 곳을 받아 채운다. 못 받으면 절을 감춘다 —
+     지어낸 숫자를 두는 것보다 없는 편이 낫다. */
+
+  function initQuiet() {
+    var box = document.querySelector('#ck_free .ck-free') || document.querySelector('.ck-free');
+    if (!box) return;
+    var sec = box.closest('section');
+
+    var when = heroDate();
+    fetch('/api/crowd/quiet?region=' + encodeURIComponent(HERO_REGION) +
+          '&date=' + iso(when) + '&limit=8')
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (j) {
+        var list = (j && j.success && j.data) || [];
+        list = list.filter(function (x) { return x.rate != null; });
+
+        /* 「한가한 곳」에는 한가한 곳만 넣는다. 가장 낮은 순으로 와도
+           그것들이 70 을 넘으면 붐비는 곳이다 — 71 을 「여유 있습니다」로
+           적어 두면 가서 줄을 선다. */
+        var quiet = list.filter(function (x) { return x.rate < 70; }).slice(0, 3);
+        var busy = list[list.length - 1];        /* 가장 붐비는 곳 하나를 같이 */
+        if (quiet.length < 2) { if (sec) sec.hidden = true; return; }
+
+        var side = document.querySelector('#ck_free .ck-side') ||
+                   (sec && sec.querySelector('.ck-side'));
+        if (side) {
+          side.textContent = (when.getMonth() + 1) + '월 ' + when.getDate() + '일 ' +
+                             DOW[when.getDay()] + '요일';
+        }
+        var hd = sec && sec.querySelector('.ck-hd');
+        if (hd) hd.setAttribute('data-label', '한국관광공사 집중률 예측');
+
+        /* 구가 전부 같으면 카드마다 같은 줄이 붙는다. 다를 때만 적는다 */
+        var shown = quiet.concat(busy && busy.rate >= 70 ? [busy] : []);
+        var oneGu = shown.every(function (x) { return x.sigunguName === shown[0].sigunguName; });
+
+        function card(x, hot) {
+          var g = (window.crowd && window.crowd(x.rate)) || { key: 'mid', label: '정상' };
+          var k = 'cw-' + g.key;
+          return '<article class="ck-spot' + (hot ? ' ck-hot' : '') + '">' +
+            '<div class="ck-nm">' + esc(x.placeName) + '</div>' +
+            (!oneGu && x.sigunguName ? '<div class="ck-why">' + esc(x.sigunguName) + '</div>' : '') +
+            '<div class="ck-vv"><b class="ck-fig">' + Math.round(x.rate) + '</b>' +
+              '<i class="' + k + '">' + esc(x.levelLabel || g.label) + '</i></div>' +
+            '<div class="ck-bar"><i class="' + k + '" style="width:' +
+              Math.min(100, Math.max(6, Math.round(x.rate))) + '%"></i></div>' +
+          '</article>';
+        }
+
+        box.innerHTML = quiet.map(function (x) { return card(x, false); }).join('') +
+                        (busy && busy.rate >= 70 ? card(busy, true) : '');
+      })
+      .catch(function () { if (sec) sec.hidden = true; });
   }
 
   /* ────────────────────────── 3. 내 여행 ──────────────────────────
@@ -268,9 +843,7 @@
         var picked = [].slice.call(cc.querySelectorAll('[aria-pressed="true"]'))
                        .map(function (x) { return x.textContent.trim(); });
         if (cn) cn.textContent = picked.length ? picked.length : '';
-        nt.textContent = picked.length
-          ? picked.join(' · ') + ' 조건에 맞는 곳만 후보에 올립니다.'
-          : '고른 조건에 안 맞는 곳은 아예 후보에서 뺍니다.';
+        nt.textContent = picked.length ? picked.join(' · ') + ' 맞춤' : '';
       });
     }
 
@@ -326,11 +899,24 @@
      index.html 의 head 에서 한 번 정해지고, 여기서 계속 갱신한다.
      ckSky 가 oklab 에서 섞어 :root 에 넣는다. 탭이 숨으면 멈춘다. */
 
+  /* 혼잡도 눈금 — 접어 둔다. 늘 펼쳐 두면 화면 절반이 설명이 된다 */
+  function initCwKey() {
+    var b = $('st_cwkey_t'), body = $('st_cwkey_b');
+    if (!b || !body) return;
+    b.addEventListener('click', function () {
+      var on = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', String(!on));
+      body.hidden = on;
+    });
+  }
+
+  var skyHold = false;        /* 인트로가 하늘을 쥐고 있는 동안 참 */
+
   function initSky() {
     if (typeof window.ckSky !== 'function') return;
     var timer = null;
     function loop() {
-      window.ckSky();
+      if (!skyHold) window.ckSky();
       timer = setTimeout(loop, 60000);
     }
     loop();
@@ -343,7 +929,7 @@
   /* ─────────────────────────── 시작 ─────────────────────────── */
 
   /* ─────────────── 6. 숫자가 차오른다 ───────────────
-     집중률과 확정 비율은 이 제품이 파는 것이다. 다 그려진 채로
+     혼잡도와 확정 비율은 이 제품이 파는 것이다. 다 그려진 채로
      스크롤에 들어오면 그냥 인쇄물이다. 화면에 들어올 때 0 에서
      실제 값까지 올린다.
 
@@ -441,12 +1027,43 @@
     initNav();                          // 상단 바는 모든 화면에 있다
     if (!$('ck_hero')) return;          // 나머지는 메인페이지에서만
     initHero();
+    initQuiet();
     initForm();
     initMine();
     initSky();
     initCounters();
-    if ('requestIdleCallback' in window) requestIdleCallback(injectScene, { timeout: 1200 });
-    else setTimeout(injectScene, 200);
+    initCwKey();
+    /* 날씨는 먼저 걸어 둔다 — 인트로가 끝난 뒤에 지금 날씨로 남는다 */
+    liveWeather().then(function (w) {
+      setWx(w.kind);
+      window.__ckWx = w;
+    });
+
+    /* 모형이 들어온 뒤에 동선을 그린다. 판보다 모형이 먼저 있어야
+       선이 어디를 지나는지가 보인다. */
+    function afterScene() {
+      injectScene().then(function () {
+        var tries = 0;
+        (function wait() {
+          var r = window.__ckRoute;
+          /* 핀이 아직 안 선 상태면 그릴 대상이 없다. 20번(약 2초)까지 기다린다 */
+          var pinned = document.querySelectorAll('#ck_pinlayer .ck-pin').length;
+          if ((!r || !r.length || !pinned) && tries++ < 20) {
+            setTimeout(wait, 100);
+            return;
+          }
+          intro(r || [], function () {
+            var w = window.__ckWx || { kind: 'clear', temp: null };
+            tellNow(w.kind, w.temp);
+            /* 인트로가 끝난 뒤에 잰다. 인트로 중에 재면 인트로를 보고
+               판단해 버린다 — 그건 한 번만 도는 것이다 */
+            setTimeout(gradeMotion, 400);
+          });
+        })();
+      });
+    }
+    if ('requestIdleCallback' in window) requestIdleCallback(afterScene, { timeout: 1200 });
+    else setTimeout(afterScene, 200);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
@@ -456,6 +1073,9 @@
 /* 「많이 담긴 곳」 탭 — 네 종류를 한 절에 넣고 하나씩 보여 준다.
    그리드는 initMainPage() 가 모두 채운다. 여기서는 보이기만 바꾼다. */
 (function () {
+  /* $ 가 위 IIFE 안에만 있어서 이 블록이 통째로 죽어 있었다. 탭이 안 먹던 원인이다. */
+  var $ = function (id) { return document.getElementById(id); };
+
   /* 탭 두 벌 — 바깥은 일정/장소, 안쪽은 맛집·숙소·관광지·카페.
      둘 다 「고른 것만 보인다」라 한 곳에서 처리한다. */
   function initKindTabs() {

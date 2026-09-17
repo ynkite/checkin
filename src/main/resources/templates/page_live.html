@@ -1,0 +1,251 @@
+<div th:fragment="live" xmlns:th="http://www.thymeleaf.org">
+  <!-- ===================================================
+   * 파일명: page_live.html
+   * 도메인: 실시간
+   * 하는 일: 저장된 여행을 골라 「지금 어떤가」를 크게 보여 준다.
+   *
+   * 지도 화면과 뭐가 다른가 —
+   *   지도    전체 일정을 펼쳐 놓고 손으로 옮긴다. 앉아서 쓰는 화면
+   *   실시간  지금 한 구간만 크게. 움직이면서 보는 화면
+   *
+   * 여행 전날에도 들어올 수 있다. 그때는 「내일 이 시각이면」으로 답한다.
+   *
+   * API
+   *   GET /api/live/trips                    열 수 있는 여행 목록
+   *   GET /api/live/now?tripId=&lat=&lng=    지금 상황 한 벌
+   =================================================== -->
+  <div class="page" id="page-live">
+    <div class="rl-wrap">
+
+      <!-- 여행 고르기 -->
+      <section class="rl-pick" id="rlPick">
+        <div class="rl-hd">
+          <p class="rl-eye">실시간</p>
+          <h1 class="rl-ttl">어느 여행을 보고 계세요</h1>
+          <p class="rl-sub">고르면 지금 어디쯤인지, 다음이 어디인지 바로 나옵니다.
+            여행 전날에도 미리 볼 수 있습니다.</p>
+        </div>
+        <div class="rl-trips" id="rlTrips">
+          <p class="rl-load">불러오는 중</p>
+        </div>
+      </section>
+
+      <!-- 지금 상황 -->
+      <section class="rl-now" id="rlNow" hidden>
+        <button type="button" class="rl-back" onclick="rlBack()">여행 바꾸기</button>
+
+        <p class="rl-when" id="rlWhen"></p>
+        <h2 class="rl-head" id="rlHead"></h2>
+
+        <div class="rl-next" id="rlNext"></div>
+        <div class="rl-acts" id="rlActs"></div>
+
+        <div class="rl-rail" id="rlRail"></div>
+
+        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측입니다.
+          이동시간은 티맵, 실시간 인원은 SK 연동 뒤에 들어옵니다.</p>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    /* ════════════════════════════════════════════════════════
+     *  실시간
+     *
+     *  값이 없으면 없다고 쓴다. 0 으로 채우지 않는다.
+     *  좌표는 있으면 쓰고 없으면 시각으로 가른다 — 위치 권한을
+     *  막아도 화면이 돌아야 한다.
+     * ════════════════════════════════════════════════════════ */
+    (function () {
+      'use strict';
+
+      var rlTrip = null, rlTimer = null, rlPos = null;
+
+      function esc(s) {
+        return String(s == null ? '' : s)
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      /* ── 여행 고르기 ─────────────────────────────────── */
+      async function rlLoadTrips() {
+        var box = document.getElementById('rlTrips');
+        if (!box) return;
+        try {
+          var r = await fetch('/api/live/trips');
+          var j = await r.json();
+          var list = (j && j.success && j.data) || [];
+
+          if (!list.length) {
+            /* 로그인해야 내 여행이 보인다. 「없다」와 「못 본다」는 다른 말이다 */
+            var anon = !document.body.classList.contains('logged-in') &&
+                       !localStorage.getItem('accessToken') &&
+                       !sessionStorage.getItem('accessToken');
+            box.innerHTML = anon
+              ? '<div class="rl-empty">' +
+                  '<p class="rl-empty-1">로그인하면 저장한 여행이 보입니다.</p>' +
+                  '<p class="rl-empty-2">여행을 고르면 지금 어디쯤인지, ' +
+                    '다음이 어디인지 바로 나옵니다.</p>' +
+                  '<button type="button" class="rl-go" onclick="go(&#39;login&#39;)">로그인</button>' +
+                '</div>'
+              : '<div class="rl-empty">' +
+                  '<p class="rl-empty-1">실시간으로 열 여행이 없습니다.</p>' +
+                  '<p class="rl-empty-2">경로를 만들면 여기에 올라옵니다. ' +
+                    '지난 여행은 이틀이 지나면 내려갑니다.</p>' +
+                  '<button type="button" class="rl-go" onclick="goNewPlanner()">경로 만들기</button>' +
+                '</div>';
+            return;
+          }
+
+          var KO = { BEFORE: '떠나기 전', TODAY: '여행 중', AFTER: '지난 여행' };
+          box.innerHTML = list.map(function (t) {
+            return '<button type="button" class="rl-trip" onclick="rlOpen(' + t.tripId + ')">' +
+              '<span class="rl-trip-s rl-' + esc(t.phase).toLowerCase() + '">' +
+                esc(KO[t.phase] || '') + '</span>' +
+              '<b class="rl-trip-t">' + esc(t.title || t.destination) + '</b>' +
+              '<span class="rl-trip-d">' + esc(t.startDate) +
+                (t.endDate && t.endDate !== t.startDate ? ' ~ ' + esc(t.endDate) : '') + '</span>' +
+            '</button>';
+          }).join('');
+
+        } catch (e) {
+          box.innerHTML = '<p class="rl-empty-2">여행 목록을 불러오지 못했습니다.</p>';
+        }
+      }
+
+      /* ── 지금 상황 ───────────────────────────────────── */
+      async function rlRefresh() {
+        if (!rlTrip) return;
+        var q = '/api/live/now?tripId=' + rlTrip;
+        if (rlPos) q += '&lat=' + rlPos[0] + '&lng=' + rlPos[1];
+
+        try {
+          var r = await fetch(q);
+          var j = await r.json();
+          var d = (j && j.success && j.data) || null;
+          if (d) rlPaint(d);
+        } catch (e) { /* 다음 주기에 다시 받는다 */ }
+      }
+
+      function rlPaint(d) {
+        var when = document.getElementById('rlWhen');
+        var head = document.getElementById('rlHead');
+        var next = document.getElementById('rlNext');
+        var acts = document.getElementById('rlActs');
+        var rail = document.getElementById('rlRail');
+
+        var KO = { BEFORE: '떠나기 전', TODAY: '여행 중', AFTER: '지난 여행' };
+        if (when) when.textContent =
+          (d.title || '') + ' · ' + (d.date || '') +
+          (d.dayNo ? ' · ' + d.dayNo + '일차' : '') +
+          ' · ' + (KO[d.phase] || '');
+        if (head) head.textContent = d.headline || '';
+
+        /* 다음 정거장 — 이 화면에서 제일 큰 것 */
+        if (next) {
+          var n = d.next || {};
+          if (!n.name) {
+            next.innerHTML = '<p class="rl-none">오늘 남은 일정이 없습니다.</p>';
+          } else {
+            var c = d.crowd || {};
+            next.innerHTML =
+              '<p class="rl-next-lb">다음</p>' +
+              '<b class="rl-next-n">' + esc(n.name) + '</b>' +
+              '<p class="rl-next-m">' +
+                (n.time ? '<em>' + esc(n.time) + '</em>' : '') +
+                (n.sub ? ' · ' + esc(n.sub) : '') +
+              '</p>' +
+              (c.rate != null
+                ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">' +
+                    esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
+                : '<span class="rl-cw rl-cw-none">혼잡도 없음</span>');
+          }
+        }
+
+        /* 지금 할 수 있는 것 — 버튼을 크게. 움직이면서 누른다 */
+        if (acts) {
+          acts.innerHTML = (d.actions || []).map(function (a) {
+            return '<button type="button" class="rl-act" onclick="rlDo(\'' + esc(a.key) + '\')">' +
+              '<b>' + esc(a.label) + '</b><span>' + esc(a.note) + '</span></button>';
+          }).join('');
+        }
+
+        /* 그날 동선 — 지난 곳은 물린다 */
+        if (rail) {
+          rail.innerHTML = (d.stops || []).map(function (s, i) {
+            return '<div class="rl-st' + (s.now ? ' rl-st-now' : '') +
+                   (s.passed ? ' rl-st-done' : '') + '">' +
+              '<span class="rl-st-t">' + esc(s.time || ('0' + (i + 1)).slice(-2)) + '</span>' +
+              '<span class="rl-st-n">' + esc(s.name) + '</span>' +
+              (s.crowdLabel ? '<span class="rl-st-c">' + esc(s.crowdLabel) + '</span>' : '') +
+            '</div>';
+          }).join('');
+        }
+      }
+
+      /* ── 바깥에서 부르는 것 ──────────────────────────── */
+
+      window.rlOpen = function (tripId) {
+        rlTrip = tripId;
+        document.getElementById('rlPick').hidden = true;
+        document.getElementById('rlNow').hidden = false;
+
+        /* 위치는 있으면 쓴다. 막아도 시각으로 가르므로 화면은 돌아간다 */
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function (p) {
+            rlPos = [p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)];
+            rlRefresh();
+          }, function () { /* 조용히 넘어간다 */ }, { timeout: 8000, maximumAge: 30000 });
+        }
+        rlRefresh();
+
+        /* 1분마다 다시 묻는다. 더 자주 물어도 집중률은 하루 단위라 안 바뀐다 */
+        clearInterval(rlTimer);
+        rlTimer = setInterval(rlRefresh, 60000);
+      };
+
+      window.rlBack = function () {
+        clearInterval(rlTimer);
+        rlTrip = null; rlPos = null;
+        document.getElementById('rlNow').hidden = true;
+        document.getElementById('rlPick').hidden = false;
+        rlLoadTrips();
+      };
+
+      window.rlDo = function (key) {
+        if (key === 'map') {
+          sessionStorage.setItem('currentTripId', String(rlTrip));
+          sessionStorage.removeItem('ai_generated_route');
+          go('map');
+          return;
+        }
+        if (key === 'navi') {
+          /* 길 안내는 티맵 키가 들어온 뒤에 켠다. 없는 걸 있다고 하지 않는다 */
+          toast('길 안내는 티맵 연동 뒤에 켭니다.');
+          return;
+        }
+        if (key === 'swap' || key === 'quiet') {
+          sessionStorage.setItem('currentTripId', String(rlTrip));
+          sessionStorage.removeItem('ai_generated_route');
+          sessionStorage.setItem('mapIntent', key);
+          go('map');
+          return;
+        }
+      };
+
+      window.initLivePage = function () {
+        clearInterval(rlTimer);
+        rlTrip = null; rlPos = null;
+        var pick = document.getElementById('rlPick');
+        var now = document.getElementById('rlNow');
+        if (pick) pick.hidden = false;
+        if (now) now.hidden = true;
+        rlLoadTrips();
+      };
+
+      /* 화면을 떠나면 타이머를 끈다. 안 끄면 배터리를 먹는다 */
+      window.stopLivePage = function () { clearInterval(rlTimer); };
+    })();
+  </script>
+</div>

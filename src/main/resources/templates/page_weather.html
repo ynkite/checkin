@@ -2,148 +2,286 @@
     <!-- ===================================================
      * 파일명: page_weather.html
      * 도메인: 날씨(Weather)
-     * 기능:   날씨 탭 — 오늘 기준 7일 예보 동적 렌더링 (항상 현재 날짜 기준)
+     * 기능:   이레(7일) 예보 + 날짜 하나 조회
+     * API:
+     *   GET /api/maps/weather/range?region=&from=&to=   날짜 범위 (DayWeather)
+     *   GET /api/maps/weather/day?region=&date=         날짜 하나
+     *
+     * 앞 사흘은 기상청 단기예보(getVilageFcst), 뒤 나흘은 중기예보
+     * (getMidLandFcst + getMidTa)다. 열흘을 넘기면 예보가 없다 —
+     * 그때는 없다고 말하고 바깥 예보로 보낸다. source 필드가 알려 준다.
      =================================================== -->
 
     <div class="page" id="page-weather">
-        <div class="info-wrap">
-            <h2 style="font-size:22px;font-weight:800;margin-bottom:22px">날씨</h2>
+        <div class="info-wrap wx-wrap">
 
-            <div class="info-card">
-                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                    <div style="font-size:14px;font-weight:700" id="weather-tab-title">날씨 예보 로딩 중...</div>
-                </div>
-                <div class="weather-grid" id="weather-tab-grid" style="margin-top:12px"></div>
-                <div id="weather-tab-alert" class="wx-alert" style="display:none"></div>
-                <p class="wx-more">자세한 예보는 이쪽에서 볼 수 있습니다.</p>
-                <!-- 바깥 서비스 링크. 예보가 주인공이고 이건 그 다음이다 -->
-                <div class="wx-links">
-                    <a href="https://weather.naver.com" target="_blank" rel="noopener">네이버 날씨</a>
-                    <a href="https://www.google.com/search?q=날씨" target="_blank" rel="noopener">구글 날씨</a>
-                </div>
+            <header class="wx-hd">
+                <span class="wx-eye">날씨</span>
+                <h2 class="wx-h1">가는 날 하늘을 먼저 봅니다</h2>
+                <p class="wx-sub">오늘부터 이레까지는 기상청 예보입니다.
+                    앞 사흘은 세 시간 단위 단기예보, 뒤 나흘은 중기예보라 조금 거칩니다.</p>
+            </header>
+
+            <div class="wx-pick">
+                <label for="wxRegion">지역</label>
+                <select id="wxRegion" aria-label="지역">
+                    <option>서울</option>
+                    <option>부산</option>
+                    <option>인천</option>
+                    <option>대전</option>
+                    <option>대구</option>
+                    <option>광주</option>
+                    <option>수원</option>
+                    <option>전주</option>
+                    <option>강릉</option>
+                    <option>제주</option>
+                </select>
             </div>
+
+            <section class="fl wx-week">
+                <div class="wx-week-hd">
+                    <h3 id="wxWeekTitle">예보를 불러오는 중</h3>
+                    <span class="wx-legend">
+                        <i></i>단기예보<i class="m"></i>중기예보
+                    </span>
+                </div>
+                <div class="wx-days" id="wxDays"></div>
+                <p class="wx-note" id="wxNote" hidden></p>
+            </section>
+
+            <section class="fl wx-one">
+                <h3>날짜로 보기</h3>
+                <p class="wx-one-sub">여행 날짜를 넣으면 그 날 하늘만 봅니다.</p>
+                <input type="date" id="wxDate" aria-label="날짜">
+                <div class="wx-one-body" id="wxOne">
+                    <p class="wx-one-sub">날짜를 고르면 그 날 기온과 강수 확률이 여기에 나옵니다.</p>
+                </div>
+            </section>
+
         </div>
     </div>
 
     <script>
         (function initWeatherTab() {
-            const DAYS_KO = ['일','월','화','수','목','금','토'];
+            var DAYS_KO = ['일', '월', '화', '수', '목', '금', '토'];
+            var DAYS = 7;
 
-            // 기상청 WeatherResponseDto → 화면 표시용 객체 변환
             /* 날씨 그림 — 이모지 대신 선 아이콘.
-            이모지는 기기마다 다르게 그려지고 색을 맞출 수 없다.
-            색은 CSS(.wx)가 정한다. */
+               이모지는 기기마다 다르게 그려지고 색을 맞출 수 없다.
+               색은 CSS(.wx)가 정한다. */
             function wxIcon(kind) {
-            var o = '<svg class="wx" viewBox="0 0 24 24" aria-hidden="true">';
-            var sun   = '<circle cx="12" cy="9.5" r="4"/><path d="M12 1.6v2M12 15.4v2M4.4 9.5h2M17.6 9.5h2M6.6 4.1l1.4 1.4M16 13.5l1.4 1.4M17.4 4.1L16 5.5M8 13.5l-1.4 1.4"/>';
-            var sunS  = '<circle cx="8.5" cy="7" r="3.1"/><path d="M8.5 1.4v1.6M3.4 7H1.8M4.6 3.1l1.1 1.1M4.6 10.9l1.1-1.1"/>';
-            var cloud = '<path d="M7.4 19h9.2a3.6 3.6 0 0 0 .3-7.2 5.1 5.1 0 0 0-9.8-1A3.6 3.6 0 0 0 7.4 19Z"/>';
-            var rain  = '<path d="M9 21.4l-.9 1.8M13 21.4l-.9 1.8M17 21.4l-.9 1.8"/>';
-            var snow  = '<path d="M9 22h.02M13 22h.02M17 22h.02" stroke-width="2.6"/>';
-            if (kind === 'clear')  o += sun;
-            else if (kind === 'partly') o += sunS + cloud;
-            else if (kind === 'cloud')  o += cloud;
-            else if (kind === 'rain')   o += cloud + rain;
-            else if (kind === 'snow')   o += cloud + snow;
-            else if (kind === 'shower') o += sunS + cloud + rain;
-            else o += cloud;
-            return o + '</svg>';
+                var o = '<svg class="wx" viewBox="0 0 24 24" aria-hidden="true">';
+                var sun = '<circle cx="12" cy="9.5" r="4"/><path d="M12 1.6v2M12 15.4v2M4.4 9.5h2M17.6 9.5h2M6.6 4.1l1.4 1.4M16 13.5l1.4 1.4M17.4 4.1L16 5.5M8 13.5l-1.4 1.4"/>';
+                var sunS = '<circle cx="8.5" cy="7" r="3.1"/><path d="M8.5 1.4v1.6M3.4 7H1.8M4.6 3.1l1.1 1.1M4.6 10.9l1.1-1.1"/>';
+                var cloud = '<path d="M7.4 19h9.2a3.6 3.6 0 0 0 .3-7.2 5.1 5.1 0 0 0-9.8-1A3.6 3.6 0 0 0 7.4 19Z"/>';
+                var rain = '<path d="M9 21.4l-.9 1.8M13 21.4l-.9 1.8M17 21.4l-.9 1.8"/>';
+                if (kind === 'clear') o += sun;
+                else if (kind === 'partly') o += sunS + cloud;
+                else if (kind === 'cloud') o += cloud;
+                else if (kind === 'rain') o += cloud + rain;
+                else o += cloud;
+                return o + '</svg>';
             }
 
-            function toDisplayItem(dto) {
-                const skyKindMap = { 1:'clear', 3:'partly', 4:'cloud' };
-                const ptyKindMap = { 1:'rain', 2:'rain', 3:'snow', 4:'shower' };
-                const skyDescMap  = { 1:'맑음', 3:'구름많음', 4:'흐림' };
-                const ptyDescMap  = { 1:'비', 2:'비/눈', 3:'눈', 4:'소나기' };
-
-                const warn = dto.pop >= 60 || dto.pty > 0;
-                const icon = wxIcon(dto.pty > 0 ? (ptyKindMap[dto.pty] || 'rain') : (skyKindMap[dto.sky] || 'partly'));
-                const desc = dto.pty > 0 ? (ptyDescMap[dto.pty] || '강수') : (skyDescMap[dto.sky] || '');
-
-                return { icon, desc, temp: dto.tmp, rain: dto.pop, warn };
+            /* DayWeather.sky 는 글자다 — 맑음 / 구름많음 / 흐림 / 평년 */
+            function kindOf(d) {
+                if (d.rainExpected || (d.rainProb != null && d.rainProb >= 60)) return 'rain';
+                if (!d.sky) return 'partly';
+                if (d.sky.indexOf('맑음') >= 0) return 'clear';
+                if (d.sky.indexOf('흐림') >= 0) return 'cloud';
+                return 'partly';
             }
 
-            // 그리드 HTML 생성 (page_planner 팝업과 공용)
-            function buildGridHTML(weatherItems, dateObjs) {
-                const fmt = d => (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getDate().toString().padStart(2,'0');
-                const warnDays = [];
-                const html = weatherItems.map(function(w, i) {
-                    const d = dateObjs[i];
-                    const label = i === 0 ? '오늘' : i === 1 ? '내일' : fmt(d) + ' (' + DAYS_KO[d.getDay()] + ')';
-                    if (w.warn) warnDays.push(fmt(d));
-                    return '<div class="w-item' + (w.warn ? ' w-warn' : '') + '">' +
-                        '<div class="w-icon">' + w.icon + '</div>' +
-                        '<div class="w-day">' + label + '</div>' +
-                        '<div class="w-temp">' + w.temp + '°C</div>' +
-                        '<div class="w-desc">' + w.desc + '</div>' +
-                        (w.rain > 0 ? '<div style="font-size:9px;color:var(--sky);margin-top:2px">강수 ' + w.rain + '%</div>' : '') +
-                        (w.warn ? '<div style="font-size:9px;color:var(--coral);margin-top:2px">실내 추천</div>' : '') +
+            function ymd(s) {                      /* "20260919" -> Date */
+                return new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8));
+            }
+
+            function iso(d) {
+                return d.getFullYear() + '-' +
+                    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                    String(d.getDate()).padStart(2, '0');
+            }
+
+            function md(d) {
+                return String(d.getMonth() + 1).padStart(2, '0') + '/' +
+                    String(d.getDate()).padStart(2, '0');
+            }
+
+            function srcName(s) {
+                if (s === 'SHORT') return '단기예보';
+                if (s === 'MID') return '중기예보';
+                return '예보 없음';
+            }
+
+            /* ── 이레 ─────────────────────────────────────── */
+            function drawWeek(region, list) {
+                var title = document.getElementById('wxWeekTitle');
+                var box = document.getElementById('wxDays');
+                var note = document.getElementById('wxNote');
+                if (!box) return;
+
+                if (!list.length) {
+                    title.textContent = region + ' 예보';
+                    box.innerHTML = '<p class="wx-o-none"><b>예보를 불러오지 못했습니다.</b>' +
+                        '잠시 뒤에 다시 열어 보세요.</p>';
+                    note.hidden = true;
+                    return;
+                }
+
+                var first = ymd(list[0].date);
+                var last = ymd(list[list.length - 1].date);
+                title.textContent = region + ' · ' + md(first) + ' ~ ' + md(last);
+                box.style.gridTemplateColumns =
+                    'repeat(' + Math.min(7, list.length) + ', minmax(0, 1fr))';
+
+                var wet = [];
+                var midSeen = false;
+                box.innerHTML = list.map(function (d, i) {
+                    var dt = ymd(d.date);
+                    var lab = i === 0 ? '오늘' : i === 1 ? '내일'
+                        : md(dt) + ' ' + DAYS_KO[dt.getDay()];
+                    var isRain = d.rainExpected || (d.rainProb != null && d.rainProb >= 60);
+                    if (isRain) wet.push(md(dt));
+                    var firstMid = (d.source === 'MID' && !midSeen);
+                    if (d.source === 'MID') midSeen = true;
+                    return '<div class="wx-d' + (i === 0 ? ' on' : '') +
+                        (isRain ? ' wx-wet' : '') + (firstMid ? ' wx-mid-first' : '') + '">' +
+                        '<div class="wx-d-lab">' + lab + '</div>' +
+                        '<div class="wx-d-ic">' + wxIcon(kindOf(d)) + '</div>' +
+                        '<div class="wx-d-t">' + (d.tempMax != null ? d.tempMax + '°' : '—') +
+                        (d.tempMin != null ? ' <s>' + d.tempMin + '°</s>' : '') + '</div>' +
+                        '<div class="wx-d-sky">' + (d.sky || '') + '</div>' +
+                        '<div class="wx-d-pop">' +
+                        (d.rainProb != null ? '강수 ' + d.rainProb + '%' : '') + '</div>' +
                         '</div>';
                 }).join('');
-                return { html, warnDays };
-            }
 
-            // 날씨 탭 렌더링 — region 인자 없으면 '서울' 기본값
-            async function renderWeatherTab(region) {
-                const titleEl = document.getElementById('weather-tab-title');
-                const grid    = document.getElementById('weather-tab-grid');
-                const alertEl = document.getElementById('weather-tab-alert');
-                if (!grid) return;
-
-                // 로딩 표시
-                if (titleEl) titleEl.textContent = '날씨 예보 불러오는 중...';
-                grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
-
-                const targetRegion = region || '서울';
-
-                try {
-                    const res  = await fetch('/api/maps/weather?region=' + encodeURIComponent(targetRegion));
-                    const json = await res.json();
-
-                    if (!json.success || !json.data || json.data.length === 0) {
-                        throw new Error('데이터 없음');
-                    }
-
-                    const today = new Date();
-                    const days  = Array.from({ length: 7 }, function(_, i) {
-                        const d = new Date(today);
-                        d.setDate(today.getDate() + i);
-                        return d;
-                    });
-
-                    const fmt = function(d) {
-                        return (d.getMonth()+1).toString().padStart(2,'0') + '/' + d.getDate().toString().padStart(2,'0');
-                    };
-
-                    if (titleEl) titleEl.textContent = '' + targetRegion + ' 날씨 예보 (' + fmt(days[0]) + '~' + fmt(days[6]) + ')';
-
-                    // 백엔드 응답 7일치 slice → 화면용 변환
-                    const weatherItems = json.data.slice(0, 7).map(toDisplayItem);
-                    const { html, warnDays } = buildGridHTML(weatherItems, days);
-                    grid.innerHTML = html;
-
-                    if (alertEl) {
-                        if (warnDays.length > 0) {
-                            alertEl.style.display = 'block';
-                            alertEl.textContent = '' + warnDays.join(', ') + ' 악천후 감지 — 실내 장소 우선 배치';
-                        } else {
-                            alertEl.style.display = 'none';
-                        }
-                    }
-
-                } catch (e) {
-                    if (titleEl) titleEl.textContent = '날씨 예보';
-                    grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">날씨 정보를 불러올 수 없습니다.</div>';
-                    if (alertEl) alertEl.style.display = 'none';
-                    console.warn('[WeatherTab] API 호출 실패:', e);
+                if (wet.length) {
+                    note.hidden = false;
+                    note.innerHTML = '<b>' + wet.join(' · ') + '</b>에 비 소식이 있습니다. ' +
+                        '그 날 일정은 실내를 먼저 넣고 바깥은 뒤로 미룹니다.';
+                } else {
+                    note.hidden = true;
                 }
             }
 
-            // window에 노출 — go()에서 호출 가능 + page_planner에서 지역값 전달 가능
-            // 사용법: window.renderWeatherTab()           → 서울 기본
-            //         window.renderWeatherTab('부산')      → 지역 지정
-            window.renderWeatherTab = renderWeatherTab;
+            /* ── 날짜 하나 ────────────────────────────────── */
+            function drawOne(region, d, asked) {
+                var box = document.getElementById('wxOne');
+                if (!box) return;
 
+                var dt = d ? ymd(d.date) : asked;
+                var head = (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일 ' +
+                    '(' + DAYS_KO[dt.getDay()] + ')';
+
+                /* 열흘을 넘긴 날짜는 예보가 없다. 평년값을 예보처럼 보여 주면
+                   그 날 그 온도인 줄 안다. 없다고 말하고 바깥으로 보낸다. */
+                if (!d || d.source === 'NORMAL') {
+                    var q = encodeURIComponent(region + ' 날씨');
+                    box.innerHTML =
+                        '<div class="wx-o-hd"><span class="wx-o-day">' + head + '</span>' +
+                        '<span class="wx-o-src">예보 없음</span></div>' +
+                        '<div class="wx-o-none"><b>아직 예보가 나오지 않았습니다.</b>' +
+                        '기상청 예보는 열흘 뒤까지만 나옵니다. 그 뒤 날짜는 여행이 가까워지면 채워집니다.' +
+                        (d && d.tempMin != null
+                            ? '<div class="wx-o-normal">지난 십 년 이맘때는 <b>' + d.tempMin +
+                              '°~' + d.tempMax + '°</b> 였습니다. 예보가 아니라 평년값입니다.</div>'
+                            : '') +
+                        '</div>' +
+                        '<div class="wx-links">' +
+                        '<a href="https://www.weather.go.kr/w/weather/forecast/mid-term.do" ' +
+                        'target="_blank" rel="noopener">기상청 중기예보</a>' +
+                        '<a href="https://weather.naver.com/?q=' + q + '" ' +
+                        'target="_blank" rel="noopener">네이버 날씨</a>' +
+                        '</div>';
+                    return;
+                }
+
+                box.innerHTML =
+                    '<div class="wx-o-hd"><span class="wx-o-day">' + head + '</span>' +
+                    '<span class="wx-o-src">' + srcName(d.source) + '</span></div>' +
+                    '<div class="wx-o-row">' +
+                    '<div class="wx-o-big">' + (d.tempMax != null ? d.tempMax + '°' : '—') +
+                    (d.tempMin != null ? ' <s>' + d.tempMin + '°</s>' : '') + '</div>' +
+                    '<div class="wx-o-f">하늘<b>' + (d.sky || '—') + '</b></div>' +
+                    '<div class="wx-o-f">강수 확률<b>' +
+                    (d.rainProb != null ? d.rainProb + '%' : '—') + '</b></div>' +
+                    '</div>' +
+                    (d.rainExpected
+                        ? '<p class="wx-note"><b>비 소식이 있습니다.</b> ' +
+                          '이 날 일정은 실내를 먼저 넣습니다.</p>'
+                        : '');
+            }
+
+            /* ── 불러오기 ─────────────────────────────────── */
+            async function get(url) {
+                var res = await fetch(url);
+                var json = await res.json();
+                if (!json.success) throw new Error(json.message || '실패');
+                return json.data;
+            }
+
+            var region = '서울';
+
+            async function loadWeek() {
+                var today = new Date();
+                var to = new Date(today);
+                to.setDate(today.getDate() + DAYS - 1);
+                try {
+                    var list = await get('/api/maps/weather/range?region=' +
+                        encodeURIComponent(region) + '&from=' + iso(today) + '&to=' + iso(to));
+                    drawWeek(region, list || []);
+                } catch (e) {
+                    drawWeek(region, []);
+                    console.warn('[날씨] 이레 예보 실패:', e);
+                }
+            }
+
+            async function loadOne(dateStr) {
+                var asked = new Date(dateStr + 'T00:00:00');
+                try {
+                    var d = await get('/api/maps/weather/day?region=' +
+                        encodeURIComponent(region) + '&date=' + dateStr);
+                    drawOne(region, d, asked);
+                } catch (e) {
+                    drawOne(region, null, asked);
+                    console.warn('[날씨] 날짜 조회 실패:', e);
+                }
+            }
+
+            function wire() {
+                var sel = document.getElementById('wxRegion');
+                var day = document.getElementById('wxDate');
+                if (sel && !sel.dataset.wired) {
+                    sel.dataset.wired = '1';
+                    sel.addEventListener('change', function () {
+                        region = this.value;
+                        loadWeek();
+                        if (day && day.value) loadOne(day.value);
+                    });
+                }
+                if (day && !day.dataset.wired) {
+                    day.dataset.wired = '1';
+                    day.min = iso(new Date());
+                    day.addEventListener('change', function () {
+                        if (this.value) loadOne(this.value);
+                    });
+                }
+            }
+
+            /* go('weather') 가 부른다. 플래너는 지역을 넘겨 준다 —
+               window.renderWeatherTab('부산') */
+            window.renderWeatherTab = function (r) {
+                if (r) {
+                    region = r;
+                    var sel = document.getElementById('wxRegion');
+                    if (sel) sel.value = r;
+                }
+                wire();
+                loadWeek();
+                var day = document.getElementById('wxDate');
+                if (day && day.value) loadOne(day.value);
+            };
         })();
     </script>
 

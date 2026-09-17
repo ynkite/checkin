@@ -24,16 +24,19 @@
   /* ── 글꼴 ───────────────────────────────────────────────── */
   --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
          system-ui, "Malgun Gothic", sans-serif;
-  --fig:"IBM Plex Mono", ui-monospace, monospace;   /* 시각·금액·집중률만 */
+  --fig:"IBM Plex Mono", ui-monospace, monospace;   /* 시각·금액·혼잡도만 */
 
   /* ── 타입 스케일 ────────────────────────────────────────── */
-  --t-hero:clamp(34px, 4.4vw, 56px);
-  --t-h2:clamp(23px, 2.9vw, 33px);
-  --t-h3:19px;
+  /* 레퍼런스 실측 — Linear h1 64px/510/-1.408px · 트리플 h1 60px/700 ·
+     h2 48px/700. 우리는 h1 56 / h2 33 이라 절 제목이 작아 화면이 밋밋했다. */
+  --t-hero:clamp(38px, 5.2vw, 66px);
+  --t-h2:clamp(27px, 3.6vw, 44px);
+  --t-h3:21px;
   --t-body:17px;
   --t-sm:14px;
   --t-xs:11px;
-  --tracking-tight:-.042em;   /* 제목 */
+  --tracking-tight:-.022em;   /* 제목 — 한글 */
+  --tracking-latin:-.038em;   /* 로마자·숫자 표제 */
   --tracking-num:-.02em;      /* 숫자 */
 
   /* ── 간격 (8px 그리드) ─────────────────────────────────── */
@@ -43,20 +46,37 @@
   --pad-page:30px;
 
   /* ── 모서리 · 그림자 ───────────────────────────────────── */
-  --r-card:13px;
-  --r-panel:16px;
+  /* 데모는 카드 12 · 판 14 였다. 레퍼런스 18곳 중 대부분이 0~8 이다.
+     알약은 알약으로 둔다 — 트리플 CTA 가 radius 36 이다. */
+  --r-card:10px;
+  --r-panel:14px;
   --r-pill:99px;
-  --r-field:9px;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --lift2:0 3px 12px rgba(40,30,22,.09);
+  --r-field:8px;
+  --lift:0 0 0 1px rgba(16,24,38,.06), 0 1px 2px rgba(16,24,38,.05), 0 10px 26px -18px rgba(16,24,38,.18);
+  --lift2:0 1px 1px rgba(16,24,38,.05);
 
-  /* ── 판·글자 (하늘과 무관하게 기본은 밝은 판) ─────────── */
+  /* 유리 — 지도·모형 위에 뜨는 판. 데모에서 잰 값 그대로다.
+     불투명한 판을 얹으면 그 아래가 지도인지 모형인지 알 수 없다.
+     비쳐 보여야 「이 판이 저 지도를 말하고 있다」가 성립한다. */
+  --glass:rgba(255,255,255,.88);
+  --glass-2:rgba(255,255,255,.72);
+  --glass-line:rgba(16,24,38,.08);
+  --glass-lift:0 1px 2px rgba(16,24,38,.06), 0 12px 28px -20px rgba(16,24,38,.22);
+  /* 유리 한 장마다 매 프레임 뒤 배경을 다시 읽는다. 움직이는 SVG 위에
+     여러 겹 떠 있으면 그게 렉이 된다. 반경을 줄이고 saturate 를 뺐다 —
+     유리로 보이는 데는 지장이 없다. */
+  --glass-blur:blur(8px);
+
+  /* ── 판·글자 ───────────────────────────────────────────
+     데모(체크인 시작하기)의 쿨 블루그레이다. 전에는 웜크림 + 갈색이었다.
+     미니어처가 따뜻한 색을 다 갖고 있으므로 읽는 면은 차갑고 조용해야
+     서로 안 싸운다. */
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --ink-3:#766E67;   /* 흰 바탕 5.00 · 연한 판 위 4.56. 이전 #8B827A 는 3.77 이었다 */
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --ink-3:#7C8798;   /* 흰 바탕 대비 4.54 */
+  --hair:rgba(16,22,32,.16);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
      「지금」과 「바뀜」에만. 장식으로 쓰지 않는다.
@@ -65,31 +85,25 @@
   --sig-deep:#8A5000;
   --num:#B05F00;
 
-  /* ── UI 크롬: 화면 부품 색 ──────────────────────────────
-     3D 매싱은 위의 하늘 팔레트를 쓰고, 화면 부품(버튼·카드·테두리)은
-     이 층을 쓴다. 부품이 조용해야 지도가 색을 낸다.
+  /* ── UI 크롬 ────────────────────────────────────────────
+     주 버튼은 잉크다. 데모가 그랬고, 미니어처가 주황을 다 갖고 있어
+     버튼까지 주황이면 화면에 주황이 두 겹이 된다. */
+  --ui-d:#0A0F17;        /* hover */
+  --ui-l:#5A6474;        /* 보조 테두리 · 아이콘 */
+  --ui-pale:#F2F5F8;     /* 옅은 배경 */
 
-     주색을 신호색(--sig)으로 쓰지 않는다. --sig 는 「지금」과 「바뀜」
-     전용이고, 버튼 198곳에 깔면 신호가 신호가 아니게 된다. */
+  --ui-line:#D7DDE5;     /* 테두리 */
+  --ui-line-2:#E9EDF2;   /* 옅은 구분선 */
+  --ui-plate:#F4F6F9;    /* 옅은 판 */
+  --ui-plate-2:#E6EAEF;
 
-  --ui:#241D18;          /* 주 버튼 · 활성 상태 */
-  --ui-d:#120E0B;        /* hover */
-  --ui-l:#5A5149;        /* 보조 테두리 · 아이콘 */
-  --ui-pale:#F2EEE9;     /* 옅은 배경 */
-
-  --ui-line:#DED7CF;     /* 테두리 */
-  --ui-line-2:#EFEAE4;   /* 옅은 구분선 */
-  --ui-plate:#F7F4F0;    /* 옅은 판 (이전 웜크림 자리) */
-  --ui-plate-2:#ECE6DF;
-
-  /* 강조 3색 — 미니어처 세계의 지붕 계열에서 뽑았다.
-     지도와 UI 가 같은 색족을 쓰면 한 덩어리로 읽힌다.
+  /* 강조 — 테라코타는 버튼 색이 아니라 「혼잡」 단계 전용으로 내린다.
      세 값 모두 흰 배경 위 글자와 흰 글자 배경 양쪽으로 대비 4.5:1 이상. */
-  --terra:#B64F18;   /* --terra-pale 위 4.58. 이전 #B64F18 는 4.33 이었다 */       /* 보조 강조 · 확인  (지붕 --a0 계열의 짙은 쪽) */
+  --terra:#B64F18;       /* 혼잡 · 보조 강조 */
   --terra-pale:#FDF1E3;
-  --tile:#C8402A;        /* 오류 · 잠김      (진한 기와 --d0 계열) */
+  --tile:#C8402A;        /* 매우 혼잡 · 오류 */
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;       /* 카테고리        (파란 슬레이트 --g0 계열) */
+  --slate:#3E63A8;       /* 한적 · 카테고리 */
   --slate-pale:#ECF1F8;
 
   /* 신호색 위에 얹는 글자.
@@ -98,11 +112,9 @@
   --on-sig:#331C00;
   --on-sig-2:#6B3C00;
 
-  /* 페이지 바닥 — 풍경(--void)과 분리한다.
-     --void 는 하늘 팔레트라 오후가 되면 노을색으로 물든다. 페이지 배경에
-     그걸 쓰면 화면 전체가 베이지가 된다. 읽는 면은 시간과 무관해야 한다. */
-  --page:#FFFFFF;
-  --page-2:#F7F5F2;
+  /* 페이지 바닥 — 풍경(--void)과 분리한다. 읽는 면은 시간과 무관해야 한다 */
+  --page:#F8FAFC;
+  --page-2:#F4F6F9;
 
   /* 반투명 막 (고정 헤더 등). 바닥색과 같은 계열이어야 겹칠 때 뜨지 않는다 */
   --void-veil:rgba(255,255,255,.86);
@@ -135,10 +147,30 @@
    앵커 값을 고치면 scratchpad/gen_sky2.py 를 다시 돌려
    tokens.css 와 js/sky-anchors.js 를 함께 갱신한다. 한쪽만 고치지 말 것. */
 
+/* ══════════════════ 하늘 — 앵커 세 벌 ══════════════════
+   낮·노을·밤 팔레트를 평범한 색값으로 둔다.
+
+   사이 시각의 색은 app_home.js 가 oklab 에서 섞어 :root 에 인라인으로 넣는다.
+   CSS 에서 color-mix 로 하지 않는 이유 — 커스텀 속성은 모든 요소가 상속하므로
+   요소 1,118개에 대해 11만 번을 다시 풀어야 했다. 렌더러가 죽었다.
+
+   앵커 값을 고치면 scratchpad/gen_sky2.py 를 다시 돌려
+   tokens.css 와 js/sky-anchors.js 를 함께 갱신한다. 한쪽만 고치지 말 것. */
+
+/* ══════════════════ 하늘 — 앵커 세 벌 ══════════════════
+   낮·노을·밤 팔레트를 평범한 색값으로 둔다.
+
+   사이 시각의 색은 app_home.js 가 oklab 에서 섞어 :root 에 인라인으로 넣는다.
+   CSS 에서 color-mix 로 하지 않는 이유 — 커스텀 속성은 모든 요소가 상속하므로
+   요소 1,118개에 대해 11만 번을 다시 풀어야 했다. 렌더러가 죽었다.
+
+   앵커 값을 고치면 scratchpad/gen_sky2.py 를 다시 돌려
+   tokens.css 와 js/sky-anchors.js 를 함께 갱신한다. 한쪽만 고치지 말 것. */
+
 [data-sky="day"]{
-  /* 13:00 기준 */
-  --void:#FFFFFF;
-  --plate:#F0EEEA;
+  /* 13:00 — 해가 높다. 기준 팔레트다. 나머지 셋은 여기서 만든다 */
+  --void:#EDF1F5;
+  --plate:#EEF1F4;
   --water:#A9D2E8;
   --beach:#F0E1C4;
   --green:#D8E3CD;
@@ -149,18 +181,22 @@
   --rd3:#F2F5F8;
   --rdpv:#EADFC9;
   --lane:#F5C93F;
-  --a0:#E8734A;
-  --a1:#CE5D36;
-  --a2:#AC4A28;
+  --w1:#F2ECE1;
+  --w2:#DCD3C4;
+  --w2c:#D6D2CA;
+  --w2w:#DFD2BE;
+  --a0:#CFD4DA;
+  --a1:#B5BCC5;
+  --a2:#99A1AC;
   --b0:#A5B4C8;
   --b1:#8C9CB2;
   --b2:#74849A;
   --c0:#F3EDE0;
   --c1:#DCD5C6;
   --c2:#BFB8A9;
-  --d0:#D2543A;
-  --d1:#B5432C;
-  --d2:#94341F;
+  --d0:#C86A45;
+  --d1:#AD5634;
+  --d2:#8E4526;
   --e0:#D4DBE3;
   --e1:#B8C0CA;
   --e2:#9BA4AF;
@@ -170,9 +206,9 @@
   --g0:#7C9BCB;
   --g1:#6885B3;
   --g2:#556F98;
-  --h0:#B5825E;
-  --h1:#9A6A49;
-  --h2:#7D5436;
+  --h0:#8B95A2;
+  --h1:#76808D;
+  --h2:#626B78;
   --m0:#FFC53D;
   --m1:#E9AC1F;
   --m2:#BC8714;
@@ -182,8 +218,8 @@
   --tk:#8A7351;
   --bush:#7FA46E;
   --bush2:#628B55;
-  --sh1c:rgba(64,86,112,.20);
-  --sh2c:rgba(64,86,112,.10);
+  --sh1c:rgba(64,86,112,.26);
+  --sh2c:rgba(64,86,112,.13);
   --wave:rgba(255,255,255,.78);
   --tuft:#7E9B6E;
   --stip:rgba(178,152,110,.5);
@@ -214,25 +250,24 @@
   --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.16);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 0 0 1px rgba(16,24,38,.06), 0 1px 2px rgba(16,24,38,.05), 0 10px 26px -18px rgba(16,24,38,.18);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -243,103 +278,106 @@
 }
 
 [data-sky="dusk"]{
-  /* 18:30 기준 */
-  --void:#DDCFC8;
-  --plate:#DCCFC8;
-  --water:#8E96B4;
-  --beach:#D9BFA0;
-  --green:#B9BDA8;
-  --shore:#7E8AA0;
-  --rdc:#C2B7B2;
-  --rd1:#F4E9E1;
-  --rd2:#E9DCD4;
-  --rd3:#DBCCC3;
-  --rdpv:#D8C6AC;
-  --lane:#E8B44A;
-  --a0:#D66A4C;
-  --a1:#B4553B;
-  --a2:#8E402C;
-  --b0:#8E93AE;
-  --b1:#767B96;
-  --b2:#5E637C;
-  --c0:#E4D5C0;
-  --c1:#CBBBA6;
-  --c2:#AC9C88;
-  --d0:#B84E36;
-  --d1:#99402B;
-  --d2:#7A3221;
-  --e0:#B9BCCA;
-  --e1:#A0A3B2;
-  --e2:#868999;
-  --f0:#DDC29B;
-  --f1:#C3A881;
-  --f2:#A48D6B;
-  --g0:#77879F;
-  --g1:#63728A;
-  --g2:#505D72;
-  --h0:#9E6C4C;
-  --h1:#85573B;
-  --h2:#6B442D;
-  --m0:#FFC53D;
-  --m1:#E0A420;
-  --m2:#B07F14;
-  --tc:#5F7458;
-  --tc2:#74855F;
-  --td:#44553E;
-  --tk:#6E5F49;
-  --bush:#6C8C5C;
-  --bush2:#54744A;
-  --sh1c:rgba(86,60,74,.26);
-  --sh2c:rgba(86,60,74,.13);
-  --wave:rgba(255,238,218,.5);
-  --tuft:#7B8C6E;
-  --stip:rgba(160,134,98,.5);
-  --gedge:rgba(104,96,96,.34);
-  --u1:#F58A32;
-  --u2:#EFE2D4;
-  --u3:#CE4832;
-  --uk:#8C8087;
-  --v1:#E9DCD2;
-  --v2:#42414F;
-  --v3:#B8452F;
-  --vt:rgba(255,240,224,.5);
-  --bo1:#E7DACE;
-  --bo2:#4E4A58;
-  --wake:rgba(255,238,218,.55);
-  --ru0:#A6A6B4;
-  --ru1:#8B8B99;
-  --bnc:#7A5F42;
-  --bnc2:#5F4A32;
-  --pp:#35303A;
-  --skin:#B4855F;
-  --pc1:#CE4832;
-  --pc2:#3A5F9C;
-  --pc3:#E2DAD2;
-  --pc4:#F0A028;
-  --pc5:#3E4250;
-  --onmap:#221C24;
-  --halo:rgba(255,248,240,.9);
+  /* 19:00 — 낮은 해가 옆에서 든다. 빛 받는 면은 호박빛, 그늘은 보라 */
+  --void:#F8D9C1;
+  --plate:#F2E6E0;
+  --water:#C0C5CE;
+  --beach:#F3D9B7;
+  --green:#E1DABE;
+  --shore:#A8A6B2;
+  --rdc:#E0DAD9;
+  --rd1:#FFF4EE;
+  --rd2:#FDF3ED;
+  --rd3:#F4ECE8;
+  --rdpv:#EED9BE;
+  --lane:#F7C64C;
+  --w1:#F6DDC8;
+  --w2:#E7CBB0;
+  --w2c:#E3CAB5;
+  --w2w:#E9CAAC;
+  --a0:#DCCDC7;
+  --a1:#CABBB5;
+  --a2:#B8A6A1;
+  --b0:#BFB4B8;
+  --b1:#B0A3A5;
+  --b2:#A39292;
+  --c0:#F6E1CC;
+  --c1:#E5CEB6;
+  --c2:#D1B89E;
+  --d0:#D78153;
+  --d1:#C57649;
+  --d2:#B16E43;
+  --e0:#DFD3CF;
+  --e1:#CCBEBA;
+  --e2:#B9A9A3;
+  --f0:#F1CFA2;
+  --f1:#E0BB8B;
+  --f2:#C9A678;
+  --g0:#A7A2BA;
+  --g1:#9D93A6;
+  --g2:#958490;
+  --h0:#B09E98;
+  --h1:#A48F87;
+  --h2:#9B8277;
+  --m0:#FFCB4F;
+  --m1:#F0BB44;
+  --m2:#D4A641;
+  --tc:#71876B;
+  --tc2:#879E7B;
+  --td:#5B6F5A;
+  --tk:#856D60;
+  --bush:#7D9473;
+  --bush2:#688063;
+  --sh1c:rgba(96,72,112,0.39);
+  --sh2c:rgba(96,72,112,0.20);
+  --wave:rgba(255,226,198,0.78);
+  --tuft:#A4A16F;
+  --stip:rgba(181,141,90,0.50);
+  --gedge:rgba(106,115,82,0.32);
+  --u1:#FF9340;
+  --u2:#FCF1EB;
+  --u3:#E76941;
+  --uk:#AA9FA0;
+  --v1:#FCF1EB;
+  --v2:#7F685C;
+  --v3:#E06B44;
+  --vt:rgba(255,226,198,0.60);
+  --bo1:#FCF1EB;
+  --bo2:#85726A;
+  --wake:rgba(255,226,198,0.80);
+  --ru0:#CAC2C1;
+  --ru1:#B4AAA9;
+  --bnc:#A77F56;
+  --bnc2:#96704A;
+  --pp:#7E6457;
+  --skin:#DBA677;
+  --pc1:#E76941;
+  --pc2:#7A7FB9;
+  --pc3:#F8EEE9;
+  --pc4:#FFAF39;
+  --pc5:#7F675C;
+  --onmap:#151C28;
+  --halo:rgba(255,255,255,.94);
   --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.16);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 0 0 1px rgba(16,24,38,.06), 0 1px 2px rgba(16,24,38,.05), 0 10px 26px -18px rgba(16,24,38,.18);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -350,103 +388,106 @@
 }
 
 [data-sky="night"]{
-  /* 23:00 기준 */
-  --void:#141A26;
-  --plate:#1B2230;
-  --water:#0C121C;
-  --beach:#3A3B44;
-  --green:#1A2430;
-  --shore:#2E3A4A;
-  --rdc:#141A26;
-  --rd1:#3C4658;
-  --rd2:#2E3646;
-  --rd3:#252C3A;
-  --rdpv:#2A3140;
-  --lane:#7A6A3C;
-  --a0:#6E4A44;
-  --a1:#5A3B37;
-  --a2:#462D2B;
-  --b0:#4A423B;
-  --b1:#3A4557;
-  --b2:#2E3746;
-  --c0:#5E5C58;
-  --c1:#4E4C49;
-  --c2:#3E3C3A;
-  --d0:#63382F;
-  --d1:#512E27;
-  --d2:#3F231E;
-  --e0:#545C68;
-  --e1:#464D57;
-  --e2:#383E47;
-  --f0:#6A5C4A;
-  --f1:#574C3D;
-  --f2:#443C31;
-  --g0:#3B4A62;
-  --g1:#313E52;
-  --g2:#283242;
-  --h0:#54402F;
-  --h1:#443328;
-  --h2:#352820;
-  --m0:#FFC53D;
-  --m1:#D79E22;
-  --m2:#9E7318;
-  --tc:#2E4032;
-  --tc2:#3A4C36;
-  --td:#1E2A1C;
-  --tk:#3A3228;
-  --bush:#2A3A28;
-  --bush2:#1F2C1E;
-  --sh1c:rgba(0,0,0,.5);
-  --sh2c:rgba(0,0,0,.24);
-  --wave:rgba(140,172,204,.3);
-  --tuft:#2A3A28;
-  --stip:rgba(120,124,136,.32);
-  --gedge:rgba(0,0,0,.4);
-  --u1:#7A4E20;
-  --u2:#6E7480;
-  --u3:#6B2D22;
-  --uk:#4A5260;
-  --v1:#FFE9B0;
-  --v2:#2C333E;
-  --v3:#8A3427;
-  --vt:rgba(255,233,176,.5);
-  --bo1:#4A5464;
-  --bo2:#2A303C;
-  --wake:rgba(150,180,210,.28);
-  --ru0:#3E4654;
-  --ru1:#333A46;
-  --bnc:#3E3428;
-  --bnc2:#2E271E;
-  --pp:#C9D2DE;
-  --skin:#C6CEDA;
-  --pc1:#D8DEE8;
-  --pc2:#AEB8C6;
-  --pc3:#F4F1EC;
-  --pc4:#FFD37A;
-  --pc5:#8E9AAA;
-  --onmap:#F0F4F8;
-  --halo:rgba(10,14,22,.92);
-  --num:#8A4A00;
+  /* 23:00 — 푸른 어둠. 도로가 땅보다 밝다(가로등). 창문만 노랗다 */
+  --void:#0F1A30;
+  --plate:#60626B;
+  --water:#4B5660;
+  --beach:#5D5D61;
+  --green:#585C61;
+  --shore:#3A4552;
+  --rdc:#808593;
+  --rd1:#9295A0;
+  --rd2:#90949F;
+  --rd3:#8C909C;
+  --rdpv:#84858E;
+  --lane:#F8D470;
+  --w1:#636369;
+  --w2:#5A5A60;
+  --w2c:#585961;
+  --w2w:#5A5A5F;
+  --a0:#52545F;
+  --a1:#484B57;
+  --a2:#3E424F;
+  --b0:#444956;
+  --b1:#3B404F;
+  --b2:#323848;
+  --c0:#5C5E65;
+  --c1:#54555D;
+  --c2:#494A54;
+  --d0:#3B3340;
+  --d1:#332D3C;
+  --d2:#2B2839;
+  --e0:#545761;
+  --e1:#4A4D59;
+  --e2:#3F4350;
+  --f0:#56565B;
+  --f1:#4D4C53;
+  --f2:#42424B;
+  --g0:#393F51;
+  --g1:#31384B;
+  --g2:#2A3144;
+  --h0:#3A3E4C;
+  --h1:#323747;
+  --h2:#2B3042;
+  --m0:#FFD379;
+  --m1:#F3C673;
+  --m2:#DBB672;
+  --tc:#343C3B;
+  --tc2:#404744;
+  --td:#283031;
+  --tk:#343335;
+  --bush:#3B423F;
+  --bush2:#303837;
+  --sh1c:rgba(6,12,28,0.52);
+  --sh2c:rgba(6,12,28,0.26);
+  --wave:rgba(150,172,212,0.48);
+  --tuft:#394048;
+  --stip:rgba(60,57,57,0.50);
+  --gedge:rgba(35,47,52,0.32);
+  --u1:#956041;
+  --u2:#A6A7AB;
+  --u3:#7D3B3B;
+  --uk:#616772;
+  --v1:#A6A7AB;
+  --v2:#2D3544;
+  --v3:#793D3D;
+  --vt:rgba(150,172,212,0.37);
+  --bo1:#A6A7AB;
+  --bo2:#373F4D;
+  --wake:rgba(150,172,212,0.50);
+  --ru0:#7E838B;
+  --ru1:#6A7079;
+  --bnc:#574C47;
+  --bnc2:#463E3E;
+  --pp:#293040;
+  --skin:#836E61;
+  --pc1:#7D3B3B;
+  --pc2:#2C4B75;
+  --pc3:#A3A5A8;
+  --pc4:#9A763F;
+  --pc5:#2C3343;
+  --onmap:#F2F5FA;
+  --halo:rgba(18,26,46,0.94);
+  --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.16);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 0 0 1px rgba(16,24,38,.06), 0 1px 2px rgba(16,24,38,.05), 0 10px 26px -18px rgba(16,24,38,.18);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -457,103 +498,106 @@
 }
 
 [data-sky="dawn"]{
-  /* 05:00 — 밤과 같다. 사이 값은 JS 가 넣는다 */
-  --void:#141A26;
-  --plate:#1B2230;
-  --water:#0C121C;
-  --beach:#3A3B44;
-  --green:#1A2430;
-  --shore:#2E3A4A;
-  --rdc:#141A26;
-  --rd1:#3C4658;
-  --rd2:#2E3646;
-  --rd3:#252C3A;
-  --rdpv:#2A3140;
-  --lane:#7A6A3C;
-  --a0:#6E4A44;
-  --a1:#5A3B37;
-  --a2:#462D2B;
-  --b0:#4A423B;
-  --b1:#3A4557;
-  --b2:#2E3746;
-  --c0:#5E5C58;
-  --c1:#4E4C49;
-  --c2:#3E3C3A;
-  --d0:#63382F;
-  --d1:#512E27;
-  --d2:#3F231E;
-  --e0:#545C68;
-  --e1:#464D57;
-  --e2:#383E47;
-  --f0:#6A5C4A;
-  --f1:#574C3D;
-  --f2:#443C31;
-  --g0:#3B4A62;
-  --g1:#313E52;
-  --g2:#283242;
-  --h0:#54402F;
-  --h1:#443328;
-  --h2:#352820;
-  --m0:#FFC53D;
-  --m1:#D79E22;
-  --m2:#9E7318;
-  --tc:#2E4032;
-  --tc2:#3A4C36;
-  --td:#1E2A1C;
-  --tk:#3A3228;
-  --bush:#2A3A28;
-  --bush2:#1F2C1E;
-  --sh1c:rgba(0,0,0,.5);
-  --sh2c:rgba(0,0,0,.24);
-  --wave:rgba(140,172,204,.3);
-  --tuft:#2A3A28;
-  --stip:rgba(120,124,136,.32);
-  --gedge:rgba(0,0,0,.4);
-  --u1:#7A4E20;
-  --u2:#6E7480;
-  --u3:#6B2D22;
-  --uk:#4A5260;
-  --v1:#FFE9B0;
-  --v2:#2C333E;
-  --v3:#8A3427;
-  --vt:rgba(255,233,176,.5);
-  --bo1:#4A5464;
-  --bo2:#2A303C;
-  --wake:rgba(150,180,210,.28);
-  --ru0:#3E4654;
-  --ru1:#333A46;
-  --bnc:#3E3428;
-  --bnc2:#2E271E;
-  --pp:#C9D2DE;
-  --skin:#C6CEDA;
-  --pc1:#D8DEE8;
-  --pc2:#AEB8C6;
-  --pc3:#F4F1EC;
-  --pc4:#FFD37A;
-  --pc5:#8E9AAA;
-  --onmap:#F0F4F8;
-  --halo:rgba(10,14,22,.92);
-  --num:#8A4A00;
+  /* 06:00 — 차고 옅다. 채도도 대비도 낮다 */
+  --void:#BDBFC5;
+  --plate:#C4C4CA;
+  --water:#A1B0BE;
+  --beach:#C2BBB5;
+  --green:#B7BBB8;
+  --shore:#8A98A8;
+  --rdc:#BFC1CA;
+  --rd1:#D6D6DB;
+  --rd2:#D4D4DA;
+  --rd3:#CECFD5;
+  --rdpv:#C6C1BE;
+  --lane:#E3CC95;
+  --w1:#C5C2C2;
+  --w2:#B7B3B2;
+  --w2c:#B4B2B4;
+  --w2w:#B8B2B0;
+  --a0:#B1B2BA;
+  --a1:#A2A4AD;
+  --a2:#93959F;
+  --b0:#9BA0AD;
+  --b1:#8D92A0;
+  --b2:#828694;
+  --c0:#C5C2C1;
+  --c1:#B7B3B3;
+  --c2:#A6A2A3;
+  --d0:#9E7D7C;
+  --d1:#907577;
+  --d2:#836F74;
+  --e0:#B4B7BE;
+  --e1:#A4A6B0;
+  --e2:#9497A1;
+  --f0:#BDB4AA;
+  --f1:#AFA59B;
+  --f2:#9D958F;
+  --g0:#8891A9;
+  --g1:#7E869C;
+  --g2:#767C90;
+  --h0:#8C8F99;
+  --h1:#828490;
+  --h2:#797B86;
+  --m0:#E8CB97;
+  --m1:#DABB8E;
+  --m2:#C0A889;
+  --tc:#828C84;
+  --tc2:#909B8E;
+  --td:#757E79;
+  --tk:#877F7D;
+  --bush:#899589;
+  --bush2:#7C877F;
+  --sh1c:rgba(6,12,28,0.52);
+  --sh2c:rgba(6,12,28,0.26);
+  --wave:rgba(150,172,212,0.48);
+  --tuft:#889189;
+  --stip:rgba(60,57,57,0.50);
+  --gedge:rgba(35,47,52,0.32);
+  --u1:#C4927D;
+  --u2:#D8D8DC;
+  --u3:#AC7577;
+  --uk:#9498A3;
+  --v1:#D8D8DC;
+  --v2:#6F707B;
+  --v3:#A77778;
+  --vt:rgba(150,172,212,0.37);
+  --bo1:#D8D8DC;
+  --bo2:#757782;
+  --wake:rgba(150,172,212,0.50);
+  --ru0:#AFB2BB;
+  --ru1:#9DA0A9;
+  --bnc:#8B807F;
+  --bnc2:#7E7778;
+  --pp:#6D6E79;
+  --skin:#B39F94;
+  --pc1:#AC7577;
+  --pc2:#6F7FA3;
+  --pc3:#D6D6DA;
+  --pc4:#C9A67E;
+  --pc5:#6F707B;
+  --onmap:#AEAEB4;
+  --halo:rgba(18,26,46,0.94);
+  --num:#B05F00;
   --panel:#FFFFFF;
-  --panel-2:#EAE5DF;
-  --ink:#1A1512;
-  --ink-2:#5E564F;
-  --hair:rgba(26,21,18,.10);
+  --panel-2:#E6EAEF;
+  --ink:#101620;
+  --ink-2:#556071;
+  --hair:rgba(16,22,32,.16);
   --sig-deep:#8A5000;
-  --lift:0 18px 44px -16px rgba(40,30,22,.26), 0 2px 6px -2px rgba(40,30,22,.13);
-  --ui:#241D18;
-  --ui-d:#120E0B;
-  --ui-l:#5A5149;
-  --ui-pale:#F2EEE9;
-  --ui-line:#DED7CF;
-  --ui-line-2:#EFEAE4;
-  --ui-plate:#F7F4F0;
-  --ui-plate-2:#ECE6DF;
+  --lift:0 0 0 1px rgba(16,24,38,.06), 0 1px 2px rgba(16,24,38,.05), 0 10px 26px -18px rgba(16,24,38,.18);
+  --ui-d:#0A0F17;
+  --ui-l:#5A6474;
+  --ui-pale:#F2F5F8;
+  --ui-line:#D7DDE5;
+  --ui-line-2:#E9EDF2;
+  --ui-plate:#F4F6F9;
+  --ui-plate-2:#E6EAEF;
   --terra:#B64F18;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
-  --slate:#4A6A9E;
+  --slate:#3E63A8;
   --slate-pale:#ECF1F8;
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
@@ -565,96 +609,7 @@
 
 
 
-/* ============================================================
-   3D 매싱 SVG 팔레트
-   massing3.py 가 내보내는 클래스에 색을 붙인다.
-   SVG 안에는 색 값이 하나도 없다 — 여기서만 정한다.
-   ============================================================ */
-svg.mass{display:block; shape-rendering:geometricPrecision}
-.plate{fill:var(--plate)}
-.g-water{fill:var(--water)} .g-beach{fill:var(--beach)} .g-green{fill:var(--green)}
-.cl{fill:none; stroke:var(--shore); stroke-width:1.6}
-.rdc{fill:none; stroke:var(--rdc); stroke-width:6.6; stroke-linecap:round; stroke-linejoin:round}
-.rd1{fill:none; stroke:var(--rd1); stroke-width:4.8; stroke-linecap:round; stroke-linejoin:round}
-.rd2{fill:none; stroke:var(--rd2); stroke-width:2.9; stroke-linecap:round; stroke-linejoin:round}
-.rd3{fill:none; stroke:var(--rd3); stroke-width:1.6; stroke-linecap:round}
-.rdp{fill:none; stroke:var(--rdpv); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
-.rdm{fill:none; stroke:var(--lane); stroke-width:1.3; stroke-dasharray:7 9;
-  stroke-linecap:round; opacity:.9}
-.sh1{fill:var(--sh1c)} .sh2{fill:var(--sh2c)}
-.wv{fill:none; stroke:var(--wave); stroke-linecap:round}
-.wv.w1{stroke-width:2.5} .wv.w2{stroke-width:1.8; opacity:.72} .wv.w3{stroke-width:1.3; opacity:.46}
-.gt{fill:none; stroke:var(--tuft); stroke-width:1.1; stroke-linecap:round}
-.ss{fill:none; stroke:var(--stip); stroke-width:1.5; stroke-linecap:round}
-.ge{fill:none; stroke:var(--gedge); stroke-width:1.6; stroke-linejoin:round}
 
-/* 매스: 면마다 자기 색 스트로크를 둘러 모서리를 둥글린다 */
-.rf,.rk,.s1,.s2{stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
-.fa.rf{fill:var(--a0); stroke:var(--a0)} .fa.rk{fill:var(--a1); stroke:var(--a1)}
-.fa.s1{fill:var(--a1); stroke:var(--a1)} .fa.s2{fill:var(--a2); stroke:var(--a2)}
-.fb.rf{fill:var(--b0); stroke:var(--b0)} .fb.rk{fill:var(--b1); stroke:var(--b1)}
-.fb.s1{fill:var(--b1); stroke:var(--b1)} .fb.s2{fill:var(--b2); stroke:var(--b2)}
-.fc.rf{fill:var(--c0); stroke:var(--c0)} .fc.rk{fill:var(--c1); stroke:var(--c1)}
-.fc.s1{fill:var(--c1); stroke:var(--c1)} .fc.s2{fill:var(--c2); stroke:var(--c2)}
-.fd.rf{fill:var(--d0); stroke:var(--d0)} .fd.rk{fill:var(--d1); stroke:var(--d1)}
-.fd.s1{fill:var(--d1); stroke:var(--d1)} .fd.s2{fill:var(--d2); stroke:var(--d2)}
-.fe.rf{fill:var(--e0); stroke:var(--e0)} .fe.rk{fill:var(--e1); stroke:var(--e1)}
-.fe.s1{fill:var(--e1); stroke:var(--e1)} .fe.s2{fill:var(--e2); stroke:var(--e2)}
-.ff.rf{fill:var(--f0); stroke:var(--f0)} .ff.rk{fill:var(--f1); stroke:var(--f1)}
-.ff.s1{fill:var(--f1); stroke:var(--f1)} .ff.s2{fill:var(--f2); stroke:var(--f2)}
-.fg.rf{fill:var(--g0); stroke:var(--g0)} .fg.rk{fill:var(--g1); stroke:var(--g1)}
-.fg.s1{fill:var(--g1); stroke:var(--g1)} .fg.s2{fill:var(--g2); stroke:var(--g2)}
-.fh.rf{fill:var(--h0); stroke:var(--h0)} .fh.rk{fill:var(--h1); stroke:var(--h1)}
-.fh.s1{fill:var(--h1); stroke:var(--h1)} .fh.s2{fill:var(--h2); stroke:var(--h2)}
-.fm.rf{fill:var(--m0); stroke:var(--m0)} .fm.rk{fill:var(--m1); stroke:var(--m1)}
-.fm.s1{fill:var(--m1); stroke:var(--m1)} .fm.s2{fill:var(--m2); stroke:var(--m2)}
-.ru{fill:var(--ru0); stroke:var(--ru0)} .ru2{fill:var(--ru1); stroke:var(--ru1)}
-.ru,.ru2{stroke-width:2; stroke-linejoin:round; paint-order:stroke}
-
-/* 나무 · 관목 · 벤치 · 파라솔 · 차량 · 보트 */
-.tc,.tp{fill:var(--tc); stroke:var(--tc); stroke-width:2.2; stroke-linejoin:round}
-.tc.t2,.tp.t2{fill:var(--tc2); stroke:var(--tc2)}
-.tc.td{fill:var(--td); stroke:var(--td)}
-.tk{fill:none; stroke:var(--tk); stroke-width:1.9; stroke-linecap:round}
-.bu{fill:var(--bush); stroke:var(--bush); stroke-width:1.8; stroke-linejoin:round}
-.bu2{fill:var(--bush2); stroke:var(--bush2); stroke-width:1.4}
-.bn{fill:none; stroke:var(--bnc); stroke-width:2.6; stroke-linecap:round}
-.bnb{fill:none; stroke:var(--bnc2); stroke-width:1.6; stroke-linecap:round}
-.us{stroke-width:1.4; stroke-linejoin:round; paint-order:stroke}
-.us.u1{fill:var(--u1); stroke:var(--u1)} .us.u2{fill:var(--u2); stroke:var(--u2)}
-.us.u3{fill:var(--u3); stroke:var(--u3)}
-.uk{fill:none; stroke:var(--uk); stroke-width:1.4; stroke-linecap:round}
-.cb{stroke-width:2.6; stroke-linejoin:round; paint-order:stroke}
-.cb.c1{fill:var(--v1); stroke:var(--v1)} .cb.c2{fill:var(--v2); stroke:var(--v2)}
-.cb.c3{fill:var(--v3); stroke:var(--v3)} .ct{fill:var(--vt)}
-.bt{stroke-width:2.2; stroke-linejoin:round; paint-order:stroke}
-.bt.k1{fill:var(--bo1); stroke:var(--bo1)} .bt.k2{fill:var(--bo2); stroke:var(--bo2)}
-.btw{fill:none; stroke:var(--wake); stroke-width:1.8; stroke-linecap:round}
-.bs{fill:none; stroke:var(--bo2); stroke-width:1.4; stroke-linecap:round}
-
-/* 사람 — 머리(원) + 몸통(면) + 다리(2선). 밀도가 집중률이다 */
-.crowd .leg{fill:none; stroke:var(--pp); stroke-width:1.5; stroke-linecap:round; opacity:.9}
-.crowd .tor{stroke-width:1.1; stroke-linejoin:round; paint-order:stroke}
-.crowd .tor.k1{fill:var(--pc1); stroke:var(--pc1)} .crowd .tor.k2{fill:var(--pc2); stroke:var(--pc2)}
-.crowd .tor.k3{fill:var(--pc3); stroke:var(--pc3)} .crowd .tor.k4{fill:var(--pc4); stroke:var(--pc4)}
-.crowd .tor.k5{fill:var(--pc5); stroke:var(--pc5)}
-.crowd .hed{fill:var(--skin); stroke:var(--skin); stroke-width:.8}
-.crowd .cw{transition:opacity .34s ease}
-
-/* 동선 — 실선 지나온 / 파선 예정 / 앰버 바뀜 */
-.rt-case,.rb-case{fill:none; stroke:var(--halo); stroke-width:7;
-  stroke-linecap:round; stroke-linejoin:round}
-.rt-done,.rt-todo,.rt-hot,.rb-done,.rb-todo,.rb-hot{fill:none;
-  stroke-linecap:round; stroke-linejoin:round; transition:opacity .5s ease}
-.rt-done{stroke:var(--onmap); stroke-width:2.8; opacity:.6}
-.rt-todo{stroke:var(--onmap); stroke-width:2.8; opacity:.34; stroke-dasharray:7 8}
-.rt-hot,.rb-hot,.rb-done,.rb-todo{stroke:var(--sig); stroke-width:3.6}
-
-/* 모바일: 안티에일리어싱을 끄고 잔 요소를 숨겨 페인트를 줄인다 */
-@media (max-width:860px){
-  svg.mass{shape-rendering:optimizeSpeed}
-  svg.mass .wv{display:none}
-}
 
 /* ============================================================
    금지 사항 (지키지 않으면 화면이 무너지거나 느려진다)
@@ -692,6 +647,16 @@ svg.mass{display:block; shape-rendering:geometricPrecision}
   --warm:var(--num);         --warm-pale:var(--terra-pale);
 
   --r:8px;  --r-sm:6px;  --r-lg:12px;
+
+  /* 모달 가림막 · 지도 바탕 모눈. 잉크색을 옅게 깐다.
+     전에는 청록 rgba(28,43,42,.45) 와 rgba(45,158,138,.03) 이었다. */
+  /* 그림자·유리판의 알파는 자리마다 다르다. rgb 세 수만 토큰으로 두고
+     알파는 쓰는 자리에서 정한다 — rgba(var(--sh-rgb),.08) 꼴. */
+  --sh-rgb:16,24,38;
+  --sig-rgb:255,158,18;
+  --w-rgb:255,255,255;
+  --scrim:rgba(16,24,38,.46);
+  --grid:rgba(16,24,38,.05);
   --sh:var(--lift2);  --sh-h:var(--lift);
 }
 
@@ -705,15 +670,16 @@ svg.mass{display:block; shape-rendering:geometricPrecision}
 .w-warn .wx{ stroke:var(--num) }
 
 /* 날씨 화면 — 바깥 서비스 링크는 보조 동작이다 */
-.wx-links{ display:flex; gap:8px; margin-top:12px }
+/* 바깥 서비스 링크. 알약 버튼으로 두면 예보보다 커 보인다.
+   예보가 주인공이고 이건 그 다음이다. */
+.wx-links{ display:flex; flex-wrap:wrap; gap:16px; margin-top:12px }
 .wx-links a{
-  flex:1; text-align:center; padding:9px 0 10px; border-radius:99px;
-  text-decoration:none; font-size:13px; font-weight:600; letter-spacing:-.02em;
-  color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
-  transition:color .15s, box-shadow .15s;
+  font-size:11.5px; color:var(--ink-2); text-decoration:underline;
+  text-underline-offset:3px; text-decoration-color:var(--ui-line);
 }
-.wx-links a:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.wx-more{ margin:12px 0 0; font-size:12px; color:var(--ink-3) }
+.wx-links a::after{ content:" \2197"; text-decoration:none }
+.wx-links a:hover{ color:var(--ink); text-decoration-color:var(--ink-3) }
+.wx-more{ margin:16px 0 0; font-size:11.5px; color:var(--ink-3) }
 .wx-alert{
   margin-top:11px; padding:11px 12px; border-radius:8px;
   background:var(--tile-pale); box-shadow:inset 0 0 0 1px var(--tile);

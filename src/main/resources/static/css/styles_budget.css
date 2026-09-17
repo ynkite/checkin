@@ -8,7 +8,9 @@
 
 /*가계부 배경*/
 #page-ledger {
-    background: linear-gradient(160deg, var(--sage-pale) 0%, var(--cream) 380px);
+    /* 위쪽에 아주 옅은 기운만. 전에는 크림(--terra-pale)이라 이 화면만
+       따뜻했다 — 팔레트는 쿨로 옮겨 놨는데 여기만 남아 있었다. */
+    background: linear-gradient(160deg, var(--slate-pale) 0%, var(--page-2) 340px);
     background-attachment: fixed;
 }
 
@@ -24,7 +26,7 @@
 .ledger-hero {
     background: var(--sage-d);
     padding: 24px 0 32px;
-    border-bottom: 1px solid rgba(0,0,0,.08);
+    border-bottom: 1px solid rgba(var(--sh-rgb),.08);
 }
 .ledger-hero-inner {
     max-width: 1100px;
@@ -34,16 +36,16 @@
 }
 .ledger-back-btn {
     display: inline-flex; align-items: center; gap: 4px;
-    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
-    color: #fff; border-radius: 20px; padding: 5px 14px;
+    background: rgba(var(--w-rgb),.18); border: 1px solid rgba(var(--w-rgb),.3);
+    color: var(--panel); border-radius: 20px; padding: 5px 14px;
     font-size: 11px; font-weight: 700; cursor: pointer; margin-bottom: 18px;
     letter-spacing: .2px; transition: background .15s;
 }
-.ledger-back-btn:hover { background: rgba(255,255,255,.28); }
-.ldh-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(255,255,255,.65); margin-bottom: 6px; }
-.ldh-title { font-size: 30px; font-weight: 900; color: #fff; margin: 0 0 4px; }
-.ldh-meta  { font-size: 13px; font-weight: 600; color: rgba(255,255,255,.92); margin: 0; }
-.ldh-dest  { font-size: 11px; color: rgba(255,255,255,.65); margin: 3px 0 0; }
+.ledger-back-btn:hover { background: rgba(var(--w-rgb),.28); }
+.ldh-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(var(--w-rgb),.65); margin-bottom: 6px; }
+.ldh-title { font-size: 30px; font-weight: 900; color: var(--panel); margin: 0 0 4px; }
+.ldh-meta  { font-size: 13px; font-weight: 600; color: rgba(var(--w-rgb),.92); margin: 0; }
+.ldh-dest  { font-size: 11px; color: rgba(var(--w-rgb),.65); margin: 3px 0 0; }
 
 /* ── 헤더 내보내기 버튼 ── */
 .ledger-hero-row {
@@ -65,14 +67,14 @@
     font-size: 12px;
     font-weight: 700;
     border-radius: 20px;
-    border: 1.5px solid rgba(255,255,255,.4);
-    background: rgba(255,255,255,.15);
-    color: #fff;
+    border: 1.5px solid rgba(var(--w-rgb),.4);
+    background: rgba(var(--w-rgb),.15);
+    color: var(--panel);
     cursor: pointer;
     transition: background .15s;
     white-space: nowrap;
 }
-.btn-export-header:hover { background: rgba(255,255,255,.28); }
+.btn-export-header:hover { background: rgba(var(--w-rgb),.28); }
 .btn-export-header:disabled {
     opacity: .4;
     cursor: not-allowed;
@@ -144,11 +146,27 @@
     font-size: 13px;
     font-weight: 800;
     border: 1px solid var(--border2);
-    background: #fff;
+    background: var(--panel);
     color: var(--text2);
     cursor: pointer;
     transition: all .15s;
 }
-.pager-btn.on { background: var(--sage); border-color: var(--sage); color: #fff; }
+.pager-btn.on { background: var(--sage); border-color: var(--sage); color: var(--panel); }
 .pager-btn:hover:not(.on):not(:disabled) { border-color: var(--sage-l); color: var(--sage); }
 .pager-btn:disabled { opacity: .45; cursor: default; }
+
+/* 빈 상태 — 안내 한 줄과 갈 곳 하나 */
+.lg-empty{ padding:26px 0 8px; text-align:center; word-break:keep-all }
+.lg-empty p{ margin:0; font-size:14px; font-weight:700; color:var(--ink) }
+.lg-empty .lg-empty-sub{
+  margin:6px 0 16px; font-size:12.5px; font-weight:400; color:var(--ink-3);
+}
+
+/* 성수기·축제 한 줄. 예상 총액이 왜 그 값인지 말한다 */
+.ledger-season{
+  margin:0 0 20px; padding:12px 15px 13px;
+  border-radius:var(--r-field); background:var(--terra-pale);
+  font-size:13px; line-height:1.66; color:var(--ink-2);
+  word-break:keep-all;
+}
+.ledger-season b{ color:var(--num); font-weight:600 }

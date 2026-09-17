@@ -1,3 +1,18 @@
+# ────────────────────────────────────────────────────────────
+#  키는 쉼표로 여러 개를 넣을 수 있다
+#
+#  TMAP·관광공사·퍼즐 모두 일일 한도가 있다. 심사 기간에 한 사람
+#  키로 버티다 한도를 넘기면 그 순간부터 화면이 「연동 전」이 된다.
+#  팀원이 각자 발급받아 쉼표로 이어 붙이면, 한도가 찬 키(429)나
+#  거부된 키(401·403)는 그날 건너뛰고 다음 키로 넘어간다.
+#  날이 바뀌면 전부 되살아난다.
+#
+#    tmap.api.key=내키,유지환키,팀원3키
+#
+#  서버가 느린 것(5xx)으로는 키를 죽이지 않는다 — 그걸로 죽이면
+#  SK 가 한 번 느릴 때 키를 다 버린다.
+# ────────────────────────────────────────────────────────────
+
 spring.application.name=checkin
 spring.profiles.active=local
 
@@ -74,12 +89,53 @@ spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=30MB
 
 # ── 한국관광공사 OpenAPI (이수환) ──
+# 한국관광공사 OpenAPI - 10종을 같은 호스트·같은 인증키로 부른다.
+#   TourApiClient.items("<서비스>", "<오퍼레이션>", params)
+#   serviceKey 는 디코딩키를 넣는다. 인코딩키를 넣으면
+#   SERVICE_KEY_IS_NOT_REGISTERED_ERROR 가 온다.
+#
+#   쓰는 중
+#     KorService2           국문 관광정보          KorTourService · LodgingRateService
+#     TatsCnctrRateService  관광지 집중률 예측     ConcentrationService
+#     DataLabService        지역별 방문자수        VisitorService
+#     LocgoHubTarService1   기초지자체 중심 관광지 LocgoHubService
+#     TarRlteTarService1    관광지별 연관 관광지   RelatedTourService
+#
+#   받아 놓고 아직 안 붙인 것
+#     KorWithService2       무장애 여행            (장애인·어르신 동반)
+#     KorPetTourService2    반려동물 동반여행      (화면에 칩은 이미 있다)
+#     GoCamping             고캠핑                 (백패킹 여행지)
+#     Durunubi              두루누비               (도보·자전거 코스)
 tour.api.key=${TOUR_API_KEY:}
-tour.api.base-url=http://apis.data.go.kr/B551011
+tour.api.base-url=https://apis.data.go.kr/B551011
 
 # ── SK open API / TMAP (이수환) ──
 tmap.api.key=${TMAP_APP_KEY:}
 tmap.api.base-url=https://apis.openapi.sk.com
+
+# ── SK 실시간 인원 (키를 받으면 주소와 경로만 적으면 붙는다) ──
+#   url 의 {q} 자리에 장소 이름, {lat} {lng} 자리에 좌표가 들어간다.
+#   path.level  응답에서 혼잡 단계를 꺼낼 경로 (점으로 구분. 배열은 a.0.b)
+#   path.count  인원수를 꺼낼 경로
+#   level-scale 단계가 1~N 중 N
+#   비어 있으면 꺼진 상태로 돈다 — 화면은 관광공사 예측으로 답한다.
+sk.realtime.url=${SK_REALTIME_URL:}
+sk.realtime.key=${SK_REALTIME_KEY:}
+sk.realtime.key-header=appKey
+sk.realtime.path.level=
+sk.realtime.path.count=
+sk.realtime.level-scale=4
+
+# ── 예산 단가 (2026년 국내 여행 평균에 대한 우리 가정) ──
+#   결과의 basis 에 「가정」이라고 적어 보낸다. 물가가 바뀌면 값만 바꾼다.
+budget.meal-per-person=12000
+budget.meals-per-day=3
+budget.admission-per-place=8000
+budget.lodging-fallback=80000
+budget.rental-per-day=70000
+budget.fuel-per-km=130
+budget.transit-per-leg=1500
+budget.km-per-day-assumed=60
 
 # ---------- 실시간 감지 임계값 ----------
 detection.crowd.rate-threshold=70
@@ -88,3 +144,38 @@ detection.route.delay-threshold=1.3
 
 # ---------- 위치정보 가명처리 ----------
 privacy.geo.grid-decimals=2
+
+# SK 지오비전 퍼즐 - 지하철 혼잡도 / 장소 혼잡도 / 유동인구 /
+#   국내 여행 / 주거 생활 / 음식점 / 학원.
+#   TMAP 과 같은 SK 계정이지만 상품을 따로 신청하고 키도 따로 나온다.
+#   비워 두면 /api/puzzle/status 가 ready=false 로 답하고
+#   화면은 그 칸을 「연동 전」으로 둔다. 0 으로 채우지 않는다.
+sk.puzzle.api.key=${SK_PUZZLE_API_KEY:}
+sk.puzzle.api.base-url=https://apis.openapi.sk.com/puzzle
+
+# 상품마다 버전이 달라서 신청한 뒤 문서를 보고 맞춘다.
+#   맞추더라도 자바를 다시 빌드하지 않게 설정으로 빼 뒀다.
+#   {station} {poi} {area} 자리는 코드가 채운다.
+# sk.puzzle.path.subway=/subway/congestion/stat/hourly/stations/{station}
+# sk.puzzle.path.place=/place/congestion/stat/hourly/pois/{poi}
+# sk.puzzle.path.pop=/pop/congestion/stat/hourly/areas/{area}
+# sk.puzzle.path.travel=/travel/visitor/stat/monthly/areas/{area}
+# sk.puzzle.path.dining=/dining/sales/stat/monthly/areas/{area}
+# sk.puzzle.path.residence=/residence/pop/stat/monthly/areas/{area}
+# sk.puzzle.path.academy=/academy/sales/stat/monthly/areas/{area}
+
+# ────────────────────────────────────────────────────────────
+#  유료 호출을 막는 문
+#
+#  지오비전 퍼즐 중 장소 혼잡도·국내 여행·주거 생활·음식점·학원은
+#  돈이 든다. 개발하면서 화면을 열 때마다 호출되면 심사 전에 예산이
+#  녹는다. 그래서 기본은 닫아 둔다.
+#
+#  닫혀 있으면 호출을 아예 안 하고 화면은 「연동 전」으로 둔다.
+#  0 으로 채우지 않는다.
+#
+#  최종 테스트 때만 true 로 바꾼다. 열어 둔 동안에도 하루 상한이 있다.
+#  무료인 것(TMAP · 관광공사 · 지하철 혼잡도)은 이 문을 지나지 않는다.
+# ────────────────────────────────────────────────────────────
+sk.paid.enabled=${SK_PAID_ENABLED:false}
+sk.paid.daily-cap=${SK_PAID_DAILY_CAP:200}

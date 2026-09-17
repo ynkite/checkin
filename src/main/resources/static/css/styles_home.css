@@ -11,7 +11,7 @@
   border-bottom:1px solid transparent; transition:border-color .2s, background .2s}
 .ck-top.ck-on{border-color:var(--hair); background:var(--void-veil-2)}
 .ck-top .ck-wr{display:flex; align-items:center; gap:24px}
-.ck-top .ck-bd{font-size:19px; font-weight:700; letter-spacing:-.07em; margin-right:auto}
+.ck-top .ck-bd{font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight); margin-right:auto}
 .ck-top nav{display:flex; gap:20px}
 .ck-top nav a{font-size:14px; font-weight:500; color:var(--ink-2); text-decoration:none}
 .ck-top nav a:hover{color:var(--ink)}
@@ -23,7 +23,7 @@
 .ck-hero{position:relative; padding:104px 0 26px; overflow:hidden}
 .ck-hero::before{content:""; position:absolute; right:-14%; top:-24%; width:76%; height:150%;
   z-index:0; pointer-events:none; border-radius:50%;
-  background:radial-gradient(closest-side, rgba(255,255,255,.9), rgba(255,255,255,0))}
+  background:radial-gradient(closest-side, rgba(var(--w-rgb),.9), rgba(var(--w-rgb),0))}
 .ck-hero .ck-grid{position:relative; z-index:2; display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1.08fr); gap:42px; align-items:start}
 .ck-hero h1{font-size:clamp(34px,4.4vw,56px); max-width:14ch}
@@ -37,7 +37,7 @@
 .ck-tell .ck-ph i b{display:block; height:100%; width:0; background:var(--ink); border-radius:99px}
 .ck-tell .ck-ph i.ck-on b{width:100%; transition:width 2.5s linear}
 .ck-tell .ck-ph i.ck-done b{width:100%}
-.ck-tell .ck-line{font-size:17px; font-weight:700; letter-spacing:-.035em; min-height:1.55em}
+.ck-tell .ck-line{font-size:17px; font-weight:700; letter-spacing:var(--tracking-tight); min-height:1.55em}
 .ck-tell .ck-line em{font-style:normal; color:var(--num)}
 .ck-tell .ck-why{font-size:13.5px; line-height:1.62; color:var(--ink-2); margin-top:5px; min-height:2.7em}
 .ck-plans{position:relative; height:44px; margin-top:13px; overflow:hidden}
@@ -53,10 +53,6 @@
 .ck-plans.ck-sw .ck-plan.ck-a{transform:translateY(-100%); opacity:0}
 .ck-plans.ck-sw .ck-plan.ck-b{transform:none; opacity:1}
 .ck-tell .ck-chips{display:flex; gap:7px; margin-top:12px; min-height:32px; flex-wrap:wrap}
-.ck-tell .ck-chips b{font-family:var(--fig); font-size:13px; font-weight:600; padding:5px 11px 6px;
-  border-radius:99px; background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--panel-2);
-  opacity:0; transform:translateY(6px); transition:opacity .4s, transform .4s}
-.ck-tell .ck-chips b.ck-on{opacity:1; transform:none}
 .ck-tell .ck-chips b.ck-hot{background:var(--sig); color:var(--on-sig); box-shadow:none}
 
 /* 관광지 카드 두 장 */
@@ -73,13 +69,13 @@
 .ck-place .ck-win{position:relative; height:196px; overflow:hidden; background:var(--plate)}
 .ck-place .ck-win .ck-in{width:100%; transform:translateY(var(--sy,0))}
 .ck-place .ck-win::after{content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(255,255,255,.5) 0, rgba(255,255,255,0) 26%)}
+  background:linear-gradient(180deg, rgba(var(--w-rgb),.5) 0, rgba(var(--w-rgb),0) 26%)}
 .ck-place .ck-glow{position:absolute; inset:0; z-index:3; opacity:0; pointer-events:none;
   transition:opacity .5s ease;
-  background:radial-gradient(60% 54% at 50% 58%, rgba(255,158,18,.5), rgba(255,158,18,0) 72%)}
+  background:radial-gradient(60% 54% at 50% 58%, rgba(var(--sig-rgb),.5), rgba(var(--sig-rgb),0) 72%)}
 .ck-place.ck-busy .ck-glow{opacity:1}
 .ck-place .ck-meta{padding:15px 17px 17px}
-.ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:-.04em}
+.ck-place .ck-meta b{display:block; font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-place .ck-meta .ck-stt{display:block; font-size:13px; color:var(--ink-2); margin-top:3px;
   min-height:2.6em}
 .ck-place .ck-meta .ck-stt strong{font-weight:700; color:var(--num)}
@@ -119,7 +115,7 @@ section.ck-blk{padding-top:70px}
 
 .ck-free{display:grid; grid-template-columns:repeat(auto-fit,minmax(206px,1fr)); gap:12px}
 .ck-spot{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 19px}
-.ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em}
+.ck-spot .ck-nm{font-size:18px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-spot .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
 .ck-spot .ck-vv{display:flex; align-items:baseline; gap:8px; margin-top:14px}
 .ck-spot .ck-vv b{font-family:var(--fig); font-size:26px; font-weight:600; letter-spacing:-.05em}
@@ -139,7 +135,7 @@ table.ck-rows td:nth-child(2){text-align:right; font-family:var(--fig); font-var
 table.ck-rows td:nth-child(3){text-align:right; font-size:13px; color:var(--ink-2); width:82px}
 table.ck-rows tfoot td{border-bottom:0; border-top:1.5px solid var(--ink); padding-top:15px;
   font-weight:700; font-size:17px}
-table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
+table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--tracking-tight)}
 .ck-conf .ck-big{font-family:var(--fig); font-size:clamp(40px,5vw,60px); font-weight:600;
   letter-spacing:-.055em; line-height:.95}
 .ck-conf .ck-big span{font-size:.44em}
@@ -154,18 +150,18 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-st{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:22px 22px 24px}
 .ck-st .ck-no{font-family:var(--fig); font-size:29px; font-weight:600; letter-spacing:-.05em;
   color:var(--num); line-height:1}
-.ck-st h3{font-size:19px; font-weight:700; letter-spacing:-.035em; margin-top:12px}
+.ck-st h3{font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight); margin-top:12px}
 .ck-st p{font-size:14.5px; line-height:1.7; color:var(--ink-2); margin-top:7px}
 
 .ck-sync{display:flex; gap:14px; flex-wrap:wrap}
 .ck-sync > div{flex:1 1 210px; background:var(--panel); border-radius:8px; box-shadow:var(--lift2);
   padding:18px 20px 20px}
-.ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:-.03em}
+.ck-sync b{display:block; font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-sync p{font-size:13.5px; color:var(--ink-2); margin-top:5px; line-height:1.62}
 
 .ck-data{display:grid; grid-template-columns:repeat(auto-fit,minmax(228px,1fr)); gap:12px}
 .ck-src{background:var(--panel); border-radius:8px; box-shadow:var(--lift2); padding:17px 19px 18px}
-.ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:-.03em}
+.ck-src b{display:block; font-size:14.5px; font-weight:700; letter-spacing:var(--tracking-tight)}
 .ck-src ul{margin:8px 0 0; padding-left:16px; font-size:13px; color:var(--ink-2); line-height:1.78}
 
 .ck-foot{margin-top:74px; border-top:1px solid var(--hair)}
@@ -192,7 +188,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 /* 시안의 _palette.css 에 있던 유틸. 여기로 옮긴다. */
 .ck-wr{max-width:1300px; margin:0 auto; padding:0 30px}
 .ck-fig{font-family:var(--fig); font-variant-numeric:tabular-nums; letter-spacing:-.02em}
-.ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:-.042em;
+.ck-home h1,.ck-home h2,.ck-home h3{margin:0; font-weight:700; letter-spacing:var(--tracking-tight);
   line-height:1.13; text-wrap:balance}
 .ck-home p{margin:0; text-wrap:pretty}
 .ck-home{word-break:keep-all; overflow-wrap:break-word; background:var(--ui-plate); color:var(--ink)}
@@ -210,7 +206,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   padding:17px 19px 19px; text-align:left; width:100%}
 .ck-trip:hover{box-shadow:var(--lift)}
 .ck-trip .ck-when{font-family:var(--fig); font-size:12.5px; color:var(--num); font-weight:600}
-.ck-trip .ck-nm{font-size:18px; font-weight:700; letter-spacing:-.035em; margin-top:4px}
+.ck-trip .ck-nm{font-size:18px; font-weight:700; letter-spacing:var(--tracking-tight); margin-top:4px}
 .ck-trip .ck-why{font-size:13px; color:var(--ink-2); margin-top:3px}
 .ck-live{display:inline-flex; align-items:center; gap:6px; padding:4px 10px 5px;
   border-radius:99px; background:var(--sig); color:var(--on-sig);
@@ -249,7 +245,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .top3-grid > *:hover{ box-shadow:var(--lift) }
 
 .ck-home .post-ttl{
-  font-size:17px; font-weight:700; letter-spacing:-.035em; color:var(--ink);
+  font-size:17px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
   line-height:1.34; margin:0;
 }
 .ck-home .post-stats{
@@ -303,7 +299,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .hsc-dest{
   padding:9px 15px 10px; border-radius:99px; border:0; cursor:pointer;
   background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--ui-line);
-  font-family:inherit; font-size:14.5px; font-weight:600; letter-spacing:-.03em;
+  font-family:inherit; font-size:14.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink); transition:background .15s, box-shadow .15s;
 }
 .ck-home .hsc-dest:hover{ background:var(--terra-pale); box-shadow:inset 0 0 0 1px var(--terra) }
@@ -357,7 +353,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   background:var(--terra-pale); color:var(--terra);
   font-size:11.5px; font-weight:700; letter-spacing:-.02em;
 }
-.ck-home .ck-sl-hd h3{ font-size:22px; margin-top:11px; letter-spacing:-.042em }
+.ck-home .ck-sl-hd h3{ font-size:22px; margin-top:11px; letter-spacing:var(--tracking-tight) }
 .ck-home .ck-sl-sub{ font-size:13.5px; color:var(--ink-2); margin-top:5px }
 .ck-home .ck-sl-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px }
 .ck-home .ck-sl-tags span{
@@ -487,8 +483,8 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 
 /* ── 제목을 더 키운다. 본문과의 간격이 좁아 위계가 약했다 ── */
-.ck-home h1{ font-size:clamp(32px, 3.6vw, 46px); letter-spacing:-.042em; line-height:1.12 }
-.ck-home .ck-hd h2{ font-size:clamp(22px, 2.3vw, 29px); letter-spacing:-.04em }
+.ck-home h1{ font-size:clamp(32px, 3.6vw, 46px); letter-spacing:var(--tracking-tight); line-height:1.12 }
+.ck-home .ck-hd h2{ font-size:clamp(22px, 2.3vw, 29px); letter-spacing:var(--tracking-tight) }
 .ck-home .ck-sub{ font-size:17.5px; line-height:1.7 }
 
 /* 섹션 간격에 리듬을 준다. 전부 70px 이던 것을 역할별로 나눈다 */
@@ -518,9 +514,8 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   position:absolute; left:0; right:0; top:-18px; z-index:0;
   height:clamp(500px, 53vw, 800px);
   overflow:hidden; pointer-events:none;
-  /* 아래로 완전히 사라진다. 중간에서 끊기면 잘린 단면이 보인다. */
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 58%,rgba(0,0,0,.5) 82%,transparent 99%);
-          mask-image:linear-gradient(180deg,#000 0,#000 58%,rgba(0,0,0,.5) 82%,transparent 99%);
+  /* 아래를 마스크로 녹이지 않는다. 무대가 화면 높이를 다 쓰는 지금은
+     화면 아래 절반이 흐려지는 것으로 보인다. */
 }
 
 /* 장면 상자 — svg·핀·경로가 모두 이 안에 있다. 한 좌표계다. */
@@ -530,11 +525,6 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
      79% 는 세 번째 핀(x 15.12%)이 제목 오른쪽 끝을 지나는 값이다. */
   position:absolute; left:79%; top:0; transform:translateX(-50%);
   width:min(1720px, 112%);
-  /* 넓은 화면에서는 min() 의 1720px 이 걸려 상자 왼쪽 끝이 흰 가림막
-     밖으로 나온다. 실측 — 1920px 부터 세로 이음매가 드러났다.
-     상자 자체를 왼쪽에서 녹여 어느 폭에서도 끊긴 자리가 없게 한다. */
-  -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 9%);
-          mask-image:linear-gradient(90deg, transparent 0, #000 9%);
   aspect-ratio:1560 / 1123;
   /* 잘리는 자리가 건물 한가운데가 되지 않게 한다.
      장면 위쪽 0~12% 는 빈 판·물이라 거기서 시작하면 단면이 보이지 않는다. */
@@ -543,17 +533,9 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-frame > div{ position:absolute; inset:0 }
 .ck-frame svg.mass{ width:100%; height:100%; display:block }
 
-/* 왼쪽을 판 색으로 덮어 글이 읽히게 한다 */
-.ck-scene::after{
-  content:""; position:absolute; inset:0; z-index:2;
-  background:
-    linear-gradient(96deg,
-      var(--ui-plate) 0 26%,
-      color-mix(in oklab, var(--ui-plate) 80%, transparent) 36%,
-      color-mix(in oklab, var(--ui-plate) 28%, transparent) 50%,
-      transparent 62%),
-    linear-gradient(180deg, var(--ui-plate) 0, transparent 13%);
-}
+/* 왼쪽에 크림 가림막을 깔지 않는다.
+   글이 왼쪽·모형이 오른쪽이던 판에서는 글을 읽히게 하는 장치였는데,
+   판이 모형 위에 뜨는 지금은 왼쪽 1/4 이 불투명한 벽으로 보인다. */
 
 /* 경로는 mass_hero.svg 안에 들어 있다. 같은 두 지점을 잇는 길이 두 개다 —
    해변을 따라가는 길(rt-*)과 안쪽 도로로 도는 길(rb-*).
@@ -572,16 +554,25 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
    번호가 든 동그라미가 지점에 박히고 이름표는 위가 아니라 옆에 붙는다.
    번호가 있어야 몇 번째로 들르는 곳인지 보인다. */
 .ck-pins{ position:absolute; inset:0; z-index:3 }
+/* 번호 동그라미만 지점에 맞추고 이름표는 옆으로 흐른다.
+   핀 전체를 -50% 로 밀면 이름표가 긴 핀은 번호가 왼쪽으로 끌려가고
+   좁은 화면에서 이름표가 화면 밖으로 잘린다 — 375px 에서
+   「해운대 해수욕장 14:20」의 앞 글자가 잘렸다. */
 .ck-pin{
-  position:absolute; transform:translate(-50%,-50%);
+  position:absolute; transform:translateY(-50%); margin-left:-10.5px;
   display:flex; align-items:center; gap:7px; white-space:nowrap;
+}
+/* 오른쪽에 있는 핀은 이름표를 왼쪽으로 돌린다. 안 그러면 오른쪽이 잘린다 */
+.ck-pin.ck-lbl-left{
+  flex-direction:row-reverse; margin-left:0; margin-right:-10.5px;
+  transform:translate(-100%,-50%);
 }
 .ck-pin .ck-no{
   flex:0 0 auto; width:21px; height:21px; border-radius:99px;
   background:var(--terra); color:var(--panel);
   font-family:var(--fig); font-size:11.5px; font-weight:600;
   line-height:21px; text-align:center;
-  box-shadow:0 0 0 2.5px var(--panel), 0 2px 5px rgba(40,30,22,.28);
+  box-shadow:0 0 0 2.5px var(--panel), 0 2px 5px rgba(var(--sh-rgb),.28);
 }
 .ck-pin .ck-bub{
   display:flex; align-items:baseline; gap:7px;
@@ -626,13 +617,6 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home .ck-chips2{ display:none; flex-basis:100%; margin-top:4px }
 .ck-home .ck-chips2.ck-open{ display:flex }
 
-@media (max-width:1000px){
-  .ck-scene{ height:clamp(300px, 56vw, 470px) }
-  .ck-frame{ width:min(1560px, 148%); left:58%; top:0 }
-  .ck-home .ck-form{ margin-top:clamp(34px, 7vw, 90px) }
-  .ck-lead h1, .ck-lead .ck-sub{ max-width:none }
-  .ck-pin .ck-bub{ font-size:12px; padding:5px 10px 6px }
-}
 
 /* ── 좁은 화면 — 도시를 통째로 위에 깔고 글을 그 아래로 내린다 ──
    넓은 화면은 글이 왼쪽, 도시가 오른쪽이다. 좁은 화면에는 왼쪽 칸이
@@ -641,28 +625,18 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
    여기서는 장면을 확대하지 않는다. 폭을 꽉 채워 도시 전체가 들어오게
    하면 어중간하게 잘린 단면이 생기지 않고, 핀도 화면 안에 남는다. */
-@media (max-width:760px){
-  /* 폭을 꽉 채우면 도시가 대각선 조각이 되고 나머지가 빈 모래밭이다.
-     건물이 몰린 구간(가로 10~65%, 세로 18~68%)만 잘라 담는다.
-     값은 mass_hero.json 의 핀 좌표에서 역산했다 — 세 핀이 모두 화면
-     안에 들어오고 말풍선도 잘리지 않는 범위다. */
-  .ck-scene{ height:60vw; top:-10px }
-  .ck-frame{
-    left:-18%; top:-22vw; width:182%; transform:none;
-    -webkit-mask-image:none; mask-image:none;
-  }
-  .ck-scene::after{
-    background:linear-gradient(180deg,
-      var(--ui-plate) 0 4%,
-      transparent 22%,
-      color-mix(in oklab, var(--ui-plate) 55%, transparent) 66%,
-      var(--ui-plate) 96%);
-  }
+@media (max-width:1180px){
+  /* 장면 크기·자리는 styles_stage.css 가 정한다 (폭을 꽉 채운다).
+     여기 있던 「건물 몰린 구간만 182% 로 잘라 담기」는 옛 판의 방법이다.
+     두 파일이 같은 것을 다르게 정하면 어느 쪽이 이겼는지 알 수 없다.
+     가림막(.ck-scene::after)도 여기서 다시 깔지 않는다 — 그게
+     「왼쪽이 불투명하다」의 원인이었다. */
+
   /* .ck-hero 의 상단 88px 는 장면이 없던 시절 값이다. 그대로 두면
      장면과 제목 사이가 벌어져 빈 칸이 생긴다(실측 75px). */
   .ck-home .ck-hero{ padding-top:0 }
-  .ck-lead{ padding-top:clamp(172px, 52vw, 260px) }
   .ck-home .ck-tell{ max-width:none }
+  /* 이름표 셋을 375px 에 같이 두면 서로 겹친다. 지금 보는 곳만 이름을 단다 */
   .ck-pin:not(.ck-hot) .ck-bub{ display:none }
 }
 @media (prefers-reduced-motion:reduce){
@@ -858,7 +832,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home .ck-sync p{ max-width:none }
 }
 
-/* 별점 — 예전에는 템플릿에 색을 직접 적었다(#F5A623).
+/* 별점 — 예전에는 템플릿에 색을 직접 적었다(호박색).
    밝은 바탕에 --sig 로 글자를 쓰지 않는다. --num 을 쓴다. */
 .ck-home .pop-stars{ color:var(--num); letter-spacing:.04em }
 
@@ -873,7 +847,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 .ck-home .ck-tabs button{
   position:relative; padding:0 0 11px; border:0; background:none; cursor:pointer;
-  font-family:inherit; font-size:16px; font-weight:700; letter-spacing:-.035em;
+  font-family:inherit; font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight);
   color:var(--ink-3); transition:color .15s;
 }
 .ck-home .ck-tabs button:hover{ color:var(--ink-2) }
@@ -892,7 +866,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home table.ck-rows td:nth-child(2){ white-space:nowrap; font-size:13.5px }
   .ck-home table.ck-rows td:nth-child(3){ width:52px; font-size:12px }
   .ck-home table.ck-rows tfoot td{ font-size:15px; padding-top:13px }
-  .ck-home table.ck-rows tfoot td:nth-child(2){ font-size:15px; letter-spacing:-.05em }
+  .ck-home table.ck-rows tfoot td:nth-child(2){ font-size:15px; letter-spacing:var(--tracking-tight) }
   .ck-home .ck-card{ padding:18px 16px 20px }
 }
 
@@ -909,7 +883,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   font-family:inherit; color:var(--ink-3); transition:color .15s;
 }
 .ck-home .ck-rtlist b{
-  font-size:14.5px; font-weight:600; letter-spacing:-.03em; color:inherit;
+  font-size:14.5px; font-weight:600; letter-spacing:var(--tracking-tight); color:inherit;
 }
 .ck-home .ck-rtlist i{
   font-style:normal; font-size:12.5px; margin-left:auto; white-space:nowrap;
@@ -950,7 +924,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   border-color:var(--ink-3); transform:none; box-shadow:none;
 }
 .ck-home .card-ttl,
-.ck-home .pop-name{ font-size:16px; font-weight:700; letter-spacing:-.035em; line-height:1.35 }
+.ck-home .pop-name{ font-size:16px; font-weight:700; letter-spacing:var(--tracking-tight); line-height:1.35 }
 .ck-home .card-sub,
 .ck-home .pop-meta{ font-size:12.5px; color:var(--ink-3); margin-top:4px }
 
@@ -1055,7 +1029,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 }
 .ck-home .ck-stop i{
   font-style:normal; font-size:15px; font-weight:700;
-  letter-spacing:-.035em; color:var(--ink);
+  letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ck-home .ck-leg{
   display:flex; align-items:center; gap:9px; min-width:0;
@@ -1109,7 +1083,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 
 .ck-home .ck-playtx{ flex:0 0 auto; min-width:0; line-height:1.3 }
 .ck-home .ck-playtx b{
-  display:block; font-size:13.5px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+  display:block; font-size:13.5px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ck-home .ck-playtx i{
   font-style:normal; font-size:11.5px; color:var(--ink-3);
@@ -1131,7 +1105,7 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   transition:left .55s cubic-bezier(.4,.02,.2,1);
 }
 .ck-home .ck-playnow{
-  flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:-.03em;
+  flex:0 0 auto; font-size:12.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink-2); white-space:nowrap;
 }
 
@@ -1170,3 +1144,327 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
 .ck-home #ck_pane_place .ck-tabs{ margin-top:0 }
 .ck-home #ck_pane_trip[hidden],
 .ck-home #ck_pane_place[hidden]{ display:none }
+
+
+/* ── 숙박비 — 확정과 추정 ────────────────────────────────────
+   전에는 max-width:60ch 였다. 65자 규칙은 읽는 글에 맞는 것이고
+   이건 금액 그림이다. 1440px 에서 오른쪽 절반이 통째로 비어 보였다.
+   폭을 꽉 채우고 조각 위에 값을 얹는다 — 범례를 따로 두면 눈이 두 번 움직인다. */
+.ck-home .ck-conf2{ margin-top:6px }
+
+.ck-home .ck-conf2-sum{
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin:0 0 20px;
+}
+.ck-home .ck-conf2-sum b{
+  font-family:var(--fig); font-size:clamp(38px, 4.6vw, 58px); font-weight:300;
+  line-height:.9; letter-spacing:-.05em; color:var(--ink);
+}
+.ck-home .ck-conf2-sum span{
+  font-family:var(--fig); font-size:20px; font-weight:400; color:var(--ink-2);
+}
+.ck-home .ck-conf2-sum em{
+  font-style:normal; margin-left:auto; padding-bottom:5px;
+  font-size:13px; color:var(--ink-3); word-break:keep-all;
+}
+
+.ck-home .ck-conf2-bar{
+  display:flex; gap:3px; align-items:stretch;
+}
+.ck-home .ck-conf2-bar i{
+  position:relative; display:block; min-width:0;
+  padding:13px 15px 15px; border-radius:7px;
+  font-style:normal; word-break:keep-all;
+}
+.ck-home .ck-conf2-bar i b{
+  display:block; font-family:var(--fig); font-size:16px; font-weight:500;
+  letter-spacing:var(--tracking-num); line-height:1.2;
+}
+.ck-home .ck-conf2-bar i span{
+  display:block; margin-top:3px; font-size:12px; line-height:1.45;
+}
+/* 확정은 잉크, 추정은 연한 판. 확실한 쪽이 무거워야 한다 */
+.ck-home .ck-conf2-bar .ck-sure{ background:var(--ink) }
+.ck-home .ck-conf2-bar .ck-sure b{ color:var(--panel) }
+.ck-home .ck-conf2-bar .ck-sure span{ color:rgba(var(--w-rgb),.72) }
+.ck-home .ck-conf2-bar .ck-guess{ background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line) }
+.ck-home .ck-conf2-bar .ck-guess b{ color:var(--ink-2) }
+.ck-home .ck-conf2-bar .ck-guess span{ color:var(--ink-3) }
+
+.ck-home .ck-conf2-note{
+  margin:14px 0 0; font-size:13.5px; line-height:1.66; color:var(--ink-3);
+  word-break:keep-all;
+}
+
+/* ── 돌아가는 순서 — 세 칸 ──────────────────────────────────
+   전에는 66ch 안에 세 줄을 쌓아 오른쪽 절반이 비었다.
+   순서가 있는 것이니 번호는 남기고, 가로로 눕혀 폭을 쓴다. */
+.ck-home .ck-flow{
+  list-style:none; margin:0; padding:0; counter-reset:f;
+  display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0;
+  border-top:1.5px solid var(--ink);
+}
+.ck-home .ck-flow li{
+  counter-increment:f; position:relative;
+  padding:20px 26px 6px 0; word-break:keep-all;
+}
+.ck-home .ck-flow li + li{ padding-left:26px }
+/* 칸 사이는 선 하나. 카드 상자를 세 개 만들면 아래 절과 똑같아진다 */
+.ck-home .ck-flow li + li::after{
+  content:""; position:absolute; left:0; top:20px; bottom:6px; width:1px;
+  background:var(--ui-line-2);
+}
+.ck-home .ck-flow li::before{
+  content:counter(f, decimal-leading-zero);
+  display:block; margin-bottom:12px;
+  font-family:var(--fig); font-size:26px; font-weight:400;
+  letter-spacing:-.05em; line-height:1; color:var(--terra);
+}
+.ck-home .ck-flow b{
+  display:block; font-size:17.5px; font-weight:700; letter-spacing:var(--tracking-tight);
+  line-height:1.4; color:var(--ink);
+}
+.ck-home .ck-flow span{
+  display:block; margin-top:8px; font-size:14.5px; line-height:1.72; color:var(--ink-2);
+}
+
+@media (max-width:820px){
+  .ck-home .ck-flow{ grid-template-columns:1fr }
+  .ck-home .ck-flow li{ padding:18px 0 }
+  .ck-home .ck-flow li + li{ padding-left:0; border-top:1px solid var(--ui-line-2) }
+  .ck-home .ck-flow li + li::after{ content:none }
+  .ck-home .ck-conf2-bar{ flex-direction:column }
+  .ck-home .ck-conf2-sum em{ margin-left:0; width:100% }
+}
+
+/* 핀에 붙는 혼잡도. 숫자는 작게, 색이 먼저 말한다 */
+.ck-pin .ck-cw{
+  display:inline-block; margin-left:7px; padding:1px 6px 2px;
+  border-radius:99px; font-style:normal;
+  font-family:var(--fig); font-size:10.5px; font-weight:600;
+  letter-spacing:var(--tracking-num); vertical-align:1px;
+}
+.ck-pin .ck-cw.cw-vhigh{ background:var(--tile); color:var(--panel) }
+.ck-pin .ck-cw.cw-high { background:var(--terra); color:var(--panel) }
+.ck-pin .ck-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.ck-pin .ck-cw.cw-low,
+.ck-pin .ck-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+/* ══════════════════════════════════════════════════════════════
+   데모와 섞기 — 주 버튼은 잉크, 절 제목은 크게, 상태 판은 어둡게.
+   이 블록이 위의 규칙들을 덮는다. 원본을 여기저기 고치는 것보다
+   무엇을 왜 바꿨는지가 한자리에 남는다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 주 버튼 ─────────────────────────────────────────────────
+   미니어처가 주황을 다 갖고 있다. 버튼까지 주황이면 화면에 주황이
+   두 겹이 되어 어느 쪽이 신호인지 알 수 없다. 데모가 잉크를 쓴 이유다. */
+.ck-home .ck-go,
+.ck-home .ck-go2,
+.ck-home .ck-cta,
+.ck-home .btn-f,
+.ck-home .ck-sl-b1{
+  background:var(--ink); color:var(--panel); border:0;
+}
+.ck-home .ck-go:hover,
+.ck-home .ck-go2:hover,
+.ck-home .ck-cta:hover,
+.ck-home .btn-f:hover,
+.ck-home .ck-sl-b1:hover{ background:var(--ui-d) }
+
+/* ── 절 제목 ─────────────────────────────────────────────────
+   29px -> 44px. 레퍼런스가 전부 48~60px 다. 눈썹은 더 작고 조용하게. */
+.ck-home .ck-hd h2{
+  font-size:var(--t-h2); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.16;
+  max-width:18ch;
+}
+.ck-home .ck-hd{ align-items:flex-end; gap:32px; margin-bottom:34px }
+.ck-home .ck-hd .ck-side{
+  font-size:15px; line-height:1.68; color:var(--ink-2);
+  max-width:34ch; padding-bottom:6px;
+}
+
+/* ── 절 머리 — 자 위에 걸린 이름표 (b2tf.app) ────────────────
+   카드 없이 실선 하나로 절을 나눈다. 왼쪽 끝에 이름, 오른쪽 끝에
+   그 절의 숫자. 글자 뒤를 바탕색으로 덮어 선을 끊는다.
+
+   그림자와 둥근 카드를 겹겹이 쌓는 대신 선 하나로 끝내는 것 —
+   보내 준 두 곳(b2tf · inspora)이 공통으로 쓰는 방식이다. */
+.ck-home .ck-hd[data-label]{
+  position:relative;
+  padding-top:38px; border-top:1px solid var(--hair);
+  align-items:flex-end;
+}
+/* 이름표 줄 — 선 바로 아래. 왼쪽 끝에 이름, 오른쪽 끝에 숫자.
+   선 위에 얹고 뒤를 덮는 방식은 바탕색이 한 톤만 달라도 티가 난다. */
+.ck-home .ck-hd[data-label]::before,
+.ck-home .ck-hd[data-meta]::after{
+  position:absolute; top:12px;
+  flex:none; order:0; margin:0; padding:0; background:none;
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+  white-space:nowrap;
+}
+.ck-home .ck-hd[data-label]::before{ left:0 }
+.ck-home .ck-hd[data-meta]::after{
+  content:attr(data-meta); right:0;
+  letter-spacing:var(--tracking-num);
+  font-variant-numeric:tabular-nums;
+}
+.ck-home .ck-blk{ padding-block:clamp(48px, 5.6vw, 84px) }
+.ck-home .ck-blk + .ck-blk{ padding-top:0 }
+
+/* ── 히어로 제목 ─────────────────────────────────────────── */
+.ck-home .st-h1{
+  font-size:clamp(34px, 3.9vw, 54px); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.12;
+}
+.ck-home .st-head .fl-sub{ font-size:15px; line-height:1.66; margin-top:12px }
+.ck-home .st-head .fl-eye{ font-size:11px; letter-spacing:.02em; color:var(--num) }
+
+/* ── 상태 판을 어둡게 (체크인 데모) ──────────────────────────
+   밝은 모형 위에 어두운 판이 뜨면 읽을 것이 어디인지 한눈에 보인다.
+   흰 판 네 장을 쌓으면 어느 것이 중요한지 알 수 없다. */
+.ck-home .st-note{
+  background:var(--ink); box-shadow:0 20px 48px -18px rgba(16,24,38,.55);
+}
+.ck-home .st-note .st-line{ color:var(--panel) }
+.ck-home .st-note .st-line em{ color:var(--sig) }
+.ck-home .st-note .fl-tx{ color:rgba(255,255,255,.72) }
+.ck-home .st-note .ck-ph i{ background:rgba(255,255,255,.22) }
+.ck-home .st-note .ck-ph i.ck-on b,
+.ck-home .st-note .ck-ph i.ck-done b{ background:var(--sig) }
+.ck-home .st-note .ck-phbtn{
+  background:rgba(255,255,255,.12); border:0;
+}
+.ck-home .st-note .ck-phbtn svg{ stroke:var(--panel) }
+
+/* 대응 세 갈래 — 어두운 판 위에서 */
+.ck-home .st-note .ck-opt{
+  background:rgba(255,255,255,.07); border:0;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+}
+.ck-home .st-note .ck-opt:hover{ background:rgba(255,255,255,.13) }
+.ck-home .st-note .ck-opt b{ color:var(--panel) }
+.ck-home .st-note .ck-opt span{ color:rgba(255,255,255,.62) }
+.ck-home .st-note .ck-opt em{ color:var(--sig) }
+.ck-home .st-note .ck-opt em i{ color:rgba(255,255,255,.55) }
+.ck-home .st-note .ck-opt[aria-pressed="true"]{
+  background:var(--sig); box-shadow:none;
+}
+.ck-home .st-note .ck-opt[aria-pressed="true"] b{ color:var(--on-sig) }
+.ck-home .st-note .ck-opt[aria-pressed="true"] span,
+.ck-home .st-note .ck-opt[aria-pressed="true"] em,
+.ck-home .st-note .ck-opt[aria-pressed="true"] em i{ color:var(--on-sig-2) }
+
+/* ── 정거장 알약 — 지금 보는 곳만 채운다 ─────────────────── */
+.ck-home .st-stops .fl-pill{ font-size:13px; font-weight:600 }
+.ck-home .st-stops .fl-pill.fl-hot{ background:var(--ink); color:var(--panel) }
+.ck-home .st-stops .fl-pill.fl-hot b{ color:var(--sig) }
+
+/* ── 경로 만들기 바 — 가로로 길어졌으니 안쪽도 다시 잡는다 ──
+   전폭이 되면서 칸 네 개가 화면 끝까지 벌어졌다. 고르는 것은 왼쪽에
+   모으고 버튼은 오른쪽 끝에 둔다. 데모가 그 구성이다. */
+/* 한 줄로 못 박는다. flex + wrap 으로는 조건 칩이 자꾸 아래로 내려가
+   바가 두 줄(169px)이 되고 버튼이 화면 밖으로 밀렸다. */
+.ck-home .st-form .ck-bar{
+  display:grid; grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:end; gap:16px; padding:12px 16px 13px;
+  border-radius:var(--r-panel);
+}
+.ck-home .st-form .ck-fr{
+  display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px;
+  flex:none; min-width:0;
+}
+.ck-home .st-form .ck-fld label{ font-size:11px; margin-bottom:3px; color:var(--ink-3) }
+.ck-home .st-form .ck-fld select,
+.ck-home .st-form .ck-fld input{
+  padding:9px 11px 10px; border-radius:var(--r-field); font-size:14.5px;
+}
+.ck-home .st-form .ck-cond{ flex:0 0 auto; align-self:flex-end }
+.ck-home .st-form .ck-cond > span{ display:none }
+.ck-home .st-form .ck-go{
+  margin-left:auto; padding:12px 30px 13px; border-radius:var(--r-pill);
+  font-size:15px;
+}
+.ck-home .st-form .ck-note{ display:none }
+
+/* ── 왼쪽 칸이 폼을 덮지 않게 ────────────────────────────────
+   어두운 상태 판이 길어지면 폼 위로 내려온다(실측 778 > 717).
+   칸 안에서 스크롤한다. 판을 잘라 내면 「가는 길 바꾸기」가 사라진다. */
+.ck-home .st-tl{ overflow-y:auto; overscroll-behavior:contain; padding-right:2px }
+.ck-home .st-tl::-webkit-scrollbar{ width:0 }
+
+/* ── 작은 지도 · 시점 도구 ──────────────────────────────── */
+.ck-home .st-mini{ width:230px }
+
+/* ── 모형 밖에 있는 정거장 ──────────────────────────────────
+   광안리는 해운대 모형 안에 없다. 가장자리에 붙이고 거리를 적는다.
+   화면 밖으로 나가는 선이 「멀리 왔다갔다」를 그대로 보여 준다 —
+   없는 건물을 지어 넣는 것보다 정직하다. */
+.ck-pin.ck-far .ck-no{
+  background:var(--panel); color:var(--ink-2);
+  box-shadow:inset 0 0 0 1.5px var(--ink-3);
+}
+.ck-pin.ck-far .ck-bub{ opacity:.9 }
+.ck-pin .ck-dist{
+  display:inline-block; margin-left:6px; padding:1px 6px 2px;
+  border-radius:99px; font-style:normal;
+  font-family:var(--fig); font-size:10.5px; font-weight:600;
+  letter-spacing:var(--tracking-num);
+  background:var(--ui-plate-2); color:var(--ink-2); vertical-align:1px;
+}
+.ck-pin.ck-far .ck-dist{ background:var(--terra-pale); color:var(--terra) }
+
+/* ── 들어오는 장면 ──────────────────────────────────────────
+   선이 1번에서 3번으로 그어지고, 선이 닿은 핀부터 선다.
+   그리는 동안 하늘이 그 동선의 시각을 따라 흐른다.
+   한 번만 본다 — 같은 연출을 매번 보면 기다리는 시간이 된다. */
+.ck-pins .ck-draw{
+  position:absolute; inset:0; width:100%; height:100%;
+  overflow:visible; pointer-events:none; z-index:1;
+}
+.ck-pins .ck-draw polyline{
+  fill:none; stroke:var(--sig); stroke-width:2.4;
+  stroke-linecap:round; stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+  filter:none;
+}
+/* 선이 아직 안 닿은 핀. 자리는 잡아 두고 보이지만 않는다 —
+   나중에 나타나면서 옆 핀을 밀지 않는다 */
+.ck-pins .ck-pin.ck-wait{
+  opacity:0; transform:translate(-50%, -100%) scale(.86);
+  transition:none;
+}
+.ck-pins .ck-pin{
+  transition:opacity .34s ease, transform .34s cubic-bezier(.2,.9,.3,1);
+}
+/* 그리는 동안은 판을 물려 둔다. 선에 눈이 가야 한다 */
+.ck-home .ck-hero.ck-intro .st-tl,
+.ck-home .ck-hero.ck-intro .st-side,
+.ck-home .ck-hero.ck-intro .st-mini,
+.ck-home .ck-hero.ck-intro .st-form,
+.ck-home .ck-hero.ck-intro .st-cwkey{
+  opacity:.14; transition:opacity .5s ease;
+}
+
+/* ── 동선 선 ────────────────────────────────────────────────
+   핀과 같은 좌표계로 긋는다. 두 겹이라 도시 위에 올라가도 안 묻힌다.
+   지나온 구간은 채우고 안 간 구간은 점선으로 흐른다. */
+.ck-pins .ck-draw{
+  position:absolute; inset:0; width:100%; height:100%;
+  overflow:visible; pointer-events:none; z-index:1;
+}
+.ck-pins .ck-draw polyline{
+  fill:none; stroke-linecap:round; stroke-linejoin:round;
+  vector-effect:non-scaling-stroke;
+}
+.ck-pins .ck-ln-case{ stroke:var(--halo); stroke-width:6 }
+.ck-pins .ck-ln-done{ stroke:var(--sig);  stroke-width:2.6 }
+.ck-pins .ck-ln-todo{
+  stroke:var(--ink-3); stroke-width:2.2; stroke-dasharray:5 5;
+  opacity:.85;
+}
+@media (prefers-reduced-motion:no-preference){
+  .ck-pins .ck-ln-todo{ animation:ck-march 1.9s linear infinite }
+}
