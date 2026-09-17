@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <!--
+    Windows 명령줄 길이 한계(32767자) 회피.
+
+    의존성이 늘면 classpath 가 그 한계를 넘어서
+    「Command line is too long」이 난다. classpath 를 파일로 넘겨 해결한다.
+
+    .idea/runConfigurations/CheckinApplication.xml 에는 이미 이 설정이
+    있었지만 그쪽은 type="Application" 이다. IDE 에서 CheckinApplication 의
+    main() 옆 실행 버튼을 누르면 IntelliJ 가 Spring Boot 타입 설정을
+    따로 만들어 쓰는데, 그건 이 설정을 물려받지 않는다.
+    그래서 같은 이름으로 Spring Boot 타입도 저장소에 넣어 둔다.
+  -->
+  <configuration default="false" name="CheckinApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+    <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+    <module name="checkin.main" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="idusw.sbb.checkin.CheckinApplication" />
+    <option name="SHORTEN_COMMAND_LINE" value="ARGS_FILE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
