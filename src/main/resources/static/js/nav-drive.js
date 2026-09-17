@@ -50,6 +50,11 @@
     return { streak: s, off: s >= OFF_STREAK };
   }
 
+  // 안전 — m/s 속도를 km/h 로, 10 이상이면 주행 중(조작 잠금)
+  var DRIVE_KMH = 10;
+  function kmh(speedMs) { return speedMs == null || speedMs < 0 ? 0 : speedMs * 3.6; }
+  function isDriving(speedMs) { return kmh(speedMs) >= DRIVE_KMH; }
+
   /* ── 음성 ── */
   function speak(text) {
     try {
@@ -105,6 +110,8 @@
   /* ── 위치 갱신 ── */
   function onPos(p) {
     st.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+    // 안전 — 10km/h 넘으면 주행모드(화면 조작 잠금 클래스). 멈추면 해제
+    document.body.classList.toggle('rl-driving', isDriving(p.coords.speed));
     if (!st.route) return;
 
     // 이탈 판정
@@ -168,6 +175,8 @@
     st = { dest: dest, pos: null, route: null, offStreak: 0, guideIdx: 0, spoken: {}, wake: null, watchId: null };
     ensureOverlay();
     render('현재 위치를 잡는 중입니다.');
+    // 안전 — 시작할 때 한 번 경고
+    speak('운전 중에는 화면을 보지 마세요.');
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
     st.watchId = navigator.geolocation.watchPosition(
@@ -186,6 +195,7 @@
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
     document.removeEventListener('visibilitychange', onVisible);
     try { window.speechSynthesis.cancel(); } catch (e) {}
+    document.body.classList.remove('rl-driving');
     var el = document.getElementById('navDrive');
     if (el) el.remove();
     st = null;
@@ -213,7 +223,177 @@
     // 거리 계산 대략치
     var d = haversine(35.1151, 129.0413, 35.1587, 129.1604);
     console.assert(d > 10000 && d < 20000, '부산역-해운대 대략 14km: ' + Math.round(d));
+    // 안전 — 주행 판정 (10km/h = 2.78m/s)
+    console.assert(!isDriving(2), '2m/s(7km/h)는 주행 아님');
+    console.assert(isDriving(3), '3m/s(10.8km/h)는 주행');
+    console.assert(!isDriving(null), '속도 없으면 주행 아님');
     console.log('OK _navCheck 통과');
     return true;
   };
 })();
+
+/* 음성 비서 「체키」 — 듣기(SpeechRecognition) → 챗봇 → 읽기(speechSynthesis)
+ * 운전 중엔 말로만. 「체키야」로 부른 문장만 명령으로 본다.
+ * iOS 사파리는 SpeechRecognition 이 없어 꾹 눌러 말하기 버튼으로 대체한다.
+ * 자체검증: 콘솔에서 _voiceCheck()
+ */
+(function () {
+  'use strict';
+
+  var WAKE = '체키야';
+  var vs = null; // 음성 상태
+
+  /* ── 순수 판정 (자체검증 대상) ── */
+  // 「체키야」로 부른 문장이면 명령부만 잘라 돌려준다. 아니면 null.
+  function parseCommand(text) {
+    if (!text) return null;
+    var t = text.replace(/\s+/g, ' ').trim();
+    var i = t.indexOf(WAKE);
+    if (i === -1) return null;
+    var cmd = t.slice(i + WAKE.length).replace(/^[\s,]+/, '').trim();
+    return cmd.length ? cmd : null;
+  }
+  // 읽어 줄 답은 한 문장만 (운전 중엔 길면 놓친다)
+  function firstSentence(text) {
+    if (!text) return '';
+    var m = text.replace(/\s+/g, ' ').trim().split(/(?<=[.?!。])\s|\n/);
+    return (m[0] || '').trim();
+  }
+
+  function speak(text) {
+    try {
+      if (!('speechSynthesis' in window) || !text) return;
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ko-KR'; u.rate = 1.05;
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ── 챗봇 왕복 ── */
+  function ensureSession(cb) {
+    if (vs.sessionId) { cb(vs.sessionId); return; }
+    var headers = { 'Content-Type': 'application/json' };
+    fetch('/api/chat/sessions', {
+      method: 'POST', headers: headers,
+      body: JSON.stringify({ planId: vs.tripId || null })
+    }).then(function (r) { return r.json(); })
+      .then(function (j) { vs.sessionId = j && j.data && j.data.sessionId; cb(vs.sessionId); })
+      .catch(function () { speak('연결에 실패했습니다.'); });
+  }
+  function ask(cmd) {
+    ensureSession(function (sid) {
+      if (!sid) { speak('연결에 실패했습니다.'); return; }
+      render('체키에게 물어보는 중...');
+      fetch('/api/chat/message', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sid, message: cmd })
+      }).then(function (r) { return r.json(); })
+        .then(function (j) {
+          var reply = (j && (j.data && (j.data.reply || j.data.message) || j.message)) || '';
+          var one = firstSentence(reply) || '답을 받지 못했습니다.';
+          render(one); speak(one);
+        })
+        .catch(function () { speak('답을 받지 못했습니다.'); });
+    });
+  }
+
+  function heard(text) {
+    var cmd = parseCommand(text);
+    if (!cmd) return;              // 「체키야」 없는 말은 버린다
+    render('“' + cmd + '”');
+    ask(cmd);
+  }
+
+  /* ── 오버레이 ── */
+  function render(text) {
+    var h = document.getElementById('navVoiceMsg');
+    if (h) h.textContent = text;
+  }
+  function ensureUi() {
+    if (document.getElementById('navVoice')) return;
+    var el = document.createElement('div');
+    el.id = 'navVoice';
+    el.className = 'rl-voice';
+    el.innerHTML =
+      '<div class="rl-voice-msg" id="navVoiceMsg">체키 대기 중</div>' +
+      '<button type="button" class="rl-act" id="navMic">마이크 끄기</button>' +
+      '<button type="button" class="rl-act" id="navPtt">꾹 눌러 말하기</button>';
+    document.body.appendChild(el);
+    document.getElementById('navMic').addEventListener('click', toggleMic);
+    // iOS 등 상시인식 안 되는 기기용 — 누르는 동안만 듣기
+    var ptt = document.getElementById('navPtt');
+    ptt.addEventListener('mousedown', pttStart);
+    ptt.addEventListener('mouseup', pttStop);
+    ptt.addEventListener('touchstart', function (e) { e.preventDefault(); pttStart(); });
+    ptt.addEventListener('touchend', function (e) { e.preventDefault(); pttStop(); });
+  }
+
+  function makeRecognizer(continuous) {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return null;
+    var r = new SR();
+    r.lang = 'ko-KR'; r.continuous = continuous; r.interimResults = false;
+    r.onresult = function (e) {
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) heard(e.results[i][0].transcript);
+      }
+    };
+    return r;
+  }
+
+  function toggleMic() {
+    if (!vs) return;
+    if (vs.on) { stopListen(); } else { startListen(); }
+  }
+  function startListen() {
+    var r = makeRecognizer(true);
+    if (!r) {
+      // 상시 인식 불가(iOS) — 꾹 눌러 말하기만 쓴다
+      render('이 기기는 상시 인식이 안 됩니다. 꾹 눌러 말하세요.');
+      document.getElementById('navMic').style.display = 'none';
+      return;
+    }
+    vs.rec = r; vs.on = true;
+    document.getElementById('navMic').textContent = '마이크 끄기';
+    r.onend = function () { if (vs && vs.on) { try { r.start(); } catch (e) {} } }; // 끊기면 다시
+    try { r.start(); render('체키 듣는 중'); } catch (e) {}
+  }
+  function stopListen() {
+    if (vs && vs.rec) { vs.on = false; try { vs.rec.stop(); } catch (e) {} }
+    var b = document.getElementById('navMic');
+    if (b) b.textContent = '마이크 켜기';
+    render('마이크 꺼짐');
+  }
+  // 꾹 눌러 말하기 — 누르는 동안 한 번만 듣기
+  function pttStart() {
+    var r = makeRecognizer(false);
+    if (!r) { render('이 브라우저는 음성 인식을 지원하지 않습니다.'); return; }
+    vs.ptt = r; try { r.start(); render('말하세요...'); } catch (e) {}
+  }
+  function pttStop() { if (vs && vs.ptt) { try { vs.ptt.stop(); } catch (e) {} } }
+
+  window.startVoice = function (tripId) {
+    vs = { tripId: tripId || null, sessionId: null, rec: null, ptt: null, on: false };
+    ensureUi();
+    render('체키 준비됨. 마이크를 켜거나 꾹 눌러 말하세요.');
+  };
+  window.stopVoice = function () {
+    stopListen();
+    try { window.speechSynthesis.cancel(); } catch (e) {}
+    var el = document.getElementById('navVoice'); if (el) el.remove();
+    vs = null;
+  };
+
+  /* ── 자체검증 ── */
+  window._voiceCheck = function () {
+    console.assert(parseCommand('체키야 다음 어디야') === '다음 어디야', '명령 추출');
+    console.assert(parseCommand('체키야, 비 와?') === '비 와?', '쉼표 뒤 명령');
+    console.assert(parseCommand('그냥 혼잣말') === null, '체키야 없으면 무시');
+    console.assert(parseCommand('') === null, '빈 문자열 무시');
+    console.assert(firstSentence('12분 줄어듭니다. 순서를 바꿀까요') === '12분 줄어듭니다.', '한 문장만');
+    console.assert(firstSentence('짧은 답') === '짧은 답', '문장부호 없으면 통째');
+    console.log('OK _voiceCheck 통과');
+    return true;
+  };
+})();
+

@@ -70,6 +70,21 @@ public class TmapClient {
         return get("/tmap/pois", q);
     }
 
+    /** 주변 검색 — 현재 좌표 반경에서 「주유소·화장실·편의점」 같은 걸 찾는다. */
+    public JsonNode poisAround(double lat, double lon, String keyword, int radiusKm, int count) {
+        if (!ready()) return null;
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("version", "1");
+        q.put("centerLat", String.valueOf(lat));
+        q.put("centerLon", String.valueOf(lon));
+        q.put("radius", String.valueOf(Math.max(1, Math.min(33, radiusKm)))); // km, 최대 33
+        q.put("count", String.valueOf(Math.max(1, Math.min(20, count))));
+        q.put("reqCoordType", "WGS84GEO");
+        q.put("resCoordType", "WGS84GEO");
+        if (keyword != null && !keyword.isBlank()) q.put("searchKeyword", keyword);
+        return get("/tmap/pois/search/around", q);
+    }
+
     /**
      * 자동차 경로. departAt 이 있으면 예측경로(타임머신)로 부른다.
      * searchOption 0 = 교통최적+추천.
