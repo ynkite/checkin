@@ -15,14 +15,24 @@
   /* 네비가 흐름 안에 있다. 100dvh 로 두면 무대가 네비 높이만큼 아래로
      밀려 폼 바 아랫단이 화면 밖으로 나간다 — 1320x800 실측 831 > 800. */
   position:relative; height:calc(100dvh - var(--nav-h, 62px));
-  min-height:620px; overflow:hidden;
+  min-height:620px;
   padding:0; margin:0; background:var(--page-2);
+  /* overflow 를 여기에 걸면 접시 곡선이 경로 만들기 바의 좌우 끝을
+     같이 잘라 낸다. 잘라야 하는 것은 모형이지 판이 아니다.
+     자르기와 곡선은 아래에서 .ck-scene 에만 건다. */
   /* 아래 모서리를 크게 굴려 땅이 말려 내려가게 한다.
      레퍼런스(도쿄)의 「접시 위 디오라마」가 이 선 하나에서 온다.
      50% / 5.5% — 가로 반지름은 폭의 절반, 세로는 아주 얕게. 이 비율이라야
      둥근 상자가 아니라 「휘어 내려가는 땅」으로 읽힌다. */
+  border-radius:0;
+}
+
+/* 접시 곡선과 자르기는 모형에만. 판은 곡선 밖으로 나가도 된다 */
+.ck-home .ck-stage .ck-scene,
+.ck-home .ck-hero.ck-stage::after{
   border-radius:0 0 50% 50% / 0 0 5.5% 5.5%;
 }
+.ck-home .ck-stage .ck-scene{ overflow:hidden }
 
 /* 먼 쪽(위)의 안개와 가까운 쪽(아래)의 그늘.
    미니어처가 깊이를 갖는 고전적인 방법이다. 판보다 아래(z-index 1)에 둬서
@@ -336,3 +346,77 @@
    핀 말풍선은 그대로 눌린다 */
 .ck-home .ck-stage .ck-scene{ pointer-events:auto }
 .ck-home .ck-stage .ck-frame{ cursor:grab }
+
+/* ── 지금 시각·날씨 ─────────────────────────────────────────
+   배경색이 시각과 날씨를 따라 바뀌는데 왜 바뀌는지 말해 주지 않으면
+   그냥 색이 이상한 화면이 된다. 한 줄로 적는다. */
+.ck-home .st-wx{
+  position:absolute; left:var(--st-m); bottom:calc(var(--st-m) + 96px);
+  z-index:5; display:flex; align-items:center; gap:9px;
+  padding:9px 14px 10px; border-radius:var(--r-pill);
+  background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:inset 0 0 0 1px var(--glass-line);
+  font-size:12px; color:var(--ink-2); word-break:keep-all;
+}
+.ck-home .st-wx b{
+  font-family:var(--fig); font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-num);
+}
+.ck-home .st-wx i{ font-style:normal; color:var(--ink-3) }
+
+/* ── 혼잡도 눈금 ────────────────────────────────────────────
+   「95」만 보면 그게 얼마나 많은 건지 모른다. 사람은 숫자가 아니라
+   장면으로 안다. 단계마다 어떤 모습인지 한 줄로 붙인다. */
+.ck-home .st-cwkey{
+  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 96px);
+  z-index:5; width:min(360px, 40vw);
+}
+.ck-home .st-cwkey-t{
+  display:flex; align-items:baseline; gap:8px; width:100%;
+  padding:9px 14px 10px; border:0; cursor:pointer;
+  border-radius:var(--r-pill); background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+  box-shadow:inset 0 0 0 1px var(--glass-line);
+  font-family:inherit; font-size:12px; color:var(--ink-2); text-align:left;
+}
+.ck-home .st-cwkey-t b{
+  font-family:var(--fig); font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-num);
+}
+.ck-home .st-cwkey-t span{ margin-left:auto; color:var(--ink-3); font-size:11px }
+.ck-home .st-cwkey-t[aria-expanded="true"]{ border-bottom-left-radius:0; border-bottom-right-radius:0 }
+
+.ck-home .st-cwkey-b{
+  margin-top:6px; padding:12px 14px 13px;
+  border-radius:var(--r-panel); background:var(--panel); box-shadow:var(--lift);
+}
+.ck-home .st-cwrow{
+  display:grid; grid-template-columns:52px auto 1fr; align-items:baseline; gap:9px;
+  padding:6px 0; font-size:11.5px; color:var(--ink-2);
+}
+.ck-home .st-cwrow + .st-cwrow{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
+.ck-home .st-cwrow i{
+  font-style:normal; font-family:var(--fig); font-size:11px; font-weight:600;
+  letter-spacing:var(--tracking-num); color:var(--ink-3);
+  font-variant-numeric:tabular-nums;
+}
+.ck-home .st-cwrow b{
+  padding:2px 8px 3px; border-radius:var(--r-pill);
+  font-size:11px; font-weight:600; white-space:nowrap;
+}
+.ck-home .st-cwrow.cw-vhigh b{ background:var(--tile);       color:var(--panel) }
+.ck-home .st-cwrow.cw-high  b{ background:var(--terra);      color:var(--panel) }
+.ck-home .st-cwrow.cw-mid   b{ background:var(--ui-plate-2); color:var(--ink-2) }
+.ck-home .st-cwrow.cw-low   b,
+.ck-home .st-cwrow.cw-vlow  b{ background:var(--slate-pale); color:var(--slate) }
+.ck-home .st-cwkey-n{
+  margin:10px 0 0; padding-top:9px; border-top:1px solid var(--ui-line-2);
+  font-size:10.5px; line-height:1.55; color:var(--ink-3);
+}
+
+@media (max-width:1180px){
+  .ck-home .st-wx,
+  .ck-home .st-cwkey{ position:static; width:auto; margin:10px var(--st-m) 0 }
+  .ck-home .st-cwkey{ margin-bottom:4px }
+}

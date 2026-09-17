@@ -1397,3 +1397,21 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 
 /* ── 작은 지도 · 시점 도구 ──────────────────────────────── */
 .ck-home .st-mini{ width:230px }
+
+/* ── 모형 밖에 있는 정거장 ──────────────────────────────────
+   광안리는 해운대 모형 안에 없다. 가장자리에 붙이고 거리를 적는다.
+   화면 밖으로 나가는 선이 「멀리 왔다갔다」를 그대로 보여 준다 —
+   없는 건물을 지어 넣는 것보다 정직하다. */
+.ck-pin.ck-far .ck-no{
+  background:var(--panel); color:var(--ink-2);
+  box-shadow:inset 0 0 0 1.5px var(--ink-3);
+}
+.ck-pin.ck-far .ck-bub{ opacity:.9 }
+.ck-pin .ck-dist{
+  display:inline-block; margin-left:6px; padding:1px 6px 2px;
+  border-radius:99px; font-style:normal;
+  font-family:var(--fig); font-size:10.5px; font-weight:600;
+  letter-spacing:var(--tracking-num);
+  background:var(--ui-plate-2); color:var(--ink-2); vertical-align:1px;
+}
+.ck-pin.ck-far .ck-dist{ background:var(--terra-pale); color:var(--terra) }

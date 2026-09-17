@@ -23,7 +23,7 @@ def overpass(q):
     if os.path.exists(p):
         return json.load(open(p, encoding='utf-8'))
     d = urllib.request.urlopen(urllib.request.Request(
-        'https://overpass-api.de/api/interpreter',
+        os.environ.get('OVERPASS', 'https://overpass-api.de/api/interpreter'),
         data=urllib.parse.urlencode({'data': q}).encode(), headers=UA), timeout=300).read()
     j = json.loads(d)
     json.dump(j, open(p, 'w', encoding='utf-8'))

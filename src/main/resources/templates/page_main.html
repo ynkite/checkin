@@ -510,6 +510,8 @@
         <div class="ck-scene" aria-hidden="true">
           <div class="ck-frame" id="ck_frame">
             <div id="ck_scene"></div>
+            <!-- 날씨. data-wx 가 rain·snow·cloudy 일 때만 보인다 -->
+            <div class="ck-wx" id="ck_wx" aria-hidden="true"></div>
             <div class="ck-pins" id="ck_pinlayer"></div>
           </div>
         </div>
@@ -541,17 +543,17 @@
             <div class="ck-opts" id="ck_opts" hidden>
               <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
                 <b>순서 바꾸기</b>
-                <span>동백섬 먼저, 해수욕장은 17시 10분에</span>
-                <em>대기 40분 줄어듦<i>추가 비용 없음</i></em>
+                <span>지금 95예요. 동백섬 먼저 보고 해 질 때 다시</span>
+                <em>줄 40분 덜 섬<i>돈은 그대로</i></em>
               </button>
               <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
-                <b>다른 곳으로</b>
-                <span>해수욕장 대신 해운대 전통시장으로</span>
-                <em>지금 한적<i>걸어서 9분</i></em>
+                <b>가까운 데로</b>
+                <span>광안리 8.4km 대신 동백섬. 걸어서 12분</span>
+                <em>52분 → 12분<i>차 안 타도 됨</i></em>
               </button>
               <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
-                <b>가는 길 바꾸기</b>
-                <span>해변길 대신 안쪽 도로 · 티맵 실시간</span>
+                <b>길만 바꾸기</b>
+                <span>해변길이 막혀요. 안쪽 도로로 돌아서</span>
                 <em>11분 빠름<i>1.2km 더</i></em>
               </button>
             </div>
@@ -626,6 +628,31 @@
             </div>
           </div>
         </aside>
+
+        <!-- 지금 시각·날씨. 배경이 왜 이 색인지 여기서 말한다 -->
+        <div class="st-wx" id="st_wx" hidden></div>
+
+        <!-- 혼잡도 눈금 — 숫자만으로는 얼마나 많은 건지 모른다 -->
+        <div class="st-cwkey" id="st_cwkey">
+          <button type="button" class="st-cwkey-t" id="st_cwkey_t"
+                  aria-expanded="false" aria-controls="st_cwkey_b">
+            혼잡도 <b>0 – 100</b><span>숫자가 클수록 붐빕니다</span>
+          </button>
+          <div class="st-cwkey-b" id="st_cwkey_b" hidden>
+            <div class="st-cwrow cw-vlow">
+              <i>0–34</i><b>매우 한적</b><span>줄이 없습니다. 아무 자리나 앉습니다</span></div>
+            <div class="st-cwrow cw-low">
+              <i>35–51</i><b>한적</b><span>앞에 서너 팀. 기다릴 것도 없습니다</span></div>
+            <div class="st-cwrow cw-mid">
+              <i>52–69</i><b>정상</b><span>평소 주말쯤. 자리는 있습니다</span></div>
+            <div class="st-cwrow cw-high">
+              <i>70–84</i><b>혼잡</b><span>식당은 20분쯤 기다립니다. 주차는 한참 돕니다</span></div>
+            <div class="st-cwrow cw-vhigh">
+              <i>85–100</i><b>매우 혼잡</b><span>돗자리 깔 자리를 찾아 한참 걷습니다</span></div>
+            <p class="st-cwkey-n">한국관광공사 관광지 집중률 예측입니다.
+              전국 1,770건을 재서 다섯 단계로 나눴습니다.</p>
+          </div>
+        </div>
 
         <!-- 아래 가운데 — 경로 만들기 -->
         <div class="st-form">
