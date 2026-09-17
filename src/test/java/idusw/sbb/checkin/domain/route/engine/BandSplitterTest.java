@@ -44,6 +44,9 @@ class BandSplitterTest {
 
     // ── 결정 1 : 밴드 분류 (브리핑 지정 테스트 — 더미 20개) ──────────────────
 
+    /** 귀가거점이 앵커면 방향 정보가 없다. 결정 12 이후 마지막 날 판정에는 진짜 귀가거점이 필요하다. */
+    private static final GeoPoint FAR_HOME = northOf(ANCHOR_POINT, 300);
+
     @Test
     void 부산_더미_20개가_거리대로_NEAR_MID_RETURN에_갈린다() {
         List<Candidate> near = selfSufficientNear();
@@ -71,51 +74,49 @@ class BandSplitterTest {
         all.addAll(ret);
 
         BandSplitter splitter = BandSplitter.withDefaults();
-        List<DailyCandidatePool> result = splitter.split(
-                ANCHOR, constraintsWithDeparture(ANCHOR_POINT), all, 3);
+        RouteConstraints constraints = constraintsWithDeparture(FAR_HOME);
+        List<DailyCandidatePool> result = splitter.split(ANCHOR, constraints, all, 3);
 
         assertThat(result).hasSize(3);
+        assertThat(result).extracting(DailyCandidatePool::sourceBand)
+                .containsExactly(DistanceBand.NEAR, DistanceBand.MID, DistanceBand.RETURN);
 
-        DailyCandidatePool day0 = result.get(0);
-        assertThat(day0.sourceBand()).isEqualTo(DistanceBand.NEAR);
-        assertThat(day0.relaxed()).isFalse();
-        assertThat(idsOf(day0)).containsExactlyInAnyOrder(
-                "near1", "near2", "near3", "near4", "near5", "near6", "near7", "near8");
-
-        DailyCandidatePool day1 = result.get(1);
-        assertThat(day1.sourceBand()).isEqualTo(DistanceBand.MID);
-        assertThat(day1.relaxed()).isFalse();
-        assertThat(idsOf(day1)).containsExactlyInAnyOrder(
-                "mid1", "mid2", "mid3", "mid4", "mid5", "mid6", "mid7", "mid8", "mid9", "mid10");
-
+        // 마지막 날이 먼저 고른다 (결정 12) — 우회비용 임계 안쪽에서 귀가거점에 가까운 순으로 8곳
         DailyCandidatePool day2 = result.get(2);
-        assertThat(day2.sourceBand()).isEqualTo(DistanceBand.RETURN);
-        assertThat(idsOf(day2)).allMatch(id -> id.startsWith("ret"));
+        assertThat(day2.relaxed()).isFalse();
+        assertThat(day2.size()).isEqualTo(BandSplitter.DEFAULT_MIN_PER_DAY);
+        assertThat(day2.candidates()).allMatch(c -> constraints.detourCostKm(c.location()) <= 20.0);
+        assertThat(idsOf(day2)).contains("ret1", "ret2"); // 26·30km — 가장 멀리 나아간 축
+        assertThat(idsOf(day2)).doesNotContain("ret3", "ret4", "ret5"); // 50·80·100km — 36km 가드 밖
+
+        // 남은 후보만 거리로 갈린다
+        assertThat(result.get(0).candidates())
+                .allMatch(c -> ANCHOR_POINT.distanceKmTo(c.location()) < BandSplitter.DEFAULT_NEAR_BOUNDARY);
+        assertThat(idsOf(result.get(0))).doesNotContainAnyElementsOf(idsOf(day2));
+        assertThat(idsOf(result.get(1))).doesNotContainAnyElementsOf(idsOf(day2));
     }
 
     // ── 결정 3 재사용 : NEAR 부족 시 MID 에서 보충 ──────────────────────────
 
     @Test
     void NEAR가_부족하면_MID에서_가까운_순으로_보충한다() {
+        // 마지막 날이 8곳을 먼저 가져가므로(결정 12) 중거리를 넉넉히 둬야 보충 자체를 볼 수 있다.
         List<Candidate> candidates = new ArrayList<>();
         candidates.add(candidateAt("near1", northOf(ANCHOR_POINT, 2)));
-        candidates.add(candidateAt("mid1", northOf(ANCHOR_POINT, 6)));
-        candidates.add(candidateAt("mid2", northOf(ANCHOR_POINT, 7)));
-        candidates.add(candidateAt("mid3", northOf(ANCHOR_POINT, 8)));
-        candidates.add(candidateAt("mid4", northOf(ANCHOR_POINT, 9)));
-        candidates.add(candidateAt("mid5", northOf(ANCHOR_POINT, 10)));
-        candidates.add(candidateAt("mid6", northOf(ANCHOR_POINT, 11)));
-        candidates.add(candidateAt("mid7", northOf(ANCHOR_POINT, 12)));
-        candidates.add(candidateAt("mid8", northOf(ANCHOR_POINT, 13))); // 제일 멀어서 보충에서 빠져야 함
+        for (int k = 1; k <= 16; k++) {
+            candidates.add(candidateAt("mid" + k, northOf(ANCHOR_POINT, 5.5 + k * 0.5)));
+        }
 
         BandSplitter splitter = BandSplitter.withDefaults();
         List<DailyCandidatePool> result = splitter.split(
-                ANCHOR, constraintsWithDeparture(ANCHOR_POINT), candidates, 2);
+                ANCHOR, constraintsWithDeparture(FAR_HOME), candidates, 2);
 
         DailyCandidatePool day0 = result.get(0);
         assertThat(day0.relaxed()).isTrue();
-        assertThat(idsOf(day0)).containsExactlyInAnyOrder(
-                "near1", "mid1", "mid2", "mid3", "mid4", "mid5", "mid6", "mid7");
+        assertThat(day0.size()).isEqualTo(BandSplitter.DEFAULT_MIN_PER_DAY);
+        assertThat(idsOf(day0)).contains("near1");
+        // 보충은 앵커에서 가까운 순이다 — 마지막 날이 가져가고 남은 중거리 중 앞쪽
+        assertThat(idsOf(day0)).doesNotContainAnyElementsOf(idsOf(result.get(1)));
     }
 
     @Test
@@ -124,9 +125,12 @@ class BandSplitterTest {
 
         BandSplitter splitter = BandSplitter.withDefaults();
         List<DailyCandidatePool> result = splitter.split(
-                ANCHOR, constraintsWithDeparture(ANCHOR_POINT), candidates, 2);
+                ANCHOR, constraintsWithDeparture(FAR_HOME), candidates, 2);
 
-        assertThat(result.get(1).candidates()).isEmpty();
+        // 결정 12 이후로는 마지막 날이 먼저 고르므로, 하나뿐인 후보는 마지막 날이 가져가고 첫날이 빈다.
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).candidates()).isEmpty();
+        assertThat(idsOf(result.get(1))).containsExactly("near1");
     }
 
     // ── 결정 5-(2) : 방위각 간격 컷으로 중간 날 분리 ─────────────────────────
@@ -146,10 +150,11 @@ class BandSplitterTest {
             groupB.add(candidateAt("b" + k, new GeoPoint(35.0 - offset, 129.0 - offset)));
         }
 
-        List<Candidate> ret = List.of(
-                candidateAt("ret1", northOf(ANCHOR_POINT, 30)),
-                candidateAt("ret2", northOf(ANCHOR_POINT, 40)),
-                candidateAt("ret3", northOf(ANCHOR_POINT, 50)));
+        // 귀가 방향(북쪽)으로 8곳 — 마지막 날이 이걸 가져가서 A·B 덩이를 건드리지 않게 한다
+        List<Candidate> ret = new ArrayList<>();
+        for (int k = 0; k < 8; k++) {
+            ret.add(candidateAt("ret" + k, northOf(ANCHOR_POINT, 35 - k * 1.5)));
+        }
 
         List<Candidate> all = new ArrayList<>();
         all.addAll(selfSufficientNear());
@@ -159,7 +164,7 @@ class BandSplitterTest {
 
         BandSplitter splitter = BandSplitter.withDefaults();
         List<DailyCandidatePool> result = splitter.split(
-                ANCHOR, constraintsWithDeparture(ANCHOR_POINT), all, 4);
+                ANCHOR, constraintsWithDeparture(FAR_HOME), all, 4);
 
         assertThat(result).hasSize(4);
         DailyCandidatePool middle1 = result.get(1);
@@ -213,8 +218,9 @@ class BandSplitterTest {
                     new GeoPoint(ANCHOR_POINT.latitude(), ANCHOR_POINT.longitude() + lngOffsets[i])));
         }
 
-        List<Candidate> all = new ArrayList<>(selfSufficientNear());
-        all.addAll(offPath);
+        // 근거리 필러를 넣지 않는다 — 결정 12 이후 숙소 옆 후보는 우회비용이 0에 가까워
+        // 임계를 통과해버리고, 그러면 완화 폴백 자체가 안 돈다.
+        List<Candidate> all = new ArrayList<>(offPath);
 
         BandSplitter splitter = new BandSplitter(
                 BandSplitter.DEFAULT_NEAR_BOUNDARY, BandSplitter.DEFAULT_MID_BOUNDARY,
@@ -243,7 +249,10 @@ class BandSplitterTest {
         List<DailyCandidatePool> result = BandSplitter.withDefaults().split(
                 ANCHOR, constraintsWithDeparture(departurePoint), all, 2);
 
-        assertThat(idsOf(result.get(1))).containsExactly("in35");
+        // in35 는 귀가거점에 가장 가까워 마지막 날 1순위, out37·out60 은 가드에서 이미 빠졌다
+        assertThat(idsOf(result.get(1))).contains("in35").doesNotContain("out37", "out60");
+        assertThat(result).flatExtracting(DailyCandidatePool::candidates)
+                .extracting(Candidate::id).doesNotContain("out37", "out60");
     }
 
     @Test
@@ -258,8 +267,9 @@ class BandSplitterTest {
                 ANCHOR, constraintsWithDeparture(departurePoint), all, 2);
 
         // 완화는 "임계 이하가 모자라면 우회비용 순으로 채운다" 지 "가드를 푼다" 가 아니다.
-        assertThat(result.get(1).candidates()).isEmpty();
-        assertThat(result.get(1).relaxed()).isTrue();
+        assertThat(result).flatExtracting(DailyCandidatePool::candidates)
+                .extracting(Candidate::id)
+                .doesNotContain("far0", "far1", "far2", "far3", "far4");
     }
 
     @Test
@@ -290,8 +300,8 @@ class BandSplitterTest {
             returnCandidates.add(candidateAt("r" + k, new GeoPoint(35.0 + latOffset, 129.1763)));
         }
 
-        List<Candidate> all = new ArrayList<>(selfSufficientNear());
-        all.addAll(returnCandidates);
+        // 여기도 근거리 필러를 빼야 임계의 효과만 보인다 (위와 같은 이유)
+        List<Candidate> all = new ArrayList<>(returnCandidates);
 
         BandSplitter splitter = BandSplitter.withDefaults();
 

@@ -116,15 +116,13 @@ class StubCandidateProviderTest {
         assertThat(constraints.detourCostKm(ganjeolgot)).isBetween(20.0, 25.0); // 약 22.2 — 북동
         assertThat(constraints.detourCostKm(gadeokdo)).isGreaterThan(30.0);   // 약 30.8 — 남서, 반대편
 
-        // 스텁에 임계(20) 이내 후보가 수로왕릉 하나뿐이라 기본 minPerDay(8) 로는 완화 폴백이 셋을 다
-        // 끌어온다. 우회비용 순위가 실제로 작동하는지 보려면 최소치를 2로 낮춰야 한다.
-        BandSplitter splitter = new BandSplitter(BandSplitter.DEFAULT_NEAR_BOUNDARY,
-                BandSplitter.DEFAULT_MID_BOUNDARY, 2, null, Haversine::distanceKm);
-        DailyCandidatePool lastDay = splitter.split(anchor, constraints, candidates, 3).get(2);
+        // 결정 12 : 마지막 날 풀은 거리 구간이 아니라 우회비용 임계로 정해진다.
+        DailyCandidatePool lastDay = BandSplitter.withDefaults().split(anchor, constraints, candidates, 3).get(2);
 
-        assertThat(idsOf(lastDay))
-                .contains("busan-gimhae-suro-tomb", "busan-ganjeolgot")
-                .doesNotContain("busan-gadeokdo-daehang");
+        assertThat(idsOf(lastDay)).contains("busan-gimhae-suro-tomb");
+        // 임계를 넘는 둘은 빠진다 — 간절곶은 22.2 로 아깝게, 가덕도는 방향이 반대라 크게 넘는다
+        assertThat(idsOf(lastDay)).doesNotContain("busan-ganjeolgot", "busan-gadeokdo-daehang");
+        assertThat(lastDay.candidates()).allMatch(c -> constraints.detourCostKm(c.location()) <= 20.0);
     }
 
     private static Set<String> idsOf(DailyCandidatePool pool) {

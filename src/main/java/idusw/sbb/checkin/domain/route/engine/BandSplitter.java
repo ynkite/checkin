@@ -102,8 +102,18 @@ public final class BandSplitter {
         }
 
         GeoPoint anchorPoint = anchor != null ? anchor.location() : constraints.arrivalPoint();
+        List<Candidate> withinGuard = candidates.stream()
+                .filter(c -> anchorPoint.distanceKmTo(c.location()) <= MAX_RETURN_DISTANCE_KM)
+                .toList();
         Set<String> used = new HashSet<>();
-        Map<DistanceBand, List<Candidate>> bands = classify(candidates, anchorPoint);
+
+        // 마지막 날을 먼저 확보한다 (결정 12). 귀가 방향은 거리 구간이 아니라 우회비용 술어라,
+        // 밴드를 먼저 자르면 숙소 근처의 "가는 길" 후보가 근거리 밴드에 묶여 영영 안 나온다.
+        DailyCandidatePool lastDay = totalDays > 1
+                ? buildLastDay(withinGuard, totalDays - 1, constraints, used, anchorPoint)
+                : null;
+
+        Map<DistanceBand, List<Candidate>> bands = classify(withoutUsed(withinGuard, used), anchorPoint);
 
         List<DailyCandidatePool> result = new ArrayList<>();
 
@@ -112,7 +122,7 @@ public final class BandSplitter {
         markUsed(used, day0);
         result.add(new DailyCandidatePool(0, DistanceBand.NEAR, day0, day0Relaxed));
 
-        if (totalDays == 1) {
+        if (lastDay == null) {
             return List.copyOf(result);
         }
 
@@ -121,7 +131,7 @@ public final class BandSplitter {
             result.addAll(buildMiddleDays(bands, middleDayCount, used, anchorPoint));
         }
 
-        result.add(buildLastDay(bands, totalDays - 1, constraints, used, anchorPoint));
+        result.add(lastDay);
 
         return List.copyOf(result);
     }
@@ -138,10 +148,6 @@ public final class BandSplitter {
             DistanceBand band = cost < nearBoundary ? DistanceBand.NEAR
                     : cost < midBoundary ? DistanceBand.MID
                     : DistanceBand.RETURN;
-            if (band == DistanceBand.RETURN
-                    && anchorPoint.distanceKmTo(candidate.location()) > MAX_RETURN_DISTANCE_KM) {
-                continue; // 뒤 단계가 어차피 지운다 — 중간 날 보충 후보로도 쓰지 않는다
-            }
             bands.get(band).add(candidate);
         }
         return bands;
@@ -236,23 +242,38 @@ public final class BandSplitter {
 
     // ── 마지막 날 (결정 2 + 결정 5-(4)) ──────────────────────────────────
 
-    private DailyCandidatePool buildLastDay(Map<DistanceBand, List<Candidate>> bands, int dayIndex,
+    /**
+     * 마지막 날 풀 = <b>전체 후보 중</b> 우회비용이 임계 이하인 것들 (결정 12). 거리 하한은 없다 —
+     * 카카오가 숙소 반경 20km 만 주므로 "25km 이상" 같은 하한을 두면 귀가 풀이 항상 빈다.
+     *
+     * <p>임계 이내가 {@code minPerDay} 를 넘으면 <b>귀가거점에 가까운 순</b>으로 자른다. 귀가거점이
+     * 수백 km 밖이면 숙소 옆 후보도 우회비용이 0에 가까워 임계를 통과하는데, 그것들까지 마지막 날이
+     * 가져가면 첫날 근거리 풀이 빈다. 실제로 집 쪽으로 나아가는 후보를 고르는 기준이 필요하다.
+     *
+     * <p>임계 이내가 모자라면 완화 폴백(결정 5-(4))으로 우회비용 오름차순으로 채운다 — 그때는
+     * 방향의 질 자체가 희소 자원이라 기준이 다르다.
+     */
+    private DailyCandidatePool buildLastDay(List<Candidate> candidates, int dayIndex,
                                              RouteConstraints constraints, Set<String> used, GeoPoint anchorPoint) {
-        List<Candidate> available = withoutUsed(bands.get(DistanceBand.RETURN), used);
         double maxDetourCost = resolveMaxDetourCost(anchorPoint, constraints);
 
-        List<Candidate> sortedByDetour = available.stream()
-                .sorted(Comparator.comparingDouble(c -> detourCost(anchorPoint, constraints, c.location())))
-                .toList();
-
-        List<Candidate> withinThreshold = sortedByDetour.stream()
+        List<Candidate> withinThreshold = candidates.stream()
                 .filter(c -> detourCost(anchorPoint, constraints, c.location()) <= maxDetourCost)
+                .sorted(Comparator
+                        .comparingDouble((Candidate c) -> c.location().distanceKmTo(constraints.departurePoint()))
+                        .thenComparing(Candidate::id))
                 .toList();
 
         boolean relaxed = withinThreshold.size() < minPerDay;
-        List<Candidate> lastDayPool = relaxed
-                ? sortedByDetour.subList(0, Math.min(minPerDay, sortedByDetour.size()))
+        List<Candidate> ranked = relaxed
+                ? candidates.stream()
+                        .sorted(Comparator
+                                .comparingDouble((Candidate c) -> detourCost(anchorPoint, constraints, c.location()))
+                                .thenComparing(Candidate::id))
+                        .toList()
                 : withinThreshold;
+
+        List<Candidate> lastDayPool = ranked.subList(0, Math.min(minPerDay, ranked.size()));
 
         markUsed(used, lastDayPool);
         return new DailyCandidatePool(dayIndex, DistanceBand.RETURN, lastDayPool, relaxed);
