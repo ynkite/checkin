@@ -72,7 +72,8 @@ public class LodgingRateService {
     }
 
     /**
-     * 바베큐 제공 여부 — detailIntro2 chkbarbecue (D 조사 항목).
+     * 바베큐 제공 여부 — detailIntro2 의 barbecue 필드 (D 조사 항목).
+     * 실제 응답은 필드명이 barbecue 이고 값이 "1"(가능)/"0"(불가) 로 온다 (chkbarbecue 아님).
      * 금액은 오지 않는다. 「가능한 숙소인지」만 확정이고 「얼마인지」는 추정으로 남는다.
      */
     public boolean barbecueAvailable(String contentId) {
@@ -80,9 +81,7 @@ public class LodgingRateService {
         p.put("contentId", contentId);
         p.put("contentTypeId", "32");
         for (JsonNode n : arr(client.items(SERVICE, "detailIntro2", p))) {
-            String v = text(n, "chkbarbecue").trim();
-            // 응답이 "가능" / "Y" / "1" 등으로 제각각이라 부정 표현만 걸러낸다.
-            if (!v.isBlank() && !v.equals("0") && !v.equals("없음") && !v.equals("불가")) return true;
+            if ("1".equals(text(n, "barbecue").trim())) return true;
         }
         return false;
     }
