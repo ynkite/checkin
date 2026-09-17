@@ -30,22 +30,29 @@ def overpass(q):
     return j
 
 
+ROADS = os.environ.get('CK_ROADS',
+    '^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|pedestrian|footway|service)$')
+TREES = os.environ.get('CK_TREES', '1') == '1'
+
+
 def fetch(bbox):
     b = '%f,%f,%f,%f' % bbox
-    q = """
+    # 넓은 범위에서는 길·나무를 줄여야 Overpass 가 답한다.
+    # CK_ROADS 로 큰 길만, CK_TREES=0 으로 나무를 뺀다.
+    tree = ('  node["natural"="tree"](%s);' % b) + chr(10) if TREES else ''
+    q = ("""
 [out:json][timeout:300];
 (
   way["building"](%s);
   relation["building"](%s);
-  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|pedestrian|footway|service)$"](%s);
+  way["highway"~"%s"](%s);
   way["natural"~"^(beach|water|coastline|wood|scrub|sand)$"](%s);
   way["landuse"~"^(grass|forest|recreation_ground|cemetery|village_green)$"](%s);
   way["leisure"~"^(park|pitch|garden|golf_course|playground)$"](%s);
   way["waterway"="river"](%s);
-  node["natural"="tree"](%s);
-);
+%s);
 out geom tags;
-""" % ((b,) * 8)
+""" % (b, b, ROADS, b, b, b, b, b, tree))
     return overpass(q)
 
 
