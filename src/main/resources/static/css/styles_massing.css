@@ -103,19 +103,25 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 @media (prefers-reduced-motion:no-preference){
   /* 무리마다 다른 고리를 다른 속도로 돈다. 주기가 서로 나누어떨어지지
      않으므로(23·31·27·37·29초) 언제 봐도 다섯이 같은 자리에 있지 않다. */
-  .crowd .cw{ will-change:transform; transform-box:fill-box; transform-origin:50% 50% }
+  /* 움직이는 무리는 셋이다. 다섯이었는데, 무리 하나가 모형 폭을 거의
+     다 덮어서 레이어 다섯 장이 각각 1900×1350 텍스처가 됐다.
+     램이 넉넉하지 않은 기계에서 그게 돈다.
+     회전은 둘에만 남긴다 — 회전이 무리 안에서 사람마다 다르게 움직이는
+     느낌을 만드는 값이라 아주 버릴 수는 없다.
+     나머지 둘은 자리에 서 있다. 실제로도 모든 사람이 걷지는 않는다. */
+  .crowd .cw.b1,
+  .crowd .cw.b3,
+  .crowd .cw.b5{ will-change:transform }
   .crowd .cw.b1{ animation:ck-walk-a 23s ease-in-out infinite }
-  .crowd .cw.b2{ animation:ck-walk-b 31s ease-in-out -6s infinite }
   .crowd .cw.b3{ animation:ck-walk-c 27s ease-in-out -13s infinite }
-  .crowd .cw.b4{ animation:ck-walk-b 37s ease-in-out -21s infinite }
-  .crowd .cw.b5{ animation:ck-walk-a 29s ease-in-out -4s infinite }
+  .crowd .cw.b5{ animation:ck-walk-flat 29s ease-in-out -4s infinite }
 
-  /* 파도는 밀려 들어온다. 점선 오프셋만 흘린다 */
-  .wv{ animation:ck-swell 7s linear infinite }
-  /* 아직 안 간 구간은 앞으로 흐른다. 어디로 가는 중인지가 선에서 읽힌다 */
-  .rt-todo,.rb-todo{ animation:ck-march 1.9s linear infinite }
-  .wv.w2{ animation-duration:9s }
-  .wv.w3{ animation-duration:11s }
+  /* 파도 — 전에는 stroke-dashoffset 을 흘렸다. 그건 「칠하기」 속성이라
+     합성으로 안 끝나고 매 프레임 긴 path 를 다시 칠한다.
+     transform 으로 바꿨다. 밀려오는 느낌은 그대로다. */
+  .wv{ will-change:transform; animation:ck-wave 7s ease-in-out infinite alternate }
+  .wv.w2{ animation-duration:9s; animation-delay:-2s }
+  .wv.w3{ animation-duration:11s; animation-delay:-5s }
 
   /* 차 22대·파라솔 57개를 각각 움직이면 애니메이션 대상이 109개가 된다.
      SVG 는 요소마다 그 영역을 다시 그리므로 프레임이 떨어진다.
@@ -165,8 +171,22 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
   94%  { transform:translate(2.7px,  -.4px) rotate(.21deg) }
  100%  { transform:translate(0,0) rotate(0deg) }
 }
-@keyframes ck-swell{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-56 } }
-@keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
+/* 회전 없는 걷기 — 레이어 하나를 아끼려고 둔 것이 아니다.
+   무리 셋 중 하나는 회전 없이 밀리게 둬서 세 무리가 서로 다르게 보인다 */
+@keyframes ck-walk-flat{
+   0%  { transform:translate(0,0) }
+  18%  { transform:translate(2.1px, 1.4px) }
+  36%  { transform:translate(3.4px, -.8px) }
+  55%  { transform:translate(.6px, -2.2px) }
+  73%  { transform:translate(-2.4px, -1.1px) }
+  88%  { transform:translate(-1.8px, 1.0px) }
+ 100%  { transform:translate(0,0) }
+}
+/* 파도 — 밀려오고 물러난다. 아주 조금 */
+@keyframes ck-wave{
+  from{ transform:translate3d(0, 0, 0) }
+  to  { transform:translate3d(-3.2px, 1.1px, 0) }
+}
 
 /* ── 시간대 · 사람 수 ────────────────────────────────────────
    두 가지가 같은 opacity 를 놓고 다툰다 —

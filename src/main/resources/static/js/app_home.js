@@ -233,6 +233,7 @@
 
     var DUR = 2600;
     var t0 = performance.now();
+    var skyAt = 0;
 
     /* 그리는 동안 하늘은 첫 정거장 시각에서 마지막 정거장 시각으로 */
     var hFrom = 13.5, hTo = 17.5;
@@ -257,8 +258,13 @@
         if (k <= reach) pins[k].classList.remove('ck-wait');
       }
 
-      /* 하늘이 그 동선의 시각을 따라 흐른다 */
-      if (window.ckSky) {
+      /* 하늘이 그 동선의 시각을 따라 흐른다.
+         ckSky 는 :root 에 변수를 106개 쓴다. 루트 변수 하나를 바꾸면
+         그걸 쓰는 문서 전체의 스타일이 무효가 된다 — 매 프레임 부르면
+         초당 6,360번 문서 전체를 다시 계산한다. 그게 끊김의 원인이었다.
+         하늘은 천천히 변하는 것이라 150ms 마다면 충분하다. */
+      if (window.ckSky && now - skyAt > 150) {
+        skyAt = now;
         var h = hFrom + (hTo - hFrom) * e;
         var d = new Date();
         d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);

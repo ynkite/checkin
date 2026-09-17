@@ -196,7 +196,10 @@
 
 /* ── 경로 만들기 바 — 무대 위에 뜨는 판이다 ────────── */
 .st-form .ck-bar{
-  background:var(--void-veil-2); backdrop-filter:blur(14px);
+  /* 전에는 backdrop-filter:blur(14px) 였다. 아래에서 SVG 가 움직이는
+     동안 유리 한 장마다 매 프레임 뒤 배경을 다시 읽는다.
+     거의 불투명한 바탕으로 바꿨다 — 보기에 큰 차이가 없다. */
+  background:var(--void-veil-2);
   border:0; border-radius:16px; box-shadow:var(--lift); padding:13px 15px 14px;
 }
 
@@ -336,27 +339,6 @@
   .ck-home .ck-hero.ck-stage .ck-scene::before{ content:none }
 }
 
-/* ── 배율 ───────────────────────────────────────────────────
-   모형은 지도다. 지도는 당겨 볼 수 있어야 한다.
-   휠과 두 손가락으로도 되지만 버튼이 있어야 할 수 있는 줄 안다. */
-.ck-home .fl-zoom{
-  display:inline-flex; align-items:center; gap:2px; margin-left:6px;
-  padding:2px; border-radius:var(--r-pill); background:var(--glass);
-  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
-  box-shadow:inset 0 0 0 1px var(--glass-line);
-}
-.ck-home .fl-zb{
-  min-width:28px; height:26px; padding:0 8px; border:0; cursor:pointer;
-  border-radius:var(--r-pill); background:transparent;
-  font-family:inherit; font-size:12px; font-weight:500; color:var(--ink-2);
-  transition:background .14s ease, color .14s ease;
-}
-.ck-home .fl-zb:hover{ background:var(--ui-plate); color:var(--ink) }
-
-/* 장면이 휠을 받아야 하므로 클릭을 통과시키지 않는다.
-   핀 말풍선은 그대로 눌린다 */
-.ck-home .ck-stage .ck-scene{ pointer-events:auto }
-.ck-home .ck-stage .ck-frame{ cursor:grab }
 
 /* ── 지금 시각·날씨 ─────────────────────────────────────────
    배경색이 시각과 날씨를 따라 바뀌는데 왜 바뀌는지 말해 주지 않으면
@@ -430,4 +412,27 @@
   .ck-home .st-wx,
   .ck-home .st-cwkey{ position:static; width:auto; margin:10px var(--st-m) 0 }
   .ck-home .st-cwkey{ margin-bottom:4px }
+}
+
+/* 작은 지도 배율 — 여기도 버튼으로만. 휠은 막아 뒀다.
+   지도 안에서 휠이 먹으면 페이지를 내리려다 지도만 확대된다. */
+.ck-home .fl-mini-hd .fl-mz{
+  display:inline-flex; gap:2px; margin-left:auto; margin-right:8px;
+}
+.ck-home .fl-mini-hd .fl-mz button{
+  width:24px; height:22px; padding:0; border:0; cursor:pointer;
+  border-radius:6px; background:var(--ui-plate); color:var(--ink-2);
+  font-family:var(--fig); font-size:13px; line-height:1;
+  transition:background .14s ease, color .14s ease;
+}
+.ck-home .fl-mini-hd .fl-mz button:hover{ background:var(--ui-plate-2); color:var(--ink) }
+
+/* ── 무대 위 판에서 유리를 걷는다 ──────────────────────────
+   아래에서 모형이 움직이는 동안 backdrop-filter 는 매 프레임
+   뒤 배경을 다시 읽는다. 무대 위에만 네 겹이 떠 있었다.
+   지도 화면 쪽 유리는 그대로 둔다 — 거기는 아래가 안 움직인다. */
+.ck-home .st-wx,
+.ck-home .st-cwkey-t{
+  -webkit-backdrop-filter:none; backdrop-filter:none;
+  background:var(--void-veil-2);
 }

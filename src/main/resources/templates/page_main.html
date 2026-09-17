@@ -569,17 +569,16 @@
           <button type="button" class="fl-tool" id="st_t_walk" aria-pressed="true">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v5l-3 8M12 13l3 8M8 11l8-1"/></svg>사람 움직임
           </button>
-          <!-- 배율. 휠·두 손가락으로도 되고, 두 번 누르면 처음 자리로 -->
-          <span class="fl-zoom">
-            <button type="button" class="fl-zb" id="st_z_out" aria-label="축소">−</button>
-            <button type="button" class="fl-zb" id="st_z_in" aria-label="확대">+</button>
-          </span>
         </div>
 
         <!-- 왼쪽 아래 — 작은 지도. 큰 무대와 서로 바꿔 볼 수 있다 -->
         <div class="fl fl-tight fl-mini st-mini" id="st_mini">
           <div class="fl-mini-hd">
             <b id="st_mini_ttl">지금 위치 지도</b>
+            <span class="fl-mz">
+              <button type="button" id="st_m_out" aria-label="축소">−</button>
+              <button type="button" id="st_m_in" aria-label="확대">+</button>
+            </span>
             <button type="button" id="st_fold" aria-expanded="true">접기</button>
           </div>
           <div class="fl-mini-map" id="st_minimap"></div>
