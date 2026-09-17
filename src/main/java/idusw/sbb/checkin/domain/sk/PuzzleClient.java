@@ -30,8 +30,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PuzzleClient {
 
+    /* 쉼표로 여러 개. 한도가 찬 키는 오늘 건너뛴다 */
+    private idusw.sbb.checkin.global.apikey.KeyRing ring = new idusw.sbb.checkin.global.apikey.KeyRing("puzzle", "");
+
     @Value("${sk.puzzle.api.key:}")
-    private String appKey;
+    private void setPuzzleKey(String raw) {
+        this.ring = new idusw.sbb.checkin.global.apikey.KeyRing("puzzle", raw);
+    }
 
     @Value("${sk.puzzle.api.base-url:https://apis.openapi.sk.com/puzzle}")
     private String baseUrl;
@@ -40,7 +45,7 @@ public class PuzzleClient {
     private final ObjectMapper objectMapper;
 
     public boolean ready() {
-        return appKey != null && !appKey.isBlank();
+        return ring.ready();
     }
 
     /**
@@ -64,7 +69,7 @@ public class PuzzleClient {
         String url = baseUrl + path + qs;
         try {
             HttpHeaders h = new HttpHeaders();
-            h.set("appKey", appKey);
+            h.set("appKey", ring.current());
             h.set("Accept", "application/json");
             String raw = restTemplate.exchange(
                     URI.create(url), HttpMethod.GET, new HttpEntity<>(h), String.class).getBody();
@@ -79,6 +84,14 @@ public class PuzzleClient {
             }
             return root;
 
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            int st = e.getStatusCode().value();
+            if (ring.fail(st)) {
+                log.info("[puzzle] 다음 키로 다시 부릅니다 ({})", path);
+                return get(path, query);
+            }
+            log.warn("[puzzle] {} 실패 HTTP {}", path, st);
+            return null;
         } catch (Exception e) {
             log.warn("[puzzle] {} 실패: {}", path, e.getMessage());
             return null;

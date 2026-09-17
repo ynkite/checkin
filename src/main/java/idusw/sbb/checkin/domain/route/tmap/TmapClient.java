@@ -37,8 +37,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TmapClient {
 
+    /* 쉼표로 여러 개를 넣을 수 있다. 한도가 찬 키는 건너뛴다 —
+       심사 기간에 한 사람 키로 버티다 한도를 넘기면 그 순간부터
+       화면이 「연동 전」이 된다. */
+    private idusw.sbb.checkin.global.apikey.KeyRing ring;
+
     @Value("${tmap.api.key:}")
-    private String appKey;
+    private void setKey(String raw) {
+        this.ring = new idusw.sbb.checkin.global.apikey.KeyRing("tmap", raw);
+    }
 
     @Value("${tmap.api.base-url:https://apis.openapi.sk.com}")
     private String baseUrl;
@@ -48,7 +55,7 @@ public class TmapClient {
 
     /** 키가 들어와 있는가. 화면에 「연동 전」이라고 정직하게 쓰려면 알아야 한다. */
     public boolean ready() {
-        return appKey != null && !appKey.isBlank();
+        return ring.ready();
     }
 
     /** POI 통합검색 — 「부산역」 같은 글자를 좌표로. 첫 결과만 본다. */
@@ -146,7 +153,7 @@ public class TmapClient {
     private HttpHeaders headers() {
         HttpHeaders h = new HttpHeaders();
         h.setContentType(MediaType.APPLICATION_JSON);
-        h.set("appKey", appKey);
+        h.set("appKey", ring.current());
         h.set("Accept", "application/json");
         return h;
     }
@@ -168,9 +175,19 @@ public class TmapClient {
             HttpEntity<Object> req = new HttpEntity<>(body, headers());
             String raw = restTemplate.exchange(URI.create(url), method, req, String.class).getBody();
             return raw == null ? null : objectMapper.readTree(raw);
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            /* 한도가 찼거나(429) 키가 거부되면(401·403) 다음 키로 넘기고
+               한 번 더 부른다. 서버가 느린 것(5xx)으로는 키를 죽이지 않는다 */
+            int st = e.getStatusCode().value();
+            if (ring.fail(st)) {
+                log.info("[tmap] 다음 키로 다시 부릅니다 ({})", path);
+                return call(method, path, body);
+            }
+            log.warn("[tmap] {} 실패 HTTP {}", path, st);
+            return null;
         } catch (Exception e) {
-            /* 키가 틀렸거나 길이 없거나 SK 가 느릴 때다. 여기서 터지면
-               경로 화면 전체가 죽는다. 로그만 남기고 없음으로 돌려준다. */
+            /* 길이 없거나 SK 가 느릴 때다. 여기서 터지면 경로 화면
+               전체가 죽는다. 로그만 남기고 없음으로 돌려준다. */
             log.warn("[tmap] {} 실패: {}", path, e.getMessage());
             return null;
         }
