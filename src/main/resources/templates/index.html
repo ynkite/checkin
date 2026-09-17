@@ -106,6 +106,7 @@
   <link rel="stylesheet" th:href="@{/css/styles_budget.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_place.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_weather.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_community.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_calendar.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_float.css(v=20260917e)}">
@@ -140,6 +141,7 @@
     <button class="nav-link on" onclick="goHomeRefresh()">홈</button>
     <button class="nav-link" onclick="goRefresh('community')">커뮤니티</button>
     <button class="nav-link" onclick="goRefresh('weather')">날씨</button>
+    <button class="nav-link" onclick="goRefresh('live')">실시간</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">플랜</button>
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
@@ -195,6 +197,7 @@
 <th:block th:insert="~{page_admin :: admin}"></th:block>
 <th:block th:insert="~{page_place :: place}"></th:block>
 <th:block th:insert="~{page_weather :: weather}"></th:block>
+<th:block th:insert="~{page_live :: live}"></th:block>
 
 <!-- ===== JS ===== -->
 <script th:src="@{/js/crowd.js(v=20260917e)}"></script>

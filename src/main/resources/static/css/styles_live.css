@@ -1,0 +1,155 @@
+/*
+ * 체크인 — 실시간 (styles_live.css)
+ *
+ * 움직이면서 보는 화면이다. 앉아서 보는 화면과 규칙이 다르다 —
+ *   글자를 키운다. 걸으면서 읽는다
+ *   버튼을 크게. 손이 흔들린다
+ *   한 화면에 한 가지만. 다음 정거장이 제일 크다
+ *
+ * 색·간격은 tokens.css 변수만 쓴다.
+ */
+
+#page-live{ background:var(--page-2) }
+
+.rl-wrap{
+  max-width:720px; margin:0 auto; padding:clamp(28px, 5vw, 56px) 22px 80px;
+  word-break:keep-all; overflow-wrap:break-word;
+}
+
+/* ── 여행 고르기 ─────────────────────────────────────────── */
+.rl-hd{ margin-bottom:26px }
+.rl-eye{
+  margin:0; font-family:var(--fig); font-size:11.5px; font-weight:500;
+  letter-spacing:.01em; color:var(--ink-3);
+}
+.rl-ttl{
+  margin:6px 0 0; font-size:clamp(26px, 3.4vw, 36px); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.24; color:var(--ink);
+}
+.rl-sub{ margin:10px 0 0; font-size:14.5px; line-height:1.68; color:var(--ink-2) }
+
+.rl-trips{ display:grid; gap:10px }
+.rl-load{ font-size:13px; color:var(--ink-3) }
+
+.rl-trip{
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px;
+  padding:18px 20px; border:0; cursor:pointer; text-align:left;
+  border-radius:var(--r-panel); background:var(--panel);
+  box-shadow:var(--lift); font-family:inherit;
+  transition:box-shadow .16s ease, transform .16s ease;
+}
+.rl-trip:hover{ transform:translateY(-1px) }
+.rl-trip-s{
+  padding:3px 9px 4px; border-radius:var(--r-pill);
+  font-size:11px; font-weight:600; white-space:nowrap;
+  background:var(--ui-plate); color:var(--ink-2);
+}
+.rl-trip-s.rl-today{ background:var(--sig); color:var(--on-sig) }
+.rl-trip-s.rl-after{ color:var(--ink-3) }
+.rl-trip-t{
+  font-size:16.5px; font-weight:600; letter-spacing:var(--tracking-tight);
+  color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.rl-trip-d{
+  font-family:var(--fig); font-size:12px; color:var(--ink-3);
+  letter-spacing:var(--tracking-num); white-space:nowrap;
+}
+
+.rl-empty{ padding:34px 24px; border-radius:var(--r-panel); background:var(--panel);
+  box-shadow:var(--lift); text-align:center }
+.rl-empty-1{ margin:0; font-size:16px; font-weight:600; color:var(--ink) }
+.rl-empty-2{ margin:8px 0 0; font-size:13px; line-height:1.66; color:var(--ink-2) }
+.rl-go{
+  margin-top:18px; padding:12px 22px 13px; border:0; border-radius:var(--r-pill);
+  cursor:pointer; background:var(--ink); color:var(--panel);
+  font-family:inherit; font-size:14px; font-weight:600;
+}
+
+/* ── 지금 상황 ───────────────────────────────────────────── */
+.rl-back{
+  padding:7px 14px 8px; border:0; border-radius:var(--r-pill); cursor:pointer;
+  background:var(--ui-plate); color:var(--ink-2);
+  font-family:inherit; font-size:12.5px;
+}
+.rl-back:hover{ color:var(--ink) }
+
+.rl-when{
+  margin:20px 0 0; font-family:var(--fig); font-size:12px; color:var(--ink-3);
+  letter-spacing:var(--tracking-num);
+}
+.rl-head{
+  margin:8px 0 0; font-size:clamp(22px, 3vw, 30px); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.32; color:var(--ink);
+}
+
+/* 다음 정거장 — 이 화면에서 제일 큰 것 */
+.rl-next{
+  margin-top:22px; padding:24px 24px 26px;
+  border-radius:var(--r-panel); background:var(--panel); box-shadow:var(--lift);
+}
+.rl-next-lb{
+  margin:0; font-family:var(--fig); font-size:11px; font-weight:500;
+  color:var(--ink-3); letter-spacing:.02em;
+}
+.rl-next-n{
+  display:block; margin-top:6px; font-size:clamp(24px, 3.4vw, 34px); font-weight:700;
+  letter-spacing:var(--tracking-tight); line-height:1.2; color:var(--ink);
+}
+.rl-next-m{ margin:8px 0 0; font-size:14px; color:var(--ink-2) }
+.rl-next-m em{
+  font-style:normal; font-family:var(--fig); font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-num);
+}
+.rl-none{ margin:0; font-size:15px; color:var(--ink-2) }
+
+.rl-cw{
+  display:inline-block; margin-top:14px; padding:5px 12px 6px;
+  border-radius:var(--r-pill); font-size:13px; font-weight:600;
+}
+.rl-cw.cw-vhigh{ background:var(--tile);  color:var(--panel) }
+.rl-cw.cw-high { background:var(--terra); color:var(--panel) }
+.rl-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.rl-cw.cw-low,
+.rl-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+.rl-cw-none{ background:var(--ui-plate); color:var(--ink-3); font-weight:400 }
+
+/* 할 수 있는 것 — 손이 흔들려도 눌리게 크게 */
+.rl-acts{ display:grid; gap:8px; margin-top:14px }
+@media (min-width:560px){ .rl-acts{ grid-template-columns:1fr 1fr } }
+.rl-act{
+  display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+  min-height:72px; padding:16px 18px; border:0; cursor:pointer; text-align:left;
+  border-radius:var(--r-panel); background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--ui-line); font-family:inherit;
+  transition:box-shadow .14s ease;
+}
+.rl-act:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
+.rl-act b{ font-size:16px; font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-tight) }
+.rl-act span{ font-size:12.5px; color:var(--ink-2) }
+
+/* 그날 동선 */
+.rl-rail{
+  margin-top:22px; border-radius:var(--r-panel); background:var(--panel);
+  box-shadow:var(--lift); overflow:hidden;
+}
+.rl-st{
+  display:grid; grid-template-columns:56px 1fr auto; align-items:center; gap:12px;
+  padding:14px 20px;
+}
+.rl-st + .rl-st{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
+.rl-st-t{
+  font-family:var(--fig); font-size:12.5px; color:var(--ink-3);
+  letter-spacing:var(--tracking-num); font-variant-numeric:tabular-nums;
+}
+.rl-st-n{ font-size:15px; font-weight:500; color:var(--ink) }
+.rl-st-c{ font-size:11.5px; color:var(--ink-3) }
+.rl-st-done .rl-st-t,
+.rl-st-done .rl-st-n{ color:var(--ink-3) }
+.rl-st-now{ background:var(--ui-plate) }
+.rl-st-now .rl-st-n{ font-weight:700 }
+.rl-st-now .rl-st-t{ color:var(--num); font-weight:600 }
+
+.rl-src{
+  margin:18px 0 0; font-size:11px; line-height:1.6; color:var(--ink-3);
+}

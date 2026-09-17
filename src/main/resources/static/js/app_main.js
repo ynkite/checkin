@@ -334,6 +334,13 @@ async function go(id, addToHistory) {
     const pg = document.getElementById('page-' + id);
     if (pg) pg.classList.add('active');
 
+    /* 실시간 — 들어오면 켜고 나가면 끈다. 타이머를 안 끄면 배터리를 먹는다 */
+    if (id === 'live') {
+        if (typeof initLivePage === 'function') setTimeout(initLivePage, 40);
+    } else if (typeof stopLivePage === 'function') {
+        stopLivePage();
+    }
+
     if (id === 'map') {
         setTimeout(function() {
             if (typeof initMapPage === 'function') {
