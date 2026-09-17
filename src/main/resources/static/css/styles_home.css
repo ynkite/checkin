@@ -1283,15 +1283,41 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   font-size:15px; line-height:1.68; color:var(--ink-2);
   max-width:34ch; padding-bottom:6px;
 }
-.ck-home .ck-hd[data-label]::before{
-  font-size:12px; font-weight:600; letter-spacing:0; color:var(--num);
+
+/* ── 절 머리 — 자 위에 걸린 이름표 (b2tf.app) ────────────────
+   카드 없이 실선 하나로 절을 나눈다. 왼쪽 끝에 이름, 오른쪽 끝에
+   그 절의 숫자. 글자 뒤를 바탕색으로 덮어 선을 끊는다.
+
+   그림자와 둥근 카드를 겹겹이 쌓는 대신 선 하나로 끝내는 것 —
+   보내 준 두 곳(b2tf · inspora)이 공통으로 쓰는 방식이다. */
+.ck-home .ck-hd[data-label]{
+  position:relative;
+  padding-top:38px; border-top:1px solid var(--hair);
+  align-items:flex-end;
 }
-.ck-home .ck-blk{ padding-block:clamp(56px, 7vw, 104px) }
+/* 이름표 줄 — 선 바로 아래. 왼쪽 끝에 이름, 오른쪽 끝에 숫자.
+   선 위에 얹고 뒤를 덮는 방식은 바탕색이 한 톤만 달라도 티가 난다. */
+.ck-home .ck-hd[data-label]::before,
+.ck-home .ck-hd[data-meta]::after{
+  position:absolute; top:12px;
+  flex:none; order:0; margin:0; padding:0; background:none;
+  font-family:var(--fig); font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+  white-space:nowrap;
+}
+.ck-home .ck-hd[data-label]::before{ left:0 }
+.ck-home .ck-hd[data-meta]::after{
+  content:attr(data-meta); right:0;
+  letter-spacing:var(--tracking-num);
+  font-variant-numeric:tabular-nums;
+}
+.ck-home .ck-blk{ padding-block:clamp(48px, 5.6vw, 84px) }
+.ck-home .ck-blk + .ck-blk{ padding-top:0 }
 
 /* ── 히어로 제목 ─────────────────────────────────────────── */
 .ck-home .st-h1{
   font-size:clamp(34px, 3.9vw, 54px); font-weight:700;
-  letter-spacing:-.042em; line-height:1.08;
+  letter-spacing:var(--tracking-tight); line-height:1.12;
 }
 .ck-home .st-head .fl-sub{ font-size:15px; line-height:1.66; margin-top:12px }
 .ck-home .st-head .fl-eye{ font-size:11px; letter-spacing:.02em; color:var(--num) }

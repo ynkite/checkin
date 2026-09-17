@@ -2911,6 +2911,9 @@ function showDay(day, btn) {
         });
     }
     if (typeof updateBoundsForDay === 'function') updateBoundsForDay(day);
+    /* 하단 레일도 같은 날을 본다 */
+    window._MP_DAY = day;
+    if (typeof _mpRail === 'function') { _MP_DAY = day; _mpRail(); }
 }
 function switchMapTab(tab, btn) {
     document.querySelectorAll('.btn-map-act').forEach(b => b.classList.remove('on'));

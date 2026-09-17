@@ -7,10 +7,10 @@
  * styles_stage.css 뒤에 둔다. 색·간격은 tokens.css 변수만 쓴다.
  */
 
-/* 절 눈썹 — 판 눈썹(.fl-eye)과 같은 결 */
-.ck-home .ck-hd[data-label]::before{
-  color:var(--terra); font-size:10px; font-weight:700; letter-spacing:.14em;
-}
+/* 절 눈썹은 styles_home.css 가 정한다.
+   전에 여기서 테라코타 10px / 700 / 자간 .14em 으로 덮고 있었다.
+   작고 굵고 넓게 벌린 색 있는 한글은 읽히지도 않고 촌스럽다.
+   보내 준 두 곳(b2tf · inspora) 모두 눈썹에 색을 쓰지 않는다. */
 
 /* ── 지금 한가한 곳 ──────────────────────────────────
    숫자만 크게 두면 64가 높은 건지 낮은 건지 모른다. 등급을 붙인다. */

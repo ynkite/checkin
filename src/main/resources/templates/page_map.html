@@ -1491,6 +1491,9 @@
           realTotalBudget += dailySum;
         });
 
+        /* 지도 위 돈 카드를 먼저 만든다 — #totalBudget 가 그 안에 있다 */
+        _mpPaintMoney(realTotalBudget, catSums);
+
         const finalBudgetStr = realTotalBudget.toLocaleString() + '원';
         if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
         if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = finalBudgetStr;
@@ -1622,6 +1625,7 @@
 
         _mpApplyFold();
         _mpSelectInitial();
+        _mpRail();
 
         MAP_PINS = [];
         DAY_ROUTES = [];
@@ -2435,6 +2439,123 @@
       Array.prototype.forEach.call(document.querySelectorAll('.mp-pin[data-key]'), function (p) {
         p.classList.toggle('mp-pin-on', p.getAttribute('data-key') === key);
       });
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  지도 위 판 — 「체크인」 데모 구조.
+     *
+     *  레일  그날 동선을 한 줄로. 누르면 왼쪽 목록의 같은 줄이 열린다 —
+     *        두 곳에서 따로 노는 상태를 만들지 않는다
+     *  돈    그날이 아니라 여행 전체. 항목 비중을 한 줄 막대로
+     * ════════════════════════════════════════════════════════ */
+
+    var _MP_DAY = 'all';        /* 지금 보고 있는 일차. showDay 가 적는다 */
+
+    function _mpRailDay() {
+      if (_MP_DAY !== 'all') return Number(_MP_DAY);
+      /* 전체를 보고 있으면 오늘에 해당하는 일차, 없으면 첫날 */
+      for (var i = 0; i < (MAP_ITINERARY || []).length; i++) {
+        var d = _mpDayDate(MAP_ITINERARY[i].day);
+        if (d && _mpSameDay(d, new Date())) return MAP_ITINERARY[i].day;
+      }
+      return (MAP_ITINERARY[0] || {}).day || 1;
+    }
+
+    function _mpSameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
+          && a.getDate() === b.getDate();
+    }
+
+    function _mpRail() {
+      var box = document.getElementById('mpRail');
+      if (!box) return;
+      var days = MAP_ITINERARY || [];
+      if (!days.length) { box.hidden = true; return; }
+
+      var dayNo = _mpRailDay();
+      var day = days.filter(function (d) { return d.day === dayNo; })[0] || days[0];
+      var spots = (day.places || []).filter(function (p) { return !p.transit && p.name; });
+      if (!spots.length) { box.hidden = true; return; }
+
+      var liveIdx = _mpLiveIndex(day.day, spots);
+      var dt = _mpDayDate(day.day);
+      var dateTxt = dt ? (dt.getMonth() + 1) + '/' + dt.getDate() + ' (' + _MP_DOW[dt.getDay()] + ')' : '';
+
+      var nodes = spots.map(function (p, i) {
+        var c = _mpCrowd[p.name];
+        var g = (c && c.rate != null && typeof crowd === 'function') ? crowd.of(c) : null;
+        return '<button type="button" class="mp-nd' + (i === liveIdx ? ' mp-nd-now' : '') +
+               (i < liveIdx ? ' mp-nd-done' : '') + '"' +
+               ' data-key="' + _mpEsc(p.key) + '" onclick="_mpRailGo(this)">' +
+               '<span class="mp-nd-t">' + _mpEsc(p.time || ('0' + (i + 1)).slice(-2)) + '</span>' +
+               '<span class="mp-nd-n">' + _mpEsc(p.name) + '</span>' +
+               (g ? '<span class="mp-nd-c cw-' + g.key + '">' + _mpEsc(g.label) + '</span>'
+                  : (p.sub ? '<span class="mp-nd-s">' + _mpEsc(p.sub) + '</span>' : '')) +
+               '</button>';
+      }).join('');
+
+      var pager = days.map(function (d) {
+        return '<button type="button" class="mp-pg' + (d.day === dayNo ? ' on' : '') +
+               '" onclick="_mpRailDayGo(' + d.day + ')">' + d.day + '일차</button>';
+      }).join('');
+
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mp-strip">' + nodes + '</div>' +
+        '<div class="mp-pager">' +
+          (dateTxt ? '<span class="mp-pg-d">' + _mpEsc(dateTxt) + '</span>' : '') +
+          pager +
+        '</div>';
+    }
+
+    /* 레일에서 고르면 왼쪽 목록의 같은 줄을 연다. 두 곳이 따로 놀면
+       무엇을 보고 있는지 알 수 없다 */
+    function _mpRailGo(btn) {
+      var key = btn.getAttribute('data-key');
+      var row = document.querySelector('.place-row[data-key="' + key + '"]');
+      document.querySelectorAll('.mp-nd.mp-on').forEach(function (n) { n.classList.remove('mp-on'); });
+      btn.classList.add('mp-on');
+      if (!row) return;
+      selectPlaceRow(row);
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function _mpRailDayGo(dayNo) {
+      var tab = document.getElementById('dtab-' + dayNo);
+      if (tab && typeof showDay === 'function') showDay(String(dayNo), tab);
+      else { _MP_DAY = String(dayNo); _mpRail(); }
+    }
+
+    /* 오늘 쓸 돈 — 총액과 항목 비중. 비중은 initMapPage 가 이미 센 값이다 */
+    function _mpPaintMoney(total, cats) {
+      var box = document.getElementById('mpMoney');
+      if (!box) return;
+      if (total != null) window._mpMoneyTotal = total;
+      if (cats) window._mpMoneyCats = cats;
+      total = window._mpMoneyTotal || 0;
+      cats = window._mpMoneyCats || {};
+
+      var rows = [
+        { k: 'stay',    label: '숙박' },
+        { k: 'food',    label: '먹는 곳' },
+        { k: 'tour',    label: '볼거리' },
+        { k: 'transit', label: '이동' }
+      ].filter(function (r) { return (cats[r.k] || 0) > 0; });
+      var sum = rows.reduce(function (a, r) { return a + cats[r.k]; }, 0);
+
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mp-mo-hd">전체 여행 예산</div>' +
+        '<div class="mp-mo-n" id="totalBudget">' + total.toLocaleString() + '원</div>' +
+        (sum > 0
+          ? '<div class="mp-mo-bar">' + rows.map(function (r) {
+              return '<i class="mp-mo-' + r.k + '" style="flex:' + cats[r.k] + '"></i>';
+            }).join('') + '</div>' +
+            '<div class="mp-mo-lg">' + rows.map(function (r) {
+              return '<span class="mp-mo-' + r.k + '">' + r.label + ' ' +
+                     Math.round(cats[r.k] / sum * 100) + '%</span>';
+            }).join('') + '</div>'
+          : '<p class="mp-mo-none">금액이 적힌 일정이 아직 없습니다.</p>');
     }
 
     function selectPlaceRow(row) {
@@ -3316,33 +3437,14 @@
         <div id="queueToggle" style="display:none">
           <button onclick="openQueue()">교체 요청 목록 열기</button>
         </div>
-        <!-- 혼잡 안내 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
-        <div class="mp-alert" id="mpAlert" hidden></div>
-        <!-- 출발 — 출발지에서 첫 장소까지. _mpLoadTravel() 이 채운다 -->
-        <div class="mp-depart" id="mpDepart" hidden></div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
-        <div class="map-budget-bar">
-          <div class="mbb-label">전체 여행 예산</div>
-          <div class="mbb-amount" id="totalBudget">0원</div>
-        </div>
-        <div class="map-acts">
-          <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
-          <button class="btn-map-act" id="mapTabModel" onclick="switchMapTab('model',this)">3D 모형</button>
-          <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
-          <button class="btn-map-act" onclick="openShareModal()">공유</button>
-        </div>
       </div>
       <!-- MAP RIGHT -->
       <div class="map-right" id="mapRightArea">
         <!-- Map view — 경로 SVG 레이어는 drawRouteLayer() 가 여기에 넣는다 -->
         <div id="mapView">
           <div id="kakaoMap"></div>
-          <div class="weather-alert" style="z-index:20" onclick="openMapWeatherPopup()">
-            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
-            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
-            <div class="wa-cta">대체 일정 보기</div>
-          </div>
         </div>
         <!-- 3D 모형 — 같은 동선을 미니어처 위에 올린다.
              장면·색·사람 수는 메인과 같은 규칙(styles_massing.css)을 쓴다 -->
@@ -3380,6 +3482,38 @@
             </div>
           </div>
         </div>
+
+        <!-- ── 지도 위에 뜨는 판들 ──────────────────────────────
+             왼쪽 기둥은 일정을 고치는 자리다. 「지금 어떤가」를 말하는
+             것은 보고 있는 화면 위에 떠 있어야 한다 -->
+
+        <div class="mp-tools">
+          <div class="mp-seg" role="tablist">
+            <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
+            <button class="btn-map-act" id="mapTabModel" onclick="switchMapTab('model',this)">3D 모형</button>
+            <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
+          </div>
+          <button class="mp-chip" type="button" onclick="openShareModal()">공유</button>
+        </div>
+
+        <div class="mp-float mp-float-l">
+          <!-- 오늘 쓸 돈 — _mpPaintMoney() 가 채운다 -->
+          <div class="mp-money" id="mpMoney" hidden></div>
+          <!-- 출발 — _mpLoadTravel() 이 채운다 -->
+          <div class="mp-depart" id="mpDepart" hidden></div>
+        </div>
+
+        <div class="mp-float mp-float-r">
+          <div class="weather-alert" onclick="openMapWeatherPopup()">
+            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
+            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
+            <div class="wa-cta">대체 일정 보기</div>
+          </div>
+          <!-- 지금 상황 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
+          <div class="mp-alert" id="mpAlert" hidden></div>
+        </div>
+        <!-- 그날 동선 한 줄 — _mpRail() 이 채운다 -->
+        <div class="mp-rail" id="mpRail" hidden></div>
       </div>
 
       <!-- ===================== PAGE 07 BUDGET ===================== -->
