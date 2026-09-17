@@ -524,14 +524,20 @@ nav {
     display: block
 }
 
+/* 글 속 링크 — 테라코타는 「혼잡」 전용이다. 글자 색이 아니라
+   밑줄로 링크인 것을 알린다. */
 .auth-link {
-    color: var(--sage);
-    font-weight: 700;
+    color: var(--ink);
+    font-weight: 600;
     cursor: pointer;
     background: none;
     border: none;
-    font-size: inherit
+    font-size: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-color: var(--ui-line)
 }
+.auth-link:hover { text-decoration-color: var(--ink-3) }
 
 .vis-chip {
     padding: 7px 14px;

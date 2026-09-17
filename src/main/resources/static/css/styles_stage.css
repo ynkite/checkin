@@ -236,3 +236,70 @@
   margin:11px 0 0; padding-top:9px; border-top:1px solid var(--ui-line-2);
   font-size:10.5px; line-height:1.5; color:var(--ink-3); word-break:keep-all;
 }
+
+/* ══════════════════════════════════════════════════════════════
+   761~1180 — 제목을 무대 위로 되돌린다
+
+   이 구간에서 히어로가 「모형 한 장 + 그 아래 판 여섯 장」이었다.
+   모형이 맨 위에 띠처럼 얹혀 있고 글은 아래 흰 판에서 다시 시작하니
+   모형이 장식으로 읽힌다.
+
+   초기 데모 두 벌은 둘 다 글이 그림 위에 있었다 —
+   「체크인 시작하기」는 제목 왼쪽 + 미니어처 카드 오른쪽,
+   「체크인」은 전면 지도 위 왼쪽에 「01 + 제목」.
+   ══════════════════════════════════════════════════════════════ */
+@media (min-width:761px) and (max-width:1180px){
+
+  /* 모형을 조금 키운다 — 글을 얹을 자리가 필요하다 */
+  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 540px) }
+
+  /* 제목 — 모형 아래쪽 왼편. 위쪽 왼편에는 핀(동백섬)이 서 있어서
+     제목 줄과 겹쳤다. 아래 왼편은 바다뿐이라 비어 있다. */
+  .ck-home .ck-hero.ck-stage .st-head{
+    position:absolute; z-index:5;
+    left:var(--st-m); top:calc(var(--sc-h, 480px) - 58px);
+    transform:translateY(-100%);
+    width:min(var(--st-col), calc(100% - var(--st-m) * 2 - 150px));
+    background:none; box-shadow:none; padding:0;
+  }
+  /* 아래쪽에 아주 옅은 막. 바다 위 글자가 어느 날에도 읽히게 */
+  .ck-home .ck-hero.ck-stage .ck-scene::before{
+    content:""; position:absolute; inset:auto 0 0 0; height:58%;
+    z-index:2; pointer-events:none;
+    background:linear-gradient(0deg,
+      rgba(var(--w-rgb),.62) 0,
+      rgba(var(--w-rgb),.26) 46%,
+      rgba(var(--w-rgb),0) 100%);
+  }
+
+  /* 모형 도구와 시점 버튼 — 오른쪽 아래 두 줄로. 한 줄에 여섯 개를
+     나란히 두면 800px 에서 서로를 덮는다 (실측). */
+  .st-tools{
+    top:calc(var(--sc-h, 480px) - 80px); right:var(--st-m);
+  }
+  .st-view{
+    position:absolute; right:var(--st-m);
+    top:calc(var(--sc-h, 480px) - 41px); z-index:4;
+    margin:0; justify-content:flex-end;
+  }
+
+  /* 상황 판과 작은 지도를 나란히 — 세로로 쌓으면 스크롤이 길어진다 */
+  .ck-home .ck-hero.ck-stage{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  }
+  .ck-home .ck-stage .ck-scene,
+  .st-bigmap{ grid-column:1 / -1 }
+  .st-tl{ grid-column:1 / -1; grid-row:2 }
+  .st-form{ grid-column:1 / -1; grid-row:3 }
+  .st-side{ grid-column:1; grid-row:4; margin-right:0 }
+  .st-mini{ grid-column:2; grid-row:4; margin-left:0; align-self:start }
+
+  /* 제목이 위로 빠졌으니 아래 판은 정거장 + 상황만 남는다 */
+  .st-tl{ margin-top:2px }
+}
+
+/* 폰 — 모형이 330px 라 제목을 얹으면 모형이 안 보인다. 그대로 쌓는다 */
+@media (max-width:760px){
+  .ck-home .ck-hero.ck-stage .st-head{ position:static; width:auto }
+  .ck-home .ck-hero.ck-stage .ck-scene::before{ content:none }
+}
