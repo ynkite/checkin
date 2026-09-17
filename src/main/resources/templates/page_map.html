@@ -328,6 +328,8 @@
       _mvFill(pick.meta);
       _mvDrawPins(pick.meta, stops);
 
+      _mvForecast(stops);
+
       if (legend) {
         legend.hidden = false;
         legend.innerHTML =
@@ -336,6 +338,70 @@
           (pick.inside.length < stops.length
             ? '<em>' + (stops.length - pick.inside.length) + '곳은 이 모형 밖이라 빠졌습니다</em>' : '');
       }
+    }
+
+    /* 그 동선에서 가장 붐비는 곳의 30일 흐름.
+       이미 _mpLoadCrowd 가 받아 둔 것이 있으면 그대로 쓴다. */
+    async function _mvForecast(stops) {
+      var box = document.getElementById('mv_fc');
+      if (!box) return;
+      box.hidden = true;
+
+      var worst = null;
+      stops.forEach(function (p) {
+        var f = _mpCrowd[p.name];
+        if (f && f.rate != null && (!worst || f.rate > _mpCrowd[worst].rate)) worst = p.name;
+      });
+      if (!worst) return;
+
+      var list = _mpTimeline;
+      if (!list || !list.length) {
+        try {
+          var r = await fetch('/api/crowd/timeline?region=' + encodeURIComponent(_mpRegion()) +
+                              '&place=' + encodeURIComponent(worst));
+          var j = await r.json();
+          list = (j && j.success && j.data) || [];
+        } catch (e) { return; }
+      }
+      list = (list || []).filter(function (d) { return d.rate != null; });
+      if (list.length < 5) return;
+
+      var today = _mpDayKey((MAP_ITINERARY[0] || {}).places && MAP_ITINERARY[0].places[0]);
+      var mine = _mpDayIso(1);
+      var mineKey = mine ? mine.replace(/-/g, '') : today;
+
+      var here = null;
+      list.forEach(function (d) { if (d.date === mineKey) here = d; });
+      var better = (typeof crowd === 'function' && crowd.firstQuieter && here)
+        ? crowd.firstQuieter(list, mineKey, here.rate) : null;
+
+      var max = 100;
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mv-fc-hd">' +
+          '<b>' + _mpEsc(worst) + '</b>' +
+          '<span>앞으로 ' + list.length + '일 예상 혼잡도</span>' +
+        '</div>' +
+        '<div class="mv-fc-bars">' +
+        list.map(function (d) {
+          var g = (typeof crowd === 'function') ? crowd.of(d) : null;
+          var k = g ? g.key : 'mid';
+          var on = d.date === mineKey;
+          var tip = Number(d.date.slice(4, 6)) + '/' + Number(d.date.slice(6, 8)) +
+                    ' ' + (d.levelLabel || '') + ' ' + Math.round(d.rate);
+          return '<i class="cw-' + k + (on ? ' mv-fc-now' : '') +
+                 (better && better.date === d.date ? ' mv-fc-pick' : '') +
+                 '" style="height:' + Math.max(8, Math.round(d.rate / max * 100)) + '%"' +
+                 ' title="' + _mpEsc(tip) + '"></i>';
+        }).join('') +
+        '</div>' +
+        '<p class="mv-fc-note">' +
+          (here ? '여행 날은 <b>' + Math.round(here.rate) + '</b>' +
+                  (here.levelLabel ? '(' + _mpEsc(here.levelLabel) + ')' : '') + '입니다. ' : '') +
+          (better ? _mpDateKo(better.date) + '에 가면 <b>' + Math.round(better.rate) + '</b>' +
+                    (better.levelLabel ? '(' + _mpEsc(better.levelLabel) + ')' : '') + '입니다.'
+                  : '앞으로 한 달 안에 더 한산한 날은 없습니다.') +
+        '</p>';
     }
 
     function _mvSayNone(msg, extra) {
@@ -3284,6 +3350,8 @@
           <div class="ck-frame" id="mv_frame"></div>
           <div class="ck-pins" id="mv_pins"></div>
           <div class="mv-none" id="mv_none" hidden></div>
+          <!-- 30일 예상 혼잡도. 「언제 가면 되는가」가 한눈에 보여야 한다 -->
+          <div class="mv-fc" id="mv_fc" hidden></div>
           <div class="mv-legend" id="mv_legend" hidden></div>
         </div>
 

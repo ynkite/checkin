@@ -865,3 +865,47 @@
 .mv-none-1{ margin:0; font-size:16px; font-weight:700; color:var(--ink) }
 .mv-none-2{ margin:8px 0 0; font-size:13px; line-height:1.66; color:var(--ink-2) }
 .mv-none .mp-opt{ margin-top:16px; width:100% }
+
+/* ── 30일 예상 혼잡도 ───────────────────────────────────────
+   막대 하나가 하루다. 색은 다섯 단계, 높이는 집중률.
+   「언제 가면 되는가」가 한눈에 보여야 한다 — 그게 이 제품이 하는 말이다. */
+.mv-fc{
+  position:absolute; right:16px; top:16px; z-index:5;
+  width:min(360px, calc(100% - 32px));
+  padding:14px 16px 13px; border-radius:14px;
+  background:var(--void-veil-2); box-shadow:var(--lift);
+  word-break:keep-all;
+}
+.mv-fc-hd{ display:flex; align-items:baseline; gap:8px; margin-bottom:11px }
+.mv-fc-hd b{
+  font-size:13.5px; font-weight:700; color:var(--ink);
+  letter-spacing:var(--tracking-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mv-fc-hd span{ margin-left:auto; font-size:10.5px; color:var(--ink-3); white-space:nowrap }
+
+.mv-fc-bars{
+  display:flex; align-items:flex-end; gap:2px; height:46px;
+}
+.mv-fc-bars i{
+  flex:1 1 0; min-width:0; border-radius:2px 2px 0 0;
+  background:var(--ui-line); transition:height .4s ease;
+}
+.mv-fc-bars i.cw-vhigh{ background:var(--tile) }
+.mv-fc-bars i.cw-high { background:var(--terra) }
+.mv-fc-bars i.cw-mid  { background:var(--ink-3) }
+.mv-fc-bars i.cw-low,
+.mv-fc-bars i.cw-vlow { background:var(--slate) }
+/* 여행 날은 아래에 선을 긋는다. 색을 바꾸면 등급을 못 읽는다 */
+.mv-fc-bars i.mv-fc-now{ box-shadow:0 3px 0 0 var(--ink) }
+.mv-fc-bars i.mv-fc-pick{ box-shadow:0 3px 0 0 var(--sig) }
+
+.mv-fc-note{
+  margin:10px 0 0; font-size:11.5px; line-height:1.6; color:var(--ink-2);
+}
+.mv-fc-note b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+
+@media (max-width:900px){
+  .mv-fc{ right:12px; top:12px; width:min(300px, calc(100% - 24px)); padding:11px 13px }
+  .mv-fc-bars{ height:36px }
+}
