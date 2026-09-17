@@ -11,6 +11,17 @@
        IBM Plex Sans KR 보다 촘촘해 같은 크기에서 더 또렷하다.
        가변 폰트 + 동적 서브셋이라 쓰는 글자만 받는다.
        숫자·시각은 IBM Plex Mono 를 그대로 쓴다 — 자릿수가 맞아야 한다. -->
+  <meta name="description" content="여행 중 바뀌는 상황에 맞춰 동선을 다시 정리하는 서비스입니다.">
+  <meta property="og:title" content="체크인 — AI 여행 플래너">
+  <meta property="og:description" content="여행 중 바뀌는 상황에 맞춰 동선을 다시 정리하는 서비스입니다.">
+  <meta property="og:type" content="website">
+  <!-- og:image 와 og:url 은 도메인이 정해진 뒤에 넣는다.
+       둘 다 절대 주소여야 하고, 카카오·페이스북은 svg 를 안 받는다.
+       지금 로고는 카드에 쓸 크기(1200x630)가 아니다. -->
+  <meta name="twitter:card" content="summary">
+  <!-- 주소창 색. meta 는 CSS 변수를 못 받아서 값을 직접 적는다.
+       tokens.css 의 --page 와 같아야 한다. --page 를 바꾸면 여기도 바꾼다. -->
+  <meta name="theme-color" content="#F8FAFC">
   <link rel="icon" href="/img/favicon.ico" sizes="any">
   <link rel="icon" type="image/png" href="/img/favicon-64.png" sizes="64x64">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -129,6 +140,7 @@
 
 </head>
 <body style="visibility: hidden">
+<a class="ck-skip" href="#main">본문으로 건너뛰기</a>
 
 <!-- NAV -->
 <nav>
@@ -187,6 +199,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- ===== PAGE FRAGMENTS ===== -->
+<main id="main">
 <th:block th:insert="~{page_main :: main}"></th:block>
 <th:block th:insert="~{page_auth :: auth}"></th:block>
 <th:block th:insert="~{page_mypage :: mypage}"></th:block>
@@ -198,6 +211,7 @@
 <th:block th:insert="~{page_place :: place}"></th:block>
 <th:block th:insert="~{page_weather :: weather}"></th:block>
 <th:block th:insert="~{page_live :: live}"></th:block>
+</main>
 
 <!-- ===== JS ===== -->
 <script th:src="@{/js/crowd.js(v=20260917e)}"></script>
@@ -330,6 +344,8 @@
         <!-- 팀 메일 주소가 생기면 아래 한 줄을 mailto 로 바꾼다.
              옛 이름으로 만든 주소가 걸려 있어 지웠다. -->
         <li><a href="https://github.com/ynkite/checkin/issues" target="_blank" rel="noopener">문의 남기기</a></li>
+        <li><a aria-disabled="true">이용약관</a></li>
+        <li><a aria-disabled="true">개인정보 처리방침</a></li>
       </ul>
     </div>
 
