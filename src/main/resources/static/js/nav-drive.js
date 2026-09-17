@@ -50,6 +50,11 @@
     return { streak: s, off: s >= OFF_STREAK };
   }
 
+  // 안전 — m/s 속도를 km/h 로, 10 이상이면 주행 중(조작 잠금)
+  var DRIVE_KMH = 10;
+  function kmh(speedMs) { return speedMs == null || speedMs < 0 ? 0 : speedMs * 3.6; }
+  function isDriving(speedMs) { return kmh(speedMs) >= DRIVE_KMH; }
+
   /* ── 음성 ── */
   function speak(text) {
     try {
@@ -105,6 +110,8 @@
   /* ── 위치 갱신 ── */
   function onPos(p) {
     st.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
+    // 안전 — 10km/h 넘으면 주행모드(화면 조작 잠금 클래스). 멈추면 해제
+    document.body.classList.toggle('rl-driving', isDriving(p.coords.speed));
     if (!st.route) return;
 
     // 이탈 판정
@@ -168,6 +175,8 @@
     st = { dest: dest, pos: null, route: null, offStreak: 0, guideIdx: 0, spoken: {}, wake: null, watchId: null };
     ensureOverlay();
     render('현재 위치를 잡는 중입니다.');
+    // 안전 — 시작할 때 한 번 경고
+    speak('운전 중에는 화면을 보지 마세요.');
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
     st.watchId = navigator.geolocation.watchPosition(
@@ -186,6 +195,7 @@
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
     document.removeEventListener('visibilitychange', onVisible);
     try { window.speechSynthesis.cancel(); } catch (e) {}
+    document.body.classList.remove('rl-driving');
     var el = document.getElementById('navDrive');
     if (el) el.remove();
     st = null;
@@ -213,6 +223,10 @@
     // 거리 계산 대략치
     var d = haversine(35.1151, 129.0413, 35.1587, 129.1604);
     console.assert(d > 10000 && d < 20000, '부산역-해운대 대략 14km: ' + Math.round(d));
+    // 안전 — 주행 판정 (10km/h = 2.78m/s)
+    console.assert(!isDriving(2), '2m/s(7km/h)는 주행 아님');
+    console.assert(isDriving(3), '3m/s(10.8km/h)는 주행');
+    console.assert(!isDriving(null), '속도 없으면 주행 아님');
     console.log('OK _navCheck 통과');
     return true;
   };
