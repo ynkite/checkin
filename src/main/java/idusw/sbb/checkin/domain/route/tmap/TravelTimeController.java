@@ -33,6 +33,16 @@ public class TravelTimeController {
         return ResponseEntity.ok(ApiResponse.success(travelTimeService.plan(req)));
     }
 
+    /**
+     * 같은 동선을 자차·대중교통·도보로 각각 재서 한 번에 준다.
+     * 화면은 셋을 나란히 보여 주고 고른 것을 구간 줄에 적용한다.
+     */
+    @PostMapping("/travel-time/compare")
+    public ResponseEntity<ApiResponse<Map<String, TravelPlan>>> compare(
+            @RequestBody TravelPlanRequest req) {
+        return ResponseEntity.ok(ApiResponse.success(travelTimeService.compare(req)));
+    }
+
     /** 출발지 후보. 화면의 「출발지」 칸이 부른다. */
     @GetMapping("/origin")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> origin(

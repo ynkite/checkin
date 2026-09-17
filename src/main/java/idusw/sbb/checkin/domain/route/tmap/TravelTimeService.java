@@ -9,7 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 출발지에서 시작해 들르는 순서대로 구간 이동시간을 낸다.
@@ -102,6 +104,36 @@ public class TravelTimeService {
 
         return new TravelPlan(true, mode, originName, origin[0], origin[1], legs,
                 sumMin, sumM, sumFare, note);
+    }
+
+    /** 화면에서 고를 수 있는 이동수단. 순서가 화면에 나오는 순서다. */
+    public static final List<String> MODES = List.of("CAR", "TRANSIT", "WALK");
+
+    /**
+     * 같은 동선을 자차·대중교통·도보로 각각 재서 한 번에 돌려준다.
+     *
+     * 왜 셋을 다 재는가 — 「차로 24분」만 보여 주면 버스가 더 빠른 날인지
+     * 알 수 없다. 해운대처럼 주차가 막히는 곳은 실제로 지하철이 빠르다.
+     * 고르는 쪽이 판단할 수 있어야 한다.
+     *
+     * 하나가 실패해도 나머지는 그대로 돌려준다. TMAP 키가 없으면
+     * 셋 다 ready=false 로 오고 화면은 「연동 전」이라고 쓴다.
+     */
+    public Map<String, TravelPlan> compare(TravelPlanRequest req) {
+        Map<String, TravelPlan> out = new LinkedHashMap<>();
+        for (String mode : MODES) {
+            TravelPlanRequest one = new TravelPlanRequest(
+                    req.originName(), req.originLat(), req.originLng(),
+                    mode, req.departAt(), req.stops());
+            try {
+                out.put(mode, plan(one));
+            } catch (Exception e) {
+                log.warn("[tmap] {} 비교 실패: {}", mode, e.getMessage());
+                out.put(mode, TravelPlan.notReady(mode, req.originName(), List.of(),
+                        "이 이동수단은 길을 찾지 못했습니다"));
+            }
+        }
+        return out;
     }
 
     /* ── 구간 하나 ─────────────────────────────────────────── */

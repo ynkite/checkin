@@ -1,11 +1,4 @@
 <component name="ProjectRunConfigurationManager">
-  <!--
-    Spring Boot 실행 설정의 기본값.
-
-    IDE 가 새로 만드는 Spring Boot 설정은 전부 이 값을 물려받는다.
-    누가 main() 옆 실행 버튼을 눌러 설정이 새로 생겨도
-    「Command line is too long」이 다시 나지 않는다.
-  -->
   <configuration default="true" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
     <option name="SHORTEN_COMMAND_LINE" value="ARGS_FILE" />
     <method v="2">

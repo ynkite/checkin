@@ -591,18 +591,25 @@
         stops: stops
       };
 
-      var plan = null;
+      /* 셋을 한 번에 잰다. 「차로 24분」만 보여 주면 버스가 더 빠른
+         날인지 알 수 없다 */
       try {
-        var res = await fetch('/api/route/travel-time', {
+        var res = await fetch('/api/route/travel-time/compare', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         var json = await res.json();
-        plan = (json && json.success) ? json.data : null;
+        _mpPlans = (json && json.success) ? json.data : null;
       } catch (e) {
         console.warn('[지도] 이동시간 조회 실패:', e);
+        _mpPlans = null;
       }
+      if (!_mpPlans) { if (box) box.hidden = true; return; }
+
+      _mpFirstStop = stops[0];
+      _mpMode = _mpPickMode(_mpPlans, body.mode);
+      var plan = _mpPlans[_mpMode];
       if (!plan) { if (box) box.hidden = true; return; }
 
       _mpPaintDepart(plan, stops[0]);
@@ -613,6 +620,98 @@
       if (plan.totalFare > 0 && plan.mode === 'TRANSIT') window._mpTransitFare = plan.totalFare;
       if (plan.totalMeters > 0 || plan.totalFare > 0) _mpLoadBudget();
     }
+
+    /* 잰 셋을 들고 있는다. 바꿀 때마다 다시 부르지 않는다 */
+    var _mpPlans = null, _mpMode = 'CAR', _mpFirstStop = null;
+
+    var _MP_MODE_KO = { CAR: '자차', TRANSIT: '대중교통', WALK: '도보' };
+
+    /* 처음 세울 것 — 플래너에서 고른 수단이 길을 찾았으면 그것,
+       못 찾았으면 길을 찾은 것 중 제일 빠른 것 */
+    function _mpPickMode(plans, want) {
+      if (plans[want] && _mpPlanOk(plans[want])) return want;
+      var best = null;
+      Object.keys(plans).forEach(function (k) {
+        if (!_mpPlanOk(plans[k])) return;
+        if (!best || plans[k].totalMinutes < plans[best].totalMinutes) best = k;
+      });
+      return best || want;
+    }
+
+    function _mpPlanOk(p) {
+      return !!(p && p.ready && p.totalMinutes != null && p.totalMinutes > 0);
+    }
+
+    /* 자차 · 대중교통 · 도보 — 잰 값을 그대로 붙여 고르게 한다 */
+    function _mpModeBar() {
+      if (!_mpPlans) return '';
+      return '<div class="mp-modes">' + Object.keys(_MP_MODE_KO).map(function (k) {
+        var p = _mpPlans[k];
+        var ok = _mpPlanOk(p);
+        return '<button type="button" class="mp-mode' + (k === _mpMode ? ' on' : '') +
+               (ok ? '' : ' mp-mode-off') + '"' + (ok ? '' : ' disabled') +
+               ' onclick="_mpSetMode(\'' + k + '\')">' +
+               '<b>' + _MP_MODE_KO[k] + '</b>' +
+               '<span>' + (ok ? _mpMin(p.totalMinutes) : '길 없음') + '</span>' +
+               '</button>';
+      }).join('') + '</div>';
+    }
+
+    function _mpSetMode(k) {
+      if (!_mpPlans || !_mpPlanOk(_mpPlans[k]) || k === _mpMode) return;
+      _mpMode = k;
+      var plan = _mpPlans[k];
+      _mpPaintDepart(plan, _mpFirstStop);
+      _mpApplyLegs(plan, (MAP_ITINERARY || [])[0]);
+      window._mpTravelMeters = plan.totalMeters || 0;
+      window._mpTransitFare = (k === 'TRANSIT' && plan.totalFare) ? plan.totalFare : 0;
+      _mpLoadBudget();
+    }
+
+    /* 자체 점검 — 주소에 ?selfcheck=1 을 붙이거나 콘솔에서 _mpCheck().
+       고를 것을 잘못 고르면 화면은 멀쩡한데 값만 틀린다. 그런 건
+       눈으로 못 잡는다. 순수 함수만 재므로 화면을 건드리지 않는다. */
+    function _mpCheck() {
+      var fail = [];
+      function eq(got, want, what) {
+        if (got !== want) fail.push(what + ' — 나온 값 ' + got + ', 기대 ' + want);
+      }
+      var ok = function (min) { return { ready: true, totalMinutes: min }; };
+      var no = { ready: false, totalMinutes: null };
+
+      eq(_mpPlanOk(ok(12)), true,  '잰 값이 있으면 쓸 수 있다');
+      eq(_mpPlanOk(no),     false, 'ready 가 아니면 못 쓴다');
+      eq(_mpPlanOk(ok(0)),  false, '0분은 못 잰 것이다');
+      eq(_mpPlanOk(null),   false, '없으면 못 쓴다');
+
+      /* 고른 수단이 길을 찾았으면 그대로 둔다 */
+      eq(_mpPickMode({ CAR: ok(30), TRANSIT: ok(20), WALK: ok(90) }, 'CAR'),
+         'CAR', '고른 수단이 되면 그대로');
+      /* 못 찾았으면 길을 찾은 것 중 제일 빠른 것 */
+      eq(_mpPickMode({ CAR: no, TRANSIT: ok(41), WALK: ok(68) }, 'CAR'),
+         'TRANSIT', '못 찾으면 제일 빠른 것으로');
+      /* 하나도 못 찾으면 고른 것을 그대로 — 화면이 이유를 쓴다 */
+      eq(_mpPickMode({ CAR: no, TRANSIT: no, WALK: no }, 'WALK'),
+         'WALK', '다 못 찾으면 고른 것 그대로');
+
+      /* 플래너에서 고른 말을 서버가 아는 이름으로 */
+      var keep = window._mpTransportType;
+      [['자차', 'CAR'], ['렌터카', 'CAR'], ['대중교통', 'TRANSIT'],
+       ['지하철', 'TRANSIT'], ['도보', 'WALK'], ['걷기', 'WALK'], ['', 'CAR']
+      ].forEach(function (c) {
+        window._mpTransportType = c[0];
+        eq(_mpTransportCode(), c[1], '「' + c[0] + '」 -> ' + c[1]);
+      });
+      window._mpTransportType = keep;
+
+      if (fail.length) console.error('[지도] 자체 점검 실패
+' + fail.join('
+'));
+      else console.log('[지도] 자체 점검 통과');
+      return fail;
+    }
+    window._mpCheck = _mpCheck;
+    if (location.search.indexOf('selfcheck=1') >= 0) setTimeout(_mpCheck, 0);
 
     function _mpPaintDepart(plan, first) {
       var box = document.getElementById('mpDepart');
@@ -629,7 +728,8 @@
       if (!leg || leg.minutes == null) {
         box.hidden = false;
         box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
-          '<p class="mp-dp-2">' + _mpEsc(leg && leg.note ? leg.note : '길을 찾지 못했습니다') + '</p>';
+          '<p class="mp-dp-2">' + _mpEsc(leg && leg.note ? leg.note : '길을 찾지 못했습니다') + '</p>' +
+          _mpModeBar();
         return;
       }
 
@@ -650,7 +750,8 @@
         '<p class="mp-dp-2">' + leaveTxt +
           (leg.meters ? (leg.meters / 1000).toFixed(1) + 'km · ' : '') +
           _mpEsc(leg.note || '') +
-          (leg.fare ? ' · ' + leg.fare.toLocaleString() + '원' : '') + '</p>';
+          (leg.fare ? ' · ' + leg.fare.toLocaleString() + '원' : '') + '</p>' +
+        _mpModeBar();
     }
 
     /* 잰 값으로 동선의 이동 문구를 덮는다. 목록을 다시 그려야 보인다 */
@@ -718,7 +819,9 @@
       } catch (e) {}
       s = s || String(window._mpTransportType || '');
       if (s.indexOf('대중') >= 0 || s.indexOf('버스') >= 0 || s.indexOf('지하철') >= 0) return 'TRANSIT';
-      if (s.indexOf('렌트') >= 0 || s.indexOf('렌터') >= 0) return 'RENTAL';
+      if (s.indexOf('도보') >= 0 || s.indexOf('걷') >= 0) return 'WALK';
+      /* 렌터카도 결국 차로 간다. RENTAL 은 서버가 모르는 이름이라
+         전에는 조용히 자차로 떨어지면서 화면 표시만 어긋났다 */
       return 'CAR';
     }
 
