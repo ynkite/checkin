@@ -260,189 +260,17 @@
      읽히지 않는다. */
   /* 동선이 다 보이는 배율과 위치.
 
-     몇 번 불러도 같은 값이 나와야 한다. 그래서 「지금 보이는 크기」가
-     아니라 배율 1 기준 좌표에서 잰다 —
-       핀이 놓인 자리는 %로 알고 있다.
-       이름표가 핀에서 얼마나 뻗는지만 화면에서 재고 배율로 나눈다.
-     전에는 결과에 지금 배율을 다시 곱해서, render 가 여러 번 불릴 때마다
-     배율이 곱해져 2.02 까지 올라갔다.
+     기하로 맞추려고 두 번 고쳤는데 두 번 다 어긋났다 —
+       핀 요소만 재면 15px 동그라미만 잰다(이름표는 절대배치라 안 들어온다)
+       이름표를 합쳐도 배율이 높아 위쪽 핀이 무대 밖으로 넘어갔다
+     그래서 계산 대신 결과를 쓴다. 맞춰 보고, 넘친 양을 재고, 줄인다.
+     두 번까지만. 렌더한 값을 쓰므로 가정이 틀려도 맞는다.
 
-     이름표까지 재는 이유 — 말풍선이 핀보다 옆으로 150px 넘게 나간다.
-     핀 좌표만 맞추면 장소 이름이 가장자리에서 잘린다. */
-  function camFit(force) {
-    if (camLocked && !force) return false;      /* 들어오는 장면이 쥐고 있다 */
-    var f = $('ck_frame');
-    var layer = $('ck_pinlayer');
-    if (!f || !layer || !f.offsetWidth) return false;
-    var st = f.parentElement;
-    if (!st || !st.clientWidth) return false;
+     여기서 정한 배율이 축소 하한이 된다. 그보다 줄이면 모형 전체가
+     들어와 렉이 심해지고 동선을 보는 데 도움도 안 된다. */
 
-    var els = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
-    if (els.length < 2) return false;
-
-    var fw = f.offsetWidth, fh = f.offsetHeight;
-    var z0 = cam.z || 1;
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    var got = 0;
-
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      var r = el.getBoundingClientRect();
-      if (!r.width) continue;
-
-      /* 핀이 놓인 자리 — 배율과 무관하다 */
-      var px = parseFloat(el.style.left) / 100 * fw;
-      var py = parseFloat(el.style.top) / 100 * fh;
-      if (!isFinite(px) || !isFinite(py)) continue;
-
-      /* 이름표가 핀 자리에서 얼마나 뻗는가. 화면 값을 배율로 나눠
-         배율 1 기준으로 되돌린다. .ck-pin 은 translate(-50%,-100%) 라
-         핀 자리가 상자 안의 어디인지 비율로 잡는다 */
-      var w0 = r.width / z0, h0 = r.height / z0;
-      x0 = Math.min(x0, px - w0 * 0.5);
-      x1 = Math.max(x1, px + w0 * 0.9);      /* 이름표는 대개 오른쪽으로 */
-      y0 = Math.min(y0, py - h0);
-      y1 = Math.max(y1, py + h0 * 0.3);
-      got++;
-    }
-    if (got < 2 || !isFinite(x0) || x1 <= x0) return false;
-
-    var pad = 40;   /* 이름표가 가장자리에 닿으면 안 읽힌다 */
-    var needW = (x1 - x0) + pad * 2;
-    var needH = (y1 - y0) + pad * 2;
-
-    /* 동선 상자가 무대보다 크면 줄이고, 작으면 조금 키운다.
-       .58 아래로는 안 내린다 — 모형 전체가 들어와 렉이 심해지고
-       동선을 보는 데 도움도 안 된다.
-       1.6 위로는 안 올린다 — 세 곳이 붙어 있어도 너무 당기지 않게 */
-    var z = Math.min(st.clientWidth / needW, st.clientHeight / needH);
-    z = Math.max(.58, Math.min(1.6, z));
-    CAM_MIN = z;                             /* 축소 하한 = 이 자리 */
-    cam.z = z;
-
-    /* 상자 가운데를 무대 가운데로. 세로는 조금 위 —
-       아래쪽에 경로 만들기 바가 있다 */
-    var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    cam.x = st.clientWidth / 2 - cx * z;
-    cam.y = st.clientHeight * .46 - cy * z;
-    camApply();
-    return true;
-  }
-
-  /* 배율은 버튼으로만 바꾼다.
-
-     전에는 휠과 두 손가락으로도 됐다. 그런데 이 모형은 페이지 맨 위에
-     화면을 꽉 채우고 있어서, 스크롤하려고 휠을 굴리면 페이지가 안 내려가고
-     모형만 확대됐다. 내려갈 방법이 없어진다.
-     실제 지도(카카오)는 지도 안에서만 휠을 먹으므로 그대로 둔다. */
-  function initCamTools() {
-    var rz = 0;
-    w.addEventListener('resize', function () {
-      clearTimeout(rz);
-      rz = setTimeout(function () { if (!cam.user) camFit(); }, 180);
-    });
-  }
-
-  function initTools() {
-    initCamTools();
-    var stage = d.querySelector('.ck-stage');
-    var model = $('st_t_model'), map = $('st_t_map'), walk = $('st_t_walk');
-    var scene = stage && stage.querySelector('.ck-scene'), bmap = $('st_bigmap');
-
-    function show(which) {
-      if (!scene || !bmap) return;
-      var isMap = which === 'map';
-      scene.hidden = isMap;
-      bmap.hidden = !isMap;
-      if (model) model.setAttribute('aria-pressed', String(!isMap));
-      if (map) map.setAttribute('aria-pressed', String(isMap));
-      var t = $('st_mini_ttl');
-      if (t) t.textContent = isMap ? '작은 모형' : '지금 위치 지도';
-      if (isMap) ready(function () { makeBig(); if (big) big.relayout(); });
-    }
-    if (model) model.addEventListener('click', function () { show('model'); });
-    if (map) map.addEventListener('click', function () { show('map'); });
-
-    if (walk) {
-      walk.addEventListener('click', function () {
-        var on = walk.getAttribute('aria-pressed') !== 'true';
-        walk.setAttribute('aria-pressed', String(on));
-        if (stage) stage.classList.toggle('st-still', !on);
-      });
-    }
-
-    /* 시점 도구 — 카메라와 같은 변수를 쓴다.
-       사람이 한 번 만지면 장면이 넘어가도 카메라가 따라 움직이지 않는다.
-       보고 있는 자리를 화면이 제멋대로 옮기면 안 된다. */
-    var zin = $('st_v_in'), zout = $('st_v_out'), zr = $('st_v_reset');
-    if (zin) zin.addEventListener('click', function () {
-      cam.user = true; cam.z = Math.min(CAM_MAX, cam.z * 1.22); camApply();
-    });
-    if (zout) zout.addEventListener('click', function () {
-      /* 하한은 「동선이 다 보이는 자리」다. 그보다 줄이면 모형 전체가
-         들어와 렉이 심해지고 동선을 보는 데 도움도 안 된다 */
-      cam.user = true; cam.z = Math.max(CAM_MIN, cam.z / 1.22); camApply();
-    });
-    if (zr) zr.addEventListener('click', function () {
-      cam.user = false;
-      if (!camFit()) camReset();
-      fitMini();                 /* 작은 지도도 셋이 다 보이는 자리로 */
-    });
-
-    /* 작은 지도 — 여기도 버튼으로만. setZoomable(false) 로 휠은 막혀 있다.
-       카카오는 숫자가 작을수록 확대다 */
-    var mi = $('st_m_in'), mo = $('st_m_out');
-    if (mi) mi.addEventListener('click', function () {
-      if (mini) mini.setLevel(Math.max(1, mini.getLevel() - 1), { animate: true });
-    });
-    if (mo) mo.addEventListener('click', function () {
-      if (mini) mini.setLevel(Math.min(12, mini.getLevel() + 1), { animate: true });
-    });
-
-    /* 작은 지도 접기 */
-    var fold = $('st_fold'), box = $('st_mini');
-    if (fold && box) {
-      fold.addEventListener('click', function () {
-        var open = fold.getAttribute('aria-expanded') === 'true';
-        fold.setAttribute('aria-expanded', String(!open));
-        fold.textContent = open ? '펼치기' : '접기';
-        box.classList.toggle('fl-fold', open);
-        if (!open) ready(function () { if (mini) { mini.relayout(); fitMini(); } });
-      });
-    }
-
-    /* 오른쪽 판 탭 */
-    var td = $('st_tab_day'), tn = $('st_tab_now');
-    var pd = $('st_pane_day'), pn = $('st_pane_now');
-    function tab(day) {
-      if (!pd || !pn) return;
-      pd.hidden = !day; pn.hidden = day;
-      if (td) { td.setAttribute('aria-pressed', String(day)); td.classList.toggle('on', day); }
-      if (tn) { tn.setAttribute('aria-pressed', String(!day)); tn.classList.toggle('on', !day); }
-    }
-    if (td) td.addEventListener('click', function () { tab(true); });
-    if (tn) tn.addEventListener('click', function () { tab(false); });
-
-    /* 정거장을 누르면 그 정거장이 지금이 된다 */
-    var sb = $('st_stops');
-    if (sb) {
-      sb.addEventListener('click', function (e) {
-        var b = e.target.closest ? e.target.closest('.fl-pill') : null;
-        if (!b) return;
-        var i = parseInt(b.getAttribute('data-s'), 10);
-        if (isNaN(i)) return;
-        state.hot = i;
-        stops(); mapPins();
-        cam.user = false;                        /* 눌러서 고른 것이므로 카메라가 따라간다 */
-        camTo(route[i]);
-      });
-    }
-  }
-
-  /* ── app_home.js 가 부른다 ───────────────────────── */
   /* ── 들어오는 장면이 쓰는 손잡이 ──────────────────────
-     app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다.
-     둘을 한 파일에 합치면 서로를 못 읽는다. */
+     app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다. */
 
   /* 지도를 띄우고 세 곳이 다 들어오게 맞춘다.
      level 을 직접 주지 않는다 — 카카오가 좌표에서 계산하게 둔다.
@@ -487,6 +315,92 @@
     var mt = $('st_t_model'), mp = $('st_t_map');
     if (mt) mt.setAttribute('aria-pressed', 'true');
     if (mp) mp.setAttribute('aria-pressed', 'false');
+  }
+
+  /* 핀과 이름표를 합친 화면 상자 */
+  function pinBox(el) {
+    var r = el.getBoundingClientRect();
+    var L = r.left, R = r.right, T = r.top, B = r.bottom;
+    var bub = el.querySelector('.ck-bub');
+    if (bub) {
+      var b = bub.getBoundingClientRect();
+      if (b.width) {
+        L = Math.min(L, b.left); R = Math.max(R, b.right);
+        T = Math.min(T, b.top);  B = Math.max(B, b.bottom);
+      }
+    }
+    return { left: L, right: R, top: T, bottom: B };
+  }
+
+  /* 지금 배치에서 무대를 얼마나 넘쳤나. 0 이면 다 들어와 있다 */
+  function overflowOf(els, sr, pad) {
+    var over = 0;
+    for (var i = 0; i < els.length; i++) {
+      var b = pinBox(els[i]);
+      over = Math.max(over,
+        (sr.left + pad) - b.left,
+        b.right - (sr.right - pad),
+        (sr.top + pad) - b.top,
+        b.bottom - (sr.bottom - pad));
+    }
+    return Math.max(0, over);
+  }
+
+  /* 핀 무리의 화면 가운데 */
+  function pinCenter(els) {
+    var L = Infinity, R = -Infinity, T = Infinity, B = -Infinity;
+    for (var i = 0; i < els.length; i++) {
+      var b = pinBox(els[i]);
+      L = Math.min(L, b.left); R = Math.max(R, b.right);
+      T = Math.min(T, b.top);  B = Math.max(B, b.bottom);
+    }
+    return { x: (L + R) / 2, y: (T + B) / 2, w: R - L, h: B - T };
+  }
+
+  function camFit(force) {
+    if (camLocked && !force) return false;
+    var f = $('ck_frame');
+    var layer = $('ck_pinlayer');
+    if (!f || !layer || !f.offsetWidth) return false;
+    var st = f.parentElement;
+    if (!st || !st.clientWidth) return false;
+
+    var els = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+    if (els.length < 2) return false;
+
+    var PAD = 18;          /* 가장자리 여백. 이름표가 닿으면 안 읽힌다 */
+    cam.user = false;
+
+    /* 1차 — 지금 배율에서 무리 가운데를 무대 가운데로 */
+    function recenter() {
+      var sr = st.getBoundingClientRect();
+      var c = pinCenter(els);
+      cam.x += (sr.left + sr.width / 2) - c.x;
+      cam.y += (sr.top + sr.height * 0.46) - c.y;
+      camApply();
+    }
+
+    recenter();
+
+    /* 2차 — 넘친 만큼 줄이고 다시 가운데로. 두 번까지 */
+    for (var pass = 0; pass < 2; pass++) {
+      var sr2 = st.getBoundingClientRect();
+      if (overflowOf(els, sr2, PAD) <= 0) break;
+
+      var c2 = pinCenter(els);
+      /* 무리 상자가 무대 안에 들어가는 비율. 여유를 조금 더 둔다 */
+      var kx = (sr2.width - PAD * 2) / Math.max(1, c2.w);
+      var ky = (sr2.height - PAD * 2) / Math.max(1, c2.h);
+      var k = Math.min(kx, ky) * 0.97;
+      if (k >= 1) break;                       /* 줄일 이유가 없다 */
+
+      cam.z = Math.max(.58, Math.min(1.6, cam.z * k));
+      camApply();
+      recenter();
+    }
+
+    CAM_MIN = cam.z;       /* 축소 하한 = 동선이 다 보이는 이 자리 */
+    return true;
   }
 
   /* 한 정거장을 화면 가운데로 — 그냥 옮긴다 */
