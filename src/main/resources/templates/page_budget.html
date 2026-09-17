@@ -76,6 +76,18 @@
       <!-- 탭1: 그래프 -->
       <div id="ledger-tab-charts">
 
+        <!-- 숙박비 근거 표 (예산 엔진 2층) — 확정/추정을 항목별로 공개한다 -->
+        <div class="ledger-chart-card" id="budget-basis-card" style="display:none;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+            <div style="font-size:14px;font-weight:700">숙박비 근거</div>
+            <div style="font-size:11px;color:var(--text3)">시연용 예시</div>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:12px">
+            총액을 한 숫자로 주지 않습니다. 항목마다 어디까지가 공개 요금인지 표시합니다.
+          </div>
+          <div id="budget-basis-rows"></div>
+        </div>
+
         <!-- 파이 -->
         <div class="budget-layout">
 

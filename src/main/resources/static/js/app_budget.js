@@ -395,6 +395,69 @@ async function _loadExpenses(tripId) {
         }
         if (addForm) addForm.style.display = tripStarted ? '' : 'none';
     }
+
+    // 숙박비 근거 표 — 실패해도 가계부 화면은 그대로 뜬다
+    _loadBudgetEstimate(tripId);
+}
+
+// 항목 상태 3종. 색만으로 구분하지 않고 기호를 같이 찍는다.
+const _BASIS_STATUS = {
+    CONFIRMED: { mark: '●', label: '확정',   color: 'var(--terra)' },
+    ESTIMATED: { mark: '○', label: '추정',   color: 'var(--ink-3)' },
+    NONE:      { mark: '—', label: '해당없음', color: 'var(--ink-3)' }
+};
+
+/** GET /api/trips/{tripId}/budget-estimate → 숙박비 항목별 근거 표 (예산 엔진 2층) */
+async function _loadBudgetEstimate(tripId) {
+    const card = document.getElementById('budget-basis-card');
+    const rows = document.getElementById('budget-basis-rows');
+    if (!card || !rows) return;
+
+    // 숙소를 못 찾거나 API 가 죽으면 카드만 안 뜬다 — 가계부 화면은 그대로 산다
+    const res = await api.get('/api/trips/' + tripId + '/budget-estimate');
+    if (!res || !res.success || !res.data) return;
+
+    const d     = res.data;
+    const items = d.items || [];
+    if (items.length === 0) return;
+
+    const esc = v => String(v == null ? '' : v)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const itemHtml = items.map(function (it) {
+        const st = _BASIS_STATUS[it.status] || _BASIS_STATUS.NONE;
+        return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;'
+             +   'padding:9px 0;border-bottom:1px solid var(--border)">'
+             +   '<div>'
+             +     '<div style="font-size:13px;color:var(--text)">' + esc(it.label) + '</div>'
+             +     '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + esc(it.basis) + '</div>'
+             +   '</div>'
+             +   '<div style="font-size:13px;font-weight:700;color:' + st.color + ';text-align:right;'
+             +     'font-variant-numeric:tabular-nums">' + _fmtWon(it.amount) + '</div>'
+             +   '<div style="font-size:11px;color:' + st.color + ';white-space:nowrap">'
+             +     st.mark + ' ' + st.label + '</div>'
+             + '</div>';
+    }).join('');
+
+    rows.innerHTML = itemHtml
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px">'
+        +   '<div style="font-size:13px;font-weight:800;color:var(--text)">총액</div>'
+        +   '<div style="font-size:18px;font-weight:800;color:var(--text);font-variant-numeric:tabular-nums">'
+        +     _fmtWon(d.total) + '</div>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--text3)">'
+        +   '<div>예측 구간</div>'
+        +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
+        + '</div>'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:6px">'
+        +   '<div style="color:var(--text3)">신뢰도</div>'
+        +   '<div style="font-weight:800;color:var(--terra)">' + (d.confidence || 0) + '%</div>'
+        + '</div>'
+        // 산출식을 같이 싣는다 — 근거 없는 정확도 수치는 화면에 올리지 않는다
+        + '<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">'
+        +   esc(d.note || '') + '</div>';
+
+    card.style.display = '';
 }
 
 // 일정별 장소 목록 + Day별 예상/실제 비교 렌더링
