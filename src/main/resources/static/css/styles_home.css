@@ -1235,3 +1235,16 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:-.04em}
   .ck-home .ck-conf2-bar{ flex-direction:column }
   .ck-home .ck-conf2-sum em{ margin-left:0; width:100% }
 }
+
+/* 핀에 붙는 혼잡도. 숫자는 작게, 색이 먼저 말한다 */
+.ck-pin .ck-cw{
+  display:inline-block; margin-left:7px; padding:1px 6px 2px;
+  border-radius:99px; font-style:normal;
+  font-family:var(--fig); font-size:10.5px; font-weight:600;
+  letter-spacing:var(--tracking-num); vertical-align:1px;
+}
+.ck-pin .ck-cw.cw-vhigh{ background:var(--tile); color:var(--panel) }
+.ck-pin .ck-cw.cw-high { background:var(--terra); color:var(--panel) }
+.ck-pin .ck-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.ck-pin .ck-cw.cw-low,
+.ck-pin .ck-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }

@@ -96,6 +96,15 @@
     }
   }
 
+  /* 핀에 붙는 혼잡도. 모형 위에서 바로 읽혀야 한다 —
+     옆 판을 봐야 알 수 있으면 모형이 데이터가 아니라 그림이 된다. */
+  function crowdChip(p) {
+    if (p.crowd == null) return '';
+    var g = (window.crowd && window.crowd(p.crowd)) || null;
+    if (!g) return '';
+    return '<i class="ck-cw cw-' + g.key + '">' + Math.round(p.crowd) + '</i>';
+  }
+
   function pinHTML(p, i, extra) {
     /* 오른쪽 절반에 있는 핀은 이름표를 왼쪽으로 돌린다.
        55% 는 가장 긴 이름표(「해운대 해수욕장 14:20」 약 150px)가
@@ -105,7 +114,8 @@
            ';left:' + p.x.toFixed(2) + '%;top:' + p.y.toFixed(2) + '%">' +
            '<b class="ck-no">' + (p.no || i + 1) + '</b>' +
            '<span class="ck-bub">' + esc(p.name) +
-           (p.note ? '<em>' + esc(p.note) + '</em>' : '') + '</span>' +
+           (p.note ? '<em>' + esc(p.note) + '</em>' : '') +
+           crowdChip(p) + '</span>' +
            '</div>';
   }
 
@@ -272,8 +282,26 @@
             got++;
           });
           if (got) { window.__ckCrowdLive = true; retellHero(when); }
+          setCrowdDensity();
         })
         .catch(function () { /* 못 받으면 json 값을 그대로 쓴다 */ });
+    }
+
+    /* 모형의 사람 수를 지금 보는 곳의 혼잡도에 맞춘다.
+       해변 군중은 해수욕장 값을 따른다 — 그 자리에 있는 사람들이다. */
+    function setCrowdDensity() {
+      var beach = null;
+      route.forEach(function (p) {
+        if (p.crowd == null) return;
+        if (!beach || p.crowd > beach.crowd) beach = p;
+      });
+      if (!beach) return;
+      var x = Math.max(0, Math.min(1, beach.crowd / 100));
+      /* 장면 상자에만 넣는다. 안쪽 무리·파라솔은 CSS 가 이 값을 물려받아
+         각자의 문턱으로 판단한다 — SVG 가 늦게 들어와도 따라온다. */
+      var scene = document.getElementById('ck_scene') || document.getElementById('ck_frame');
+      if (scene) scene.style.setProperty('--cw', x.toFixed(3));
+      window.__ckCw = x;
     }
 
     /* 받은 값으로 문구를 다시 쓴다. 붐비지 않으면 붐빈다고 말하지 않는다 */

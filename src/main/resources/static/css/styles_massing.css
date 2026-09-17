@@ -135,16 +135,34 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 @keyframes ck-swell{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-56 } }
 @keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
 
-/* ── 시간대 ─────────────────────────────────────────────────
-   색은 tokens.css 의 하늘 네 벌이 정한다. 여기서는 색으로 말할 수 없는
-   것만 다룬다 — 밤에는 해변에 사람이 없고 파라솔도 접혀 있다. */
-[data-sky="night"] .crowd{ opacity:.26 }
-[data-sky="night"] .us{ opacity:.2 }            /* 파라솔 */
-[data-sky="dusk"] .crowd{ opacity:.72 }
-[data-sky="dusk"] .us{ opacity:.7 }
-[data-sky="dawn"] .crowd{ opacity:.3 }
-[data-sky="dawn"] .us{ opacity:.25 }
-.crowd,.us{ transition:opacity 1.2s linear }
+/* ── 시간대 · 사람 수 ────────────────────────────────────────
+   두 가지가 같은 opacity 를 놓고 다툰다 —
+     시간대  밤에는 해변에 사람이 없다
+     혼잡도  집중률이 낮으면 사람이 적다
+   둘을 곱한다. 한쪽이 다른 쪽을 덮으면 하나는 아무 일도 안 하게 된다
+   (실제로 그랬다 — 파라솔이 늘 .25 였다).
 
-/* 밤에는 창문이 켜진다. 노란 지붕(--m) 계열이 그 자리다. */
-[data-sky="night"] .fm.rf,[data-sky="night"] .fm.rk{ filter:none }
+   --cw     집중률을 0~1 로. app_home.js 가 관광공사 예측에서 받아 넣는다
+   --sky-a  시간대가 정하는 비율 */
+.ck-scene{ --cw:.8; --sky-a:1 }
+[data-sky="dusk"]  .ck-scene{ --sky-a:.72 }
+[data-sky="night"] .ck-scene{ --sky-a:.24 }
+[data-sky="dawn"]  .ck-scene{ --sky-a:.34 }
+
+/* 무리 다섯에 각자 문턱을 준다. 값이 오르면 무리가 하나씩 더 보인다.
+   전에는 다섯이 혼잡도와 무관하게 늘 같은 진하기였다. 「매우 혼잡 95」라고
+   써 놓고 한적한 날과 같은 해변을 보여 주면 그 숫자를 믿을 이유가 없다.
+     95 다섯 · 70 넷 · 52 셋 · 35 둘 · 20 하나 */
+.crowd{ opacity:var(--sky-a, 1); transition:opacity 1.2s linear }
+.crowd .cw{ transition:opacity .9s ease }
+.crowd .cw.b1{ opacity:clamp(0, calc((var(--cw, .8) - .08) * 7), 1) }
+.crowd .cw.b2{ opacity:clamp(0, calc((var(--cw, .8) - .28) * 7), 1) }
+.crowd .cw.b3{ opacity:clamp(0, calc((var(--cw, .8) - .46) * 7), 1) }
+.crowd .cw.b4{ opacity:clamp(0, calc((var(--cw, .8) - .62) * 7), 1) }
+.crowd .cw.b5{ opacity:clamp(0, calc((var(--cw, .8) - .78) * 7), 1) }
+
+/* 파라솔은 사람보다 덜 움직인다. 한적해도 몇 개는 펴져 있다 */
+.us{
+  opacity:calc(clamp(.25, calc(.25 + var(--cw, .8) * .75), 1) * var(--sky-a, 1));
+  transition:opacity 1.2s ease;
+}
