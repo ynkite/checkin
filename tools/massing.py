@@ -23,30 +23,72 @@ def overpass(q):
     if os.path.exists(p):
         return json.load(open(p, encoding='utf-8'))
     d = urllib.request.urlopen(urllib.request.Request(
-        'https://overpass-api.de/api/interpreter',
+        os.environ.get('OVERPASS', 'https://overpass-api.de/api/interpreter'),
         data=urllib.parse.urlencode({'data': q}).encode(), headers=UA), timeout=300).read()
     j = json.loads(d)
     json.dump(j, open(p, 'w', encoding='utf-8'))
     return j
 
 
-def fetch(bbox):
+ROADS = os.environ.get('CK_ROADS',
+    '^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|pedestrian|footway|service)$')
+TREES = os.environ.get('CK_TREES', '1') == '1'
+
+
+def fetch_one(bbox):
+    """한 조각. 여기까지는 지금까지 하던 것과 같다."""
     b = '%f,%f,%f,%f' % bbox
-    q = """
-[out:json][timeout:300];
+    # 넓은 범위에서는 길·나무를 줄여야 Overpass 가 답한다.
+    # CK_ROADS 로 큰 길만, CK_TREES=0 으로 나무를 뺀다.
+    tree = ('  node["natural"="tree"](%s);' % b) + chr(10) if TREES else ''
+    q = ("""
+[out:json][timeout:180];
 (
   way["building"](%s);
   relation["building"](%s);
-  way["highway"~"^(motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|pedestrian|footway|service)$"](%s);
+  way["highway"~"%s"](%s);
   way["natural"~"^(beach|water|coastline|wood|scrub|sand)$"](%s);
   way["landuse"~"^(grass|forest|recreation_ground|cemetery|village_green)$"](%s);
   way["leisure"~"^(park|pitch|garden|golf_course|playground)$"](%s);
   way["waterway"="river"](%s);
-  node["natural"="tree"](%s);
-);
+%s);
 out geom tags;
-""" % ((b,) * 8)
+""" % (b, b, ROADS, b, b, b, b, b, tree))
     return overpass(q)
+
+
+def fetch(bbox):
+    """넓으면 세로로 쪼개 받아 합친다.
+
+    Overpass 는 한 질의에 걸리는 시간에 한도가 있다. 범위를 넓히면
+    크기가 아니라 시간에서 먼저 막힌다(504). 조각마다 질의가 짧아지면
+    각각은 통과한다. 경계에 걸친 way 는 양쪽에 들어오므로 id 로 걷는다.
+    """
+    s, w, n, e = bbox
+    span = e - w
+    tiles = int(os.environ.get('CK_TILES', '0')) or (
+        1 if span <= 0.030 else (2 if span <= 0.050 else 3))
+
+    if tiles == 1:
+        return fetch_one(bbox)
+
+    seen, out = set(), []
+    step = span / tiles
+    for i in range(tiles):
+        # 경계에 걸친 건물이 반쪽만 오지 않게 조금 겹쳐 받는다
+        pad = step * 0.04
+        lo = w + step * i - (pad if i else 0)
+        hi = w + step * (i + 1) + (pad if i < tiles - 1 else 0)
+        print('  조각 %d/%d  경도 %.4f ~ %.4f' % (i + 1, tiles, lo, hi))
+        j = fetch_one((s, lo, n, hi))
+        for el in j.get('elements', []):
+            k = (el.get('type'), el.get('id'))
+            if k in seen:
+                continue
+            seen.add(k)
+            out.append(el)
+    print('  합쳐서 %d개' % len(out))
+    return {'elements': out}
 
 
 def hgt(t):

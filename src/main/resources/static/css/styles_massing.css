@@ -20,30 +20,42 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .rdm{fill:none; stroke:var(--lane); stroke-width:1.3; stroke-dasharray:7 9;
   stroke-linecap:round; opacity:.9}
 .sh1{fill:var(--sh1c)} .sh2{fill:var(--sh2c)}
-.wv{fill:none; stroke:var(--wave); stroke-linecap:round}
+.wv{fill:none; stroke:var(--wave); stroke-linecap:round; stroke-dasharray:30 26}
 .wv.w1{stroke-width:2.5} .wv.w2{stroke-width:1.8; opacity:.72} .wv.w3{stroke-width:1.3; opacity:.46}
 .gt{fill:none; stroke:var(--tuft); stroke-width:1.1; stroke-linecap:round}
 .ss{fill:none; stroke:var(--stip); stroke-width:1.5; stroke-linecap:round}
 .ge{fill:none; stroke:var(--gedge); stroke-width:1.6; stroke-linejoin:round}
-.rf,.rk,.s1,.s2{stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
+/* 붉은 기와 계열(a·d)의 벽은 --w1/--w2 크림을 쓴다. 레퍼런스(이탈리아·도쿄)는
+   벽이 크림이고 지붕만 테라코타다. 벽까지 붉으면 마을이 한 덩어리로 뭉쳐
+   건물 모양이 안 읽힌다. */
+/* 외곽선은 맞닿은 면 사이의 머리카락 틈을 막는 용도다. 색을 긋는 것이 아니다.
+   2.5 는 건물 하나를 5px 뚱뚱하게 만들어 각진 면이 뭉개졌다.
+   레퍼런스(이탈리아)는 외곽선이 아예 없고 면 색만 있다. */
+.rf,.rk,.s1,.s2{stroke-width:.55; stroke-linejoin:round; stroke-linecap:round; paint-order:stroke}
+/* 지붕만 색을 갖는다. 벽은 전부 크림이다.
+   전에는 색족마다 벽까지 그 색이라 파란 지붕 건물은 벽도 파랗고 노란 지붕은
+   벽도 노랬다. 마을이 아니라 색 블록 더미로 보였다.
+   레퍼런스의 마을은 크림 벽 위에 테라코타·청회·노랑 지붕이 얹혀 있다. */
+.s1{fill:var(--w1); stroke:var(--w1)}
+.s2{fill:var(--w2); stroke:var(--w2)}
+
+/* 지붕 — 윗면(rf)과 다른 면(rk)의 값 차이를 뚜렷하게 둔다.
+   면 명암이 약하면 입체로 안 읽힌다. */
 .fa.rf{fill:var(--a0); stroke:var(--a0)} .fa.rk{fill:var(--a1); stroke:var(--a1)}
-.fa.s1{fill:var(--a1); stroke:var(--a1)} .fa.s2{fill:var(--a2); stroke:var(--a2)}
 .fb.rf{fill:var(--b0); stroke:var(--b0)} .fb.rk{fill:var(--b1); stroke:var(--b1)}
-.fb.s1{fill:var(--b1); stroke:var(--b1)} .fb.s2{fill:var(--b2); stroke:var(--b2)}
 .fc.rf{fill:var(--c0); stroke:var(--c0)} .fc.rk{fill:var(--c1); stroke:var(--c1)}
-.fc.s1{fill:var(--c1); stroke:var(--c1)} .fc.s2{fill:var(--c2); stroke:var(--c2)}
 .fd.rf{fill:var(--d0); stroke:var(--d0)} .fd.rk{fill:var(--d1); stroke:var(--d1)}
-.fd.s1{fill:var(--d1); stroke:var(--d1)} .fd.s2{fill:var(--d2); stroke:var(--d2)}
 .fe.rf{fill:var(--e0); stroke:var(--e0)} .fe.rk{fill:var(--e1); stroke:var(--e1)}
-.fe.s1{fill:var(--e1); stroke:var(--e1)} .fe.s2{fill:var(--e2); stroke:var(--e2)}
 .ff.rf{fill:var(--f0); stroke:var(--f0)} .ff.rk{fill:var(--f1); stroke:var(--f1)}
-.ff.s1{fill:var(--f1); stroke:var(--f1)} .ff.s2{fill:var(--f2); stroke:var(--f2)}
 .fg.rf{fill:var(--g0); stroke:var(--g0)} .fg.rk{fill:var(--g1); stroke:var(--g1)}
-.fg.s1{fill:var(--g1); stroke:var(--g1)} .fg.s2{fill:var(--g2); stroke:var(--g2)}
 .fh.rf{fill:var(--h0); stroke:var(--h0)} .fh.rk{fill:var(--h1); stroke:var(--h1)}
-.fh.s1{fill:var(--h1); stroke:var(--h1)} .fh.s2{fill:var(--h2); stroke:var(--h2)}
 .fm.rf{fill:var(--m0); stroke:var(--m0)} .fm.rk{fill:var(--m1); stroke:var(--m1)}
-.fm.s1{fill:var(--m1); stroke:var(--m1)} .fm.s2{fill:var(--m2); stroke:var(--m2)}
+
+/* 그늘면에 아주 옅은 기운만 남긴다 — 크림 하나로 695채를 칠하면 단조롭다.
+   색이 아니라 온도 차이다. */
+.fb.s2,.fe.s2,.fg.s2{fill:var(--w2c); stroke:var(--w2c)}
+.fm.s2,.ff.s2{fill:var(--w2w); stroke:var(--w2w)}
+
 .ru{fill:var(--ru0); stroke:var(--ru0)} .ru2{fill:var(--ru1); stroke:var(--ru1)}
 .ru,.ru2{stroke-width:2; stroke-linejoin:round; paint-order:stroke}
 .tc,.tp{fill:var(--tc); stroke:var(--tc); stroke-width:2.2; stroke-linejoin:round}
@@ -52,8 +64,8 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .tk{fill:none; stroke:var(--tk); stroke-width:1.9; stroke-linecap:round}
 .bu{fill:var(--bush); stroke:var(--bush); stroke-width:1.8; stroke-linejoin:round}
 .bu2{fill:var(--bush2); stroke:var(--bush2); stroke-width:1.4}
-.bn{fill:none; stroke:#8A6E4E; stroke-width:2.6; stroke-linecap:round}
-.bnb{fill:none; stroke:#6F573C; stroke-width:1.6; stroke-linecap:round}
+.bn{fill:none; stroke:var(--tk); stroke-width:2.6; stroke-linecap:round}
+.bnb{fill:none; stroke:var(--td); stroke-width:1.6; stroke-linecap:round}
 .us{stroke-width:1.4; stroke-linejoin:round; paint-order:stroke}
 .us.u1{fill:var(--u1); stroke:var(--u1)} .us.u2{fill:var(--u2); stroke:var(--u2)}
 .us.u3{fill:var(--u3); stroke:var(--u3)}
@@ -81,3 +93,267 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 .rb-hot,.rb-done,.rb-todo{stroke:var(--sig); stroke-width:3.8}
 .rt-case,.rb-case{transition:opacity .5s ease}
 
+/* ============================================================
+   움직임 — 사람이 멈춰 있으면 모형이 아니라 그림이 된다
+   ============================================================
+   사람 1,100명을 하나씩 움직이면 프레임마다 전부 다시 그려야 한다.
+   massing.py 가 사람을 다섯 무리(.cw b1~b5)로 나눠 두었으므로
+   무리 단위로만 옮긴다. 레이어 5장이면 합성으로 끝난다.
+   진폭은 미니어처 기준 1~2px 이다. 크게 주면 사람이 미끄러진다. */
+@media (prefers-reduced-motion:no-preference){
+  /* 무리마다 다른 고리를 다른 속도로 돈다. 주기가 서로 나누어떨어지지
+     않으므로(23·31·27·37·29초) 언제 봐도 다섯이 같은 자리에 있지 않다. */
+  /* 무리 다섯이 각각 다른 고리를 다른 속도로 돈다. 주기가 서로
+     나누어떨어지지 않아서(23·31·27·37·29초) 언제 봐도 다섯이 같은
+     자리에 없다. 회전을 조금 섞은 것이 무리 안에서 사람마다 다르게
+     움직이는 느낌을 만든다. */
+  .crowd .cw{ will-change:transform }
+  .crowd .cw.b1{ animation:ck-walk-a 23s ease-in-out infinite }
+  .crowd .cw.b2{ animation:ck-walk-b 31s ease-in-out -6s infinite }
+  .crowd .cw.b3{ animation:ck-walk-c 27s ease-in-out -13s infinite }
+  .crowd .cw.b4{ animation:ck-walk-flat 37s ease-in-out -21s infinite }
+  .crowd .cw.b5{ animation:ck-walk-a 29s ease-in-out -4s infinite }
+
+  /* 파도 — transform 으로 밀려온다. 전에는 stroke-dashoffset 이었는데
+     해안선은 모형 폭을 다 덮는 긴 path 라 매 프레임 다시 칠하는 값이
+     실제로 컸다. 여기만은 transform 이 맞다. */
+  .wv{ will-change:transform; animation:ck-wave 7s ease-in-out infinite alternate }
+  .wv.w2{ animation-duration:9s; animation-delay:-2s }
+  .wv.w3{ animation-duration:11s; animation-delay:-5s }
+
+  /* 아직 안 간 구간은 점선이 앞으로 흐른다. 어디로 가는 중인지가
+     선에서 읽힌다. 이건 되살린다 — 2px 굵기 선을 다시 칠하는 값은
+     칠하는 면적에 비례하고, 이 선은 작다. 비쌌던 건 해안선이었다. */
+  .rt-todo,.rb-todo{ animation:ck-march 1.9s linear infinite }
+
+  /* ── 기계가 버거우면 낮춘다 ─────────────────────────────
+     app_home.js 가 들어온 뒤 프레임을 한 번 재고 정한다.
+     좋은 기계에서는 위의 것이 다 돈다. */
+  [data-motion="lite"] .crowd .cw.b2,
+  [data-motion="lite"] .crowd .cw.b4{ animation:none; will-change:auto }
+  [data-motion="lite"] .rt-todo,
+  [data-motion="lite"] .rb-todo{ animation:none }
+  [data-motion="lite"] .wv.w3{ animation:none }
+
+  /* 차 22대·파라솔 57개를 각각 움직이면 애니메이션 대상이 109개가 된다.
+     SVG 는 요소마다 그 영역을 다시 그리므로 프레임이 떨어진다.
+     움직이는 것은 무리 5개와 파도 3개뿐이다 — 8개. */
+}
+
+/* ── 돌아다니기 ─────────────────────────────────────────────
+   닫힌 고리다. 마지막이 처음으로 돌아오므로 이어 붙여도 안 튄다.
+   구간마다 거리가 다르고 방향이 계속 바뀌어서 왕복으로 안 보인다.
+   진폭은 미니어처 기준 가로 6px·세로 3px 안쪽이다. 더 주면 사람이
+   건물 위로 미끄러진다. */
+/* 회전을 아주 조금 섞는다. 이게 핵심이다 —
+   밀기만 하면 220명이 한 몸처럼 같은 방향으로 움직인다.
+   0.3도만 돌리면 무리 가운데 사람은 거의 안 움직이고 끝에 있는 사람은
+   더 움직인다. 애니메이션 요소는 여전히 다섯 개인데 사람마다
+   다르게 움직이는 것처럼 보인다. 공짜로 얻는 자연스러움이다. */
+@keyframes ck-walk-a{
+   0%  { transform:translate(0,0) rotate(0deg) }
+  14%  { transform:translate(2.9px, -1.2px) rotate(.11deg) }
+  27%  { transform:translate(5.4px,  .6px)  rotate(.26deg) }
+  41%  { transform:translate(4.1px,  2.4px) rotate(.18deg) }
+  56%  { transform:translate(.8px,   2.9px) rotate(-.06deg) }
+  68%  { transform:translate(-2.2px, 1.6px) rotate(-.22deg) }
+  83%  { transform:translate(-3.1px, -.9px) rotate(-.14deg) }
+  92%  { transform:translate(-1.4px, -1.8px) rotate(-.04deg) }
+ 100%  { transform:translate(0,0) rotate(0deg) }
+}
+@keyframes ck-walk-b{
+   0%  { transform:translate(0,0) rotate(0deg) }
+  12%  { transform:translate(-3.3px, .8px)  rotate(-.13deg) }
+  26%  { transform:translate(-5.1px, -1.1px) rotate(-.28deg) }
+  38%  { transform:translate(-2.6px, -2.7px) rotate(-.16deg) }
+  51%  { transform:translate(1.5px,  -3.0px) rotate(.07deg) }
+  64%  { transform:translate(4.2px,  -1.4px) rotate(.24deg) }
+  77%  { transform:translate(3.6px,   1.3px) rotate(.15deg) }
+  89%  { transform:translate(1.1px,   2.1px) rotate(.05deg) }
+ 100%  { transform:translate(0,0) rotate(0deg) }
+}
+@keyframes ck-walk-c{
+   0%  { transform:translate(0,0) rotate(0deg) }
+  16%  { transform:translate(1.8px,  2.2px) rotate(.09deg) }
+  31%  { transform:translate(-1.1px, 3.1px) rotate(-.12deg) }
+  44%  { transform:translate(-4.3px, 1.7px) rotate(-.25deg) }
+  59%  { transform:translate(-4.8px, -1.0px) rotate(-.19deg) }
+  72%  { transform:translate(-1.9px, -2.6px) rotate(-.03deg) }
+  85%  { transform:translate(2.4px,  -1.9px) rotate(.17deg) }
+  94%  { transform:translate(2.7px,  -.4px) rotate(.21deg) }
+ 100%  { transform:translate(0,0) rotate(0deg) }
+}
+/* 회전 없는 걷기 — 레이어 하나를 아끼려고 둔 것이 아니다.
+   무리 셋 중 하나는 회전 없이 밀리게 둬서 세 무리가 서로 다르게 보인다 */
+@keyframes ck-walk-flat{
+   0%  { transform:translate(0,0) }
+  18%  { transform:translate(2.1px, 1.4px) }
+  36%  { transform:translate(3.4px, -.8px) }
+  55%  { transform:translate(.6px, -2.2px) }
+  73%  { transform:translate(-2.4px, -1.1px) }
+  88%  { transform:translate(-1.8px, 1.0px) }
+ 100%  { transform:translate(0,0) }
+}
+/* 흐르는 점선 — 아직 안 간 구간 */
+@keyframes ck-march{ from{ stroke-dashoffset:0 } to{ stroke-dashoffset:-15 } }
+
+/* 파도 — 밀려오고 물러난다. 아주 조금 */
+@keyframes ck-wave{
+  from{ transform:translate3d(0, 0, 0) }
+  to  { transform:translate3d(-3.2px, 1.1px, 0) }
+}
+
+/* ── 시간대 · 사람 수 ────────────────────────────────────────
+   두 가지가 같은 opacity 를 놓고 다툰다 —
+     시간대  밤에는 해변에 사람이 없다
+     혼잡도  집중률이 낮으면 사람이 적다
+   둘을 곱한다. 한쪽이 다른 쪽을 덮으면 하나는 아무 일도 안 하게 된다
+   (실제로 그랬다 — 파라솔이 늘 .25 였다).
+
+   --cw     집중률을 0~1 로. app_home.js 가 관광공사 예측에서 받아 넣는다
+   --sky-a  시간대가 정하는 비율 */
+.ck-scene{ --cw:.8; --sky-a:1 }
+[data-sky="dusk"]  .ck-scene{ --sky-a:.72 }
+[data-sky="night"] .ck-scene{ --sky-a:.24 }
+[data-sky="dawn"]  .ck-scene{ --sky-a:.34 }
+
+/* 무리 다섯에 각자 문턱을 준다. 값이 오르면 무리가 하나씩 더 보인다.
+   전에는 다섯이 혼잡도와 무관하게 늘 같은 진하기였다. 「매우 혼잡 95」라고
+   써 놓고 한적한 날과 같은 해변을 보여 주면 그 숫자를 믿을 이유가 없다.
+     95 다섯 · 70 넷 · 52 셋 · 35 둘 · 20 하나 */
+.crowd{ opacity:var(--sky-a, 1); transition:opacity 1.2s linear }
+.crowd .cw{ transition:opacity .9s ease }
+.crowd .cw.b1{ opacity:clamp(0, calc((var(--cw, .8) - .08) * 7), 1) }
+.crowd .cw.b2{ opacity:clamp(0, calc((var(--cw, .8) - .28) * 7), 1) }
+.crowd .cw.b3{ opacity:clamp(0, calc((var(--cw, .8) - .46) * 7), 1) }
+.crowd .cw.b4{ opacity:clamp(0, calc((var(--cw, .8) - .62) * 7), 1) }
+.crowd .cw.b5{ opacity:clamp(0, calc((var(--cw, .8) - .78) * 7), 1) }
+
+/* 파라솔은 사람보다 덜 움직인다. 한적해도 몇 개는 펴져 있다 */
+.us{
+  opacity:calc(clamp(.25, calc(.25 + var(--cw, .8) * .75), 1) * var(--sky-a, 1));
+  transition:opacity 1.2s ease;
+}
+
+/* ── 표면의 결 ──────────────────────────────────────────────
+   갤러리(b2tf · inspora)에 올라온 작업물 중 평평한 벡터 한 장으로
+   끝낸 것은 한 점도 없었다. 전부 물건이거나 흐린 덩이가 깔려 있다.
+   우리 모형은 SVG 라 완벽하게 평평해서 「3D 일러스트 스톡」처럼 보인다.
+   종이·석고 미니어처는 그렇지 않다.
+
+   결은 화면에 고정한다. 모형을 확대해도 결의 크기는 안 변해야
+   「표면」으로 읽힌다 — 같이 커지면 모형에 그려진 무늬가 된다.
+   그래서 변형이 걸리는 .ck-frame 이 아니라 .ck-scene 위에 얹는다.
+
+   tokens.css 가 금지한 SVG filter(feTurbulence 등)를 쓰지 않는다.
+   128x128 PNG 한 장이면 필터 없이 끝난다. */
+.ck-scene::after,
+.mv-scene::after{
+  content:""; position:absolute; inset:0; z-index:2;
+  pointer-events:none;
+  background-image:url("/img/grain.png");
+  background-size:128px 128px;
+  opacity:var(--grain, .5);
+  mix-blend-mode:soft-light;
+}
+[data-sky="dusk"] .ck-scene,
+[data-sky="dusk"] .mv-scene{ --grain:.38 }
+[data-sky="night"] .ck-scene,
+[data-sky="night"] .mv-scene{ --grain:.22 }
+
+/* 핀·말풍선은 결 위에 온다 */
+.ck-pins, .ck-pin{ position:relative; z-index:3 }
+
+@media (prefers-reduced-motion: reduce){
+  .ck-scene::after, .mv-scene::after{ opacity:calc(var(--grain, .5) * .6) }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   날씨 — 모형 위에 한 겹
+
+   빗방울을 하나씩 만들지 않는다. 반복 그라디언트 두 겹을 서로 다른
+   속도로 흘린다. 요소가 둘뿐이라 군중 다섯 겹이 도는 옆에서 같이
+   돌아도 프레임이 안 떨어진다. transform 만 바꾸므로 합성으로 끝난다.
+   ══════════════════════════════════════════════════════════════ */
+
+.ck-wx{
+  position:absolute; inset:-12% -12% -12% -12%; z-index:2; pointer-events:none;
+  opacity:0; transition:opacity .8s ease;
+}
+.ck-wx::before,
+.ck-wx::after{ content:""; position:absolute; inset:0; will-change:transform }
+
+/* 비 — 가는 선이 비스듬히 내린다. 두 겹의 각도와 속도를 다르게 둬서
+   앞뒤가 생긴다. 한 겹만 쓰면 벽지처럼 보인다 */
+[data-wx="rain"] .ck-wx{ opacity:1 }
+[data-wx="rain"] .ck-wx::before{
+  background:repeating-linear-gradient(74deg,
+    rgba(255,255,255,0) 0 7px,
+    rgba(255,255,255,.34) 7px 8px,
+    rgba(255,255,255,0) 8px 15px);
+  animation:ck-rain .62s linear infinite;
+}
+[data-wx="rain"] .ck-wx::after{
+  background:repeating-linear-gradient(71deg,
+    rgba(255,255,255,0) 0 13px,
+    rgba(255,255,255,.18) 13px 14px,
+    rgba(255,255,255,0) 14px 27px);
+  animation:ck-rain 1.05s linear infinite;
+}
+
+/* 눈 — 점이 느리게 떨어진다. 두 겹의 크기를 다르게 둬서 깊이가 생긴다 */
+[data-wx="snow"] .ck-wx{ opacity:1 }
+[data-wx="snow"] .ck-wx::before{
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,.9) 0 1.4px, transparent 1.6px),
+    radial-gradient(circle at 62% 38%, rgba(255,255,255,.8) 0 1.2px, transparent 1.4px),
+    radial-gradient(circle at 84% 72%, rgba(255,255,255,.9) 0 1.5px, transparent 1.7px);
+  background-size:120px 120px, 90px 90px, 150px 150px;
+  animation:ck-snow 9s linear infinite;
+}
+[data-wx="snow"] .ck-wx::after{
+  background:
+    radial-gradient(circle at 42% 24%, rgba(255,255,255,.62) 0 2.2px, transparent 2.6px),
+    radial-gradient(circle at 12% 66%, rgba(255,255,255,.55) 0 2.6px, transparent 3px);
+  background-size:200px 200px, 260px 260px;
+  animation:ck-snow 15s linear infinite;
+}
+
+/* 흐림 — 그리는 것이 없다. 채도만 내린다 */
+[data-wx="cloudy"] .ck-wx{
+  opacity:1;
+  background:linear-gradient(180deg, rgba(120,132,148,.16) 0, rgba(120,132,148,.05) 42%, transparent 70%);
+}
+
+/* 비·눈·흐림이면 장면이 조금 가라앉는다.
+   전에는 .ck-frame 에 filter 를 걸었다. 그 안에서 군중 다섯 겹이 도는데,
+   자식이 한 프레임 움직일 때마다 474KB SVG 전체에 필터를 다시 먹인다.
+   그게 렉의 가장 큰 원인이었다. 막의 색으로 같은 느낌을 낸다 —
+   합성 단계에서 끝나므로 공짜다. */
+[data-wx="rain"] .ck-wx{
+  background:linear-gradient(180deg,
+    rgba(58,72,94,.20) 0, rgba(58,72,94,.10) 46%, rgba(58,72,94,.05) 100%);
+}
+[data-wx="snow"] .ck-wx{
+  background:linear-gradient(180deg,
+    rgba(228,236,246,.26) 0, rgba(228,236,246,.10) 52%, transparent 100%);
+}
+
+@media (prefers-reduced-motion:no-preference){
+  @keyframes ck-rain{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(-42px, 150px, 0) } }
+  @keyframes ck-snow{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(-26px, 120px, 0) } }
+}
+@media (prefers-reduced-motion:reduce){
+  .ck-wx::before,.ck-wx::after{ animation:none }
+}
+
+/* ── 구워진 경로를 숨긴다 ───────────────────────────────────
+   모형 SVG 안에 경로가 들어 있다(rt-case · rt-todo · rb-case · rb-hot).
+   그건 모형을 만들 때의 세 지점을 이은 선이다. 정거장을 옮긴 뒤로는
+   아무 데도 안 닿아서 해변 가운데서 끊긴 채로 보였다.
+   지금은 app_home.js 가 핀 좌표로 직접 긋는다 — 같은 좌표계라
+   끝점이 정확히 맞는다. */
+.mass .rt-case, .mass .rt-todo, .mass .rt-done, .mass .rt-hot,
+.mass .rb-case, .mass .rb-todo, .mass .rb-done, .mass .rb-hot{
+  display:none;
+}

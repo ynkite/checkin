@@ -557,7 +557,7 @@
     /* ── contenteditable B/I/U 수동 토글 유틸 ─────────────────────
      * 버튼 색상은 커서가 위치한 기존 글자의 서식이 아니라 사용자가 버튼을 눌러 둔 상태를 기준으로 표시한다.
      * 따라서 굵은 글자 근처로 커서를 이동해도 B 버튼이 갑자기 켜지지 않는다.
-     * 버튼을 누르면 즉시 #47B39F로 바뀌고, 다시 누르면 즉시 기본 색상으로 돌아온다.
+     * 버튼을 누르면 즉시 채워진 상태로 바뀌고, 다시 누르면 기본으로 돌아온다.
      */
     window._commUtil.getEditorCommandState = function getEditorCommandState(editor) {
         if (!editor) return { bold: false, italic: false, underline: false };
@@ -578,12 +578,12 @@
     window._commUtil.setEditorCommandButtonState = function setEditorCommandButtonState(button, active) {
         if (!button) return;
 
-        const activeColor = '#47B39F';
+        const activeColor = 'var(--terra)';
 
         button.dataset.active = active ? 'true' : 'false';
         button.style.background = active ? activeColor : 'var(--surface)';
         button.style.borderColor = active ? activeColor : 'var(--border)';
-        button.style.color = active ? '#fff' : 'var(--text1)';
+        button.style.color = active ? 'var(--panel)' : 'var(--text1)';
     };
 
     window._commUtil.updateEditorToolbarState = function updateEditorToolbarState(editor) {
@@ -735,7 +735,7 @@
         if (!editor || !img) return;
         window._commUtil.clearInlineImageSelection(editor);
         img.dataset.inlineSelected = 'true';
-        img.style.outline = '3px solid #47B39F';
+        img.style.outline = '3px solid var(--terra)';
         img.style.boxShadow = '0 0 0 4px rgba(71,179,159,.18)';
     };
 
@@ -1357,13 +1357,13 @@
                 const isHiddenComment = c.status === 'HIDDEN';
                 if (isHiddenComment) {
                     return `
-                <div class="comment-item" style="background:#FFF3F3;border-radius:8px;padding:8px 12px">
+                <div class="comment-item" style="background:var(--tile-pale);border-radius:8px;padding:8px 12px">
                     <div style="display:flex;align-items:center;gap:6px">
-                        <span class="comment-writer" style="color:#9E9E9E">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
+                        <span class="comment-writer" style="color:var(--ink-3)">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
-                        <span style="font-size:10px;color:#E53935;background:#FFEBEE;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
+                        <span style="font-size:10px;color:var(--tile);background:var(--tile-pale);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
                     </div>
-                    <div class="comment-content" style="color:#9E9E9E">${escapeHtml(c.content || '')}</div>
+                    <div class="comment-content" style="color:var(--ink-3)">${escapeHtml(c.content || '')}</div>
                 </div>`;
                 }
                 const isMyComment = _myIdForComment && Number(c.userId) === Number(_myIdForComment);
@@ -1574,8 +1574,8 @@
         if (_titleEl2) {
             if (_isHiddenPost) {
                 _titleEl2.innerHTML = escapeHtml(post.title || '') +
-                    ' <span style="font-size:12px;font-weight:700;background:#FFF3F3;color:#E53935;' +
-                    'border:1px solid #FFCDD2;border-radius:5px;padding:2px 8px;vertical-align:middle;' +
+                    ' <span style="font-size:12px;font-weight:700;background:var(--tile-pale);color:var(--tile);' +
+                    'border:1px solid var(--tile-pale);border-radius:5px;padding:2px 8px;vertical-align:middle;' +
                     'white-space:nowrap">숨김 처리된 글</span>';
             } else {
                 _titleEl2.textContent = post.title || '';
@@ -1704,7 +1704,7 @@
             'display:none;align-items:center;justify-content:center;padding:20px';
 
         modal.innerHTML = `
-            <div style="width:min(520px,94vw);background:#fff;border-radius:18px;padding:22px 22px 18px;
+            <div style="width:min(520px,94vw);background:var(--panel);border-radius:18px;padding:22px 22px 18px;
                         box-shadow:0 18px 45px rgba(0,0,0,.18);box-sizing:border-box">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
                     <h3 style="margin:0;font-size:18px;font-weight:800;color:var(--text)">댓글 수정</h3>
@@ -2016,7 +2016,7 @@
                     플랜 연동 (선택)
                 </label>
                 <select id="writePlanId"
-                        style="width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border2);background:#fff;color:var(--text1);font-size:13px">
+                        style="width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--border2);background:var(--panel);color:var(--text1);font-size:13px">
                     <option value="">플랜을 선택하지 않음</option>
                 </select>
             `;
@@ -2221,17 +2221,17 @@ window._handleWriteImageSelect = function(input) {
 
             // 숨김 처리된 글 표시 (관리자 & 본인)
             const hiddenBadge = isHidden
-                ? `<span style="font-size:10px;color:#E53935;background:#FFF3F3;border:1px solid #FFCDD2;border-radius:4px;padding:1px 6px;margin-left:6px">숨김 처리된 글</span>`
+                ? `<span style="font-size:10px;color:var(--tile);background:var(--tile-pale);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 6px;margin-left:6px">숨김 처리된 글</span>`
                 : '';
 
             div.innerHTML = `
                 <div class="post-card" onclick="openPostDetail(${postId})"
-                     style="${isHidden ? 'opacity:0.55;background:#FAFAFA' : ''}">
+                     style="${isHidden ? 'opacity:0.55;background:var(--ui-plate)' : ''}">
                     <div class="community-card-head">
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
                         <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole) : ''} · ${escapeHtml(dateText)}</span>
                     </div>
-                    <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}${isHidden ? ' <span style="font-size:11px;font-weight:700;background:#FFF3F3;color:#E53935;border:1px solid #FFCDD2;border-radius:4px;padding:1px 7px;vertical-align:middle;white-space:nowrap">숨김 처리된 글</span>' : ''}</div>
+                    <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}${isHidden ? ' <span style="font-size:11px;font-weight:700;background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 7px;vertical-align:middle;white-space:nowrap">숨김 처리된 글</span>' : ''}</div>
                     ${tags.length ? `<div class="community-card-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
                     <div class="post-foot">
                         <div class="post-stats">
@@ -2279,7 +2279,7 @@ window._handleWriteImageSelect = function(input) {
     // 관리자 배지 HTML 헬퍼
     window._adminBadge = (role) =>
         role === 'ADMIN'
-            ? ' <span style="font-size:10px;font-weight:800;background:#0d9488;color:#fff;border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
+            ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
             : '';
 
     // 장소 카테고리 → 커뮤니티 탭 이름 매핑
@@ -2615,15 +2615,17 @@ window._handleWriteImageSelect = function(input) {
     const { escapeHtml, parseRouteData, getRouteData, getAllPlaces } = window._commUtil;
 
     function getPinColor(type) {
-        if (type === 'stay') return '#2D9E8A';
-        if (['food','lunch','dinner','breakfast'].includes(type)) return '#F87171';
-        if (type === 'cafe') return '#7C3AED';
-        if (type === 'tour') return '#22B5C4';
-        return '#2D9E8A';
+        if (type === 'stay') return 'var(--terra)';
+        if (['food','lunch','dinner','breakfast'].includes(type)) return 'var(--tile)';
+        if (type === 'cafe') return 'var(--ink-2)';
+        if (type === 'tour') return 'var(--slate)';
+        return 'var(--terra)';
     }
 
     function getDayColor(day) {
-        return ['#2D9E8A','#A78BFA','#22B5C4','#F5A623','#F472B6'][(Number(day || 1) - 1) % 5];
+        /* 카카오 SDK 는 진짜 색 문자열을 받는다. 토큰을 읽어 넘긴다 */
+        return [ckColor('--terra'), ckColor('--slate'), ckColor('--num'),
+                ckColor('--sig-deep'), ckColor('--ink-3')][(Number(day || 1) - 1) % 5];
     }
 
     function getDayCount(post) {
@@ -2779,8 +2781,8 @@ window._handleWriteImageSelect = function(input) {
                             map, position, xAnchor: 0, yAnchor: 0,
                             content: `
                                 <div style="cursor:pointer;position:relative;width:0;height:0;">
-                                    <div style="position:absolute;left:-18px;top:-18px;width:36px;height:36px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid #fff;z-index:2;">${escapeHtml(place.icon || '곳')}</div>
-                                    <div style="position:absolute;top:20px;left:0;transform:translateX(-50%);background:#fff;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;color:#111;box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08);z-index:1;">${escapeHtml(place.name)}</div>
+                                    <div style="position:absolute;left:-18px;top:-18px;width:36px;height:36px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid var(--panel);z-index:2;">${escapeHtml(place.icon || '곳')}</div>
+                                    <div style="position:absolute;top:20px;left:0;transform:translateX(-50%);background:var(--panel);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08);z-index:1;">${escapeHtml(place.name)}</div>
                                 </div>`
                         });
                     }
@@ -2831,14 +2833,14 @@ window._handleWriteImageSelect = function(input) {
         const btn = document.getElementById('cpp-preview-scrap-btn');
         if (!btn) return;
 
-        const activeColor = '#4CA693';
+        const activeColor = 'var(--terra)';
         const active = !!scrapped;
 
         btn.dataset.scrapped = active ? 'true' : 'false';
         btn.textContent = active ? '스크랩됨' : '스크랩';
-        btn.style.background = active ? activeColor : '#fff';
+        btn.style.background = active ? activeColor : 'var(--panel)';
         btn.style.borderColor = activeColor;
-        btn.style.color = active ? '#fff' : activeColor;
+        btn.style.color = active ? 'var(--panel)' : activeColor;
 
         // "스크랩됨" 문구가 버튼 안에서 줄바꿈되지 않도록 보강한다.
         btn.style.whiteSpace = 'nowrap';
@@ -2854,15 +2856,15 @@ window._handleWriteImageSelect = function(input) {
         const btn = document.getElementById('cpp-preview-scrap-btn');
         if (!btn) return;
 
-        const activeColor = '#4CA693';
+        const activeColor = 'var(--terra)';
         const active = btn.dataset.scrapped === 'true';
 
         if (active || hovered) {
             btn.style.background = activeColor;
             btn.style.borderColor = activeColor;
-            btn.style.color = '#fff';
+            btn.style.color = 'var(--panel)';
         } else {
-            btn.style.background = '#fff';
+            btn.style.background = 'var(--panel)';
             btn.style.borderColor = activeColor;
             btn.style.color = activeColor;
         }
@@ -2877,14 +2879,14 @@ window._handleWriteImageSelect = function(input) {
 
         if (!detailScrapBtn) return;
 
-        const activeColor = '#46B29E';
+        const activeColor = 'var(--terra)';
         const active = !!scrapped;
 
         if (active) {
             detailScrapBtn.classList.add('community-action-active');
             detailScrapBtn.style.background = activeColor;
             detailScrapBtn.style.borderColor = activeColor;
-            detailScrapBtn.style.color = '#fff';
+            detailScrapBtn.style.color = 'var(--panel)';
         } else {
             detailScrapBtn.classList.remove('community-action-active');
             detailScrapBtn.style.background = '';
@@ -3453,7 +3455,7 @@ window._handleWriteImageSelect = function(input) {
 
     async function loadRouteSearchOrSorted(pageNo) {
         const tabEl = document.getElementById('tab-route');
-        if (tabEl) tabEl.innerHTML = '<div class="comm-empty">불러오는 중...</div>';
+        if (tabEl) tabEl.innerHTML = '<div class="pl-none">불러오는 중</div>';
 
         try {
             const keyword = getSearchKeyword();
@@ -3485,7 +3487,7 @@ window._handleWriteImageSelect = function(input) {
     function renderStars(rating) {
         const n = Math.round(Number(rating) || 0);
         let s = '';
-        for (let i = 1; i <= 5; i++) s += i <= n ? '★' : '☆';
+        s = Number(n).toFixed(1);
         return s;
     }
 
@@ -3804,7 +3806,7 @@ window._handleWriteImageSelect = function(input) {
 
     function starsHtml(rating) {
         let s = '';
-        for (let i = 1; i <= 5; i++) s += i <= rating ? '★' : '☆';
+        s = Number(rating).toFixed(1);
         return s;
     }
 
@@ -3991,10 +3993,11 @@ window._handleWriteImageSelect = function(input) {
             tabEl.innerHTML = '';
 
             const wrap = document.createElement('div');
-            wrap.className = 'place-review-wrap';
+            wrap.className = 'pl-wrap';
 
             const back = document.createElement('button');
-            back.className = 'place-back-btn'; back.textContent = '← 목록으로';
+            back.type = 'button';
+            back.className = 'pl-back'; back.textContent = '← 목록으로';
             back.addEventListener('click', function () {
                 /* 목록으로 돌아오면 검색/정렬 바 복원 */
                 const sb = document.querySelector('#page-community .search-bar');
@@ -4031,70 +4034,84 @@ window._handleWriteImageSelect = function(input) {
             } catch (e) {}
 
             const header = document.createElement('div');
-            header.className = 'place-review-header';
+            header.className = 'pl-head';
             const mapQuery = encodeURIComponent(placeName || '');
+            /* 별을 늘어놓지 않는다. 읽기만 하는 평점은 숫자가 빠르다.
+               바깥 지도로 나가는 것은 보조 동작이라 링크로 둔다 —
+               알약 버튼 세 개가 장소 이름보다 크게 보였다. */
             header.innerHTML = [
-                `<div class="place-review-name">${escapeHtml(placeName)}</div>`,
-                `<div class="place-avg-stars">${starsHtml(Math.round(avg))}</div>`,
-                `<div class="place-avg-score">${avg.toFixed(1)}</div>`,
-                `<div class="place-avg-count">${cnt}개 후기</div>`,
-                `<button class="place-review-scrap-btn${alreadyScrapped ? ' scrapped' : ''}"`,
-                `        onclick="doCommPlaceScrapToggle(this, ${placeId},'${type}')">`,
-                `  <span class="prs-star">★</span> <span class="prs-label">스크랩</span>`,
-                `</button>`,
-                `<div class="place-map-links">`,
-                `  <div class="pml-title">지도 앱에서 보기</div>`,
-                `  <div class="pml-btns">`,
-                `    <a class="pml-btn pml-naver"  href="https://map.naver.com/v5/search/${mapQuery}" target="_blank" rel="noopener">네이버 지도</a>`,
-                `    <a class="pml-btn pml-kakao"  href="https://map.kakao.com/?q=${mapQuery}" target="_blank" rel="noopener">카카오맵</a>`,
-                `    <a class="pml-btn pml-google" href="https://www.google.com/maps/search/?api=1&query=${mapQuery}" target="_blank" rel="noopener">구글 지도</a>`,
-                `  </div>`,
-                `</div>`
+                '<span class="pl-eye">장소</span>',
+                '<h2 class="pl-name">' + escapeHtml(placeName) + '</h2>',
+                '<div class="pl-figs">',
+                '  <div class="pl-fig"><b>' + (avg ? avg.toFixed(1) : '—') + '</b><span>평점</span></div>',
+                '  <div class="pl-fig pl-dim"><b>' + cnt + '</b><span>개의 후기</span></div>',
+                '</div>',
+                '<button class="pl-keep' + (alreadyScrapped ? ' on' : '') + '" type="button"',
+                '        onclick="doCommPlaceScrapToggle(this, ' + placeId + ",'" + type + "')\">",
+                (alreadyScrapped ? '담은 장소' : '담기'),
+                '</button>',
+                '<div class="pl-maps">',
+                '  <p class="pl-maps-t">지도 앱에서 열기</p>',
+                '  <div class="pl-maps-l">',
+                '    <a href="https://map.naver.com/v5/search/' + mapQuery + '" target="_blank" rel="noopener">네이버 지도</a>',
+                '    <a href="https://map.kakao.com/?q=' + mapQuery + '" target="_blank" rel="noopener">카카오맵</a>',
+                '    <a href="https://www.google.com/maps/search/?api=1&query=' + mapQuery + '" target="_blank" rel="noopener">구글 지도</a>',
+                '  </div>',
+                '</div>'
             ].join('');
             wrap.appendChild(header);
 
             if (!reviews.length) {
                 const empty = document.createElement('div');
-                empty.className = 'comm-empty'; empty.textContent = '이 장소에 대한 후기가 없습니다.';
+                empty.className = 'pl-none';
+                empty.innerHTML = '<b>아직 후기가 없습니다.</b>' +
+                    '이 장소를 다녀오면 후기를 남길 수 있습니다.';
                 wrap.appendChild(empty); tabEl.appendChild(wrap); return;
             }
 
+            const bar = document.createElement('div');
+            bar.className = 'pl-bar';
+            bar.innerHTML = '<h3>후기 ' + reviews.length + '개</h3>';
+            wrap.appendChild(bar);
+
             const listEl = document.createElement('div');
-            listEl.className = 'place-review-list';
+            listEl.className = 'pl-list';
 
             reviews.forEach(function (r) {
                 const el = document.createElement('div');
-                el.className = 'place-review-item';
-                const hasComment = r.comment && r.comment.trim();
+                el.className = 'pl-item';
+                const say = r.comment && r.comment.trim();
 
                 el.innerHTML = [
-                    `<div class="pri-top">`,
-                    `  <span class="pri-stars">${starsHtml(r.rating)}</span>`,
-                    `  <span class="pri-writer">${escapeHtml(r.writerName || '')}</span>`,
-                    `</div>`,
-                    hasComment
-                        ? `<div class="pri-comment">${escapeHtml(r.comment.trim())}</div>` +
-                        `<button class="pri-toggle-btn" data-expanded="false">자세히 보기</button>`
-                        : '',
-                    r.postId ? `<button class="pri-goto">해당 후기로 이동 →</button>` : ''
+                    '<div class="pl-top">',
+                    '  <span class="pl-score">' +
+                        (r.rating != null ? Number(r.rating).toFixed(1) : '—') + '</span>',
+                    '  <span class="pl-who">' + escapeHtml(r.writerName || '익명') + '</span>',
+                    '  <span class="pl-when">' +
+                        String(r.createdAt || '').substring(0, 10).replace(/-/g, '.') + '</span>',
+                    '</div>',
+                    say ? '<p class="pl-say">' + escapeHtml(say) + '</p>' : '',
+                    r.postId ? '<button class="pl-goto" type="button">이 후기 전체 보기</button>' : ''
                 ].join('');
 
-                if (hasComment) {
-                    const commentEl = el.querySelector('.pri-comment');
-                    const toggleBtn = el.querySelector('.pri-toggle-btn');
-                    toggleBtn.addEventListener('click', function () {
-                        const expanded = this.dataset.expanded === 'true';
-                        commentEl.classList.toggle('expanded', !expanded);
-                        this.textContent = expanded ? '자세히 보기' : '접기';
-                        this.dataset.expanded = String(!expanded);
-                    });
+                /* 두 줄이 넘는 것만 「자세히 보기」를 붙인다.
+                   짧은 한 줄평 밑에 접기 버튼이 붙으면 눌러도 아무 일이 없다 */
+                if (say) {
+                    const sayEl = el.querySelector('.pl-say');
                     requestAnimationFrame(function () {
-                        if (commentEl.scrollHeight <= commentEl.clientHeight + 2) toggleBtn.style.display = 'none';
+                        if (sayEl.scrollHeight <= sayEl.clientHeight + 2) return;
+                        const b = document.createElement('button');
+                        b.type = 'button'; b.className = 'pl-more'; b.textContent = '자세히 보기';
+                        b.addEventListener('click', function () {
+                            const open = sayEl.classList.toggle('on');
+                            b.textContent = open ? '접기' : '자세히 보기';
+                        });
+                        sayEl.insertAdjacentElement('afterend', b);
                     });
                 }
 
                 if (r.postId) {
-                    el.querySelector('.pri-goto').addEventListener('click', function () {
+                    el.querySelector('.pl-goto').addEventListener('click', function () {
                         if (typeof window.openPostDetail === 'function') window.openPostDetail(r.postId);
                     });
                 }
@@ -4107,7 +4124,7 @@ window._handleWriteImageSelect = function(input) {
 
         } catch (e) {
             console.error('[place-tab] 장소 후기 로드 실패:', e);
-            tabEl.innerHTML = '<div class="comm-empty">후기를 불러오지 못했습니다.</div>';
+            tabEl.innerHTML = '<div class="pl-none"><b>후기를 불러오지 못했습니다.</b>잠시 뒤에 다시 열어 보세요.</div>';
         }
     }
 
@@ -4499,7 +4516,7 @@ window._handleWriteImageSelect = function(input) {
 
     // ── 좋아요 / 스크랩 상태 유지 ─────────────────────────────────────
 
-    const ACTIVE_COLOR = '#46B29E';
+    const ACTIVE_COLOR = 'var(--terra)';
 
     function findActionButton(keyword) {
         return [...document.querySelectorAll('#page-review button, #page-review .btn-f, #page-review .btn-scrap')]
@@ -4510,7 +4527,7 @@ window._handleWriteImageSelect = function(input) {
         if (!btn) return;
         if (active) {
             btn.classList.add('community-action-active');
-            btn.style.cssText += 'background:' + ACTIVE_COLOR + ';border-color:' + ACTIVE_COLOR + ';color:#fff';
+            btn.style.cssText += 'background:' + ACTIVE_COLOR + ';border-color:' + ACTIVE_COLOR + ';color:var(--panel)';
         } else {
             btn.classList.remove('community-action-active');
             btn.style.background = ''; btn.style.borderColor = ''; btn.style.color = '';
@@ -4587,7 +4604,7 @@ window._handleWriteImageSelect = function(input) {
         overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
 
         overlay.innerHTML = `
-            <div style="width:720px;max-width:100%;max-height:90vh;overflow:auto;background:#fff;border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
+            <div style="width:720px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
                     <h2 style="margin:0;font-size:20px;font-weight:800;color:var(--text1)">후기 수정</h2>
                     <button type="button" id="communityEditCloseBtn" style="border:none;background:transparent;font-size:28px;cursor:pointer;color:var(--text3)">×</button>
@@ -4607,7 +4624,7 @@ window._handleWriteImageSelect = function(input) {
                 </div>
                 <div class="form-group" style="margin-bottom:14px">
                     <label class="form-label">내용</label>
-                    <div style="border:1px solid var(--border2);border-radius:var(--r);background:#fff;display:flex;flex-direction:column;min-height:220px">
+                    <div style="border:1px solid var(--border2);border-radius:var(--r);background:var(--panel);display:flex;flex-direction:column;min-height:220px">
                         <div style="display:flex;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border2);background:var(--cream)">
                             <button type="button"
                                     data-editor-id="communityEditContent"
@@ -4691,11 +4708,11 @@ window._handleWriteImageSelect = function(input) {
         //
         // empty.style.display = 'none';
         // box.innerHTML = urls.map(url => `
-        //     <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff">
+        //     <div class="community-edit-image-item" data-image-url="${escapeHtml(url)}" style="position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--panel)">
         //         <img src="${escapeHtml(url)}" alt="첨부 이미지" style="width:100%;height:110px;object-fit:cover;display:block" onerror="this.style.display='none'">
         //         <button type="button" class="community-edit-image-delete"
         //                 data-post-id="${escapeHtml(postId)}" data-image-url="${escapeHtml(url)}"
-        //                 style="width:100%;border:none;border-top:1px solid var(--border);background:#FEF3F2;color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
+        //                 style="width:100%;border:none;border-top:1px solid var(--border);background:var(--tile-pale);color:var(--coral);padding:8px 0;font-size:12px;font-weight:800;cursor:pointer;">이미지 삭제</button>
         //     </div>
         // `).join('');
         //
@@ -4980,7 +4997,7 @@ window._handleWriteImageSelect = function(input) {
         const starHtml = function (avg) {
             if (!avg) return '';
             const filled = Math.round(avg);
-            return '★'.repeat(filled) + '☆'.repeat(5 - filled) + ' <b>' + Number(avg).toFixed(1) + '</b>';
+            return '<b>' + Number(avg).toFixed(1) + '</b>';
         };
 
         return '<div class="place-card" style="cursor:pointer" ' +
@@ -5094,9 +5111,9 @@ window._handleWriteImageSelect = function(input) {
         if (btn && scrapped !== undefined) {
             if (scrapped) {
                 btn.classList.add('scrapped');
-                btn.style.background  = '#46B29E';
-                btn.style.borderColor = '#46B29E';
-                btn.style.color       = '#fff';
+                btn.style.background  = 'var(--terra)';
+                btn.style.borderColor = 'var(--terra)';
+                btn.style.color       = 'var(--panel)';
             } else {
                 btn.classList.remove('scrapped');
                 btn.style.background  = '';
@@ -5130,7 +5147,7 @@ window._handleWriteImageSelect = function(input) {
         if (window._myRouteScrapDeleteMode) {
             actionBox.innerHTML =
                 '<button type="button" onclick="execMyRouteScrapBulkDelete()" ' +
-                'style="padding:4px 10px;background:var(--coral);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">선택 삭제 실행</button>' +
+                'style="padding:4px 10px;background:var(--coral);color:var(--panel);border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer;">선택 삭제 실행</button>' +
                 '<button type="button" onclick="toggleMyRouteScrapDeleteMode(false)" ' +
                 'style="padding:4px 10px;background:var(--cream);color:var(--text2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">취소</button>';
             return;
@@ -5162,7 +5179,7 @@ window._handleWriteImageSelect = function(input) {
             (window._myRouteScrapDeleteMode
                 ? '<input type="checkbox" class="route-scrap-del-chk" id="chk-route-scrap-' + escapeHtml(postId) + '" value="' + escapeHtml(postId) + '" onclick="event.stopPropagation();" style="width:16px;height:16px;cursor:pointer;margin-left:4px;">'
                 : '') +
-            '<div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;flex-shrink:0;">지도</div>' +
+            '<div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:20px;color:var(--panel);flex-shrink:0;">지도</div>' +
             '<div class="trip-info" style="flex:1;min-width:0;">' +
             '<div class="trip-ttl" style="font-weight:700;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(title) + '</div>' +
             '<div class="trip-meta" style="font-size:11px;color:var(--text3);margin-top:2px;">' + escapeHtml(writer) + ' · 여행 경로</div>' +

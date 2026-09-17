@@ -27,8 +27,15 @@ import java.util.Map;
 public class TourApiClient {
 
     // 디코딩키를 넣는다. 인코딩키를 넣으면 SERVICE_KEY_IS_NOT_REGISTERED_ERROR.
-    @Value("${tour.api.key}")
-    private String serviceKey;
+    /* 쉼표로 여러 개. 공공데이터포털도 일일 트래픽 한도가 있다.
+       팀원이 각자 발급받아 이어 붙이면 한도가 찬 키는 건너뛴다.
+       디코딩키를 넣는다 — 인코딩키를 넣으면 SERVICE_KEY_IS_NOT_REGISTERED. */
+    private idusw.sbb.checkin.global.apikey.KeyRing ring = new idusw.sbb.checkin.global.apikey.KeyRing("tour", "");
+
+    @Value("${tour.api.key:}")
+    private void setTourKey(String raw) {
+        this.ring = new idusw.sbb.checkin.global.apikey.KeyRing("tour", raw);
+    }
 
     @Value("${tour.api.base-url}")
     private String baseUrl;
@@ -49,7 +56,7 @@ public class TourApiClient {
         // UriComponentsBuilder 를 쓰면 디코딩키의 '/' 가 인코딩되지 않아 키가 깨진다
         // (SERVICE_KEY_IS_NOT_REGISTERED). serviceKey 를 직접 인코딩하고 URI 로 넘겨 재인코딩을 막는다.
         Map<String, String> all = new LinkedHashMap<>();
-        all.put("serviceKey", serviceKey);   // 디코딩키
+        all.put("serviceKey", ring.current());   // 디코딩키
         all.put("MobileOS", "ETC");
         all.put("MobileApp", "checkin");
         all.put("_type", "json");

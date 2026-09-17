@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <!--
+    .properties 를 UTF-8 로 읽는다.
+
+    자바의 옛 .properties 규격이 ISO-8859-1 이라 IDE 기본값도 그쪽이다.
+    파일은 UTF-8 로 잘 저장돼 있는데 IDE 만 다른 글자표로 읽어서
+    한글 주석이 「íêµ­ê´ê´ê³µì¬」 처럼 보였다.
+
+    스프링 부트 2.4 부터는 실행할 때 UTF-8 로 읽으므로 동작에는
+    문제가 없었다. 보이는 것만 깨져 있었다.
+  -->
+  <component name="Encoding" defaultCharsetForPropertiesFiles="UTF-8" native2AsciiForPropertiesFiles="false">
+    <file url="PROJECT" charset="UTF-8" />
+  </component>
+</project>

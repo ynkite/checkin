@@ -75,11 +75,211 @@
                 });
         }
 
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initPlannerMBTI);
-        } else {
-            initPlannerMBTI();
+        /* ── 출발지 ───────────────────────────────────────────
+           세 가지로 받는다. 지금 위치(gps) · 직접 입력(typed) · 검색해서 고르기(search).
+           좌표가 있어야 첫 구간 이동시간을 잴 수 있다.
+
+           담는 곳은 셋이다.
+             plannerDraftState.origin      지도 화면이 읽는다
+             window._plannerOrigin         지금 지도 화면이 읽는다
+             sessionStorage.plannerOrigin  새로고침 뒤에 되살린다 */
+        const _OG_PROV = {
+            '서울': '서울', '경기': '경기', '인천': '인천', '강원': '강원', '대전': '대전',
+            '부산': '부산', '제주': '제주', '충청남': '충남', '충남': '충남'
+        };
+
+        function _ogWriteDraft(origin) {
+            try {
+                const st = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+                if (origin) st.origin = origin; else delete st.origin;
+                sessionStorage.setItem('plannerDraftState', JSON.stringify(st));
+            } catch (e) {}
         }
+
+        function initOriginPicker() {
+            const input = document.getElementById('s1-origin');
+            const list  = document.getElementById('s1-origin-list');
+            const hint  = document.getElementById('s1-origin-hint');
+            const gps   = document.getElementById('s1-origin-gps');
+            if (!input || input.dataset.wired) return;
+            input.dataset.wired = '1';
+
+            /* _savePlannerDraft 는 상태를 통째로 새로 쓴다. 출발지가 지워지지 않게
+               저장이 끝난 뒤 다시 얹는다. */
+            if (typeof window._savePlannerDraft === 'function' && !window._savePlannerDraft._og) {
+                const save = window._savePlannerDraft;
+                window._savePlannerDraft = function () {
+                    save.apply(this, arguments);
+                    _ogWriteDraft(window._plannerOrigin || null);
+                };
+                window._savePlannerDraft._og = true;
+            }
+
+            let timer = null, seq = 0, picked = false;
+
+            function say(t) { if (hint) hint.textContent = t || ''; }
+
+            function store(o) {
+                window._plannerOrigin = o;
+                try {
+                    if (o) sessionStorage.setItem('plannerOrigin', JSON.stringify(o));
+                    else sessionStorage.removeItem('plannerOrigin');
+                } catch (e) {}
+                _ogWriteDraft(o);
+                if (o && typeof _savePlannerDraft === 'function') _savePlannerDraft();
+            }
+
+            function closeList() { list.hidden = true; list.innerHTML = ''; }
+
+            /* 주소의 도/시·구를 위 두 칸에 맞춘다. 목록에 없으면 건드리지 않는다 */
+            function fillArea(city, gu) {
+                const prov = document.getElementById('dep-prov');
+                if (!prov || !city) return;
+                const key = Object.keys(_OG_PROV).find(k => city.indexOf(k) === 0);
+                if (!key) return;
+                prov.value = _OG_PROV[key];
+                if (typeof updateCityDep === 'function') updateCityDep(prov);
+                const cs = document.getElementById('dep-city');
+                if (cs && gu && [...cs.options].some(o => o.value === gu || o.text === gu)) cs.value = gu;
+            }
+
+            function pick(p, from) {
+                picked = true;
+                input.value = p.name;
+                closeList();
+                store({ name: p.name, lat: p.lat, lng: p.lng, from: from || 'search', address: p.address || '' });
+                say(p.address && p.address !== p.name ? p.address : '');
+            }
+            window._plannerPickOrigin = pick;
+
+            async function search(q) {
+                const my = ++seq;
+                let arr = [];
+                try {
+                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
+                    const json = await res.json();
+                    arr = (json && json.success && json.data) || [];
+                } catch (e) {}
+                if (my !== seq || picked) return;          /* 그 사이 더 친 글자가 있다 */
+                if (!arr.length) { closeList(); say('찾지 못했습니다'); return; }
+                say('');
+                list.hidden = false;
+                list.innerHTML = '';
+                arr.forEach(function (p) {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'og-item';
+                    const nm = document.createElement('b');    nm.textContent = p.name;
+                    const ad = document.createElement('span'); ad.textContent = p.address || '';
+                    b.append(nm, ad);
+                    /* blur 보다 먼저 잡아야 목록이 닫히기 전에 고른다 */
+                    b.addEventListener('mousedown', function (e) { e.preventDefault(); pick(p, 'search'); });
+                    list.appendChild(b);
+                });
+            }
+
+            /* 목록에서 고르지 않고 친 글자 그대로 둔 경우. 이름은 친 그대로 두고
+               좌표만 검색 첫 줄에서 빌린다. 못 찾으면 좌표 없이 둔다. */
+            async function commitTyped() {
+                const q = input.value.trim();
+                if (picked || q.length < 2) return;
+                closeList();
+                store({ name: q, lat: null, lng: null, from: 'typed' });
+                const my = ++seq;
+                try {
+                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=1');
+                    const json = await res.json();
+                    const top = (json && json.success && json.data && json.data[0]) || null;
+                    if (my !== seq || input.value.trim() !== q) return;
+                    if (top && top.lat) {
+                        store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
+                        say(top.address || '');
+                    } else {
+                        say('위치를 못 찾아 이동시간은 도/시 기준으로 잽니다');
+                    }
+                } catch (e) {}
+            }
+
+            input.addEventListener('input', function () {
+                picked = false;
+                store(null);
+                say('');
+                clearTimeout(timer);
+                const q = this.value.trim();
+                if (q.length < 2) { seq++; closeList(); return; }
+                /* 한 글자마다 부르지 않는다. 멈추고 250ms 뒤에 한 번 */
+                timer = setTimeout(function () { search(q); }, 250);
+            });
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') { closeList(); return; }
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                clearTimeout(timer);
+                commitTyped();
+            });
+
+            input.addEventListener('blur', function () {
+                clearTimeout(timer);
+                setTimeout(commitTyped, 120);
+            });
+
+            /* 지금 위치. 거부·시간초과면 알림창 없이 한 줄만 남기고
+               나머지 두 방법을 그대로 쓰게 둔다. */
+            if (gps) {
+                if (!navigator.geolocation) gps.hidden = true;
+                gps.addEventListener('click', function () {
+                    if (gps.disabled) return;
+                    gps.disabled = true;
+                    say('위치 확인 중');
+                    navigator.geolocation.getCurrentPosition(async function (pos) {
+                        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+                        let addr = null;
+                        try {
+                            const res = await fetch('/api/route/reverse?lat=' + lat + '&lng=' + lng);
+                            const json = res.ok ? await res.json() : null;
+                            addr = (json && json.success && json.data && json.data.ready) ? json.data : null;
+                        } catch (e) {}
+                        gps.disabled = false;
+                        seq++;
+                        if (addr && addr.address) {
+                            pick({ name: addr.address, lat: lat, lng: lng }, 'gps');
+                            fillArea(addr.city, addr.gu);
+                        } else {
+                            pick({ name: '지금 위치', lat: lat, lng: lng }, 'gps');
+                            say('주소는 못 가져왔지만 이 좌표로 잽니다');
+                        }
+                    }, function (err) {
+                        gps.disabled = false;
+                        say(err && err.code === 1
+                            ? '위치 권한이 꺼져 있습니다. 직접 입력하거나 검색해 주세요'
+                            : '위치를 잡지 못했습니다. 직접 입력하거나 검색해 주세요');
+                    }, { enableHighAccuracy: true, timeout: 8000 });
+                });
+            }
+
+            /* 돌아왔을 때 고른 값을 되살린다 */
+            try {
+                const st = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+                const saved = st.origin || JSON.parse(sessionStorage.getItem('plannerOrigin') || 'null');
+                if (saved && saved.name) {
+                    input.value = saved.name;
+                    picked = true;
+                    window._plannerOrigin = saved;
+                    say(saved.address && saved.address !== saved.name ? saved.address : '');
+                }
+            } catch (e) {}
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                initPlannerMBTI(); initOriginPicker();
+            });
+        } else {
+            initPlannerMBTI(); initOriginPicker();
+        }
+        /* SPA 니 이 조각이 다시 들어오는 경우가 있다. go('planner') 가 부른다 */
+        window.initOriginPicker = initOriginPicker;
 
         /* ─────────────────────────────────────────────────────────
          * 이전 플랜 불러오기
@@ -299,11 +499,6 @@
 
             // ── 특수 조건 chip (다중) — hasInfant / hasPet / extraNotes(노인, 기타) ──
             document.querySelectorAll('#chip-special .chip').forEach(c => c.classList.remove('on'));
-            if (d.hasInfant === 1) {
-                const chip = [...document.querySelectorAll('#chip-special .chip')]
-                    .find(c => c.textContent.trim() === '유아 동반');
-                if (chip) chip.classList.add('on');
-            }
             if (d.hasPet === 1) {
                 const chip = [...document.querySelectorAll('#chip-special .chip')]
                     .find(c => c.textContent.trim() === '반려동물 동반');
@@ -378,7 +573,6 @@
                         if (!label || !value) return false;
                         if (label === '노인 동반') return false;
                         if (label === '특수 조건') return false;
-                        if (label === '유아 동반') return false;
                         if (label === '반려동물 동반') return false;
                         return true;
                     });
@@ -623,7 +817,10 @@
 
             const depProv   = document.getElementById('dep-prov')?.value || '';
             const depCity   = document.getElementById('dep-city')?.value  || '';
-            const departure = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+            const depArea   = depProv + (depCity && depCity !== '전체' && depCity !== '시/군/구 선택' ? ' ' + depCity : '');
+            /* 정확한 출발지를 넣었으면 그것이 출발지다. 도/시는 그 앞에 붙는다 */
+            const originName = (document.getElementById('s1-origin')?.value || '').trim();
+            const departure = originName ? (depArea ? depArea + ' ' + originName : originName) : depArea;
 
             // 4. 백엔드로 보낼 Payload 생성
             const payload = {
@@ -697,10 +894,10 @@
                         + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
                         + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
                         + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
-                        + 'border-top-color:#2D9E8A;border-radius:50%;animation:genSpin .8s linear infinite}'
-                        + '#genLoadOverlay .gl-txt{color:#fff;font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
+                        + 'border-top-color:var(--terra);border-radius:50%;animation:genSpin .8s linear infinite}'
+                        + '#genLoadOverlay .gl-txt{color:var(--panel);font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
                         + '#genLoadOverlay .gl-cancel{margin-top:6px;padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.5);'
-                        + 'background:rgba(255,255,255,.12);color:#fff;font-size:13px;font-weight:700;cursor:pointer}'
+                        + 'background:rgba(255,255,255,.12);color:var(--panel);font-size:13px;font-weight:700;cursor:pointer}'
                         + '#genLoadOverlay .gl-cancel:hover{background:rgba(255,255,255,.22)}';
                     document.head.appendChild(st);
                 }
@@ -809,18 +1006,18 @@
             const html = `
           <div id="over50Overlay" style="position:fixed;inset:0;z-index:10000;
                background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;">
-            <div style="background:#fff;border-radius:16px;padding:24px;width:360px;max-width:90%;
+            <div style="background:var(--panel);border-radius:16px;padding:24px;width:360px;max-width:90%;
                  box-shadow:0 10px 40px rgba(0,0,0,0.2);">
               <div style="font-weight:700;font-size:16px;margin-bottom:8px;">너무 먼 장소가 있어요</div>
-              <div style="font-size:13px;color:#555;line-height:1.6;margin-bottom:12px;">
+              <div style="font-size:13px;color:var(--ink-2);line-height:1.6;margin-bottom:12px;">
                 아래 장소가 다른 일정과 50km 이상 떨어져 있습니다.<br>${list}
               </div>
               <div style="display:flex;flex-direction:column;gap:8px;">
-                <button id="over50Change" style="padding:11px;background:#F5A623;color:#fff;border:none;
+                <button id="over50Change" style="padding:11px;background:var(--num);color:var(--panel);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">변경 (가까운 곳으로 교체)</button>
-                <button id="over50Ignore" style="padding:11px;background:#2D9E8A;color:#fff;border:none;
+                <button id="over50Ignore" style="padding:11px;background:var(--terra);color:var(--panel);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">무시하고 생성</button>
-                <button id="over50Cancel" style="padding:11px;background:#eee;color:#555;border:none;
+                <button id="over50Cancel" style="padding:11px;background:var(--ui-line-2);color:var(--ink-2);border:none;
                         border-radius:8px;font-weight:700;cursor:pointer;">취소</button>
               </div>
             </div>
@@ -972,25 +1169,25 @@
 
             if (issues.missing.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
-                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
+                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
             }
             if (issues.closed && issues.closed.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:#c0392b;margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
-                    + '<div style="font-size:12px;color:#555;margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
+                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
                     + '<div style="display:flex;flex-direction:column;gap:6px">'
-                    + issues.closed.map(c => '<div style="background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:#a04">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
+                    + issues.closed.map(c => '<div style="background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:var(--tile)">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
                     + '</div></div>';
             }
             if (issues.budgetShort) {
                 bodyHtml += '<div style="margin-bottom:6px">'
-                    + '<div style="font-weight:800;color:#b9770e;margin-bottom:6px">예산이 부족할 수 있어요</div>'
-                    + '<div style="font-size:12px;color:#555;line-height:1.6">'
+                    + '<div style="font-weight:800;color:var(--num);margin-bottom:6px">예산이 부족할 수 있어요</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);line-height:1.6">'
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
-                    + '이 일정의 예상 최소 비용은 약 <b style="color:#b9770e">' + won(issues.estimated) + '</b>입니다.<br>'
-                    + '예산을 올리지 않으면 <b style="color:#c0392b">일정이 제대로 안 나올 수 있습니다.</b><br>'
-                    + '<span style="color:#888;font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
+                    + '이 일정의 예상 최소 비용은 약 <b style="color:var(--num)">' + won(issues.estimated) + '</b>입니다.<br>'
+                    + '예산을 올리지 않으면 <b style="color:var(--tile)">일정이 제대로 안 나올 수 있습니다.</b><br>'
+                    + '<span style="color:var(--ink-3);font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
                     + '</div></div>';
             }
 
@@ -998,14 +1195,14 @@
             wrap.id = 'preGenGate';
             wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
             wrap.innerHTML =
-                '<div style="background:#fff;border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
+                '<div style="background:var(--panel);border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
                 + '<div style="font-size:17px;font-weight:800;margin-bottom:4px">생성 전 확인이 필요해요</div>'
-                + '<div style="font-size:12px;color:#888;margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
+                + '<div style="font-size:12px;color:var(--ink-3);margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
                 + bodyHtml
                 + '<div style="display:flex;gap:8px;margin-top:20px">'
-                + '<button id="preGenCancel" style="flex:1;padding:11px 6px;border-radius:10px;border:1px solid #ddd;background:#fff;font-size:13px;font-weight:700;cursor:pointer">취소</button>'
-                + '<button id="preGenChange" style="flex:1.4;padding:11px 6px;border-radius:10px;border:none;background:#2D9E8A;color:#fff;font-size:13px;font-weight:800;cursor:pointer">변경</button>'
-                + '<button id="preGenIgnore" style="flex:1.5;padding:11px 6px;border-radius:10px;border:1px solid #bbb;background:#f5f5f5;color:#333;font-size:11px;font-weight:700;cursor:pointer">무시하고 생성</button>'
+                + '<button id="preGenCancel" style="flex:1;padding:11px 6px;border-radius:10px;border:1px solid var(--ui-line);background:var(--panel);font-size:13px;font-weight:700;cursor:pointer">취소</button>'
+                + '<button id="preGenChange" style="flex:1.4;padding:11px 6px;border-radius:10px;border:none;background:var(--terra);color:var(--panel);font-size:13px;font-weight:800;cursor:pointer">변경</button>'
+                + '<button id="preGenIgnore" style="flex:1.5;padding:11px 6px;border-radius:10px;border:1px solid var(--ink-3);background:var(--ui-plate);color:var(--ink);font-size:11px;font-weight:700;cursor:pointer">무시하고 생성</button>'
                 + '</div></div>';
             document.body.appendChild(wrap);
 
@@ -1517,7 +1714,7 @@
         <div class="planner-wrap">
 
             <div class="planner-hd">
-                <div class="planner-ey">PLAN</div>
+                <div class="planner-ey">계획</div>
                 <div class="planner-ttl">어디로, 언제 가세요</div>
                 <p class="planner-sub">시각은 넣지 않아도 됩니다. 영업시간과 이동시간을 넣고 계산해서 하루를 채웁니다.</p>
             </div>
@@ -1562,7 +1759,7 @@
                         <div class="loc-selector">
                             <select class="loc-big" id="dep-prov" onchange="updateCityDep(this)">
                                 <option value="">도/시 선택</option>
-                                <option value="서울" selected>서울</option>
+                                <option value="서울">서울</option>
                                 <option value="경기">경기</option>
                                 <option value="인천">인천</option>
                                 <option value="강원">강원</option>
@@ -1572,6 +1769,17 @@
                                 <option value="제주">제주</option>
                             </select>
                             <select class="loc-big" id="dep-city"></select>
+                        </div>
+                        <!-- 정확한 출발지. 도/시만으로는 이동시간을 잴 수 없다 -->
+                        <div class="og-wrap">
+                            <div class="og-row">
+                                <input class="form-input og-input" id="s1-origin" type="text"
+                                       autocomplete="off" placeholder="부산역, 해운대구 우동 1418"
+                                       aria-label="출발지" aria-describedby="s1-origin-hint">
+                                <button type="button" class="og-gps" id="s1-origin-gps">지금 위치</button>
+                                <div class="og-list" id="s1-origin-list" hidden></div>
+                            </div>
+                            <p class="og-hint" id="s1-origin-hint" aria-live="polite"></p>
                         </div>
                     </div>
 
@@ -1693,7 +1901,7 @@
                     <div class="pl-row">
                     <div class="pl-row-lb">무엇으로</div>
                     <div class="chip-row" id="chip-trans">
-                        <button class="chip on" onclick="pick(this,'trans')">자차</button>
+                        <button class="chip" onclick="pick(this,'trans')">자차</button>
                         <button class="chip" onclick="pick(this,'trans')">대중교통</button>
                         <button class="chip" onclick="pick(this,'trans');showOtherInput('other-trans',this)">기타</button>
                     </div>
@@ -1703,7 +1911,7 @@
                     <div class="pl-row">
                     <div class="pl-row-lb">어디서 자나요</div>
                     <div class="chip-row" id="chip-acc">
-                        <button class="chip on" onclick="pick(this,'acc')">호텔</button>
+                        <button class="chip" onclick="pick(this,'acc')">호텔</button>
                         <button class="chip" onclick="pick(this,'acc')">펜션</button>
                         <button class="chip" onclick="pick(this,'acc')">게스트하우스</button>
                         <button class="chip" onclick="pick(this,'acc')">리조트</button>
@@ -1716,7 +1924,7 @@
                     <div class="pl-row-lb">누구와</div>
                     <div class="chip-row" id="chip-comp">
                         <button class="chip" onclick="pick(this,'comp')">혼자</button>
-                        <button class="chip on" onclick="pick(this,'comp')">커플</button>
+                        <button class="chip" onclick="pick(this,'comp')">커플</button>
                         <button class="chip" onclick="pick(this,'comp')">가족</button>
                         <button class="chip" onclick="pick(this,'comp')">친구</button>
                         <button class="chip" onclick="pick(this,'comp');showOtherInput('other-comp',this)">기타</button>
@@ -1755,7 +1963,7 @@
                     <div class="pl-row-lb">먹는 것</div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-food">
                         <button data-multi class="chip" onclick="tog(this)">비건</button>
-                        <button data-multi class="chip on" onclick="tog(this)">해산물 선호</button>
+                        <button data-multi class="chip" onclick="tog(this)">해산물 선호</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알러지 있음</button>
                         <button data-multi class="chip" onclick="tog(this)">무관</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
@@ -1766,7 +1974,6 @@
                   <div class="pl-row">
                     <div class="pl-row-lb">따로 챙길 것</div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-special">
-                        <button data-multi class="chip" onclick="tog(this)">유아 동반</button>
                         <button data-multi class="chip" onclick="tog(this)">반려동물 동반</button>
                         <button data-multi class="chip" onclick="tog(this)">노인 동반</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-special',this)">기타</button>
@@ -1777,7 +1984,7 @@
                     <div class="pl-row-lb">하루 밀도<i class="pl-row-note">MBTI 로 먼저 골라 둡니다</i></div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-density">
                         <button class="chip" onclick="pick(this,'density')">빼곡하게</button>
-                        <button class="chip on" onclick="pick(this,'density')">여유롭게</button>
+                        <button class="chip" onclick="pick(this,'density')">여유롭게</button>
                     </div>
                     <div style="font-size:11px;color:var(--text3);margin-top:6px" id="planner-dens-note"></div></div>
                   </div>
@@ -1947,7 +2154,7 @@
         <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
             <button class="modal-x" onclick="closeWeatherPopup()">✕</button>
             <div style="padding:4px 0 14px">
-                <div style="font-size:11px;font-weight:700;color:var(--sage);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">AI TRAVEL PLANNER</div>
+                <div class="planner-ey">대화로 만드는 일정</div>
                 <div style="font-size:16px;font-weight:800" id="wp-title">여행 날씨 예보</div>
             </div>
 
@@ -1966,25 +2173,21 @@
 
             <!-- 날씨 그리드 (데이터 있는 경우) -->
             <div id="wp-data-wrap">
-                <div style="font-size:11px;color:var(--sage);background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:7px;padding:7px 12px;margin-bottom:12px">
-                    ℹ출발일 기준 <strong>최대 7일</strong>까지의 날씨 예보만 표시됩니다. 그 이후 일정은 외부 날씨 서비스를 이용해 주세요.
-                </div>
+                <p class="wp-note">기상청 예보는 출발일 기준 <strong>이레</strong>까지입니다.
+                    그보다 뒤는 아래 링크에서 보세요.</p>
                 <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
-                <div id="wp-alert" style="display:none;margin-top:11px;background:#FEF3F2;border:1px solid #FECACA;border-radius:8px;padding:10px;font-size:12px;color:#7F1D1D"></div>
+                <div id="wp-alert" style="display:none;margin-top:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:8px;padding:10px;font-size:12px;color:var(--tile)"></div>
             </div>
 
-            <!-- 네이버·구글 날씨 이동 버튼 -->
-            <div style="display:flex;gap:10px;margin-top:18px">
-                <a href="https://weather.naver.com" target="_blank"
-                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#03C75A;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
-                    <img src="https://ssl.pstatic.net/static/common/favicon/2023/0328/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
-                    네이버 날씨
-                </a>
-                <a href="https://www.google.com/search?q=날씨" target="_blank"
-                   style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px 0;background:#4285F4;color:#fff;font-size:13px;font-weight:700;border-radius:9px;text-decoration:none">
-                    <img src="https://www.google.com/favicon.ico" width="16" height="16" style="border-radius:3px" onerror="this.style.display='none'">
-                    구글 날씨
-                </a>
+            <!-- 이레 뒤를 보러 나가는 곳.
+                 전에는 네이버 초록·구글 파랑으로 채운 큰 버튼 두 개였다.
+                 남의 브랜드 색을 우리 화면에서 제일 진한 면으로 쓰고 있었고,
+                 아이콘은 그쪽 파비콘을 직접 가져다 쓰느라 뜨지도 않았다. -->
+            <div class="ck-out">
+                <a href="https://weather.naver.com" target="_blank" rel="noopener">네이버 날씨</a>
+                <a href="https://www.google.com/search?q=날씨" target="_blank" rel="noopener">구글 날씨</a>
+                <a href="https://www.weather.go.kr/w/weather/forecast/mid-term.do"
+                   target="_blank" rel="noopener">기상청</a>
             </div>
         </div>
     </div>

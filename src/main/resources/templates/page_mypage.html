@@ -14,51 +14,23 @@
      * 지우는 순간, 아래의 실제 서비스/API 연동 로직으로 자동 전환됩니다.
      * ============================================================ */
 
-    // 1. 프로필 정보
-    const MOCK_MYPAGE_PROFILE = {
-      avatar: "김",
-      name: "김여행",
-      email: "travel***@gmail.com"
-    };
+    /* 프로필은 app_main.js 가 로그인한 사람의 이름·메일로 채운다.
+       「김여행 · travel***@gmail.com」을 자리 채움으로 두면 로그인하지도
+       않은 사람에게 없는 사람의 이름이 보인다. */
 
     // 2. 내 여행 기록 데이터
-    const MOCK_MYPAGE_TRIPS = [
-      { action: "go('map')", icon: "제주", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 2인 · 자차 · 비공개", budget: "404,000원" },
-      { action: "go('map')", icon: "부산", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 4인 · 대중교통 · 공개", budget: "280,000원" }
-    ];
+    /* 내 여행 기록은 app_main.js 가 받아 둔 _myTrips 를 쓴다.
+       자리 채움 한 줄을 두면 로그인하지 않은 사람에게도 남의 여행이 보인다. */
 
     // 3. 작성한 후기 데이터 → API 연동으로 대체
     // 4. 좋아요한 후기 데이터 → API 연동으로 대체
 
-    // 5. 스크랩한 숙소 데이터
-    const MOCK_MYPAGE_SCRAP_STAY = [
-      { action: "go('place-hyeopjae')", icon: "숙소", iconBg: "#E8F5F2", name: "협재 오션뷰 풀빌라", meta: "제주도 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["오션뷰", "풀빌라", "커플"], stats1: "3,241번 담김", stats2: "★ 스크랩 412" },
-      { action: "go('place-reviews')", icon: "숙소", iconBg: "#E8F5F2", name: "안목해변 오션뷰 펜션", meta: "강릉 · 펜션", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["해변", "힐링"], stats1: "2,718번 담김", stats2: "★ 스크랩 287" }
-    ];
+    /* 스크랩한 장소는 app_community_v2.js 의 loadMyScrap() 이 그린다.
+       여기 있던 자리 채움 배열 네 개(협재 오션뷰 풀빌라 · 안목해변 오션뷰
+       펜션 · 테라로사 · 성산일출봉 …)는 아무 데서도 안 쓰였다. */
 
-    // 6. 스크랩한 맛집 데이터
-    const MOCK_MYPAGE_SCRAP_FOOD = [
-      { action: "go('place-teraroasa')", icon: "카페", iconBg: "#FEF3F2", name: "테라로사 강릉본점", meta: "강릉 · 로스터리 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["커피", "힐링"], stats1: "2,941번 담김", stats2: "★ 스크랩 318" },
-      { action: "go('place-reviews')", icon: "맛집", iconBg: "#FEF3F2", name: "흑돼지 거리 맛집A", meta: "제주도 · 고깃집", ratingColor: "#F5A623", ratingStar: "★★★★☆", ratingNum: "4.7", tags: ["흑돼지", "제주"], stats1: "2,512번 담김", stats2: "★ 스크랩 241" }
-    ];
-
-    // 7. 스크랩한 관광지 데이터
-    const MOCK_MYPAGE_SCRAP_TOUR = [
-      { action: "go('place-t-seongsan')", icon: "관광", iconBg: "#EEF6FF", name: "성산일출봉", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.9", tags: ["제주", "일출", "트레킹"], stats1: "4,102번 담김", stats2: "★ 스크랩 521" },
-      { action: "go('place-t-udo')", icon: "관광", iconBg: "#EEF6FF", name: "우도", meta: "제주도 · 관광지", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "섬", "힐링"], stats1: "3,560번 담김", stats2: "★ 스크랩 448" }
-    ];
-
-    // 8. 스크랩한 카페 데이터
-    const MOCK_MYPAGE_SCRAP_CAFE = [
-      { action: "go('place-c-handam')", icon: "카페", iconBg: "#F5F0FF", name: "한담해안산책로 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.7", tags: ["제주", "오션뷰", "힐링"], stats1: "2,341번 담김", stats2: "★ 스크랩 312" },
-      { action: "go('place-c-arario')", icon: "카페", iconBg: "#F5F0FF", name: "제주 로스터리 카페", meta: "제주도 · 카페", ratingColor: "#F5A623", ratingStar: "★★★★★", ratingNum: "4.8", tags: ["제주", "커피", "로스터리"], stats1: "1,980번 담김", stats2: "★ 스크랩 267" }
-    ];
-
-    // 8. 가계부 데이터
-    const MOCK_MYPAGE_LEDGER = [
-      { id: "my-ledger-jeju", action: "selectMyLedger(this,'jeju')", class: "ts-card on", border: "var(--sage)", bg: "var(--sage-pale)", icon: "지도", title: "제주도 3박4일 힐링 여행", meta: "2025.06.14~06.17 · 제주 기준", budget: "404,000원", budgetColor: "var(--sage)", mb: "10px" },
-      { id: "my-ledger-busan", action: "selectMyLedger(this,'busan')", class: "ts-card", border: "var(--border)", bg: "var(--surface)", icon: "도시", title: "부산 2박3일 가성비 투어", meta: "2025.04.22~04.24 · 부산 기준", budget: "280,000원", budgetColor: "var(--text2)", mb: "18px" }
-    ];
+    /* 가계부 목록은 app_budget.js 의 updateLedgerList() 가 실제 여행으로 그린다.
+       자리 채움을 두면 로그인 전에 남의 가계부가 보인다. */
 
     // 9. 설정 및 안내 문구 텍스트
     const MOCK_MYPAGE_TEXTS = {
@@ -68,34 +40,55 @@
     /* ============================================================ */
 
 
+    /* 내 여행 기록 — 카드는 app_main.js 의 _renderMyTrips() 가 #my-trips 를
+       통째로 다시 그린다. 여기서는 그 전 상태만 맡는다. 렌더러를 둘 두면
+       같은 자리를 서로 덮는다. */
+    function renderMyTrips() {
+      const box = document.getElementById('my-trips-list');
+      if (!box) return;
+      const loggedIn = (typeof _loggedIn !== 'undefined') ? _loggedIn : false;
+      const trips = (typeof _myTrips !== 'undefined' && Array.isArray(_myTrips)) ? _myTrips : [];
+
+      if (!loggedIn) {
+        box.innerHTML = '<p class="my-none">로그인하면 만든 여행이 여기에 모입니다.</p>';
+        return;
+      }
+      if (!trips.length) {
+        box.innerHTML = '<p class="my-none"><b>아직 만든 여행이 없습니다.</b>' +
+          '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.' +
+          '<button type="button" class="btn-f my-none-go" onclick="goNewPlanner()">경로 만들기</button></p>';
+      }
+      /* 여행이 있으면 건드리지 않는다 — _renderMyTrips() 가 그린다 */
+    }
+
+    window.renderMyTrips = renderMyTrips;
+
     /* ─── 마이페이지 데이터 렌더링 헬퍼 ─── */
     function initMyPageData() {
-      // 1. 프로필 정보 렌더링
-      let profile = typeof MOCK_MYPAGE_PROFILE !== 'undefined' ? MOCK_MYPAGE_PROFILE : null;
-      if (profile) {
+      // 1. 프로필 — 로그인 전에는 로그인하러 보낸다
+      const loggedIn = (typeof _loggedIn !== 'undefined') ? _loggedIn : false;
+      if (!loggedIn) {
         const avatar = document.getElementById("myAvatar");
         const name = document.getElementById("myName");
         const email = document.getElementById("myEmail");
-        if (avatar) avatar.textContent = profile.avatar;
-        if (name) name.textContent = profile.name;
-        if (email) email.textContent = profile.email;
+        if (avatar) avatar.textContent = '';
+        if (name) name.textContent = '로그인이 필요합니다';
+        if (email) {
+          /* 문자열로 만들면 onclick 안의 따옴표가 바깥 문자열을 끊는다.
+             DOM 으로 만들고 리스너를 붙인다. */
+          email.textContent = '';
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'btn-f my-none-go';
+          b.style.marginTop = '10px';
+          b.textContent = '로그인';
+          b.addEventListener('click', function () { go('login'); });
+          email.appendChild(b);
+        }
       }
 
-      // 2. 내 여행 기록 렌더링
-      let trips = typeof MOCK_MYPAGE_TRIPS !== 'undefined' ? MOCK_MYPAGE_TRIPS : [];
-      const tripsContainer = document.getElementById("my-trips-list");
-      if (tripsContainer && trips.length > 0) {
-        tripsContainer.innerHTML = trips.map(t => `
-      <div class="trip-card" onclick="${t.action}">
-        <div class="trip-thumb">${t.icon}</div>
-        <div class="trip-info">
-          <div class="trip-ttl">${t.title}</div>
-          <div class="trip-meta">${t.meta}</div>
-        </div>
-        <div class="trip-budget">${t.budget}</div>
-      </div>
-    `).join('');
-      }
+      renderMyTrips();
+      _watchTripCards();
 
       // 2-2. 초대받은 일정 렌더링 (내 여행 기록과 똑같은 디자인 적용)
       let invited = typeof MOCK_MYPAGE_INVITED !== 'undefined' ? MOCK_MYPAGE_INVITED : [];
@@ -125,10 +118,14 @@
       // 4. 좋아요한 후기 렌더링 → app_main.js의 updateMyPageUI()가 처리
 
       // 5~8. 스크랩한 장소 렌더링 → app_community_v2.js의 loadMyScrap()이 처리
-      // 9. 가계부 목록 렌더링
-      let ledgers = typeof MOCK_MYPAGE_LEDGER !== 'undefined' ? MOCK_MYPAGE_LEDGER : [];
+      // 9. 가계부 목록 — updateLedgerList() 가 그린다. 로그인 전에는 비워 둔다
+      let ledgers = [];
       const ledgerContainer = document.getElementById("my-ledger-list");
-      if (ledgerContainer && ledgers.length > 0) {
+      if (ledgerContainer && !ledgerContainer.innerHTML.trim()) {
+        ledgerContainer.innerHTML =
+          '<p class="my-none">로그인하면 여행별 가계부가 여기에 모입니다.</p>';
+      }
+      if (false) {
         ledgerContainer.innerHTML = ledgers.map(l => `
       <div class="${l.class}" id="${l.id}" onclick="${l.action}"
         style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:2px solid ${l.border};background:${l.bg};cursor:pointer;margin-bottom:${l.mb}">
@@ -152,7 +149,67 @@
       }
     }
 
+    /* ── 내 여행 기록 → 경로 수정 ─────────────────────────────
+       카드는 app_main.js 의 _renderMyTrips() 가 그린다. 그쪽은 건드리지 않고
+       다 그려진 뒤에 각 줄에 버튼만 붙인다.
+       목록 응답에는 경로가 있는지가 없어서 여행마다 한 번 물어보고 기억해 둔다.
+       경로가 없는 여행에는 버튼을 달지 않는다. 눌러도 빈 지도만 나온다. */
+    const _tripRouteInfo = {};          // id -> Promise<{ hasRoute, fixed }>
+
+    function _tripInfo(id) {
+      if (!_tripRouteInfo[id]) {
+        _tripRouteInfo[id] = (typeof api !== 'undefined' ? api.get('/api/trips/' + id) : Promise.reject())
+          .then(function (r) {
+            const d = (r && r.success && r.data) || {};
+            return { hasRoute: !!String(d.routeJson || '').trim(), fixed: d.status === 'FIXED' };
+          })
+          .catch(function () { delete _tripRouteInfo[id]; return { hasRoute: false, fixed: false }; });
+      }
+      return _tripRouteInfo[id];
+    }
+
+    function openTripRoute(tripId) {
+      sessionStorage.setItem('currentTripId', String(tripId));
+      sessionStorage.removeItem('ai_generated_route');   // DB 것을 다시 읽게
+      /* 지도 화면은 아직 _currentTripId · plannerDraftId 로 여행을 찾는다.
+         openMyTrip 이 그 둘을 맞추고 지난 여행의 잔상을 지운 뒤 go('map') 한다. */
+      if (typeof openMyTrip === 'function') { openMyTrip(tripId); return; }
+      window._currentTripId = tripId;
+      go('map');
+    }
+    window.openTripRoute = openTripRoute;
+
+    function _decorateTripCards() {
+      if (window._myTripsDeleteMode) return;
+      document.querySelectorAll('#my-trips .trip-card').forEach(function (card) {
+        if (card.dataset.routeBtn) return;
+        const m = (card.getAttribute('onclick') || '').match(/openMyTrip\((\d+)\)/);
+        if (!m) return;
+        card.dataset.routeBtn = '1';
+        const id = +m[1];
+        _tripInfo(id).then(function (info) {
+          if (!info.hasRoute || !card.isConnected || card.querySelector('.trip-route')) return;
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'trip-route';
+          b.textContent = info.fixed ? '경로 보기' : '경로 수정';
+          b.addEventListener('click', function (e) { e.stopPropagation(); openTripRoute(id); });
+          const tail = card.querySelector('.trip-budget');
+          card.insertBefore(b, tail || null);
+        });
+      });
+    }
+
+    function _watchTripCards() {
+      const box = document.getElementById('my-trips');
+      if (!box || box.dataset.routeWatch) return;
+      box.dataset.routeWatch = '1';
+      new MutationObserver(_decorateTripCards).observe(box, { childList: true });
+      _decorateTripCards();
+    }
+
     document.addEventListener('DOMContentLoaded', initMyPageData);
+    document.addEventListener('DOMContentLoaded', _watchTripCards);
     function toggleMyMenu() {
       const collapse = document.getElementById('myMenuCollapse');
       const toggle = document.getElementById('myMenuToggle');
@@ -275,7 +332,7 @@
           <h3 class="my-sec-ttl">회원 탈퇴</h3>
 
           <div id="withdraw-warn-txt"
-               style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:#7F1D1D;line-height:1.8">
+               style="background:var(--terra-pale);border:1px solid var(--tile);border-radius:9px;padding:14px;margin-bottom:14px;font-size:12px;color:var(--tile);line-height:1.8">
           </div>
 
           <div id="withdraw-social-box" style="display:none" class="form-group">
@@ -301,7 +358,7 @@
             </div>
           </div>
 
-          <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;margin-top:10px;"
+          <button style="width:100%;padding:11px;border-radius:var(--r);background:var(--coral);color:var(--panel);border:none;cursor:pointer;font-size:13px;font-weight:700;margin-top:10px;"
                   onclick="doWithdraw()">회원 탈퇴</button>
         </div>
 
@@ -309,10 +366,10 @@
         <div id="withdraw-confirm-modal"
              style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;backdrop-filter:blur(3px)"
              onclick="if(event.target===this)closeWithdrawModal()">
-          <div style="background:#fff;border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
-            <h3 style="margin:0 0 12px;font-size:17px;color:#7F1D1D">정말 탈퇴하시겠습니까?</h3>
+          <div style="background:var(--panel);border-radius:18px;width:380px;max-width:calc(100vw - 32px);padding:28px 24px">
+            <h3 style="margin:0 0 12px;font-size:17px;color:var(--tile)">정말 탈퇴하시겠습니까?</h3>
 
-            <div style="background:#FEF3F2;border:1px solid #FECACA;border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:#7F1D1D;line-height:1.9">
+            <div style="background:var(--terra-pale);border:1px solid var(--tile);border-radius:9px;padding:14px;margin-bottom:20px;font-size:13px;color:var(--tile);line-height:1.9">
               • 탈퇴 즉시 모든 개인정보가 삭제됩니다.<br>
               • 탈퇴하면 되돌릴 수 없습니다.<br>
               • 작성한 후기는 '탈퇴한 사용자'로 표시됩니다.
@@ -320,7 +377,7 @@
 
             <div style="display:flex;gap:8px">
               <button onclick="confirmWithdraw()"
-                      style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
+                      style="flex:1;padding:11px;border-radius:var(--r);background:var(--coral);color:var(--panel);border:none;cursor:pointer;font-size:13px;font-weight:700">탈퇴 확인</button>
               <button onclick="closeWithdrawModal()"
                       style="flex:1;padding:11px;border-radius:var(--r);background:var(--cream2);color:var(--text2);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:700">취소</button>
             </div>

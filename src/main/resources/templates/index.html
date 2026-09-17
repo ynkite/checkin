@@ -100,28 +100,32 @@
       window.ckSky();
     })();
   </script>
-  <link rel="stylesheet" th:href="@{/css/tokens.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_brand.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_massing.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_main.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_budget.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_place.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_community.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_calendar.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_home.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_map.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_planner.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_footer.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_nav.css}">
-  <link rel="stylesheet" th:href="@{/css/styles_focus.css}">
+  <link rel="stylesheet" th:href="@{/css/tokens.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_massing.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_main.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_budget.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_place.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_weather.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_community.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_calendar.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_float.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_home.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_hero.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_stage.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_sections.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_saved.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_map.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_planner.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_footer.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20260917e)}">
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=50a304fa42a0bd2d294ac871e3acae14&autoload=false&libraries=services"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 </head>
 <body style="visibility: hidden">
@@ -137,6 +141,7 @@
     <button class="nav-link on" onclick="goHomeRefresh()">홈</button>
     <button class="nav-link" onclick="goRefresh('community')">커뮤니티</button>
     <button class="nav-link" onclick="goRefresh('weather')">날씨</button>
+    <button class="nav-link" onclick="goRefresh('live')">실시간</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">플랜</button>
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
       <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
@@ -151,12 +156,12 @@
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
         <span class="nps-num">3</span>
-        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">AI</span></span>
+        <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">대화</span></span>
       </button>
       <span class="nps-arrow">›</span>
       <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
         <span class="nps-num">4</span>
-        <span class="nps-lbl"><span class="nps-lbl-full">경로 생성</span><span class="nps-lbl-short">경로</span></span>
+        <span class="nps-lbl"><span class="nps-lbl-full">일정 만들기</span><span class="nps-lbl-short">일정</span></span>
       </button>
     </div>
   </div>
@@ -192,11 +197,14 @@
 <th:block th:insert="~{page_admin :: admin}"></th:block>
 <th:block th:insert="~{page_place :: place}"></th:block>
 <th:block th:insert="~{page_weather :: weather}"></th:block>
+<th:block th:insert="~{page_live :: live}"></th:block>
 
 <!-- ===== JS ===== -->
+<script th:src="@{/js/crowd.js(v=20260917e)}"></script>
 <script th:src="@{/js/app_main.js(v=20260620a)}"></script>
-  <script th:src="@{/js/app_home.js}"></script>
-<script th:src="@{/js/app_budget.js}"></script>
+  <script th:src="@{/js/app_home.js(v=20260917e)}"></script>
+<script th:src="@{/js/app_stage.js(v=20260917e)}"></script>
+<script th:src="@{/js/app_budget.js(v=20260917e)}"></script>
 <script th:src="@{/js/app_community.js(v=20260620a)}"></script>
 <script th:src="@{/js/app_community_v2.js(v=20260620a)}"></script>
 
@@ -221,10 +229,10 @@
 <!-- 게시글 신고 모달 -->
 <div id="reportPostModal" style="display:none;position:fixed;inset:0;z-index:2000;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportPostModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+  <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">게시글 신고</div>
-    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
-    <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
@@ -235,19 +243,19 @@
     </select>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="document.getElementById('reportPostModal').style.display='none'"
-              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+              style="padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
       <button onclick="submitReportPost()"
-              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+              style="padding:8px 16px;background:var(--coral);color:var(--panel);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
     </div>
   </div>
 </div>
 <!-- 댓글 신고 모달 -->
 <div id="reportCommentModal" style="display:none;position:fixed;inset:0;z-index:2100;align-items:center;justify-content:center">
   <div onclick="document.getElementById('reportCommentModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative;background:var(--surface,#fff);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
+  <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">댓글 신고</div>
-    <div style="font-size:13px;color:var(--text3,#888);margin-bottom:10px">신고 사유를 선택해주세요.</div>
-    <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;font-size:13px;margin-bottom:16px">
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
       <option value="">-- 사유 선택 --</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
@@ -258,9 +266,9 @@
     </select>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button onclick="document.getElementById('reportCommentModal').style.display='none'"
-              style="padding:8px 16px;border:1px solid var(--border2,#e0e0e0);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
+              style="padding:8px 16px;border:1px solid var(--border2);border-radius:8px;background:none;cursor:pointer;font-size:13px">취소</button>
       <button onclick="submitReportComment()"
-              style="padding:8px 16px;background:var(--coral,#ff6b6b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
+              style="padding:8px 16px;background:var(--coral);color:var(--panel);border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">신고하기</button>
     </div>
   </div>
 </div>
@@ -315,17 +323,6 @@
       </p>
     </div>
 
-    <!-- 바로가기 -->
-    <div class="foot-col">
-      <h4>바로가기</h4>
-      <ul>
-        <li><a onclick="goHomeRefresh()" style="cursor:pointer">홈</a></li>
-        <li><a onclick="navPlannerClick()" style="cursor:pointer">여행 플래너</a></li>
-        <li><a onclick="go('weather')" style="cursor:pointer">날씨</a></li>
-        <li><a onclick="goRefresh('community')" style="cursor:pointer">커뮤니티</a></li>
-      </ul>
-    </div>
-
     <!-- 고객지원 -->
     <div class="foot-col">
       <h4>고객지원</h4>
@@ -333,7 +330,6 @@
         <!-- 팀 메일 주소가 생기면 아래 한 줄을 mailto 로 바꾼다.
              옛 이름으로 만든 주소가 걸려 있어 지웠다. -->
         <li><a href="https://github.com/ynkite/checkin/issues" target="_blank" rel="noopener">문의 남기기</a></li>
-        <li><a href="https://github.com/ynkite/checkin" target="_blank" rel="noopener">소스 코드</a></li>
       </ul>
     </div>
 
@@ -353,7 +349,7 @@
       <div class="foot-credits">
         <span>지도 © Kakao · Esri · OpenStreetMap 기여자</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>날씨 정보 © 기상청</span><span class="foot-divider" aria-hidden="true">|</span>
-        <span>장소·집중률 © 한국관광공사 · 경로 © 카카오모빌리티 · TMAP</span><span class="foot-divider" aria-hidden="true">|</span>
+        <span>장소·혼잡도 © 한국관광공사 · 경로 © 카카오모빌리티 · TMAP</span><span class="foot-divider" aria-hidden="true">|</span>
         <span>한국관광공사 2026 관광데이터 활용 공모전 출품작</span>
       </div>
       <div class="foot-copy">© 2026 체크인</div>
@@ -363,19 +359,14 @@
 <!-- ===== /SITE FOOTER ===== -->
 
 <!-- 수정 중 이탈 경고 모달 -->
-<div id="unsavedChangesModal" style="display:none; position:fixed; inset:0; z-index:9999; align-items:center; justify-content:center;">
-  <div onclick="closeUnsavedChangesModal()" style="position:absolute; inset:0; background:rgba(0,0,0,.45)"></div>
-  <div style="position:relative; background:var(--surface,#fff); border-radius:14px; padding:28px 24px; width:340px; box-shadow:0 8px 32px rgba(0,0,0,.18); text-align:center;">
-    <div style="font-size:16px; font-weight:700; color:var(--text,#111); margin-bottom:10px;">저장되지 않은 변경사항</div>
-    <div style="font-size:13px; color:var(--text3,#888); line-height:1.5; margin-bottom:22px;">
-      수정 중인 내용이 아직 확정되지 않았습니다.<br>현재 상태로 저장하고 이동하시겠습니까?
-    </div>
-    <div style="display:flex; gap:8px; justify-content:center;">
-      <button onclick="confirmLeaveAndSave()"
-              style="flex:1; padding:10px 14px; background:var(--sage); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; box-shadow:0 2px 4px rgba(0,0,0,0.08);">저장 후
-        이동</button>
-      <button onclick="closeUnsavedChangesModal()"
-              style="flex:1; padding:10px 14px; border:1px solid var(--border2,#e0e0e0); border-radius:8px; background:none; cursor:pointer; font-size:13px; color:var(--text2,#555);">취소</button>
+<div id="unsavedChangesModal" class="lv-wrap">
+  <div class="lv-scrim" onclick="closeUnsavedChangesModal()"></div>
+  <div class="lv-box" role="dialog" aria-modal="true" aria-labelledby="lvTtl">
+    <h2 class="lv-ttl" id="lvTtl">아직 저장하지 않았습니다</h2>
+    <p class="lv-bd">고친 내용이 남아 있습니다. 저장하고 넘어갈까요?</p>
+    <div class="lv-acts">
+      <button type="button" class="lv-go" onclick="confirmLeaveAndSave()">저장하고 넘어가기</button>
+      <button type="button" class="lv-no" onclick="closeUnsavedChangesModal()">여기 있기</button>
     </div>
   </div>
 </div>

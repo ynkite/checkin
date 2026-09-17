@@ -49,14 +49,14 @@ nav .nav-logo .logo-symbol{ display:none }
 nav .nav-link{
   position:relative; padding:6px 2px; margin:0 11px; border-radius:0;
   background:none !important; border:0;
-  font-size:14px; font-weight:500; letter-spacing:-.03em;
+  font-size:14px; font-weight:500; letter-spacing:var(--tracking-tight);
   color:var(--ink-3); transition:color .15s;
 }
 nav .nav-link:hover{ color:var(--ink-2) }
 nav .nav-link.on{ color:var(--ink); font-weight:600 }
 nav .nav-link.on::after{
   content:""; position:absolute; left:0; right:0; bottom:-1px;
-  height:2px; border-radius:99px; background:var(--terra);
+  height:2px; border-radius:99px; background:var(--ink);
 }
 
 /* 오른쪽 — 주인은 하나뿐이다 */
@@ -64,17 +64,17 @@ nav .nav-right{ display:flex; align-items:center; gap:14px }
 nav .btn-nav-ghost,
 nav .nav-user{
   padding:0; border:0; background:none; cursor:pointer;
-  font-family:inherit; font-size:13.5px; font-weight:500; letter-spacing:-.03em;
+  font-family:inherit; font-size:13.5px; font-weight:500; letter-spacing:var(--tracking-tight);
   color:var(--ink-3); transition:color .15s;
 }
 nav .btn-nav-ghost:hover{ color:var(--ink) }
 nav .btn-nav-primary{
   padding:9px 18px 10px; border:0; border-radius:99px; cursor:pointer;
-  background:var(--terra); color:var(--panel);
+  background:var(--ink); color:var(--panel);
   font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.025em;
   transition:filter .15s;
 }
-nav .btn-nav-primary:hover{ filter:brightness(1.2) }
+nav .btn-nav-primary:hover{ background:var(--ui-d) }
 
 /* 알림 종 */
 nav #navBellBtn{ color:var(--ink-2) }

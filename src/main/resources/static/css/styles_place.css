@@ -1,155 +1,322 @@
 /* =============================================================================
- * 체크인 - 장소 상세 페이지 추가 스타일 (styles_place.css)
+ * 체크인 — 장소 상세 (styles_place.css)
  *
- * 【파일 설명】
- * - 클래스 다이어그램 기준: Place(장소) 도메인 전용 스타일
- * - 포함 도메인: 장소(Place) - PlaceController, PlaceService, PlaceRepository
- *   관련 Entity: Place, PlaceReview, PlaceTag
- *   관련 DTO: PlaceSearchDto, PlaceDetailResponseDto
- * - 적용 페이지: page_place.html (장소 상세, 리뷰, 날씨)
- * - 장소 카드, 리뷰 폼, 날씨 박스 전용 스타일 정의
+ * 두 자리에서 같은 화면을 그린다 —
+ *   1. #page-place-reviews          (마이페이지 「담은 장소」에서 들어온다)
+ *   2. 커뮤니티 탭 안의 드릴다운     (app_community_v2.js 가 그린다)
+ * 둘이 서로 다르게 생기면 같은 장소가 두 얼굴을 갖는다. 한 벌만 둔다.
  *
- * 【연관 파일】
- * - styles_main.css : 공통 전역 스타일 (먼저 로드 필요)
- * - page_place.html : 장소 상세, 리뷰, 날씨 페이지 마크업
- * - app_main.js : 장소 검색, 날씨 API 연동 로직
+ * 전에 이 파일은 같은 규칙 3개를 네 번 반복한 것이 전부였고, 그 규칙들은
+ * styles_main.css 에 !important 로 다시 적혀 있어 여기 것은 아무 효과가 없었다.
+ *
+ * 구조는 레퍼런스(이탈리아 영상)의 오른쪽 판을 따른다 —
+ * 눈썹 → 이름 → 큰 숫자 → 한 줄 → 밑줄 링크. 가운데 정렬하지 않는다.
+ * 별 문자는 쓰지 않는다. 읽기용 평점은 숫자다.
  * ============================================================================= */
-    .active-tag {
-      background: var(--sage) !important;
-      color: #fff !important;
-      border-color: var(--sage-d) !important
-    }
 
-    #blogEditor:empty:before {
-      content: attr(data-placeholder);
-      color: var(--text3);
-      pointer-events: none
-    }
+/* ── 판 ─────────────────────────────────────────────────────── */
+.pl-head {
+  background: var(--panel);
+  border-radius: var(--r-panel);
+  box-shadow: var(--lift);
+  padding: 22px 24px 20px;
+  margin-bottom: 26px;
+  word-break: keep-all;
+}
 
-    #blogEditor img {
-      max-width: 100%;
-      border-radius: 8px;
-      margin: 8px 0;
-      display: block
-    }
+.pl-eye{
+  display:block; margin:0 0 7px;
+  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  letter-spacing:.005em; color:var(--ink-3);
+}
 
-    .active-tag {
-      background: var(--sage) !important;
-      color: #fff !important;
-      border-color: var(--sage-d) !important
-    }
+.pl-name {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: var(--tracking-tight);
+  color: var(--ink);
+  margin: 0;
+}
 
-    #blogEditor:empty:before {
-      content: attr(data-placeholder);
-      color: var(--text3);
-      pointer-events: none
-    }
+/* 평점·후기 수·담긴 수 — 숫자는 한 줄에 눕힌다.
+   칸 세 개를 똑같이 나눠 카드로 만들면 어느 화면에나 있는 그 격자가 된다. */
+.pl-figs {
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  margin-top: 16px;
+}
 
-    #blogEditor img {
-      max-width: 100%;
-      border-radius: 8px;
-      margin: 8px 0;
-      display: block
-    }
+.pl-fig {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
 
-    /* slide-arr-wrap: 화살표 좌우 중앙 오버레이 */
-    .slide-arr-wrap {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      pointer-events: none;
-      z-index: 10;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0
-    }
+.pl-fig b {
+  font-family: var(--fig);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: .9;
+  letter-spacing: var(--tracking-num);
+  color: var(--ink);
+}
 
-    .slide-arr {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, .95);
-      border: 1px solid var(--border2);
-      color: var(--text);
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, .13);
-      transition: all .18s;
-      pointer-events: all
-    }
+.pl-fig span {
+  font-size: 12px;
+  color: var(--ink-3);
+}
 
-  .active-tag {
-    background: var(--sage) !important;
-    color: #fff !important;
-    border-color: var(--sage-d) !important
+.pl-fig.pl-dim b {
+  font-size: 19px;
+  color: var(--ink-2);
+}
+
+/* ── 담기 ───────────────────────────────────────────────────── */
+.pl-keep {
+  height: 34px;
+  margin-top: 18px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--ui-line);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color .15s, box-shadow .15s;
+}
+
+.pl-keep:hover {
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+}
+
+.pl-keep.on {
+  background: var(--terra);
+  box-shadow: none;
+  color: var(--panel);
+}
+
+/* ── 바깥 지도 ──────────────────────────────────────────────── */
+.pl-maps {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-line-2);
+}
+
+.pl-maps-t {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin: 0 0 8px;
+}
+
+.pl-maps-l {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* 알약 버튼 세 개는 장소 이름보다 커 보였다. 나가는 링크는 링크로 둔다. */
+.pl-maps-l a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--ui-line);
+}
+
+.pl-maps-l a::after {
+  content: " \2197";
+  text-decoration: none;
+  color: var(--ink-3);
+}
+
+.pl-maps-l a:hover {
+  color: var(--terra);
+  text-decoration-color: var(--terra);
+}
+
+/* ── 후기 목록 ──────────────────────────────────────────────── */
+.pl-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.pl-bar h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.pl-bar select {
+  border: 0;
+  border-bottom: 1.5px solid var(--ui-line);
+  border-radius: 0;
+  padding: 5px 2px 6px;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.pl-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 회색 카드 열 장이 쌓이면 내용보다 상자가 먼저 읽힌다. 머리카락 선 하나면 된다. */
+.pl-item {
+  padding: 15px 2px 16px;
+  border-bottom: 1px solid var(--ui-line-2);
+}
+
+.pl-item:last-child {
+  border-bottom: 0;
+}
+
+.pl-top {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin-bottom: 7px;
+}
+
+.pl-score {
+  font-family: var(--fig);
+  font-size: 15px;
+  letter-spacing: var(--tracking-num);
+  color: var(--num);
+  flex: 0 0 auto;
+}
+
+.pl-who {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.pl-when {
+  margin-left: auto;
+  font-family: var(--fig);
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+.pl-say {
+  font-size: 14px;
+  line-height: 1.68;
+  color: var(--ink-2);
+  word-break: keep-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pl-say.on {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+}
+
+.pl-more,
+.pl-goto {
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-3);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--ui-line);
+}
+
+.pl-more:hover,
+.pl-goto:hover {
+  color: var(--terra);
+  text-decoration-color: var(--terra);
+}
+
+.pl-goto {
+  display: block;
+  color: var(--terra);
+  text-decoration-color: var(--terra-pale);
+}
+
+/* ── 아무것도 없을 때 ───────────────────────────────────────── */
+.pl-none {
+  padding: 34px 2px;
+  font-size: 14px;
+  color: var(--ink-3);
+  word-break: keep-all;
+}
+
+.pl-none b {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 5px;
+}
+
+/* ── 돌아가기 ───────────────────────────────────────────────── */
+.pl-back {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink-3);
+  cursor: pointer;
+}
+
+.pl-back:hover {
+  color: var(--ink);
+}
+
+/* ── 좁은 화면 ──────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .pl-head {
+    padding: 18px 16px 16px;
   }
 
-  #blogEditor:empty:before {
-    content: attr(data-placeholder);
-    color: var(--text3);
-    pointer-events: none
+  .pl-name {
+    font-size: 22px;
   }
 
-  #blogEditor img {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 8px 0;
-    display: block
+  .pl-figs {
+    gap: 16px;
   }
 
-  .active-tag {
-    background: var(--sage) !important;
-    color: #fff !important;
-    border-color: var(--sage-d) !important
+  .pl-fig b {
+    font-size: 26px;
   }
+}
 
-  #blogEditor:empty:before {
-    content: attr(data-placeholder);
-    color: var(--text3);
-    pointer-events: none
-  }
+/* ── 커뮤니티 탭 안에서 열릴 때 ─────────────────────────────────
+   탭 안은 이미 바탕이 있다. 판 위에 판을 또 얹지 않는다. */
+.pl-wrap {
+  padding: 2px 0 8px;
+}
 
-  #blogEditor img {
-    max-width: 100%;
-    border-radius: 8px;
-    margin: 8px 0;
-    display: block
-  }
-
-  /* slide-arr-wrap: 화살표 좌우 중앙 오버레이 */
-  .slide-arr-wrap {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 10;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0
-  }
-
-  .slide-arr {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, .95);
-    border: 1px solid var(--border2);
-    color: var(--text);
-    font-size: 16px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, .13);
-    transition: all .18s;
-    pointer-events: all
-  }
+.pl-wrap .pl-head {
+  box-shadow: var(--lift2);
+}

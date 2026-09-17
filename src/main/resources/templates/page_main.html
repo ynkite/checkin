@@ -15,8 +15,7 @@
       var rating = item.avgRating != null ? Number(item.avgRating).toFixed(1)
               : (item.rating != null ? Number(item.rating).toFixed(1) : '0.0');
       var ratingNum = parseFloat(rating);
-      var stars = item.stars ||
-              ('★'.repeat(Math.round(ratingNum)) + '☆'.repeat(5 - Math.round(ratingNum)));
+      var stars = item.stars || rating;
       var reviewCnt = item.reviewCount != null ? item.reviewCount
               : (item.saveCount != null ? item.saveCount : 0);
       var tags = Array.isArray(item.tags) ? item.tags
@@ -40,35 +39,25 @@
       /* 이미 스크랩한 장소면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 → 새로고침/재진입 시에도 유지 */
       var _alreadyScrapped = !item.isMock && placeId !== '' &&
               window._scrappedPlaceIds && window._scrappedPlaceIds.has(String(placeId));
-      var scrapBtnCls   = 'pop-scrap-btn' + (_alreadyScrapped ? ' scrapped' : '');
+      var scrapBtnCls   = 'ck-sv-s' + (_alreadyScrapped ? ' scrapped' : '');
       var scrapBtnStyle = '';   /* 색은 .scrapped 가 정한다 */
 
       var tagHtml = tags.length
               ? '<div class="pop-tags">' + tags.map(function(t){ return '<span class="pop-tag">' + _esc(t) + '</span>'; }).join('') + '</div>'
               : '';
 
-      return '<div class="pop-card" onclick="' + onClickAction + '">' +
-              '<div class="pop-rank">' + rank + '</div>' +
-              '<div class="pop-icon-row">' +
-              '<div>' +
-              '<div class="pop-name">' + _esc(item.name) + '</div>' +
-              '<div class="pop-meta">' + _esc(item.address || item.roadAddress || '') + '</div>' +
+      return '<article class="ck-sv" onclick="' + onClickAction + '">' +
+              '<b class="ck-sv-n">' + rank + '</b>' +
+              '<div class="ck-sv-b">' +
+              '<h3>' + _esc(item.name) + '</h3>' +
+              '<p>' + _esc(item.address || item.roadAddress || '') + '</p>' +
+              (tags.length ? '<p class="ck-sv-tag">' + tags.map(_esc).join(' · ') + '</p>' : '') +
               '</div>' +
-              '</div>' +
-              '<div class="pop-rating">' +
-              '<span class="pop-stars">' + stars + '</span>' +
-              '<span style="font-size:12px;font-weight:700;margin-left:3px">' + rating + '</span>' +
-              '</div>' +
-              tagHtml +
-              '<div class="pop-foot">' +
-              '<span class="pop-stats">' +
-              '<span class="pop-saves">' + reviewCnt + '번 담김</span>' +
-              '<span class="pop-scrap-n">★ ' + (item.scrapCount || 0) + '</span>' +
-              '</span>' +
-              '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '"' + scrapBtnStyle + ' ' +
-              'onclick="event.stopPropagation(); ' + onClickScrap + '">★스크랩</button>' +
-              '</div>' +
-              '</div>';
+              '<span class="ck-sv-m"><b>' + rating + '</b><i>평점</i></span>' +
+              '<span class="ck-sv-m"><b>' + reviewCnt + '</b><i>담김</i></span>' +
+              '<button id="' + scrapBtnId + '" class="' + scrapBtnCls + '" ' +
+              'onclick="event.stopPropagation(); ' + onClickScrap + '">담기</button>' +
+              '</article>';
     }
 
     function _esc(str) {
@@ -160,7 +149,7 @@
        여기서 style 로 직접 칠하면 팔레트가 바뀌어도 따라오지 않는다. */
     function _applyMainScrapStyle(btn, scrapped) {
       if (!btn) return;
-      btn.textContent = '★스크랩';
+      btn.textContent = '담기';
       btn.classList.toggle('scrapped', !!scrapped);
     }
 
@@ -173,7 +162,7 @@
       if (!el) return;
       const cur = parseInt((el.textContent.match(/\d+/) || [0])[0], 10) || 0;
       const next = Math.max(0, scrapped ? cur + 1 : cur - 1);
-      el.textContent = '★ ' + next;
+      el.textContent = String(next);
     }
 
     async function toggleMainPlaceScrap(e, placeId, category, btnId) {
@@ -397,11 +386,32 @@
       await _loadMyScrappedPlaceIds();
       let top3Routes = typeof MOCK_TOP3 !== 'undefined' ? MOCK_TOP3 : null;
       if (!top3Routes && typeof api !== 'undefined') {
-        const res = await api.get('/api/posts?sort=scrap&size=3&category=ROUTE');
-        top3Routes = res.success ? (res.data.content || res.data || []) : [];
+        const res = await api.get('/api/posts?sort=scrap&size=12&category=ROUTE');
+        const all = res.success ? (res.data.content || res.data || []) : [];
+
+        /* 카드가 그려지려면 제목과 본문이 어느 정도 있어야 한다.
+           제목 「1111」에 자판 만진 본문은 화면에서 쓰레기로 보인다. */
+        const _plainLen = r => String(r.content || '')
+          .replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ')
+          .replace(/[\s\u00a0]+/g, ' ').trim().length;
+        const solid = all.filter(r =>
+          String(r.title || '').trim().length >= 4 && _plainLen(r) >= 30);
+        const pool = solid.length >= 3 ? solid : all;
+
+        /* 절 제목이 「스크랩이 많은 순서」다. 순서를 지키는지 말로도 지킨다 —
+           아무도 담은 것이 없으면 그런 순서가 아니다. */
+        const scrapped = pool.filter(r => (r.scraps || r.scrapCount || 0) > 0);
+        const byScrap = scrapped.length >= 3;
+        top3Routes = (byScrap ? scrapped : pool.slice().sort(
+          (a, b) => (b.views || b.viewCount || 0) - (a.views || a.viewCount || 0))).slice(0, 3);
+
+        const sideEl = document.querySelector('#ck_pop .ck-side');
+        if (sideEl) {
+          sideEl.textContent = byScrap ? '담은 수 순' : '조회수 순';
+        }
       }
 
-      const top3Grid = document.querySelector('.top3-grid');
+      const top3Grid = document.getElementById('ck_top_trip');
       if (top3Grid && top3Routes) {
         top3Grid.innerHTML = top3Routes.length ? top3Routes.map((r, i) => {
           const rank = String(i + 1).padStart(2, '0');
@@ -430,28 +440,22 @@
           /* 이미 스크랩한 경로면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 */
           const _routeScrapped = !r.isMock && r.postId != null &&
                   window._scrappedPostIds && window._scrappedPostIds.has(String(r.postId));
-          const scrapBtnCls   = 'btn-scrap' + (_routeScrapped ? ' scrapped' : '');
+          const scrapBtnCls   = 'ck-sv-s' + (_routeScrapped ? ' scrapped' : '');
           const scrapBtnStyle = '';   /* 색은 .btn-scrap.scrapped 가 정한다 */
 
           return `
-        <div class="top3-card" onclick="${onClickCard}">
-          <div class="card-num">${rank}</div>
-          <div class="card-ttl">${title.replace(' — ', '<br>— ')}</div>
-          <div class="card-sub">${sub}</div>
-          <div class="preview-box" onclick="event.stopPropagation(); ${onClickPreview}">
-            <div class="pvb-label">${pvbLabel}</div>
-            <div class="pvb-text">${pvbText}</div>
+        <article class="ck-sv" onclick="${onClickCard}">
+          <b class="ck-sv-n">${rank}</b>
+          <div class="ck-sv-b">
+            <h3>${title}</h3>
+            <p>${sub}</p>
+            <p class="ck-sv-pv" onclick="event.stopPropagation(); ${onClickPreview}">${pvbText}</p>
           </div>
-          <div class="card-foot">
-            <div class="card-stats">
-              <span class="card-stat">좋아요 ${r.likes || r.likeCount || 0}</span>
-              <span class="card-stat">조회 ${r.views || r.viewCount || 0}</span>
-              <span class="card-scrap-n">★ ${r.scraps || r.scrapCount || 0}</span>
-            </div>
-            <button class="${scrapBtnCls}"${scrapBtnStyle} onclick="event.stopPropagation(); ${onClickScrap}">★스크랩</button>
-          </div>
-        </div>`;
-        }).join('') : '<div class="no-data">인기 경로 데이터가 없습니다.</div>';
+          <span class="ck-sv-m"><b>${r.views || r.viewCount || 0}</b><i>조회</i></span>
+          <span class="ck-sv-m"><b>${r.scraps || r.scrapCount || 0}</b><i>담김</i></span>
+          <button class="${scrapBtnCls}" onclick="event.stopPropagation(); ${onClickScrap}">담기</button>
+        </article>`;
+        }).join('') : '<div class="no-data">아직 올라온 일정이 없습니다.</div>';
       }
 
       // 4. 인기 명소 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
@@ -482,205 +486,13 @@
         if (places) {
           gridEl.innerHTML = places.length
                   ? places.map((p, idx) => _popCard(p, idx)).join('')
-                  : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">인기 명소가 없습니다.</div>';
+                  : '<div class="no-data" style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text3)">아직 담긴 곳이 없습니다.</div>';
         }
 
       }
     }
 
 
-
-    /* ════════════════════════════════════════════════════════════
-     * 모바일 캐러셀 (인기 경로/맛집/숙소/관광지/카페)
-     *   - 큐레이션과 동일: 좌우 화살표(겹침) + 하단 점
-     *   - 동작: 스와이프(scroll-snap) + 화살표·점 클릭 시 해당 카드로 스크롤
-     *   - 모바일(≤768px)에서만 활성, 카드가 렌더된 뒤 자동 구성
-     * ════════════════════════════════════════════════════════════ */
-    var _mobCarouselMQ = window.matchMedia('(max-width: 1024px)');
-
-    function _buildOneCarousel(grid) {
-      if (!grid) return;
-      var cards = grid.children;
-      // .no-data 한 장만 있는 경우는 캐러셀 불필요
-      var onlyNoData = (cards.length === 1 && cards[0].className && cards[0].className.indexOf('no-data') !== -1);
-
-      // 이미 구성된 경우: 카드 개수가 바뀌었으면 점/화살표를 다시 만든다(탭 전환·비동기 재렌더 대응)
-      if (grid.dataset.carousel === '1') {
-        var existingWrap = grid.parentNode;
-        if (existingWrap && existingWrap.classList.contains('mob-carousel-wrap')) {
-          var existingDots = existingWrap.querySelector('.mob-carousel-dots');
-          var dotCount = existingDots ? existingDots.children.length : -1;
-          if (!onlyNoData && cards.length > 0 && dotCount !== cards.length) {
-            // 개수가 달라졌으니 래퍼를 해제하고 처음부터 다시 구성
-            grid.dataset.carousel = '';
-            var arrs = existingWrap.querySelectorAll('.mob-carousel-arr');
-            arrs.forEach(function (a) { a.remove(); });
-            if (existingDots) existingDots.remove();
-            existingWrap.parentNode.insertBefore(grid, existingWrap);
-            existingWrap.remove();
-          } else {
-            return; // 동일하면 그대로 둠
-          }
-        } else {
-          return;
-        }
-      }
-
-      if (!cards || cards.length === 0) return;
-      if (onlyNoData) return;
-
-      grid.dataset.carousel = '1';
-
-      // 래퍼로 감싸기
-      var wrap = document.createElement('div');
-      wrap.className = 'mob-carousel-wrap';
-      grid.parentNode.insertBefore(wrap, grid);
-      wrap.appendChild(grid);
-
-      // 화살표
-      var prev = document.createElement('button');
-      prev.className = 'mob-carousel-arr prev';
-      prev.type = 'button';
-      prev.innerHTML = '&#8249;';
-      var next = document.createElement('button');
-      next.className = 'mob-carousel-arr next';
-      next.type = 'button';
-      next.innerHTML = '&#8250;';
-      wrap.appendChild(prev);
-      wrap.appendChild(next);
-
-      // 점
-      var dotsWrap = document.createElement('div');
-      dotsWrap.className = 'mob-carousel-dots';
-      var n = cards.length;
-      for (var i = 0; i < n; i++) {
-        var d = document.createElement('div');
-        d.className = 'dot' + (i === 0 ? ' on' : '');
-        (function (idx) {
-          d.addEventListener('click', function () { _scrollToCard(grid, idx); });
-        })(i);
-        dotsWrap.appendChild(d);
-      }
-      wrap.appendChild(dotsWrap);
-
-      function _currentIndex() {
-        // 가장 가까운 카드 인덱스 계산 (카드 중심과 뷰포트 중심 비교)
-        var center = grid.scrollLeft + grid.clientWidth / 2;
-        var best = 0, bestDist = Infinity;
-        for (var k = 0; k < grid.children.length; k++) {
-          var c = grid.children[k];
-          var cc = c.offsetLeft + c.offsetWidth / 2;
-          var dist = Math.abs(cc - center);
-          if (dist < bestDist) { bestDist = dist; best = k; }
-        }
-        return best;
-      }
-
-      function _sync() {
-        var idx = _currentIndex();
-        var dots = dotsWrap.children;
-        for (var k = 0; k < dots.length; k++) dots[k].classList.toggle('on', k === idx);
-        prev.disabled = (idx === 0);
-        next.disabled = (idx === grid.children.length - 1);
-      }
-
-      // 스크롤 시 점/화살표 상태 동기화 (rAF 스로틀)
-      var ticking = false;
-      grid.addEventListener('scroll', function () {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(function () { _sync(); ticking = false; });
-      });
-
-      prev.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() - 1); });
-      next.addEventListener('click', function () { _scrollToCard(grid, _currentIndex() + 1); });
-
-      _sync();
-    }
-
-    // 데스크톱(>768px)로 커지면 캐러셀 래퍼/점/화살표를 모두 해제해 원래 그리드로 복귀
-    function _teardownOneCarousel(grid) {
-      if (!grid) return;
-      var wrap = grid.parentNode;
-      if (!wrap || !wrap.classList || !wrap.classList.contains('mob-carousel-wrap')) {
-        grid.dataset.carousel = '';
-        return;
-      }
-      var arrs = wrap.querySelectorAll('.mob-carousel-arr');
-      arrs.forEach(function (a) { a.remove(); });
-      var dots = wrap.querySelector('.mob-carousel-dots');
-      if (dots) dots.remove();
-      // 그리드를 래퍼 밖(원래 위치)으로 되돌리고 래퍼 제거
-      wrap.parentNode.insertBefore(grid, wrap);
-      wrap.remove();
-      grid.dataset.carousel = '';
-      grid.scrollLeft = 0;
-    }
-
-    function _teardownCarousels() {
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) { _teardownOneCarousel(g); });
-    }
-
-    function _scrollToCard(grid, idx) {
-      if (idx < 0 || idx >= grid.children.length) return;
-      var card = grid.children[idx];
-      // 카드를 트랙 가운데로 스크롤
-      var target = card.offsetLeft - (grid.clientWidth - card.offsetWidth) / 2;
-      grid.scrollTo({ left: target, behavior: 'smooth' });
-    }
-
-    function initMobCarousels() {
-      if (!_mobCarouselMQ.matches) return;  // 모바일에서만
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) { _buildOneCarousel(g); });
-    }
-
-    // 카드가 비동기로 채워지므로, 각 그리드에 자식이 들어오면 자동 구성
-    function _watchCarouselGrids() {
-      if (!_mobCarouselMQ.matches) return;
-      var grids = document.querySelectorAll('.top3-grid, .popular-grid');
-      grids.forEach(function (g) {
-        if (g.dataset.carouselWatch === '1') return;
-        g.dataset.carouselWatch = '1';
-        var mo = new MutationObserver(function () {
-          if (_mobCarouselMQ.matches && g.children.length > 0) { _buildOneCarousel(g); }
-        });
-        mo.observe(g, { childList: true });
-        if (g.children.length > 0) _buildOneCarousel(g);
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      // 카드 렌더 타이밍을 모두 커버: 감시 시작 + 약간의 지연 후 일괄 시도
-      _watchCarouselGrids();
-      setTimeout(initMobCarousels, 400);
-      setTimeout(initMobCarousels, 1200);
-      setTimeout(initMobCarousels, 2500);
-    });
-
-    // 화면 크기가 모바일/태블릿(≤768px)로 들어올 때도 캐러셀을 구성한다.
-    //    (데스크톱에서 열었다가 창을 줄이거나, 기기 회전 시 화살표·점이 안 나오던 문제 방지)
-    function _onMobMQChange() {
-      if (_mobCarouselMQ.matches) {
-        // 모바일/태블릿: 캐러셀 구성 (이미 있으면 카드수 변화에 맞춰 재구성됨)
-        _watchCarouselGrids();
-        initMobCarousels();
-        setTimeout(initMobCarousels, 300);
-      } else {
-        // 데스크톱: 캐러셀 잔재(점·화살표·래퍼) 완전 제거
-        _teardownCarousels();
-      }
-    }
-    if (_mobCarouselMQ.addEventListener) {
-      _mobCarouselMQ.addEventListener('change', _onMobMQChange);
-    } else if (_mobCarouselMQ.addListener) {
-      _mobCarouselMQ.addListener(_onMobMQChange);
-    }
-    window.addEventListener('resize', function () {
-      clearTimeout(window._mobCarouselResizeT);
-      window._mobCarouselResizeT = setTimeout(_onMobMQChange, 200);
-    });
 
     document.addEventListener('DOMContentLoaded', initMainPage);
 
@@ -691,90 +503,178 @@
   <div class="page active" id="page-main">
     <div class="ck-home">
       <section class="ck-hero ck-stage" id="ck_hero">
-        <!-- 무대. app_home.js 가 mass_hero.svg 를 여기 넣는다. -->
+        <!-- 무대. 기본은 3D 모형, 「지도」를 누르면 카카오맵으로 바뀐다.
+             app_home.js 가 mass_hero.svg 를 #ck_scene 에 넣는다. -->
         <div class="ck-scene" aria-hidden="true">
-          <!-- svg·경로·핀이 한 상자 안에 있어야 좌표계가 맞는다.
-               바깥 섹션 기준으로 %를 주면 장면이 확대·중앙정렬된 만큼 어긋난다. -->
           <div class="ck-frame" id="ck_frame">
             <div id="ck_scene"></div>
+            <!-- 날씨. data-wx 가 rain·snow·cloudy 일 때만 보인다 -->
+            <div class="ck-wx" id="ck_wx" aria-hidden="true"></div>
             <div class="ck-pins" id="ck_pinlayer"></div>
           </div>
         </div>
+        <div class="st-bigmap" id="st_bigmap" hidden></div>
 
-        <div class="ck-wr ck-lead">
-          <h1>줄 서려고<br>간 건 아니잖아요</h1>
-          <p class="ck-sub">다음에 갈 곳이 붐비면 미리 알려드립니다. 순서를 바꾸면 몇 분 줄고 얼마 더 드는지, 숫자로 같이 보여드립니다.</p>
-            <div class="ck-tell" role="status" aria-live="polite">
-              <div class="ck-ph"><i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i></div>
-              <div class="ck-line" id="ck_tl">부산 1일차, 오후 순서입니다</div>
-              <p class="ck-why" id="ck_tw">남포동에서 점심을 먹고 해운대로 갈 계획이었습니다.</p>
-              <div class="ck-plans" id="ck_plans">
-                <div class="ck-plan ck-a">
-                  <span class="ck-stop"><b class="ck-t">14:30</b><i>해운대</i></span>
-                  <span class="ck-leg">3시간 뒤</span>
-                  <span class="ck-stop"><b class="ck-t">17:30</b><i>광안리</i></span>
-                </div>
-                <div class="ck-plan ck-b ck-now">
-                  <span class="ck-stop"><b class="ck-t">14:20</b><i>광안리</i></span>
-                  <span class="ck-leg">3시간 20분 뒤</span>
-                  <span class="ck-stop"><b class="ck-t">17:40</b><i>해운대</i></span>
-                </div>
-              </div>
-              <div class="ck-chips" id="ck_tc">
-                <b id="ck_c1">−40분</b><b id="ck_c2">+3,200원</b><b class="ck-hot" id="ck_c3">일몰에 맞음</b>
-              </div>
-            </div>
-        </div>
+        <!-- 왼쪽 위 — 지금 무엇을 보고 있나 -->
+        <div class="st-tl">
+          <div class="fl st-head">
+            <span class="fl-eye">부산 2박 3일 · 1일차 오후</span>
+            <h1 class="fl-ttl fl-ttl-lg st-h1">줄 서려고<br>간 건 아니잖아요</h1>
+            <p class="fl-sub">붐비는 곳을 실시간으로 보고, 그 자리에서 순서를 다시 잡습니다.</p>
+            <p class="fl-path" id="st_path"></p>
+          </div>
 
-        <!-- 하루를 따라가는 막대. 장면 세 개가 이 진행선을 움직인다.
-             도쿄 앱의 재생 바 자리다. 장식이 아니라 실제로 장면을 돌린다. -->
-        <div class="ck-wr">
-          <div class="ck-play" id="ck_play">
-            <button type="button" class="ck-playbtn" id="ck_playbtn"
-                    aria-label="순서 따라가기 멈춤">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
-            </button>
-            <div class="ck-playtx">
-              <b id="ck_playttl">부산 1일차 오후를 순서대로 봅니다</b>
-              <i>세 곳 · 14:20 부터 19:05 까지</i>
+          <!-- 정거장. 붐비는 곳은 알약 자체가 신호다 -->
+          <div class="fl-pills st-stops" id="st_stops"></div>
+
+          <!-- 지금 상황 + 대응 세 갈래 -->
+          <div class="fl st-note" role="status" aria-live="polite">
+            <div class="ck-ph" id="ck_play">
+              <button type="button" class="ck-phbtn" id="ck_playbtn" aria-label="순서 따라가기 멈춤">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path class="ck-ic-pause" d="M9.5 6.5v11M14.5 6.5v11"/><path class="ck-ic-play" d="M8.5 5.8 18 12l-9.5 6.2z"/></svg>
+              </button>
+              <i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i>
             </div>
-            <div class="ck-track" id="ck_track" aria-hidden="true"><i></i><em id="ck_trackdot"></em></div>
-            <span class="ck-playnow" id="ck_playnow">해변 한가운데</span>
+            <p class="st-line" id="ck_tl">부산 첫날 오후 일정입니다</p>
+            <p class="fl-tx" id="ck_tw">미포에서 출발해 해수욕장, 동백섬 순으로 갈 계획이었습니다.</p>
+            <!-- 혼잡이 잡히면 열린다. 하나로 정해 주지 않고 세 갈래를 준다 -->
+            <div class="ck-opts" id="ck_opts" hidden>
+              <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
+                <b>사람이 몰려서</b>
+                <span>지금 95예요. 해 질 때 다시 오면 40분 덜 서요</span>
+                <em>줄 40분 덜 섬<i>돈은 그대로</i></em>
+              </button>
+              <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
+                <b>비가 와서</b>
+                <span>해수욕장 대신 실내로. 전통시장은 아케이드예요</span>
+                <em>걸어서 9분<i>비 안 맞고</i></em>
+              </button>
+              <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
+                <b>길이 막혀서</b>
+                <span>해변길 대신 안쪽 도로. 티맵이 지금 재고 있어요</span>
+                <em>11분 빠름<i>1.2km 더</i></em>
+              </button>
+            </div>
           </div>
         </div>
 
-        <div class="ck-wr ck-form">
+        <!-- 오른쪽 위 — 무대를 바꾸는 도구. 전부 실제로 동작한다 -->
+        <div class="fl-tools st-tools">
+          <button type="button" class="fl-tool" id="st_t_model" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 8v8l-9 5-9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>모형
+          </button>
+          <button type="button" class="fl-tool" id="st_t_map" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>지도
+          </button>
+          <button type="button" class="fl-tool" id="st_t_walk" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v5l-3 8M12 13l3 8M8 11l8-1"/></svg>사람 움직임
+          </button>
+        </div>
+
+        <!-- 왼쪽 아래 — 작은 지도. 큰 무대와 서로 바꿔 볼 수 있다 -->
+        <div class="fl fl-tight fl-mini st-mini" id="st_mini">
+          <div class="fl-mini-hd">
+            <b id="st_mini_ttl">지금 위치 지도</b>
+            <span class="fl-mz">
+              <button type="button" id="st_m_out" aria-label="축소">−</button>
+              <button type="button" id="st_m_in" aria-label="확대">+</button>
+            </span>
+            <button type="button" id="st_fold" aria-expanded="true">접기</button>
+          </div>
+          <div class="fl-mini-map" id="st_minimap"></div>
+        </div>
+
+        <!-- 오른쪽 아래 — 시점 -->
+        <div class="fl-tools st-view">
+          <button type="button" class="fl-tool" id="st_v_in" aria-label="확대">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>
+          </button>
+          <button type="button" class="fl-tool" id="st_v_out" aria-label="축소">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>
+          </button>
+          <button type="button" class="fl-tool" id="st_v_reset">시점 초기화</button>
+        </div>
+
+        <!-- 오른쪽 판 — 오늘 순서 · 지금 상황 -->
+        <aside class="fl st-side" id="st_side">
+          <div class="st-sidehd">
+            <b class="fl-no">01<em>일차</em></b>
+            <span id="st_when">불러오는 중<i>부산 해운대</i></span>
+          </div>
+          <div class="st-tabs">
+            <button type="button" class="fl-pill on" id="st_tab_day" aria-pressed="true">오늘 순서</button>
+            <button type="button" class="fl-pill" id="st_tab_now" aria-pressed="false">지금 상황</button>
+          </div>
+
+          <div id="st_pane_day">
+            <dl class="fl-rows" id="st_plan"></dl>
+          </div>
+
+          <div id="st_pane_now" hidden>
+            <dl class="fl-rows" id="st_crowd"></dl>
+            <div class="fl-links">
+              <a href="https://datalab.visitkorea.or.kr" target="_blank" rel="noopener">한국관광 데이터랩</a>
+            </div>
+          </div>
+        </aside>
+
+        <!-- 지금 시각·날씨. 배경이 왜 이 색인지 여기서 말한다 -->
+        <div class="st-wx" id="st_wx" hidden></div>
+
+        <!-- 혼잡도 눈금 — 숫자만으로는 얼마나 많은 건지 모른다 -->
+        <div class="st-cwkey" id="st_cwkey">
+          <button type="button" class="st-cwkey-t" id="st_cwkey_t"
+                  aria-expanded="false" aria-controls="st_cwkey_b">
+            혼잡도 <b>0 – 100</b><span>숫자가 클수록 붐빕니다</span>
+          </button>
+          <div class="st-cwkey-b" id="st_cwkey_b" hidden>
+            <div class="st-cwrow cw-vlow">
+              <i>0–34</i><b>매우 한적</b><span>줄이 없습니다. 아무 자리나 앉습니다</span></div>
+            <div class="st-cwrow cw-low">
+              <i>35–51</i><b>한적</b><span>앞에 서너 팀. 기다릴 것도 없습니다</span></div>
+            <div class="st-cwrow cw-mid">
+              <i>52–69</i><b>정상</b><span>평소 주말쯤. 자리는 있습니다</span></div>
+            <div class="st-cwrow cw-high">
+              <i>70–84</i><b>혼잡</b><span>식당은 20분쯤 기다립니다. 주차는 한참 돕니다</span></div>
+            <div class="st-cwrow cw-vhigh">
+              <i>85–100</i><b>매우 혼잡</b><span>돗자리 깔 자리를 찾아 한참 걷습니다</span></div>
+            <p class="st-cwkey-n">한국관광공사 관광지 집중률 예측입니다.
+              전국 1,770건을 재서 다섯 단계로 나눴습니다.</p>
+          </div>
+        </div>
+
+        <!-- 아래 가운데 — 경로 만들기 -->
+        <div class="st-form">
           <form class="ck-bar" id="ck_mk" onsubmit="return false">
             <div class="ck-fr">
-              <div class="ck-fld"><label for="f1">어디로</label>
+              <div class="ck-fld"><label for="ck_f1">어디로</label>
                 <select id="ck_f1"><option>부산</option><option>서울</option><option>제주</option><option>강릉</option><option>경주</option></select></div>
-              <div class="ck-fld"><label for="f2">며칠</label>
+              <div class="ck-fld"><label for="ck_f2">며칠</label>
                 <select id="ck_f2"><option>2박 3일</option><option>1박 2일</option><option>3박 4일</option><option>당일</option></select></div>
-              <div class="ck-fld"><label for="f3">언제부터</label>
+              <div class="ck-fld"><label for="ck_f3">언제부터</label>
                 <input id="ck_f3" type="date" value="2026-09-19"></div>
-              <div class="ck-fld"><label for="f4">몇 명</label>
+              <div class="ck-fld"><label for="ck_f4">몇 명</label>
                 <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
             </div>
             <div class="ck-cond">
-            <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
+              <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
               <div class="ck-chips2" id="ck_cc">
                 <button type="button" aria-pressed="false">반려동물</button>
-                <button type="button" aria-pressed="false">유아차</button>
                 <button type="button" aria-pressed="false">노약자</button>
                 <button type="button" aria-pressed="false">키즈존</button>
                 <button type="button" aria-pressed="false">노키즈존</button>
               </div>
             </div>
             <button class="ck-go" type="submit">경로 만들기</button>
-            <p class="ck-note" id="ck_nt">고른 조건에 안 맞는 곳은 아예 후보에서 뺍니다.</p>
+            <p class="ck-note" id="ck_nt"></p>
           </form>
         </div>
       </section>
+
       <!-- 내 여행 — 로그인한 계정에서만 보인다. app_home.js 가 ck-on 을 붙인다. -->
       <section class="ck-wr ck-blk ck-mine" id="ck_mine">
-        <div class="ck-hd" data-label="이어서 보는">
+        <div class="ck-hd" data-label="이어서 보는" id="ckHdMine">
           <h2>내 여행</h2>
-          <p class="ck-side">지금 가 있는 여행이 맨 위에 옵니다.</p>
         </div>
         <div class="ck-row" id="ck_mine_row">
           <div class="ck-empty">가져오는 중</div>
@@ -784,15 +684,13 @@
       <!-- 추천 여행. 컨테이너와 클래스는 initMainPage() 가 채우므로 그대로 두고,
            껍데기와 카드 모양만 새로 입힌다. -->
       <section class="ck-wr ck-blk" id="ck_cur">
-        <div class="ck-hd" data-label="지역만 고르면 되는">
-          <h2>바로 떠날 수 있는 경로</h2>
-          <p class="ck-side">지역만 고르면 첫날 아침부터 시각이 다 잡혀 있습니다.</p>
+        <div class="ck-hd" data-label="미리 짜 둔">
+          <h2>추천 경로</h2>
         </div>
         <div class="ck-cur">
           <div class="hsc">
-            <p class="ck-picklbl">어디부터 볼까요</p>
+            <p class="ck-picklbl">지역</p>
             <div class="hsc-dest-row"></div>
-            <p class="ck-picknote">고른 지역으로 바로 넘어갑니다. 날짜와 인원은 다음 화면에서 손보면 됩니다.</p>
             <!-- 미리 짜 둔 경로 목록. 화살표를 눌러야만 다음 것을 볼 수 있으면
                  무엇이 있는지 모른다. initMainPage() 가 채운다. -->
             <ul class="ck-rtlist" id="ck_rtlist"></ul>
@@ -809,92 +707,57 @@
       </section>
 
       <section class="ck-wr ck-blk" id="ck_free">
-        <div class="ck-hd" data-label="오늘 이 시각의">
-          <h2>지금 한가한 곳</h2>
-          <p class="ck-side">100이 평소 수준입니다.</p>
+        <div class="ck-hd" data-label="한국관광공사 집중률 예측" id="ckHdFree">
+          <h2>한적한 곳</h2>
+          <p class="ck-side"></p>
         </div>
-        <div class="ck-free">
-          <article class="ck-spot"><div class="ck-nm">다대포</div><div class="ck-why">낙조, 모래사장 · 차로 32분</div>
-            <div class="ck-vv"><b class="ck-fig">64</b><i>평소의 64%</i></div><div class="ck-bar"><i style="width:43%"></i></div></article>
-          <article class="ck-spot"><div class="ck-nm">흰여울문화마을</div><div class="ck-why">골목, 전망 · 차로 24분</div>
-            <div class="ck-vv"><b class="ck-fig">71</b><i>평소의 71%</i></div><div class="ck-bar"><i style="width:47%"></i></div></article>
-          <article class="ck-spot"><div class="ck-nm">태종대</div><div class="ck-why">해안 절벽, 등대 · 차로 27분</div>
-            <div class="ck-vv"><b class="ck-fig">78</b><i>평소의 78%</i></div><div class="ck-bar"><i style="width:52%"></i></div></article>
-          <article class="ck-spot ck-hot"><div class="ck-nm">해운대</div><div class="ck-why">지금 붐빔 · 저녁에 가세요</div>
-            <div class="ck-vv"><b class="ck-fig">142</b><i>평소의 1.4배</i></div><div class="ck-bar"><i style="width:95%"></i></div></article>
-        </div>
+        <div class="ck-free"></div>
       </section>
 
-      <section class="ck-wr ck-blk" id="ck_budget">
-        <div class="ck-hd" data-label="확정과 추정을 나눠 적은">
-          <h2>숙박비가 왜 그 금액인지</h2>
-          <p class="ck-side">요금표에서 찾은 값과, 비슷한 숙소 평균으로 메운 값을 나눠 뒀습니다.</p>
+            <section class="ck-wr ck-blk" id="ck_budget">
+        <div class="ck-hd" data-label="확정 80%" data-meta="1박 2일 기준">
+          <h2>예상 숙박비</h2>
         </div>
-        <div class="ck-bud">
-          <div class="ck-card">
-            <table class="ck-rows">
-              <thead><tr><th>숙박 항목</th><th>금액</th><th>확인 여부</th></tr></thead>
-              <tbody>
-                <tr><td>객실 2박</td><td>120,000</td><td>확정</td></tr>
-                <tr><td>인원 추가 2명</td><td>40,000</td><td>확정</td></tr>
-                <tr><td>바베큐 이용</td><td>30,000</td><td>추정</td></tr>
-                <tr><td>레이트 체크아웃</td><td>10,000</td><td>추정</td></tr>
-                <tr><td>청소비</td><td>0</td><td>없음</td></tr>
-              </tbody>
-              <tfoot><tr><td>합계</td><td>184,000 ~ 216,000</td><td></td></tr></tfoot>
-            </table>
-          </div>
-          <div class="ck-card ck-conf">
-            <div class="ck-big ck-fig">80<span>%</span></div>
-            <p>160,000원은 요금표에 적혀 있던 값입니다. 남은 40,000원은 같은 동네 같은 등급 숙소 평균으로 메웠습니다.</p>
-            <div class="ck-bar" aria-hidden="true"><i style="flex:0 0 80%"></i><i style="flex:1"></i></div>
-            <div class="ck-lg"><span><em>160,000</em> 확정</span><span><em>40,000</em> 추정</span></div>
-            <p>실제 결제액을 남겨 주면 다음부터 추정 폭이 줄어듭니다.</p>
+
+        <!-- 확정 160,000 = 객실 120,000 + 인원 추가 40,000
+             추정  40,000 = 바베큐 30,000 + 늦은 퇴실 10,000
+             총액과 확정 비율(80%)은 이 둘에서 나온다. 하나를 바꾸면 셋 다 바꾼다. -->
+        <div class="ck-conf2">
+          <p class="ck-conf2-sum">
+            <b>200,000</b><span>원</span>
+            <em>부산 1박 · 비수기 · 주말 체크인</em>
+          </p>
+
+          <!-- 조각 위에 값을 얹는다. 범례를 따로 두면 눈이 두 번 움직인다 -->
+          <div class="ck-conf2-bar">
+            <i class="ck-sure" style="flex:160">
+              <b>160,000원</b><span>요금표</span>
+            </i>
+            <i class="ck-guess" style="flex:40">
+              <b>40,000원</b><span>비슷한 숙소 평균</span>
+            </i>
           </div>
         </div>
       </section>
 
-            <!-- 세 절을 하나로. 셋 다 「이게 어떻게 돌아가나」에 대한 답이다. -->
-      <section class="ck-wr ck-blk" id="ck_how">
-        <div class="ck-hd" data-label="손이 가는 건 두 번뿐">
-          <h2>이게 어떻게 돌아가나</h2>
+            <section class="ck-wr ck-blk" id="ck_how">
+        <div class="ck-hd" data-label="고르는 건 두 번">
+          <h2>쓰는 순서</h2>
         </div>
-
-        <div class="ck-part">
-          <h3 class="ck-part-t">언제 손이 가나</h3>
-          <div class="ck-steps">
-          <article class="ck-st"><div class="ck-no">01</div><h3>지역과 기간만</h3>
-            <p>시각은 입력하지 않습니다. 숙소 체크인 시각과 장소별 영업시간, 이동시간을 넣고 계산해서 하루를 채웁니다.</p></article>
-          <article class="ck-st"><div class="ck-no">02</div><h3>당일엔 지도 하나</h3>
-            <p>지금 어디쯤인지와 다음 장소 붐빔 정도가 한 화면에 들어갑니다. 내려볼 것이 없습니다.</p></article>
-          <article class="ck-st"><div class="ck-no">03</div><h3>어긋날 때</h3>
-            <p>먼저 말을 겁니다. 바꿨을 때 몇 분이 줄고 얼마가 더 드는지 숫자로 붙습니다.</p></article>
-        </div>
-        </div>
-
-        <div class="ck-part">
-          <h3 class="ck-part-t">바꾸면 어디까지 따라오나</h3>
-          <div class="ck-sync">
-          <div><b>아이폰·구글 캘린더</b><p>구독 주소를 한 번 등록하면 그다음부터는 알아서 따라옵니다.</p></div>
-          <div><b>출발 30분 전</b><p>움직일 시각에 알립니다. 붐빔이 심하면 더 일찍.</p></div>
-          <div><b>일행과 공유</b><p>링크 하나로 같이 봅니다. 누가 순서를 바꿨는지 기록에 남습니다.</p></div>
-        </div>
-        </div>
-
-        <div class="ck-part">
-          <h3 class="ck-part-t">무엇으로 정하나</h3>
-          <div class="ck-how2">
-          <p>
-            순서는 알고리즘이 계산합니다. 후보를 고르고 왜 그 순서인지
-            쓰는 것은 AI 가 합니다. <b>시각은 넣는 값이 아니라 나오는 값</b>입니다 —
-            숙소 체크인 시각과 장소별 영업시간, 이동시간을 넣고 풀면 하루가 채워집니다.
-          </p>
-          <p class="ck-how2-src">
-            집중률과 장소는 한국관광공사, 이동시간은 카카오모빌리티와 TMAP,
-            건물 형상은 OpenStreetMap 에서 가져옵니다.
-          </p>
-        </div>
-        </div>
+        <ol class="ck-flow">
+          <li>
+            <b>지역과 기간 고르기</b>
+            <span>시각은 알아서 채워집니다</span>
+          </li>
+          <li>
+            <b>붐비면 순서 바꾸기</b>
+            <span>대기 몇 분 줄고 얼마 더 드는지</span>
+          </li>
+          <li>
+            <b>일행과 같이 보기</b>
+            <span>한 명이 바꾸면 캘린더·알림까지</span>
+          </li>
+        </ol>
       </section>
 
       
@@ -905,16 +768,16 @@
            app_main.js 의 렌더가 깨진다. 껍데기만 새 디자인으로 입혔다. -->
             <!-- 커뮤니티가 담은 것. 일정이냐 장소냐만 다르다. -->
       <section class="ck-wr ck-blk" id="ck_pop">
-        <div class="ck-hd" data-label="그대로 가져다 쓰는">
-          <h2>사람들이 담아 간 것</h2>
-          <p class="ck-side">커뮤니티에서 스크랩이 많은 순서입니다.</p>
+        <div class="ck-hd" data-label="커뮤니티" id="ckHdPop">
+          <h2>인기</h2>
+          <p class="ck-side"></p>
         </div>
         <div class="ck-tabs ck-tabs-top" role="tablist">
           <button type="button" role="tab" aria-selected="true"  data-pane="ck_pane_trip">일정</button>
           <button type="button" role="tab" aria-selected="false" data-pane="ck_pane_place">장소</button>
         </div>
         <div id="ck_pane_trip">
-          <div class="top3-grid ck-cards"></div>
+          <div class="ck-svlist" id="ck_top_trip"></div>
         </div>
         <div id="ck_pane_place" hidden>
           <div class="ck-tabs" role="tablist">
@@ -923,10 +786,10 @@
           <button type="button" role="tab" aria-selected="false" data-pop="tour">관광지</button>
           <button type="button" role="tab" aria-selected="false" data-pop="cafe">카페</button>
         </div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-food-grid"></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-stay-grid" hidden></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-tour-grid" hidden></div>
-        <div class="popular-grid ck-cards ck-pop" id="popular-cafe-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-food-grid"></div>
+        <div class="ck-svlist ck-pop" id="popular-stay-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-tour-grid" hidden></div>
+        <div class="ck-svlist ck-pop" id="popular-cafe-grid" hidden></div>
         </div>
       </section>
 
@@ -937,8 +800,10 @@
 
       <div class="ck-wr">
         <div class="ck-attr">
-          <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 집중률 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
-          <span>화면의 집중률과 금액은 시연용 예시입니다. 지도 위 사람은 실제 인원이 아니라 집중률을 밀도로 옮긴 것입니다.</span>
+          <span>건물 형상 ⓒOpenStreetMap 기여자 · 장소와 혼잡도 ⓒ한국관광공사 · 경로 카카오모빌리티·TMAP · 지도 Esri</span>
+          <span>혼잡도는 한국관광공사 관광지 집중률 예측을 실시간으로 받아 씁니다.
+            금액은 공개 요금표가 있는 항목만 확정이고 나머지는 평균으로 낸 추정입니다.
+            지도 위 사람은 실제 인원이 아닙니다. 혼잡도만큼 늘리고 줄인 것입니다.</span>
           <span>한국관광공사 2026 관광데이터 활용 공모전 출품작 · 팀 체크인</span>
         </div>
       </div>

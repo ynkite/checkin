@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
  *     안전장치가 있어 코드 수정 없이도 자동으로 기존 결과가 유지된다.)
  * ============================================================================
  */
+@lombok.extern.slf4j.Slf4j
 @Service
 @Transactional(readOnly = true)
 public class AiRouteService {
@@ -49,6 +50,7 @@ public class AiRouteService {
     private final TravelPlanRepository planRepository;
     private final ExpenseRepository expenseRepository;
     private final PlaceService placeService;
+    private final idusw.sbb.checkin.domain.crowd.CrowdService crowdService;  // 관광공사 집중률 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository;
     private final ObjectMapper objectMapper;
 
@@ -76,6 +78,7 @@ public class AiRouteService {
             TravelPlanRepository planRepository,
             ExpenseRepository expenseRepository,
             PlaceService placeService,
+            idusw.sbb.checkin.domain.crowd.CrowdService crowdService,
             idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
@@ -98,6 +101,7 @@ public class AiRouteService {
         this.planRepository = planRepository;
         this.expenseRepository = expenseRepository;
         this.placeService = placeService;
+        this.crowdService = crowdService;
         this.placeRepository = placeRepository;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
@@ -484,6 +488,72 @@ public class AiRouteService {
     }
 
     @Transactional
+    /**
+     * 동선의 장소마다 그 날짜의 관광공사 집중률을 적어 둔다.
+     *
+     * 왜 저장할 때 붙이는가 — 화면이 지도에 들어간 뒤에 따로 물어보면
+     * 저장된 동선 자체에는 아무 근거가 안 남는다. 나중에 같은 동선을
+     * 다시 열었을 때 「그때 왜 이 순서였는지」를 설명할 수 없다.
+     *
+     * 하루에 한 번만 부른다. 사흘 일정이면 세 번이다.
+     * 실패하면 원본을 그대로 돌려준다 — 집중률이 없다고 동선을 못 쓰는 건 아니다.
+     */
+    private String annotateCrowd(String json, TravelPlan plan) {
+        if (json == null || json.isBlank()) return json;
+
+        idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
+                idusw.sbb.checkin.domain.crowd.AreaCode.find(plan.getDestination());
+        if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) {
+            return json;   /* 집중률 대상이 아닌 지역 — 광주·전남은 아예 안 나온다 */
+        }
+
+        try {
+            com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            java.time.LocalDate start = plan.getStartDate() != null
+                    ? plan.getStartDate() : java.time.LocalDate.now();
+
+            for (int d = 0; d < root.size(); d++) {
+                com.fasterxml.jackson.databind.JsonNode day = root.get(d);
+                com.fasterxml.jackson.databind.JsonNode places = day.path("places");
+                if (!places.isArray() || places.isEmpty()) continue;
+
+                java.util.List<String> names = new java.util.ArrayList<>();
+                for (com.fasterxml.jackson.databind.JsonNode p : places) {
+                    if (p.hasNonNull("transit")) continue;
+                    String n = p.path("name").asText("");
+                    if (!n.isBlank()) names.add(n);
+                }
+                if (names.isEmpty()) continue;
+
+                java.util.List<idusw.sbb.checkin.domain.crowd.dto.CrowdForecast> got =
+                        crowdService.forecast(area.areaCd(), area.signguCd(), names, start.plusDays(d));
+
+                java.util.Map<String, idusw.sbb.checkin.domain.crowd.dto.CrowdForecast> byName =
+                        new java.util.HashMap<>();
+                for (idusw.sbb.checkin.domain.crowd.dto.CrowdForecast f : got) {
+                    if (f.rate() != null) byName.put(f.placeName(), f);
+                }
+                if (byName.isEmpty()) continue;
+
+                for (com.fasterxml.jackson.databind.JsonNode p : places) {
+                    if (!(p instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                    idusw.sbb.checkin.domain.crowd.dto.CrowdForecast f = byName.get(o.path("name").asText(""));
+                    if (f == null) continue;
+                    o.put("crowd", Math.round(f.rate()));
+                    o.put("crowdLabel", f.levelLabel());
+                    o.put("crowdKey", f.levelKey());
+                }
+            }
+            return objectMapper.writeValueAsString(root);
+
+        } catch (Exception e) {
+            log.warn("[동선] 집중률을 붙이지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
+
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -495,6 +565,9 @@ public class AiRouteService {
 
         // ★식당 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화 (AI 라벨-시간 불일치 교정)
         json = syncMealLabelByTime(json);
+
+        // ★관광공사 집중률을 그 날짜로 붙인다 (없으면 그냥 넘어간다)
+        json = annotateCrowd(json, plan);
 
         // ★당일치기(0박)면 숙소(stay)를 강제 제거 (AI가 규칙 어겨도 최종 차단)
         if (plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate())) {

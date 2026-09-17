@@ -44,7 +44,7 @@
   color:var(--ink-3); margin-bottom:7px;
 }
 .ml-plan-ttl{
-  font-size:21px; font-weight:700; letter-spacing:-.042em; line-height:1.2;
+  font-size:21px; font-weight:700; letter-spacing:var(--tracking-tight); line-height:1.2;
   color:var(--ink); margin-bottom:5px;
 }
 .ml-plan-meta{
@@ -61,7 +61,7 @@
 #btnConfirmToggle{
   margin-left:auto; padding:8px 18px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:13px; font-weight:700; letter-spacing:-.02em;
-  background:var(--terra); color:var(--panel); transition:filter .15s;
+  background:var(--ink); color:var(--panel); transition:filter .15s;
 }
 #btnConfirmToggle:hover{ filter:brightness(1.3) }
 
@@ -112,20 +112,22 @@
   transition:background .15s, box-shadow .15s;
 }
 .day-tab .dt-n{
-  font-size:13px; font-weight:700; letter-spacing:-.03em; color:var(--ink); white-space:nowrap;
+  font-size:13px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink); white-space:nowrap;
 }
 .day-tab .dt-an{
   font-size:11px; color:var(--ink-3); letter-spacing:-.01em;
   max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
-.day-tab.on{ background:var(--terra); box-shadow:none }
+.day-tab.on{ background:var(--ink); box-shadow:none }
 .day-tab.on .dt-n{ color:var(--panel) }
 .day-tab.on .dt-an{ color:var(--panel); opacity:.66 }
 
 /* ── 일정 레일 ─────────────────────────────────────────────── */
 .map-list{
-  flex:1; min-height:100px; overflow-y:auto; overflow-x:hidden;
+  /* min-height 를 210 -> 120 으로. 안내판이 여름 때 목록과 둘이
+     701px 를 나눠 갖는다. 210 을 고지하면 안내판이 눌렸다. */
+  flex:1 1 auto; min-height:120px; overflow-y:auto; overflow-x:hidden;
   padding:0 16px 22px; scrollbar-width:thin;
 }
 .day-section + .day-section{ margin-top:6px }
@@ -137,7 +139,7 @@
 }
 .ds-label{
   display:flex; align-items:baseline; gap:8px;
-  font-size:13px; font-weight:700; letter-spacing:-.03em; color:var(--ink);
+  font-size:13px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ds-label .ds-date{
   font-family:var(--fig); font-size:11px; font-weight:500;
@@ -172,7 +174,7 @@
   font-family:var(--fig); font-size:11.5px; font-weight:600; letter-spacing:-.02em;
   background:var(--ui-pale); color:var(--ink-2); transition:background .16s, color .16s;
 }
-.place-row.mp-on .mp-ord{ background:var(--terra); color:var(--panel) }
+.place-row.mp-on .mp-ord{ background:var(--ink); color:var(--panel) }
 .place-row.mp-now .mp-ord{ background:var(--sig); color:var(--on-sig) }
 
 .pr-info{ grid-column:2; min-width:0 }
@@ -181,7 +183,7 @@
   color:var(--ink-3); margin-bottom:3px;
 }
 .pr-name{
-  font-size:17px; font-weight:700; letter-spacing:-.035em; line-height:1.28;
+  font-size:17px; font-weight:700; letter-spacing:var(--tracking-tight); line-height:1.28;
   color:var(--ink);
 }
 .pr-sub{
@@ -263,7 +265,7 @@
 .btn-queue-add{
   flex:0 0 auto; padding:8px 16px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:12.5px; font-weight:700;
-  background:var(--terra); color:var(--panel);
+  background:var(--ink); color:var(--panel);
 }
 .btn-queue-add:hover{ filter:brightness(1.3) }
 
@@ -274,7 +276,7 @@
   font-family:inherit; font-size:12px; font-weight:600; white-space:nowrap;
   transition:filter .15s, box-shadow .15s, color .15s;
 }
-.btn-stay-check, .btn-stay-book{ background:var(--terra); color:var(--panel) }
+.btn-stay-check, .btn-stay-book{ background:var(--ink); color:var(--panel) }
 .btn-stay-check:hover, .btn-stay-book:hover{ filter:brightness(1.3) }
 .btn-stay-edit{
   background:transparent; color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line);
@@ -296,7 +298,7 @@
 .q-hd button{ font-family:inherit; font-size:11.5px; color:var(--ink-3) }
 .q-badge{
   font-family:var(--fig); font-size:11px; font-weight:600;
-  background:var(--terra); color:var(--panel); padding:1px 7px 2px; border-radius:99px;
+  background:var(--ink); color:var(--panel); padding:1px 7px 2px; border-radius:99px;
   margin-left:5px;
 }
 .queue-box #qItems{ flex:1 1 auto; min-height:0; max-height:min(240px,32vh); overflow-y:auto }
@@ -307,7 +309,7 @@
   padding:11px 12px; margin-bottom:8px; box-shadow:none;
 }
 .q-itop{ display:flex; align-items:center; justify-content:space-between; gap:8px }
-.q-place{ font-size:12.5px; font-weight:700; letter-spacing:-.03em; color:var(--ink); min-width:0 }
+.q-place{ font-size:12.5px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink); min-width:0 }
 .q-req{ font-size:12px; color:var(--ink-2); margin-top:2px }
 .q-rm{ background:none; border:0; cursor:pointer; color:var(--ink-3); font-size:13px; line-height:1; flex:0 0 auto }
 .q-inp{
@@ -319,7 +321,7 @@
 .btn-all{
   width:100%; margin-top:8px; padding:10px 0 11px; border:0; border-radius:99px;
   cursor:pointer; font-family:inherit; font-size:13px; font-weight:700;
-  background:var(--terra); color:var(--panel);
+  background:var(--ink); color:var(--panel);
 }
 .btn-all:hover{ filter:brightness(1.3) }
 .btn-all:disabled{ background:var(--ui-pale); color:var(--ink-3); cursor:default }
@@ -353,7 +355,7 @@
   white-space:nowrap; text-align:center; transition:color .14s, box-shadow .14s, background .14s;
 }
 .btn-map-act:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
-.btn-map-act.on{ background:var(--terra); color:var(--panel); box-shadow:none; font-weight:600 }
+.btn-map-act.on{ background:var(--ink); color:var(--panel); box-shadow:none; font-weight:600 }
 
 /* ── 지도 위 — 경로 레이어 ─────────────────────────────────
    카카오 폴리라인의 파선 값을 문서로 확인할 수 없어 SVG 레이어로 그린다.
@@ -393,7 +395,7 @@
   background:var(--sig-deep);
   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 5.5px var(--ink), var(--lift);
 }
-.mp-pin-on .mp-pl{ background:var(--terra); color:var(--panel) }
+.mp-pin-on .mp-pl{ background:var(--ink); color:var(--panel) }
 
 /* 지금 여기 — 링이 번지고 그 안에 사람 */
 .mp-here{ position:relative; width:0; height:0; pointer-events:none }
@@ -429,7 +431,7 @@
 }
 .weather-alert:hover{ transform:translateY(-2px); transition:transform .18s }
 .wa-ttl{
-  display:block; font-size:14px; font-weight:700; letter-spacing:-.035em;
+  display:block; font-size:14px; font-weight:700; letter-spacing:var(--tracking-tight);
   color:var(--ink); margin-bottom:4px;
 }
 .wa-body{ font-size:12.5px; line-height:1.55; color:var(--ink-2) }
@@ -442,7 +444,7 @@
   color:var(--ink-3); margin-bottom:7px;
 }
 #budgetView h3{
-  font-size:25px; font-weight:700; letter-spacing:-.045em; color:var(--ink);
+  font-size:25px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
   margin:0 0 20px;
 }
 .mp-bg-card{
@@ -461,14 +463,14 @@
   letter-spacing:-.02em; color:var(--ink-2);
 }
 .mp-bg-bar{ height:5px; border-radius:99px; background:var(--ui-pale); overflow:hidden }
-.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--terra) }
+.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--slate) }
 .mp-bg-row.mp-lead .mp-bg-bar i{ background:var(--sig) }
 .mp-bg-row.mp-lead .mp-bg-top span:last-child{ color:var(--num) }
 .mp-bg-total{
   display:flex; justify-content:space-between; align-items:baseline; gap:12px;
   border-top:1.5px solid var(--ink); margin-top:18px; padding-top:15px;
 }
-#map-budget-total-label{ font-size:15px; font-weight:700; letter-spacing:-.03em }
+#map-budget-total-label{ font-size:15px; font-weight:700; letter-spacing:var(--tracking-tight) }
 #map-budget-total{
   font-family:var(--fig); font-size:25px; font-weight:600;
   letter-spacing:-.05em; color:var(--ink);
@@ -491,7 +493,7 @@
 .mp-ledger{
   width:100%; margin-top:18px; padding:12px 0 13px; border:0; border-radius:99px;
   cursor:pointer; font-family:inherit; font-size:14px; font-weight:700;
-  letter-spacing:-.02em; background:var(--terra); color:var(--panel);
+  letter-spacing:-.02em; background:var(--ink); color:var(--panel);
 }
 .mp-ledger:hover{ filter:brightness(1.3) }
 
@@ -522,7 +524,7 @@
 .mp-sheet-row{ display:flex; gap:8px; margin-bottom:14px }
 
 .mp-mttl{
-  font-size:19px; font-weight:700; letter-spacing:-.04em; line-height:1.3;
+  font-size:19px; font-weight:700; letter-spacing:var(--tracking-tight); line-height:1.3;
   color:var(--ink);
 }
 .mp-mhint{
@@ -537,7 +539,7 @@
 .mp-mbtn{
   flex:0 0 auto; padding:11px 20px 12px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.02em;
-  background:var(--terra); color:var(--panel); white-space:nowrap; transition:filter .15s;
+  background:var(--ink); color:var(--panel); white-space:nowrap; transition:filter .15s;
 }
 .mp-mbtn:hover{ filter:brightness(1.3) }
 .mp-mbtn-q{
@@ -590,7 +592,7 @@
 .mp-navi{
   width:100%; padding:12px 0 13px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
-  background:var(--terra); color:var(--panel); margin-bottom:14px;
+  background:var(--ink); color:var(--panel); margin-bottom:14px;
 }
 .mp-navi:hover{ filter:brightness(1.3) }
 .mp-nocoord{
@@ -660,14 +662,14 @@
 }
 .mp-mswap{ margin-top:12px; padding:14px 15px 15px; border-radius:10px; background:var(--ui-plate) }
 .mp-mswap > div:first-child{
-  font-size:13.5px; font-weight:600; letter-spacing:-.03em;
+  font-size:13.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink); margin-bottom:11px;
 }
 .mp-mswap-off{ background:var(--ui-plate); opacity:.8 }
 .mp-swapbtn{
   padding:8px 15px 9px; border:0; border-radius:99px; cursor:pointer;
   font-family:inherit; font-size:12.5px; font-weight:600;
-  background:var(--terra); color:var(--panel); white-space:nowrap;
+  background:var(--ink); color:var(--panel); white-space:nowrap;
 }
 .mp-swapbtn:hover{ filter:brightness(1.3) }
 
@@ -693,8 +695,458 @@
 .mp-empty .mp-empty-sub{ margin-top:5px; font-size:13px; color:var(--ink-3) }
 .mp-empty-go{
   margin-top:16px; padding:11px 20px 12px; border:0; border-radius:99px;
-  background:var(--terra); color:var(--panel); cursor:pointer;
+  background:var(--ink); color:var(--panel); cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:700; letter-spacing:-.02em;
   transition:filter .15s;
 }
 .mp-empty-go:hover{ filter:brightness(1.2) }
+
+/* ============================================================
+   혼잡 안내 — 알려 주고 끝내지 않는다. 세 갈래를 고르게 한다.
+   문구는 사용자가 불러준 3박자다.
+   ============================================================ */
+/* 왜 flex:0 0 auto 인가 — .map-left 이 세로 flex 기둥이다.
+   기본값(0 1 auto)이면 자리가 부족할 때 이 안내판이 줄어들면서
+   대응 버튼 세 개가 잠긴다. 실제로 267px 가 86px 로 눌려
+   「생갈래」가 하나도 안 보이고 있었다. 알리기만 하면 쓸모가 없다. */
+.mp-alert{
+  flex:0 0 auto;
+  margin:0 0 4px; padding:15px 17px 16px;
+  max-height:min(46vh, 340px); overflow-y:auto;
+  background:var(--terra-pale); border-radius:14px; word-break:keep-all;
+}
+.mp-al-1{
+  margin:0; font-size:15px; font-weight:800; line-height:1.4;
+  letter-spacing:var(--tracking-tight); color:var(--ink);
+}
+.mp-al-1 em{ font-style:normal; color:var(--terra) }
+.mp-al-2{
+  margin:6px 0 0; font-size:12.5px; line-height:1.66; color:var(--ink-2);
+}
+.mp-al-note{ margin:11px 0 0; font-size:10.5px; line-height:1.5; color:var(--ink-3) }
+
+/* 세 갈래를 두 줄씩 쓰면 안내판이 330px 을 먹고 일정 목록이 눌린다.
+   한 줄에 「무엇을」 + 「어떻게」 로 붙인다. */
+.mp-opts{ display:grid; gap:5px; margin-top:12px }
+.mp-opt{
+  display:flex; align-items:baseline; gap:9px;
+  padding:9px 12px 10px; text-align:left; cursor:pointer;
+  border:0; border-radius:9px; background:var(--panel); color:var(--ink);
+  font-family:inherit; word-break:keep-all;
+  transition:box-shadow .16s ease;
+}
+.mp-opt:hover{ box-shadow:inset 0 0 0 1px var(--terra) }
+.mp-opt b{ font-size:13px; font-weight:700; white-space:nowrap }
+.mp-opt span{
+  font-size:11.5px; color:var(--ink-3); margin-left:auto; white-space:nowrap;
+}
+.mp-opt.mp-undo b{ color:var(--ink-2) }
+
+/* 줄마다 붙는 혼잡도 배지 */
+.mp-cw{
+  display:inline-flex; align-items:baseline; gap:5px; margin-left:7px;
+  padding:2px 7px 3px; border-radius:99px;
+  font-size:10.5px; font-weight:700; vertical-align:middle; white-space:nowrap;
+}
+.mp-cw i{
+  font-style:normal; font-family:var(--fig); font-size:10px; font-weight:500;
+  opacity:.75; font-variant-numeric:tabular-nums;
+}
+.mp-cw.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
+.mp-cw.cw-high { background:var(--terra-pale); color:var(--terra) }
+.mp-cw.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.mp-cw.cw-low,
+.mp-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+/* 다른 곳으로 — 그 날 한적한 곳 목록.
+   알약 목록이다. 카드를 만들지 않는다 — 이름과 등급뿐이다. */
+.mp-quiet{ display:flex; flex-wrap:wrap; gap:6px; margin-top:12px }
+.mp-q{
+  display:inline-flex; align-items:center; gap:2px;
+  padding:7px 11px 8px; border:0; border-radius:99px;
+  background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line);
+  font-family:inherit; cursor:pointer; text-align:left;
+  transition:box-shadow .15s;
+}
+.mp-q:hover{ box-shadow:inset 0 0 0 1px var(--terra) }
+.mp-q b{ font-size:12.5px; font-weight:600; color:var(--ink) }
+.mp-q .mp-cw{ margin-left:5px }
+
+@media (max-width:760px){
+  .mp-alert{ padding:13px 14px 14px; border-radius:12px }
+  .mp-al-1{ font-size:14px }
+  .mp-quiet{ gap:5px }
+  .mp-q b{ font-size:12px }
+}
+
+/* 예산 항목의 근거 한 줄. 금액만 보여 주면 믿을지 말지 알 수 없다 */
+.mp-bg-why{
+  margin-top:5px; font-size:11px; line-height:1.5; color:var(--ink-3);
+  word-break:keep-all;
+}
+.mp-bg-note{
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--ui-line-2);
+  font-size:12px; line-height:1.66; color:var(--ink-2); word-break:keep-all;
+}
+.mp-bg-note p{ margin:0 0 6px }
+.mp-bg-note p:last-child{ margin-bottom:0 }
+.mp-bg-note b{ color:var(--num); font-weight:600 }
+.mp-bg-acc b{ color:var(--terra) }
+
+/* ── 출발 한 줄 ─────────────────────────────────────────────
+   여행 당일 아침에 제일 먼저 필요한 값이 「몇 시에 나가야 하는가」다.
+   혼잡 안내와 같은 자리에 오므로 색을 달리 둔다 — 알림이 아니라 정보다. */
+.mp-depart{
+  flex:0 0 auto; margin:0 0 4px; padding:12px 17px 13px;
+  background:var(--ui-plate); border-radius:14px; word-break:keep-all;
+}
+.mp-dp-1{
+  margin:0; font-size:13.5px; font-weight:700; color:var(--ink);
+  letter-spacing:var(--tracking-tight);
+}
+.mp-dp-1 em{
+  font-style:normal; font-family:var(--fig); font-weight:500;
+  color:var(--num); letter-spacing:var(--tracking-num);
+}
+.mp-dp-2{ margin:5px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-2) }
+.mp-dp-2 b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+
+/* ── 3D 모형 보기 ───────────────────────────────────────────
+   같은 동선을 미니어처 위에. 장면·색·사람 수 규칙은 메인과 같은 것을 쓴다
+   (styles_massing.css). 여기서는 자리와 없을 때만 다룬다. */
+#modelView{
+  position:absolute; inset:0; z-index:8; overflow:hidden;
+  background:var(--page-2);
+}
+/* 장면과 핀은 같은 상자 안에서 같은 변형을 받는다.
+   따로 움직이면 핀이 건물에서 떨어진다. */
+#modelView .ck-frame,
+#modelView .ck-pins{
+  position:absolute; left:50%; top:50%; width:100%;
+  transform:translate(calc(-50% + var(--mv-x, 0px)), calc(-50% + var(--mv-y, 0px)))
+            scale(var(--mv-z, 1));
+  transform-origin:50% 50%;
+  transition:transform .6s cubic-bezier(.22,.61,.36,1);
+}
+#modelView .ck-frame{ aspect-ratio:auto }
+#modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
+#modelView .ck-pins .ck-pin{ pointer-events:auto }
+#modelView .ck-frame svg.mass{ width:100%; height:auto; display:block }
+
+/* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
+.mv-route{
+  position:absolute; inset:0; width:100%; height:100%;
+  overflow:visible; pointer-events:none;
+}
+.mv-route polyline{
+  fill:none; stroke:var(--sig); stroke-width:2.6;
+  stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:7 6; vector-effect:non-scaling-stroke;
+}
+
+.mv-legend{
+  position:absolute; left:16px; bottom:16px; z-index:5;
+  max-width:min(420px, calc(100% - 32px));
+  padding:11px 14px 12px; border-radius:12px;
+  background:var(--void-veil-2); box-shadow:var(--lift2);
+  word-break:keep-all;
+}
+.mv-legend b{ display:block; font-size:13px; font-weight:700; color:var(--ink) }
+.mv-legend span{ display:block; margin-top:3px; font-size:11px; line-height:1.5; color:var(--ink-3) }
+.mv-legend em{ display:block; margin-top:4px; font-size:11px; font-style:normal; color:var(--num) }
+
+/* 모형이 없는 지역 */
+.mv-none{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:6;
+  width:min(420px, calc(100% - 40px)); padding:26px 26px 24px;
+  border-radius:16px; background:var(--panel); box-shadow:var(--lift);
+  text-align:left; word-break:keep-all;
+}
+.mv-none-1{ margin:0; font-size:16px; font-weight:700; color:var(--ink) }
+.mv-none-2{ margin:8px 0 0; font-size:13px; line-height:1.66; color:var(--ink-2) }
+.mv-none .mp-opt{ margin-top:16px; width:100% }
+
+/* ── 30일 예상 혼잡도 ───────────────────────────────────────
+   막대 하나가 하루다. 색은 다섯 단계, 높이는 집중률.
+   「언제 가면 되는가」가 한눈에 보여야 한다 — 그게 이 제품이 하는 말이다. */
+.mv-fc{
+  position:absolute; right:16px; top:16px; z-index:5;
+  width:min(360px, calc(100% - 32px));
+  padding:14px 16px 13px; border-radius:14px;
+  background:var(--void-veil-2); box-shadow:var(--lift);
+  word-break:keep-all;
+}
+.mv-fc-hd{ display:flex; align-items:baseline; gap:8px; margin-bottom:11px }
+.mv-fc-hd b{
+  font-size:13.5px; font-weight:700; color:var(--ink);
+  letter-spacing:var(--tracking-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mv-fc-hd span{ margin-left:auto; font-size:10.5px; color:var(--ink-3); white-space:nowrap }
+
+.mv-fc-bars{
+  display:flex; align-items:flex-end; gap:2px; height:46px;
+}
+.mv-fc-bars i{
+  flex:1 1 0; min-width:0; border-radius:2px 2px 0 0;
+  background:var(--ui-line); transition:height .4s ease;
+}
+.mv-fc-bars i.cw-vhigh{ background:var(--tile) }
+.mv-fc-bars i.cw-high { background:var(--terra) }
+.mv-fc-bars i.cw-mid  { background:var(--ink-3) }
+.mv-fc-bars i.cw-low,
+.mv-fc-bars i.cw-vlow { background:var(--slate) }
+/* 여행 날은 아래에 선을 긋는다. 색을 바꾸면 등급을 못 읽는다 */
+.mv-fc-bars i.mv-fc-now{ box-shadow:0 3px 0 0 var(--ink) }
+.mv-fc-bars i.mv-fc-pick{ box-shadow:0 3px 0 0 var(--sig) }
+
+.mv-fc-note{
+  margin:10px 0 0; font-size:11.5px; line-height:1.6; color:var(--ink-2);
+}
+.mv-fc-note b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+
+@media (max-width:900px){
+  .mv-fc{ right:12px; top:12px; width:min(300px, calc(100% - 24px)); padding:11px 13px }
+  .mv-fc-bars{ height:36px }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   지도 위 유리판 — 「체크인」 데모 구조
+
+   왼쪽 기둥은 일정을 고치는 자리로 둔다. 「지금 어떤가」를 말하는 것은
+   보고 있는 화면 위에 떠야 한다. 판이 불투명하면 그 아래가 지도인지
+   모형인지 알 수 없어서, 판과 화면이 따로 노는 두 장이 된다.
+
+   판을 낱개로 얹지 않고 좌·우 기둥 두 개에 쌓는다. 하나가 길어져도
+   다음 것과 겹치지 않는다.
+   ══════════════════════════════════════════════════════════════ */
+
+.mp-float{
+  position:absolute; z-index:13;
+  display:flex; flex-direction:column; align-items:stretch; gap:10px;
+  pointer-events:none;
+}
+.mp-float > *{ pointer-events:auto }
+.mp-float-l{ left:22px; top:78px; width:288px }
+.mp-float-r{
+  right:22px; top:78px; width:344px;
+  max-height:calc(100% - 190px); overflow-y:auto;
+  scrollbar-width:thin;
+}
+
+/* 유리 — 데모에서 잰 값 그대로 */
+.mp-seg, .mp-chip, .mp-money, .mp-depart, .mp-alert, .mp-strip, .mp-pager,
+#page-map .weather-alert{
+  background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur);
+  backdrop-filter:var(--glass-blur);
+  box-shadow:var(--glass-lift), inset 0 0 0 1px var(--glass-line);
+}
+
+/* ── 우상단 분절 ────────────────────────────────────────────
+   지도 / 3D 모형 / 예산 은 같은 것을 다르게 보는 세 가지다.
+   나란한 버튼 네 개보다 분절 하나가 그 관계를 말한다. */
+/* 카카오 지도의 확대/축소 막대가 오른쪽 위 구석에 선다.
+   그 폭(약 40px)만큼 비켜 놓지 않으면 두 개가 겹친다. */
+.mp-tools{
+  position:absolute; top:20px; right:62px; z-index:15;
+  display:flex; gap:7px; align-items:center;
+}
+.mp-seg{ display:flex; gap:2px; padding:3px; border-radius:var(--r-pill) }
+.mp-seg .btn-map-act{
+  flex:0 0 auto; padding:8px 15px 9px; border-radius:var(--r-pill);
+  font-size:12.5px; font-weight:500; color:var(--ink-2);
+  background:transparent; box-shadow:none;
+}
+.mp-seg .btn-map-act:hover{ color:var(--ink); background:var(--ui-plate); box-shadow:none }
+.mp-seg .btn-map-act.on{
+  background:var(--ink); color:var(--panel); font-weight:600; box-shadow:none;
+}
+.mp-chip{
+  padding:9px 15px 10px; border:0; border-radius:var(--r-pill); cursor:pointer;
+  font-family:inherit; font-size:12.5px; font-weight:500; color:var(--ink-2);
+  transition:color .14s ease;
+}
+.mp-chip:hover{ color:var(--ink) }
+
+/* ── 오늘 쓸 돈 ─────────────────────────────────────────────
+   총액 하나만 크게 두고, 어디에 쓰이는지는 한 줄 막대로.
+   원그래프는 네 조각을 읽는 데 눈이 한 바퀴 돈다. */
+.mp-money{
+  padding:15px 17px 16px; border-radius:var(--r-panel); word-break:keep-all;
+}
+.mp-mo-hd{
+  font-size:11px; font-weight:600; letter-spacing:.05em; color:var(--ink-3);
+}
+.mp-mo-n{
+  margin-top:3px; font-family:var(--fig); font-size:27px; font-weight:600;
+  letter-spacing:-.045em; color:var(--ink);
+}
+.mp-mo-bar{
+  display:flex; gap:2px; height:7px; margin-top:12px;
+  border-radius:99px; overflow:hidden;
+}
+.mp-mo-bar i{ display:block; min-width:3px }
+.mp-mo-stay{ background:var(--slate) }
+.mp-mo-food{ background:var(--terra) }
+.mp-mo-tour{ background:var(--sig) }
+.mp-mo-transit{ background:var(--ink-3) }
+.mp-mo-lg{
+  display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:9px;
+  font-size:11px; color:var(--ink-2);
+}
+.mp-mo-lg span{ display:flex; align-items:center; gap:5px; background:none }
+.mp-mo-lg span::before{
+  content:""; width:7px; height:7px; border-radius:2px; background:currentColor;
+}
+.mp-mo-lg .mp-mo-stay{ color:var(--slate); background:none }
+.mp-mo-lg .mp-mo-food{ color:var(--terra); background:none }
+.mp-mo-lg .mp-mo-tour{ color:var(--num); background:none }
+.mp-mo-lg .mp-mo-transit{ color:var(--ink-2); background:none }
+.mp-mo-none{ margin:8px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-3) }
+
+/* ── 떠 있는 판으로서의 출발 · 지금 상황 ────────────────────
+   기둥 안에 들어가면서 여백과 바탕만 바뀐다. 안의 글자 규칙은 그대로다. */
+.mp-float .mp-depart{
+  flex:0 0 auto; margin:0; padding:13px 17px 14px; border-radius:var(--r-panel);
+}
+.mp-float .mp-alert{
+  flex:0 0 auto; margin:0; padding:16px 18px 17px; max-height:none; overflow:visible;
+  border-radius:var(--r-panel);
+  border-left:3px solid var(--terra);
+}
+.mp-float .mp-opt{
+  background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line-2);
+}
+.mp-float .mp-opt:hover{ box-shadow:inset 0 0 0 1px var(--terra) }
+
+#page-map .weather-alert{
+  position:static; border:0; border-left:3px solid var(--sig);
+  border-radius:var(--r-panel); padding:13px 17px 14px;
+}
+#page-map .weather-alert:hover{ transform:none }
+
+/* ── 하단 레일 ──────────────────────────────────────────────
+   그날 동선을 한 줄로. 지금 어디쯤인지, 다음이 어디인지가
+   목록을 스크롤하지 않고 보여야 한다. */
+.mp-rail{
+  position:absolute; left:22px; right:22px; bottom:18px; z-index:14;
+  display:flex; align-items:flex-end; gap:12px;
+}
+.mp-strip{
+  flex:1 1 auto; min-width:0; display:flex; overflow-x:auto;
+  border-radius:var(--r-panel); scrollbar-width:none;
+  scroll-behavior:smooth;
+}
+.mp-strip::-webkit-scrollbar{ display:none }
+
+/* 칸 폭은 고정이다. 폭에 맞춰 똑같이 나누면 다섯 곳이 넘어갈 때
+   전부 좁아져 이름이 다 잘린다. 남으면 옆으로 흘러 잘리게 둔다 —
+   잘린 칸이 「더 있다」는 표시가 된다. */
+.mp-nd{
+  flex:0 0 auto; width:158px; padding:11px 15px 12px;
+  border:0; background:transparent; cursor:pointer; text-align:left;
+  font-family:inherit; color:var(--ink); word-break:keep-all;
+  border-radius:var(--r-panel);
+  opacity:.62;
+  transition:background .16s ease, opacity .2s ease, width .24s ease;
+}
+.mp-nd + .mp-nd{ box-shadow:inset 1px 0 0 var(--glass-line) }
+.mp-nd:hover{ background:var(--glass-2); opacity:1 }
+.mp-nd.mp-on,
+.mp-nd-now{ opacity:1; width:224px }
+.mp-nd.mp-on{ background:var(--panel) }
+.mp-nd.mp-on .mp-nd-n,
+.mp-nd-now .mp-nd-n{ font-size:16px }
+.mp-nd-t{
+  display:block; font-family:var(--fig); font-size:11px; font-weight:500;
+  letter-spacing:var(--tracking-num); color:var(--ink-3);
+}
+.mp-nd-n{
+  display:block; margin-top:3px; font-size:13.5px; font-weight:600;
+  letter-spacing:var(--tracking-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mp-nd-s{
+  display:block; margin-top:2px; font-size:11px; color:var(--ink-3);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.mp-nd-c{
+  display:inline-block; margin-top:4px; padding:1px 7px 2px;
+  border-radius:99px; font-size:10.5px; font-weight:600;
+}
+.mp-nd-done .mp-nd-t,
+.mp-nd-done .mp-nd-n{ color:var(--ink-3) }
+.mp-nd-now{ background:var(--panel) }
+.mp-nd-now .mp-nd-t{ color:var(--num); font-weight:600 }
+.mp-nd-now::after{
+  content:"지금"; display:inline-block; margin-left:6px; padding:1px 6px 2px;
+  border-radius:99px; background:var(--sig); color:var(--on-sig);
+  font-size:10px; font-weight:700; vertical-align:2px;
+}
+
+.mp-pager{
+  flex:0 0 auto; display:flex; align-items:center; gap:3px;
+  padding:5px 6px; border-radius:var(--r-pill);
+}
+.mp-pg-d{
+  padding:0 8px 0 6px; font-family:var(--fig); font-size:11.5px;
+  color:var(--ink-3); white-space:nowrap;
+}
+.mp-pg{
+  padding:7px 12px 8px; border:0; border-radius:var(--r-pill); cursor:pointer;
+  background:transparent; font-family:inherit; font-size:12px; font-weight:500;
+  color:var(--ink-2); white-space:nowrap; transition:color .14s, background .14s;
+}
+.mp-pg:hover{ color:var(--ink); background:var(--ui-plate) }
+.mp-pg.on{ background:var(--ink); color:var(--panel); font-weight:600 }
+
+/* 혼잡 등급 — 레일 안에서 */
+.mp-nd-c.cw-vhigh{ background:var(--tile); color:var(--panel) }
+.mp-nd-c.cw-high { background:var(--terra); color:var(--panel) }
+.mp-nd-c.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
+.mp-nd-c.cw-low,
+.mp-nd-c.cw-vlow { background:var(--slate-pale); color:var(--slate) }
+
+/* ── 좁은 화면 ──────────────────────────────────────────────
+   1180 아래에서는 왼쪽 기둥이 좁아져 판 두 개가 지도를 다 덮는다.
+   돈은 접고, 나머지는 폭을 줄인다. */
+@media (max-width:1180px){
+  .mp-float-l{ display:none }
+  .mp-float-r{ width:296px; top:74px }
+  .mp-nd{ width:140px }
+}
+@media (max-width:900px){
+  .mp-float-r{ position:static; width:auto; max-height:none; margin:10px 14px 0 }
+  .mp-tools{ top:14px; right:54px }
+  .mp-seg .btn-map-act{ padding:7px 11px 8px; font-size:12px }
+  .mp-rail{ left:12px; right:12px; bottom:12px; flex-direction:column; align-items:stretch }
+  .mp-pager{ align-self:flex-start }
+}
+
+/* ── 이동수단 세 가지 ───────────────────────────────────────
+   같은 동선을 자차·대중교통·도보로 각각 재서 나란히 놓는다.
+   「차로 24분」만 보여 주면 버스가 더 빠른 날인지 알 수 없다.
+   해운대처럼 주차가 막히는 곳은 실제로 지하철이 빠르다. */
+.mp-modes{
+  display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px;
+  margin-top:12px; padding-top:11px; border-top:1px solid var(--hair);
+}
+.mp-mode{
+  display:flex; flex-direction:column; gap:2px; align-items:flex-start;
+  padding:8px 10px 9px; border:0; border-radius:var(--r-field); cursor:pointer;
+  background:var(--ui-plate); font-family:inherit; text-align:left;
+  transition:background .14s ease, box-shadow .14s ease;
+}
+.mp-mode:hover{ background:var(--ui-plate-2) }
+.mp-mode b{ font-size:11.5px; font-weight:500; color:var(--ink-2) }
+.mp-mode span{
+  font-family:var(--fig); font-size:14px; font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-num); font-variant-numeric:tabular-nums;
+}
+.mp-mode.on{ background:var(--ink) }
+.mp-mode.on b{ color:rgba(255,255,255,.66) }
+.mp-mode.on span{ color:var(--panel) }
+.mp-mode-off{ cursor:default; opacity:.5 }
+.mp-mode-off:hover{ background:var(--ui-plate) }
+.mp-mode-off span{ font-family:inherit; font-size:11.5px; font-weight:400; color:var(--ink-3) }

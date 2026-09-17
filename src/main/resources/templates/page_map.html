@@ -10,13 +10,6 @@
      * [page_map.html] AI 연동 대응 변수 (const -> let으로 전환)
      * ============================================================ */
 
-    // ── 플랜 헤더 정보 ──
-    const MAP_PLAN_INFO = {
-      title:     '제주도 3박4일 힐링 여행',
-      meta:      '2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차',
-      statusTag: '수정 중',
-    };
-
     /* ════════════════════════════════════════════════════════
      *  레일·경로 공통 도우미
      *
@@ -58,7 +51,7 @@
       if (mc) o.cost = mc[1] + '원';
       if (s.indexOf('도보') >= 0) o.mode = '도보';
       else if (s.indexOf('대중교통') >= 0 || s.indexOf('🚌') >= 0) o.mode = '대중교통';
-      else if (s.indexOf('자차') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
+      else if (s.indexOf('자차') >= 0 || s.indexOf('차로') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
       return o;
     }
 
@@ -152,6 +145,1110 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
+    /* ════════════════════════════════════════════════════════
+     *  혼잡도
+     *
+     *  등급 나누기는 js/crowd.js 한 곳에서만 한다. 여기서는 부르기만 한다.
+     *  실제 혼잡도 API 가 아직 없어서 장소 이름을 해시해 60~165 사이 값을
+     *  만든다. 장소가 같으면 값도 같다. 진짜 관측값이 아니므로 화면 아래에
+     *  시연용이라고 적어 둔다.
+     * ════════════════════════════════════════════════════════ */
+
+    /* 받아 둔 예측. 이름 -> { rate, levelKey, levelLabel } */
+    var _mpCrowd = {};
+    var _mpCrowdWhy = '';        /* 자료가 없을 때 그 이유 한 줄 */
+    var _mpQuiet = [];           /* 그 날 한적한 곳 */
+    var _mpTimeline = null;      /* 가장 붐비는 곳의 날짜별 흐름 */
+
+    function _mpRegion() {
+      var d = (window._stayBookingInfo && window._stayBookingInfo.dest) || '';
+      return d || '서울';
+    }
+
+    /* 일차를 YYYY-MM-DD 로. _mpDayDate 가 Date 를 돌리므로 그것을 바꾼다 —
+       이름이 같은 함수를 또 선언하면 원래 것을 덮어 날짜 표시가 통짜로 죽는다. */
+    function _mpDayIso(dayNo) {
+      var d = _mpDayDate(dayNo);
+      if (!d) return null;
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')
+             + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    /* 하루치 혼잡도를 한 번에 받는다. 장소마다 부르면 같은 응답을 여러 번 받는다. */
+    async function _mpLoadCrowd(day) {
+      _mpCrowd = {}; _mpCrowdWhy = ''; _mpQuiet = []; _mpTimeline = null;
+      if (!day) return;
+      var names = (day.places || [])
+        .filter(function (p) { return !p.transit && p.type !== 'stay' && p.name; })
+        .map(function (p) { return p.name; });
+      if (!names.length) return;
+
+      var region = _mpRegion();
+      var date = _mpDayIso(day.day);
+      var q = '/api/crowd/day?region=' + encodeURIComponent(region) +
+              '&places=' + encodeURIComponent(names.join(','));
+      if (date) q += '&date=' + date;
+
+      try {
+        var res = await fetch(q);
+        var json = await res.json();
+        var list = (json && json.success && json.data) || [];
+        list.forEach(function (f) {
+          if (f.rate != null) _mpCrowd[f.placeName] = f;
+          else if (!_mpCrowdWhy && f.note) _mpCrowdWhy = f.note;
+        });
+      } catch (e) {
+        _mpCrowdWhy = '혼잡도를 불러오지 못했습니다';
+        console.warn('[지도] 혼잡도 조회 실패:', e);
+      }
+
+      /* 붐비는 곳이 있을 때만 「다른 곳」과 「다른 날」을 미리 받아 둔다 */
+      var worst = null;
+      Object.keys(_mpCrowd).forEach(function (k) {
+        if (!worst || _mpCrowd[k].rate > _mpCrowd[worst].rate) worst = k;
+      });
+      if (!worst || _mpCrowd[worst].rate < 70) return;
+
+      try {
+        var qs = await fetch('/api/crowd/quiet?region=' + encodeURIComponent(region) +
+                             (date ? '&date=' + date : '') + '&limit=8');
+        var qj = await qs.json();
+        var mine = Object.keys(_mpCrowd).map(_mpNorm);
+        var worstRate = _mpCrowd[worst].rate;
+        _mpQuiet = ((qj && qj.success && qj.data) || []).filter(function (x) {
+          if (x.rate == null) return false;
+          /* 가장 난 곳부터 오지만 그것들도 붐벐 수 있다.
+             「정상」 아래이면서 지금 곳보다 분명하게 나은 곳만 보여 준다 —
+             87 을 「한적한 곳」이라고 내보이면 가서 줄을 선다. */
+          if (x.rate >= 70 || x.rate > worstRate - 15) return false;
+          var n = _mpNorm(x.placeName);
+          for (var i = 0; i < mine.length; i++) {
+            if (n === mine[i] || n.indexOf(mine[i]) >= 0 || mine[i].indexOf(n) >= 0) return false;
+          }
+          return true;
+        });
+      } catch (e) {}
+
+      try {
+        var ts = await fetch('/api/crowd/timeline?region=' + encodeURIComponent(region) +
+                             '&place=' + encodeURIComponent(worst));
+        var tj = await ts.json();
+        _mpTimeline = (tj && tj.success && tj.data) || null;
+      } catch (e) {}
+    }
+
+    /* 배지만 다시 칠한다. 목록을 통짜로 다시 그리면 여는 상태와
+       스트롤 자리가 틀어진다. */
+    function _mpPaintBadges() {
+      document.querySelectorAll('#page-map .pr-name').forEach(function (el) {
+        var row = el.closest('.place-row');
+        if (!row) return;
+        var old = el.querySelector('.mp-cw');
+        if (old) old.remove();
+        var name = (el.textContent || '').replace('지금', '').trim();
+        var html = _mpCrowdBadge(name);
+        if (html) el.insertAdjacentHTML('beforeend', html);
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  3D 모형 — 같은 동선을 미니어처 위에.
+     *
+     *  축측투영은 평면의 어파인 사상이다. 프리렌더가 함께 낸 앵커
+     *  세 곳(이름·위경도·화면 %)에서 계수를 풀어 mass_haeundae.json 의
+     *  fit 에 적어 뒀다. 어느 좌표든 그 식으로 얹는다.
+     *
+     *  모형이 있는 지역 밖이면 없다고 말한다. 아무 데나 얹으면 엉뚱한
+     *  자리에 핀이 선다.
+     * ════════════════════════════════════════════════════════ */
+
+    var MV_SCENES = [
+      { key: 'haeundae', label: '부산 해운대',
+        svg: '/img/mass_haeundae.svg', json: '/img/mass_haeundae.json' }
+    ];
+    var _mvLoaded = null;      /* {key, meta} */
+
+    function _mvInBox(b, p) {
+      return p.lat >= b.s && p.lat <= b.n && p.lng >= b.w && p.lng <= b.e;
+    }
+
+    function _mvProject(fit, lat, lng) {
+      return { x: fit.a * lng + fit.b * lat + fit.c,
+               y: fit.d * lng + fit.e * lat + fit.f };
+    }
+
+    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것 */
+    function _mvStops() {
+      var out = [];
+      (MAP_ITINERARY || []).forEach(function (d) {
+        (d.places || []).forEach(function (p) {
+          if (p.transit || !p.name) return;
+          if (!isFinite(p.lat) || !isFinite(p.lng)) return;
+          out.push(p);
+        });
+      });
+      return out;
+    }
+
+    async function _mvOpen() {
+      var box = document.getElementById('modelView');
+      var none = document.getElementById('mv_none');
+      var legend = document.getElementById('mv_legend');
+      if (!box) return;
+
+      var stops = _mvStops();
+      if (!stops.length) {
+        _mvSayNone('이 경로에는 좌표가 있는 장소가 없습니다.');
+        return;
+      }
+
+      /* 어느 장면이 이 동선을 담는가 — 절반 이상이 들어가야 쓴다 */
+      var pick = null;
+      for (var i = 0; i < MV_SCENES.length; i++) {
+        var sc = MV_SCENES[i];
+        var meta = sc.meta || (sc.meta = await _mvMeta(sc));
+        if (!meta || !meta.bbox || !meta.fit) continue;
+        /* 화면에 실제로 들어오는지로 센다. bbox 는 장면을 만든 범위일 뿐이라
+           경계 바로 밖의 좌표도 모형 위에는 멀쩡히 얹힌다 — 미포가 그렇다. */
+        var on = stops.filter(function (p) {
+          var q = _mvProject(meta.fit, p.lat, p.lng);
+          return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
+        });
+        if (on.length >= Math.ceil(stops.length / 2)) { pick = { sc: sc, meta: meta, inside: on }; break; }
+      }
+
+      if (!pick) {
+        _mvSayNone('이 지역은 아직 3D 모형이 없습니다.',
+                   MV_SCENES.map(function (s) { return s.label; }).join(' · '));
+        return;
+      }
+
+      if (none) none.hidden = true;
+      await _mvDrawScene(pick.sc);
+      _mvFill(pick.meta);
+      _mvDrawPins(pick.meta, stops);
+
+      _mvForecast(stops);
+
+      if (legend) {
+        legend.hidden = false;
+        legend.innerHTML =
+          '<b>' + _mpEsc(pick.sc.label) + '</b>' +
+          '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
+          (pick.inside.length < stops.length
+            ? '<em>' + (stops.length - pick.inside.length) + '곳은 이 모형 밖이라 빠졌습니다</em>' : '');
+      }
+    }
+
+    /* 그 동선에서 가장 붐비는 곳의 30일 흐름.
+       이미 _mpLoadCrowd 가 받아 둔 것이 있으면 그대로 쓴다. */
+    async function _mvForecast(stops) {
+      var box = document.getElementById('mv_fc');
+      if (!box) return;
+      box.hidden = true;
+
+      var worst = null;
+      stops.forEach(function (p) {
+        var f = _mpCrowd[p.name];
+        if (f && f.rate != null && (!worst || f.rate > _mpCrowd[worst].rate)) worst = p.name;
+      });
+      if (!worst) return;
+
+      var list = _mpTimeline;
+      if (!list || !list.length) {
+        try {
+          var r = await fetch('/api/crowd/timeline?region=' + encodeURIComponent(_mpRegion()) +
+                              '&place=' + encodeURIComponent(worst));
+          var j = await r.json();
+          list = (j && j.success && j.data) || [];
+        } catch (e) { return; }
+      }
+      list = (list || []).filter(function (d) { return d.rate != null; });
+      if (list.length < 5) return;
+
+      var today = _mpDayKey((MAP_ITINERARY[0] || {}).places && MAP_ITINERARY[0].places[0]);
+      var mine = _mpDayIso(1);
+      var mineKey = mine ? mine.replace(/-/g, '') : today;
+
+      var here = null;
+      list.forEach(function (d) { if (d.date === mineKey) here = d; });
+      var better = (typeof crowd === 'function' && crowd.firstQuieter && here)
+        ? crowd.firstQuieter(list, mineKey, here.rate) : null;
+
+      var max = 100;
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mv-fc-hd">' +
+          '<b>' + _mpEsc(worst) + '</b>' +
+          '<span>앞으로 ' + list.length + '일 예상 혼잡도</span>' +
+        '</div>' +
+        '<div class="mv-fc-bars">' +
+        list.map(function (d) {
+          var g = (typeof crowd === 'function') ? crowd.of(d) : null;
+          var k = g ? g.key : 'mid';
+          var on = d.date === mineKey;
+          var tip = Number(d.date.slice(4, 6)) + '/' + Number(d.date.slice(6, 8)) +
+                    ' ' + (d.levelLabel || '') + ' ' + Math.round(d.rate);
+          return '<i class="cw-' + k + (on ? ' mv-fc-now' : '') +
+                 (better && better.date === d.date ? ' mv-fc-pick' : '') +
+                 '" style="height:' + Math.max(8, Math.round(d.rate / max * 100)) + '%"' +
+                 ' title="' + _mpEsc(tip) + '"></i>';
+        }).join('') +
+        '</div>' +
+        '<p class="mv-fc-note">' +
+          (here ? '여행 날은 <b>' + Math.round(here.rate) + '</b>' +
+                  (here.levelLabel ? '(' + _mpEsc(here.levelLabel) + ')' : '') + '입니다. ' : '') +
+          (better ? _mpDateKo(better.date) + '에 가면 <b>' + Math.round(better.rate) + '</b>' +
+                    (better.levelLabel ? '(' + _mpEsc(better.levelLabel) + ')' : '') + '입니다.'
+                  : '앞으로 한 달 안에 더 한산한 날은 없습니다.') +
+        '</p>';
+    }
+
+    function _mvSayNone(msg, extra) {
+      var none = document.getElementById('mv_none');
+      var legend = document.getElementById('mv_legend');
+      if (legend) legend.hidden = true;
+      if (!none) return;
+      none.hidden = false;
+      none.innerHTML = '<p class="mv-none-1">' + _mpEsc(msg) + '</p>' +
+        (extra ? '<p class="mv-none-2">지금 모형이 있는 곳 — ' + _mpEsc(extra) +
+                 '. 다른 지역은 준비하는 대로 올립니다.</p>' : '') +
+        '<button type="button" class="mp-opt" onclick="switchMapTab(\'map\', document.getElementById(\'mapTabMap\'))">' +
+        '<b>지도로 보기</b><span>실제 지도에서 확인</span></button>';
+    }
+
+    async function _mvMeta(sc) {
+      try {
+        var r = await fetch(sc.json);
+        return r.ok ? await r.json() : null;
+      } catch (e) { return null; }
+    }
+
+    async function _mvDrawScene(sc) {
+      var frame = document.getElementById('mv_frame');
+      if (!frame || _mvLoaded === sc.key) return;
+      try {
+        var r = await fetch(sc.svg, { cache: 'force-cache' });
+        frame.innerHTML = await r.text();
+        _mvLoaded = sc.key;
+      } catch (e) {
+        _mvSayNone('모형을 불러오지 못했습니다.');
+      }
+    }
+
+    /* 장면이 보기 상자를 덮게 한다. width:100% 만 주면 비율이 달라
+       아래가 빈다 (실측 — 모형 ar 1.545, 상자 ar 1.44). object-fit:cover 와
+       같은 계산을 픽셀로 한다. 핀 층도 같은 크기를 받아야 자리가 맞는다. */
+    function _mvFill(meta) {
+      var box = document.getElementById('modelView');
+      var frame = document.getElementById('mv_frame');
+      var layer = document.getElementById('mv_pins');
+      if (!box || !frame || !meta || !meta.ar) return;
+      var w = Math.max(box.clientWidth, box.clientHeight * meta.ar);
+      var h = w / meta.ar;
+      frame.style.width = w + 'px';
+      frame.style.height = h + 'px';
+      if (layer) { layer.style.width = w + 'px'; layer.style.height = h + 'px'; }
+    }
+
+    /* 창 크기가 바뀌면 다시 맞춘다 */
+    window.addEventListener('resize', function () {
+      if (document.getElementById('modelView') &&
+          document.getElementById('modelView').style.display !== 'none' &&
+          window.__mvMeta) _mvFill(window.__mvMeta);
+    });
+
+    function _mvDrawPins(meta, stops) {
+      window.__mvMeta = meta;
+      var layer = document.getElementById('mv_pins');
+      var scene = document.getElementById('modelView');
+      if (!layer) return;
+
+      var pts = stops.map(function (p) {
+        var q = _mvProject(meta.fit, p.lat, p.lng);
+        return { p: p, x: q.x, y: q.y,
+                 ok: q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104 };
+      }).filter(function (q) { return q.ok; });
+
+      /* 동선 — 정거장을 순서대로 잇는다 */
+      var line = '';
+      if (pts.length > 1) {
+        line = '<svg class="mv-route" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+          '<polyline points="' +
+          pts.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') +
+          '" /></svg>';
+      }
+
+      layer.innerHTML = line + pts.map(function (q, i) {
+        var f = _mpCrowd[q.p.name];
+        var chip = '';
+        if (f && f.rate != null && typeof crowd === 'function') {
+          var g = crowd.of(f);
+          if (g) chip = '<i class="ck-cw cw-' + g.key + '">' + g.idx + '</i>';
+        }
+        var right = q.x > 55;
+        return '<div class="ck-pin' + (right ? ' ck-lbl-left' : '') +
+               '" style="left:' + q.x.toFixed(2) + '%;top:' + q.y.toFixed(2) + '%">' +
+               '<b class="ck-no">' + (i + 1) + '</b>' +
+               '<span class="ck-bub">' + _mpEsc(q.p.name) +
+               (q.p.time ? '<em>' + _mpEsc(q.p.time) + '</em>' : '') + chip + '</span></div>';
+      }).join('');
+
+      /* 정거장이 모인 자리로 카메라를 옮긴다. 장면 전체를 그대로 두면
+         동선이 구석에 몰려 작게 보인다. */
+      var frame = document.getElementById('mv_frame');
+      var box = document.getElementById('modelView');
+      if (frame && box && pts.length) {
+        var xs = pts.map(function (q) { return q.x; });
+        var ys = pts.map(function (q) { return q.y; });
+        var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+        var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+        var pad = 12;
+        var w = Math.max(16, x1 - x0 + pad * 2), h = Math.max(16, y1 - y0 + pad * 2);
+        /* 정거장이 화면의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다 */
+        var z = Math.min(2.2, Math.max(1.12, Math.min(100 / w, 100 / h)));
+
+        /* 밀 수 있는 만큼만 민다. 더 밀면 모형이 끝나고 바닥색이 드러난다 —
+           메인 무대에서 겪은 것과 같은 자리다(왼쪽 281px 이 크림이었다). */
+        var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
+        var maxX = Math.max(0, (fw * z - box.clientWidth) / 2 / fw * 100);
+        var maxY = Math.max(0, (fh * z - box.clientHeight) / 2 / fh * 100);
+        var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        var px = Math.max(-maxX, Math.min(maxX, (50 - cx) * z));
+        var py = Math.max(-maxY, Math.min(maxY, (50 - cy) * z));
+
+        [frame, document.getElementById('mv_pins')].forEach(function (el) {
+          if (!el) return;
+          el.style.setProperty('--mv-z', z.toFixed(3));
+          el.style.setProperty('--mv-x', px.toFixed(2) + '%');
+          el.style.setProperty('--mv-y', py.toFixed(2) + '%');
+        });
+      }
+
+      /* 사람 수는 이 동선에서 가장 붐비는 곳을 따른다 */
+      var worst = 0;
+      stops.forEach(function (p) {
+        var f = _mpCrowd[p.name];
+        if (f && f.rate != null && f.rate > worst) worst = f.rate;
+      });
+      if (scene && worst > 0) scene.style.setProperty('--cw', (worst / 100).toFixed(3));
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  이동시간 — 출발지에서 순서대로.
+     *
+     *  동선의 「도보 12분」은 AI 가 쓴 글자다. 신호도 교통량도 모른다.
+     *  티맵이 잰 값으로 덮는다. 출발지에서 첫 장소까지는 동선에 없던
+     *  구간이라 따로 한 줄 만든다 — 여행 당일 아침에 제일 먼저 필요한
+     *  값이 「몇 시에 나가야 하는가」다.
+     * ════════════════════════════════════════════════════════ */
+
+    function _mpOrigin() {
+      if (window._plannerOrigin && window._plannerOrigin.name) return window._plannerOrigin;
+      try {
+        var o = JSON.parse(sessionStorage.getItem('plannerOrigin') || 'null');
+        if (o && o.name) return o;
+      } catch (e) {}
+      return null;
+    }
+
+    function _mpMin(n) {
+      if (n == null) return null;
+      return n >= 60 ? (Math.floor(n / 60) + '시간' + (n % 60 ? ' ' + (n % 60) + '분' : ''))
+                     : (n + '분');
+    }
+
+    async function _mpLoadTravel() {
+      var box = document.getElementById('mpDepart');
+      var origin = _mpOrigin();
+      if (!origin || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) {
+        if (box) box.hidden = true;
+        return;
+      }
+
+      var day = MAP_ITINERARY[0];
+      var stops = (day.places || []).filter(function (p) {
+        return !p.transit && p.name && isFinite(p.lat) && isFinite(p.lng);
+      }).map(function (p) {
+        return { name: p.name, lat: p.lat, lng: p.lng, time: p.time };
+      });
+      if (!stops.length) { if (box) box.hidden = true; return; }
+
+      /* 첫 장소 시각에 도착하려면 그 시각에 떠나는 교통량으로 재야 한다 */
+      var iso = _mpDayIso(day.day || 1);
+      var departAt = null;
+      if (iso && stops[0].time && /^\d{1,2}:\d{2}/.test(stops[0].time)) {
+        var hm = stops[0].time.match(/^(\d{1,2}):(\d{2})/);
+        departAt = iso + 'T' + String(hm[1]).padStart(2, '0') + ':' + hm[2] + ':00+0900';
+      }
+
+      var body = {
+        originName: origin.name,
+        originLat: origin.lat || null,
+        originLng: origin.lng || null,
+        mode: _mpTransportCode(),
+        departAt: departAt,
+        stops: stops
+      };
+
+      /* 셋을 한 번에 잰다. 「차로 24분」만 보여 주면 버스가 더 빠른
+         날인지 알 수 없다 */
+      try {
+        var res = await fetch('/api/route/travel-time/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var json = await res.json();
+        _mpPlans = (json && json.success) ? json.data : null;
+      } catch (e) {
+        console.warn('[지도] 이동시간 조회 실패:', e);
+        _mpPlans = null;
+      }
+      if (!_mpPlans) { if (box) box.hidden = true; return; }
+
+      _mpFirstStop = stops[0];
+      _mpMode = _mpPickMode(_mpPlans, body.mode);
+      var plan = _mpPlans[_mpMode];
+      if (!plan) { if (box) box.hidden = true; return; }
+
+      _mpPaintDepart(plan, stops[0]);
+      _mpApplyLegs(plan, day);
+
+      /* 잰 거리·요금을 예산에 넘긴다. 하루 60km 가정을 실측으로 바꾼다 */
+      if (plan.totalMeters > 0) window._mpTravelMeters = plan.totalMeters;
+      if (plan.totalFare > 0 && plan.mode === 'TRANSIT') window._mpTransitFare = plan.totalFare;
+      if (plan.totalMeters > 0 || plan.totalFare > 0) _mpLoadBudget();
+    }
+
+    /* 잰 셋을 들고 있는다. 바꿀 때마다 다시 부르지 않는다 */
+    var _mpPlans = null, _mpMode = 'CAR', _mpFirstStop = null;
+
+    var _MP_MODE_KO = { CAR: '자차', TRANSIT: '대중교통', WALK: '도보' };
+
+    /* 처음 세울 것 — 플래너에서 고른 수단이 길을 찾았으면 그것,
+       못 찾았으면 길을 찾은 것 중 제일 빠른 것 */
+    function _mpPickMode(plans, want) {
+      if (plans[want] && _mpPlanOk(plans[want])) return want;
+      var best = null;
+      Object.keys(plans).forEach(function (k) {
+        if (!_mpPlanOk(plans[k])) return;
+        if (!best || plans[k].totalMinutes < plans[best].totalMinutes) best = k;
+      });
+      return best || want;
+    }
+
+    function _mpPlanOk(p) {
+      return !!(p && p.ready && p.totalMinutes != null && p.totalMinutes > 0);
+    }
+
+    /* 자차 · 대중교통 · 도보 — 잰 값을 그대로 붙여 고르게 한다 */
+    function _mpModeBar() {
+      if (!_mpPlans) return '';
+      return '<div class="mp-modes">' + Object.keys(_MP_MODE_KO).map(function (k) {
+        var p = _mpPlans[k];
+        var ok = _mpPlanOk(p);
+        return '<button type="button" class="mp-mode' + (k === _mpMode ? ' on' : '') +
+               (ok ? '' : ' mp-mode-off') + '"' + (ok ? '' : ' disabled') +
+               ' onclick="_mpSetMode(\'' + k + '\')">' +
+               '<b>' + _MP_MODE_KO[k] + '</b>' +
+               '<span>' + (ok ? _mpMin(p.totalMinutes) : '길 없음') + '</span>' +
+               '</button>';
+      }).join('') + '</div>';
+    }
+
+    function _mpSetMode(k) {
+      if (!_mpPlans || !_mpPlanOk(_mpPlans[k]) || k === _mpMode) return;
+      _mpMode = k;
+      var plan = _mpPlans[k];
+      _mpPaintDepart(plan, _mpFirstStop);
+      _mpApplyLegs(plan, (MAP_ITINERARY || [])[0]);
+      window._mpTravelMeters = plan.totalMeters || 0;
+      window._mpTransitFare = (k === 'TRANSIT' && plan.totalFare) ? plan.totalFare : 0;
+      _mpLoadBudget();
+    }
+
+    /* 자체 점검 — 주소에 ?selfcheck=1 을 붙이거나 콘솔에서 _mpCheck().
+       고를 것을 잘못 고르면 화면은 멀쩡한데 값만 틀린다. 그런 건
+       눈으로 못 잡는다. 순수 함수만 재므로 화면을 건드리지 않는다. */
+    function _mpCheck() {
+      var fail = [];
+      function eq(got, want, what) {
+        if (got !== want) fail.push(what + ' — 나온 값 ' + got + ', 기대 ' + want);
+      }
+      var ok = function (min) { return { ready: true, totalMinutes: min }; };
+      var no = { ready: false, totalMinutes: null };
+
+      eq(_mpPlanOk(ok(12)), true,  '잰 값이 있으면 쓸 수 있다');
+      eq(_mpPlanOk(no),     false, 'ready 가 아니면 못 쓴다');
+      eq(_mpPlanOk(ok(0)),  false, '0분은 못 잰 것이다');
+      eq(_mpPlanOk(null),   false, '없으면 못 쓴다');
+
+      /* 고른 수단이 길을 찾았으면 그대로 둔다 */
+      eq(_mpPickMode({ CAR: ok(30), TRANSIT: ok(20), WALK: ok(90) }, 'CAR'),
+         'CAR', '고른 수단이 되면 그대로');
+      /* 못 찾았으면 길을 찾은 것 중 제일 빠른 것 */
+      eq(_mpPickMode({ CAR: no, TRANSIT: ok(41), WALK: ok(68) }, 'CAR'),
+         'TRANSIT', '못 찾으면 제일 빠른 것으로');
+      /* 하나도 못 찾으면 고른 것을 그대로 — 화면이 이유를 쓴다 */
+      eq(_mpPickMode({ CAR: no, TRANSIT: no, WALK: no }, 'WALK'),
+         'WALK', '다 못 찾으면 고른 것 그대로');
+
+      /* 플래너에서 고른 말을 서버가 아는 이름으로 */
+      var keep = window._mpTransportType;
+      [['자차', 'CAR'], ['렌터카', 'CAR'], ['대중교통', 'TRANSIT'],
+       ['지하철', 'TRANSIT'], ['도보', 'WALK'], ['걷기', 'WALK'], ['', 'CAR']
+      ].forEach(function (c) {
+        window._mpTransportType = c[0];
+        eq(_mpTransportCode(), c[1], '「' + c[0] + '」 -> ' + c[1]);
+      });
+      window._mpTransportType = keep;
+
+      if (fail.length) {
+        /* 줄바꿈을 문자열 안에 쓰지 않는다 — 스크립트로 파일을 고칠 때
+           그 자리가 진짜 줄바꿈으로 바뀌면 블록이 통째로 죽는다.
+           실제로 한 번 죽어서 지도 화면 함수 전부가 안 돌았다. */
+        console.error(['[지도] 자체 점검 실패'].concat(fail).join(String.fromCharCode(10)));
+      }
+      else console.log('[지도] 자체 점검 통과');
+      return fail;
+    }
+    window._mpCheck = _mpCheck;
+    if (location.search.indexOf('selfcheck=1') >= 0) setTimeout(_mpCheck, 0);
+
+    function _mpPaintDepart(plan, first) {
+      var box = document.getElementById('mpDepart');
+      if (!box) return;
+      var leg = (plan.legs || [])[0];
+
+      if (!plan.ready) {
+        box.hidden = false;
+        box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
+          '<p class="mp-dp-2">이동시간 연동(티맵)은 준비 중입니다. ' +
+          '연동되면 몇 시에 나가야 하는지 여기에 적습니다.</p>';
+        return;
+      }
+      if (!leg || leg.minutes == null) {
+        box.hidden = false;
+        box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
+          '<p class="mp-dp-2">' + _mpEsc(leg && leg.note ? leg.note : '길을 찾지 못했습니다') + '</p>' +
+          _mpModeBar();
+        return;
+      }
+
+      /* 도착 시각에서 거꾸로 세어 나갈 시각을 낸다 */
+      var leaveTxt = '';
+      if (first && first.time && /^\d{1,2}:\d{2}/.test(first.time)) {
+        var hm = first.time.match(/^(\d{1,2}):(\d{2})/);
+        var mins = parseInt(hm[1], 10) * 60 + parseInt(hm[2], 10) - leg.minutes;
+        if (mins < 0) mins += 1440;
+        leaveTxt = '<b>' + String(Math.floor(mins / 60)).padStart(2, '0') + ':' +
+                   String(mins % 60).padStart(2, '0') + '</b>에 나가면 됩니다. ';
+      }
+
+      box.hidden = false;
+      box.innerHTML =
+        '<p class="mp-dp-1">' + _mpEsc(plan.originName) + ' → ' + _mpEsc(leg.toName) +
+          ' <em>' + _mpMin(leg.minutes) + '</em></p>' +
+        '<p class="mp-dp-2">' + leaveTxt +
+          (leg.meters ? (leg.meters / 1000).toFixed(1) + 'km · ' : '') +
+          _mpEsc(leg.note || '') +
+          (leg.fare ? ' · ' + leg.fare.toLocaleString() + '원' : '') + '</p>' +
+        _mpModeBar();
+    }
+
+    /* 잰 값으로 동선의 이동 문구를 덮는다. 목록을 다시 그려야 보인다 */
+    function _mpApplyLegs(plan, day) {
+      if (!plan.ready) return;
+      var legs = (plan.legs || []).slice(1);      /* 0번은 출발지 -> 첫 장소 */
+      if (!legs.length) return;
+
+      var ps = day.places || [];
+      var seg = 0, changed = false;
+      for (var i = 0; i < ps.length; i++) {
+        if (!ps[i].transit) continue;
+        var leg = legs[seg++];
+        if (!leg || leg.minutes == null) continue;
+        var mode = leg.mode === 'TRANSIT' ? '대중교통' : leg.mode === 'WALK' ? '도보' : '차로';
+        ps[i].transit = mode + ' ' + _mpMin(leg.minutes) +
+          (leg.meters ? ' · ' + (leg.meters / 1000).toFixed(1) + 'km' : '') +
+          (leg.fare ? ' · ₩' + leg.fare.toLocaleString() : '');
+        changed = true;
+      }
+      if (!changed) return;
+      try { sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY)); } catch (e) {}
+
+      /* 목록을 통짜로 다시 그리지 않는다. _mpRedrawList 는 initMapPage 를
+         다시 부르고, 그것이 다시 _mpLoadTravel 을 부른다 — 맞물린다.
+         이동 줄만 제자리에서 고친다. */
+      var rows = document.querySelectorAll('#page-map .transit-map-row');
+      var k = 0;
+      (day.places || []).forEach(function (p) {
+        if (!p.transit) return;
+        var row = rows[k++];
+        if (!row) return;
+        var parsed = _mpParseTransit(p.transit);
+        var meta = _mpTransitMeta(parsed);
+        row.innerHTML = '<b>' + _mpEsc(_mpTransitLabel(parsed)) + '</b>' +
+                        (meta ? '<i>' + _mpEsc(meta) + '</i>' : '');
+      });
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  예산 — 서버가 낸다.
+     *
+     *  전에는 AI 가 장소 설명에 적어 둔 금액 글자를 긁어 더했다. AI 가
+     *  안 적으면 0원이다. 성수기도 축제도 모른다.
+     * ════════════════════════════════════════════════════════ */
+
+    var _mpBudget = null;
+
+    function _mpPeople() {
+      var n = (window._stayBookingInfo && parseInt(window._stayBookingInfo.pax, 10)) || 0;
+      if (n > 0) return n;
+      try {
+        var d = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+        n = parseInt(d['s1-pax'] || d.pax || '', 10);
+      } catch (e) {}
+      return n > 0 ? n : 2;
+    }
+
+    /* 이동수단 — 플래너가 쓴 말을 서버가 아는 말로 바꾼다 */
+    function _mpTransportCode() {
+      var s = '';
+      try {
+        var d = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+        s = String(d.transportType || d['s1-transport'] || '');
+      } catch (e) {}
+      s = s || String(window._mpTransportType || '');
+      if (s.indexOf('대중') >= 0 || s.indexOf('버스') >= 0 || s.indexOf('지하철') >= 0) return 'TRANSIT';
+      if (s.indexOf('도보') >= 0 || s.indexOf('걷') >= 0) return 'WALK';
+      /* 렌터카도 결국 차로 간다. RENTAL 은 서버가 모르는 이름이라
+         전에는 조용히 자차로 떨어지면서 화면 표시만 어긋났다 */
+      return 'CAR';
+    }
+
+    /* 동선에 적힌 금액 합 — 비교용으로만 쓴다 */
+    function _mpWrittenSum() {
+      var sum = 0;
+      (MAP_ITINERARY || []).forEach(function (day) {
+        (day.places || []).forEach(function (p) {
+          if (p.sub) {
+            var m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+            if (m) sum += (parseInt(m[1].replace(/,/g, ''), 10) || 0) * parseInt(m[2] || '1', 10);
+          }
+          if (p.transit) {
+            /* ₩ 나 「원」이 붙은 숫자만 금액이다. 표시를 빼면 「9분」의 9 를
+               9원으로 읽는다 — 실제로 하루 32원이 나왔다. */
+            var t2 = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
+            if (t2) sum += parseInt((t2[1] || t2[2]).replace(/,/g, ''), 10) || 0;
+          }
+        });
+      });
+      return sum;
+    }
+
+    async function _mpLoadBudget() {
+      if (!Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+
+      var stops = [];
+      MAP_ITINERARY.forEach(function (d) {
+        (d.places || []).forEach(function (p) {
+          if (!p.transit && p.type !== 'stay' && p.name) stops.push(p.name);
+        });
+      });
+
+      var body = {
+        region: _mpRegion(),
+        from: _mpDayIso(1),
+        to: _mpDayIso(MAP_ITINERARY.length),
+        people: _mpPeople(),
+        transport: _mpTransportCode(),
+        stops: stops
+      };
+      if (window._mpTravelMeters > 0) body.totalMeters = window._mpTravelMeters;
+      if (window._mpTransitFare > 0) body.transitFare = window._mpTransitFare;
+      if (window._mpLodgingContentId) body.lodgingContentId = String(window._mpLodgingContentId);
+
+      try {
+        var res = await fetch('/api/budget/estimate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        var json = await res.json();
+        _mpBudget = (json && json.success) ? json.data : null;
+      } catch (e) {
+        _mpBudget = null;
+        console.warn('[지도] 예산 산출 실패:', e);
+      }
+      _mpPaintBudget();
+    }
+
+    var _MP_CAT_KO = { LODGING: '숙박비', FOOD: '식비', TRANSPORT: '교통비', TOUR: '입장료' };
+
+    function _mpPaintBudget() {
+      var b = _mpBudget;
+      if (!b) return;
+
+      var bar = document.getElementById('totalBudget');
+      if (bar) bar.textContent = b.total.toLocaleString() + '원';
+      var tot = document.getElementById('map-budget-total');
+      if (tot) tot.textContent = b.total.toLocaleString() + '원';
+      var lab = document.getElementById('map-budget-total-label');
+      if (lab) lab.textContent = '예상 총액 · 1인 ' + b.perPerson.toLocaleString() + '원';
+
+      /* 항목마다 근거를 같이 적는다. 37만원만 보여 주면 믿을지 말지 알 수 없다 */
+      var box = document.getElementById('map-budget-items');
+      if (box) {
+        var max = 1;
+        b.items.forEach(function (i) { if (i.amount > max) max = i.amount; });
+        box.innerHTML = b.items.map(function (i) {
+          return '<div class="mp-bg-row' + (i.amount === max ? ' mp-lead' : '') + '">' +
+            '<div class="mp-bg-top"><span>' + _mpEsc(i.label) + '</span>' +
+            '<span>' + i.amount.toLocaleString() + '원</span></div>' +
+            '<div class="mp-bg-bar"><i style="width:' +
+              Math.round(i.amount / max * 100) + '%"></i></div>' +
+            '<div class="mp-bg-why">' + _mpEsc(i.basis) +
+              (i.estimated ? '' : ' · 확정') + '</div>' +
+          '</div>';
+        }).join('') + _mpBudgetNote(b);
+      }
+
+      _mpPaintPie(b);
+    }
+
+    function _mpBudgetNote(b) {
+      var out = '<div class="mp-bg-note">';
+      if (b.season && b.season.key !== 'off') {
+        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. ' +
+               (b.season.carMultiplier > 1
+                 ? '렌터카가 평시의 ' + b.season.carMultiplier.toFixed(2) + '배로 붙습니다. ' : '') +
+               '숙소도 같이 오릅니다.</p>';
+      }
+      if (b.festivals && b.festivals.length) {
+        out += '<p>여행 기간에 <b>' + _mpEsc(b.festivals[0].title) + '</b>' +
+               (b.festivals.length > 1 ? ' 등 ' + b.festivals.length + '개' : '') +
+               '가 열립니다. 숙소가 빨리 찹니다.</p>';
+      }
+      if (b.accuracy) {
+        out += '<p class="mp-bg-acc">정확도 <b>' + _mpEsc(b.accuracy.label) + '</b> — ' +
+               _mpEsc(b.accuracy.why) + '</p>';
+      }
+      (b.notes || []).forEach(function (n) { out += '<p>' + _mpEsc(n) + '</p>'; });
+
+      var written = _mpWrittenSum();
+      if (written > 0 && Math.abs(written - b.total) > b.total * 0.15) {
+        out += '<p>동선에 적힌 금액을 다 더하면 ' + written.toLocaleString() +
+               '원입니다. 위 값은 성수기와 요금표를 본 산출입니다.</p>';
+      }
+      return out + '</div>';
+    }
+
+    function _mpPaintPie(b) {
+      var ring = document.querySelector('.pie-ring');
+      var legend = document.querySelector('.pie-legend');
+      if (!ring && !legend) return;
+
+      var tok = { LODGING: 'var(--slate)', FOOD: 'var(--terra)',
+                  TRANSPORT: 'var(--num)', TOUR: 'var(--ui-l)' };
+      var by = {};
+      b.items.forEach(function (i) { by[i.category] = (by[i.category] || 0) + i.amount; });
+      var total = b.total || 1;
+      var keys = Object.keys(by);
+
+      var acc = 0;
+      var stops = keys.map(function (k) {
+        var from = acc;
+        acc += Math.round(by[k] / total * 100);
+        return (tok[k] || 'var(--ui-l)') + ' ' + from + '% ' + acc + '%';
+      }).join(', ');
+      if (ring && stops) ring.style.background = 'conic-gradient(' + stops + ')';
+      if (legend) {
+        legend.innerHTML = keys.map(function (k) {
+          return '<div class="pie-leg-item"><span class="pie-dot" style="background:' +
+                 (tok[k] || 'var(--ui-l)') + '"></span>' + (_MP_CAT_KO[k] || k) + ' ' +
+                 Math.round(by[k] / total * 100) + '%</div>';
+        }).join('');
+      }
+    }
+
+    /* 이름 물어 보기 — 서버의 CrowdService.norm 과 같은 기준 */
+    function _mpNorm(s) {
+      return String(s || '').replace(/[\s()\[\]·,.\-]/g, '');
+    }
+
+    function _mpCrowdIdx(name) {
+      var f = _mpCrowd[name];
+      return f && f.rate != null ? f.rate : -1;      /* 모르면 -1 */
+    }
+
+    function _mpCrowdBadge(name) {
+      var f = _mpCrowd[name];
+      if (!f || typeof crowd !== 'function') return '';
+      var c = crowd.of(f);
+      if (!c) return '';
+      return '<span class="mp-cw cw-' + c.key + '">' + _mpEsc(c.label)
+              + '<i>' + c.idx + '</i></span>';
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  혼잡 안내 — 알려 주고 끝내지 않는다. 세 갈래를 고르게 한다.
+     *  문구는 사용자가 불러준 3박자를 지킨다.
+     * ════════════════════════════════════════════════════════ */
+
+    var _mpUndo = null;          /* 되돌리기용 이전 순서 */
+
+    /* 그날 가장 붐비는 장소와 그 뒤에 올 후보를 찾는다 */
+    function _mpWorst(day) {
+      var spots = (day.places || []).filter(function (p) {
+        return !p.transit && p.type !== 'stay' && p.name;
+      });
+      var worst = null, next = null;
+      spots.forEach(function (p, i) {
+        var idx = _mpCrowdIdx(p.name);
+        if (idx < 0) return;                           /* 모르는 곳은 세지 않는다 */
+        if (!worst || idx > worst.idx) { worst = { p: p, i: i, idx: idx }; next = spots[i + 1] || spots[i - 1] || null; }
+      });
+      /* 70 은 「혼잡」이 시작하는 자리다. 서버의 재계획 임계
+         (detection.crowd.rate-threshold) 와 같은 값이어야 한다 —
+         화면이 혼잡하다고 하는데 서버는 괜찮다고 하면 설명할 수 없다. */
+      if (!worst || worst.idx < 70) return null;
+      return { worst: worst.p, next: next, idx: worst.idx };
+    }
+
+    function _mpCrowdPanel() {
+      var box = document.getElementById('mpAlert');
+      if (!box || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      var day = MAP_ITINERARY[0];
+      var f = _mpWorst(day);
+      if (!f || !f.next) { box.hidden = true; return; }
+
+      var c = (typeof crowd === 'function') ? crowd(f.idx) : null;
+      var grade = c ? c.label : '혼잡';
+      var a = f.worst.name, b = f.next.name;
+
+      /* 「언제 가면 나은가」는 추측하지 않는다. 그 장소의 날짜별 예측에서
+         지금보다 확실히 낮은 첫 날을 찾아 말한다. 없으면 그 말을 뺀다. */
+      var better = (typeof crowd === 'function' && crowd.firstQuieter)
+        ? crowd.firstQuieter(_mpTimeline, _mpDayKey(f.worst), f.idx) : null;
+      var when = better
+        ? _mpDateKo(better.date) + '에는 ' + (better.levelLabel || '한산') + '합니다. '
+        : '';
+
+      var quietPick = _mpQuiet.length ? _mpQuiet[0] : null;
+
+      box.hidden = false;
+      box.innerHTML =
+        '<p class="mp-al-1">' + _mpEsc(a) + _mpJosa(a, '이', '가') +
+          ' 그 날 <em>' + _mpEsc(grade) + '</em>합니다</p>' +
+        '<p class="mp-al-2">' + when +
+          _mpEsc(a) + _mpJosa(a, '과', '와') + ' ' + _mpEsc(b) +
+          _mpJosa(b, '의', '의') + ' 순서를 바꾸면 붐비는 시간을 비껴갑니다.</p>' +
+        '<div class="mp-opts">' +
+          '<button type="button" class="mp-opt" onclick="_mpSwapOrder()">' +
+            '<b>순서 바꾸기</b><span>' + _mpEsc(b) + ' 먼저</span></button>' +
+          '<button type="button" class="mp-opt" onclick="_mpAskReplace()">' +
+            '<b>다른 곳으로</b><span>' +
+            (quietPick ? _mpEsc(quietPick.placeName) + ' 등 ' + _mpQuiet.length + '곳'
+                       : '한적한 곳 찾기') + '</span></button>' +
+          '<button type="button" class="mp-opt" onclick="_mpAskRoute()">' +
+            '<b>가는 길 바꾸기</b><span>구간 보기</span></button>' +
+        '</div>' +
+        '<p class="mp-al-note">한국관광공사 관광지 집중률 예측입니다. ' +
+          '0~100 눈금에서 ' + Math.round(f.idx) + '입니다.</p>';
+    }
+
+    /* 다른 곳으로 — 그 날 실제로 한적한 곳을 보여 주고 고르게 한다.
+       전에는 빈 입력만 열어 놓고 사용자가 알아서 찾게 했다. */
+    function _mpAskReplace() {
+      var f = _mpWorst(MAP_ITINERARY[0] || {});
+      if (!f) return;
+      var box = document.getElementById('mpAlert');
+
+      if (!_mpQuiet.length) {
+        _mpOpenReplaceInput(f);
+        return;
+      }
+      if (!box) return;
+
+      box.innerHTML =
+        '<p class="mp-al-1">' + _mpEsc(f.worst.name) + ' 대신 갈 만한 곳</p>' +
+        '<p class="mp-al-2">같은 지역에서 그 날 한적한 곳입니다. ' +
+          '고르면 그 자리에 넣습니다.</p>' +
+        '<div class="mp-quiet">' +
+        _mpQuiet.slice(0, 6).map(function (q, i) {
+          var c = (typeof crowd === 'function') ? crowd.of(q) : null;
+          return '<button type="button" class="mp-q" onclick="_mpPickQuiet(' + i + ')">' +
+                 '<b>' + _mpEsc(q.placeName) + '</b>' +
+                 (c ? '<span class="mp-cw cw-' + c.key + '">' + c.label +
+                      '<i>' + c.idx + '</i></span>' : '') + '</button>';
+        }).join('') +
+        '</div>' +
+        '<div class="mp-opts">' +
+          '<button type="button" class="mp-opt" onclick="_mpOpenReplaceInput()">' +
+            '<b>직접 찾기</b><span>이름으로 검색</span></button>' +
+          '<button type="button" class="mp-opt" onclick="_mpCrowdPanel()">' +
+            '<b>그대로 두기</b><span>돌아가기</span></button>' +
+        '</div>';
+    }
+
+    /* 고른 한적한 곳을 교체 입력에 넣어 준다 */
+    function _mpPickQuiet(i) {
+      var q = _mpQuiet[i];
+      var f = _mpWorst(MAP_ITINERARY[0] || {});
+      if (!q || !f) return;
+      var row = _mpOpenReplaceInput(f);
+      if (!row) return;
+      var input = row.querySelector('.rp-input, input[type="text"]');
+      if (input) {
+        input.value = q.placeName;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      }
+      if (typeof toast === 'function') {
+        toast(q.placeName + '을 넣었습니다. 「바꾸기」를 누르면 적용됩니다.', 4000);
+      }
+    }
+
+    function _mpOpenReplaceInput(f) {
+      f = f || _mpWorst(MAP_ITINERARY[0] || {});
+      if (!f) return null;
+      var row = _mpRowOf(f.worst);
+      if (!row) return null;
+      row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      var btn = row.querySelector('.btn-replace');
+      if (btn) btn.click();
+      else if (typeof toast === 'function') {
+        toast('확정된 플랜은 교체할 수 없습니다. 위의 「수정」을 먼저 누르세요.');
+      }
+      return row;
+    }
+
+    /* 가는 길 바꾸기 — 그 구간을 지도에 띄운다.
+       다른 경로 비교는 티맵 연동 뒤에 붙는다. 없는 것을 있는 척하지 않는다. */
+    function _mpAskRoute() {
+      var f = _mpWorst(MAP_ITINERARY[0] || {});
+      if (!f) return;
+      var row = _mpRowOf(f.worst);
+      if (row && typeof selectPlaceRow === 'function') selectPlaceRow(row);
+      if (typeof drawRouteLayer === 'function') drawRouteLayer();
+      if (typeof toast === 'function') {
+        toast('이동 구간을 지도에 표시했습니다. 다른 경로 비교는 티맵 연동 뒤에 붙습니다.', 4200);
+      }
+    }
+
+    function _mpRowOf(place) {
+      if (!place || !place.key) return null;
+      return document.querySelector('.place-row[data-key="' + place.key + '"]');
+    }
+
+    /* 그 장소가 속한 일차의 YYYYMMDD. 흐름에서 「그 날 이후」를 찾을 때 쓴다 */
+    function _mpDayKey(place) {
+      var dayNo = 1;
+      (MAP_ITINERARY || []).forEach(function (d) {
+        if ((d.places || []).indexOf(place) >= 0) dayNo = d.day || 1;
+      });
+      var iso = _mpDayIso(dayNo);
+      return iso ? iso.replace(/-/g, '') : null;
+    }
+
+    function _mpDateKo(ymd) {
+      if (!ymd || ymd.length < 8) return '';
+      return Number(ymd.slice(4, 6)) + '월 ' + Number(ymd.slice(6, 8)) + '일';
+    }
+
+    /* 순서 바꾸기 — 목록과 지도 핀이 같이 바뀐다. 되돌릴 수 있다 */
+    function _mpSwapOrder() {
+      if (!Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      var day = MAP_ITINERARY[0];
+      var f = _mpWorst(day);
+      if (!f || !f.next) return;
+
+      var ps = day.places || [];
+      var ia = ps.indexOf(f.worst), ib = ps.indexOf(f.next);
+      if (ia < 0 || ib < 0) return;
+
+      /* 객체가 아니라 자리를 기억한다. 다시 그릴 때 배열이 새로 생기므로
+         옛 객체를 들고 있으면 되돌려도 화면과 무관해진다. */
+      _mpUndo = { d: 0, ia: ia, ib: ib, ta: f.worst.time, tb: f.next.time };
+
+      /* 자리를 맞바꾸고 시각은 자리에 남긴다 — 시각은 나오는 값이다 */
+      var tmp = ps[ia]; ps[ia] = ps[ib]; ps[ib] = tmp;
+      var t2 = ps[ia].time; ps[ia].time = ps[ib].time; ps[ib].time = t2;
+
+      _mpAfterOrder('순서를 바꿨습니다. 뒤 시각도 다시 잡았습니다.');
+    }
+
+    function _mpUndoOrder() {
+      if (!_mpUndo) return;
+      var u = _mpUndo;
+      var day = (MAP_ITINERARY || [])[u.d];
+      var ps = day && day.places;
+      if (!ps || !ps[u.ia] || !ps[u.ib]) { _mpUndo = null; return; }
+      var tmp = ps[u.ia]; ps[u.ia] = ps[u.ib]; ps[u.ib] = tmp;
+      ps[u.ia].time = u.ta; ps[u.ib].time = u.tb;
+      _mpUndo = null;
+      _mpAfterOrder('원래 순서로 되돌렸습니다.');
+    }
+
+    /* 바뀐 순서를 화면 전체에 반영한다.
+       목록은 initMapPage 가 그리고, 지도 핀 번호는 여기서 다시 매긴다. */
+    function _mpAfterOrder(msg) {
+      try {
+        sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
+        window._planDirty = true;
+      } catch (e) {}
+      _mpRenumberPins();
+      if (typeof drawRouteLayer === 'function') drawRouteLayer();
+      _mpRedrawList();
+      if (typeof toast === 'function') toast(msg, 3600);
+      var box = document.getElementById('mpAlert');
+      if (box && _mpUndo) {
+        box.innerHTML = '<p class="mp-al-1">바꾼 순서로 보고 있습니다</p>' +
+          '<p class="mp-al-2">아직 확정하지 않았습니다. 위의 「확정」을 누르면 저장됩니다.</p>' +
+          '<div class="mp-opts"><button type="button" class="mp-opt mp-undo" ' +
+          'onclick="_mpUndoOrder()"><b>되돌리기</b><span>원래 순서로</span></button></div>';
+      } else if (box) {
+        _mpCrowdPanel();
+      }
+    }
+
+    /* 지도 핀 번호를 새 순서로 다시 매긴다 */
+    function _mpRenumberPins() {
+      if (!window._kakaoOverlays || !Array.isArray(MAP_ITINERARY)) return;
+      var order = {};
+      MAP_ITINERARY.forEach(function (d) {
+        var n = 0;
+        (d.places || []).forEach(function (p) {
+          if (p.transit || !p.key) return;
+          order[p.key] = ++n;
+        });
+      });
+      window._kakaoOverlays.forEach(function (it) {
+        var el = it.overlay && it.overlay.getContent && it.overlay.getContent();
+        var no = order[it.key];
+        if (no == null) return;
+        if (typeof el === 'string') return;            /* 문자열 내용은 건드리지 않는다 */
+        var b = el && el.querySelector && el.querySelector('.mp-pin-no, .mk-no, b');
+        if (b) b.textContent = no;
+      });
+    }
+
+    /* 목록만 다시 그린다. 자료는 이미 MAP_ITINERARY 에 있다 */
+    function _mpRedrawList() {
+      var keep = window._currentTripId;
+      window._currentTripId = null;        /* DB 를 다시 읽으면 바꾼 순서가 날아간다 */
+      try { initMapPage(); } finally { window._currentTripId = keep; }
+    }
+
+    // 받침에 따라 조사를 고른다 — 「해운대가」 / 「동백섬이」
+    function _mpJosa(s, withJong, without) {
+      var t = String(s || '').trim(), c = t ? t.charCodeAt(t.length - 1) : 0;
+      var jong = (c >= 0xAC00 && c <= 0xD7A3) && ((c - 0xAC00) % 28) > 0;
+      return jong ? withJong : without;
+    }
+
     // ── 지도 필터 칩 (색 점은 CSS 가 붙인다) ──
     const MAP_FILTERS = [
       { id: 'filter-stay', cls: 'mf-stay', type: 'stay', label: '숙소' },
@@ -161,44 +1258,12 @@
     ];
 
     // ── [변경] 하드코딩 배열들을 let으로 바꾸어 AI 데이터가 덮어쓸 수 있도록 수정 ──
-    let MAP_DAYS = [
-      { key: 'all', label: '전체', default: true },
-      { key: 1, label: 'Day 1' },
-      { key: 2, label: 'Day 2' },
-      { key: 3, label: 'Day 3' },
-      { key: 4, label: 'Day 4' },
-    ];
+    let MAP_DAYS = [{ key: 'all', label: '전체', default: true }];
 
     let MAP_ITINERARY = [];
     let MAP_PINS = [];
     let DAY_ROUTES = [];
 
-    // ── 예산 뷰 항목 (지도 내 미니 가계부) ──
-    const MAP_BUDGET_ITEMS = [
-      { label: '숙박비', sub: '기본 숙박비 + 인원 초과금', amount: '180,000원', color: 'var(--sage)',  barPct: 78 },
-      { label: '식비',   sub: '맛집 평균 단가 × 인원수',   amount: '96,000원',  color: 'var(--coral)', barPct: 42 },
-      { label: '교통비', sub: '이동거리 ÷ 연비 × 2,000원', amount: '80,000원',  color: '#22B5C4',       barPct: 35 },
-      { label: '입장료', sub: '관광지 입장료 × 인원수',    amount: '48,000원',  color: '#F5A623',       barPct: 21 },
-    ];
-    const MAP_BUDGET_TOTAL     = '404,000원';
-    const MAP_BUDGET_REMAINING = '96,000원';
-
-    // ── 날씨 알림 ──
-    const MAP_WEATHER_ALERT = {
-      title: '여행 기간에 비 소식이 있습니다',
-      body:  '그날 야외 일정을 실내로 바꿔 볼 수 있습니다.',
-      cta:   '대체 일정 보기',
-      toastMsg: '실내 장소를 먼저 배치했습니다.',
-    };
-
-    // ── 맵 하단 액션 버튼 ──
-    const MAP_ACTION_BTNS = [
-      { id: 'mapTabMap',    tab: 'map',    label: '지도', default: true },
-      { id: 'mapTabBudget', tab: 'budget', label: '예산', default: false },
-    ];
-
-    // ── 총 예산 표시 초기값 ──
-    const MAP_TOTAL_BUDGET_DISPLAY = '404,000원';
 
 
     // ── nav 실제 높이 → --nav-h 변수 갱신 (탭 잘림 방지) ──
@@ -432,19 +1497,32 @@
         return;
       }
 
+      /* 들를 곳이 하나라도 있는 경로인가.
+         DB 가 빈 배열("[]")이나 빈 글자를 돌려주는 경우가 있다 —
+         플랜은 만들었는데 경로를 아직 저장하지 않은 때다. 그걸 「있다」로
+         보면 방금 3단계에서 만들어 세션에 넣어 둔 경로를 덮어써 지운다.
+         그러면 4단계가 빈 화면이 된다. */
+      function _mpUsable(d) {
+        return Array.isArray(d) && d.length > 0
+            && d.some(function (day) { return day && (day.places || []).length > 0; });
+      }
+
       // 1. DB에서 저장된 JSON 데이터 파싱해서 가져오기
       if (tripId) {
         const res = await api.get(`/api/trips/${tripId}/routes?t=${Date.now()}`);
         if (res.success && res.data) {
           try {
-            routeData = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
-            // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
-            //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
-            if (routeData) {
+            const fromDb = (typeof res.data === 'string') ? JSON.parse(res.data) : res.data;
+            if (_mpUsable(fromDb)) {
+              routeData = fromDb;
+              // 여행 기록에서 불러온 경로를 세션에 저장 → 1·2·3 으로 갔다가 4번(경로 생성)으로
+              //    되돌아갈 수 있게 함. 아무것도 안 바꿨으면 dirty 가 아니므로 4번은 정상 접근 가능.
               sessionStorage.setItem('ai_generated_route',
                       (typeof res.data === 'string') ? res.data : JSON.stringify(routeData));
               window._planDirty = false;
               if (typeof _syncStep4State === 'function') _syncStep4State();
+            } else {
+              console.info('[지도] DB 에 저장된 경로가 아직 없습니다. 세션 것을 씁니다.');
             }
           } catch(e) {
             console.error("DB 데이터 파싱 에러:", e);
@@ -457,10 +1535,17 @@
         const aiRouteStr = sessionStorage.getItem('ai_generated_route');
         if (aiRouteStr) {
           try {
-            routeData = JSON.parse(aiRouteStr);
+            const fromSession = JSON.parse(aiRouteStr);
+            if (_mpUsable(fromSession)) routeData = fromSession;
+            else console.warn('[지도] 세션에 든 경로에 들를 곳이 없습니다.', fromSession);
           } catch(e) {
             console.error("세션 데이터 파싱 에러:", e);
           }
+        } else if (document.getElementById('page-map')
+                   && document.getElementById('page-map').classList.contains('active')) {
+          /* 홈에서도 initMapPage 가 한 번 돌아서 이 줄이 늘 떴다.
+             지도를 보고 있을 때만 말한다 */
+          console.warn('[지도] 세션에도 경로가 없습니다. 3단계에서 저장이 안 됐습니다.');
         }
       }
 
@@ -514,19 +1599,26 @@
               }
               // 2. 이동 수단(transit) 금액 계산
               if (p.transit) {
-                const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
+                /* ₩ 나 「원」이 붙은 숫자만 금액이다 (위 _mpWrittenSum 과 같은 이유) */
+                const m = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
                 if (m) {
-                  const cost = parseInt(m[1].replace(/,/g,'')) || 0;
+                  const cost = parseInt((m[1] || m[2]).replace(/,/g,'')) || 0;
                   catSums.transit += cost;
                   dailySum += cost;
                 }
               }
             });
           }
-          // 핵심: AI가 제멋대로 쓴 일차별 예산(day.budget)을 삭제하고 진짜 계산값으로 강제 덮어씌움!
-          day.budget = `${dailySum.toLocaleString()}원`;
+          /* AI 가 적어 둔 일차별 예산은 쓰지 않는다. 장소 설명에 적힌 금액을
+             더한 값만 쓴다. 금액이 하나도 안 적혀 있으면 「0원」이라고 쓰지 않고
+             비워 둔다 — 0원은 공짜라는 말이지 모른다는 말이 아니다.
+             전체 예산은 서버가 낸다(_mpLoadBudget). */
+          day.budget = dailySum > 0 ? `${dailySum.toLocaleString()}원` : '';
           realTotalBudget += dailySum;
         });
+
+        /* 지도 위 돈 카드를 먼저 만든다 — #totalBudget 가 그 안에 있다 */
+        _mpPaintMoney(realTotalBudget, catSums);
 
         const finalBudgetStr = realTotalBudget.toLocaleString() + '원';
         if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
@@ -616,7 +1708,7 @@
             <span class="mp-ord">${ord}</span>
             <div class="pr-info">
               ${p.time ? `<div class="mp-time">${_mpEsc(p.time)}</div>` : ''}
-              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}</div>
+              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}</div>
               ${p.sub ? `<div class="pr-sub">${_mpEsc(p.sub)}</div>` : ''}
               ${stars ? `<div class="pr-stars">${_mpEsc(stars)}</div>` : ''}
             </div>
@@ -659,6 +1751,7 @@
 
         _mpApplyFold();
         _mpSelectInitial();
+        _mpRail();
 
         MAP_PINS = [];
         DAY_ROUTES = [];
@@ -705,6 +1798,17 @@
         if (typeof initDragAndDrop === 'function') initDragAndDrop();
         if (typeof initKakaoMap === 'function') initKakaoMap();
 
+        /* 혼잡도는 네트워키로 온다. 목록을 먼지 그리고 도착하면 배지를 달아
+           다시 그린다. 기다렸다가 그리면 목록이 한 박자 뒤에 나타난다. */
+        if (typeof _mpLoadCrowd === 'function') {
+          _mpLoadCrowd(MAP_ITINERARY[0]).then(function () {
+            _mpPaintBadges();
+            if (typeof _mpCrowdPanel === 'function') _mpCrowdPanel();
+          });
+        }
+        if (typeof _mpLoadBudget === 'function') _mpLoadBudget();
+        if (typeof _mpLoadTravel === 'function') _mpLoadTravel();
+
         try {
           const fallbackQ = sessionStorage.getItem('map_fallback_queue');
           if (fallbackQ) {
@@ -731,12 +1835,20 @@
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
                 `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
                 + `<span class="dt-n">${_mpEsc(d.label)}</span></button>`).join('');
+        /* 일정이 없어도 지도는 뜬다. 여행지 위치만 잡아 준다. */
+        if (typeof initKakaoMap === 'function') initKakaoMap();
+
         /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        var _hasDraft = (typeof _hasPlannerDraft === 'function') && _hasPlannerDraft();
         listEl.innerHTML =
           '<div class="mp-empty">' +
-          '<p>아직 만들어진 일정이 없습니다.</p>' +
-          '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
-          '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>' +
+          (_hasDraft
+            ? '<p>이 플랜에는 아직 경로가 없습니다.</p>' +
+              '<p class="mp-empty-sub">3단계에서 일정 생성을 끝내면 여기에 시각별로 들어옵니다.</p>' +
+              '<button type="button" class="mp-empty-go" onclick="goResumePlanner()">만들던 곳으로</button>'
+            : '<p>아직 만들어진 일정이 없습니다.</p>' +
+              '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
+              '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>') +
           '</div>';
       }
     }
@@ -984,7 +2096,11 @@
           MAP_PINS.forEach(function(pin) {
             // 백엔드가 이미 좌표를 박아준 핀은 재검색하지 않고 그 좌표로 즉시 렌더한다.
             //   (프론트 재검색이 백엔드와 다른 좌표를 잡아 시점이 튀던 문제 + 비동기 타이밍 문제 차단)
-            if (pin.isFound && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
+            /* 좌표가 이미 있으면 그 좌표를 쓴다. 이름으로 다시 검상하면 동명이인을
+               잡는다 — 「미포」로 검상하면 해운대가 아니고 울산이 나온다(사이 45km —
+               반경 검사 60km 를 통과해 버린다). 전에는 isFound 까지 같이 보았는데
+               그는 화면이 찍고 나서 세우는 것이다. 좌표가 말해 준다면 그게 물어보기다. */
+            if (isFinite(pin.lat) && isFinite(pin.lng) && pin.lat && pin.lng) {
               _onResolved(pin, { y: pin.lat, x: pin.lng, place_url: pin.placeUrl, category_name: '' });
               _finalizeMap();
               return;
@@ -1070,6 +2186,10 @@
 
       // 기본값은 숨김 처리
       alertBanner.style.display = 'none';
+
+      /* 저장 전이거나 공유 링크로 들어오면 여행 번호가 없다.
+         그대로 부르면 /api/trips/null 로 나가 400 이 쌓인다(실측 12회). */
+      if (!tripId) return;
 
       try {
         // 1. 현재 플랜의 행정구역(목적지) 정보 가져오기
@@ -1445,6 +2565,139 @@
       Array.prototype.forEach.call(document.querySelectorAll('.mp-pin[data-key]'), function (p) {
         p.classList.toggle('mp-pin-on', p.getAttribute('data-key') === key);
       });
+    }
+
+    /* ════════════════════════════════════════════════════════
+     *  지도 위 판 — 「체크인」 데모 구조.
+     *
+     *  레일  그날 동선을 한 줄로. 누르면 왼쪽 목록의 같은 줄이 열린다 —
+     *        두 곳에서 따로 노는 상태를 만들지 않는다
+     *  돈    그날이 아니라 여행 전체. 항목 비중을 한 줄 막대로
+     * ════════════════════════════════════════════════════════ */
+
+    var _MP_DAY = 'all';        /* 지금 보고 있는 일차. showDay 가 적는다 */
+
+    function _mpRailDay() {
+      if (_MP_DAY !== 'all') return Number(_MP_DAY);
+      /* 전체를 보고 있으면 오늘에 해당하는 일차, 없으면 첫날 */
+      for (var i = 0; i < (MAP_ITINERARY || []).length; i++) {
+        var d = _mpDayDate(MAP_ITINERARY[i].day);
+        if (d && _mpSameDay(d, new Date())) return MAP_ITINERARY[i].day;
+      }
+      return (MAP_ITINERARY[0] || {}).day || 1;
+    }
+
+    function _mpSameDay(a, b) {
+      return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth()
+          && a.getDate() === b.getDate();
+    }
+
+    function _mpRail() {
+      var box = document.getElementById('mpRail');
+      if (!box) return;
+      var days = MAP_ITINERARY || [];
+      if (!days.length) { box.hidden = true; return; }
+
+      var dayNo = _mpRailDay();
+      var day = days.filter(function (d) { return d.day === dayNo; })[0] || days[0];
+      var spots = (day.places || []).filter(function (p) { return !p.transit && p.name; });
+      if (!spots.length) { box.hidden = true; return; }
+
+      var liveIdx = _mpLiveIndex(day.day, spots);
+      var dt = _mpDayDate(day.day);
+      var dateTxt = dt ? (dt.getMonth() + 1) + '/' + dt.getDate() + ' (' + _MP_DOW[dt.getDay()] + ')' : '';
+
+      /* 오늘이 아니면 살아 있는 칸이 없다. 그래도 한 칸은 커야 한다 —
+         다섯 칸이 전부 흐리면 무엇을 보고 있는지 알 수 없다.
+         살아 있는 칸이 없으면 그날 첫 칸을 세운다. */
+      var focusIdx = liveIdx >= 0 ? liveIdx : 0;
+
+      var nodes = spots.map(function (p, i) {
+        var c = _mpCrowd[p.name];
+        var g = (c && c.rate != null && typeof crowd === 'function') ? crowd.of(c) : null;
+        return '<button type="button" class="mp-nd' + (i === liveIdx ? ' mp-nd-now' : '') +
+               (i === focusIdx ? ' mp-on' : '') +
+               (i < liveIdx ? ' mp-nd-done' : '') + '"' +
+               ' data-key="' + _mpEsc(p.key) + '" onclick="_mpRailGo(this)">' +
+               '<span class="mp-nd-t">' + _mpEsc(p.time || ('0' + (i + 1)).slice(-2)) + '</span>' +
+               '<span class="mp-nd-n">' + _mpEsc(p.name) + '</span>' +
+               (g ? '<span class="mp-nd-c cw-' + g.key + '">' + _mpEsc(g.label) + '</span>'
+                  : (p.sub ? '<span class="mp-nd-s">' + _mpEsc(p.sub) + '</span>' : '')) +
+               '</button>';
+      }).join('');
+
+      var pager = days.map(function (d) {
+        return '<button type="button" class="mp-pg' + (d.day === dayNo ? ' on' : '') +
+               '" onclick="_mpRailDayGo(' + d.day + ')">' + d.day + '일차</button>';
+      }).join('');
+
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mp-strip">' + nodes + '</div>' +
+        '<div class="mp-pager">' +
+          (dateTxt ? '<span class="mp-pg-d">' + _mpEsc(dateTxt) + '</span>' : '') +
+          pager +
+        '</div>';
+
+      /* 지금 있는 칸을 가운데로 끌어 온다. 잘려 있어도 되지만
+         지금 어디인지가 잘려 있으면 안 된다. */
+      var strip = box.querySelector('.mp-strip');
+      var here = box.querySelector('.mp-nd-now') || box.querySelector('.mp-nd.mp-on')
+                 || box.querySelector('.mp-nd');
+      if (strip && here) {
+        strip.scrollLeft = Math.max(
+          0, here.offsetLeft - (strip.clientWidth - here.offsetWidth) / 2);
+      }
+    }
+
+    /* 레일에서 고르면 왼쪽 목록의 같은 줄을 연다. 두 곳이 따로 놀면
+       무엇을 보고 있는지 알 수 없다 */
+    function _mpRailGo(btn) {
+      var key = btn.getAttribute('data-key');
+      var row = document.querySelector('.place-row[data-key="' + key + '"]');
+      document.querySelectorAll('.mp-nd.mp-on').forEach(function (n) { n.classList.remove('mp-on'); });
+      btn.classList.add('mp-on');
+      if (!row) return;
+      selectPlaceRow(row);
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function _mpRailDayGo(dayNo) {
+      var tab = document.getElementById('dtab-' + dayNo);
+      if (tab && typeof showDay === 'function') showDay(String(dayNo), tab);
+      else { _MP_DAY = String(dayNo); _mpRail(); }
+    }
+
+    /* 오늘 쓸 돈 — 총액과 항목 비중. 비중은 initMapPage 가 이미 센 값이다 */
+    function _mpPaintMoney(total, cats) {
+      var box = document.getElementById('mpMoney');
+      if (!box) return;
+      if (total != null) window._mpMoneyTotal = total;
+      if (cats) window._mpMoneyCats = cats;
+      total = window._mpMoneyTotal || 0;
+      cats = window._mpMoneyCats || {};
+
+      var rows = [
+        { k: 'stay',    label: '숙박' },
+        { k: 'food',    label: '먹는 곳' },
+        { k: 'tour',    label: '볼거리' },
+        { k: 'transit', label: '이동' }
+      ].filter(function (r) { return (cats[r.k] || 0) > 0; });
+      var sum = rows.reduce(function (a, r) { return a + cats[r.k]; }, 0);
+
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="mp-mo-hd">전체 여행 예산</div>' +
+        '<div class="mp-mo-n" id="totalBudget">' + total.toLocaleString() + '원</div>' +
+        (sum > 0
+          ? '<div class="mp-mo-bar">' + rows.map(function (r) {
+              return '<i class="mp-mo-' + r.k + '" style="flex:' + cats[r.k] + '"></i>';
+            }).join('') + '</div>' +
+            '<div class="mp-mo-lg">' + rows.map(function (r) {
+              return '<span class="mp-mo-' + r.k + '">' + r.label + ' ' +
+                     Math.round(cats[r.k] / sum * 100) + '%</span>';
+            }).join('') + '</div>'
+          : '<p class="mp-mo-none">금액이 적힌 일정이 아직 없습니다.</p>');
     }
 
     function selectPlaceRow(row) {
@@ -2306,8 +3559,8 @@
       <div class="map-left">
         <div class="ml-hd">
           <div class="mp-eyebrow">여행 동선</div>
-          <div class="ml-plan-ttl" id="mapPlanTitle">제주도 3박4일 힐링 여행</div>
-          <div class="ml-plan-meta" id="mapPlanMeta">2025.06.14 (토) – 2025.06.17 (화) · 2인 · 자차</div>
+          <div class="ml-plan-ttl" id="mapPlanTitle">여행 플랜</div>
+          <div class="ml-plan-meta" id="mapPlanMeta"></div>
           <div class="mp-state">
             <div id="planStatusBadge">수정 중</div>
             <button id="btnConfirmToggle" onclick="togglePlanConfirm()">확정</button>
@@ -2328,27 +3581,24 @@
         </div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
-        <div class="map-budget-bar">
-          <div class="mbb-label">전체 여행 예산</div>
-          <div class="mbb-amount" id="totalBudget">404,000원</div>
-        </div>
-        <div class="map-acts">
-          <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
-          <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
-          <button class="btn-map-act" onclick="openShareModal()">공유</button>
-        </div>
       </div>
       <!-- MAP RIGHT -->
       <div class="map-right" id="mapRightArea">
         <!-- Map view — 경로 SVG 레이어는 drawRouteLayer() 가 여기에 넣는다 -->
         <div id="mapView">
           <div id="kakaoMap"></div>
-          <div class="weather-alert" style="z-index:20" onclick="openMapWeatherPopup()">
-            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
-            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
-            <div class="wa-cta">대체 일정 보기</div>
-          </div>
         </div>
+        <!-- 3D 모형 — 같은 동선을 미니어처 위에 올린다.
+             장면·색·사람 수는 메인과 같은 규칙(styles_massing.css)을 쓴다 -->
+        <div id="modelView" class="ck-scene mv-scene" style="display:none">
+          <div class="ck-frame" id="mv_frame"></div>
+          <div class="ck-pins" id="mv_pins"></div>
+          <div class="mv-none" id="mv_none" hidden></div>
+          <!-- 30일 예상 혼잡도. 「언제 가면 되는가」가 한눈에 보여야 한다 -->
+          <div class="mv-fc" id="mv_fc" hidden></div>
+          <div class="mv-legend" id="mv_legend" hidden></div>
+        </div>
+
         <!-- Budget view -->
         <div id="budgetView" style="display:none;position:absolute;inset:0;overflow-y:auto;z-index:8">
           <div style="max-width:760px;margin:0 auto">
@@ -2374,6 +3624,38 @@
             </div>
           </div>
         </div>
+
+        <!-- ── 지도 위에 뜨는 판들 ──────────────────────────────
+             왼쪽 기둥은 일정을 고치는 자리다. 「지금 어떤가」를 말하는
+             것은 보고 있는 화면 위에 떠 있어야 한다 -->
+
+        <div class="mp-tools">
+          <div class="mp-seg" role="tablist">
+            <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
+            <button class="btn-map-act" id="mapTabModel" onclick="switchMapTab('model',this)">3D 모형</button>
+            <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
+          </div>
+          <button class="mp-chip" type="button" onclick="openShareModal()">공유</button>
+        </div>
+
+        <div class="mp-float mp-float-l">
+          <!-- 오늘 쓸 돈 — _mpPaintMoney() 가 채운다 -->
+          <div class="mp-money" id="mpMoney" hidden></div>
+          <!-- 출발 — _mpLoadTravel() 이 채운다 -->
+          <div class="mp-depart" id="mpDepart" hidden></div>
+        </div>
+
+        <div class="mp-float mp-float-r">
+          <div class="weather-alert" onclick="openMapWeatherPopup()">
+            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
+            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
+            <div class="wa-cta">대체 일정 보기</div>
+          </div>
+          <!-- 지금 상황 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
+          <div class="mp-alert" id="mpAlert" hidden></div>
+        </div>
+        <!-- 그날 동선 한 줄 — _mpRail() 이 채운다 -->
+        <div class="mp-rail" id="mpRail" hidden></div>
       </div>
 
       <!-- ===================== PAGE 07 BUDGET ===================== -->
@@ -2393,7 +3675,7 @@
             <div id="mpReviews"></div>
             <div class="mp-linkwrap">
               <div class="mp-linklb">다른 지도에서 보기</div>
-              <div class="mp-links" id="mpLinks"></div>
+              <div class="ck-out" id="mpLinks"></div>
             </div>
           </div>
         </div>

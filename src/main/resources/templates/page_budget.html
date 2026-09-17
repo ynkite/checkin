@@ -14,12 +14,12 @@
   <div class="ledger-selector-outer">
     <div id="ledger-selector">
       <div class="ts-wrap">
-        <div class="ts-ttl">가계부 확인</div>
-        <div class="ts-sub">어떤 여행의 가계부를 확인하시겠습니까?</div>
+        <div class="ts-ttl">가계부</div>
+        <div class="ts-sub">여행을 고르면 그 여행에 쓴 돈만 모아 봅니다.</div>
         <div id="ledger-trip-cards"></div>
         <div id="ledger-card-pager"></div>
-        <button class="btn-next" style="width:100%;margin-top:14px" onclick="goLedger2()">
-          선택한 여행 가계부 보기 →
+        <button class="btn-next" id="ledger-go" style="width:100%;margin-top:14px" onclick="goLedger2()">
+          고른 여행 가계부 열기
         </button>
       </div>
     </div>
@@ -67,6 +67,9 @@
         </div>
       </div>
 
+      <!-- 성수기·축제 — 예상 총액이 왜 그 값인지 말해 준다 -->
+      <p class="ledger-season" id="ledger-season" hidden></p>
+
       <!-- 탭 네비게이션 -->
       <div class="ledger-tabs">
         <button class="ledger-tab on" onclick="switchLedgerTab('charts', this)">그래프</button>
@@ -83,7 +86,7 @@
           <div class="ledger-chart-card">
             <div style="font-size:14px;font-weight:700;margin-bottom:12px">예상 지출 (AI 산출)</div>
             <div class="pie-wrap">
-              <div id="pie-estimated" class="pie-ring" style="background:#E5E7EB"></div>
+              <div id="pie-estimated" class="pie-ring" style="background:var(--ui-line-2)"></div>
               <div id="pie-est-legend" class="pie-legend"></div>
             </div>
           </div>
@@ -92,7 +95,7 @@
           <div class="ledger-chart-card">
             <div style="font-size:14px;font-weight:700;margin-bottom:12px">실제 지출</div>
             <div class="pie-wrap">
-              <div id="pie-actual" class="pie-ring" style="background:#E5E7EB"></div>
+              <div id="pie-actual" class="pie-ring" style="background:var(--ui-line-2)"></div>
               <div id="pie-act-legend" class="pie-legend">
                 <div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>
               </div>
@@ -127,7 +130,7 @@
 
         <!-- 지출 추가 입력 -->
         <div class="ledger-add-panel" id="ledger-add-panel">
-          <div id="ledger-not-started" style="display:none;padding:12px 14px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:#1D4ED8"></div>
+          <div id="ledger-not-started" style="display:none;padding:12px 14px;background:var(--slate-pale);border:1px solid var(--slate);border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:var(--slate)"></div>
           <div id="ledger-add-form">
             <div class="ledger-section-ttl">실제 지출 추가 입력</div>
             <div class="ledger-add" style="margin-top:0">
@@ -148,9 +151,9 @@
             <div style="color:var(--text3);font-size:12px;padding:12px 0">아직 입력된 실제 지출이 없습니다.</div>
           </div>
           <div id="ledger-pagination"></div>
-          <div id="ledger-warning" style="display:none;margin-top:14px;background:#FEF3C7;border-left:4px solid #F59E0B;border-radius:0 8px 8px 0;padding:12px 16px">
-            <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:3px">아직 실제 지출을 입력하지 않은 카테고리가 있어요</div>
-            <div style="font-size:12px;color:#B45309">미입력: <strong id="ledger-warn-cats"></strong></div>
+          <div id="ledger-warning" style="display:none;margin-top:14px;background:var(--terra-pale);border-left:4px solid var(--sig);border-radius:0 8px 8px 0;padding:12px 16px">
+            <div style="font-size:12px;font-weight:700;color:var(--num);margin-bottom:3px">아직 실제 지출을 입력하지 않은 카테고리가 있어요</div>
+            <div style="font-size:12px;color:var(--num)">미입력: <strong id="ledger-warn-cats"></strong></div>
           </div>
         </div>
 
@@ -160,7 +163,7 @@
     </div>
 
     <!-- PDF 생성용 숨겨진 렌더링 영역 -->
-    <div id="budget-pdf-content" style="position:fixed;left:-9999px;width:760px;padding:40px 48px;background:#fff;font-family:Arial,sans-serif;font-size:13px;color:#222;line-height:1.6"></div>
+    <div id="budget-pdf-content" style="position:fixed;left:-9999px;width:760px;padding:40px 48px;background:var(--panel);font-family:Arial,sans-serif;font-size:13px;color:var(--ink);line-height:1.6"></div>
 
   </div>
 
