@@ -946,8 +946,10 @@
 /* ── 우상단 분절 ────────────────────────────────────────────
    지도 / 3D 모형 / 예산 은 같은 것을 다르게 보는 세 가지다.
    나란한 버튼 네 개보다 분절 하나가 그 관계를 말한다. */
+/* 카카오 지도의 확대/축소 막대가 오른쪽 위 구석에 선다.
+   그 폭(약 40px)만큼 비켜 놓지 않으면 두 개가 겹친다. */
 .mp-tools{
-  position:absolute; top:20px; right:22px; z-index:15;
+  position:absolute; top:20px; right:62px; z-index:15;
   display:flex; gap:7px; align-items:center;
 }
 .mp-seg{ display:flex; gap:2px; padding:3px; border-radius:var(--r-pill) }
@@ -1106,7 +1108,7 @@
 }
 @media (max-width:900px){
   .mp-float-r{ position:static; width:auto; max-height:none; margin:10px 14px 0 }
-  .mp-tools{ top:14px; right:14px }
+  .mp-tools{ top:14px; right:54px }
   .mp-seg .btn-map-act{ padding:7px 11px 8px; font-size:12px }
   .mp-rail{ left:12px; right:12px; bottom:12px; flex-direction:column; align-items:stretch }
   .mp-pager{ align-self:flex-start }
