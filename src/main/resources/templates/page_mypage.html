@@ -88,6 +88,7 @@
       }
 
       renderMyTrips();
+      _watchTripCards();
 
       // 2-2. 초대받은 일정 렌더링 (내 여행 기록과 똑같은 디자인 적용)
       let invited = typeof MOCK_MYPAGE_INVITED !== 'undefined' ? MOCK_MYPAGE_INVITED : [];
@@ -148,7 +149,67 @@
       }
     }
 
+    /* ── 내 여행 기록 → 경로 수정 ─────────────────────────────
+       카드는 app_main.js 의 _renderMyTrips() 가 그린다. 그쪽은 건드리지 않고
+       다 그려진 뒤에 각 줄에 버튼만 붙인다.
+       목록 응답에는 경로가 있는지가 없어서 여행마다 한 번 물어보고 기억해 둔다.
+       경로가 없는 여행에는 버튼을 달지 않는다. 눌러도 빈 지도만 나온다. */
+    const _tripRouteInfo = {};          // id -> Promise<{ hasRoute, fixed }>
+
+    function _tripInfo(id) {
+      if (!_tripRouteInfo[id]) {
+        _tripRouteInfo[id] = (typeof api !== 'undefined' ? api.get('/api/trips/' + id) : Promise.reject())
+          .then(function (r) {
+            const d = (r && r.success && r.data) || {};
+            return { hasRoute: !!String(d.routeJson || '').trim(), fixed: d.status === 'FIXED' };
+          })
+          .catch(function () { delete _tripRouteInfo[id]; return { hasRoute: false, fixed: false }; });
+      }
+      return _tripRouteInfo[id];
+    }
+
+    function openTripRoute(tripId) {
+      sessionStorage.setItem('currentTripId', String(tripId));
+      sessionStorage.removeItem('ai_generated_route');   // DB 것을 다시 읽게
+      /* 지도 화면은 아직 _currentTripId · plannerDraftId 로 여행을 찾는다.
+         openMyTrip 이 그 둘을 맞추고 지난 여행의 잔상을 지운 뒤 go('map') 한다. */
+      if (typeof openMyTrip === 'function') { openMyTrip(tripId); return; }
+      window._currentTripId = tripId;
+      go('map');
+    }
+    window.openTripRoute = openTripRoute;
+
+    function _decorateTripCards() {
+      if (window._myTripsDeleteMode) return;
+      document.querySelectorAll('#my-trips .trip-card').forEach(function (card) {
+        if (card.dataset.routeBtn) return;
+        const m = (card.getAttribute('onclick') || '').match(/openMyTrip\((\d+)\)/);
+        if (!m) return;
+        card.dataset.routeBtn = '1';
+        const id = +m[1];
+        _tripInfo(id).then(function (info) {
+          if (!info.hasRoute || !card.isConnected || card.querySelector('.trip-route')) return;
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'trip-route';
+          b.textContent = info.fixed ? '경로 보기' : '경로 수정';
+          b.addEventListener('click', function (e) { e.stopPropagation(); openTripRoute(id); });
+          const tail = card.querySelector('.trip-budget');
+          card.insertBefore(b, tail || null);
+        });
+      });
+    }
+
+    function _watchTripCards() {
+      const box = document.getElementById('my-trips');
+      if (!box || box.dataset.routeWatch) return;
+      box.dataset.routeWatch = '1';
+      new MutationObserver(_decorateTripCards).observe(box, { childList: true });
+      _decorateTripCards();
+    }
+
     document.addEventListener('DOMContentLoaded', initMyPageData);
+    document.addEventListener('DOMContentLoaded', _watchTripCards);
     function toggleMyMenu() {
       const collapse = document.getElementById('myMenuCollapse');
       const toggle = document.getElementById('myMenuToggle');

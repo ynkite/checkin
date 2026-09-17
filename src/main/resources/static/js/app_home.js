@@ -328,9 +328,8 @@
 
       SCENE[1].now = worst.name;
       SCENE[1].line = esc(worst.name) + '이 그 날 <em>' + esc(grade) + '</em>합니다';
-      SCENE[1].why = busy
-        ? '집중률 ' + worst.crowd + '입니다. 0~100 눈금에서 70 위가 붐비는 자리입니다.'
-        : '집중률 ' + worst.crowd + '입니다. 붐비지는 않지만 순서를 바꿔 볼 수 있습니다.';
+      /* 등급은 윗줄에 있다. 여기서는 숫자만 */
+      SCENE[1].why = '집중률 ' + worst.crowd + (busy ? '' : ' · 순서는 그대로 둬도 됩니다');
 
       /* 대체 후보의 등급도 받은 값으로 */
       if (alt && alt.crowd != null) {
@@ -395,18 +394,21 @@
                    (sec && sec.querySelector('.ck-side'));
         if (side) {
           side.textContent = (when.getMonth() + 1) + '월 ' + when.getDate() + '일 ' +
-                             DOW[when.getDay()] + '요일 기준. 0~100 눈금입니다.';
+                             DOW[when.getDay()] + '요일';
         }
         var hd = sec && sec.querySelector('.ck-hd');
         if (hd) hd.setAttribute('data-label', '한국관광공사 집중률 예측');
+
+        /* 구가 전부 같으면 카드마다 같은 줄이 붙는다. 다를 때만 적는다 */
+        var shown = quiet.concat(busy && busy.rate >= 70 ? [busy] : []);
+        var oneGu = shown.every(function (x) { return x.sigunguName === shown[0].sigunguName; });
 
         function card(x, hot) {
           var g = (window.crowd && window.crowd(x.rate)) || { key: 'mid', label: '정상' };
           var k = 'cw-' + g.key;
           return '<article class="ck-spot' + (hot ? ' ck-hot' : '') + '">' +
             '<div class="ck-nm">' + esc(x.placeName) + '</div>' +
-            '<div class="ck-why">' + esc(x.sigunguName || '') +
-              (hot ? ' · 다른 날을 보세요' : ' · 그 날 여유 있습니다') + '</div>' +
+            (!oneGu && x.sigunguName ? '<div class="ck-why">' + esc(x.sigunguName) + '</div>' : '') +
             '<div class="ck-vv"><b class="ck-fig">' + Math.round(x.rate) + '</b>' +
               '<i class="' + k + '">' + esc(x.levelLabel || g.label) + '</i></div>' +
             '<div class="ck-bar"><i class="' + k + '" style="width:' +
@@ -525,9 +527,7 @@
         var picked = [].slice.call(cc.querySelectorAll('[aria-pressed="true"]'))
                        .map(function (x) { return x.textContent.trim(); });
         if (cn) cn.textContent = picked.length ? picked.length : '';
-        nt.textContent = picked.length
-          ? picked.join(' · ') + ' 조건에 맞는 곳만 후보에 올립니다.'
-          : '고른 조건에 안 맞는 곳은 아예 후보에서 뺍니다.';
+        nt.textContent = picked.length ? picked.join(' · ') + ' 맞춤' : '';
       });
     }
 
