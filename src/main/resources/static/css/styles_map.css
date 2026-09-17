@@ -1036,18 +1036,28 @@
 .mp-strip{
   flex:1 1 auto; min-width:0; display:flex; overflow-x:auto;
   border-radius:var(--r-panel); scrollbar-width:none;
+  scroll-behavior:smooth;
 }
 .mp-strip::-webkit-scrollbar{ display:none }
+
+/* 칸 폭은 고정이다. 폭에 맞춰 똑같이 나누면 다섯 곳이 넘어갈 때
+   전부 좁아져 이름이 다 잘린다. 남으면 옆으로 흘러 잘리게 둔다 —
+   잘린 칸이 「더 있다」는 표시가 된다. */
 .mp-nd{
-  flex:1 1 0; min-width:116px; padding:11px 14px 12px;
+  flex:0 0 auto; width:158px; padding:11px 15px 12px;
   border:0; background:transparent; cursor:pointer; text-align:left;
   font-family:inherit; color:var(--ink); word-break:keep-all;
   border-radius:var(--r-panel);
-  transition:background .16s ease;
+  opacity:.62;
+  transition:background .16s ease, opacity .2s ease, width .24s ease;
 }
 .mp-nd + .mp-nd{ box-shadow:inset 1px 0 0 var(--glass-line) }
-.mp-nd:hover{ background:var(--glass-2) }
+.mp-nd:hover{ background:var(--glass-2); opacity:1 }
+.mp-nd.mp-on,
+.mp-nd-now{ opacity:1; width:224px }
 .mp-nd.mp-on{ background:var(--panel) }
+.mp-nd.mp-on .mp-nd-n,
+.mp-nd-now .mp-nd-n{ font-size:16px }
 .mp-nd-t{
   display:block; font-family:var(--fig); font-size:11px; font-weight:500;
   letter-spacing:var(--tracking-num); color:var(--ink-3);
@@ -1104,7 +1114,7 @@
 @media (max-width:1180px){
   .mp-float-l{ display:none }
   .mp-float-r{ width:296px; top:74px }
-  .mp-nd{ min-width:104px }
+  .mp-nd{ width:140px }
 }
 @media (max-width:900px){
   .mp-float-r{ position:static; width:auto; max-height:none; margin:10px 14px 0 }
