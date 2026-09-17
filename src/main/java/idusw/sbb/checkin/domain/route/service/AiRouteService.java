@@ -60,8 +60,6 @@ public class AiRouteService {
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRouteService.class);
-
     /**
      * 동선 엔진 경로 사용 여부. 기본값 false — 켜는 건 {@code application-local.properties} 에서만 한다
      * ({@code application.properties} 는 skip-worktree 라 팀에 안 나간다).
