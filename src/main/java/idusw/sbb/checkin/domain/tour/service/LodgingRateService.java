@@ -58,6 +58,35 @@ public class LodgingRateService {
         return LodgingRate.none(label);
     }
 
+    /**
+     * 기준인원 — detailInfo2 roombasecount 중 최솟값(가장 싼 방 기준). 없으면 0.
+     * 예산 엔진의 「인원 추가」 항목이 이 값으로 초과 인원을 센다 (홍은표).
+     */
+    public int baseCount(String contentId) {
+        int min = 0;
+        for (JsonNode r : arr(rooms(contentId))) {
+            int v = (int) parseLong(text(r, "roombasecount"));
+            if (v > 0 && (min == 0 || v < min)) min = v;
+        }
+        return min;
+    }
+
+    /**
+     * 바베큐 제공 여부 — detailIntro2 chkbarbecue (D 조사 항목).
+     * 금액은 오지 않는다. 「가능한 숙소인지」만 확정이고 「얼마인지」는 추정으로 남는다.
+     */
+    public boolean barbecueAvailable(String contentId) {
+        Map<String, String> p = new LinkedHashMap<>();
+        p.put("contentId", contentId);
+        p.put("contentTypeId", "32");
+        for (JsonNode n : arr(client.items(SERVICE, "detailIntro2", p))) {
+            String v = text(n, "chkbarbecue").trim();
+            // 응답이 "가능" / "Y" / "1" 등으로 제각각이라 부정 표현만 걸러낸다.
+            if (!v.isBlank() && !v.equals("0") && !v.equals("없음") && !v.equals("불가")) return true;
+        }
+        return false;
+    }
+
     // ── 계절·요일 판정 ──
 
     static boolean isPeak(LocalDate d) {

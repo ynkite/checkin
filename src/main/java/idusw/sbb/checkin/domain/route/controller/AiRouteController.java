@@ -1,5 +1,6 @@
 package idusw.sbb.checkin.domain.route.controller;
 
+import idusw.sbb.checkin.domain.route.dto.RouteDelta;
 import idusw.sbb.checkin.domain.route.service.AiRouteService;
 import idusw.sbb.checkin.global.common.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -52,13 +53,21 @@ public class AiRouteController {
             @RequestBody java.util.Map<String, java.util.List<java.util.Map<String, String>>> payload) {
 
         java.util.List<java.util.Map<String, String>> requests = payload.get("requests");
+
+        // 덮어쓰기 전의 동선 — 교체 결과와 비교해 시간·돈 쌍을 낸다 (예산 엔진 2층)
+        String beforeRouteJson = currentRouteJson(tripId);
+
         // 위에서 만든 서비스 메서드 호출
         String updatedRouteJson = aiRouteService.replaceAiRoutePlaces(tripId, requests);
         // 새로 받아온 JSON을 DB에 덮어쓰고 반환
         aiRouteService.saveAiRouteToDb(tripId, updatedRouteJson);
 
+        // 저장 과정에서 카카오가 구간 시간·요금을 다시 채운다 — 저장된 것끼리 비교해야 맞다
+        String afterRouteJson = currentRouteJson(tripId);
+
         return ResponseEntity.ok(
-                java.util.Map.of("success", true, "data", updatedRouteJson)
+                java.util.Map.of("success", true, "data", updatedRouteJson,
+                        "delta", RouteDelta.between(beforeRouteJson, afterRouteJson))
         );
     }
 
@@ -86,16 +95,34 @@ public class AiRouteController {
             @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
         try {
             String json = routeData.toString();
+
+            // 순서를 바꾸는 것도 동선 변경이다 — 저장 전 동선을 들고 있는다 (예산 엔진 2층)
+            String beforeRouteJson = currentRouteJson(tripId);
+
             // 저장(내부에서 카카오 거리/시간/비용 재계산 + budget 갱신 수행)
             aiRouteService.saveAiRouteToDb(tripId, json);
             // 보정된 JSON을 돌려줘서 프론트가 새로고침 없이 화면을 다시 그릴 수 있게 한다
             Object updated = aiRouteService.getRoutesByTripId(tripId);
-            return ResponseEntity.ok(java.util.Map.of("success", true, "data", updated));
+
+            String afterRouteJson = currentRouteJson(tripId);
+
+            return ResponseEntity.ok(java.util.Map.of("success", true, "data", updated,
+                    "delta", RouteDelta.between(beforeRouteJson, afterRouteJson)));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(java.util.Map.of("success", false, "message", e.getMessage()));
         }
     }
 
-
+    /**
+     * 지금 화면이 보고 있는 동선 — 시간·돈 쌍의 비교 대상 (예산 엔진 2층).
+     *
+     * 확정(FIXED)된 여행을 고치면 {@code saveAiRouteToDb} 는 확정본을 안 건드리고
+     * {@code draftRouteJson} 에 쓴다. 확정본만 보면 바뀐 게 없다고 나온다.
+     * 규칙을 여기서 또 쓰지 않고 화면이 쓰는 것과 같은 메서드를 그대로 쓴다.
+     */
+    private String currentRouteJson(Long tripId) {
+        Object route = aiRouteService.getRoutesByTripId(tripId);
+        return (route instanceof String s) ? s : null;
+    }
 }

@@ -3021,6 +3021,24 @@ function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
 function openQueue()  { document.getElementById('queueBox').classList.add('has'); document.getElementById('queueBox').style.display='block'; document.getElementById('queueToggle').style.display='none'; }
 
+/**
+ * 시간·돈 쌍 문구. 못 잰 쪽(null)만 빼고, **잰 0 은 ±0 으로 찍는다** —
+ * 「시간은 그대로고 돈만 늘었다」를 말해야 사용자가 다시 묻지 않는다.
+ * 둘 다 0 이면(=바뀐 게 없으면) 아무것도 내보내지 않는다.
+ */
+function _fmtRoutePair(delta) {
+    if (!delta) return '';
+    const has = v => v !== null && v !== undefined;
+    if (!has(delta.minutes) && !has(delta.won)) return '';
+    if ((delta.minutes || 0) === 0 && (delta.won || 0) === 0) return '';
+
+    const sign = v => v > 0 ? '+' : (v < 0 ? '−' : '±');
+    const parts = [];
+    if (has(delta.minutes)) parts.push(sign(delta.minutes) + Math.abs(delta.minutes) + '분');
+    if (has(delta.won))     parts.push(sign(delta.won) + Math.abs(delta.won).toLocaleString() + '원');
+    return parts.join(' / ');
+}
+
 /** POST /api/trips/{tripId}/routes/replace */
 async function execAllReplace() {
     const tripId = window._currentTripId;
@@ -3040,6 +3058,11 @@ async function execAllReplace() {
         const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
 
         if (res.success && res.data) {
+            // 동선을 바꾸면 시간과 돈이 같이 움직인다. 둘을 쌍으로 남긴다 (예산 엔진 2층)
+            // 1.5초 뒤 새로고침되므로 토스트로 띄우면 못 읽는다 → 새로고침 뒤에 띄운다
+            const pair = _fmtRoutePair(res.delta);
+            if (pair) sessionStorage.setItem('route_delta_msg', pair);
+
             toast('바꿨습니다. 화면을 다시 그립니다.');
 
             // 핵심: 브라우저 임시 저장소(sessionStorage)의 옛날 데이터 찌꺼기를 최신 데이터로 강제 덮어쓰기!
@@ -3235,6 +3258,13 @@ function handleWriteImg(input) {
     reader.readAsDataURL(file);
 }
 document.addEventListener('DOMContentLoaded', () => {
+    // 동선 교체로 바뀐 시간·돈 (새로고침을 건너온 값)
+    const _pair = sessionStorage.getItem('route_delta_msg');
+    if (_pair) {
+        sessionStorage.removeItem('route_delta_msg');
+        setTimeout(() => toast('바뀐 동선 · ' + _pair, 4200), 600);
+    }
+
     const ed=document.getElementById('blogEditor');
     if(ed) {
         ed.addEventListener('paste', e => {

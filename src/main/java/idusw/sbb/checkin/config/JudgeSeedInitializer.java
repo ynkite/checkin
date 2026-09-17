@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * 심사용 시드 (이수환 · 06_이수환_연동작업.md C).
@@ -38,6 +37,7 @@ public class JudgeSeedInitializer implements CommandLineRunner {
 
     private static final String JUDGE_USERNAME = "openapi";
     private static final String JUDGE_PASSWORD = "2026openapi!";   // 제출 지정 계정
+    private static final String SEED_TITLE = "부산 2박 3일 · 진행 중";
 
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
@@ -48,10 +48,14 @@ public class JudgeSeedInitializer implements CommandLineRunner {
     public void run(String... args) {
         User judge = userRepository.findByUsername(JUDGE_USERNAME).orElseGet(this::createJudgeUser);
 
-        // 이미 여행이 있으면 날짜만 오늘 기준으로 갱신 (재부팅해도 진행 중 유지)
-        List<TravelPlan> existing = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId());
-        if (!existing.isEmpty()) {
-            TravelPlan plan = existing.get(0);
+        // 이미 심은 여행이 있으면 날짜만 오늘 기준으로 갱신 (재부팅해도 진행 중 유지)
+        // 「목록 맨 앞」이 아니라 이 시드가 심은 여행을 제목으로 집는다.
+        // 계정에 다른 여행(3층 시연 시드 등)이 생기면 맨 앞이 그쪽이 되어 엉뚱한 여행을 오늘로 민다.
+        TravelPlan existing = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
+                .filter(p -> SEED_TITLE.equals(p.getTitle()))
+                .findFirst().orElse(null);
+        if (existing != null) {
+            TravelPlan plan = existing;
             plan.setStartDate(LocalDate.now());
             plan.setEndDate(LocalDate.now().plusDays(2));
             plan.setUpdatedAt(LocalDateTime.now());
@@ -62,7 +66,7 @@ public class JudgeSeedInitializer implements CommandLineRunner {
 
         TravelPlan plan = travelPlanRepository.save(TravelPlan.builder()
                 .user(judge)
-                .title("부산 2박 3일 · 진행 중")
+                .title(SEED_TITLE)
                 .destination("부산")
                 .startDate(LocalDate.now())          // 오늘 시작
                 .endDate(LocalDate.now().plusDays(2)) // 2박 3일

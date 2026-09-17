@@ -2948,6 +2948,9 @@
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
                       if (!res.success) { toast('순서를 저장하지 못했습니다. ' + (res.message || '')); return; }
+                      // 순서를 바꾸면 시간과 돈이 같이 움직인다 (예산 엔진 2층)
+                      var pair = (typeof _fmtRoutePair === 'function') ? _fmtRoutePair(res.delta) : '';
+                      if (pair) toast('바뀐 동선 · ' + pair, 4200);
                       // 보정된 JSON으로 화면 전체 재렌더 (transit 거리·시간·비용 + 동선 갱신)
                       if (typeof initMapPage === 'function') initMapPage();
                     })
@@ -3544,9 +3547,10 @@
 
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       try {
-        await api.post(`/api/trips/${tripId}/routes/reorder`, MAP_ITINERARY);
+        const res = await api.post(`/api/trips/${tripId}/routes/reorder`, MAP_ITINERARY);
         sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
-        toast('저장되었습니다.');
+        const pair = (typeof _fmtRoutePair === 'function') ? _fmtRoutePair(res && res.delta) : '';
+        toast(pair ? '저장되었습니다 · ' + pair : '저장되었습니다.', pair ? 4200 : 2800);
         if (typeof initMapPage === 'function') initMapPage();
       } catch (e) {
         toast('저장 실패: ' + e.message);
