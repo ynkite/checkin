@@ -168,6 +168,7 @@
      화면 가운데로 오도록 판을 옮기고 조금 당긴다.
      transform 하나만 바꾸므로 합성으로 끝난다. */
   var cam = { z: 1, x: 0, y: 0, user: false };
+  var camFitted = false;   /* 처음 한 번만 전체를 맞춘다 */
 
   /* 판이 무대를 덮고 남는 여유. 이 범위를 넘겨 밀면 무대 가장자리에
      바닥색이 드러난다 — 도시가 끊겨 보이는 그 자리다. */
@@ -220,8 +221,124 @@
     camApply();
   }
 
+  var CAM_MIN = .55, CAM_MAX = 3.2;
+
+  /* 세 정거장이 다 보이는 배율과 위치.
+     판은 무대를 덮는 크기(cover)라 배율 1 이어도 양옆이 잘린다.
+     핀이 차지하는 %범위를 실제 픽셀로 바꿔서, 그게 무대 안에 들어오는
+     배율을 구한다. 여백은 8% 씩 둔다 — 핀 말풍선이 가장자리에 닿으면
+     읽히지 않는다. */
+  function camFit() {
+    var f = $('ck_frame');
+    if (!f || !f.offsetWidth) return false;
+    var st = f.parentElement;
+    if (!st || !st.clientWidth) return false;
+
+    var pts = (route || []).filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    if (pts.length < 2) return false;
+
+    var xs = pts.map(function (p) { return p.x; });
+    var ys = pts.map(function (p) { return p.y; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+    var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+
+    var padX = 9, padY = 11;                       /* % — 말풍선 자리 */
+    var wNeed = (x1 - x0 + padX * 2) / 100 * f.offsetWidth;
+    var hNeed = (y1 - y0 + padY * 2) / 100 * f.offsetHeight;
+
+    var z = Math.min(st.clientWidth / wNeed, st.clientHeight / hNeed);
+    cam.z = Math.max(CAM_MIN, Math.min(CAM_MAX, z));
+
+    /* 핀 무리의 한가운데를 무대 가운데로. 세로는 조금 위로 —
+       아래쪽에 경로 만들기 바가 있다 */
+    cam.x = (50 - (x0 + x1) / 2) / 100 * f.offsetWidth * cam.z;
+    cam.y = (46 - (y0 + y1) / 2) / 100 * f.offsetHeight * cam.z;
+    camApply();
+    return true;
+  }
+
+  /* 사람이 배율을 바꾼다. 가리킨 자리를 붙잡고 당긴다 —
+     가운데만 기준으로 하면 보려던 곳이 화면 밖으로 밀린다. */
+  function camZoom(mult, px, py) {
+    var f = $('ck_frame');
+    if (!f) return;
+    var prev = cam.z;
+    cam.z = Math.max(CAM_MIN, Math.min(CAM_MAX, cam.z * mult));
+    if (cam.z === prev) return;
+    if (px != null) {
+      var st = f.parentElement;
+      var r = st.getBoundingClientRect();
+      var ox = px - r.left - r.width / 2;
+      var oy = py - r.top - r.height / 2;
+      var k = cam.z / prev;
+      cam.x = ox - (ox - cam.x) * k;
+      cam.y = oy - (oy - cam.y) * k;
+    }
+    cam.user = true;
+    camApply();
+  }
+
+  /* 휠·집기·버튼. 한 프레임에 한 번만 반영한다 */
+  function initCamTools() {
+    var stage = d.querySelector('.ck-stage');
+    var scene = stage && stage.querySelector('.ck-scene');
+    if (!scene) return;
+
+    scene.style.pointerEvents = 'auto';
+
+    var pending = 0, raf = 0, at = null;
+    scene.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      pending += e.deltaY;
+      at = [e.clientX, e.clientY];
+      if (raf) return;
+      raf = requestAnimationFrame(function () {
+        raf = 0;
+        var m = Math.pow(.9988, pending);
+        pending = 0;
+        camZoom(m, at[0], at[1]);
+      });
+    }, { passive: false });
+
+    /* 두 손가락 집기 */
+    var pinch = 0;
+    scene.addEventListener('touchmove', function (e) {
+      if (e.touches.length !== 2) return;
+      e.preventDefault();
+      var a = e.touches[0], b = e.touches[1];
+      var dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (pinch) {
+        camZoom(dist / pinch,
+                (a.clientX + b.clientX) / 2, (a.clientY + b.clientY) / 2);
+      }
+      pinch = dist;
+    }, { passive: false });
+    scene.addEventListener('touchend', function () { pinch = 0; });
+
+    /* 두 번 누르면 세 정거장이 다 보이는 자리로 */
+    scene.addEventListener('dblclick', function () {
+      cam.user = false;
+      if (!camFit()) camReset();
+    });
+
+    var rz = 0;
+    w.addEventListener('resize', function () {
+      clearTimeout(rz);
+      rz = setTimeout(function () { if (!cam.user) camFit(); }, 180);
+    });
+
+    var zin = $('st_z_in'), zout = $('st_z_out'), zfit = $('st_z_fit');
+    if (zin) zin.addEventListener('click', function () { camZoom(1.25); });
+    if (zout) zout.addEventListener('click', function () { camZoom(1 / 1.25); });
+    if (zfit) zfit.addEventListener('click', function () {
+      cam.user = false;
+      if (!camFit()) camReset();
+    });
+  }
+
   /* ── 도구 ────────────────────────────────────────── */
   function initTools() {
+    initCamTools();
     var stage = d.querySelector('.ck-stage');
     var model = $('st_t_model'), map = $('st_t_map'), walk = $('st_t_walk');
     var scene = stage && stage.querySelector('.ck-scene'), bmap = $('st_bigmap');
@@ -310,10 +427,21 @@
         state.cand = !!st.cand;
       }
       path(); stops(); side();
-      /* 장면이 바뀌면 카메라가 그 장소로 간다. 붐비는 곳이 없으면 전체를 본다. */
-      if (state.hot >= 0 && route[state.hot]) camTo(route[state.hot]);
+      /* 처음에는 세 정거장이 다 보여야 한다. 한 곳만 크게 잡으면
+         「여기서 저기로 간다」가 안 보인다. 한 번 맞춰 두고, 그 뒤
+         장면이 바뀔 때만 그 장소로 옮긴다. */
+      /* 첫 장면은 전체를 본다. 맞추기에 실패해도(판이 아직 없을 때)
+         한 번 지나간 것으로 친다 — 아니면 장면이 바뀌어도 카메라가
+         영영 안 움직인다. */
+      if (!camFitted) { camFitted = true; camFit(); }
+      else if (state.hot >= 0 && route[state.hot]) camTo(route[state.hot]);
       else if (!cam.user) camReset();
-      ready(function () { makeMini(); mapPins(); });
+      /* 판이 아직 안 들어왔으면 offsetWidth 가 0 이라 맞출 수 없다.
+         모형이 들어온 뒤에 한 번 더 시도한다. */
+      ready(function () {
+        makeMini(); mapPins();
+        camFit();
+      });
     }
   };
 
