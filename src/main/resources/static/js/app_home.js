@@ -124,6 +124,167 @@
            '</div>';
   }
 
+  /* ─────────────── 1-b. 들어오는 장면 ───────────────
+     선이 그어지고 → 판이 들어오고 → 지금 시각·날씨로 돌아온다.
+     핀의 %좌표를 그대로 쓰므로 모형이 바뀌어도 따라간다. */
+
+  var WX_KO = { clear: '맑음', cloudy: '흐림', rain: '비', snow: '눈' };
+
+  /* 기상청 하늘 상태를 우리 네 가지로 줄인다.
+     화면이 그릴 수 있는 것만 남긴다 — 「구름많음」과 「흐림」을
+     따로 그려 봐야 눈으로 구분이 안 된다. */
+  function wxKind(d) {
+    if (!d) return 'clear';
+    if (d.rainExpected) {
+      var t = (d.tempMax != null ? d.tempMax : 10);
+      return t <= 2 ? 'snow' : 'rain';
+    }
+    var s = String(d.sky || '');
+    if (s.indexOf('눈') >= 0) return 'snow';
+    if (s.indexOf('비') >= 0) return 'rain';
+    if (s.indexOf('흐') >= 0 || s.indexOf('구름') >= 0) return 'cloudy';
+    return 'clear';
+  }
+
+  function setWx(kind) {
+    document.documentElement.setAttribute('data-wx', kind || 'clear');
+  }
+
+  /* 지금 시각·지금 날씨를 적는다. 배경이 왜 이 색인지 말해 주지 않으면
+     그냥 색이 이상한 화면이 된다. */
+  function tellNow(kind, temp) {
+    var box = document.getElementById('st_wx');
+    if (!box) return;
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2, '0');
+    var mm = String(d.getMinutes()).padStart(2, '0');
+    box.hidden = false;
+    box.innerHTML =
+      '<b>' + hh + ':' + mm + '</b>' +
+      '<span>' + (WX_KO[kind] || '맑음') +
+        (temp != null ? ' ' + Math.round(temp) + '°' : '') + '</span>' +
+      '<i>지금 시각과 날씨로 배경색을 맞췄습니다</i>';
+  }
+
+  /* 오늘 이 지역 날씨. 못 받으면 맑음으로 두고 조용히 넘어간다 */
+  async function liveWeather() {
+    try {
+      var d = new Date();
+      var iso = d.getFullYear() + '-' +
+                String(d.getMonth() + 1).padStart(2, '0') + '-' +
+                String(d.getDate()).padStart(2, '0');
+      var r = await fetch('/api/maps/weather/day?region=' +
+                          encodeURIComponent(HERO_REGION) + '&date=' + iso);
+      var j = await r.json();
+      var w = (j && j.success && j.data) || null;
+      return { kind: wxKind(w), temp: w && w.tempMax };
+    } catch (e) {
+      return { kind: 'clear', temp: null };
+    }
+  }
+
+  /* 동선을 잇는 선 하나. 그리는 동안 dash 를 줄여 「그어지는」 것처럼 낸다 */
+  function trailSvg(route) {
+    var pts = route.filter(function (p) { return isFinite(p.x) && isFinite(p.y); });
+    if (pts.length < 2) return null;
+    var layer = $('ck_pinlayer');
+    if (!layer) return null;
+
+    var old = layer.querySelector('.ck-draw');
+    if (old) old.remove();
+
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'ck-draw');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    var line = document.createElementNS(ns, 'polyline');
+    line.setAttribute('points', pts.map(function (p) {
+      return p.x.toFixed(2) + ',' + p.y.toFixed(2);
+    }).join(' '));
+    svg.appendChild(line);
+    layer.insertBefore(svg, layer.firstChild);
+    return line;
+  }
+
+  /* 들어오는 장면 한 번. 이미 봤으면 다시 안 한다 —
+     같은 연출을 매번 보면 기다리는 시간이 된다. */
+  function intro(route, done) {
+    var layer = $('ck_pinlayer');
+    var reduce2 = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var seen = false;
+    try { seen = sessionStorage.getItem('ckIntroSeen') === '1'; } catch (e) {}
+
+    if (reduce2 || seen || !layer) { done(); return; }
+    try { sessionStorage.setItem('ckIntroSeen', '1'); } catch (e) {}
+
+    var line = trailSvg(route);
+    if (!line) { done(); return; }
+    skyHold = true;
+
+    var host = $('ck_hero');
+    if (host) host.classList.add('ck-intro');
+
+    /* 선 길이를 재서 그만큼 dash 로 덮었다가 걷는다 */
+    var len = 0;
+    try { len = line.getTotalLength(); } catch (e) { len = 260; }
+    line.style.strokeDasharray = len;
+    line.style.strokeDashoffset = len;
+
+    var DUR = 2600;
+    var t0 = performance.now();
+
+    /* 그리는 동안 하늘은 첫 정거장 시각에서 마지막 정거장 시각으로 */
+    var hFrom = 13.5, hTo = 17.5;
+    var m0 = /(\d{1,2}):(\d{2})/.exec(route[0] && route[0].note || '');
+    var m1 = /(\d{1,2}):(\d{2})/.exec(route[route.length - 1] &&
+                                      route[route.length - 1].note || '');
+    if (m0) hFrom = +m0[1] + (+m0[2]) / 60;
+    if (m1) hTo = +m1[1] + (+m1[2]) / 60;
+    if (hTo <= hFrom) hTo = hFrom + 3.5;
+
+    var pins = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+    for (var i = 0; i < pins.length; i++) pins[i].classList.add('ck-wait');
+
+    function step(now) {
+      var x = Math.min(1, (now - t0) / DUR);
+      var e = x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;   /* 부드럽게 */
+      line.style.strokeDashoffset = (len * (1 - e)).toFixed(1);
+
+      /* 선이 닿은 핀부터 선다 */
+      var reach = e * (pins.length - 1) + .35;
+      for (var k = 0; k < pins.length; k++) {
+        if (k <= reach) pins[k].classList.remove('ck-wait');
+      }
+
+      /* 하늘이 그 동선의 시각을 따라 흐른다 */
+      if (window.ckSky) {
+        var h = hFrom + (hTo - hFrom) * e;
+        var d = new Date();
+        d.setHours(Math.floor(h), Math.round((h % 1) * 60), 0, 0);
+        window.ckSky(d);
+      }
+
+      if (x < 1) requestAnimationFrame(step);
+      else {
+        for (var q = 0; q < pins.length; q++) pins[q].classList.remove('ck-wait');
+        if (host) host.classList.remove('ck-intro');
+        line.style.strokeDasharray = '';
+        line.style.strokeDashoffset = '';
+        skyHold = false;
+        if (window.ckSky) window.ckSky();      /* 지금 시각으로 되돌린다 */
+        done();
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* 밖에서 부를 수 있게 — 「다시 보기」 버튼이 쓴다 */
+  window.ckReplayIntro = function () {
+    try { sessionStorage.removeItem('ckIntroSeen'); } catch (e) {}
+    location.reload();
+  };
+
   /* ─────────────── 2. 나레이션 ───────────────
      세 장면을 순서대로 읽으면 이 제품이 하는 일이 한 문장씩 나온다.
        ① 오늘 순서  ② 어디가 얼마나 혼잡하고 언제 풀리는지  ③ 무엇을 바꿀 수 있는지
@@ -352,8 +513,11 @@
 
     fetch(HERO_JSON, { cache: 'no-cache' })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
-      .then(function (j) { route = (j && j.route) || []; alt = (j && j.alt) || null; })
-      .catch(function () { route = []; })
+      .then(function (j) {
+        route = (j && j.route) || []; alt = (j && j.alt) || null;
+        window.__ckRoute = route;        /* 들어오는 장면이 이걸 쓴다 */
+      })
+      .catch(function () { route = []; window.__ckRoute = []; })
       .then(liveCrowd)
       .then(function () {
         stage({ order: [0, 1, 2], hot: -1, cand: false });
@@ -588,11 +752,24 @@
      index.html 의 head 에서 한 번 정해지고, 여기서 계속 갱신한다.
      ckSky 가 oklab 에서 섞어 :root 에 넣는다. 탭이 숨으면 멈춘다. */
 
+  /* 혼잡도 눈금 — 접어 둔다. 늘 펼쳐 두면 화면 절반이 설명이 된다 */
+  function initCwKey() {
+    var b = $('st_cwkey_t'), body = $('st_cwkey_b');
+    if (!b || !body) return;
+    b.addEventListener('click', function () {
+      var on = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', String(!on));
+      body.hidden = on;
+    });
+  }
+
+  var skyHold = false;        /* 인트로가 하늘을 쥐고 있는 동안 참 */
+
   function initSky() {
     if (typeof window.ckSky !== 'function') return;
     var timer = null;
     function loop() {
-      window.ckSky();
+      if (!skyHold) window.ckSky();
       timer = setTimeout(loop, 60000);
     }
     loop();
@@ -708,8 +885,35 @@
     initMine();
     initSky();
     initCounters();
-    if ('requestIdleCallback' in window) requestIdleCallback(injectScene, { timeout: 1200 });
-    else setTimeout(injectScene, 200);
+    initCwKey();
+    /* 날씨는 먼저 걸어 둔다 — 인트로가 끝난 뒤에 지금 날씨로 남는다 */
+    liveWeather().then(function (w) {
+      setWx(w.kind);
+      window.__ckWx = w;
+    });
+
+    /* 모형이 들어온 뒤에 동선을 그린다. 판보다 모형이 먼저 있어야
+       선이 어디를 지나는지가 보인다. */
+    function afterScene() {
+      injectScene().then(function () {
+        var tries = 0;
+        (function wait() {
+          var r = window.__ckRoute;
+          /* 핀이 아직 안 선 상태면 그릴 대상이 없다. 20번(약 2초)까지 기다린다 */
+          var pinned = document.querySelectorAll('#ck_pinlayer .ck-pin').length;
+          if ((!r || !r.length || !pinned) && tries++ < 20) {
+            setTimeout(wait, 100);
+            return;
+          }
+          intro(r || [], function () {
+            var w = window.__ckWx || { kind: 'clear', temp: null };
+            tellNow(w.kind, w.temp);
+          });
+        })();
+      });
+    }
+    if ('requestIdleCallback' in window) requestIdleCallback(afterScene, { timeout: 1200 });
+    else setTimeout(afterScene, 200);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
