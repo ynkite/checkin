@@ -2914,10 +2914,19 @@ function showDay(day, btn) {
 }
 function switchMapTab(tab, btn) {
     document.querySelectorAll('.btn-map-act').forEach(b => b.classList.remove('on'));
-    btn.classList.add('on');
-    const mv=document.getElementById('mapView'), bv=document.getElementById('budgetView');
-    if(tab==='map'){mv.style.display='block';bv.style.display='none';}
-    else           {mv.style.display='none'; bv.style.display='block'; _loadMapBudget();}
+    if (btn) btn.classList.add('on');
+    const mv = document.getElementById('mapView');
+    const bv = document.getElementById('budgetView');
+    const dv = document.getElementById('modelView');      // 3D 모형
+    if (mv) mv.style.display = tab === 'map' ? 'block' : 'none';
+    if (bv) bv.style.display = tab === 'budget' ? 'block' : 'none';
+    if (dv) dv.style.display = tab === 'model' ? 'block' : 'none';
+    if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
+    if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
+    if (tab === 'map' && window._kakaoMap) {
+        /* 숨겼다 다시 보이면 타일 크기를 다시 잡아야 한다 */
+        setTimeout(function () { window._kakaoMap.relayout(); }, 30);
+    }
 }
 
 

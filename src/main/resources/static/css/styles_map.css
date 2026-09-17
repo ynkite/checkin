@@ -810,3 +810,58 @@
 }
 .mp-dp-2{ margin:5px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-2) }
 .mp-dp-2 b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+
+/* ── 3D 모형 보기 ───────────────────────────────────────────
+   같은 동선을 미니어처 위에. 장면·색·사람 수 규칙은 메인과 같은 것을 쓴다
+   (styles_massing.css). 여기서는 자리와 없을 때만 다룬다. */
+#modelView{
+  position:absolute; inset:0; z-index:8; overflow:hidden;
+  background:var(--page-2);
+}
+/* 장면과 핀은 같은 상자 안에서 같은 변형을 받는다.
+   따로 움직이면 핀이 건물에서 떨어진다. */
+#modelView .ck-frame,
+#modelView .ck-pins{
+  position:absolute; left:50%; top:50%; width:100%;
+  transform:translate(calc(-50% + var(--mv-x, 0px)), calc(-50% + var(--mv-y, 0px)))
+            scale(var(--mv-z, 1));
+  transform-origin:50% 50%;
+  transition:transform .6s cubic-bezier(.22,.61,.36,1);
+}
+#modelView .ck-frame{ aspect-ratio:auto }
+#modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
+#modelView .ck-pins .ck-pin{ pointer-events:auto }
+#modelView .ck-frame svg.mass{ width:100%; height:auto; display:block }
+
+/* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
+.mv-route{
+  position:absolute; inset:0; width:100%; height:100%;
+  overflow:visible; pointer-events:none;
+}
+.mv-route polyline{
+  fill:none; stroke:var(--sig); stroke-width:2.6;
+  stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:7 6; vector-effect:non-scaling-stroke;
+}
+
+.mv-legend{
+  position:absolute; left:16px; bottom:16px; z-index:5;
+  max-width:min(420px, calc(100% - 32px));
+  padding:11px 14px 12px; border-radius:12px;
+  background:var(--void-veil-2); box-shadow:var(--lift2);
+  word-break:keep-all;
+}
+.mv-legend b{ display:block; font-size:13px; font-weight:700; color:var(--ink) }
+.mv-legend span{ display:block; margin-top:3px; font-size:11px; line-height:1.5; color:var(--ink-3) }
+.mv-legend em{ display:block; margin-top:4px; font-size:11px; font-style:normal; color:var(--num) }
+
+/* 모형이 없는 지역 */
+.mv-none{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:6;
+  width:min(420px, calc(100% - 40px)); padding:26px 26px 24px;
+  border-radius:16px; background:var(--panel); box-shadow:var(--lift);
+  text-align:left; word-break:keep-all;
+}
+.mv-none-1{ margin:0; font-size:16px; font-weight:700; color:var(--ink) }
+.mv-none-2{ margin:8px 0 0; font-size:13px; line-height:1.66; color:var(--ink-2) }
+.mv-none .mp-opt{ margin-top:16px; width:100% }

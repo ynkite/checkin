@@ -252,6 +252,223 @@
     }
 
     /* ════════════════════════════════════════════════════════
+     *  3D 모형 — 같은 동선을 미니어처 위에.
+     *
+     *  축측투영은 평면의 어파인 사상이다. 프리렌더가 함께 낸 앵커
+     *  세 곳(이름·위경도·화면 %)에서 계수를 풀어 mass_haeundae.json 의
+     *  fit 에 적어 뒀다. 어느 좌표든 그 식으로 얹는다.
+     *
+     *  모형이 있는 지역 밖이면 없다고 말한다. 아무 데나 얹으면 엉뚱한
+     *  자리에 핀이 선다.
+     * ════════════════════════════════════════════════════════ */
+
+    var MV_SCENES = [
+      { key: 'haeundae', label: '부산 해운대',
+        svg: '/img/mass_haeundae.svg', json: '/img/mass_haeundae.json' }
+    ];
+    var _mvLoaded = null;      /* {key, meta} */
+
+    function _mvInBox(b, p) {
+      return p.lat >= b.s && p.lat <= b.n && p.lng >= b.w && p.lng <= b.e;
+    }
+
+    function _mvProject(fit, lat, lng) {
+      return { x: fit.a * lng + fit.b * lat + fit.c,
+               y: fit.d * lng + fit.e * lat + fit.f };
+    }
+
+    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것 */
+    function _mvStops() {
+      var out = [];
+      (MAP_ITINERARY || []).forEach(function (d) {
+        (d.places || []).forEach(function (p) {
+          if (p.transit || !p.name) return;
+          if (!isFinite(p.lat) || !isFinite(p.lng)) return;
+          out.push(p);
+        });
+      });
+      return out;
+    }
+
+    async function _mvOpen() {
+      var box = document.getElementById('modelView');
+      var none = document.getElementById('mv_none');
+      var legend = document.getElementById('mv_legend');
+      if (!box) return;
+
+      var stops = _mvStops();
+      if (!stops.length) {
+        _mvSayNone('이 경로에는 좌표가 있는 장소가 없습니다.');
+        return;
+      }
+
+      /* 어느 장면이 이 동선을 담는가 — 절반 이상이 들어가야 쓴다 */
+      var pick = null;
+      for (var i = 0; i < MV_SCENES.length; i++) {
+        var sc = MV_SCENES[i];
+        var meta = sc.meta || (sc.meta = await _mvMeta(sc));
+        if (!meta || !meta.bbox || !meta.fit) continue;
+        /* 화면에 실제로 들어오는지로 센다. bbox 는 장면을 만든 범위일 뿐이라
+           경계 바로 밖의 좌표도 모형 위에는 멀쩡히 얹힌다 — 미포가 그렇다. */
+        var on = stops.filter(function (p) {
+          var q = _mvProject(meta.fit, p.lat, p.lng);
+          return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
+        });
+        if (on.length >= Math.ceil(stops.length / 2)) { pick = { sc: sc, meta: meta, inside: on }; break; }
+      }
+
+      if (!pick) {
+        _mvSayNone('이 지역은 아직 3D 모형이 없습니다.',
+                   MV_SCENES.map(function (s) { return s.label; }).join(' · '));
+        return;
+      }
+
+      if (none) none.hidden = true;
+      await _mvDrawScene(pick.sc);
+      _mvFill(pick.meta);
+      _mvDrawPins(pick.meta, stops);
+
+      if (legend) {
+        legend.hidden = false;
+        legend.innerHTML =
+          '<b>' + _mpEsc(pick.sc.label) + '</b>' +
+          '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
+          (pick.inside.length < stops.length
+            ? '<em>' + (stops.length - pick.inside.length) + '곳은 이 모형 밖이라 빠졌습니다</em>' : '');
+      }
+    }
+
+    function _mvSayNone(msg, extra) {
+      var none = document.getElementById('mv_none');
+      var legend = document.getElementById('mv_legend');
+      if (legend) legend.hidden = true;
+      if (!none) return;
+      none.hidden = false;
+      none.innerHTML = '<p class="mv-none-1">' + _mpEsc(msg) + '</p>' +
+        (extra ? '<p class="mv-none-2">지금 모형이 있는 곳 — ' + _mpEsc(extra) +
+                 '. 다른 지역은 준비하는 대로 올립니다.</p>' : '') +
+        '<button type="button" class="mp-opt" onclick="switchMapTab(\'map\', document.getElementById(\'mapTabMap\'))">' +
+        '<b>지도로 보기</b><span>실제 지도에서 확인</span></button>';
+    }
+
+    async function _mvMeta(sc) {
+      try {
+        var r = await fetch(sc.json);
+        return r.ok ? await r.json() : null;
+      } catch (e) { return null; }
+    }
+
+    async function _mvDrawScene(sc) {
+      var frame = document.getElementById('mv_frame');
+      if (!frame || _mvLoaded === sc.key) return;
+      try {
+        var r = await fetch(sc.svg, { cache: 'force-cache' });
+        frame.innerHTML = await r.text();
+        _mvLoaded = sc.key;
+      } catch (e) {
+        _mvSayNone('모형을 불러오지 못했습니다.');
+      }
+    }
+
+    /* 장면이 보기 상자를 덮게 한다. width:100% 만 주면 비율이 달라
+       아래가 빈다 (실측 — 모형 ar 1.545, 상자 ar 1.44). object-fit:cover 와
+       같은 계산을 픽셀로 한다. 핀 층도 같은 크기를 받아야 자리가 맞는다. */
+    function _mvFill(meta) {
+      var box = document.getElementById('modelView');
+      var frame = document.getElementById('mv_frame');
+      var layer = document.getElementById('mv_pins');
+      if (!box || !frame || !meta || !meta.ar) return;
+      var w = Math.max(box.clientWidth, box.clientHeight * meta.ar);
+      var h = w / meta.ar;
+      frame.style.width = w + 'px';
+      frame.style.height = h + 'px';
+      if (layer) { layer.style.width = w + 'px'; layer.style.height = h + 'px'; }
+    }
+
+    /* 창 크기가 바뀌면 다시 맞춘다 */
+    window.addEventListener('resize', function () {
+      if (document.getElementById('modelView') &&
+          document.getElementById('modelView').style.display !== 'none' &&
+          window.__mvMeta) _mvFill(window.__mvMeta);
+    });
+
+    function _mvDrawPins(meta, stops) {
+      window.__mvMeta = meta;
+      var layer = document.getElementById('mv_pins');
+      var scene = document.getElementById('modelView');
+      if (!layer) return;
+
+      var pts = stops.map(function (p) {
+        var q = _mvProject(meta.fit, p.lat, p.lng);
+        return { p: p, x: q.x, y: q.y,
+                 ok: q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104 };
+      }).filter(function (q) { return q.ok; });
+
+      /* 동선 — 정거장을 순서대로 잇는다 */
+      var line = '';
+      if (pts.length > 1) {
+        line = '<svg class="mv-route" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+          '<polyline points="' +
+          pts.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') +
+          '" /></svg>';
+      }
+
+      layer.innerHTML = line + pts.map(function (q, i) {
+        var f = _mpCrowd[q.p.name];
+        var chip = '';
+        if (f && f.rate != null && typeof crowd === 'function') {
+          var g = crowd.of(f);
+          if (g) chip = '<i class="ck-cw cw-' + g.key + '">' + g.idx + '</i>';
+        }
+        var right = q.x > 55;
+        return '<div class="ck-pin' + (right ? ' ck-lbl-left' : '') +
+               '" style="left:' + q.x.toFixed(2) + '%;top:' + q.y.toFixed(2) + '%">' +
+               '<b class="ck-no">' + (i + 1) + '</b>' +
+               '<span class="ck-bub">' + _mpEsc(q.p.name) +
+               (q.p.time ? '<em>' + _mpEsc(q.p.time) + '</em>' : '') + chip + '</span></div>';
+      }).join('');
+
+      /* 정거장이 모인 자리로 카메라를 옮긴다. 장면 전체를 그대로 두면
+         동선이 구석에 몰려 작게 보인다. */
+      var frame = document.getElementById('mv_frame');
+      var box = document.getElementById('modelView');
+      if (frame && box && pts.length) {
+        var xs = pts.map(function (q) { return q.x; });
+        var ys = pts.map(function (q) { return q.y; });
+        var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+        var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+        var pad = 12;
+        var w = Math.max(16, x1 - x0 + pad * 2), h = Math.max(16, y1 - y0 + pad * 2);
+        /* 정거장이 화면의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다 */
+        var z = Math.min(2.2, Math.max(1.12, Math.min(100 / w, 100 / h)));
+
+        /* 밀 수 있는 만큼만 민다. 더 밀면 모형이 끝나고 바닥색이 드러난다 —
+           메인 무대에서 겪은 것과 같은 자리다(왼쪽 281px 이 크림이었다). */
+        var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
+        var maxX = Math.max(0, (fw * z - box.clientWidth) / 2 / fw * 100);
+        var maxY = Math.max(0, (fh * z - box.clientHeight) / 2 / fh * 100);
+        var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+        var px = Math.max(-maxX, Math.min(maxX, (50 - cx) * z));
+        var py = Math.max(-maxY, Math.min(maxY, (50 - cy) * z));
+
+        [frame, document.getElementById('mv_pins')].forEach(function (el) {
+          if (!el) return;
+          el.style.setProperty('--mv-z', z.toFixed(3));
+          el.style.setProperty('--mv-x', px.toFixed(2) + '%');
+          el.style.setProperty('--mv-y', py.toFixed(2) + '%');
+        });
+      }
+
+      /* 사람 수는 이 동선에서 가장 붐비는 곳을 따른다 */
+      var worst = 0;
+      stops.forEach(function (p) {
+        var f = _mpCrowd[p.name];
+        if (f && f.rate != null && f.rate > worst) worst = f.rate;
+      });
+      if (scene && worst > 0) scene.style.setProperty('--cw', (worst / 100).toFixed(3));
+    }
+
+    /* ════════════════════════════════════════════════════════
      *  이동시간 — 출발지에서 순서대로.
      *
      *  동선의 「도보 12분」은 AI 가 쓴 글자다. 신호도 교통량도 모른다.
@@ -1774,6 +1991,10 @@
       // 기본값은 숨김 처리
       alertBanner.style.display = 'none';
 
+      /* 저장 전이거나 공유 링크로 들어오면 여행 번호가 없다.
+         그대로 부르면 /api/trips/null 로 나가 400 이 쌓인다(실측 12회). */
+      if (!tripId) return;
+
       try {
         // 1. 현재 플랜의 행정구역(목적지) 정보 가져오기
         const tripRes = await api.get('/api/trips/' + tripId);
@@ -3041,6 +3262,7 @@
         </div>
         <div class="map-acts">
           <button class="btn-map-act on" id="mapTabMap" onclick="switchMapTab('map',this)">지도</button>
+          <button class="btn-map-act" id="mapTabModel" onclick="switchMapTab('model',this)">3D 모형</button>
           <button class="btn-map-act" id="mapTabBudget" onclick="switchMapTab('budget',this)">예산</button>
           <button class="btn-map-act" onclick="openShareModal()">공유</button>
         </div>
@@ -3056,6 +3278,15 @@
             <div class="wa-cta">대체 일정 보기</div>
           </div>
         </div>
+        <!-- 3D 모형 — 같은 동선을 미니어처 위에 올린다.
+             장면·색·사람 수는 메인과 같은 규칙(styles_massing.css)을 쓴다 -->
+        <div id="modelView" class="ck-scene mv-scene" style="display:none">
+          <div class="ck-frame" id="mv_frame"></div>
+          <div class="ck-pins" id="mv_pins"></div>
+          <div class="mv-none" id="mv_none" hidden></div>
+          <div class="mv-legend" id="mv_legend" hidden></div>
+        </div>
+
         <!-- Budget view -->
         <div id="budgetView" style="display:none;position:absolute;inset:0;overflow-y:auto;z-index:8">
           <div style="max-width:760px;margin:0 auto">
