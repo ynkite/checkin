@@ -7,6 +7,7 @@ import idusw.sbb.checkin.domain.route.engine.Candidate;
 import idusw.sbb.checkin.domain.route.engine.CandidateCategory;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -163,13 +164,40 @@ class CandidateAdapterTest {
         assertThat(candidates).extracting(Candidate::dwellMinutes).containsExactly(60, 40, 90);
     }
 
+    /**
+     * 결정 15 : 카카오가 영업시간을 안 주므로 어댑터가 카테고리 기본값을 채운다. 비워 두면
+     * 엔진의 "openTime == null → 상시 영업" 계약 때문에 19:30 에 실내 관광지가 배치된다.
+     */
     @Test
-    void 영업시간_정보가_없으면_상시_영업으로_둔다() {
+    void 카테고리_기본_영업시간을_채운다() {
+        Map<String, List<ObjectNode>> nodes = new LinkedHashMap<>();
+        nodes.put("food", List.of(node("횟집", 37.80, 128.91, null, null)));
+        nodes.put("cafe", List.of(node("카페", 37.79, 128.90, null, null)));
+        nodes.put("tour", List.of(node("해변", 37.81, 128.92, null, null)));
+
+        List<Candidate> candidates = new CandidateAdapter().toCandidates(nodes);
+
+        assertThat(candidates).extracting(Candidate::openTime)
+                .containsExactly(LocalTime.of(11, 0), LocalTime.of(10, 0), LocalTime.of(9, 0));
+        assertThat(candidates).extracting(Candidate::closeTime)
+                .containsExactly(LocalTime.of(21, 0), LocalTime.of(21, 0), LocalTime.of(18, 0));
+    }
+
+    @Test
+    void 관광지는_저녁_활동_창과_겹치지_않는다() {
+        Candidate tour = new CandidateAdapter()
+                .toCandidates(byType("tour", node("오죽헌", 37.80, 128.91, null, null))).get(0);
+
+        assertThat(tour.isOpenAt(java.time.DayOfWeek.SATURDAY, LocalTime.of(19, 30))).isFalse();
+        assertThat(tour.isOpenAt(java.time.DayOfWeek.SATURDAY, LocalTime.of(13, 30))).isTrue();
+    }
+
+    @Test
+    void 휴무일은_여전히_비어_있다() {
+        // 카카오도 관광공사도 휴무일을 안 주고, 엔진도 달력 날짜를 몰라 판정하지 않는다
         List<Candidate> candidates = new CandidateAdapter()
                 .toCandidates(byType("tour", node("해변", 37.80, 128.91, null, null)));
 
-        assertThat(candidates.get(0).openTime()).isNull();
-        assertThat(candidates.get(0).closeTime()).isNull();
         assertThat(candidates.get(0).closedDays()).isEmpty();
     }
 
