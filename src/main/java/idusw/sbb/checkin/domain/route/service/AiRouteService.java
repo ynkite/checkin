@@ -60,14 +60,15 @@ public class AiRouteService {
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRouteService.class);
-
     /**
      * 동선 엔진 경로 사용 여부. 기본값 false — 켜는 건 {@code application-local.properties} 에서만 한다
      * ({@code application.properties} 는 skip-worktree 라 팀에 안 나간다).
      */
     @org.springframework.beans.factory.annotation.Value("${route.engine.enabled:false}")
     private boolean routeEngineEnabled;
+
+    private final idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler routeEngineAssembler =
+            new idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler();
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
@@ -487,7 +488,6 @@ public class AiRouteService {
         return fixedJson;
     }
 
-    @Transactional
     /**
      * 동선의 장소마다 그 날짜의 관광공사 집중률을 적어 둔다.
      *
@@ -554,6 +554,17 @@ public class AiRouteService {
         }
     }
 
+    /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
+       하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
+       옛 동선으로 돌아가던 원인이다.
+
+       주의 — 이 애너테이션은 컨트롤러가 이 메서드를 직접 부를 때만 듣는다.
+       finalizeRoute 에서 들어오는 경로는 같은 빈 안의 호출이라 프록시를
+       안 타므로, 그쪽에도 따로 붙어 있어야 한다.
+       애너테이션과 메서드 선언 사이에 다른 선언을 끼워 넣지 말 것 —
+       그러면 애너테이션이 그 선언으로 옮겨 붙고, private 이면 조용히 죽는다.
+       AiRouteServiceTransactionGuardTest 가 이 자리를 지킨다. */
+    @Transactional
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -1338,7 +1349,12 @@ public class AiRouteService {
      *   2) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
      *   Claude 검증/교체는 새 장소를 지어내 환각을 유발하므로 생성 흐름에서 쓰지 않는다.
      *   @return 사용자요청인데 먼 장소(프론트 알림용 over50)
+     *
+     *   ★쓰기 트랜잭션이어야 한다. 이 안에서 부르는 saveAiRouteToDb·postProcessRoute 는
+     *     같은 빈 내부 호출(self-invocation)이라 프록시를 안 타고, 그쪽 @Transactional 이
+     *     적용되지 않는다. 여기가 readOnly 면 그 체인의 저장이 통째로 버려진다.
      */
+    @Transactional
     public java.util.List<String> finalizeRoute(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
@@ -2103,6 +2119,17 @@ public class AiRouteService {
             // ★카카오에서 실존 장소를 직접 수집(환각 차단). AI 후보(candidatesJson)는 더 이상 쓰지 않는다.
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
                     collectCandidatesFromKakao(plan, form, userRequested);
+
+            // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
+            if (routeEngineEnabled) {
+                try {
+                    return routeEngineAssembler.assemble(plan, form, filtered, userRequested);
+                } catch (RuntimeException e) {
+                    log.error("[route.engine] tripId={} 실패 지점=assembleCandidates/engine"
+                            + " — 기존 경로로 폴백한다", tripId, e);
+                }
+            }
+
             return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
             System.err.println("[assembleCandidates] 실패: " + e.getMessage());

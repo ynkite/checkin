@@ -31,6 +31,9 @@ import java.math.BigDecimal;
 
 @Component
 @RequiredArgsConstructor
+/* 확정 상태값은 FIXED 다. CONFIRMED 는 옛 이름이고 지금 코드에서
+   판정하는 곳이 없다 — TravelPlanServiceImpl 이 FIXED / DRAFT 만 받는다.
+   그래서 시드가 CONFIRMED 로 들어가면 「내 여행」에 안 떴다. */
 public class DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
@@ -72,25 +75,25 @@ public class DataInitializer implements CommandLineRunner {
                 .user(admin).title("제주 에메랄드 해안 여름 바캉스").destination("제주")
                 .startDate(LocalDate.now().plusMonths(1))
                 .endDate(LocalDate.now().plusMonths(1).plusDays(3))
-                .isPublic(1).status("CONFIRMED").build());
+                .isPublic(1).status("FIXED").build());
 
         TravelPlan busanPlan = travelPlanRepository.save(TravelPlan.builder()
                 .user(admin).title("부산 해운대 서핑 & 야경 투어").destination("부산")
                 .startDate(LocalDate.now().plusMonths(1))
                 .endDate(LocalDate.now().plusMonths(1).plusDays(2))
-                .isPublic(1).status("CONFIRMED").build());
+                .isPublic(1).status("FIXED").build());
 
         TravelPlan gyeongjuPlan = travelPlanRepository.save(TravelPlan.builder()
                 .user(admin).title("경주 역사 문화 기행 2박3일").destination("경주")
                 .startDate(LocalDate.now().plusMonths(2))
                 .endDate(LocalDate.now().plusMonths(2).plusDays(2))
-                .isPublic(1).status("CONFIRMED").build());
+                .isPublic(1).status("FIXED").build());
 
         TravelPlan gangwonPlan = travelPlanRepository.save(TravelPlan.builder()
                 .user(admin).title("강원 자연 힐링 트레킹 코스").destination("강원")
                 .startDate(LocalDate.now().plusMonths(2))
                 .endDate(LocalDate.now().plusMonths(2).plusDays(2))
-                .isPublic(1).status("CONFIRMED").build());
+                .isPublic(1).status("FIXED").build());
         log.info("관리자 추천 경로(TravelPlan) 4건이 생성되었습니다.");
 
         // ── 관리자 플랜 routeJson + 가계부 예상 비용 ──
@@ -300,7 +303,7 @@ public class DataInitializer implements CommandLineRunner {
                     .destination(planData[i][1])
                     .startDate(LocalDate.now().minusDays(30 - i))
                     .endDate(LocalDate.now().minusDays(28 - i))
-                    .isPublic(1).status("CONFIRMED").build());
+                    .isPublic(1).status("FIXED").build());
         }
         log.info("유저 TravelPlan 20건이 생성되었습니다.");
 

@@ -91,6 +91,16 @@ public final class BandSplitter {
      */
     public List<DailyCandidatePool> split(Anchor anchor, RouteConstraints constraints,
                                            List<Candidate> candidates, int totalDays) {
+        return split(anchor, constraints, candidates, totalDays, Set.of());
+    }
+
+    /**
+     * @param requiredIds 반드시 포함해야 하는 후보 id (사용자가 직접 요청한 장소). 36km 가드와 마지막 날
+     *                    컷에서 면제한다 — 뒤 단계 {@code postProcessRoute} 도 사용자 요청 장소는
+     *                    거리로 지우지 않으니 기준이 같다.
+     */
+    public List<DailyCandidatePool> split(Anchor anchor, RouteConstraints constraints,
+                                           List<Candidate> candidates, int totalDays, Set<String> requiredIds) {
         if (constraints == null) {
             throw new IllegalArgumentException("constraints must not be null");
         }
@@ -103,14 +113,15 @@ public final class BandSplitter {
 
         GeoPoint anchorPoint = anchor != null ? anchor.location() : constraints.arrivalPoint();
         List<Candidate> withinGuard = candidates.stream()
-                .filter(c -> anchorPoint.distanceKmTo(c.location()) <= MAX_RETURN_DISTANCE_KM)
+                .filter(c -> requiredIds.contains(c.id())
+                        || anchorPoint.distanceKmTo(c.location()) <= MAX_RETURN_DISTANCE_KM)
                 .toList();
         Set<String> used = new HashSet<>();
 
         // 마지막 날을 먼저 확보한다 (결정 12). 귀가 방향은 거리 구간이 아니라 우회비용 술어라,
         // 밴드를 먼저 자르면 숙소 근처의 "가는 길" 후보가 근거리 밴드에 묶여 영영 안 나온다.
         DailyCandidatePool lastDay = totalDays > 1
-                ? buildLastDay(withinGuard, totalDays - 1, constraints, used, anchorPoint)
+                ? buildLastDay(withinGuard, totalDays - 1, constraints, used, anchorPoint, requiredIds)
                 : null;
 
         Map<DistanceBand, List<Candidate>> bands = classify(withoutUsed(withinGuard, used), anchorPoint);
@@ -253,8 +264,8 @@ public final class BandSplitter {
      * <p>임계 이내가 모자라면 완화 폴백(결정 5-(4))으로 우회비용 오름차순으로 채운다 — 그때는
      * 방향의 질 자체가 희소 자원이라 기준이 다르다.
      */
-    private DailyCandidatePool buildLastDay(List<Candidate> candidates, int dayIndex,
-                                             RouteConstraints constraints, Set<String> used, GeoPoint anchorPoint) {
+    private DailyCandidatePool buildLastDay(List<Candidate> candidates, int dayIndex, RouteConstraints constraints,
+                                             Set<String> used, GeoPoint anchorPoint, Set<String> requiredIds) {
         double maxDetourCost = resolveMaxDetourCost(anchorPoint, constraints);
 
         List<Candidate> withinThreshold = candidates.stream()
@@ -273,7 +284,11 @@ public final class BandSplitter {
                         .toList()
                 : withinThreshold;
 
-        List<Candidate> lastDayPool = ranked.subList(0, Math.min(minPerDay, ranked.size()));
+        // 필수 후보는 컷에서 먼저 자리를 잡는다 — 여기서 밀리면 그 날 풀에 아예 안 들어간다.
+        List<Candidate> prioritized = ranked.stream()
+                .sorted(Comparator.comparingInt(c -> requiredIds.contains(c.id()) ? 0 : 1))
+                .toList();
+        List<Candidate> lastDayPool = prioritized.subList(0, Math.min(minPerDay, prioritized.size()));
 
         markUsed(used, lastDayPool);
         return new DailyCandidatePool(dayIndex, DistanceBand.RETURN, lastDayPool, relaxed);

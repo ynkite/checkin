@@ -502,24 +502,12 @@
 
   <div class="page active" id="page-main">
     <div class="ck-home">
-      <section class="ck-hero ck-stage" id="ck_hero">
-        <!-- 무대. 기본은 3D 모형, 「지도」를 누르면 카카오맵으로 바뀐다.
-             app_home.js 가 mass_hero.svg 를 #ck_scene 에 넣는다. -->
-        <div class="ck-scene" aria-hidden="true">
-          <div class="ck-frame" id="ck_frame">
-            <div id="ck_scene"></div>
-            <!-- 날씨. data-wx 가 rain·snow·cloudy 일 때만 보인다 -->
-            <div class="ck-wx" id="ck_wx" aria-hidden="true"></div>
-            <div class="ck-pins" id="ck_pinlayer"></div>
-          </div>
-        </div>
-        <div class="st-bigmap" id="st_bigmap" hidden></div>
-
+      <section class="ck-hero ck-stage" id="ck_hero" aria-labelledby="ck_main_title">
         <!-- 왼쪽 위 — 지금 무엇을 보고 있나 -->
-        <div class="st-tl">
+        <div class="st-tl" tabindex="0" role="region" aria-label="여행 소개와 대응 방법">
           <div class="fl st-head">
-            <span class="fl-eye">부산 2박 3일 · 1일차 오후</span>
-            <h1 class="fl-ttl fl-ttl-lg st-h1">줄 서려고<br>간 건 아니잖아요</h1>
+            <span class="fl-eye">부산 2박 3일 · 동선 예시</span>
+            <h1 class="fl-ttl fl-ttl-lg st-h1" id="ck_main_title">줄 서려고<br>간 건 아니잖아요</h1>
             <p class="fl-sub">붐비는 곳을 실시간으로 보고, 그 자리에서 순서를 다시 잡습니다.</p>
             <p class="fl-path" id="st_path"></p>
           </div>
@@ -536,112 +524,122 @@
               <i id="ck_p1"><b></b></i><i id="ck_p2"><b></b></i><i id="ck_p3"><b></b></i>
             </div>
             <p class="st-line" id="ck_tl">부산 첫날 오후 일정입니다</p>
-            <p class="fl-tx" id="ck_tw">미포에서 출발해 해수욕장, 동백섬 순으로 갈 계획이었습니다.</p>
+            <p class="fl-tx" id="ck_tw">해운대 해수욕장, 남포동 BIFF광장, 감천문화마을을 잇는 동선입니다.</p>
             <!-- 혼잡이 잡히면 열린다. 하나로 정해 주지 않고 세 갈래를 준다 -->
-            <div class="ck-opts" id="ck_opts" hidden>
-              <button type="button" class="ck-opt" data-o="0" aria-pressed="true">
-                <b>사람이 몰려서</b>
-                <span>지금 95예요. 해 질 때 다시 오면 40분 덜 서요</span>
-                <em>줄 40분 덜 섬<i>돈은 그대로</i></em>
-              </button>
-              <button type="button" class="ck-opt" data-o="1" aria-pressed="false">
-                <b>비가 와서</b>
-                <span>해수욕장 대신 실내로. 전통시장은 아케이드예요</span>
-                <em>걸어서 9분<i>비 안 맞고</i></em>
-              </button>
-              <button type="button" class="ck-opt" data-o="2" aria-pressed="false">
-                <b>길이 막혀서</b>
-                <span>해변길 대신 안쪽 도로. 티맵이 지금 재고 있어요</span>
-                <em>11분 빠름<i>1.2km 더</i></em>
-              </button>
+            <!-- 갈래. 문구와 바꿀 내용은 mass_hero.json 의 fixes 가 갖는다.
+                 저절로 돌아가고, 누르면 그 자리에 선다 -->
+            <div class="ck-opts" id="ck_opts" hidden></div>
+          </div>
+        </div>
+
+        <div class="st-viewport">
+          <!-- 무대. 기본은 3D 모형, 「지도」를 누르면 카카오맵으로 바뀐다.
+               app_home.js 가 mass_hero.svg 를 #ck_scene 에 넣는다. -->
+          <div class="ck-scene" aria-hidden="true">
+            <div class="ck-frame" id="ck_frame">
+              <div id="ck_scene"></div>
+              <!-- 날씨. data-wx 가 rain·snow·cloudy 일 때만 보인다 -->
+              <div class="ck-wx" id="ck_wx" aria-hidden="true"></div>
+              <div class="ck-pins" id="ck_pinlayer"></div>
+            </div>
+          </div>
+          <div class="st-bigmap" id="st_bigmap" hidden></div>
+          <!-- 연출 건너뛰기. 연출이 도는 동안만 보인다 (CSS 가 판단) -->
+          <button type="button" class="ck-skipin" id="ck_skipin">연출 건너뛰기</button>
+          <!-- 오른쪽 위 — 무대를 바꾸는 도구. 전부 실제로 동작한다 -->
+          <div class="fl-tools st-tools">
+            <button type="button" class="fl-tool" id="st_t_model" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 8v8l-9 5-9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>모형
+            </button>
+            <button type="button" class="fl-tool" id="st_t_map" aria-pressed="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>지도
+            </button>
+            <button type="button" class="fl-tool" id="st_t_walk" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v5l-3 8M12 13l3 8M8 11l8-1"/></svg>사람 움직임
+            </button>
+          </div>
+          <!-- 오른쪽 아래 — 시점 -->
+          <div class="fl-tools st-view">
+            <button type="button" class="fl-tool" id="st_v_in" aria-label="확대">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>
+            </button>
+            <button type="button" class="fl-tool" id="st_v_out" aria-label="축소">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>
+            </button>
+            <button type="button" class="fl-tool" id="st_v_reset">시점 초기화</button>
+          </div>
+        </div>
+
+
+        <!-- 갈래 자막. 무엇이 왜 바뀌는지 화면 안에서 말한다.
+             모형 틀 안이 아니라 무대 직속이다 — 틀 안에 두면 지도로
+             넘어갈 때 같이 숨는다. 「길이 막혀서」는 지도에서 보여 준다. -->
+        <div class="ck-fix" id="ck_fix" hidden aria-live="polite"></div>
+
+        <div class="st-rail">
+          <!-- 오른쪽 판 — 오늘 순서 · 지금 상황 -->
+          <aside class="fl st-side" id="st_side" tabindex="0" aria-label="오늘의 일정과 집중률">
+            <div class="st-sidehd">
+              <b class="fl-no">01<em>일차</em></b>
+              <span id="st_when">불러오는 중<i>부산 해운대</i></span>
+            </div>
+            <div class="st-tabs">
+              <button type="button" class="fl-pill on" id="st_tab_day" aria-pressed="true">오늘 순서</button>
+              <button type="button" class="fl-pill" id="st_tab_now" aria-pressed="false">지금 상황</button>
+            </div>
+
+            <div id="st_pane_day">
+              <dl class="fl-rows" id="st_plan"></dl>
+            </div>
+
+            <div id="st_pane_now" hidden>
+              <dl class="fl-rows" id="st_crowd"></dl>
+              <div class="fl-links">
+                <a href="https://datalab.visitkorea.or.kr" target="_blank" rel="noopener">한국관광 데이터랩</a>
+              </div>
+            </div>
+          </aside>
+          <!-- 오른쪽 아래 — 작은 실제 지도 -->
+          <div class="fl fl-tight fl-mini st-mini" id="st_mini">
+            <div class="fl-mini-hd">
+              <b id="st_mini_ttl">지금 위치 지도</b>
+              <span class="fl-mz">
+                <button type="button" id="st_m_out" aria-label="축소">−</button>
+                <button type="button" id="st_m_in" aria-label="확대">+</button>
+              </span>
+              <button type="button" id="st_fold" aria-expanded="true">접기</button>
+            </div>
+            <div class="fl-mini-map" id="st_minimap"></div>
+          </div>
+        </div>
+
+
+        <div class="st-meta">
+          <!-- 지금 시각·날씨. 배경이 왜 이 색인지 여기서 말한다 -->
+          <div class="st-wx" id="st_wx" hidden></div>
+          <!-- 혼잡도 눈금 — 숫자만으로는 얼마나 많은 건지 모른다 -->
+          <div class="st-cwkey" id="st_cwkey">
+            <button type="button" class="st-cwkey-t" id="st_cwkey_t"
+                    aria-expanded="false" aria-controls="st_cwkey_b">
+              혼잡도 <b>0 – 100</b><span>숫자가 클수록 붐빕니다</span>
+            </button>
+            <div class="st-cwkey-b" id="st_cwkey_b" hidden>
+              <div class="st-cwrow cw-vlow">
+                <i>0–34</i><b>매우 한적</b><span>줄이 없습니다. 아무 자리나 앉습니다</span></div>
+              <div class="st-cwrow cw-low">
+                <i>35–51</i><b>한적</b><span>앞에 서너 팀. 기다릴 것도 없습니다</span></div>
+              <div class="st-cwrow cw-mid">
+                <i>52–69</i><b>정상</b><span>평소 주말쯤. 자리는 있습니다</span></div>
+              <div class="st-cwrow cw-high">
+                <i>70–84</i><b>혼잡</b><span>식당은 20분쯤 기다립니다. 주차는 한참 돕니다</span></div>
+              <div class="st-cwrow cw-vhigh">
+                <i>85–100</i><b>매우 혼잡</b><span>돗자리 깔 자리를 찾아 한참 걷습니다</span></div>
+              <p class="st-cwkey-n">한국관광공사 관광지 집중률 예측입니다.
+                전국 1,770건을 재서 다섯 단계로 나눴습니다.</p>
             </div>
           </div>
         </div>
 
-        <!-- 오른쪽 위 — 무대를 바꾸는 도구. 전부 실제로 동작한다 -->
-        <div class="fl-tools st-tools">
-          <button type="button" class="fl-tool" id="st_t_model" aria-pressed="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 8v8l-9 5-9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>모형
-          </button>
-          <button type="button" class="fl-tool" id="st_t_map" aria-pressed="false">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3z"/><path d="M9 3v15M15 6v15"/></svg>지도
-          </button>
-          <button type="button" class="fl-tool" id="st_t_walk" aria-pressed="true">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2"/><path d="M12 8v5l-3 8M12 13l3 8M8 11l8-1"/></svg>사람 움직임
-          </button>
-        </div>
-
-        <!-- 왼쪽 아래 — 작은 지도. 큰 무대와 서로 바꿔 볼 수 있다 -->
-        <div class="fl fl-tight fl-mini st-mini" id="st_mini">
-          <div class="fl-mini-hd">
-            <b id="st_mini_ttl">지금 위치 지도</b>
-            <span class="fl-mz">
-              <button type="button" id="st_m_out" aria-label="축소">−</button>
-              <button type="button" id="st_m_in" aria-label="확대">+</button>
-            </span>
-            <button type="button" id="st_fold" aria-expanded="true">접기</button>
-          </div>
-          <div class="fl-mini-map" id="st_minimap"></div>
-        </div>
-
-        <!-- 오른쪽 아래 — 시점 -->
-        <div class="fl-tools st-view">
-          <button type="button" class="fl-tool" id="st_v_in" aria-label="확대">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6v12M6 12h12"/></svg>
-          </button>
-          <button type="button" class="fl-tool" id="st_v_out" aria-label="축소">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg>
-          </button>
-          <button type="button" class="fl-tool" id="st_v_reset">시점 초기화</button>
-        </div>
-
-        <!-- 오른쪽 판 — 오늘 순서 · 지금 상황 -->
-        <aside class="fl st-side" id="st_side">
-          <div class="st-sidehd">
-            <b class="fl-no">01<em>일차</em></b>
-            <span id="st_when">불러오는 중<i>부산 해운대</i></span>
-          </div>
-          <div class="st-tabs">
-            <button type="button" class="fl-pill on" id="st_tab_day" aria-pressed="true">오늘 순서</button>
-            <button type="button" class="fl-pill" id="st_tab_now" aria-pressed="false">지금 상황</button>
-          </div>
-
-          <div id="st_pane_day">
-            <dl class="fl-rows" id="st_plan"></dl>
-          </div>
-
-          <div id="st_pane_now" hidden>
-            <dl class="fl-rows" id="st_crowd"></dl>
-            <div class="fl-links">
-              <a href="https://datalab.visitkorea.or.kr" target="_blank" rel="noopener">한국관광 데이터랩</a>
-            </div>
-          </div>
-        </aside>
-
-        <!-- 지금 시각·날씨. 배경이 왜 이 색인지 여기서 말한다 -->
-        <div class="st-wx" id="st_wx" hidden></div>
-
-        <!-- 혼잡도 눈금 — 숫자만으로는 얼마나 많은 건지 모른다 -->
-        <div class="st-cwkey" id="st_cwkey">
-          <button type="button" class="st-cwkey-t" id="st_cwkey_t"
-                  aria-expanded="false" aria-controls="st_cwkey_b">
-            혼잡도 <b>0 – 100</b><span>숫자가 클수록 붐빕니다</span>
-          </button>
-          <div class="st-cwkey-b" id="st_cwkey_b" hidden>
-            <div class="st-cwrow cw-vlow">
-              <i>0–34</i><b>매우 한적</b><span>줄이 없습니다. 아무 자리나 앉습니다</span></div>
-            <div class="st-cwrow cw-low">
-              <i>35–51</i><b>한적</b><span>앞에 서너 팀. 기다릴 것도 없습니다</span></div>
-            <div class="st-cwrow cw-mid">
-              <i>52–69</i><b>정상</b><span>평소 주말쯤. 자리는 있습니다</span></div>
-            <div class="st-cwrow cw-high">
-              <i>70–84</i><b>혼잡</b><span>식당은 20분쯤 기다립니다. 주차는 한참 돕니다</span></div>
-            <div class="st-cwrow cw-vhigh">
-              <i>85–100</i><b>매우 혼잡</b><span>돗자리 깔 자리를 찾아 한참 걷습니다</span></div>
-            <p class="st-cwkey-n">한국관광공사 관광지 집중률 예측입니다.
-              전국 1,770건을 재서 다섯 단계로 나눴습니다.</p>
-          </div>
-        </div>
 
         <!-- 아래 가운데 — 경로 만들기 -->
         <div class="st-form">
@@ -715,7 +713,7 @@
       </section>
 
             <section class="ck-wr ck-blk" id="ck_budget">
-        <div class="ck-hd" data-label="확정 80%" data-meta="1박 2일 기준">
+        <div class="ck-hd" data-label="숙박비 계산 예시" data-meta="1박 2일 기준">
           <h2>예상 숙박비</h2>
         </div>
 
@@ -725,7 +723,7 @@
         <div class="ck-conf2">
           <p class="ck-conf2-sum">
             <b>200,000</b><span>원</span>
-            <em>부산 1박 · 비수기 · 주말 체크인</em>
+            <em>예시 금액 · 부산 1박 · 비수기 주말</em>
           </p>
 
           <!-- 조각 위에 값을 얹는다. 범례를 따로 두면 눈이 두 번 움직인다 -->

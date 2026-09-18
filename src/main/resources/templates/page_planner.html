@@ -11,8 +11,8 @@
     <script>
         /* ─────────────────────────────────────────────────────────
          * 플래너 초기화
-         * - GET /api/users/me  → MBTI 기반 일정 밀도 자동선택
-         * - 이전 플랜 불러오기 버튼 표시 여부는 서버 응답으로 결정
+         * - 지역 선택 목록을 현재 값에 맞춰 준비한다
+         * - 취향은 이전 플랜을 불러온 경우에만 복원한다
          * ───────────────────────────────────────────────────────── */
         async function initPlannerMBTI() {
             const depEl  = document.getElementById('dep-prov');
@@ -28,29 +28,6 @@
                 if (_savedDest) { const dc = document.getElementById('dest-city'); if (dc) dc.value = _savedDest; }
             }
 
-            try {
-                const res = await fetch('/api/users/me', {
-                    headers: { 'Authorization': 'Bearer ' + (Token.getAccess() || '') }
-                });
-                if (res.ok) {
-                    const json = await res.json();
-                    const mbti = (json.data?.mbti || '').toUpperCase();
-                    const isJ = mbti.endsWith('J');
-                    const chips = document.querySelectorAll('#chip-density .chip');
-                    chips.forEach(c => c.classList.remove('on'));
-                    if (isJ) {
-                        document.querySelector('#chip-density .chip:first-child')?.classList.add('on');
-                        document.getElementById('planner-dens-note').textContent =
-                            `MBTI ${mbti} → J 성향 → '빼곡하게' 자동 선택됨`;
-                    } else {
-                        document.querySelector('#chip-density .chip:last-child')?.classList.add('on');
-                        document.getElementById('planner-dens-note').textContent =
-                            mbti ? `MBTI ${mbti} → P 성향 → '여유롭게' 자동 선택됨` : '';
-                    }
-                }
-            } catch (e) {
-                // 비로그인 or 오류 → 기본값 유지
-            }
         }
 
         function _initStep1AutoSave() {
@@ -298,7 +275,7 @@
                 const d = json.data;
                 _applyPlanPrefToForm(d);
                 updateSummaryCard();
-                toast('이전 플랜을 불러왔습니다✓');
+                toast('이전 일정을 불러왔습니다');
             } catch (e) {
                 toast('이전 플랜을 불러오지 못했습니다.');
             }
@@ -909,7 +886,7 @@
             }
             ov.style.display = 'flex';
             const t = document.getElementById('genLoadTxt');
-            if (t) t.textContent = text || 'AI가 일정을 생성 중입니다…';
+            if (t) t.textContent = text || '일정을 만드는 중입니다…';
         }
         function _hideGenLoading() {
             const ov = document.getElementById('genLoadOverlay');
@@ -920,7 +897,7 @@
             window._genCancelled = true;
             _hideGenLoading();
             const btn = document.querySelector('#sp-3 .btn-gen');
-            if (btn) { btn.innerHTML = '일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+            if (btn) { btn.innerHTML = '일정 만들기 → 동선 다듬기'; btn.disabled = false; }
             toast('일정 생성을 취소했습니다.');
         }
 
@@ -936,9 +913,9 @@
             window._budgetSnapshot = (document.getElementById('s1-budget')?.value || '').trim();
 
             // 1. 버튼 비활성화 + 반투명 로딩 오버레이 표시
-            btn.innerHTML = 'AI가 일정을 생성중입니다..';
+            btn.innerHTML = '일정을 만드는 중입니다…';
             btn.disabled = true;
-            _showGenLoading('AI가 일정을 생성 중입니다…');
+            _showGenLoading('일정을 만드는 중입니다…');
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
@@ -965,8 +942,8 @@
 
                     const _proceed = () => {
                         if (window._genCancelled) return;
-                        btn.innerHTML = 'AI가 일정을 생성중입니다..';
-                        _showGenLoading('AI가 일정을 생성 중입니다…');
+                        btn.innerHTML = '일정을 만드는 중입니다…';
+                        _showGenLoading('일정을 만드는 중입니다…');
                         sessionStorage.setItem('autoHealingRetries', '0');
                         validateAndHealingRoute(tripId, draftRoute, btn);
                     };
@@ -975,7 +952,7 @@
                         _hideGenLoading();
                         // 게이트 표시 → 확인 시에만 _proceed(), 취소 시 버튼 원상복구
                         _showPreGenGate(issues, _proceed, () => {
-                            btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
+                            btn.innerHTML = '일정 만들기 → 동선 다듬기';
                             btn.disabled = false;
                         });
                     } else {
@@ -984,16 +961,16 @@
 
                 } else {
                     _hideGenLoading();
-                    toast('' + (res.message || '일정 생성에 실패했습니다.'));
+                    toast('' + (res.message || '일정을 만들지 못했습니다. 입력 내용을 확인하고 다시 눌러 주세요.'));
                     // 실패 시 버튼 즉시 원상복구
-                    btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
+                    btn.innerHTML = '일정 만들기 → 동선 다듬기';
                     btn.disabled = false;
                 }
             } catch (e) {
                 _hideGenLoading();
-                toast('AI 서버 연결에 실패했습니다.');
+                toast('연결이 끊겼습니다. 잠시 뒤에 다시 눌러 주세요.');
                 // 에러 발생 시 버튼 즉시 원상복구
-                btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
+                btn.innerHTML = '일정 만들기 → 동선 다듬기';
                 btn.disabled = false;
             }
         }
@@ -1026,13 +1003,13 @@
 
             const close = () => document.getElementById('over50Overlay')?.remove();
             const restoreBtn = () => {
-                if (btn) { btn.innerHTML = '일정 생성하기 → 경로 상세 수정'; btn.disabled = false; }
+                if (btn) { btn.innerHTML = '일정 만들기 → 동선 다듬기'; btn.disabled = false; }
             };
 
             // [무시하고 생성] — draft 그대로 기존 파이프라인 진행
             document.getElementById('over50Ignore').onclick = () => {
                 close();
-                _showGenLoading('AI가 일정을 생성 중입니다…');
+                _showGenLoading('일정을 만드는 중입니다…');
                 sessionStorage.setItem('autoHealingRetries', '0');
                 validateAndHealingRoute(tripId, draftRoute, btn);
             };
@@ -1052,7 +1029,7 @@
                         j = j.substring(j.indexOf('['), j.lastIndexOf(']') + 1);
                     }
                     const newRoute = JSON.parse(j);
-                    _showGenLoading('AI가 일정을 생성 중입니다…');
+                    _showGenLoading('일정을 만드는 중입니다…');
                     sessionStorage.setItem('autoHealingRetries', '0');
                     validateAndHealingRoute(tripId, newRoute, btn);
                 } catch (e) {
@@ -1169,7 +1146,7 @@
 
             if (issues.missing.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
-                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">요청하신 장소를 지도에서 찾을 수 없어요</div>'
+                    + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">이 장소를 지도에서 찾지 못했습니다</div>'
                     + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
             }
             if (issues.closed && issues.closed.length > 0) {
@@ -1182,12 +1159,12 @@
             }
             if (issues.budgetShort) {
                 bodyHtml += '<div style="margin-bottom:6px">'
-                    + '<div style="font-weight:800;color:var(--num);margin-bottom:6px">예산이 부족할 수 있어요</div>'
+                    + '<div style="font-weight:800;color:var(--num);margin-bottom:6px">예산이 모자랄 수 있습니다</div>'
                     + '<div style="font-size:12px;color:var(--ink-2);line-height:1.6">'
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
                     + '이 일정의 예상 최소 비용은 약 <b style="color:var(--num)">' + won(issues.estimated) + '</b>입니다.<br>'
                     + '예산을 올리지 않으면 <b style="color:var(--tile)">일정이 제대로 안 나올 수 있습니다.</b><br>'
-                    + '<span style="color:var(--ink-3);font-size:11px">변경 시 챗봇이 예산을 자동 조정합니다. 충분하다면 무시하고 생성을 눌러주세요.</span>'
+                    + '<span style="color:var(--ink-3);font-size:11px">변경하면 예산에 맞춰 일정을 다시 짭니다. 그대로 만들려면 무시하고 생성을 눌러 주세요.</span>'
                     + '</div></div>';
             }
 
@@ -1196,7 +1173,7 @@
             wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px';
             wrap.innerHTML =
                 '<div style="background:var(--panel);border-radius:16px;max-width:460px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)">'
-                + '<div style="font-size:17px;font-weight:800;margin-bottom:4px">생성 전 확인이 필요해요</div>'
+                + '<div style="font-size:17px;font-weight:800;margin-bottom:4px">일정을 만들기 전에 확인해 주세요</div>'
                 + '<div style="font-size:12px;color:var(--ink-3);margin-bottom:16px">아래 내용을 확인한 뒤 선택해 주세요.</div>'
                 + bodyHtml
                 + '<div style="display:flex;gap:8px;margin-top:20px">'
@@ -1688,7 +1665,7 @@
             }
             if (window._genCancelled) { return; }
             if (btn) {
-                btn.innerHTML = '일정 생성하기 → 경로 상세 수정';
+                btn.innerHTML = '일정 만들기 → 동선 다듬기';
                 btn.disabled = false;
             }
 
@@ -1702,7 +1679,7 @@
             _planDirty = false; // 더티 플래그 해제
 
             // 2. 화면 이동 (지도 페이지)
-            toast('일정이 생성되었습니다. 지도로 이동합니다.');
+            toast('일정을 만들었습니다. 지도로 이동합니다.');
             go('map');
         }
 
@@ -1716,7 +1693,7 @@
             <div class="planner-hd">
                 <div class="planner-ey">계획</div>
                 <div class="planner-ttl">어디로, 언제 가세요</div>
-                <p class="planner-sub">시각은 넣지 않아도 됩니다. 영업시간과 이동시간을 넣고 계산해서 하루를 채웁니다.</p>
+                <p class="planner-sub">장소와 날짜를 고르면 영업시간과 이동시간에 맞춰 하루를 짭니다.</p>
             </div>
 
             <div class="step-bar" id="plannerStepBar" style="display:none">
@@ -1904,6 +1881,7 @@
                         <button class="chip" onclick="pick(this,'trans')">자차</button>
                         <button class="chip" onclick="pick(this,'trans')">대중교통</button>
                         <button class="chip" onclick="pick(this,'trans');showOtherInput('other-trans',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-trans" placeholder="어떻게 다니는지 적어 주세요">
                     </div>
@@ -1916,6 +1894,7 @@
                         <button class="chip" onclick="pick(this,'acc')">게스트하우스</button>
                         <button class="chip" onclick="pick(this,'acc')">리조트</button>
                         <button class="chip" onclick="pick(this,'acc');showOtherInput('other-acc',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-acc" placeholder="어디서 자는지 적어 주세요">
                     </div>
@@ -1928,6 +1907,7 @@
                         <button class="chip" onclick="pick(this,'comp')">가족</button>
                         <button class="chip" onclick="pick(this,'comp')">친구</button>
                         <button class="chip" onclick="pick(this,'comp');showOtherInput('other-comp',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-comp" placeholder="누구와 가는지 적어 주세요">
                     </div>
@@ -1956,6 +1936,7 @@
                         <button data-multi class="chip" onclick="tog(this)">문화·역사</button>
                         <button data-multi class="chip" onclick="tog(this)">음식 탐방</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-style',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-style" placeholder="어떤 여행을 바라는지 적어 주세요"></div>
                   </div>
@@ -1967,8 +1948,9 @@
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알러지 있음</button>
                         <button data-multi class="chip" onclick="tog(this)">무관</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
-                    <input class="other-input" id="other-allergy" placeholder="알러지를 정확하게 작성해주세요">
+            <input class="other-input" id="other-allergy" placeholder="못 먹는 재료를 적어 주세요">
                     <input class="other-input" id="other-food" placeholder="먹는 것에 관해 적어 주세요"></div>
                   </div>
                   <div class="pl-row">
@@ -1977,14 +1959,16 @@
                         <button data-multi class="chip" onclick="tog(this)">반려동물 동반</button>
                         <button data-multi class="chip" onclick="tog(this)">노인 동반</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-special',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-special" placeholder="따로 챙길 것이 있으면 적어 주세요"></div>
                   </div>
                   <div class="pl-row">
-                    <div class="pl-row-lb">하루 밀도<i class="pl-row-note">MBTI 로 먼저 골라 둡니다</i></div>
+                    <div class="pl-row-lb">하루 밀도<i class="pl-row-note">필요하면 골라 주세요</i></div>
                     <div class="pl-row-bd"><div class="chip-row" id="chip-density">
                         <button class="chip" onclick="pick(this,'density')">빼곡하게</button>
                         <button class="chip" onclick="pick(this,'density')">여유롭게</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <div style="font-size:11px;color:var(--text3);margin-top:6px" id="planner-dens-note"></div></div>
                   </div>
@@ -1998,6 +1982,7 @@
                         <button data-multi class="chip" onclick="tog(this)">바베큐</button>
                         <button data-multi class="chip" onclick="tog(this)">레이트 체크아웃</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-accopts',this)">기타</button>
+                        <span class="pl-empty-choice">아직 고르지 않았습니다</span>
                     </div>
                     <input class="other-input" id="other-accopts" placeholder="숙소에 바라는 것을 적어 주세요"></div>
                   </div>
@@ -2020,10 +2005,10 @@
                                 <div style="font-size:13px;font-weight:700">체크인 AI</div>
                                 <div style="font-size:10px;color:var(--sage)">● 온라인</div>
                             </div>
-                            <div style="margin-left:auto;font-size:10px;color:var(--text3)">국내 전용 · 예산 0~1,000만원</div>
+                            <div style="margin-left:auto;font-size:10px;color:var(--text3)">국내 여행 · 예산 0~1,000만원</div>
                         </div>
 
-                        <div class="chat-info-bar">예산을 바꾸거나 특정 장소를 빼달라고 자유롭게 말해보세요!</div>
+                        <div class="chat-info-bar">예산을 바꾸거나 빼고 싶은 장소를 적어 주세요.</div>
                         <div class="chat-msgs" id="chatMsgs"></div>
 
                         <div class="chat-inp-area">
@@ -2038,7 +2023,7 @@
                     <div class="asc">
                         <div class="asc-hd">
                             <div class="asc-ttl">입력 정보 요약</div>
-                            <div class="asc-sub">AI 대화로 실시간 변경</div>
+                            <div class="asc-sub">대화에서 바꾼 내용</div>
                         </div>
 
                         <!--  탭 네비게이션  -->
@@ -2137,7 +2122,7 @@
                             </div>
 
                             <button class="btn-gen" onclick="generateScheduleAndGoMap(this)">
-                                일정 생성하기 → 경로 상세 수정
+                                일정 만들기 → 동선 다듬기
                             </button>
                         </div>
                     </div>
@@ -2166,9 +2151,9 @@
                 <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
                     <div style="font-size:13px;color:var(--text2);line-height:1.8">
                         날씨 예보 서비스는 <strong>오늘로부터 최대 14일 이내</strong> 기간만 제공합니다.<br>
-                        출발일이 14일을 초과하는 경우, 현재로서는 예보 데이터를 제공하기 어렵습니다.<br>
-                        여행 날짜가 가까워지면 다시 이 버튼을 눌러보세요.<br>
-                        지금 바로 확인하려면 아래 네이버·구글 날씨를 이용해 주세요.
+                        출발일이 14일 뒤라 아직 예보가 없습니다.<br>
+                        여행 날짜가 가까워지면 다시 확인해 주세요.<br>
+                        더 먼 날짜는 아래 날씨 검색에서 확인해 주세요.
                     </div>
                 </div>
             </div>
@@ -2207,7 +2192,7 @@
             if (!val) { updateWeatherBtn(); return; }
             // 여행 기록을 복원할 때는 min 이 과거 날짜로 풀려 있다. 그때는 막지 않는다.
             if (val < (startEl.min || today)) {
-                toast('출발일은 오늘 이후 날짜만 선택할 수 있습니다.');
+                toast('오늘 이후 날짜를 골라 주세요.');
                 startEl.value = '';
                 updateWeatherBtn();
                 return;
@@ -2219,10 +2204,10 @@
             endInput.max = maxEnd.toISOString().split('T')[0];
             if (endInput.value && endInput.value < val) {
                 endInput.value = '';
-                toast('귀환일이 출발일보다 이전이어서 초기화되었습니다.');
+                toast('돌아오는 날이 출발일보다 빠릅니다. 날짜를 다시 골라 주세요.');
             } else if (endInput.value && endInput.value > endInput.max) {
                 endInput.value = '';
-                toast('최대 3박 4일까지만 선택할 수 있습니다.');
+                toast('여행 기간은 최대 3박 4일입니다.');
             }
             updateWeatherBtn();
         }
@@ -2234,7 +2219,7 @@
             const end     = endEl.value;
             if (!end) { updateWeatherBtn(); return; }
             if (start && end < start) {
-                toast('귀환일은 출발일과 같거나 이후 날짜만 선택할 수 있습니다.');
+                toast('돌아오는 날은 출발일과 같거나 뒤여야 합니다.');
                 endEl.value = '';
                 updateWeatherBtn();
                 return;
@@ -2243,7 +2228,7 @@
                 const maxEnd = new Date(start);
                 maxEnd.setDate(maxEnd.getDate() + 3);
                 if (end > maxEnd.toISOString().split('T')[0]) {
-                    toast('최대 3박 4일까지만 선택할 수 있습니다.');
+                    toast('여행 기간은 최대 3박 4일입니다.');
                     endEl.value = '';
                     updateWeatherBtn();
                     return;

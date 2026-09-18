@@ -121,7 +121,7 @@
     if (r.off) {
       st.offStreak = 0;
       speak('경로를 벗어나 다시 안내합니다.');
-      render('경로 재탐색 중...');
+      render('동선을 다시 찾는 중...');
       loadRoute();
       return;
     }
@@ -185,7 +185,7 @@
         st.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
         if (first) loadRoute(); else onPos(p);
       },
-      function () { render('위치 권한이 없어 안내할 수 없습니다.'); },
+    function () { render('브라우저 설정에서 위치 권한을 켜 주세요.'); },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
     );
   }
@@ -278,11 +278,11 @@
       body: JSON.stringify({ planId: vs.tripId || null })
     }).then(function (r) { return r.json(); })
       .then(function (j) { vs.sessionId = j && j.data && j.data.sessionId; cb(vs.sessionId); })
-      .catch(function () { speak('연결에 실패했습니다.'); });
+    .catch(function () { speak('연결이 끊겼습니다. 다시 눌러 주세요.'); });
   }
   function ask(cmd) {
     ensureSession(function (sid) {
-      if (!sid) { speak('연결에 실패했습니다.'); return; }
+  if (!sid) { speak('연결이 끊겼습니다. 다시 눌러 주세요.'); return; }
       render('체키에게 물어보는 중...');
       fetch('/api/chat/message', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -349,7 +349,7 @@
     var r = makeRecognizer(true);
     if (!r) {
       // 상시 인식 불가(iOS) — 꾹 눌러 말하기만 쓴다
-      render('이 기기는 상시 인식이 안 됩니다. 꾹 눌러 말하세요.');
+    render('계속 듣기는 지원하지 않습니다. 꾹 눌러 말하세요.');
       document.getElementById('navMic').style.display = 'none';
       return;
     }

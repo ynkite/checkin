@@ -3,7 +3,6 @@ package idusw.sbb.checkin.domain.route.engine;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -32,8 +31,12 @@ import java.util.function.ToDoubleBiFunction;
  * <p>각 슬롯은 결정 4의 3단계로 최대 5개까지 자른다 — (0) 식사 슬롯은 FOOD, 활동 슬롯은
  * TOUR/CAFE 로 카테고리부터 좁히고 (1) {@code filter} 통과(반려동물/무장애/키즈존 —
  * 지금은 항상 통과, 작업 5에서 실제 조건으로 교체) → (2) 슬롯 시간 창과 영업시간이
- * 겹치는지 → (3) 기준점에서 가까운 순 상위 5. 같은 날 이미 다른 슬롯에 배정된 후보는
- * 그 자리에서 소비되어 제외된다({@code usedToday}).
+ * 겹치는지 → (3) 기준점에서 가까운 순 상위 5.
+ *
+ * <p><b>담기만 하고 소비하지 않는다 (결정 14).</b> 슬롯 풀끼리 같은 후보가 겹쳐도 되고, 실제로
+ * 방문한 것만 빼는 일은 {@link DayPlanner} 가 한다. 예전에는 여기서 바로 소비했는데(결정 7-3),
+ * 그러면 점심이 그 날 식당을 상위 5까지 전부 물고 가서 저녁이 굶는다 — 담긴 것(최대 5)과 실제로
+ * 가는 것(식사 슬롯 1곳)이 결정 8 이후로 갈렸기 때문이다.
  *
  * <p>기준점은 그 날의 첫 슬롯은 앵커(없으면 도착 지점), 이후 슬롯은 **직전 슬롯 후보의
  * 무게중심(centroid)** 이다 — 실제 방문 순서(3b 의 결과물) 없이도 계산되고 순환 의존이
@@ -74,6 +77,15 @@ public final class SlotBuilder {
      * @return 그 날 시간이 있는 슬롯만, 하루 리듬 순서대로
      */
     public List<TimeSlot> build(DailyCandidatePool pool, Anchor anchor, RouteConstraints constraints, int totalDays) {
+        return build(pool, anchor, constraints, totalDays, Set.of());
+    }
+
+    /**
+     * @param requiredIds 반드시 포함해야 하는 후보 id (사용자가 직접 요청한 장소). 상위 5 컷에서 먼저
+     *                    집어넣는다 — 여기서 잘리면 {@code SlotOptimizer} 는 그 후보를 볼 기회조차 없다.
+     */
+    public List<TimeSlot> build(DailyCandidatePool pool, Anchor anchor, RouteConstraints constraints,
+                                 int totalDays, Set<String> requiredIds) {
         if (pool == null) {
             throw new IllegalArgumentException("pool must not be null");
         }
@@ -95,7 +107,6 @@ public final class SlotBuilder {
         boolean isLastDay = pool.dayIndex() == totalDays - 1;
 
         GeoPoint referencePoint = anchor != null ? anchor.location() : constraints.arrivalPoint();
-        Set<String> usedToday = new HashSet<>();
         List<TimeSlot> result = new ArrayList<>();
 
         for (SlotType type : SlotType.values()) {
@@ -105,10 +116,7 @@ public final class SlotBuilder {
                 continue; // 창이 0 이하로 접힘 — 이 슬롯은 만들지 않는다
             }
 
-            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, usedToday, referencePoint);
-            for (Candidate candidate : cut) {
-                usedToday.add(candidate.id());
-            }
+            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, referencePoint, requiredIds);
             result.add(new TimeSlot(type, cut));
 
             if (!cut.isEmpty()) {
@@ -119,17 +127,24 @@ public final class SlotBuilder {
         return List.copyOf(result);
     }
 
-    /** 결정 4 의 3단계: 카테고리 적합 → 필터 통과 → 영업시간 겹침 → 기준점에서 가까운 순 상위 5. */
+    /**
+     * 결정 4 의 3단계: 카테고리 적합 → 필터 통과 → 영업시간 겹침 → 기준점에서 가까운 순 상위 5.
+     *
+     * <p><b>여기서 후보를 소비하지 않는다 (결정 14).</b> 슬롯 풀끼리 겹치는 건 정상이고, 실제로
+     * 방문한 것만 빼는 건 {@link DayPlanner} 가 한다. 담는 쪽이 소비하면 점심이 그 날 식당을
+     * 상위 5까지 전부 물고 가서 저녁이 굶는다 — 담긴 것과 간 것이 다르기 때문이다(결정 8).
+     */
     private List<Candidate> cut(List<Candidate> dayPool, SlotType type, LocalTime windowStart, LocalTime windowEnd,
-                                 Set<String> usedToday, GeoPoint referencePoint) {
+                                 GeoPoint referencePoint, Set<String> requiredIds) {
         boolean isMealSlot = type == SlotType.LUNCH || type == SlotType.DINNER;
 
         return dayPool.stream()
-                .filter(c -> !usedToday.contains(c.id()))
                 .filter(c -> isMealSlot == (c.category() == CandidateCategory.FOOD))
                 .filter(filter)
                 .filter(c -> overlapsWindow(c, windowStart, windowEnd))
-                .sorted(Comparator.comparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
+                .sorted(Comparator
+                        .comparingInt((Candidate c) -> requiredIds.contains(c.id()) ? 0 : 1)
+                        .thenComparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
                 .limit(TimeSlot.MAX_CANDIDATES)
                 .toList();
     }

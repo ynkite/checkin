@@ -159,22 +159,63 @@
     });
   }
 
+  var bigPins = [], bigLine = null;
+
   function makeBig() {
     var host = $('st_bigmap');
     if (!host || big || !host.clientWidth) return;
     var c = center();
     if (!c) return;
     big = new w.kakao.maps.Map(host, { center: c, level: 5 });
-    route.forEach(function (p, i) {
-      if (!p.lat) return;
+    bigDraw(route);
+  }
+
+  /* 지도 위의 동선. 핀만 세 개 떠 있으면 「동선」이 아니다 —
+     선이 있어야 어디서 어디로 가는지가 한눈에 온다.
+     순서가 바뀌면 이걸 다시 부른다. 좌표가 핀과 같으므로 선은
+     핀 가운데에 정확히 닿는다. */
+  function bigDraw(list) {
+    if (!big) return;
+    var pts = (list || []).filter(function (p) { return p.lat && p.lng; });
+    if (!pts.length) return;
+
+    /* 핀은 만들어 두고 자리와 번호만 고친다. 매번 새로 만들면
+       지도가 깜빡이고, 카카오 오버레이가 쌓인다. */
+    while (bigPins.length < pts.length) {
       var el = d.createElement('div');
-      el.className = 'fl-mp' + (i === state.hot ? ' fl-now' : '');
-      el.textContent = i + 1;
-      new w.kakao.maps.CustomOverlay({
-        position: new w.kakao.maps.LatLng(p.lat, p.lng),
-        content: el, yAnchor: .5, xAnchor: .5
-      }).setMap(big);
+      el.className = 'fl-mp';
+      var ov = new w.kakao.maps.CustomOverlay({
+        content: el, yAnchor: .5, xAnchor: .5, zIndex: 4
+      });
+      ov.setMap(big);
+      bigPins.push({ el: el, ov: ov });
+    }
+    bigPins.forEach(function (pin, i) {
+      var p = pts[i];
+      if (!p) { pin.ov.setMap(null); return; }
+      pin.ov.setMap(big);
+      pin.ov.setPosition(new w.kakao.maps.LatLng(p.lat, p.lng));
+      pin.el.textContent = i + 1;
+      pin.el.className = 'fl-mp' + (i === 0 ? ' fl-now' : '');
     });
+
+    var path = pts.map(function (p) {
+      return new w.kakao.maps.LatLng(p.lat, p.lng);
+    });
+    if (!bigLine) {
+      /* 색은 토큰에서 읽는다. 카카오 폴리라인은 캔버스에 그려서
+         CSS 변수를 못 받는다 — 그래서 값을 여기서 꺼내 넘긴다.
+         자바스크립트에 색을 적어 두면 팔레트를 고칠 때 이것만 남는다. */
+      var ink = getComputedStyle(d.documentElement)
+                  .getPropertyValue('--ink').trim() || '#1B2733';
+      bigLine = new w.kakao.maps.Polyline({
+        path: path, strokeWeight: 5, strokeColor: ink,
+        strokeOpacity: .85, strokeStyle: 'solid'
+      });
+      bigLine.setMap(big);
+    } else {
+      bigLine.setPath(path);
+    }
   }
 
   /* ── 카메라 ──────────────────────────────────────────
@@ -434,7 +475,7 @@
   /* 지도를 띄우고 세 곳이 다 들어오게 맞춘다.
      level 을 직접 주지 않는다 — 카카오가 좌표에서 계산하게 둔다.
      그래야 화면 폭이 달라도 세 곳이 안 잘린다. */
-  function showWideMap() {
+  function showWideMap(only) {
     var stage = d.querySelector('.ck-stage');
     var scene = stage && stage.querySelector('.ck-scene');
     var bmap = $('st_bigmap');
@@ -445,7 +486,10 @@
     makeBig();
     if (!big) return false;
 
-    var pts = route.filter(function (p) { return p.lat && p.lng; });
+    /* 순서를 바꾼 갈래를 보여 줄 때는 바뀐 목록을 넘겨받는다 */
+    var list = only || route;
+    bigDraw(list);
+    var pts = list.filter(function (p) { return p.lat && p.lng; });
     if (pts.length < 2) return true;
 
     var b = new w.kakao.maps.LatLngBounds();
@@ -575,6 +619,19 @@
     camApply();
   }
 
+  /* 좌표로 바로 겨눈다. 장소를 갈아 끼우는 갈래는 바뀐 곳이
+     route 에 없어서 번호로는 못 잡는다. */
+  function camAt(x, y, zoom) {
+    var f = $('ck_frame');
+    if (!f || !f.offsetWidth || !isFinite(x) || !isFinite(y)) return;
+    var st = f.parentElement;
+    cam.user = false;
+    cam.z = zoom || 1.6;
+    cam.x = st.clientWidth / 2 - (x / 100 * f.offsetWidth) * cam.z;
+    cam.y = st.clientHeight * .48 - (y / 100 * f.offsetHeight) * cam.z;
+    camApply();
+  }
+
   /* 한 정거장에서 다음으로 날아간다.
 
      같은 배율로 곧게 밀면 사진을 옆으로 미는 것처럼 보인다.
@@ -635,6 +692,8 @@
     loadScene: loadScene,
     preloadScene: preloadScene,
     camStop: camStop,
+    camAt: camAt,
+    bigDraw: bigDraw,
     camFly: camFly,
     camFlyStop: camFlyStop,
     camLock: function (on) { camLocked = !!on; },

@@ -51,7 +51,7 @@
 
             <section class="fl wx-one">
                 <h3>날짜로 보기</h3>
-                <p class="wx-one-sub">여행 날짜를 넣으면 그 날 하늘만 봅니다.</p>
+                <p class="wx-one-sub">여행 날짜를 고르면 그날 예보만 봅니다.</p>
                 <input type="date" id="wxDate" aria-label="날짜">
                 <div class="wx-one-body" id="wxOne">
                     <p class="wx-one-sub">날짜를 고르면 그 날 기온과 강수 확률이 여기에 나옵니다.</p>
@@ -209,7 +209,7 @@
                     '</div>' +
                     (d.rainExpected
                         ? '<p class="wx-note"><b>비 소식이 있습니다.</b> ' +
-                          '이 날 일정은 실내를 먼저 넣습니다.</p>'
+                          '비가 오면 실내 일정을 먼저 봐 주세요.</p>'
                         : '');
             }
 

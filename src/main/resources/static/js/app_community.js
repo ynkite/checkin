@@ -340,7 +340,7 @@ async function likePost(e, postId) {
       const n = parseInt(el.textContent.replace(/\D/g, '')) || 0;
       el.textContent = '좋아요 ' + (n + 1);
     }
-    toast('좋아요!');
+    toast('좋아요를 눌렀습니다.');
   } else {
     toast(res.message || '좋아요를 누르지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   }
@@ -383,12 +383,12 @@ function openReportPostModal(e, postId) {
 async function submitReportPost() {
   const sel    = document.getElementById('reportReasonSelect');
   const reason = sel ? sel.value : '';
-  if (!reason) { toast('신고 사유를 선택해주세요'); return; }
+  if (!reason) { toast('신고 사유를 골라 주세요'); return; }
 
   const res = await api.post('/api/posts/' + _reportPostId + '/reports', { reason });
   const modal = document.getElementById('reportPostModal');
   if (modal) modal.classList.remove('open');
-  toast((res && res.success !== false) ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
+  toast((res && res.success !== false) ? '신고를 받았습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportPostId = null;
 }
 
@@ -447,7 +447,7 @@ async function submitEditReview() {
 
   const res = await api.patch('/api/posts/' + _openedPostId, { title, content });
   if (res.success) {
-    toast('후기가 수정되었습니다.');
+    toast('후기가 수정했습니다.');
     go('review');
     openPostDetail(_openedPostId);
   } else {
@@ -460,7 +460,7 @@ async function deleteMyPost(postId) {
   if (!confirm('게시글을 삭제하시겠습니까?')) return;
   const res = await api.del('/api/posts/' + (postId || _openedPostId));
   if (res.success) {
-    toast('게시글이 삭제되었습니다.');
+    toast('게시글이 삭제했습니다.');
     go('community');
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
@@ -535,7 +535,7 @@ function openReportCommentModal(commentId, postId) {
 async function submitReportComment() {
   const sel    = document.getElementById('reportCommentReasonSelect');
   const reason = sel ? sel.value : '';
-  if (!reason) { toast('신고 사유를 선택해주세요'); return; }
+  if (!reason) { toast('신고 사유를 골라 주세요'); return; }
 
   // _reportCommentPostId가 없으면 현재 열린 게시글 ID 사용
   if (!_reportCommentPostId) {
@@ -552,7 +552,7 @@ async function submitReportComment() {
     commentId: _reportCommentId
   });
   const ok = res && res.success !== false;
-  toast(ok ? '신고가 접수되었습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
+  toast(ok ? '신고를 받았습니다.' : '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
   _reportCommentId     = null;
   _reportCommentPostId = null;
 }
@@ -890,7 +890,7 @@ function renderDestBars(dests) {
     const r = document.getElementById('su-reason-select') && document.getElementById('su-reason-select').value;
     const uid = document.getElementById('su-id') && document.getElementById('su-id').textContent;
     if (!r) {
-      toast('정지 사유를 선택해주세요');
+      toast('정지 사유를 골라 주세요');
       return;
     }
     const msg = document.getElementById('su-notify-msg') && document.getElementById('su-notify-msg').value;
@@ -1013,7 +1013,7 @@ function renderDestBars(dests) {
   async function confirmReportAction() {
     const r = document.getElementById('ra-reason-select') && document.getElementById('ra-reason-select').value;
     if (!r) {
-      toast('사유를 선택해주세요');
+      toast('사유를 골라 주세요');
       return;
     }
 
@@ -1102,7 +1102,7 @@ function renderDestBars(dests) {
     }
 
     if (res.success) {
-      toast(_editCurationId ? '큐레이션이 수정되었습니다.' : '큐레이션을 올렸습니다.');
+      toast(_editCurationId ? '큐레이션이 수정했습니다.' : '큐레이션을 올렸습니다.');
       _editCurationId = null;
       _clearCurationForm();
       loadAdminCurations();
@@ -1142,7 +1142,7 @@ function renderDestBars(dests) {
     if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/admin/curations/' + curationId);
     if (res.success) {
-      toast('큐레이션이 삭제되었습니다.');
+      toast('큐레이션이 삭제했습니다.');
       loadAdminCurations();
     } else {
       toast('삭제에 실패했습니다.');
@@ -1189,7 +1189,7 @@ function renderDestBars(dests) {
         '<button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>' +
         '</div>' +
         '</div>' +
-        '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>';
+        '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해 주세요</div>';
     document.getElementById('curDays').appendChild(div);
   }
 

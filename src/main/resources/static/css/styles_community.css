@@ -17,7 +17,7 @@
     margin: 18px 0;
     padding: 14px 16px;
     border-radius: 14px;
-    background: var(--sage-pale);
+    background: var(--slate-pale);
     border: 1px solid var(--border);
     color: var(--text2);
     font-size: 13px;
@@ -31,7 +31,7 @@
 }
 
 #page-review .review-plan-badge strong {
-    color: var(--sage-d);
+    color: var(--slate);
     font-weight: 800;
 }
 
@@ -71,7 +71,7 @@
 #page-review #commentInput:focus,
 #page-review .comment-box input:focus {
     background: var(--surface);
-    border-color: var(--sage);
+    border-color: var(--slate);
 }
 
 #page-review #commentInput::placeholder,
@@ -119,7 +119,7 @@
     margin: 30px auto 0;
     padding: 24px 20px;
     border-radius: 20px;
-    background: linear-gradient(135deg, var(--sage), var(--sage-l));
+    background: linear-gradient(135deg, var(--slate), var(--slate-pale));
     text-align: center;
     box-shadow: var(--sh);
 }
@@ -142,7 +142,7 @@
 #page-review .review-plan-btn,
 #page-review .btn-rcta {
     background: var(--panel);
-    color: var(--sage);
+    color: var(--slate);
     border: none;
     border-radius: 12px;
     padding: 12px 28px;
@@ -221,7 +221,7 @@
     padding: 8px 16px;
     border-radius: 10px;
     border: none;
-    background: var(--sage);
+    background: var(--slate);
     color: var(--panel);
     font-size: 12px;
     font-weight: 800;
@@ -229,7 +229,7 @@
 }
 
 .btn-plan-preview:hover {
-    background: var(--sage-d);
+    background: var(--slate);
 }
 
 .community-plan-preview-overlay {
@@ -311,7 +311,7 @@
 
 .community-plan-preview-stats strong {
     display: block;
-    color: var(--sage);
+    color: var(--slate);
     font-size: 20px;
     font-weight: 900;
     margin-bottom: 4px;
@@ -402,14 +402,14 @@
 
 .cpp-main-btn {
     border: none;
-    background: var(--sage);
+    background: var(--slate);
     color: var(--panel);
 }
 
 .cpp-sub-btn {
-    border: 1.5px solid var(--sage);
+    border: 1.5px solid var(--slate);
     background: var(--panel);
-    color: var(--sage);
+    color: var(--slate);
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
@@ -480,7 +480,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--sage-d);
+    color: var(--slate);
     font-size: 13px;
     font-weight: 800;
     background: var(--panel-2);
@@ -504,15 +504,15 @@
     margin: 12px 0 8px;
     font-size: 12px;
     font-weight: 900;
-    color: var(--sage-d);
+    color: var(--slate);
 }
 
 .cpp-transit-row {
     margin: 6px 0 8px;
     padding: 8px 12px;
     border-radius: 10px;
-    background: var(--sage-pale);
-    color: var(--sage-d);
+    background: var(--slate-pale);
+    color: var(--slate);
     font-size: 11px;
     font-weight: 700;
 }
@@ -670,8 +670,8 @@
 }
 
 .review-detail-tags span {
-    background: var(--sage-pale);
-    color: var(--sage-d);
+    background: var(--slate-pale);
+    color: var(--slate);
     border-radius: 999px;
     padding: 5px 10px;
     font-size: 12px;
@@ -795,8 +795,8 @@
     width: fit-content;
     padding: 5px 10px;
     border-radius: 999px;
-    background: var(--sage-pale);
-    color: var(--sage-d);
+    background: var(--slate-pale);
+    color: var(--slate);
     font-size: 11px;
     font-weight: 800;
     margin-bottom: 10px;
@@ -853,9 +853,9 @@
 }
 
 .community-v2-page-btn.on {
-    background: var(--sage);
+    background: var(--slate);
     color: var(--panel);
-    border-color: var(--sage);
+    border-color: var(--slate);
 }
 
 .community-v2-page-btn:disabled {
@@ -949,7 +949,7 @@
 }
 
 .one-line:focus {
-    border-color: var(--sage);
+    border-color: var(--slate);
 }
 
 #placeReviewsSection {
@@ -964,7 +964,7 @@
 #placeReviewsSection .plr-section-title {
     font-size: 12px;
     font-weight: 700;
-    color: var(--sage-d);
+    color: var(--slate);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
@@ -1130,4 +1130,233 @@
     background: var(--terra);
     border-color: var(--terra);
     color: var(--panel);
+}
+
+/* 커뮤니티 목록은 카드 격자 대신 한 줄씩 읽는 벽으로 쌓는다. */
+#page-community,
+#page-community button,
+#page-community input,
+#page-community select { word-break: keep-all; }
+
+#page-community * { transition-property: transform, opacity !important; }
+
+#page-community [style*="color:var(--sage"] { color: var(--slate) !important; }
+#page-community [style*="background:var(--sage"] { background: var(--slate-pale) !important; }
+#page-community [style*="border-color:var(--sage"] { border-color: var(--slate) !important; }
+
+#page-community .comm-main { min-width: 0; }
+
+#page-community .comm-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--u);
+    margin-bottom: calc(var(--u) * 2);
+}
+
+#page-community .comm-heading h2 { font-size: var(--t-h3); font-weight: 800; }
+
+#page-community .comm-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+#page-community .comm-tab { flex: 0 0 auto; transition: none; }
+
+#page-community .comm-tab.on {
+    color: var(--ink);
+    box-shadow: inset 0 calc(var(--u) / -4) 0 var(--ink);
+}
+
+#page-community .search-bar { align-items: end; }
+
+#page-community .search-inp,
+#page-community .search-bar .form-input { min-width: 0; color: var(--ink); }
+
+#page-community .search-inp:focus,
+#page-community .search-bar .form-input:focus { border-color: var(--ink-2); }
+
+#page-community .btn-search { background: var(--ink); color: var(--panel); }
+
+#page-community .comm-post-item {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr) max-content;
+    align-items: start;
+    gap: var(--gap-card);
+    padding: calc(var(--u) * 2) 0;
+    border: 0;
+    border-bottom: 1px solid var(--ui-line-2);
+    border-radius: 0;
+    background: none;
+    transition: none;
+}
+
+#page-community .comm-post-item:first-child { border-top: 1px solid var(--ui-line-2); }
+#page-community .comm-post-item:hover { background: var(--ui-plate); }
+
+/* 실제 API 렌더러는 .comm-post-item 안에 .post-card를 한 겹 더 만든다. */
+#page-community .comm-post-item:has(> .post-card) {
+    display: block;
+    padding: 0;
+    border: 0;
+}
+
+#page-community .comm-post-item > .post-card {
+    width: 100%;
+    border-bottom: 1px solid var(--ui-line-2);
+}
+
+#page-community .comm-post-item:first-child > .post-card {
+    border-top: 1px solid var(--ui-line-2);
+}
+
+#page-community .post-leading,
+#page-community .post-copy,
+#page-community .post-trailing { min-width: 0; }
+
+#page-community .post-copy { display: grid; gap: calc(var(--u) / 2); }
+
+#page-community .post-ttl {
+    overflow-wrap: anywhere;
+    font-size: var(--t-sm);
+    line-height: 1.5;
+    margin: 0;
+}
+
+#page-community .post-tags,
+#page-community .post-stats { display: flex; flex-wrap: wrap; gap: var(--u); }
+
+#page-community .post-tag,
+#page-community .post-stat,
+#page-community .post-byline {
+    color: var(--ink-2);
+    font-size: var(--t-xs);
+    line-height: 1.5;
+}
+
+#page-community .post-tag { color: var(--slate); }
+
+#page-community .post-trailing {
+    display: grid;
+    justify-items: end;
+    gap: calc(var(--u) / 2);
+    text-align: right;
+}
+
+#page-community .post-byline { max-width: calc(var(--u) * 22); overflow-wrap: anywhere; }
+
+#page-community .post-cat { background: var(--ui-plate); color: var(--ink-2); }
+
+#page-community .post-cat.cat-route,
+#page-community .post-cat.cat-food { background: var(--terra-pale); color: var(--num); }
+
+#page-community .post-cat.cat-stay,
+#page-community .post-cat.cat-tour { background: var(--slate-pale); color: var(--slate); }
+
+#page-community .post-cat.cat-cafe { background: var(--ui-plate-2); color: var(--ink-2); }
+
+#page-community .comm-empty {
+    display: grid;
+    gap: calc(var(--u) / 2);
+    padding: calc(var(--pad-page) * 2) 0;
+    color: var(--ink-2);
+    font-size: var(--t-sm);
+    line-height: 1.6;
+    text-align: left;
+    border-top: 1px solid var(--ui-line-2);
+    border-bottom: 1px solid var(--ui-line-2);
+}
+
+#page-community .comm-empty b { color: var(--ink); font-size: var(--t-body); }
+
+#page-community .popular-tags {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: calc(var(--u) / 2);
+}
+
+#page-community .tag-help {
+    margin-top: var(--u);
+    color: var(--ink-2);
+    font-size: var(--t-xs);
+    line-height: 1.5;
+}
+
+#page-community .ai-reco-card > div:first-child { color: var(--slate) !important; }
+
+#page-community [id^="tab-"] > div[style*="text-align:center"] {
+    padding: calc(var(--pad-page) * 2) 0 !important;
+    color: var(--ink-2) !important;
+    font-size: var(--t-sm) !important;
+    line-height: 1.6;
+    text-align: left !important;
+    border-top: 1px solid var(--ui-line-2);
+    border-bottom: 1px solid var(--ui-line-2);
+}
+
+#page-community .active-tag {
+    background: var(--ink) !important;
+    color: var(--panel) !important;
+    border-color: var(--ink) !important;
+}
+
+#blogEditor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--ink-2);
+    pointer-events: none;
+}
+
+#blogEditor img {
+    display: block;
+    max-width: 100%;
+    margin: var(--u) 0;
+    border-radius: var(--r-field);
+}
+
+@media (max-width: 768px) {
+    #page-community .comm-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--pad-card);
+        padding-inline: var(--pad-card);
+    }
+
+    #page-community .comm-side {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    #page-community .comm-layout { padding-inline: calc(var(--u) * 2); }
+    #page-community .comm-heading { align-items: flex-start; }
+
+    #page-community .search-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) max-content;
+    }
+
+    #page-community .search-inp {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        width: 100%;
+    }
+
+    #page-community .comm-post-item {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--u);
+    }
+
+    #page-community .post-trailing {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--u);
+        text-align: left;
+    }
+
+    #page-community .post-byline { max-width: none; }
+    #page-community .post-stats { justify-content: flex-end; }
+
+    #page-community .popular-tags { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
