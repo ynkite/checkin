@@ -1,0 +1,59 @@
+# EC2 에서 도는 것 — 앱 · DB · 리버스프록시
+#
+#   docker compose --env-file .env up -d
+#
+# Caddy 를 쓴 이유 — 도메인만 적으면 Let's Encrypt 인증서를 알아서 받고
+# 90일마다 갱신한다. nginx + certbot 은 같은 일을 설정 세 군데로 나눠 한다.
+# HTTPS 가 없으면 위치·서비스워커·푸시가 브라우저에서 전부 막힌다.
+
+services:
+  app:
+    image: ghcr.io/${GHCR_OWNER}/checkin:latest
+    restart: always
+    env_file: .env
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:mariadb://db:3306/checkin?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: checkin
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SERVER_PORT: 8080
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11
+    restart: always
+    environment:
+      MARIADB_DATABASE: checkin
+      MARIADB_USER: checkin
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on:
+      - app
+
+volumes:
+  uploads:
+  dbdata:
+  caddydata:
