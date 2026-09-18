@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/error",
+                                "/privacy",                         //개인정보 처리방침. 로그인 전에 읽을 수 있어야 한다
                                 "/api/auth/signup",                 //회원가입
                                 "/api/auth/login",                  //로그인
                                 "/api/auth/check-username",         //아이디 중복 확인
