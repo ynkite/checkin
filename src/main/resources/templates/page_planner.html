@@ -1268,13 +1268,20 @@
                 if (d.places) {
                     d.places.forEach(p => {
                         if (!p.transit && p.name) {
+                            /* 서버가 이미 카카오로 찾아 둔 좌표를 그대로 쓴다.
+                               전에는 lat·lng 를 null 로 두고 브라우저에서 전부 다시 찾았다.
+                               그 검색이 실패하면 멀쩡한 장소까지 「가짜」로 몰려 삭제됐고,
+                               일정이 통째로 비어 4단계가 빈 화면이 됐다. */
+                            const hasCoord = (typeof p.lat === 'number' && typeof p.lng === 'number')
+                                          || (!isNaN(parseFloat(p.lat)) && !isNaN(parseFloat(p.lng)));
                             allPins.push({
                                 day: d.day,
                                 type: p.type,
                                 label: p.name,
-                                lat: null,
-                                lng: null,
-                                isFound: false,
+                                lat: hasCoord ? parseFloat(p.lat) : null,
+                                lng: hasCoord ? parseFloat(p.lng) : null,
+                                isFound: hasCoord,
+                                fromServer: hasCoord,
                                 category: p.category
                             });
                         }
@@ -1366,6 +1373,10 @@
             // 비동기 카카오 검색 기동 루프
             function _startPinSearchLoop() {
                 allPins.forEach(pin => {
+                    /* 서버가 준 좌표가 있으면 다시 찾지 않는다. 검색 한도도 아끼고,
+                       브라우저 검색이 실패해도 멀쩡한 장소가 삭제되지 않는다. */
+                    if (pin.fromServer) { finalizeSearch(); return; }
+
                     const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
 
                     // 검색 결과 중 '여행지 반경 안'에 있는 첫 후보를 채택. 없으면 미발견 처리.
@@ -1502,6 +1513,13 @@
                                         if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
 
                                         const cleanData = JSON.parse(nextJson);
+                                        /* 교체 응답이 비어 오면 쓰지 않는다. 전에는 검사 없이
+                                           세션에 넣어서 있던 일정이 통째로 날아갔다. */
+                                        if (!_routeUsable(cleanData)) {
+                                            console.warn('[플래너] 교체 응답이 비어 있어 직전 일정을 지킵니다.');
+                                            _finalizePlannerRoute(routeData, btn);
+                                            return;
+                                        }
                                         sessionStorage.setItem('ai_generated_route', nextJson);
 
                                         // 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
@@ -1540,6 +1558,14 @@
                             console.warn('2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
                             toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
                             const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
+                            /* 빼고 나니 아무것도 안 남으면 빼지 않는다.
+                               잘못된 장소가 남는 편이 빈 화면보다 낫다. */
+                            if (!_routeUsable(cleanedReordered)) {
+                                console.warn('[플래너] 제외하고 나니 남는 일정이 없어 원래 일정을 그대로 씁니다.');
+                                toast('확인이 안 된 장소가 있지만 일정은 그대로 두었습니다.');
+                                _finalizePlannerRoute(routeData, btn);
+                                return;
+                            }
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
                             _finalizePlannerRoute(cleanedReordered, btn);
                         } else {
@@ -1655,6 +1681,15 @@
             }
         }
 
+        /* 쓸 만한 동선인가 — 서버의 RouteJson.usable 과 같은 기준이다.
+           둘이 다른 기준을 쓰면 「서버는 됐다는데 화면은 빈다」가 또 난다.
+           배열이고, 하루라도 있고, 이름 있는 들를 곳이 하나라도 있어야 한다. */
+        function _routeUsable(route) {
+            if (!Array.isArray(route) || route.length === 0) return false;
+            return route.some(d => Array.isArray(d && d.places)
+                && d.places.some(p => p && !p.transit && p.name && String(p.name).trim()));
+        }
+
         function _finalizePlannerRoute(routeData, btn) {
             _hideGenLoading();
             // [예산 복구] 생성 과정에서 예산칸이 비워졌다면 스냅샷 값으로 되돌린다.
@@ -1671,6 +1706,18 @@
 
             if (!routeData) {
                 toast('일정 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            /* 빈 경로는 저장하지 않는다. 전에는 이걸 그대로 넣어서 지도 화면이
+               「세션에 든 경로에 들를 곳이 없습니다」로 끝났다. 있던 일정까지 덮어썼다. */
+            if (!_routeUsable(routeData)) {
+                const kept = sessionStorage.getItem('ai_generated_route');
+                console.warn('[플래너] 만들어진 일정이 비어 있습니다. 세션을 덮어쓰지 않습니다.', routeData);
+                toast(kept ? '일정을 다듬지 못했습니다. 직전 일정을 그대로 씁니다.'
+                           : '일정을 만들지 못했습니다. 조건을 조금 바꿔 다시 해 보세요.');
+                if (!kept) return;
+                go('map');
                 return;
             }
 
