@@ -5,8 +5,13 @@ import idusw.sbb.checkin.domain.chat.entity.ChatSession;
 import idusw.sbb.checkin.domain.chat.repository.ChatMessageRepository;
 import idusw.sbb.checkin.domain.chat.repository.ChatSessionRepository;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
+import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.crowd.AreaCode;
+import idusw.sbb.checkin.domain.tour.service.OriginSearchService;
+import idusw.sbb.checkin.domain.tour.service.RelatedTourService;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -17,9 +22,14 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /*
  * ============================================================================
@@ -46,6 +56,15 @@ public class ChatbotServiceImpl implements ChatbotService {
     private final ChatSessionRepository sessionRepository;
     private final ChatMessageRepository messageRepository;
     private final TravelPlanRepository planRepository;
+    private final RelatedTourService relatedTourService;
+    private final OriginSearchService originSearchService;
+    private final ObjectMapper objectMapper;
+
+    /* 프롬프트에 넣는 현재 시각의 기준. 시험에서 바꿔 끼운다 */
+    private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
+
+    /* 연관 관광지를 기다리는 최대 시간. 넘으면 이번 답에서는 빼고, 받은 값은 캐시에 남는다 */
+    private static final long RELATED_WAIT_MS = 4000;
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (메인)  ★ NEW
@@ -56,6 +75,9 @@ public class ChatbotServiceImpl implements ChatbotService {
             ChatSessionRepository sessionRepository,
             ChatMessageRepository messageRepository,
             TravelPlanRepository planRepository,
+            RelatedTourService relatedTourService,
+            OriginSearchService originSearchService,
+            ObjectMapper objectMapper,
 
             // ===== // 클로드 API 사용할 때 (Anthropic 정식 SDK) =====
             // build.gradle 의 spring-ai-starter-model-anthropic 가 자동 생성하는 빈.
@@ -79,6 +101,9 @@ public class ChatbotServiceImpl implements ChatbotService {
         this.sessionRepository = sessionRepository;
         this.messageRepository = messageRepository;
         this.planRepository    = planRepository;
+        this.relatedTourService = relatedTourService;
+        this.originSearchService = originSearchService;
+        this.objectMapper      = objectMapper;
 
         // ===== // 클로드 API 사용할 때 =====
         this.claudeClient   = ChatClient.builder(claudeModel).build();
@@ -109,7 +134,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     // API 명세: 메시지 전송 및 기억력 유지
     @Override
     @Transactional
-    public String processMessage(Long sessionId, String message) {
+    public String processMessage(Long sessionId, String message, Double lat, Double lng) {
 
         ChatSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
@@ -157,7 +182,10 @@ public class ChatbotServiceImpl implements ChatbotService {
                  판단이 애매할 때는 트리거하지 말고 정상 응답하세요.
                 2. 예산이 0원 미만이거나 10,000,000원 초과인 경우
                    다른 설명 없이 반드시 이 문장만 답하세요: "예산을 다시 입력해 주세요"
-                3. 여행과 무관한 대화(날씨, 요리, 정치 등)는 자연스럽게 여행 계획으로 유도하세요.
+                3. 여행과 무관한 대화(요리법, 정치 등)는 자연스럽게 여행 이야기로 돌리세요.
+                   여행지의 날씨·교통·주변 장소·영업시간처럼 여행에 영향을 주는 질문은 여행 대화입니다. 막지 마세요.
+                   다만 시스템이 넣어 준 정보에 없는 날씨·영업 여부는 지어내지 말고 확인되지 않았다고 말하세요.
+                   이모지(그림 문자)는 쓰지 마세요. 답은 화면과 음성 안내에 그대로 나갑니다.
                 4. 사용자가 대화 중 구체적인 요청을 하면 반드시 [EXTRA:라벨:값] 태그를 답변 끝에 추가하세요.
                   "- 추가 기준: 반드시 사용자가 보낸 메시지에 명확한 의도 표현이 있을 때만 추가합니다. " +
                   "AI의 추천/제안/답변 내용은 절대 EXTRA 태그로 추가하지 마세요. " +
@@ -183,11 +211,13 @@ public class ChatbotServiceImpl implements ChatbotService {
                 PlanInputForm form = plan.getForm();
                 if (form != null) {
                     sysPrompt.append(String.format("""
-                            당신은 '체크인'의 전문 AI 여행 플래너입니다.
+                            당신은 '체크인'의 AI 여행 도우미입니다.
                             사용자는 이미 아래와 같은 여행 기본 정보와 세부 취향을 설정했습니다.
-                            이 대화방의 목적은 '전체 세부 일정(Day 1, Day 2...)을 짜주는 것'이 아닙니다.
-                            사용자가 최종 일정을 생성하기 전에, 입력된 정보를 바탕으로 **추가적인 요구사항(인원 변경, 예산 조정, 특정 명소/맛집 추가 등)을 상담하고 조율하는 역할**만 수행하세요.
-                            
+                            사용자는 출발 전일 수도, 여행지에서 움직이는 중일 수도 있습니다. 아래 [지금] 절의 여행 단계를 보고 판단하세요.
+                            - 출발 전: 일정을 생성하기 전에 추가 요구사항(인원 변경, 예산 조정, 특정 명소/맛집 추가 등)을 상담하고 조율합니다.
+                            - 여행 중: 현재 시각과 위치를 기준으로 지금 필요한 것에 바로 답합니다. 다음 장소까지의 길, 근처에서 먹을 곳, 남은 시간에 들를 만한 곳 같은 질문에 짧고 구체적으로 답하세요. 일정을 새로 생성하라고 권하지 마세요.
+                            - 여행 후: 다녀온 일정에 대한 질문에 답합니다.
+
                             [여행 기본 정보]
                             - 여행지: %s
                             - 일정: %s ~ %s
@@ -205,7 +235,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                             [대화 규칙]
                             1. 사용자는 이미 화면에서 모든 정보를 입력하고 왔으므로, 위 정보를 다시 입력하라고 묻지 마세요.
                             2. 절대 먼저 구체적인 'Day 1, Day 2...' 형태의 추천 일정표를 짜서 출력하지 마세요.
-                            3. 대화를 시작할 때, 입력된 핵심 정보를 가볍게 짚어준 뒤 "이대로 일정을 생성할까요? 아니면 예산 조정, 인원 변경, 꼭 가고 싶은 장소 추가 등 더 반영하고 싶은 사항이 있으신가요?"라고 물어보며 상담을 유도하세요.
+                            3. 출발 전이고 대화를 막 시작했다면, 입력된 핵심 정보를 가볍게 짚어준 뒤 "이대로 일정을 생성할까요? 아니면 예산 조정, 인원 변경, 꼭 가고 싶은 장소 추가 등 더 반영하고 싶은 사항이 있으신가요?"라고 물어보며 상담을 유도하세요. 여행 중에는 이 문장을 쓰지 마세요.
                             4. 사용자가 특정 조건(예: 예산 줄이기, 반려견 식당 추가) 수정을 요청하면, 그 요구에 맞춰 여행 방향을 어떻게 수정하면 좋을지 친절하게 대답해 주세요.
                             
                             [시스템 태그 규칙 - 매우 중요]
@@ -248,7 +278,12 @@ public class ChatbotServiceImpl implements ChatbotService {
                             form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X"
                     ));
                 }
+                // 취향 입력이 없는 플랜(시드 플랜 등)에도 시각·위치·일정은 넣는다
+                sysPrompt.append(tripContext(plan, lat, lng));
             });
+        } else {
+            sysPrompt.append(TripContextPrompt.build(ZonedDateTime.now(clock), null, null, null,
+                    List.of(), lat, lng, null));
         }
 
         promptMessages.add(new SystemMessage(sysPrompt.toString()));
@@ -313,6 +348,60 @@ public class ChatbotServiceImpl implements ChatbotService {
         return aiReply;
 
     }
+
+    /** [지금] 절. 일정 장소와 연관 관광지를 붙인다. 연관 관광지는 기다리는 시간을 넘으면 뺀다. */
+    private String tripContext(TravelPlan plan, Double lat, Double lng) {
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        String route = plan.getDraftRouteJson() != null && !plan.getDraftRouteJson().isBlank()
+                ? plan.getDraftRouteJson() : plan.getRouteJson();
+        List<TripContextPrompt.Stop> all = TripContextPrompt.stops(objectMapper, route);
+
+        TripContextPrompt.Phase phase = TripContextPrompt.phase(now.toLocalDate(), plan.getStartDate(), plan.getEndDate());
+        int day = TripContextPrompt.focusDay(phase, now.toLocalDate(), plan.getStartDate());
+        List<String> anchors = TripContextPrompt.dayStops(all, day).stream()
+                .filter(s -> !"food".equals(s.type()) && !"cafe".equals(s.type()) && !"stay".equals(s.type()))
+                .map(TripContextPrompt.Stop::name).toList();
+        List<String> inRoute = all.stream().map(TripContextPrompt.Stop::name).toList();
+
+        /* 연관 관광지를 물을 시군구. 여행지가 「부산」처럼 시도만이면 첫 시군구로 잡히므로
+           여행 중이면 기기 위치, 아니면 그날 첫 장소 좌표로 시군구를 찾는다 */
+        double[] point = null;
+        if (phase == TripContextPrompt.Phase.DURING && lat != null && lng != null) {
+            point = new double[]{lat, lng};
+        } else {
+            point = TripContextPrompt.dayStops(all, day).stream()
+                    .filter(s -> s.lat() != null)
+                    .findFirst().map(s -> new double[]{s.lat(), s.lng()}).orElse(null);
+        }
+        final double[] at = point;
+
+        RelatedTourService.Suggestion related;
+        try {
+            related = CompletableFuture
+                    .supplyAsync(() -> relatedTourService.suggest(areaQuery(plan.getDestination(), at), anchors, inRoute, 6))
+                    .get(RELATED_WAIT_MS, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            related = null;
+        }
+        return TripContextPrompt.build(now, plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
+                all, lat, lng, related);
+    }
+
+    /* 좌표의 시군구가 여행지와 같은 시도일 때만 쓴다. 집에서 GPS 를 켠 채 물으면 여행지로 둔다 */
+    private String areaQuery(String destination, double[] at) {
+        if (at == null) return destination;
+        String region = originSearchService.regionAt(at[0], at[1]);
+        if (region == null) return destination;
+        AreaCode.Area dest = AreaCode.find(destination);
+        AreaCode.Area here = AreaCode.find(region);
+        if (dest == null || here == null || !dest.sido().equals(here.sido())) return destination;
+        return region;
+    }
+
+    void setClock(Clock clock) {
+        this.clock = clock;
+    }
+
     @Override
     @Transactional
     public void saveSystemMessage(Long sessionId, String message) {

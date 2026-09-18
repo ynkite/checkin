@@ -37,7 +37,8 @@ public class TourApiClient {
         this.ring = new idusw.sbb.checkin.global.apikey.KeyRing("tour", raw);
     }
 
-    @Value("${tour.api.base-url}")
+    /* 공개 주소라 기본값을 둔다. 설정 파일에 이 줄이 빠진 환경에서 서버 전체가 뜨지 않았다 */
+    @Value("${tour.api.base-url:https://apis.data.go.kr/B551011}")
     private String baseUrl;
 
     private final RestTemplate restTemplate;      // 타임아웃은 AppConfig 에서 설정 (연결 3s·응답 5s)
