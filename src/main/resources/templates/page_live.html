@@ -66,6 +66,16 @@
          좌표가 없으면 null 로 둔다 — 좌표 없이 안내를 시작하면 바로 막힌다. */
       var rlNextStop = null;
 
+      /* 로그인 토큰. 이 프로젝트는 전역 fetch 래퍼가 없어서 부르는 쪽이 직접 붙인다 —
+         안 붙이면 내 여행 목록이 비어서 「열 여행이 없습니다」가 뜬다 */
+      function rlToken() {
+        return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      }
+      function rlAuth() {
+        var t = rlToken();
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
+
       function esc(s) {
         return String(s == null ? '' : s)
           .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -77,7 +87,7 @@
         var box = document.getElementById('rlTrips');
         if (!box) return;
         try {
-          var r = await fetch('/api/live/trips');
+          var r = await fetch('/api/live/trips', { headers: rlAuth() });
           var j = await r.json();
           var list = (j && j.success && j.data) || [];
 
@@ -125,7 +135,7 @@
         if (rlPos) q += '&lat=' + rlPos[0] + '&lng=' + rlPos[1];
 
         try {
-          var r = await fetch(q);
+          var r = await fetch(q, { headers: rlAuth() });
           var j = await r.json();
           var d = (j && j.success && j.data) || null;
           if (d) rlPaint(d);
@@ -278,6 +288,7 @@
 
       window.rlOpen = function (tripId) {
         rlTrip = tripId;
+        window._authToken = rlToken();   /* nav-drive 의 경로 요청이 이 값을 쓴다 */
         document.getElementById('rlPick').hidden = true;
         document.getElementById('rlNow').hidden = false;
 
