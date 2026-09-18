@@ -1,17 +1,7 @@
-/*
- * 체크인 — 떠 있는 판 (styles_float.css)
- *
- * 레퍼런스(docs-private/레퍼런스/영상_이탈리아/048_12.00.png, 020_05.00.png)에서
- * 읽은 규칙을 한 곳에 모은다. 모든 화면이 이 부품을 쓴다.
- *
- *   1. 모형이 화면을 채우고, 읽는 것은 전부 그 위에 뜬 흰 판이다
- *   2. 판은 테두리가 없다. 흰 바탕 + 크고 흐린 그림자 + 큰 모서리
- *   3. 글자는 작다. 본문 13px · 라벨 10~11px.
- *      큰 것은 일차 숫자와 제목 둘뿐이다
- *   4. 고르는 것은 전부 알약이다. 켜진 것은 잉크로 채우고 글자를 흰색으로
- *   5. 눈에 띄는 색은 두 자리만 — 켜진 알약(잉크)과 작은 눈썹 라벨(테라코타)
- *
- * 색·간격은 tokens.css 변수만 쓴다.
+/* 떠 있는 판의 공용 부품.
+ * 읽는 면은 평평하게 두고, 지도와 조작 도구에만 깊이를 준다.
+ * 무대 위에서도 배경을 다시 읽는 흐림 효과는 쓰지 않는다.
+ * 배치와 메인 화면의 표면 위계는 styles_stage.css 가 정한다.
  */
 
 /* 사용자가 올린 사진이 폭을 넘어 나갔다 (256px 짜리가 375px 화면에서 616 까지).
@@ -20,10 +10,10 @@ img{ max-width:100%; height:auto }
 
 /* ── 판 ─────────────────────────────────────────────── */
 .fl{
-  background:var(--panel); border-radius:18px; box-shadow:var(--lift);
-  padding:16px 18px; word-break:keep-all;
+  background:var(--panel); border-radius:var(--r-field);
+  padding:calc(var(--u) * 2); word-break:keep-all;
 }
-.fl-sm{ padding:12px 14px; border-radius:14px; box-shadow:var(--lift2) }
+.fl-sm{ padding:var(--gap-card); border-radius:var(--r-field) }
 .fl-tight{ padding:0; overflow:hidden }
 
 /* 눈썹 — 아주 작은 대문자/라벨. 판이 무엇에 대한 것인지 한 줄 */
@@ -108,7 +98,7 @@ img{ max-width:100%; height:auto }
 /* 알약 앞의 번호 */
 .fl-pill > b{
   display:grid; place-items:center; width:18px; height:18px; margin-left:-4px;
-  border-radius:99px; background:var(--ui-plate-2); color:var(--ink-3);
+  border-radius:99px; background:var(--ui-plate-2); color:var(--ink-2);
   font-family:var(--fig); font-size:10.5px; font-weight:600;
 }
 .fl-pill[aria-pressed="true"] > b,
@@ -131,7 +121,6 @@ img{ max-width:100%; height:auto }
   height:29px; padding:0 11px; border:0; border-radius:99px; cursor:pointer;
   background:var(--void-veil); color:var(--ink-2); box-shadow:var(--lift2);
   font-family:inherit; font-size:11.5px; font-weight:600;
-  backdrop-filter:blur(8px);
   transition:background .16s ease, color .16s ease;
 }
 .fl-tool:hover{ background:var(--panel); color:var(--ink) }
@@ -165,7 +154,7 @@ img{ max-width:100%; height:auto }
 }
 
 /* ── 작은 지도 ──────────────────────────────────────── */
-.fl-mini{ width:230px }
+.fl-mini{ width:230px; border-radius:var(--r-card); box-shadow:var(--home-shadow) }
 .fl-mini-hd{
   display:flex; align-items:center; justify-content:space-between;
   padding:11px 13px 9px;
@@ -201,7 +190,7 @@ img{ max-width:100%; height:auto }
 
 /* ── 좁은 화면 ──────────────────────────────────────── */
 @media (max-width:760px){
-  .fl{ padding:14px 15px; border-radius:15px }
+  .fl{ padding:calc(var(--u) * 2) }
   .fl-no{ font-size:31px }
   .fl-ttl{ font-size:19px }
   .fl-ttl-lg{ font-size:22px }
