@@ -25,13 +25,13 @@
     }
 
     /* 큐레이션: 모바일에서 애니메이션 제거, 높이 자동 */
-    .curation-panel {
+    .curation-panel:not(.ck-home .curation-panel) {
         height: auto !important;
         min-height: 0 !important;
         align-self: start !important;
         overflow: hidden;
     }
-    .curation-panel .slide {
+    .curation-panel:not(.ck-home .curation-panel) .slide {
         display: none !important;
         position: relative !important;
         top: auto !important; left: auto !important;
@@ -43,7 +43,7 @@
         transition: none !important;
         transform: none !important;
     }
-    .curation-panel .slide.on {
+    .curation-panel:not(.ck-home .curation-panel) .slide.on {
         display: flex !important;
         position: relative !important;
         top: auto !important; left: auto !important;
@@ -54,13 +54,13 @@
         visibility: visible !important;
     }
     /* 큐레이션 내용 여백: 양쪽 패딩 늘려서 중앙으로 */
-    .curation-panel .slide.on > div:nth-child(2) {
+    .curation-panel:not(.ck-home .curation-panel) .slide.on > div:nth-child(2) {
         padding-left: 80px !important;
         padding-right: 80px !important;
     }
     /* 큐레이션 버튼: 하단 가득 채우기 */
-    .curation-panel .slide.on .btn-slide-prev,
-    .curation-panel .slide.on .btn-slide-plan {
+    .curation-panel:not(.ck-home .curation-panel) .slide.on .btn-slide-prev,
+    .curation-panel:not(.ck-home .curation-panel) .slide.on .btn-slide-plan {
         flex: 1;
     }
 
@@ -102,7 +102,7 @@
         margin: 0;
     }
 
-    /* 좌우 화살표 (큐레이션 .slide-arr 와 동일 톤) */
+    /* 좌우 화살표 (큐레이션 .slide-arr:not(.ck-home .slide-arr) 와 동일 톤) */
     .mob-carousel-arr {
         position: absolute;
         top: 38%;

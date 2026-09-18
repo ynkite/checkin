@@ -48,26 +48,40 @@
   /* 메인 무대 — 풍경 팔레트와 독립된 배치·표면 */
   --home-inset:clamp(16px, 2.2vw, 32px);
   --home-left:clamp(310px, 25vw, 360px);
-  --home-right:264px;
-  --home-scene:clamp(440px, 66dvh, 680px);
-  --home-scene-small:clamp(224px, 56vw, 420px);
-  --home-title:clamp(34px, 3.2vw, 46px);
+  --home-right:352px;
+  --home-scene:clamp(300px, 47dvh, 480px);
+  --home-scene-small:300px;
+  --home-title:clamp(36px, 3.4vw, 50px);
   --home-section:clamp(48px, 5.6vw, 80px);
   --home-caption:22px;
   --home-caption-width:430px;
   --home-pin:21px;
-  --home-meta:12px;
+  --home-meta:13px;
   --home-control:36px;
   --home-target:44px;
-  --home-map:136px;
+  --home-map:190px;
   --home-on-dark:#FFFFFF;
   --home-muted-dark:#C4CBD5;
   --home-dark:#101620;
   --home-dark-hover:#253040;
   --home-dark-line:#46505E;
-  --home-wash:rgba(16,22,32,.15);
+  --home-wash:rgba(25,40,65,.36);
+  --home-rain:rgba(255,255,255,.76);
+  --home-wet:rgba(213,231,245,.28);
+  --home-rain-tile:96px;
+  --home-rain-shift:192px;
+  --home-rain-lines:linear-gradient(108deg,transparent 47%,rgba(255,255,255,.76) 48%,rgba(255,255,255,.76) 49%,transparent 50%);
+  --home-width:1440px;
+  --home-reading:1200px;
+  --home-form-pad:24px;
+  --home-story-size:24px;
+  --home-number:32px;
+  --home-small-number:20px;
+  --home-pin-width:224px;
+  --home-pin-size:28px;
+  --home-radius:24px;
   --home-cut:rgba(255,158,18,.16);
-  --home-shadow:0 8px 24px -16px rgba(16,22,32,.3);
+  --home-shadow:0 2px 0 rgba(16,22,32,.10),0 6px 0 rgba(16,22,32,.04);
   --home-ease:cubic-bezier(.2,.75,.25,1);
 
   /* ── 모서리 · 그림자 ───────────────────────────────────── */
