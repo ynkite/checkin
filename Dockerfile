@@ -16,7 +16,7 @@ RUN gradle bootJar -x test --no-daemon
 
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-COPY --from=build /src/build/libs/*-SNAPSHOT.jar app.jar
+COPY --from=build /src/build/libs/*.jar app.jar
 
 # 업로드 파일은 컨테이너 밖 볼륨에 둔다. 재배포해도 남아야 한다.
 ENV FILE_UPLOAD_PATH=/data/uploads/
