@@ -110,8 +110,43 @@ tour.api.key=${TOUR_API_KEY:}
 tour.api.base-url=https://apis.data.go.kr/B551011
 
 # ── SK open API / TMAP (이수환) ──
+#   TMAP 과 지오비전 퍼즐은 같은 플랫폼(apis.openapi.sk.com)이다.
+#   한 앱의 appKey 로 둘 다 된다 — SK 콘솔에서 그 앱에 두 상품을
+#   같이 켜 두면 아래 두 값에 같은 키를 넣어도 돌아간다.
+#
+#   한도가 걱정되면 쉼표로 여러 개를 넣는다. 앞에서부터 쓰고,
+#   한도가 차면(429·401·403) 다음 키로 넘어간다. 5xx 는 서버 문제라
+#   키를 죽이지 않는다. 자정에 다시 처음 키로 돌아간다.
+#     tmap.api.key=내키,팀원1키,팀원2키
+#   관광공사(tour.api.key)와 퍼즐(sk.puzzle.api.key)도 같은 방식이다.
 tmap.api.key=${TMAP_APP_KEY:}
 tmap.api.base-url=https://apis.openapi.sk.com
+
+# ── SK 지오비전 퍼즐 7종 ──
+#   TMAP 과 같은 appKey 를 넣어도 된다 (위 설명).
+#   비어 있으면 /api/puzzle/* 이 ready=false 로 답한다. 화면은 안 깨진다.
+sk.puzzle.api.key=${SK_PUZZLE_KEY:}
+sk.puzzle.api.base-url=https://apis.openapi.sk.com/puzzle
+
+# ── 유료 호출 문 (기본 닫힘) ──
+#   퍼즐 중 장소혼잡도·국내여행·주거생활·음식점·학원은 돈이 든다.
+#   지하철 혼잡도만 무료라 이 문을 안 지난다.
+#   최종 테스트 때만 enabled=true 로 열고, 끝나면 다시 닫는다.
+sk.paid.enabled=false
+sk.paid.daily-cap=200
+
+# ── 오피넷 유가 (한국석유공사) — 싼 주유소 추천 (유지환) ──
+#   opinet.co.kr 무료 발급. 좌표는 KATEC 이라 카카오 좌표변환
+#   (kakao.rest.api.key)으로 WGS84 를 바꿔 넣는다.
+opinet.api.key=${OPINET_API_KEY:}
+opinet.api.base-url=http://www.opinet.co.kr/api
+
+# ── Web Push VAPID — 재계획 알림 푸시 (유지환) ──
+#   web-push-codelab.glitch.me 등에서 키쌍 발급. subject 는 mailto: 주소.
+#   세 값 다 있어야 푸시 전송기가 뜬다.
+push.vapid.public-key=${VAPID_PUBLIC_KEY:}
+push.vapid.private-key=${VAPID_PRIVATE_KEY:}
+push.vapid.subject=${VAPID_SUBJECT:mailto:admin@checkin.local}
 
 # ── SK 실시간 인원 (키를 받으면 주소와 경로만 적으면 붙는다) ──
 #   url 의 {q} 자리에 장소 이름, {lat} {lng} 자리에 좌표가 들어간다.

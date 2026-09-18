@@ -1443,10 +1443,161 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 .ck-home .ck-hero.ck-intro .st-tl,
 .ck-home .ck-hero.ck-intro .st-side,
 .ck-home .ck-hero.ck-intro .st-mini,
-.ck-home .ck-hero.ck-intro .st-form,
 .ck-home .ck-hero.ck-intro .st-cwkey{
   opacity:.14; transition:opacity .5s ease;
 }
+
+/* 건너뛰기. 연출은 14초다. 기다릴 사람은 보고, 아닌 사람은 넘긴다.
+   연출이 도는 동안만 보인다. */
+.ck-home .ck-hero .ck-skipin{ display:none }
+.ck-home .ck-hero.ck-intro .ck-skipin{
+  display:inline-flex; align-items:center; gap:6px;
+  position:absolute; right:18px; bottom:18px; z-index:9;
+  padding:8px 14px 9px; border:0; cursor:pointer;
+  border-radius:var(--r-pill);
+  background:var(--glass); box-shadow:var(--glass-lift);
+  font-family:var(--sans); font-size:12.5px; font-weight:600;
+  color:var(--ink-2); letter-spacing:var(--tracking-tight);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+}
+.ck-home .ck-hero.ck-intro .ck-skipin:hover{ color:var(--ink) }
+.ck-home .ck-hero.ck-intro .ck-skipin:active{ transform:translateY(1px) }
+@media (max-width:900px){
+  .ck-home .ck-hero.ck-intro .ck-skipin{ right:12px; bottom:12px }
+}
+
+/* ── 갈래가 바뀌는 순간 ─────────────────────────────────────
+   「최대한 사용자가 바뀐다는것을 인식하고 화려하게」가 요구다.
+   그래서 바뀐 자리에 세 가지 표시를 둔다 —
+     ck-new     갈아 끼운 곳. 링이 한 번 퍼진다
+     ck-moved   순서만 바뀐 곳. 번호가 한 번 튄다
+     ck-was     원래 있던 곳. 흐린 점선 핀으로 남는다
+   「이거 대신 이거」가 한 화면에 같이 있어야 바뀐 게 보인다.
+
+   transform 과 opacity 만 쓴다. 이 화면에서 filter 하나로
+   474KB SVG 가 매 프레임 다시 그려진 적이 있다. */
+
+/* 갈아 끼운 곳 — 링이 퍼지고 번호가 신호색으로 선다 */
+.ck-pins .ck-pin.ck-new .ck-no{
+  background:var(--sig); color:var(--ink);
+  box-shadow:inset 0 0 0 1.5px var(--ink);
+}
+.ck-pins .ck-pin.ck-new::after{
+  content:""; position:absolute; left:50%; top:0;
+  width:15px; height:15px; margin:-1px 0 0 -7.5px;
+  border-radius:99px; box-shadow:0 0 0 2px var(--sig);
+  transform-origin:50% 50%; pointer-events:none;
+  animation:ck-ring 1.5s cubic-bezier(.2,.8,.3,1) 2;
+}
+@keyframes ck-ring{
+  0%{ transform:scale(1); opacity:.9 }
+  70%{ transform:scale(3.4); opacity:0 }
+  100%{ transform:scale(3.4); opacity:0 }
+}
+
+/* 순서만 바뀐 곳 — 번호가 한 번 튄다. 숫자가 요점이다 */
+.ck-pins .ck-pin.ck-moved .ck-no{
+  animation:ck-bump .62s cubic-bezier(.2,.9,.3,1.3) 1;
+}
+@keyframes ck-bump{
+  0%{ transform:translateY(0) scale(1) }
+  38%{ transform:translateY(-7px) scale(1.22) }
+  100%{ transform:translateY(0) scale(1) }
+}
+
+/* 원래 있던 곳 — 흐린 점선. 이름만 남기고 혼잡도는 안 적는다 */
+.ck-pins .ck-pin.ck-was{ z-index:1 }
+.ck-pins .ck-pin.ck-was .ck-no{
+  background:transparent; color:var(--ink-3);
+  box-shadow:inset 0 0 0 1.5px var(--ink-3);
+  opacity:.72;
+}
+.ck-pins .ck-pin.ck-was .ck-bub{
+  opacity:.6; text-decoration:line-through;
+  text-decoration-color:var(--ink-3); text-decoration-thickness:1px;
+}
+
+/* 한 곳만 볼 때 — 그 핀이 주인공이다. 조금 크게 세운다 */
+.ck-pins .ck-pin.ck-solo .ck-no{ transform:scale(1.14) }
+.ck-pins .ck-pin.ck-solo .ck-bub{ font-size:13.5px }
+
+/* ── 갈래 자막 ──────────────────────────────────────────────
+   왜 · 어떻게 · 얼마 세 박자다. 안내 문구의 규칙과 같다.
+   모형 위에 얹히므로 글자 뒤에 판을 깐다 — 도시 위에 그냥 쓰면
+   건물과 글자가 섞여 안 읽힌다. */
+.ck-home .ck-fix{
+  position:absolute; left:34px; bottom:132px; z-index:7;
+  max-width:min(430px, 42vw);
+  padding:15px 19px 16px;
+  border-radius:var(--r-panel);
+  background:var(--ink); color:var(--panel);
+  box-shadow:var(--lift);
+  word-break:keep-all; pointer-events:none;
+}
+.ck-home .ck-fix b{
+  display:block; font-size:12px; font-weight:700;
+  letter-spacing:.02em; color:var(--sig);
+}
+.ck-home .ck-fix span{
+  display:block; margin-top:7px; font-size:16px; line-height:1.5;
+  letter-spacing:var(--tracking-tight);
+}
+/* 어두운 판 위의 보조 글자. 같은 파일의 .st-note 가 쓰는 것과 같은 값이다
+   (1333 · 1349 · 1351행). 토큰이 따로 없어서 그 결을 따른다 */
+.ck-home .ck-fix .ck-fix-how{
+  margin-top:5px; font-size:14.5px; color:rgba(255,255,255,.72);
+}
+.ck-home .ck-fix em{
+  display:flex; align-items:baseline; gap:10px; margin-top:12px;
+  font-style:normal; font-family:var(--fig); font-size:19px; font-weight:600;
+  letter-spacing:var(--tracking-num); color:var(--sig);
+}
+.ck-home .ck-fix em i{
+  font-style:normal; font-family:var(--sans); font-size:12px; font-weight:500;
+  color:rgba(255,255,255,.62);
+}
+
+/* 들어오는 모양 — 판이 먼저 서고 글자가 순서대로 따라온다.
+   한꺼번에 나타나면 「떴다」로 끝나고, 순서가 있으면 「말하는」 것으로 읽힌다 */
+.ck-home .ck-fix.ck-fix-in{
+  animation:ck-fix-up .42s cubic-bezier(.2,.9,.3,1) both;
+}
+.ck-home .ck-fix.ck-fix-in > *{
+  animation:ck-fix-line .38s cubic-bezier(.2,.9,.3,1) both;
+}
+.ck-home .ck-fix.ck-fix-in > :nth-child(1){ animation-delay:.10s }
+.ck-home .ck-fix.ck-fix-in > :nth-child(2){ animation-delay:.18s }
+.ck-home .ck-fix.ck-fix-in > :nth-child(3){ animation-delay:.26s }
+.ck-home .ck-fix.ck-fix-in > :nth-child(4){ animation-delay:.36s }
+@keyframes ck-fix-up{
+  from{ opacity:0; transform:translateY(14px) }
+  to{ opacity:1; transform:none }
+}
+@keyframes ck-fix-line{
+  from{ opacity:0; transform:translateY(7px) }
+  to{ opacity:1; transform:none }
+}
+
+/* 좁은 화면 — 무대 아래쪽 가운데로 내린다. 옆에 두면 모형을 덮는다 */
+@media (max-width:900px){
+  .ck-home .ck-fix{
+    left:14px; right:14px; bottom:16px; max-width:none;
+    padding:12px 15px 13px;
+  }
+  .ck-home .ck-fix span{ font-size:14.5px }
+  .ck-home .ck-fix em{ font-size:16px }
+}
+
+/* 모션을 줄인 기기 · 줄이라고 한 사람 — 결과만 보여 준다 */
+[data-motion="lite"] .ck-pins .ck-pin.ck-new::after,
+[data-motion="lite"] .ck-pins .ck-pin.ck-moved .ck-no{ animation:none }
+@media (prefers-reduced-motion: reduce){
+  .ck-pins .ck-pin.ck-new::after{ animation:none }
+  .ck-pins .ck-pin.ck-moved .ck-no{ animation:none }
+  .ck-home .ck-fix.ck-fix-in,
+  .ck-home .ck-fix.ck-fix-in > *{ animation:none }
+}
+
 
 /* ── 동선 선 ────────────────────────────────────────────────
    핀과 같은 좌표계로 긋는다. 두 겹이라 도시 위에 올라가도 안 묻힌다.
@@ -1467,4 +1618,54 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 }
 @media (prefers-reduced-motion:no-preference){
   .ck-pins .ck-ln-todo{ animation:ck-march 1.9s linear infinite }
+}
+
+/* ── 무대 위의 판을 역할별로 ─────────────────────────────────
+   전에는 제목·오른쪽 판·작은 지도가 `.fl` 하나를 같이 써서
+   18px 라운드와 그림자가 똑같았다. 그래서 정보 구조보다 카드
+   외곽선이 먼저 보였다. 모든 것에 같은 그림자를 찍는 건 고른 게
+   아니라 안 고른 것이다.
+
+   떠 있어야 하는 것만 띄운다. 나머지는 각자 다른 깊이에 앉힌다. */
+
+/* 제목 — 이 화면의 목소리다. 물건이 아니라서 카드를 걷는다.
+   대신 글자 뒤에 가림막을 깐다. 도시 위에 그냥 쓰면 건물과 글자가
+   섞여서 안 읽힌다. --void-veil 은 하늘 네 벌에서 값이 각각 정해져
+   있어서 밤에도 알아서 맞는다 (sky-anchors.js 가 넣는다). */
+.ck-home .ck-hero .st-head{
+  background:none; box-shadow:none; border-radius:0;
+  padding:2px 0 0;
+  position:relative; isolation:isolate;
+}
+.ck-home .ck-hero .st-head::before{
+  content:""; position:absolute; z-index:-1;
+  left:-18px; right:-24px; top:-14px; bottom:-10px;
+  border-radius:22px;
+  background:radial-gradient(120% 100% at 18% 30%,
+    var(--void-veil) 0%, var(--void-veil) 46%, transparent 100%);
+}
+
+/* 오른쪽 판 — 읽는 표다. 떠 있을 이유가 없다.
+   그림자를 걷고 머리카락 선만 남긴다. 라운드도 줄여서 표에 가깝게. */
+.ck-home .ck-hero .st-side{
+  box-shadow:inset 0 0 0 1px var(--glass-line);
+  border-radius:12px;
+  background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+}
+
+/* 작은 지도 — 이것만 진짜로 떠 있다. 지도 위에 얹힌 오버레이라
+   그림자가 뜻을 갖는다. 그대로 두고, 오히려 조금 더 띄운다. */
+.ck-home .ck-hero .st-mini{
+  box-shadow:var(--glass-lift);
+  border-radius:16px;
+}
+
+/* 좁은 화면에서는 판이 무대를 덮으므로 가림막을 더 진하게 */
+@media (max-width:900px){
+  .ck-home .ck-hero .st-head::before{
+    left:-14px; right:-14px;
+    background:linear-gradient(to bottom,
+      var(--void-veil-2) 0%, var(--void-veil-2) 72%, transparent 100%);
+  }
 }

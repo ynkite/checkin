@@ -159,18 +159,20 @@
 }
 
 .wx-d-ic {
-  height: 34px;
-  margin: 8px 0 6px;
+  height: calc(var(--u) * 4);
+  margin: var(--u) 0;
 }
 
 .wx-d-ic .wx {
-  width: 30px;
-  height: 30px;
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 3);
 }
 
 .wx-d-t {
   font-family: var(--fig);
-  font-size: 17px;
+  font-size: var(--t-h3);
+  font-weight: 600;
+  line-height: 1;
   letter-spacing: var(--tracking-num);
   color: var(--ink);
 }

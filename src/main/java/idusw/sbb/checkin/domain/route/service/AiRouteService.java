@@ -553,6 +553,10 @@ public class AiRouteService {
         }
     }
 
+    /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
+       하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
+       옛 동선으로 돌아가던 원인이다. 같은 클래스의 다른 쓰기 메서드
+       (401·490·706·949행)는 붙어 있었고 이것만 빠져 있었다. */
     @Transactional
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)

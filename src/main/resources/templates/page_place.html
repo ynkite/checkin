@@ -170,7 +170,7 @@
                 <div class="prev-stats-row">
                     <div class="prev-stat-card">
                         <div class="psc-val" id="prevBudget"></div>
-                        <div class="psc-label">예산 합산 검증액</div>
+                        <div class="psc-label">예상 비용 합계</div>
                     </div>
                     <div class="prev-stat-card">
                         <div class="psc-val" id="prevPlaces"></div>
@@ -186,7 +186,7 @@
                 </div>
                 <div class="prev-section-ttl">숙소 스냅샷</div>
                 <div class="prev-stay-list" id="prevStay"></div>
-                <div class="prev-section-ttl">맛집 리스트 핵심글</div>
+                <div class="prev-section-ttl">맛집 목록</div>
                 <div id="prevFoodList"></div>
                 <div class="prev-acts">
                     <button class="btn-prev-plan" onclick="closePrev();go('planner')">
@@ -212,7 +212,7 @@
             </div>
             <div class="modal-bd">
                 <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
-                    확정 시 플랜이 DB에 저장됩니다. 공개 여부를 설정해주세요.
+                    일정을 저장할 공개 범위를 골라 주세요.
                 </p>
                 <div class="form-group">
                     <label class="form-label">공개 여부</label>
@@ -222,7 +222,7 @@
                     </div>
                 </div>
                 <button class="btn-next" style="width:100%;margin-top:14px"
-                        onclick="doConfirmPlan()">확정 저장 후 지도로 이동</button>
+                        onclick="doConfirmPlan()">저장하고 지도 보기</button>
             </div>
         </div>
     </div>
@@ -248,14 +248,14 @@
 
             <div id="share-members">
                 <div style="display:flex; gap:8px; margin-bottom:24px;">
-                    <input type="email" id="share-email-inp" placeholder="이메일로 그룹 멤버 초대 (편집 권한)" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
+                    <input type="email" id="share-email-inp" placeholder="함께 고칠 사람 초대" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
                     <button onclick="inviteShareMember()" style="background:var(--sage); color:var(--panel); border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
                 </div>
 
                 <div id="share-member-list" style="display:flex; flex-direction:column; gap:16px; margin-bottom:30px; min-height:60px;">
                 </div>
 
-                <div style="font-size:11px; font-weight:700; color:var(--text3); margin-bottom:8px;">읽기 전용 링크 복사</div>
+                <div style="font-size:11px; font-weight:700; color:var(--text3); margin-bottom:8px;">보기 전용 링크 복사</div>
                 <div style="display:flex; gap:8px; background:var(--cream); padding:6px; border-radius:8px;">
                     <input type="text" id="share-link-url" readonly style="flex:1; background:none; border:none; padding:4px 8px; font-size:13px; color:var(--text2); outline:none;">
                     <button onclick="doShareLinkCopy()" style="background:var(--sage); color:var(--panel); border:none; border-radius:6px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer;">링크 복사</button>
@@ -264,7 +264,7 @@
 
             <div id="share-post" style="display:none">
                 <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
-                    이 여행 플랜을 커뮤니티에 후기로 게시합니다.
+                    이 일정으로 여행 후기를 씁니다.
                 </p>
                 <button class="btn-next" style="width:100%"
                         onclick="this.closest('.overlay').classList.remove('open');
@@ -366,7 +366,7 @@
             if (repReviews.length && placeListEl) {
                 placeListEl.style.display = '';
                 _setHTML('pr-place-list',
-                    `<div class="bcard-ttl">방문 장소별 별점 &amp; 한줄평</div>` +
+                    `<div class="bcard-ttl">방문 장소별 별점과 한줄평</div>` +
                     repReviews.map(p => `
         <div class="place-review-card" style="cursor:pointer"
              onclick="goToPlaceReviews(${p.placeId})">
@@ -492,7 +492,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/likes`, {});
-        toast(res.success ? '좋아요!' : (res.message || '좋아요 처리 실패'));
+        toast(res.success ? '좋아요를 눌렀습니다.' : (res.message || '좋아요를 누르지 못했습니다. 다시 눌러 주세요.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -514,7 +514,7 @@
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/reports`,
             { reason: '부적절한 게시글' });
-        toast(res.success ? '신고가 접수되었습니다.' : (res.message || '신고 처리 실패'));
+        toast(res.success ? '신고를 받았습니다.' : (res.message || '신고를 보내지 못했습니다. 다시 눌러 주세요.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -556,7 +556,7 @@
 
             container.innerHTML = `
                     <label class="form-label" style="display:block;margin-bottom:10px">
-                        방문 장소별 별점 &amp; 한줄평
+                        방문 장소별 별점과 한줄평
                     </label>
                     <div id="edit-place-list">
                         ${reviews.map(r => `
@@ -617,7 +617,7 @@
             }
         }
 
-        toast('수정이 완료되었습니다.');
+        toast('수정했습니다.');
         go('review');
         loadReviewDetail(postId);
     }
@@ -816,7 +816,7 @@
         }
         document.getElementById('confirmModal').classList.remove('open');
         go('map');
-        toast('일정을 확정했습니다.');
+        toast('일정을 저장했습니다.');
         document.getElementById('confirmDoneModal').classList.add('open');
     }
 
@@ -882,7 +882,7 @@
             if(res.success) successCount++;
         }
         if(successCount > 0) {
-            toast('초대(편집 권한)가 발송되었습니다.');
+            toast('함께 고칠 사람에게 초대를 보냈습니다.');
             input.value = '';
             await loadShareModal();
         } else {
@@ -900,7 +900,7 @@
         }
         navigator.clipboard?.writeText(linkEl.value)
             .then(() => toast('보기 전용 링크를 복사했습니다.'))
-            .catch(() => toast('링크 복사에 실패했습니다.'));
+            .catch(() => toast('링크를 복사하지 못했습니다. 다시 눌러 주세요.'));
     }
 
     /* ────────────────────────────────────────────────

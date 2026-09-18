@@ -100,7 +100,7 @@
           const metaInfo = t.meta || "공유받은 편집자 일정";
 
           return `
-        <div class="ts-card" onclick="${targetAction}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border2);cursor:pointer;margin-bottom:12px;transition:all .2s;" onmouseover="this.style.borderColor='var(--sage-l)'; this.style.boxShadow='var(--sh)';" onmouseout="this.style.borderColor='var(--border2)'; this.style.boxShadow='none';">
+        <div class="ts-card" onclick="${targetAction}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border2);cursor:pointer;margin-bottom:12px;" onmouseover="this.style.borderColor='var(--slate)';" onmouseout="this.style.borderColor='var(--border2)';">
           <div style="width:42px;height:42px;border-radius:10px;background:var(--terra);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--panel);flex-shrink:0;">초대</div>
           <div style="flex:1">
             <div style="font-weight:800;font-size:14px;color:var(--text);margin-bottom:2px;">${t.title}</div>
@@ -108,7 +108,7 @@
           </div>
           <div style="text-align:right; line-height:1.4; min-width:80px; flex-shrink:0;">
               <span style="display:block; font-size:10px; color:var(--text3); font-weight:700; margin-bottom:2px;">링크 상태</span>
-              <span style="color:var(--sage-d); font-weight:800; font-size:12px;">연결됨</span>
+              <span style="color:var(--slate); font-weight:800; font-size:12px;">연결됨</span>
           </div>
         </div>`;
         }).join('');
@@ -238,7 +238,7 @@
           <button class="my-menu" onclick="showMySection('scrap-cafe',this)">스크랩한 카페</button>
           <button class="my-menu" onclick="showMySection('scrap-route',this)">스크랩한 여행 경로</button>
           <button class="my-menu" onclick="showMySection('ledger',this)">가계부</button>
-          <div class="my-menu-sep">설정</div>
+          <div class="my-menu-sep my-menu-settings">설정</div>
           <button class="my-menu" onclick="showMySection('info',this)">회원정보 수정</button>
           <button class="my-menu" onclick="showMySection('withdraw',this)">회원 탈퇴</button>
         </div>
@@ -303,7 +303,7 @@
         <div id="my-info" style="display:none">
           <h3 class="my-sec-ttl">회원정보 수정</h3>
           <div id="info-pw-step">
-            <div id="info-pw-warn-txt" style="background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--sage-d)"></div>
+            <div id="info-pw-warn-txt" style="background:var(--slate-pale);border:1px solid var(--slate);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--slate)"></div>
             <div id="info-social-notice"
                  style="display:none;background:var(--cream2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;margin-bottom:14px;font-size:13px;color:var(--text2);text-align:center">
             </div>

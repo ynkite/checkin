@@ -41,3 +41,27 @@
 :where(a, button, input, select, textarea, summary):focus:not(:focus-visible){
   outline:none;
 }
+
+.ck-skip{
+  position:fixed;
+  top:var(--u);
+  left:var(--u);
+  z-index:3000;
+  padding:var(--u) calc(var(--u) * 2);
+  border:1px solid var(--ui-line);
+  border-radius:var(--r-field);
+  background:var(--panel);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:var(--t-sm);
+  font-weight:600;
+  line-height:1.4;
+  text-decoration:none;
+  word-break:keep-all;
+  transform:translateY(-200%);
+  transition:transform .15s;
+}
+
+.ck-skip:focus{
+  transform:translateY(0);
+}
