@@ -2445,8 +2445,13 @@ public class AiRouteService {
 
             return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
-            System.err.println("[assembleCandidates] 실패: " + e.getMessage());
-            return "[]";
+            /* 전에는 여기서 "[]" 를 돌려줬다. 그러면 실패가 「빈 일정」이 되어
+               컨트롤러까지 성공으로 올라가고, 화면은 3단계에서 4단계로 넘어간 뒤
+               빈 지도를 보여 줬다. 사용자는 왜 안 되는지 알 수 없었다.
+               실패는 실패라고 말한다. 스택은 로그에만 남기고 사용자에게는 보내지 않는다. */
+            log.error("[동선 조립] 실패 tripId={} 여행지={} 취향정보={}",
+                    tripId, plan.getDestination(), form == null ? "없음" : "있음", e);
+            throw new IllegalStateException("일정을 조립하지 못했습니다.", e);
         }
     }
 
