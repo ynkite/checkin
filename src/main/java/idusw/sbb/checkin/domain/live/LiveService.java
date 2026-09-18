@@ -39,6 +39,7 @@ public class LiveService {
 
     private final TravelPlanRepository planRepository;
     private final CrowdService crowdService;
+    private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;
     private final ObjectMapper objectMapper;
 
     /** 실시간으로 열 수 있는 여행. 끝난 지 이틀 넘은 것은 뺀다 */
@@ -101,7 +102,8 @@ public class LiveService {
         }
 
         Map<String, Object> crowd = crowdOf(plan, next, dayDate);
-        String head = headline(ph, next, crowd);
+        Map<String, Object> weather = weatherOf(plan, next, dayDate);
+        String head = headline(ph, next, crowd, weather);
 
         return new LiveSnapshot(
                 tripId,
@@ -111,8 +113,8 @@ public class LiveService {
                 dayNo, ph, head,
                 here, next, stops,
                 crowd,
-                Map.of(),            /* 날씨는 화면이 이미 있는 /api/maps/weather 로 따로 묻는다 */
-                actions(crowd, next)
+                weather,
+                actions(tripId, dayNo, crowd, weather, next)
         );
     }
 
@@ -227,13 +229,71 @@ public class LiveService {
         }
     }
 
+    /**
+     * 그 날짜의 날씨. 동선에 이미 붙어 있으면 그걸 쓴다 — 저장할 때 붙여 뒀다.
+     *
+     * 없으면 한 번 조회한다. 예보 격자가 없는 여행지면 빈 값을 준다 —
+     * WeatherServiceImpl 은 모르는 지역을 서울 격자로 떨어뜨린다. 그걸 그대로 쓰면
+     * 「여수인데 서울 날씨」가 실시간 화면에 뜬다.
+     *
+     * outdoorRisk 는 다음 정거장이 비를 맞는 곳인지다. 이게 있어야
+     * 「비 오니 실내로」를 지금 할 수 있는 것으로 내밀 수 있다.
+     */
+    private Map<String, Object> weatherOf(TravelPlan plan, Map<String, Object> next, LocalDate date) {
+        Map<String, Object> m = new LinkedHashMap<>();
+
+        /* 저장된 동선에 붙어 있는 값이 먼저다. API 를 다시 부르지 않는다 */
+        Object label = next.get("wxLabel");
+        if (label instanceof String s && !s.isBlank()) {
+            m.put("label", s);
+            if (next.get("wx") instanceof Number rp) m.put("rainProb", rp.intValue());
+            if (next.get("wxSource") instanceof String src) m.put("source", src);
+            m.put("outdoorRisk", Boolean.TRUE.equals(next.get("outdoorRisk")));
+            return m;
+        }
+
+        String region = idusw.sbb.checkin.domain.weather.WeatherRegion.of(plan.getDestination());
+        if (region == null) return Map.of();   /* 예보를 받을 수 없는 지역 */
+
+        try {
+            var dw = weatherService.getDayWeather(region, date);
+            if (dw == null) return Map.of();
+
+            if (dw.getSky() != null && !dw.getSky().isBlank()) m.put("sky", dw.getSky());
+            if (dw.getTempMin() != null) m.put("tempMin", dw.getTempMin());
+            if (dw.getTempMax() != null) m.put("tempMax", dw.getTempMax());
+            if (dw.getRainProb() != null) m.put("rainProb", dw.getRainProb());
+            m.put("rain", dw.isRainExpected());
+            m.put("source", dw.getSource());
+
+            String name = String.valueOf(next.getOrDefault("name", ""));
+            String type = String.valueOf(next.getOrDefault("type", ""));
+            m.put("outdoorRisk", dw.isRainExpected()
+                    && idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(name, type));
+
+            return m.isEmpty() ? Map.of() : m;
+
+        } catch (Exception e) {
+            log.warn("[실시간] 날씨 조회 실패: {}", e.getMessage());
+            return Map.of();
+        }
+    }
+
     /** 한 문장. 운전 중에 들어도 되는 길이로 쓴다 */
-    private String headline(String phase, Map<String, Object> next, Map<String, Object> crowd) {
+    private String headline(String phase, Map<String, Object> next,
+                            Map<String, Object> crowd, Map<String, Object> weather) {
         String name = String.valueOf(next.getOrDefault("name", ""));
         if (name.isBlank()) return "오늘 남은 일정이 없습니다.";
 
         if ("BEFORE".equals(phase)) return "아직 여행 전입니다. 첫 일정은 " + name + "입니다.";
         if ("AFTER".equals(phase))  return "지난 여행입니다. 기록만 볼 수 있습니다.";
+
+        /* 비가 먼저다. 붐비는 건 기다리면 풀리지만 비는 안 그렇다 */
+        if (Boolean.TRUE.equals(weather.get("outdoorRisk"))) {
+            Object rp = weather.get("rainProb");
+            String how = rp instanceof Number n ? "비 올 확률이 " + n.intValue() + "%입니다" : "비 예보가 있습니다";
+            return name + "은 야외입니다. " + how + ". 실내로 바꿔 볼까요.";
+        }
 
         Object rate = crowd.get("rate");
         String label = String.valueOf(crowd.getOrDefault("levelLabel", ""));
@@ -243,20 +303,56 @@ public class LiveService {
         return "다음은 " + name + "입니다.";
     }
 
-    /** 지금 할 수 있는 것. 화면이 큰 버튼으로 만든다 */
-    private List<Map<String, Object>> actions(Map<String, Object> crowd, Map<String, Object> next) {
+    /**
+     * 지금 할 수 있는 것. 화면이 큰 버튼으로 만든다.
+     *
+     * 각 갈래에 어디를 부르면 되는지까지 담는다. 전에는 key 만 내려서 화면이
+     * 스스로 알아내야 했다 — 그래서 아무것도 동작에 붙어 있지 않았다.
+     *
+     * oneClick 이 true 면 서버가 그 요청 하나로 끝낸다. false 면 무엇을 바꿀지
+     * 사람이 골라야 해서 지도 화면을 거친다 — 순서 바꾸기와 장소 교체가 그렇다.
+     * 하나를 강요하지 않는다. 늘 갈래를 준다.
+     */
+    private List<Map<String, Object>> actions(Long tripId, int dayNo,
+                                              Map<String, Object> crowd,
+                                              Map<String, Object> weather,
+                                              Map<String, Object> next) {
         List<Map<String, Object>> out = new ArrayList<>();
-        Object rate = crowd.get("rate");
-        boolean busy = rate instanceof Number r && r.intValue() >= 70;
+        String base = "/api/trips/" + tripId + "/routes";
 
-        if (busy) {
-            out.add(act("swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다"));
-            out.add(act("quiet", "다른 곳으로", "그 시각에 한적한 곳을 찾습니다"));
+        /* 비 오는 날 야외 — 서버가 그날을 실내로 다시 짠다. 한 번으로 끝난다 */
+        if (Boolean.TRUE.equals(weather.get("outdoorRisk"))) {
+            Map<String, Object> a = act("indoor", "실내로 바꾸기", "그날 야외 일정을 실내로 다시 짭니다");
+            a.put("method", "POST");
+            a.put("endpoint", base + "/indoor-replace?day=" + dayNo);
+            a.put("oneClick", true);
+            out.add(a);
         }
+
+        Object rate = crowd.get("rate");
+        if (rate instanceof Number r && r.intValue() >= 70) {
+            Map<String, Object> swap = act("swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다");
+            swap.put("method", "POST");
+            swap.put("endpoint", base + "/reorder");
+            swap.put("oneClick", false);   /* 바뀐 순서를 본문에 담아야 한다 */
+            out.add(swap);
+
+            Map<String, Object> quiet = act("quiet", "다른 곳으로", "그 시각에 한적한 곳을 찾습니다");
+            quiet.put("method", "POST");
+            quiet.put("endpoint", base + "/replace");
+            quiet.put("oneClick", false);  /* 어느 곳을 무엇으로 바꿀지 골라야 한다 */
+            out.add(quiet);
+        }
+
         if (next.get("lat") instanceof Number) {
-            out.add(act("navi", "길 안내", "다음 장소까지 안내를 켭니다"));
+            Map<String, Object> navi = act("navi", "길 안내", "다음 장소까지 안내를 켭니다");
+            navi.put("oneClick", false);   /* 브라우저에서 위치를 잡는다 */
+            out.add(navi);
         }
-        out.add(act("map", "전체 일정", "지도에서 손으로 고칩니다"));
+
+        Map<String, Object> map = act("map", "전체 일정", "지도에서 손으로 고칩니다");
+        map.put("oneClick", false);
+        out.add(map);
         return out;
     }
 
