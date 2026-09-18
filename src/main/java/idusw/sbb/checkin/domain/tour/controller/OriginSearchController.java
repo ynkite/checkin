@@ -19,6 +19,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class OriginSearchController {
 
     private final OriginSearchService originSearchService;
+    private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService;
+
+    /**
+     * 지도 화면 「이 지역 여행 정보」 — 거점 관광지 · 반려동물 동반 · 무장애를 한 번에.
+     * 여행 번호가 아니라 여행지 이름과 좌표를 받는다. 비공개 여행의 목적지를 내주지 않기 위해서다.
+     * 예: /api/tour/area-info?destination=경주&lat=35.83&lng=129.21
+     */
+    @GetMapping("/area-info")
+    public ResponseEntity<ApiResponse<idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.AreaInfo>> areaInfo(
+            @RequestParam String destination,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
+        return ResponseEntity.ok(ApiResponse.success(tourAreaInfoService.lookup(destination.trim(), lat, lng)));
+    }
 
     @GetMapping("/origin-search")
     public ResponseEntity<ApiResponse<OriginSearchService.Result>> search(
