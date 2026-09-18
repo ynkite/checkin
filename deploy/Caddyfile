@@ -1,0 +1,5 @@
+# 도메인만 적으면 인증서를 알아서 받는다.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:8080
+}

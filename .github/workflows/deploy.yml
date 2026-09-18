@@ -1,0 +1,51 @@
+# main 에 올라가면 이미지를 만들어 EC2 가 받아 가게 한다.
+#
+# 빌드를 EC2 에서 하지 않는 이유 — 1GB 인스턴스에서 그래들 빌드를 돌리면
+# 메모리가 모자라 죽는다. 여기서 만들고 서버는 받아서 띄우기만 한다.
+
+name: deploy
+
+# 자동 배포는 켜지 않는다. Actions 탭에서 눌러야 나간다 —
+# 푸시마다 컨테이너가 재시작되면 그 순간 접속한 사람이 죽은 화면을 본다.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # 기본 docker 드라이버는 캐시 내보내기를 못 한다. buildx 빌더를 따로 띄운다
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/checkin:latest
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: 서버에서 새 이미지로 교체
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /opt/checkin
+            docker compose pull app
+            docker compose up -d
+            docker image prune -f
