@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>체크인 — AI 여행 플래너</title>
+  <title>체크인 — 붐비지 않게 짜는 여행</title>
   <!-- Pretendard·Gmarket Sans 는 Google Fonts 에 없다. 기존 링크는 400 을 받아
        웹폰트가 하나도 로드되지 않았다. 실제로 서비스되는 조합으로 바꿨다. -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +11,9 @@
        IBM Plex Sans KR 보다 촘촘해 같은 크기에서 더 또렷하다.
        가변 폰트 + 동적 서브셋이라 쓰는 글자만 받는다.
        숫자·시각은 IBM Plex Mono 를 그대로 쓴다 — 자릿수가 맞아야 한다. -->
-  <meta name="description" content="여행 중 바뀌는 상황에 맞춰 동선을 다시 정리하는 서비스입니다.">
-  <meta property="og:title" content="체크인 — AI 여행 플래너">
-  <meta property="og:description" content="여행 중 바뀌는 상황에 맞춰 동선을 다시 정리하는 서비스입니다.">
+  <meta name="description" content="붐비는 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
+  <meta property="og:title" content="체크인 — 붐비지 않게 짜는 여행">
+  <meta property="og:description" content="붐비는 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
   <meta property="og:type" content="website">
   <!-- og:image 와 og:url 은 도메인이 정해진 뒤에 넣는다.
        둘 다 절대 주소여야 하고, 카카오·페이스북은 svg 를 안 받는다.
@@ -245,9 +245,9 @@
   <div onclick="document.getElementById('reportPostModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
   <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">게시글 신고</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고할 이유를 골라 주세요.</div>
     <select id="reportReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
-      <option value="">-- 사유 선택 --</option>
+      <option value="">신고 이유 선택</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
       <option value="음란물">음란물</option>
@@ -268,9 +268,9 @@
   <div onclick="document.getElementById('reportCommentModal').style.display='none'" style="position:absolute;inset:0;background:rgba(0,0,0,.45)"></div>
   <div style="position:relative;background:var(--surface);border-radius:14px;padding:24px 20px;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.18)">
     <div style="font-size:16px;font-weight:700;margin-bottom:16px">댓글 신고</div>
-    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고 사유를 선택해주세요.</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:10px">신고할 이유를 골라 주세요.</div>
     <select id="reportCommentReasonSelect" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:8px;font-size:13px;margin-bottom:16px">
-      <option value="">-- 사유 선택 --</option>
+      <option value="">신고 이유 선택</option>
       <option value="스팸/광고">스팸/광고</option>
       <option value="욕설/혐오 표현">욕설/혐오 표현</option>
       <option value="음란물">음란물</option>
@@ -330,7 +330,7 @@
     <!-- 브랜드 -->
     <div class="foot-brand">
       <img class="foot-logo" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
-      <p class="foot-slogan">붐비는 시각을 피해 하루를 다시 짭니다</p>
+      <p class="foot-slogan">붐비면 다음 동선을 바꿉니다</p>
       <p class="foot-desc">
         경로와 예산과 날씨를 한 화면에서 보고,<br>
         어긋나면 그 자리에서 바꿉니다.

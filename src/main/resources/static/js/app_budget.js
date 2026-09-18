@@ -32,7 +32,7 @@ async function updateLedgerList() {
           <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
                       display:flex;align-items:center;justify-content:center;font-size:20px">지도</div>
           <div style="flex:1">
-            <div style="font-weight:700;font-size:14px">${l.title || '여행 플랜'}</div>
+      <div style="font-weight:700;font-size:14px">${l.title || '여행 일정'}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">
               ${l.startDate || ''} ~ ${l.endDate || ''} · ${l.destination || ''}
             </div>
@@ -132,7 +132,7 @@ function _populateLedgerTripCards() {
       <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
         <div class="ts-thumb">지도</div>
         <div class="ts-info">
-          <div class="ts-name">${t.title || '여행 플랜'}</div>
+          <div class="ts-name">${t.title || '여행 일정'}</div>
           <div class="ts-meta">${t.startDate || ''} ~ ${t.endDate || ''} · ${t.destination || ''}</div>
         </div>
         <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '확정' : '초안'}</div>
@@ -335,7 +335,7 @@ async function _loadExpenses(tripId) {
     const listEl = document.getElementById('ledger-item-list');
     if (listEl) {
         if (cats.length === 0) {
-            listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
+    listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">예상 비용을 불러오지 못했습니다.</div>';
         } else {
             const items = cats.map(c => {
                 const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
@@ -657,7 +657,7 @@ async function _loadMapBudget() {
     // 바 차트 아이템
     if (itemsEl) {
         if (cats.length === 0) {
-            itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
+    itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">예상 비용을 불러오지 못했습니다.</div>';
         } else {
             itemsEl.innerHTML = cats.map(c => {
                 const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
@@ -705,7 +705,7 @@ async function _loadMapBudget() {
         if (base > 0) {
             const remain = base - spent;
             remainEl.textContent       = remain >= 0
-                ? `예산 범위 내 ✓잔여 ${_fmtWon(remain)}`
+      ? `예산에서 ${_fmtWon(remain)} 남음`
                 : `예산 ${_fmtWon(-remain)} 초과`;
             remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : 'var(--tile-pale)';
             remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : 'var(--tile)';
@@ -824,12 +824,12 @@ async function addLedgerExpense() {
     if (memo) payload.description = memo;
 
     const res = await api.post('/api/trips/' + _budgetSelectedTripId + '/expenses', payload);
-    if (!res.success) { toast('저장 실패: ' + res.message); return; }
+    if (!res.success) { toast('지출을 저장하지 못했습니다. 입력 내용을 확인해 주세요.'); return; }
 
     document.getElementById('ledger-exp-amount').value = '';
     const memoEl = document.getElementById('ledger-exp-memo');
     if (memoEl) memoEl.value = '';
-    toast('지출이 저장됐습니다.');
+    toast('지출을 저장했습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -863,8 +863,8 @@ async function saveEditExpense(id) {
     if (date) payload.expenseDate = date;
     if (desc) payload.description = desc;
     const res = await api.put('/api/trips/' + _budgetSelectedTripId + '/expenses/' + id, payload);
-    if (!res.success) { toast('수정 실패: ' + res.message); return; }
-    toast('수정됐습니다.');
+    if (!res.success) { toast('지출을 고치지 못했습니다. 입력 내용을 확인해 주세요.'); return; }
+    toast('지출을 고쳤습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -872,8 +872,8 @@ async function saveEditExpense(id) {
 async function deleteExpense(id) {
     if (!confirm('이 지출 내역을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/trips/' + _budgetSelectedTripId + '/expenses/' + id);
-    if (!res.success) { toast('삭제 실패: ' + res.message); return; }
-    toast('삭제됐습니다.');
+    if (!res.success) { toast('지출을 삭제하지 못했습니다. 다시 눌러 주세요.'); return; }
+    toast('지출을 삭제했습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -897,7 +897,7 @@ function _updateExportButtons() {
 
 /** 가계부 PDF 자동 다운로드 (jsPDF + html2canvas) */
 async function exportBudgetPDF() {
-    if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  if (!_lastExpenseData) { toast('가계부를 먼저 불러와 주세요.'); return; }
     /* PDF 라이브러리는 누를 때 받는다. 모든 화면에서 미리 받으면 550KB 를
        거저 쓴다 — 쓰는 곳은 이 함수 하나뿐이다. */
     if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
@@ -1006,13 +1006,13 @@ async function exportBudgetPDF() {
         toast('PDF 를 내려받았습니다.');
     } catch (e) {
         console.error(e);
-        toast('PDF 생성 실패: ' + e.message);
+    toast('PDF를 만들지 못했습니다. 다시 눌러 주세요.');
     }
 }
 
 /** 가계부 Excel 다운로드 (XML SpreadsheetML — 색상·열 너비 포함) */
 function exportBudgetCSV() {
-    if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  if (!_lastExpenseData) { toast('가계부를 먼저 불러와 주세요.'); return; }
     const d = _lastExpenseData;
 
     const esc = v => String(v == null ? '' : v)

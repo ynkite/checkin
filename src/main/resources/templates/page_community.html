@@ -25,7 +25,7 @@
         <div class="ai-reco-card" onclick="go(${item.url})">
           <div style="font-size:11px;color:var(--slate);font-weight:700;margin-bottom:2px">${item.category}</div>
           <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${item.title}</div>
-          <div style="font-size:11px;color:var(--text3)">취향 일치 ${item.matchCount}개</div>
+          <div style="font-size:11px;color:var(--text3)">내 취향과 겹치는 항목 ${item.matchCount}개</div>
         </div>
       `).join('');
         }
@@ -70,7 +70,7 @@
             </article>
           `).join('');
             } else {
-              container.innerHTML = `<div class="comm-empty"><b>아직 올라온 후기가 없습니다.</b><span>첫 여행 후기를 남겨 이 목록을 시작해 주세요.</span></div>`;
+              container.innerHTML = `<div class="comm-empty"><b>아직 후기가 없습니다.</b><span>다녀온 여행의 첫 후기를 남겨 주세요.</span></div>`;
             }
           }
         });
@@ -198,10 +198,10 @@
         </div>
 
         <div id="tab-route"><div class="comm-empty"><b>후기를 불러오는 중입니다.</b><span>잠시 뒤에도 목록이 보이지 않으면 다시 열어 주세요.</span></div></div>
-        <div id="tab-stay" style="display:none"><div class="comm-empty"><b>아직 올라온 숙소 후기가 없습니다.</b><span>첫 숙소 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
-        <div id="tab-food" style="display:none"><div class="comm-empty"><b>아직 올라온 맛집 후기가 없습니다.</b><span>첫 맛집 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
-        <div id="tab-tour" style="display:none"><div class="comm-empty"><b>아직 올라온 관광지 후기가 없습니다.</b><span>첫 관광지 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
-        <div id="tab-cafe" style="display:none"><div class="comm-empty"><b>아직 올라온 카페 후기가 없습니다.</b><span>첫 카페 후기를 남겨 이 목록을 시작해 주세요.</span></div></div>
+        <div id="tab-stay" style="display:none"><div class="comm-empty"><b>아직 숙소 후기가 없습니다.</b><span>다녀온 숙소의 첫 후기를 남겨 주세요.</span></div></div>
+        <div id="tab-food" style="display:none"><div class="comm-empty"><b>아직 맛집 후기가 없습니다.</b><span>다녀온 맛집의 첫 후기를 남겨 주세요.</span></div></div>
+        <div id="tab-tour" style="display:none"><div class="comm-empty"><b>아직 관광지 후기가 없습니다.</b><span>다녀온 관광지의 첫 후기를 남겨 주세요.</span></div></div>
+        <div id="tab-cafe" style="display:none"><div class="comm-empty"><b>아직 카페 후기가 없습니다.</b><span>다녀온 카페의 첫 후기를 남겨 주세요.</span></div></div>
 
         <div class="comm-pagination" id="commPagination">
           <button class="page-btn on">1</button>
@@ -217,7 +217,7 @@
           <div class="comm-side-ttl">이번 주 인기 태그</div>
           <div class="popular-tags" id="popular-tags-list">
           </div>
-          <div class="tag-help">선택하면 해당 태그만 보고, 다시 선택하면 해제합니다.</div>
+          <div class="tag-help">태그를 누르면 해당 후기만 봅니다.</div>
         </div>
 
         <div class="comm-side-sec">
@@ -250,15 +250,15 @@
           <input class="form-input" placeholder="제목을 적어 주세요" id="writeTitle">
         </div>
         <div class="form-group" style="margin-bottom:12px">
-          <label class="form-label">내 여행 기록 연동 <span style="font-size:11px;font-weight:400;color:var(--text3)">(방문 장소 자동 바인딩)</span></label>
+          <label class="form-label">내 여행에서 불러오기 <span style="font-size:11px;font-weight:400;color:var(--text3)">(방문 장소를 함께 불러옵니다)</span></label>
           <select class="form-input" id="writePlanSelect" onchange="window._budgetSelectedTripId = this.value; onWritePlanSelect(this.value)">
           </select>
           <div id="placeReviewsSection">
-            <div class="plr-section-title">장소별 별점 &amp; 한줄평 <span style="font-size:10px;font-weight:400;color:var(--text3)">(선택 사항)</span></div>
+            <div class="plr-section-title">장소별 별점과 한줄평 <span style="font-size:10px;font-weight:400;color:var(--text3)">(선택 사항)</span></div>
             <div id="placeReviewsBody">
               <div class="plr-empty">플랜을 선택하면 방문 장소가 표시됩니다.</div>
             </div>
-            <div class="plr-note">별점·한줄평은 각 카테고리 탭에서도 확인할 수 있습니다.</div>
+            <div class="plr-note">별점과 한줄평은 숙소·맛집·관광지·카페에도 함께 표시됩니다.</div>
           </div>
         </div>
         <div class="form-group" style="margin-bottom:12px">
@@ -290,7 +290,7 @@
 
             </div>
             <div id="blogEditor" contenteditable="true"
-                 data-placeholder="후기를 상세히 공유해주세요..."
+                 data-placeholder="다녀온 이야기를 적어 주세요..."
                  style="min-height:200px;padding:14px;font-size:13px;color:var(--text);line-height:1.8;outline:none;font-family:inherit;overflow-y:auto;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-width:100%;box-sizing:border-box"></div>
           </div>
         </div>
@@ -410,11 +410,11 @@
       <div class="comment-box" style="margin-top:24px">
         <div style="font-size:13px;font-weight:700;margin-bottom:12px">댓글</div>
         <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;background:var(--cream2);border-radius:8px">
-          댓글 기능은 백엔드 연동 후 활성화됩니다.
+          아직 댓글을 쓸 수 없습니다.
         </div>
         <div style="display:flex;gap:6px;margin-top:10px">
           <input class="form-input" style="flex:1;padding:8px;font-size:12px" placeholder="댓글을 입력하세요...">
-          <button class="btn-f" style="padding:8px 14px;font-size:12px" onclick="toast('로그인 후 이용 가능합니다.')">등록</button>
+          <button class="btn-f" style="padding:8px 14px;font-size:12px" onclick="toast('로그인한 뒤 이용해 주세요.')">등록</button>
         </div>
       </div>
     `;
@@ -457,7 +457,7 @@
         </div>
       </div>
       <div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;background:var(--cream2);border-radius:8px">
-        상세 리뷰 목록은 백엔드 연동 후 표시됩니다.
+        아직 상세 후기를 불러올 수 없습니다.
       </div>
     `;
   }

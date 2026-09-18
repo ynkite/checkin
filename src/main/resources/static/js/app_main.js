@@ -513,7 +513,7 @@ function forceLogout() {
     _currentUser = null; window._currentUser = null; window._isAdmin = false; _isSuspended = false; _loggedIn = false;
     _userNotifs = []; _myTrips = [];
     updateNav();
-    toast('세션이 만료되었습니다. 다시 로그인해주세요.');
+    toast('로그인이 만료됐습니다. 다시 로그인해 주세요.');
     go('login');
 }
 
@@ -641,7 +641,7 @@ function _startLockCountdown(totalSeconds, warnEl) {
             clearInterval(_loginLockTimer);
             _loginLockTimer = null;
             _loginLockedUntil = null;
-            warnEl.innerHTML = '잠금이 해제되었습니다. 다시 로그인해주세요.';
+      warnEl.innerHTML = '잠금이 풀렸습니다. 다시 로그인해 주세요.';
             return;
         }
         warnEl.innerHTML = `5회 실패로 잠겼습니다. ${_fmt(secs)} 후 재시도 가능합니다.`;
@@ -814,22 +814,22 @@ async function doLogout() {
     go('main');
 }
 
-/** 소셜 회원가입 완료 */
+/** 소셜 계정을 만들었습니다 */
 async function doSocialSignup() {
     var nameEl = document.getElementById('social-name');
     if (!nameEl || !nameEl.value.trim()) { toast('이름을 적어 주세요'); return; }
 
     var birthEl = document.getElementById('social-birth');
     var birthDate = birthEl ? birthEl.value : '';
-    if (!birthDate) { toast('생년월일을 선택해주세요'); return; }
+    if (!birthDate) { toast('생년월일을 골라 주세요'); return; }
 
     var genderOn = document.querySelector('#social-gender-row .chip.on');
-    if (!genderOn) { toast('성별을 선택해주세요'); return; }
+    if (!genderOn) { toast('성별을 골라 주세요'); return; }
     var gender = genderOn.textContent.trim() === '남성' ? 'M' : 'F';
 
     var bigEl    = document.getElementById('social-region-big');
     var province = bigEl ? bigEl.value : '';
-    if (!province) { toast('거주 지역(도/시)을 선택해주세요'); return; }
+    if (!province) { toast('거주 지역(도/시)을 골라 주세요'); return; }
     var cityEl  = document.getElementById('social-region-city');
     var cityVal = cityEl ? cityEl.value : '';
     var city    = (cityVal && cityVal !== '시/군/구 선택' && cityVal !== '전체') ? cityVal : '';
@@ -840,7 +840,7 @@ async function doSocialSignup() {
         var on = row.querySelector('.chip-sm.on');
         if (on) mbti += on.textContent.trim()[0];
     });
-    if (mbti.length !== 4) { toast('MBTI를 모두 선택해주세요'); return; }
+    if (mbti.length !== 4) { toast('MBTI를 모두 골라 주세요'); return; }
 
     var body = { name: nameEl.value.trim(), region: region, gender: gender, birthDate: birthDate, mbti: mbti };
     var res = await api.patch('/api/users/me', body);
@@ -864,7 +864,7 @@ function startSocialSignup() {
     var iconEl   = document.getElementById('social-signup-icon');
     var noticeEl = document.getElementById('social-signup-notice');
     if (iconEl)   iconEl.textContent = icon;
-    if (noticeEl) noticeEl.textContent = icon + ' 소셜 연결 완료 — 아이디·이메일·비밀번호는 소셜 계정으로 대체됩니다.';
+    if (noticeEl) noticeEl.textContent = icon + ' 소셜 계정을 연결했습니다. 로그인 정보는 해당 계정에서 관리합니다.';
     go('signup-social');
     var nameEl = document.getElementById('social-name');
     if (nameEl && _currentUser && _currentUser.name) nameEl.value = _currentUser.name;
@@ -1025,7 +1025,7 @@ function toggleInvitedDeleteMode(isDeleteMode) {
 // 체크박스 선택된 항목들 일괄 삭제 처리 (API 연동)
 async function execInvitedBulkDelete() {
     const chks = document.querySelectorAll('.invited-del-chk:checked');
-    if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+    if (chks.length === 0) { toast('삭제할 일정을 골라 주세요.'); return; }
     if (!confirm(`선택한 ${chks.length}개의 초대 일정을 정말 삭제하시겠습니까?`)) return;
 
     let successCount = 0;
@@ -1036,7 +1036,7 @@ async function execInvitedBulkDelete() {
     }
 
     if (successCount > 0) {
-        toast(`${successCount}개의 일정이 삭제되었습니다.`);
+        toast(`${successCount}개의 일정이 삭제했습니다.`);
         window._invitedDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
@@ -1152,7 +1152,7 @@ function toggleMyTripsDeleteMode(isDeleteMode) {
 // 체크박스 선택된 항목들 일괄 삭제 처리 (새로 만든 API 연동)
 async function execMyTripsBulkDelete() {
     const chks = document.querySelectorAll('.mytrip-del-chk:checked');
-    if (chks.length === 0) { toast('삭제할 일정을 선택해주세요.'); return; }
+    if (chks.length === 0) { toast('삭제할 일정을 골라 주세요.'); return; }
     if (!confirm(`선택한 ${chks.length}개의 내 여행 일정을 정말 삭제하시겠습니까?`)) return;
 
     let successCount = 0;
@@ -1163,7 +1163,7 @@ async function execMyTripsBulkDelete() {
     }
 
     if (successCount > 0) {
-        toast(`${successCount}개의 일정이 삭제되었습니다.`);
+        toast(`${successCount}개의 일정이 삭제했습니다.`);
         window._myTripsDeleteMode = false;
         updateMyPageUI(); // 마이페이지 전체 리로드
     } else {
@@ -1412,7 +1412,7 @@ async function saveInfoEdit() {
     } else {
         resetInfoStep();
     }
-    toast('회원정보가 수정되었습니다.');
+    toast('회원정보가 수정했습니다.');
 }
 
 /* ───────────────────────────────────────────────
@@ -1453,7 +1453,7 @@ async function confirmWithdraw() {
         toast((res.message || '탈퇴하지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
         return;
     }
-    toast('탈퇴가 완료되었습니다.');
+    toast('탈퇴가 마쳤습니다.');
     doLogout();
 }
 
@@ -1839,7 +1839,7 @@ async function sendMsg() {
     const _hasDayCtx       = dayCtxKeywords.some(k => _m.includes(k));
 
     if (_hasOverseas && _hasTravelIntent && !_hasFoodCtx && !_hasDayCtx) {
-        addBubble('본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요', 'bot');
+        addBubble('국내 여행지만 찾을 수 있습니다. 국내 도시를 적어 주세요.', 'bot');
         inp.disabled = false;
         inp.focus();
         return;
@@ -2006,7 +2006,7 @@ async function sendMsg() {
             addBubble(replyText, 'bot');
         } else {
             console.error('[Chat] 응답 오류:', res);
-            addBubble('죄송합니다, 잠시 후 다시 시도해주세요.', 'bot');
+            addBubble('연결이 끊겼습니다. 잠시 뒤에 다시 눌러 주세요.', 'bot');
         }
     } catch (e) {
         console.error('[Chat] 통신 예외:', e);
@@ -2330,7 +2330,7 @@ async function sendPwEmail() {
         timerEl.textContent = '(' + Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0') + ')';
         if (sec <= 0) { clearInterval(_pwTimer); timerEl.textContent = '(만료)'; timerEl.style.color = 'var(--coral)'; }
     }, 1000);
-    toast('인증 메일이 발송되었습니다.');
+    toast('인증 메일이 보냈습니다.');
 }
 
 function verifyCode() {
@@ -2472,7 +2472,7 @@ function goSlide(i) {
  * ─────────────────────────────────────────────── */
 function startPlanFromCard(data) {
     if (!_loggedIn) {
-        toast('로그인이 필요합니다. 로그인 후 이용해주세요.');
+        toast('로그인이 필요합니다. 로그인 후 이용해 주세요.');
         openModal('modal-auth');
         return;
     }
@@ -2490,7 +2490,7 @@ function startPlanFromCard(data) {
  * ─────────────────────────────────────────────── */
 function startPlanFromCuration(curationId) {
     if (!_loggedIn) {
-        toast('로그인이 필요합니다. 로그인 후 이용해주세요.');
+        toast('로그인이 필요합니다. 로그인 후 이용해 주세요.');
         openModal('modal-auth');
         return;
     }
@@ -2621,10 +2621,10 @@ function _validatePlanStep1() {
         return !value || value === '전체' || value === '도/시 선택' || value === '시/군/구 선택';
     };
 
-    if (isEmptySelect(depProv))  { toast('출발지 도/시를 선택해주세요.'); return false; }
-    if (isEmptySelect(depCity))  { toast('출발지 시/군/구를 선택해주세요.'); return false; }
-    if (isEmptySelect(destProv)) { toast('여행지 도/시를 선택해주세요.'); return false; }
-    if (isEmptySelect(destCity)) { toast('여행지 시/군/구를 선택해주세요.'); return false; }
+    if (isEmptySelect(depProv))  { toast('출발지 도/시를 골라 주세요.'); return false; }
+    if (isEmptySelect(depCity))  { toast('출발지 시/군/구를 골라 주세요.'); return false; }
+    if (isEmptySelect(destProv)) { toast('여행지 도/시를 골라 주세요.'); return false; }
+    if (isEmptySelect(destCity)) { toast('여행지 시/군/구를 골라 주세요.'); return false; }
 
     if (!dateStart || !dateStart.value) { toast('떠나는 날을 골라 주세요.'); return false; }
     if (!dateEnd   || !dateEnd.value)   { toast('돌아오는 날을 골라 주세요.'); return false; }
@@ -2634,7 +2634,7 @@ function _validatePlanStep1() {
     if (!budget || !budget.value || +String(budget.value).replace(/,/g, '') < 1) { toast('쓸 수 있는 돈을 적어 주세요.'); return false; }
 
     const transChips = document.querySelectorAll('#chip-trans .chip.on');
-    if (transChips.length === 0) { toast('이동 수단을 선택해주세요.'); return false; }
+    if (transChips.length === 0) { toast('이동 수단을 골라 주세요.'); return false; }
     if ([...transChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-trans')?.value.trim()) {
             toast('무엇으로 다니는지 적어 주세요.'); return false;
@@ -2642,7 +2642,7 @@ function _validatePlanStep1() {
     }
 
     const accChip = document.querySelector('#chip-acc .chip.on');
-    if (!accChip) { toast('숙소 형태를 선택해주세요.'); return false; }
+    if (!accChip) { toast('숙소 형태를 골라 주세요.'); return false; }
     if (accChip.textContent.includes('기타')) {
         if (!document.getElementById('other-acc')?.value.trim()) {
             toast('어디서 자는지 적어 주세요.'); return false;
@@ -2650,7 +2650,7 @@ function _validatePlanStep1() {
     }
 
     const compChip = document.querySelector('#chip-comp .chip.on');
-    if (!compChip) { toast('동행자 유형을 선택해주세요.'); return false; }
+    if (!compChip) { toast('동행자 유형을 골라 주세요.'); return false; }
     if (compChip.textContent.includes('기타')) {
         if (!document.getElementById('other-comp')?.value.trim()) {
             toast('누구와 가는지 적어 주세요.'); return false;
@@ -2662,7 +2662,7 @@ function _validatePlanStep1() {
 
 function _validatePlanStep2() {
     const styleChips = document.querySelectorAll('#chip-style .chip.on');
-    if (styleChips.length === 0) { toast('여행 스타일을 1개 이상 선택해주세요.'); return false; }
+    if (styleChips.length === 0) { toast('여행 스타일을 1개 이상 골라 주세요.'); return false; }
     if ([...styleChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-style')?.value.trim()) {
             toast('어떤 여행을 바라는지 적어 주세요.'); return false;
@@ -2840,18 +2840,18 @@ async function _restoreChatForTrip(tripId) {
 
 function goPlanStep(n) {
     if (!_loggedIn) {
-        toast('로그인이 필요합니다. 로그인 후 이용해주세요.');
+        toast('로그인이 필요합니다. 로그인 후 이용해 주세요.');
         openModal('modal-auth');
         return;
     }
 
     if (n === 4) {
         if (!sessionStorage.getItem('ai_generated_route')) {
-            toast('먼저 AI 챗봇에서 일정을 생성해주세요.');
+            toast('먼저 AI 챗봇에서 일정을 만들어 주세요.');
             return;
         }
         if (_planDirty) {
-            toast('기본 정보 또는 취향 설정이 변경되었습니다. 일정을 다시 생성해주세요.');
+            toast('기본 정보 또는 취향 설정이 바꿨습니다. 일정을 다시 만들어 주세요.');
             return;
         }
         go('map');
@@ -3129,7 +3129,7 @@ function addDay() {
       <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
       <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
     </div></div>
-    <div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해주세요</div>`;
+    <div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해 주세요</div>`;
     document.getElementById('curDays').appendChild(div);
 }
 function addPlanItem(btn) {
@@ -3179,7 +3179,7 @@ function openSuspendModal(username, uid) {
 function closeSuspendModal() { document.getElementById('suspendModal').classList.remove('open'); }
 
 async function confirmSuspend() {
-    const r=document.getElementById('su-reason-select').value; if(!r){toast('정지 사유를 선택해주세요');return;}
+    const r=document.getElementById('su-reason-select').value; if(!r){toast('정지 사유를 골라 주세요');return;}
     const uid=document.getElementById('su-id').textContent;
     const notifyMsg=document.getElementById('su-notify-msg')?.value||'';
     const res=await api.patch('/api/admin/users/'+uid+'/suspend', {reason:r, notifyMessage:notifyMsg});
@@ -3190,7 +3190,7 @@ async function confirmSuspend() {
 
 /** DELETE /api/admin/reports/{reportId} or PATCH (반려) */
 async function confirmReportAction() {
-    const r=document.getElementById('ra-reason-select').value; if(!r){toast('사유를 선택해주세요');return;}
+    const r=document.getElementById('ra-reason-select').value; if(!r){toast('사유를 골라 주세요');return;}
     const rid=document.getElementById('ra-id').textContent;
     const notifyMsg=document.getElementById('ra-notify-msg')?.value||'';
     let res;
@@ -3225,7 +3225,7 @@ async function changeRole(action, userId, username) {
             toast('처리 실패: ' + (data.message || ''));
         }
     } catch (e) {
-        toast('오류 발생');
+  toast('처리하지 못했습니다. 다시 눌러 주세요.');
     }
 }
 // 여기까지
@@ -3365,7 +3365,7 @@ async function loadShareMembersData() {
     const linkEl = document.getElementById('share-link-val');
 
     if (!tripId) {
-        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">저장된 플랜이 없습니다. 먼저 플랜을 생성해주세요.</div>';
+        if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--coral); font-weight:700;">저장된 플랜이 없습니다. 먼저 플랜을 만들어 주세요.</div>';
         if(linkEl) linkEl.value = '';
         return;
     }
@@ -3432,7 +3432,7 @@ async function inviteShareMember(btn) {
     }
 
     if(successCount > 0) {
-        toast('초대(편집 권한)가 발송되었습니다.');
+        toast('함께 고칠 사람에게 초대를 보냈습니다.');
         input.value = '';
         await loadShareMembersData(); // 목록 리로드 함수명 일치화
     } else {
@@ -3496,7 +3496,7 @@ async function copyShareLink() {
         if (linkEl) linkEl.value = fallbackLink;
 
         await copyToClipboard(fallbackLink);
-        toast('링크가 복사되었습니다.');
+        toast('링크가 복사했습니다.');
     }
 }
 

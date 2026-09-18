@@ -983,7 +983,7 @@
         });
 
         if (validFiles.length && typeof toast === 'function') {
-            toast('본문에 이미지가 삽입되었습니다. 이미지를 클릭한 뒤 Backspace/Delete로 삭제할 수 있습니다.');
+            toast('본문에 이미지를 넣었습니다. 이미지를 선택한 뒤 Backspace나 Delete로 지울 수 있습니다.');
         }
     };
 
@@ -1227,7 +1227,7 @@
         const sel = document.getElementById('reportReasonSelect');
         const reason = sel ? sel.value : '';
         if (!reason) {
-            if (typeof toast === 'function') toast('신고 사유를 선택해주세요.');
+            if (typeof toast === 'function') toast('신고 사유를 골라 주세요.');
             return;
         }
 
@@ -1239,7 +1239,7 @@
         window._reportPostId = null;
 
         if (typeof toast === 'function') {
-            toast(res?.success !== false ? '신고가 접수되었습니다.' : res?.message || '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
+            toast(res?.success !== false ? '신고를 받았습니다.' : res?.message || '신고를 보내지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         }
     };
 
@@ -1527,7 +1527,7 @@
 
             if (!res.ok) throw new Error('삭제에 실패했습니다.');
 
-            if (typeof toast === 'function') toast('게시글이 삭제되었습니다.');
+            if (typeof toast === 'function') toast('게시글이 삭제했습니다.');
 
             window._currentPostId = null;
             window._openedPostId = null;
@@ -1635,7 +1635,7 @@
 
         const ctaSub = document.getElementById('pr-cta-sub');
         if (ctaSub) ctaSub.textContent = post.planTitle
-            ? `${post.planTitle} 플랜을 기반으로 새 여행을 계획할 수 있습니다.` : '';
+            ? `${post.planTitle} 일정을 불러와 새 여행을 만듭니다.` : '';
 
         updateReviewEditButtonForModal(post);
     }
@@ -1789,7 +1789,7 @@
 
         if (res && res.success !== false) {
             window.closeEditCommentModal();
-            if (typeof toast === 'function') toast('댓글이 수정되었습니다.');
+            if (typeof toast === 'function') toast('댓글이 수정했습니다.');
             await window.openPostDetail(postId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 수정에 실패했습니다.');
@@ -1822,7 +1822,7 @@
         const res = await api.del(`/api/posts/${targetPostId}/comments/${commentId}`);
 
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('댓글이 삭제되었습니다.');
+            if (typeof toast === 'function') toast('댓글이 삭제했습니다.');
             await window.openPostDetail(targetPostId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 삭제에 실패했습니다.');
@@ -2662,7 +2662,7 @@ window._handleWriteImageSelect = function(input) {
                 <div class="community-plan-preview-badges"><span>시즌 큐레이션</span><span>초여름</span></div>
                 <h2 id="cpp-title">플랜 미리보기</h2>
                 <div class="community-plan-preview-stats">
-                    <div><strong id="cpp-budget">예산 정보 없음</strong><span>예산 합산 검증액</span></div>
+                    <div><strong id="cpp-budget">예산 정보 없음</strong><span>예상 비용 합계</span></div>
                     <div><strong id="cpp-place-count">0곳</strong><span>방문 장소</span></div>
                     <div><strong id="cpp-period">일정</strong><span>일정</span></div>
                 </div>
@@ -2674,7 +2674,7 @@ window._handleWriteImageSelect = function(input) {
                     <p id="cpp-stay">연동된 플랜의 숙소 정보가 없습니다.</p>
                 </div>
                 <div class="community-plan-preview-section">
-                    <h3>맛집 리스트 핵심글</h3>
+                    <h3>맛집 목록</h3>
                     <div id="cpp-places"></div>
                 </div>
                 <div class="community-plan-preview-actions">
@@ -2995,7 +2995,7 @@ window._handleWriteImageSelect = function(input) {
             syncDetailScrapButtonVisual(scrapped);
 
             if (scrapped) {
-                if (typeof toast === 'function') toast('마이페이지 → 스크랩한 여행 경로에 추가되었습니다.');
+                if (typeof toast === 'function') toast('여행 경로를 마이페이지에 담았습니다.');
             } else {
                 if (typeof toast === 'function') toast('스크랩이 취소되었습니다.');
             }
@@ -3094,7 +3094,7 @@ window._handleWriteImageSelect = function(input) {
             <div class="community-ai-simple-card" onclick="openPostDetail(${post.postId})">
                 <div class="community-ai-simple-cat">${escapeHtml(post.catLabel || '여행 경로')}</div>
                 <div class="community-ai-simple-title">${escapeHtml(post.title)}</div>
-                <div class="community-ai-simple-match">취향 일치 ${escapeHtml(matchCount)}개</div>
+                <div class="community-ai-simple-match">내 취향과 겹치는 항목 ${escapeHtml(matchCount)}개</div>
             </div>
         `;
     }
@@ -4481,7 +4481,7 @@ window._handleWriteImageSelect = function(input) {
         try {
             const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE', headers: authHeaders(false) });
             if (!res.ok) throw new Error('삭제에 실패했습니다.');
-            if (typeof toast === 'function') toast('게시글이 삭제되었습니다.');
+            if (typeof toast === 'function') toast('게시글이 삭제했습니다.');
 
             const card = document.querySelector(`[data-my-post-id="${postId}"]`);
             if (card) card.remove();
@@ -4651,7 +4651,7 @@ window._handleWriteImageSelect = function(input) {
                     </div>
                 </div>
                 <div class="form-group" style="margin-bottom:14px" id="communityEditPlaceReviewsSection" style="display:none">
-                    <label class="form-label">장소별 별점 &amp; 한줄평</label>
+                    <label class="form-label">장소별 별점과 한줄평</label>
                     <div id="communityEditPlaceReviewsBody" style="display:flex;flex-direction:column;gap:10px;margin-top:8px"></div>
                 </div>
                 <div class="form-group" style="margin-bottom:18px">
@@ -4730,7 +4730,7 @@ window._handleWriteImageSelect = function(input) {
         //             const item = this.closest('.community-edit-image-item');
         //             if (item) item.remove();
         //             if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
-        //             if (typeof toast === 'function') toast('이미지가 삭제되었습니다.');
+        //             if (typeof toast === 'function') toast('이미지가 삭제했습니다.');
         //         } catch (e) {
         //             if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
         //         }
@@ -4841,7 +4841,7 @@ window._handleWriteImageSelect = function(input) {
                 }
             }
 
-            if (typeof toast === 'function') toast('후기가 수정되었습니다.');
+            if (typeof toast === 'function') toast('후기가 수정했습니다.');
             closeEditModal();
 
             if (typeof window._renderMyReviews === 'function') await window._renderMyReviews();
@@ -5071,7 +5071,7 @@ window._handleWriteImageSelect = function(input) {
     window.deleteMyPlaceScrap = async function(scrapId, btn, category) {
         const res = await api.del('/api/scraps/' + scrapId);
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+            if (typeof toast === 'function') toast('스크랩이 삭제했습니다.');
 
             if (category && typeof window.loadMyScrap === 'function') {
                 const state = getMyCommunityPagingState('scrap-' + category);
@@ -5231,7 +5231,7 @@ window._handleWriteImageSelect = function(input) {
     window.execMyRouteScrapBulkDelete = async function() {
         const checked = document.querySelectorAll('.route-scrap-del-chk:checked');
         if (!checked.length) {
-            if (typeof toast === 'function') toast('삭제할 스크랩 여행 경로를 선택해주세요.');
+            if (typeof toast === 'function') toast('삭제할 스크랩 여행 경로를 골라 주세요.');
             return;
         }
 
@@ -5249,7 +5249,7 @@ window._handleWriteImageSelect = function(input) {
         }
 
         if (successCount > 0) {
-            if (typeof toast === 'function') toast('선택한 스크랩 여행 경로가 삭제되었습니다.');
+            if (typeof toast === 'function') toast('선택한 스크랩 여행 경로가 삭제했습니다.');
             window._myRouteScrapDeleteMode = false;
             const state = getMyCommunityPagingState('scrap-route');
             await window.loadMyRouteScrap(state.page || 0);
@@ -5272,7 +5272,7 @@ window._handleWriteImageSelect = function(input) {
 
         const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('스크랩이 삭제되었습니다.');
+            if (typeof toast === 'function') toast('스크랩이 삭제했습니다.');
             const state = getMyCommunityPagingState('scrap-route');
             await window.loadMyRouteScrap(state.page || 0);
         } else {
