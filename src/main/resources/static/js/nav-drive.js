@@ -172,6 +172,21 @@
       return;
     }
     if (!navigator.geolocation) { alert('이 브라우저는 위치를 지원하지 않습니다.'); return; }
+
+    /* 위치 전송 고지 — 시작 전에 한 번 묻는다.
+       다른 화면은 좌표를 격자로 뭉개서 보내지만 주행 안내는 그럴 수 없다.
+       110m 격자로는 턴 안내가 안 되고, 브라우저에서 티맵을 직접 부르면
+       appKey 가 노출된다. 그래서 이 기능만 정밀 좌표를 서버로 보낸다.
+       신고 대상 판정 기준이 브라우저 권한이 아니라 「정밀 좌표가 서버로 갔는가」다. */
+    var NOTICE = '길 안내 중에는 지금 있는 곳의 정확한 위치를 서버로 보냅니다.'
+      + String.fromCharCode(10)
+      + '티맵에서 경로를 받아 갈림길을 읽어 주기 위해서입니다.'
+      + String.fromCharCode(10)
+      + '안내를 끄면 전송도 같이 멈춥니다.'
+      + String.fromCharCode(10) + String.fromCharCode(10)
+      + '시작할까요?';
+    if (!window.confirm(NOTICE)) return;
+
     st = { dest: dest, pos: null, route: null, offStreak: 0, guideIdx: 0, spoken: {}, wake: null, watchId: null };
     ensureOverlay();
     render('현재 위치를 잡는 중입니다.');

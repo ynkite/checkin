@@ -62,6 +62,9 @@
       'use strict';
 
       var rlTrip = null, rlTimer = null, rlPos = null;
+      /* 다음 정거장. rlPaint 가 채우고 「길 안내」가 읽는다.
+         좌표가 없으면 null 로 둔다 — 좌표 없이 안내를 시작하면 바로 막힌다. */
+      var rlNextStop = null;
 
       function esc(s) {
         return String(s == null ? '' : s)
@@ -130,6 +133,7 @@
       }
 
       function rlPaint(d) {
+        rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
         var when = document.getElementById('rlWhen');
         var head = document.getElementById('rlHead');
         var next = document.getElementById('rlNext');
@@ -307,8 +311,15 @@
           return;
         }
         if (key === 'navi') {
-          /* 길 안내는 티맵 키가 들어온 뒤에 켠다. 없는 걸 있다고 하지 않는다 */
-          toast('길 안내는 티맵 연동 뒤에 켭니다.');
+          /* 좌표가 있으면 실제로 안내를 시작한다. 없으면 없다고 말한다 —
+             좌표 없이 시작하면 nav-drive 가 바로 막히고 사용자는 이유를 모른다. */
+          if (rlNextStop && window.startDrive) {
+            window.startDrive(rlNextStop);
+          } else if (!rlNextStop) {
+            toast('다음 목적지 좌표가 없어 길 안내를 켤 수 없습니다.');
+          } else {
+            toast('길 안내를 불러오지 못했습니다. 새로 고쳐 주세요.');
+          }
           return;
         }
         if (key === 'swap' || key === 'quiet') {
