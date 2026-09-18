@@ -13,6 +13,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * 관광공사 5종 API 공통 저수준 호출기.
@@ -52,6 +53,15 @@ public class TourApiClient {
      * @return items.item (배열 또는 단일 객체). 실패·오류코드면 빈 배열.
      */
     public JsonNode items(String service, String operation, Map<String, String> params) {
+        return tryItems(service, operation, params).orElse(EMPTY);
+    }
+
+    /**
+     * items() 와 같되 호출 성공 여부를 구분해서 돌려준다.
+     *   Optional.of(...)  = 응답 성공(resultCode 0000). items 가 비어 있으면 "확인됨, 0건".
+     *   Optional.empty()  = 호출 실패·오류코드. "확인 안 됨" (0건과 구분해야 하는 곳에서 쓴다. 예: 축제)
+     */
+    public Optional<JsonNode> tryItems(String service, String operation, Map<String, String> params) {
         // 공통 파라미터 + 요청별 파라미터를 직접 인코딩한다.
         // UriComponentsBuilder 를 쓰면 디코딩키의 '/' 가 인코딩되지 않아 키가 깨진다
         // (SERVICE_KEY_IS_NOT_REGISTERED). serviceKey 를 직접 인코딩하고 URI 로 넘겨 재인코딩을 막는다.
@@ -69,7 +79,7 @@ public class TourApiClient {
         String url = baseUrl + "/" + service + "/" + operation + qs;
 
         String raw = get(url, service);
-        if (raw == null) return EMPTY;
+        if (raw == null) return Optional.empty();   // 호출 자체 실패 → 확인 안 됨
 
         try {
             JsonNode root = objectMapper.readTree(raw);
@@ -77,13 +87,13 @@ public class TourApiClient {
             if (!"0000".equals(code)) {
                 log.warn("[tour] {} 오류코드 {} - {}", service, code,
                         root.path("response").path("header").path("resultMsg").asText());
-                return EMPTY;
+                return Optional.empty();             // 오류코드 → 확인 안 됨
             }
             JsonNode items = root.path("response").path("body").path("items").path("item");
-            return items.isMissingNode() ? EMPTY : items;
+            return Optional.of(items.isMissingNode() ? EMPTY : items);  // 0000 → 확인됨(빈 배열 가능)
         } catch (Exception e) {
             log.warn("[tour] {} 응답 파싱 실패: {}", service, e.getMessage());
-            return EMPTY;
+            return Optional.empty();
         }
     }
 
