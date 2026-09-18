@@ -120,39 +120,131 @@
                 if (cs && gu && [...cs.options].some(o => o.value === gu || o.text === gu)) cs.value = gu;
             }
 
+            /* 최근 출발지. 이 브라우저에만 남는 편의 기능이라 localStorage 에 둔다. 좌표가 있는 것만 */
+            const RECENT_KEY = 'plannerRecentOrigins';
+            function recent() {
+                try {
+                    return (JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') || [])
+                        .filter(o => o && o.name && o.lat != null && o.lng != null);
+                } catch (e) { return []; }
+            }
+            function remember(o) {
+                if (!o || !o.name || o.lat == null || o.lng == null) return;
+                try {
+                    const rest = recent().filter(r => !(r.name === o.name && (r.address || '') === (o.address || '')));
+                    const one = { name: o.name, lat: o.lat, lng: o.lng, address: o.address || '', category: o.category || '' };
+                    localStorage.setItem(RECENT_KEY, JSON.stringify([one].concat(rest).slice(0, 5)));
+                } catch (e) {}
+            }
+
             function pick(p, from) {
                 picked = true;
                 input.value = p.name;
                 closeList();
-                store({ name: p.name, lat: p.lat, lng: p.lng, from: from || 'search', address: p.address || '' });
+                const o = { name: p.name, lat: p.lat, lng: p.lng, from: from || 'search',
+                            address: p.address || '', category: p.category || '' };
+                store(o);
+                if (from !== 'gps') remember(o);
+                /* 고른 주소의 앞 두 칸(「부산 동구」)으로 위 도/시·시/군/구를 맞춘다 */
+                if (from === 'search' || from === 'recent') {
+                    const parts = (p.address || '').split(' ');
+                    if (parts.length >= 2) fillArea(parts[0], parts[1]);
+                }
                 say(p.address && p.address !== p.name ? p.address : '');
             }
             window._plannerPickOrigin = pick;
 
-            async function search(q) {
-                const my = ++seq;
-                let arr = [];
-                try {
-                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
-                    const json = await res.json();
-                    arr = (json && json.success && json.data) || [];
-                } catch (e) {}
-                if (my !== seq || picked) return;          /* 그 사이 더 친 글자가 있다 */
-                if (!arr.length) { closeList(); say('찾지 못했습니다'); return; }
-                say('');
+            /* 목록 그리기. 같은 이름이 여럿이어도 업종과 도로명·지번으로 가를 수 있게 한다 */
+            let active = -1, shown = [];
+            function render(arr, head) {
+                shown = arr; active = -1;
                 list.hidden = false;
                 list.innerHTML = '';
-                arr.forEach(function (p) {
+                list.setAttribute('role', 'listbox');
+                if (head) {
+                    const h = document.createElement('div');
+                    h.textContent = head;
+                    h.style.cssText = 'padding:6px 12px;font-size:11px;color:var(--text3)';
+                    list.appendChild(h);
+                }
+                arr.forEach(function (p, i) {
                     const b = document.createElement('button');
                     b.type = 'button';
                     b.className = 'og-item';
-                    const nm = document.createElement('b');    nm.textContent = p.name;
-                    const ad = document.createElement('span'); ad.textContent = p.address || '';
+                    b.setAttribute('role', 'option');
+                    b.dataset.i = String(i);
+                    const nm = document.createElement('b'); nm.textContent = p.name;
+                    if (p.category) {
+                        const cat = document.createElement('small');
+                        cat.textContent = ' · ' + p.category;
+                        cat.style.cssText = 'font-weight:400;color:var(--text3)';
+                        nm.appendChild(cat);
+                    }
+                    const ad = document.createElement('span');
+                    ad.textContent = p.jibun && p.road && p.jibun !== p.road
+                        ? p.road + ' (지번 ' + p.jibun + ')' : (p.address || '');
                     b.append(nm, ad);
                     /* blur 보다 먼저 잡아야 목록이 닫히기 전에 고른다 */
-                    b.addEventListener('mousedown', function (e) { e.preventDefault(); pick(p, 'search'); });
+                    b.addEventListener('mousedown', function (e) { e.preventDefault(); pick(p, head ? 'recent' : 'search'); });
                     list.appendChild(b);
                 });
+            }
+            function highlight(i) {
+                const items = list.querySelectorAll('.og-item');
+                if (!items.length) return;
+                active = (i + items.length) % items.length;
+                items.forEach((el, k) => {
+                    const on = k === active;
+                    el.setAttribute('aria-selected', on ? 'true' : 'false');
+                    el.style.outline = on ? '2px solid var(--num)' : '';
+                    if (on) el.scrollIntoView({ block: 'nearest' });
+                });
+            }
+
+            /* 카카오 키워드 → 비면 주소 검색(서버). 카카오를 못 부른 때만 TMAP 으로 한 번 더.
+               「못 찾음」과 「검색을 못 함」을 다르게 말한다 */
+            async function lookup(q) {
+                let status = 'UNAVAILABLE', arr = [];
+                try {
+                    const res = await fetch('/api/tour/origin-search?q=' + encodeURIComponent(q));
+                    const json = await res.json();
+                    if (json && json.success && json.data) {
+                        status = json.data.status;
+                        arr = (json.data.items || []).map(p => ({
+                            name: p.name, category: p.category || '',
+                            road: p.roadAddress || '', jibun: p.address || '',
+                            address: p.roadAddress || p.address || '',
+                            lat: p.lat, lng: p.lng
+                        }));
+                    }
+                } catch (e) {}
+                if (status === 'UNAVAILABLE') {
+                    try {
+                        const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
+                        const json = await res.json();
+                        const t = (json && json.success && json.data) || [];
+                        if (t.length) {
+                            status = 'OK';
+                            arr = t.map(p => ({ name: p.name, category: '', address: p.address || '', lat: p.lat, lng: p.lng }));
+                        }
+                    } catch (e) {}
+                }
+                return { status: arr.length ? 'OK' : status, arr: arr };
+            }
+
+            function sayMiss(status) {
+                say(status === 'NONE'
+                    ? '맞는 곳을 찾지 못했습니다. 역·건물 이름이나 도로명 주소로 다시 찾아보세요'
+                    : '지금은 장소 검색이 되지 않습니다. 적은 이름은 남기고 이동시간은 도/시 기준으로 잽니다');
+            }
+
+            async function search(q) {
+                const my = ++seq;
+                const r = await lookup(q);
+                if (my !== seq || picked) return;          /* 그 사이 더 친 글자가 있다 */
+                if (r.status !== 'OK') { closeList(); sayMiss(r.status); return; }
+                say('');
+                render(r.arr);
             }
 
             /* 목록에서 고르지 않고 친 글자 그대로 둔 경우. 이름은 친 그대로 두고
@@ -163,19 +255,22 @@
                 closeList();
                 store({ name: q, lat: null, lng: null, from: 'typed' });
                 const my = ++seq;
-                try {
-                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=1');
-                    const json = await res.json();
-                    const top = (json && json.success && json.data && json.data[0]) || null;
-                    if (my !== seq || input.value.trim() !== q) return;
-                    if (top && top.lat) {
-                        store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
-                        say(top.address || '');
-                    } else {
-                        say('위치를 못 찾아 이동시간은 도/시 기준으로 잽니다');
-                    }
-                } catch (e) {}
+                const r = await lookup(q);
+                if (my !== seq || input.value.trim() !== q) return;
+                const top = r.status === 'OK' ? r.arr[0] : null;
+                if (top && top.lat) {
+                    store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
+                    say('가장 비슷한 곳으로 잽니다 — ' + top.name + (top.address ? ', ' + top.address : ''));
+                } else {
+                    sayMiss(r.status);
+                }
             }
+
+            input.addEventListener('focus', function () {
+                if (this.value.trim()) return;
+                const rs = recent();
+                if (rs.length) render(rs, '최근 출발지');
+            });
 
             input.addEventListener('input', function () {
                 picked = false;
@@ -190,9 +285,20 @@
 
             input.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') { closeList(); return; }
+                if (!list.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault();
+                    highlight(active + (e.key === 'ArrowDown' ? 1 : -1));
+                    return;
+                }
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
                 clearTimeout(timer);
+                /* 방향키로 고른 줄이 있으면 그것, 없으면 친 글자 그대로 */
+                if (!list.hidden && active >= 0 && shown[active]) {
+                    const isRecent = !!list.querySelector('div');
+                    pick(shown[active], isRecent ? 'recent' : 'search');
+                    return;
+                }
                 commitTyped();
             });
 
@@ -1798,8 +1904,9 @@
                         <div class="og-wrap">
                             <div class="og-row">
                                 <input class="form-input og-input" id="s1-origin" type="text"
-                                       autocomplete="off" placeholder="부산역, 해운대구 우동 1418"
-                                       aria-label="출발지" aria-describedby="s1-origin-hint">
+                                       autocomplete="off" placeholder="출발지 검색 — 역·건물 이름이나 주소"
+                                       aria-label="출발지 검색" aria-describedby="s1-origin-hint"
+                                       aria-autocomplete="list" aria-controls="s1-origin-list" role="combobox">
                                 <button type="button" class="og-gps" id="s1-origin-gps">지금 위치</button>
                                 <div class="og-list" id="s1-origin-list" hidden></div>
                             </div>
