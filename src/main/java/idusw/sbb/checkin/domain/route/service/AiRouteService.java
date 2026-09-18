@@ -487,7 +487,6 @@ public class AiRouteService {
         return fixedJson;
     }
 
-    @Transactional
     /**
      * 동선의 장소마다 그 날짜의 관광공사 집중률을 적어 둔다.
      *
@@ -1343,7 +1342,12 @@ public class AiRouteService {
      *   2) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
      *   Claude 검증/교체는 새 장소를 지어내 환각을 유발하므로 생성 흐름에서 쓰지 않는다.
      *   @return 사용자요청인데 먼 장소(프론트 알림용 over50)
+     *
+     *   ★쓰기 트랜잭션이어야 한다. 이 안에서 부르는 saveAiRouteToDb·postProcessRoute 는
+     *     같은 빈 내부 호출(self-invocation)이라 프록시를 안 타고, 그쪽 @Transactional 이
+     *     적용되지 않는다. 여기가 readOnly 면 그 체인의 저장이 통째로 버려진다.
      */
+    @Transactional
     public java.util.List<String> finalizeRoute(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
