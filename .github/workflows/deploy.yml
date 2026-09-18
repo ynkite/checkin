@@ -5,9 +5,12 @@
 
 name: deploy
 
-# 자동 배포는 켜지 않는다. Actions 탭에서 눌러야 나간다 —
-# 푸시마다 컨테이너가 재시작되면 그 순간 접속한 사람이 죽은 화면을 본다.
+# develop 에 올라가면 자동으로 나간다. 버튼으로도 돌릴 수 있다.
+# 배포 중 20~30초는 앱이 교체되는 시간이라 접속이 끊긴다 —
+# 심사 기간에는 푸시를 멈추거나 push 줄을 지운다.
 on:
+  push:
+    branches: [develop]
   workflow_dispatch:
 
 jobs:
