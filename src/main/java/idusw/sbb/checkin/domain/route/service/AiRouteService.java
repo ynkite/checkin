@@ -270,7 +270,7 @@ public class AiRouteService {
             [
               {
                 "day": 1,
-                "label": "📅 Day 1 · 06/14 (토)",
+                "label": "Day 1 · 06/14 (토)",
                 "budget": "₩184,000",
                 "places": [
                   { "type": "stay", "icon": "🏨", "name": "제주신라호텔", "sub": "숙소 · ₩180,000", "stars": "평점 정보 없음", "key": "uniq1", "time": "13:00", "replacePh": "예: 더 저렴한 펜션으로 교체해줘" },
@@ -795,6 +795,41 @@ public class AiRouteService {
         return p.legs().get(index);
     }
 
+    /**
+     * 날짜 라벨에서 이모지를 걷어낸다.
+     *
+     * 프롬프트 예시가 「📅 Day 1 · 06/14 (토)」였던 탓에 생성되는 동선마다 이모지가
+     * 따라 들어왔다. 예시는 고쳤지만 이미 저장된 동선에도 남아 있어서, 저장 경로에서
+     * 한 번 더 걷어낸다. UI 문구에 이모지를 쓰지 않는 것이 이 제품의 규칙이다.
+     *
+     * label 만 손댄다. 장소의 icon 은 화면이 그걸로 종류를 표시하고 있어서
+     * 여기서 지우면 아이콘이 통째로 빈다. 그건 선 아이콘으로 바꿔야 하는 일이라
+     * 화면 쪽에서 따로 한다.
+     */
+    private String stripLabelEmoji(String json) {
+        if (json == null || json.isBlank()) return json;
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            boolean changed = false;
+            for (JsonNode day : root) {
+                if (!(day instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                String label = o.path("label").asText("");
+                if (label.isBlank()) continue;
+                String clean = EMOJI.matcher(label).replaceAll("").trim();
+                if (!clean.equals(label)) { o.put("label", clean); changed = true; }
+            }
+            return changed ? objectMapper.writeValueAsString(root) : json;
+        } catch (Exception e) {
+            log.warn("[동선] 라벨을 정리하지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
+
+    /* 그림문자(Symbol, other)와 이형 선택자. 대부분의 이모지가 여기 든다 */
+    private static final Pattern EMOJI = Pattern.compile("[\\p{So}\\uFE0F\\u200D]+");
+
     /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
        하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
        옛 동선으로 돌아가던 원인이다.
@@ -817,6 +852,9 @@ public class AiRouteService {
 
         // ★식당 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화 (AI 라벨-시간 불일치 교정)
         json = syncMealLabelByTime(json);
+
+        // ★날짜 라벨에 섞여 들어온 이모지를 걷어낸다 (UI 문구에 이모지를 쓰지 않는다)
+        json = stripLabelEmoji(json);
 
         // ★관광공사 집중률을 그 날짜로 붙인다 (없으면 그냥 넘어간다)
         json = annotateCrowd(json, plan);
@@ -1130,12 +1168,32 @@ public class AiRouteService {
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
 
+        /* 모델이 빈 응답이나 대괄호 없는 글을 주면 여기까지 "[]" 가 내려온다.
+           그걸 저장하면 DB 의 동선이 지워지고 화면 세션까지 덮어쓴다.
+           원본보다 나쁜 것을 결과로 삼지 않는다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 장소 교체 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            String stripped = stripBadPlaces(originalJson, requests);
+            if (usableRoute(stripped) && !stripped.equals(originalJson)) {
+                saveAiRouteToDb(tripId, stripped);
+                return stripped;
+            }
+            return originalJson;
+        }
+
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
         }
 
         return finalJson;
     }
+    /** 쓸 만한 동선인가. 판정은 {@link idusw.sbb.checkin.domain.route.RouteJson} 에 있다 —
+     *  지도 화면의 _mpUsable 과 같은 기준을 한 곳에서 지킨다. */
+    private boolean usableRoute(String json) {
+        return idusw.sbb.checkin.domain.route.RouteJson.usable(json);
+    }
+
     // 모든 모델이 실패했을 때, 검증에서 걸린 장소(requests의 place)를 일정에서 제거한다.
     // 가짜·타지역 장소가 그대로 지도까지 흘러가는 것을 막는 최종 안전장치.
     private String stripBadPlaces(String json, java.util.List<java.util.Map<String, String>> requests) {
@@ -1287,6 +1345,14 @@ public class AiRouteService {
         }
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        /* 실내 전환도 같은 구멍이 있었다. 모델이 빈 응답을 주면 "[]" 가 저장돼
+           비 오는 날 「실내로 바꾸기」를 누른 사람의 하루가 통째로 사라진다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 실내 전환 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            return originalJson;
+        }
 
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
@@ -2718,7 +2784,7 @@ public class AiRouteService {
                 + "[\n"
                 + "  {\n"
                 + "    \"day\": 1,\n"
-                + "    \"label\": \"📅 Day 1 · MM/DD (요일)\",\n"
+                + "    \"label\": \"Day 1 · MM/DD (요일)\",\n"
                 + "    \"budget\": \"₩금액\",\n"
                 + "    \"places\": [\n"
                 + "      {\"type\":\"food\",\"icon\":\"🍽️\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_1\",\"time\":\"12:00\",\"replacePh\":\"장소 교체 요청\"},\n"
