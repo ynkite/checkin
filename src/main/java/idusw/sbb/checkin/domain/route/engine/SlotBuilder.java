@@ -1,5 +1,8 @@
 package idusw.sbb.checkin.domain.route.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,6 +52,8 @@ import java.util.function.ToDoubleBiFunction;
  * 정해져야 나오므로 3b(SlotOptimizer) 의 몫이다 (결정 7-2).
  */
 public final class SlotBuilder {
+
+    private static final Logger log = LoggerFactory.getLogger(SlotBuilder.class);
 
     private final Predicate<Candidate> filter;
     private final ToDoubleBiFunction<GeoPoint, GeoPoint> costMetric;
@@ -113,10 +118,14 @@ public final class SlotBuilder {
             LocalTime windowStart = constraints.windowStart(type, isFirstDay);
             LocalTime windowEnd = constraints.windowEnd(type, isLastDay);
             if (!windowStart.isBefore(windowEnd)) {
-                continue; // 창이 0 이하로 접힘 — 이 슬롯은 만들지 않는다
+                // 창이 0 이하로 접힘 — 이 슬롯은 만들지 않는다.
+                // "시간이 없었다" 와 "후보가 없었다" 는 다른 신호라 굴러가지 않게 남긴다.
+                log.info("[route.engine] day{} {} · 시간창이 접혀 슬롯 없음 ({}~{})",
+                        pool.dayIndex(), type, windowStart, windowEnd);
+                continue;
             }
 
-            List<Candidate> cut = cut(pool.candidates(), type, windowStart, windowEnd, referencePoint, requiredIds);
+            List<Candidate> cut = cut(pool, type, windowStart, windowEnd, referencePoint, requiredIds);
             result.add(new TimeSlot(type, cut));
 
             if (!cut.isEmpty()) {
@@ -134,19 +143,41 @@ public final class SlotBuilder {
      * 방문한 것만 빼는 건 {@link DayPlanner} 가 한다. 담는 쪽이 소비하면 점심이 그 날 식당을
      * 상위 5까지 전부 물고 가서 저녁이 굶는다 — 담긴 것과 간 것이 다르기 때문이다(결정 8).
      */
-    private List<Candidate> cut(List<Candidate> dayPool, SlotType type, LocalTime windowStart, LocalTime windowEnd,
+    private List<Candidate> cut(DailyCandidatePool pool, SlotType type, LocalTime windowStart, LocalTime windowEnd,
                                  GeoPoint referencePoint, Set<String> requiredIds) {
         boolean isMealSlot = type == SlotType.LUNCH || type == SlotType.DINNER;
+        List<Candidate> dayPool = pool.candidates();
 
-        return dayPool.stream()
+        // 단계를 나눠 담는다 — 어느 단계에서 몇 개가 떨어졌는지를 로그로 내야 한다.
+        // 합쳐 놓으면 "슬롯이 비었다" 만 보이고 카테고리 탓인지 영업시간 탓인지 알 수 없다.
+        List<Candidate> byCategory = dayPool.stream()
                 .filter(c -> isMealSlot == (c.category() == CandidateCategory.FOOD))
-                .filter(filter)
+                .toList();
+        List<Candidate> byFilter = byCategory.stream().filter(filter).toList();
+        List<Candidate> byHours = byFilter.stream()
                 .filter(c -> overlapsWindow(c, windowStart, windowEnd))
+                .toList();
+        List<Candidate> cut = byHours.stream()
                 .sorted(Comparator
                         .comparingInt((Candidate c) -> requiredIds.contains(c.id()) ? 0 : 1)
                         .thenComparingDouble(c -> costMetric.applyAsDouble(referencePoint, c.location())))
                 .limit(TimeSlot.MAX_CANDIDATES)
                 .toList();
+
+        log.info("[route.engine] day{} {} ({}~{}) · 진입 {}개(FOOD {}·CAFE {}·TOUR {})"
+                        + " · 탈락 카테고리 {}·필터 {}·영업시간 {}·상위{}컷 {} → 담김 {}개",
+                pool.dayIndex(), type, windowStart, windowEnd,
+                dayPool.size(), count(dayPool, CandidateCategory.FOOD), count(dayPool, CandidateCategory.CAFE),
+                count(dayPool, CandidateCategory.TOUR),
+                dayPool.size() - byCategory.size(), byCategory.size() - byFilter.size(),
+                byFilter.size() - byHours.size(), TimeSlot.MAX_CANDIDATES, byHours.size() - cut.size(),
+                cut.size());
+
+        return cut;
+    }
+
+    private static long count(List<Candidate> pool, CandidateCategory category) {
+        return pool.stream().filter(c -> c.category() == category).count();
     }
 
     private static boolean overlapsWindow(Candidate candidate, LocalTime windowStart, LocalTime windowEnd) {

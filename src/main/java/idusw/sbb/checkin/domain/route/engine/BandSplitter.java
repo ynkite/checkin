@@ -21,6 +21,22 @@ import java.util.function.ToDoubleBiFunction;
  *
  * <p>방위각(bearing)은 예외다 — 이건 위경도의 기하학적 성질이라 비용 단위와 무관하게
  * 항상 실제 좌표로 계산한다.
+ *
+ * <h2>분배는 예약 → 보충 → 잔여 3단계다</h2>
+ * <ol>
+ *   <li><b>예약</b> — 마지막 날(우회비용 순) · 첫날(NEAR) · 중간 날(MID 방위각 덩이)이 각각
+ *       자기 밴드에서 {@code minPerDay} 만큼만 먼저 떼어 둔다. 끼니 바닥(FOOD 2곳)이
+ *       활동 후보보다 먼저다 — 식당이 하나뿐인 날은 저녁이 반드시 빈다.</li>
+ *   <li><b>보충</b> — 못 채운 밴드가 인접 밴드에서 가까운 순으로 빌린다(결정 3).
+ *       빌리는 순서는 첫날 → 중간 날로 기존 순서를 그대로 둔다.</li>
+ *   <li><b>잔여</b> — 남은 후보는 <b>상한 없이</b> 원래 밴드의 날로 돌아간다.</li>
+ * </ol>
+ *
+ * <p>첫날에 고정 상한은 두지 않는다. 예전 구조는 첫날이 NEAR 를 통째로 삼켜 소진했고,
+ * 그래서 중간 날의 보충이 빌릴 후보를 못 찾아 항상 0개로 비었다 — 후보가 숙소 반경에
+ * 몰리는 실제 카카오 데이터에서는 MID 밴드 자체가 비기 때문에 더 확실히 그랬다.
+ * 예약이 첫날의 몫을 {@code minPerDay} 로 묶어 두면 그 문제는 사라지고, 3단계가 나머지를
+ * 다시 첫날에 돌려주므로 후보가 버려지지도 않는다.
  */
 public final class BandSplitter {
 
@@ -37,6 +53,9 @@ public final class BandSplitter {
      * 나중에 {@code TravelTimeProvider} 로 비용 단위가 분으로 바뀌어도 이 가드는 km 그대로다.
      */
     public static final double MAX_RETURN_DISTANCE_KM = 36.0;
+
+    /** 하루의 식사 슬롯 수 (점심·저녁). 끼니 바닥이 이 값이다 — 결정 9-(1) 의 식사 슬롯 상한 1 × 2슬롯. */
+    private static final int MEAL_SLOTS_PER_DAY = 2;
 
     private static final double DEFAULT_DETOUR_RATIO = 0.3;
     private static final double DEFAULT_DETOUR_MIN = 5.0;
@@ -118,7 +137,12 @@ public final class BandSplitter {
                 .toList();
         Set<String> used = new HashSet<>();
 
-        // 마지막 날을 먼저 확보한다 (결정 12). 귀가 방향은 거리 구간이 아니라 우회비용 술어라,
+        // ── 1단계 예약 ───────────────────────────────────────────────────
+        // 날마다 자기 밴드에서 minPerDay 만큼만 먼저 떼어 둔다. 예전에는 첫날이 NEAR 를 통째로
+        // 삼키고 markUsed 해서, 중간 날의 보충이 빌릴 후보를 하나도 못 찾았다 — 후보가 숙소
+        // 근처에 몰리는 실제 카카오 데이터에서 중간 날이 항상 0개로 빈 원인이었다.
+        //
+        // 마지막 날이 가장 먼저다 (결정 12). 귀가 방향은 거리 구간이 아니라 우회비용 술어라,
         // 밴드를 먼저 자르면 숙소 근처의 "가는 길" 후보가 근거리 밴드에 묶여 영영 안 나온다.
         DailyCandidatePool lastDay = totalDays > 1
                 ? buildLastDay(withinGuard, totalDays - 1, constraints, used, anchorPoint, requiredIds)
@@ -126,23 +150,75 @@ public final class BandSplitter {
 
         Map<DistanceBand, List<Candidate>> bands = classify(withoutUsed(withinGuard, used), anchorPoint);
 
+        List<Candidate> nearBand = sortedByCost(bands.get(DistanceBand.NEAR), anchorPoint);
+        boolean day0Relaxed = nearBand.size() < minPerDay;
+
+        int middleDayCount = lastDay != null ? Math.max(totalDays - 2, 0) : 0;
+        List<List<Candidate>> midClusters = middleDayCount > 0
+                ? clusterByBearing(bands.get(DistanceBand.MID), middleDayCount, anchorPoint)
+                : List.of();
+        List<List<Candidate>> midBands = new ArrayList<>();
+        boolean[] middleRelaxed = new boolean[middleDayCount];
+        for (int i = 0; i < middleDayCount; i++) {
+            List<Candidate> cluster = sortedByCost(midClusters.get(i), anchorPoint);
+            middleRelaxed[i] = cluster.size() < minPerDay;
+            midBands.add(cluster);
+        }
+
+        // 1단계-(a) 끼니 바닥이 활동 후보보다 먼저다. 하루에 식사 슬롯이 둘(점심·저녁)인데
+        // 그 날 풀에 FOOD 가 1곳뿐이면 점심이 그걸 쓰고 저녁은 반드시 빈다 — 자리가 없어서가
+        // 아니라 먹을 곳이 없어서다. 거리순으로만 minPerDay 를 채우면 밴드에 식당이 적은 날이
+        // 조용히 그 상태가 된다. 그래서 모든 날의 FOOD 2곳을 먼저 깔고 나머지를 채운다.
+        List<Candidate> day0 = reserveMeals(nearBand,
+                donors(bands, used, DistanceBand.MID, DistanceBand.RETURN), used, anchorPoint);
+        List<List<Candidate>> middleDays = new ArrayList<>();
+        for (int i = 0; i < middleDayCount; i++) {
+            middleDays.add(reserveMeals(midBands.get(i),
+                    donors(bands, used, DistanceBand.NEAR, DistanceBand.RETURN), used, anchorPoint));
+        }
+
+        // 1단계-(b) 남은 자리를 자기 밴드에서 minPerDay 까지
+        reserve(day0, nearBand, used);
+        for (int i = 0; i < middleDayCount; i++) {
+            reserve(middleDays.get(i), midBands.get(i), used);
+        }
+
+        // ── 2단계 보충 ───────────────────────────────────────────────────
+        // 못 채운 밴드가 인접 밴드에서 가까운 순으로 빌린다 (결정 3 규칙 그대로).
+        //
+        // 빌리는 순서는 첫날 → 중간 날로, 기존 순서를 그대로 둔다. 총 공급이
+        // minPerDay × 일수에 못 미치면 누군가는 모자란 채로 끝나는데, 그때 첫날을 뒤로 미루면
+        // 첫날 밴드에 식당이 하나뿐인 경우 점심이 그것을 쓰고 저녁이 빈다 — 스텁 강릉 19개가
+        // 정확히 그 모양이다. 중간 날이 굶던 원인은 보충 순서가 아니라 첫날이 NEAR 를 통째로
+        // 소진한 것이었고, 그건 1단계 예약이 이미 막았다. 순서를 바꿔 얻을 게 없다.
+        topUp(day0, minPerDay, donors(bands, used, DistanceBand.MID, DistanceBand.RETURN), used, anchorPoint);
+        for (int i = 0; i < middleDayCount; i++) {
+            topUp(middleDays.get(i), minPerDay,
+                    donors(bands, used, DistanceBand.NEAR, DistanceBand.RETURN), used, anchorPoint);
+        }
+
+        // ── 3단계 잔여 ───────────────────────────────────────────────────
+        // 남은 후보는 상한 없이 원래 밴드의 날로 돌려준다. 첫날에 고정 상한을 두지 않는 이유는,
+        // 후보가 많은 도시에서 첫날이 인위적으로 얇아지고 그만큼이 통째로 버려지기 때문이다.
+        // 밴드가 자기 날을 갖는 한 여기서 버려지는 후보는 없다.
+        appendRemainder(day0, nearBand, used);
+        for (int i = 0; i < middleDayCount; i++) {
+            appendRemainder(middleDays.get(i), midClusters.get(i), used);
+        }
+
         List<DailyCandidatePool> result = new ArrayList<>();
-
-        List<Candidate> day0 = new ArrayList<>(bands.get(DistanceBand.NEAR));
-        boolean day0Relaxed = topUp(day0, minPerDay, bands.get(DistanceBand.MID), used, anchorPoint);
-        markUsed(used, day0);
         result.add(new DailyCandidatePool(0, DistanceBand.NEAR, day0, day0Relaxed));
-
         if (lastDay == null) {
             return List.copyOf(result);
         }
-
-        int middleDayCount = Math.max(totalDays - 2, 0);
-        if (middleDayCount > 0) {
-            result.addAll(buildMiddleDays(bands, middleDayCount, used, anchorPoint));
+        for (int i = 0; i < middleDayCount; i++) {
+            result.add(new DailyCandidatePool(1 + i, DistanceBand.MID, middleDays.get(i), middleRelaxed[i]));
         }
 
-        result.add(lastDay);
+        List<Candidate> lastDayPool = new ArrayList<>(lastDay.candidates());
+        appendRemainder(lastDayPool, sortedByCost(bands.get(DistanceBand.RETURN), anchorPoint), used);
+        result.add(new DailyCandidatePool(
+                lastDay.dayIndex(), DistanceBand.RETURN, lastDayPool, lastDay.relaxed()));
 
         return List.copyOf(result);
     }
@@ -164,34 +240,81 @@ public final class BandSplitter {
         return bands;
     }
 
-    // ── 중간 날 (결정 1 + 결정 5-(2)) ────────────────────────────────────
+    // ── 3단계의 부품 ────────────────────────────────────────────────────
 
-    private List<DailyCandidatePool> buildMiddleDays(Map<DistanceBand, List<Candidate>> bands, int middleDayCount,
-                                                      Set<String> used, GeoPoint anchorPoint) {
-        List<Candidate> availableMid = withoutUsed(bands.get(DistanceBand.MID), used);
-
-        int minMidTotal = minPerDay * middleDayCount;
-        if (availableMid.size() < minMidTotal) {
-            List<Candidate> donors = new ArrayList<>();
-            donors.addAll(withoutUsed(bands.get(DistanceBand.NEAR), used));
-            donors.addAll(withoutUsed(bands.get(DistanceBand.RETURN), used));
-            topUp(availableMid, minMidTotal, donors, used, anchorPoint);
-        }
-
-        List<List<Candidate>> clusters = clusterByBearing(availableMid, middleDayCount, anchorPoint);
-
-        List<DailyCandidatePool> days = new ArrayList<>();
-        for (int i = 0; i < middleDayCount; i++) {
-            List<Candidate> cluster = clusters.get(i);
-            List<Candidate> donors = new ArrayList<>();
-            donors.addAll(withoutUsed(bands.get(DistanceBand.NEAR), used));
-            donors.addAll(withoutUsed(bands.get(DistanceBand.RETURN), used));
-            boolean relaxed = topUp(cluster, minPerDay, donors, used, anchorPoint);
-            markUsed(used, cluster);
-            days.add(new DailyCandidatePool(1 + i, DistanceBand.MID, cluster, relaxed));
-        }
-        return days;
+    /** 앵커에서 가까운 순. 동점은 id 사전순으로 끊는다 — 같은 입력에 같은 결과가 나와야 한다. */
+    private List<Candidate> sortedByCost(List<Candidate> pool, GeoPoint anchorPoint) {
+        return pool.stream()
+                .sorted(Comparator
+                        .comparingDouble((Candidate c) -> costMetric.applyAsDouble(anchorPoint, c.location()))
+                        .thenComparing(Candidate::id))
+                .toList();
     }
+
+    /**
+     * 1단계-(a) : 끼니 바닥. 그 날 풀에 FOOD 를 {@link #MEAL_SLOTS_PER_DAY} 곳까지 먼저 넣는다.
+     * 자기 밴드에 식당이 모자라면 인접 밴드에서 가까운 순으로 당겨 온다 — 활동 후보를 거리순으로
+     * 채우기 <b>전에</b> 해야 한다. 나중에 채우면 그 자리가 이미 없다.
+     */
+    private List<Candidate> reserveMeals(List<Candidate> bandPool, List<Candidate> donorPool,
+                                          Set<String> used, GeoPoint anchorPoint) {
+        List<Candidate> meals = new ArrayList<>();
+        takeFood(meals, bandPool, used);
+        if (meals.size() < MEAL_SLOTS_PER_DAY) {
+            takeFood(meals, sortedByCost(donorPool, anchorPoint), used);
+        }
+        return meals;
+    }
+
+    private static void takeFood(List<Candidate> target, List<Candidate> pool, Set<String> used) {
+        for (Candidate candidate : pool) {
+            if (target.size() >= MEAL_SLOTS_PER_DAY) {
+                break;
+            }
+            if (used.contains(candidate.id()) || candidate.category() != CandidateCategory.FOOD) {
+                continue;
+            }
+            target.add(candidate);
+            used.add(candidate.id());
+        }
+    }
+
+    /** 1단계-(b) : 자기 밴드에서 minPerDay 까지 채운다. 모자라면 모자란 대로 두고 2단계가 채운다. */
+    private void reserve(List<Candidate> reserved, List<Candidate> bandPool, Set<String> used) {
+        for (Candidate candidate : bandPool) {
+            if (reserved.size() >= minPerDay) {
+                break;
+            }
+            if (used.contains(candidate.id())) {
+                continue;
+            }
+            reserved.add(candidate);
+            used.add(candidate.id());
+        }
+    }
+
+    /** 3단계 : 예약·보충에서 안 쓰인 나머지를 상한 없이 이 날에 되돌린다. */
+    private static void appendRemainder(List<Candidate> target, List<Candidate> bandPool, Set<String> used) {
+        for (Candidate candidate : bandPool) {
+            if (used.contains(candidate.id())) {
+                continue;
+            }
+            target.add(candidate);
+            used.add(candidate.id());
+        }
+    }
+
+    /** 2단계의 빌릴 곳 — 인접 밴드에서 아직 안 쓰인 것들. */
+    private static List<Candidate> donors(Map<DistanceBand, List<Candidate>> bands, Set<String> used,
+                                           DistanceBand... from) {
+        List<Candidate> donors = new ArrayList<>();
+        for (DistanceBand band : from) {
+            donors.addAll(withoutUsed(bands.get(band), used));
+        }
+        return donors;
+    }
+
+    // ── 중간 날 방위각 분할 (결정 5-(2)) ─────────────────────────────────
 
     /** 방위각 정렬 후, 이웃 간 간격이 가장 큰 지점을 잘라 clusterCount 덩이로 나눈다 (결정 5-(2)). */
     private List<List<Candidate>> clusterByBearing(List<Candidate> pool, int clusterCount, GeoPoint anchorPoint) {
@@ -313,7 +436,14 @@ public final class BandSplitter {
 
     // ── 공용 유틸 (결정 3의 "인접에서 가까운 순으로 끌어오기" 재사용) ────────
 
-    /** target 이 minCount 에 못 미치면 donorPool 에서 앵커와 가까운 순으로 채운다. 채웠으면 true. */
+    /**
+     * target 이 minCount 에 못 미치면 donorPool 에서 앵커와 가까운 순으로 채운다.
+     *
+     * <p>반환값은 "실제로 빌렸는가" 이고 <b>{@code relaxed} 의 근거가 아니다.</b> 빌릴 후보조차
+     * 없으면 false 가 나오는데, 그건 완화가 필요 없었다는 뜻이 아니라 완화에 실패했다는 뜻이다.
+     * 그 false 를 {@code relaxed} 로 쓰던 동안 MID 가 0개인 날이 완화 표시 없이 지나갔다.
+     * {@code relaxed} 는 자기 밴드가 {@code minPerDay} 를 못 채웠는지로 따로 정한다.
+     */
     private boolean topUp(List<Candidate> target, int minCount, List<Candidate> donorPool,
                            Set<String> used, GeoPoint anchorPoint) {
         if (target.size() >= minCount) {

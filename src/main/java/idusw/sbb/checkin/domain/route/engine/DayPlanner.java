@@ -1,5 +1,8 @@
 package idusw.sbb.checkin.domain.route.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.Duration;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -31,6 +34,8 @@ import java.util.function.ToDoubleBiFunction;
  * 복귀 이동도 이 상한에 포함된다.
  */
 public final class DayPlanner {
+
+    private static final Logger log = LoggerFactory.getLogger(DayPlanner.class);
 
     private final SlotOptimizer slotOptimizer;
     private final ToDoubleBiFunction<GeoPoint, GeoPoint> travelTimeMinutes;
@@ -162,6 +167,14 @@ public final class DayPlanner {
                     break;
                 }
             }
+
+            // 담긴 것과 실제로 간 것이 갈린 뒤로(결정 8·14) 이 두 숫자가 다른 게 정상이다.
+            // 어디서 줄었는지를 남긴다 — 예산·중복 컷인지 상한인지 시각 시뮬레이션인지.
+            log.info("[route.engine] day{} {} · 담김 {}개 → 예산·중복 탈락 {} → 고려 {}개 · 상한 {} → 채택 {}곳{}",
+                    dayIndex, slot.type(), slots.get(i).size(), slots.get(i).size() - slot.size(),
+                    slot.size(), cap, accepted.visitOrder().size(),
+                    accepted.visitOrder().isEmpty() ? "" : " " + accepted.visitOrder().stream()
+                            .map(Candidate::name).toList());
 
             results.add(accepted);
             for (Candidate visited : accepted.visitOrder()) {
