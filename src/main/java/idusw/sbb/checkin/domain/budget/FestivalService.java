@@ -2,6 +2,7 @@ package idusw.sbb.checkin.domain.budget;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import idusw.sbb.checkin.domain.budget.dto.Festival;
+import idusw.sbb.checkin.domain.budget.dto.FestivalLookup;
 import idusw.sbb.checkin.domain.tour.client.TourApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,25 +41,46 @@ public class FestivalService {
 
     private final TourApiClient client;
 
-    private record Cached(List<Festival> list, long at) {}
+    // ok=false 는 호출 실패(확인 안 됨). ok=true 면 list 가 확인된 결과(0건일 수 있음).
+    private record Cached(boolean ok, List<Festival> list, long at) {}
     private final Map<String, Cached> cache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /**
+     * 여행 기간에 겹치는 축제 (기존 호출부 호환용 — 목록만 필요할 때).
+     * 「확인 안 됨」과 「없음」을 구분해야 하면 {@link #lookup} 을 쓴다.
+     *
      * @param tourAreaCode KorService2 지역코드 (AreaCode.tourAreaCode 로 구한다)
      */
     public List<Festival> during(String tourAreaCode, LocalDate from, LocalDate to) {
-        if (from == null) return List.of();
+        return lookup(tourAreaCode, from, to).festivals();
+    }
+
+    /**
+     * 여행 기간에 겹치는 축제를 상태와 함께 돌려준다.
+     *   FOUND   겹치는 축제 있음
+     *   NONE    확인됨, 겹치는 축제 없음
+     *   UNKNOWN 조회 실패 — 「없음」이라고 단정하면 안 된다
+     */
+    public FestivalLookup lookup(String tourAreaCode, LocalDate from, LocalDate to) {
+        if (from == null) return FestivalLookup.none();
         LocalDate end = to == null || to.isBefore(from) ? from : to;
 
         String key = tourAreaCode + ":" + from.format(YMD);
         Cached c = cache.get(key);
         long now = System.currentTimeMillis();
-        List<Festival> all = (c != null && now - c.at() < TTL_MS) ? c.list() : null;
 
-        if (all == null) {
-            all = fetch(tourAreaCode, from.minusDays(LOOKBACK_DAYS));
-            cache.put(key, new Cached(all, now));
+        boolean ok;
+        List<Festival> all;
+        if (c != null && now - c.at() < TTL_MS) {
+            ok = c.ok(); all = c.list();
+        } else {
+            var fetched = fetch(tourAreaCode, from.minusDays(LOOKBACK_DAYS));
+            ok = fetched.isPresent();
+            all = fetched.orElseGet(List::of);
+            cache.put(key, new Cached(ok, all, now));
         }
+
+        if (!ok) return FestivalLookup.unknown();   // 확인 안 됨
 
         String f = from.format(YMD), t = end.format(YMD);
         List<Festival> out = new ArrayList<>();
@@ -67,10 +89,11 @@ public class FestivalService {
             if (x.startDate() == null || x.endDate() == null) continue;
             if (x.startDate().compareTo(t) <= 0 && x.endDate().compareTo(f) >= 0) out.add(x);
         }
-        return out;
+        return out.isEmpty() ? FestivalLookup.none() : FestivalLookup.found(out);
     }
 
-    private List<Festival> fetch(String tourAreaCode, LocalDate since) {
+    /** Optional.empty() = 호출 실패(확인 안 됨). present = 확인된 목록(0건 가능). */
+    private java.util.Optional<List<Festival>> fetch(String tourAreaCode, LocalDate since) {
         Map<String, String> p = new LinkedHashMap<>();
         p.put("numOfRows", "100");
         p.put("pageNo", "1");
@@ -78,18 +101,12 @@ public class FestivalService {
         p.put("eventStartDate", since.format(YMD));
         if (tourAreaCode != null && !tourAreaCode.isBlank()) p.put("areaCode", tourAreaCode);
 
-        JsonNode items;
-        try {
-            items = client.items(SERVICE, "searchFestival2", p);
-        } catch (Exception e) {
-            log.warn("[festival] 조회 실패: {}", e.getMessage());
-            return List.of();
-        }
-
-        List<Festival> out = new ArrayList<>();
-        if (items.isObject()) out.add(toFestival(items));
-        else for (JsonNode n : items) out.add(toFestival(n));
-        return out;
+        return client.tryItems(SERVICE, "searchFestival2", p).map(items -> {
+            List<Festival> out = new ArrayList<>();
+            if (items.isObject()) out.add(toFestival(items));
+            else for (JsonNode n : items) out.add(toFestival(n));
+            return out;
+        });
     }
 
     private Festival toFestival(JsonNode n) {
