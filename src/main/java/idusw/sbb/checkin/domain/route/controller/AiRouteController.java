@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@lombok.extern.slf4j.Slf4j
 @RequestMapping("/api/trips/{tripId}/routes")
 @RequiredArgsConstructor
 public class AiRouteController {
@@ -21,6 +22,15 @@ public class AiRouteController {
 
         // 2) 후보 → 좌표 확보 → 일자별 클러스터링 → 시간 골격 조립
         String routeJson = aiRouteService.assembleCandidates(tripId, candidatesJson);
+
+        /* 빈 일정을 성공으로 돌려주지 않는다. 전에는 조립이 실패해도 "[]" 가
+           그대로 저장되고 성공으로 올라가서, 화면은 4단계로 넘어간 뒤 빈 지도를
+           보여 줬다. 사용자는 왜 안 되는지 알 수 없었고 있던 일정까지 지워졌다. */
+        if (!idusw.sbb.checkin.domain.route.RouteJson.usable(routeJson)) {
+            log.warn("[동선 생성] 들를 곳이 하나도 없어 저장하지 않습니다. tripId={}", tripId);
+            return ResponseEntity.ok(ApiResponse.error(
+                    "조건에 맞는 장소를 찾지 못했습니다. 지역이나 기간을 조금 바꿔 다시 해 보세요."));
+        }
 
         // 3) DB 저장 (카카오 transit 보정 + 당일치기 숙소 차단 포함)
         aiRouteService.saveAiRouteToDb(tripId, routeJson);
