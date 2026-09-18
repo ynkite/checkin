@@ -1619,3 +1619,53 @@ table.ck-rows tfoot td:nth-child(2){font-size:19px; letter-spacing:var(--trackin
 @media (prefers-reduced-motion:no-preference){
   .ck-pins .ck-ln-todo{ animation:ck-march 1.9s linear infinite }
 }
+
+/* ── 무대 위의 판을 역할별로 ─────────────────────────────────
+   전에는 제목·오른쪽 판·작은 지도가 `.fl` 하나를 같이 써서
+   18px 라운드와 그림자가 똑같았다. 그래서 정보 구조보다 카드
+   외곽선이 먼저 보였다. 모든 것에 같은 그림자를 찍는 건 고른 게
+   아니라 안 고른 것이다.
+
+   떠 있어야 하는 것만 띄운다. 나머지는 각자 다른 깊이에 앉힌다. */
+
+/* 제목 — 이 화면의 목소리다. 물건이 아니라서 카드를 걷는다.
+   대신 글자 뒤에 가림막을 깐다. 도시 위에 그냥 쓰면 건물과 글자가
+   섞여서 안 읽힌다. --void-veil 은 하늘 네 벌에서 값이 각각 정해져
+   있어서 밤에도 알아서 맞는다 (sky-anchors.js 가 넣는다). */
+.ck-home .ck-hero .st-head{
+  background:none; box-shadow:none; border-radius:0;
+  padding:2px 0 0;
+  position:relative; isolation:isolate;
+}
+.ck-home .ck-hero .st-head::before{
+  content:""; position:absolute; z-index:-1;
+  left:-18px; right:-24px; top:-14px; bottom:-10px;
+  border-radius:22px;
+  background:radial-gradient(120% 100% at 18% 30%,
+    var(--void-veil) 0%, var(--void-veil) 46%, transparent 100%);
+}
+
+/* 오른쪽 판 — 읽는 표다. 떠 있을 이유가 없다.
+   그림자를 걷고 머리카락 선만 남긴다. 라운드도 줄여서 표에 가깝게. */
+.ck-home .ck-hero .st-side{
+  box-shadow:inset 0 0 0 1px var(--glass-line);
+  border-radius:12px;
+  background:var(--glass);
+  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
+}
+
+/* 작은 지도 — 이것만 진짜로 떠 있다. 지도 위에 얹힌 오버레이라
+   그림자가 뜻을 갖는다. 그대로 두고, 오히려 조금 더 띄운다. */
+.ck-home .ck-hero .st-mini{
+  box-shadow:var(--glass-lift);
+  border-radius:16px;
+}
+
+/* 좁은 화면에서는 판이 무대를 덮으므로 가림막을 더 진하게 */
+@media (max-width:900px){
+  .ck-home .ck-hero .st-head::before{
+    left:-14px; right:-14px;
+    background:linear-gradient(to bottom,
+      var(--void-veil-2) 0%, var(--void-veil-2) 72%, transparent 100%);
+  }
+}
