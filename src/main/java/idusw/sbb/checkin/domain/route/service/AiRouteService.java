@@ -1168,12 +1168,32 @@ public class AiRouteService {
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
 
+        /* 모델이 빈 응답이나 대괄호 없는 글을 주면 여기까지 "[]" 가 내려온다.
+           그걸 저장하면 DB 의 동선이 지워지고 화면 세션까지 덮어쓴다.
+           원본보다 나쁜 것을 결과로 삼지 않는다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 장소 교체 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            String stripped = stripBadPlaces(originalJson, requests);
+            if (usableRoute(stripped) && !stripped.equals(originalJson)) {
+                saveAiRouteToDb(tripId, stripped);
+                return stripped;
+            }
+            return originalJson;
+        }
+
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
         }
 
         return finalJson;
     }
+    /** 쓸 만한 동선인가. 판정은 {@link idusw.sbb.checkin.domain.route.RouteJson} 에 있다 —
+     *  지도 화면의 _mpUsable 과 같은 기준을 한 곳에서 지킨다. */
+    private boolean usableRoute(String json) {
+        return idusw.sbb.checkin.domain.route.RouteJson.usable(json);
+    }
+
     // 모든 모델이 실패했을 때, 검증에서 걸린 장소(requests의 place)를 일정에서 제거한다.
     // 가짜·타지역 장소가 그대로 지도까지 흘러가는 것을 막는 최종 안전장치.
     private String stripBadPlaces(String json, java.util.List<java.util.Map<String, String>> requests) {
@@ -1325,6 +1345,14 @@ public class AiRouteService {
         }
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        /* 실내 전환도 같은 구멍이 있었다. 모델이 빈 응답을 주면 "[]" 가 저장돼
+           비 오는 날 「실내로 바꾸기」를 누른 사람의 하루가 통째로 사라진다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 실내 전환 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            return originalJson;
+        }
 
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
