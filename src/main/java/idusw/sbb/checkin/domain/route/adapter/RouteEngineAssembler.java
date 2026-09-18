@@ -97,9 +97,24 @@ public final class RouteEngineAssembler {
         log.info("[route.engine] tripId={} {}일 · 후보 {}개 · 필수 {}개 · 방문 {}곳",
                 plan.getId(), totalDays, candidates.size(), requiredIds.size(),
                 dayPlans.stream().mapToInt(DayPlan::totalVisitCount).sum());
+        log.info("[route.engine] tripId={} 밴드 — {}", plan.getId(), describeBands(pools));
 
         return factory.jsonWriter(adapter)
                 .writeJson(dayPlans, isDayTrip ? null : anchor, constraints, plan.getStartDate());
+    }
+
+    /**
+     * 밴드별 후보 수와 완화 여부. {@code minPerDay} 를 8에서 내릴지는 이 줄 하나로 판단한다 —
+     * MID 가 굶는 게 후보가 없어서인지 배분 때문인지는 총계로는 구분되지 않는다.
+     *
+     * <p>완화(결정 5-(4))는 {@code DailyCandidatePool.relaxed} 에만 남고 WARN 을 찍지 않아,
+     * 「폴백 로그 0건」 기준으로는 완화가 조용히 돈 것을 잡을 수 없다.
+     */
+    private static String describeBands(List<DailyCandidatePool> pools) {
+        return pools.stream()
+                .map(pool -> "day%d %s %d개%s".formatted(
+                        pool.dayIndex(), pool.sourceBand(), pool.size(), pool.relaxed() ? "(완화)" : ""))
+                .collect(Collectors.joining(" · "));
     }
 
     private static int totalDays(TravelPlan plan) {
