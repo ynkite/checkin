@@ -159,22 +159,63 @@
     });
   }
 
+  var bigPins = [], bigLine = null;
+
   function makeBig() {
     var host = $('st_bigmap');
     if (!host || big || !host.clientWidth) return;
     var c = center();
     if (!c) return;
     big = new w.kakao.maps.Map(host, { center: c, level: 5 });
-    route.forEach(function (p, i) {
-      if (!p.lat) return;
+    bigDraw(route);
+  }
+
+  /* 지도 위의 동선. 핀만 세 개 떠 있으면 「동선」이 아니다 —
+     선이 있어야 어디서 어디로 가는지가 한눈에 온다.
+     순서가 바뀌면 이걸 다시 부른다. 좌표가 핀과 같으므로 선은
+     핀 가운데에 정확히 닿는다. */
+  function bigDraw(list) {
+    if (!big) return;
+    var pts = (list || []).filter(function (p) { return p.lat && p.lng; });
+    if (!pts.length) return;
+
+    /* 핀은 만들어 두고 자리와 번호만 고친다. 매번 새로 만들면
+       지도가 깜빡이고, 카카오 오버레이가 쌓인다. */
+    while (bigPins.length < pts.length) {
       var el = d.createElement('div');
-      el.className = 'fl-mp' + (i === state.hot ? ' fl-now' : '');
-      el.textContent = i + 1;
-      new w.kakao.maps.CustomOverlay({
-        position: new w.kakao.maps.LatLng(p.lat, p.lng),
-        content: el, yAnchor: .5, xAnchor: .5
-      }).setMap(big);
+      el.className = 'fl-mp';
+      var ov = new w.kakao.maps.CustomOverlay({
+        content: el, yAnchor: .5, xAnchor: .5, zIndex: 4
+      });
+      ov.setMap(big);
+      bigPins.push({ el: el, ov: ov });
+    }
+    bigPins.forEach(function (pin, i) {
+      var p = pts[i];
+      if (!p) { pin.ov.setMap(null); return; }
+      pin.ov.setMap(big);
+      pin.ov.setPosition(new w.kakao.maps.LatLng(p.lat, p.lng));
+      pin.el.textContent = i + 1;
+      pin.el.className = 'fl-mp' + (i === 0 ? ' fl-now' : '');
     });
+
+    var path = pts.map(function (p) {
+      return new w.kakao.maps.LatLng(p.lat, p.lng);
+    });
+    if (!bigLine) {
+      /* 색은 토큰에서 읽는다. 카카오 폴리라인은 캔버스에 그려서
+         CSS 변수를 못 받는다 — 그래서 값을 여기서 꺼내 넘긴다.
+         자바스크립트에 색을 적어 두면 팔레트를 고칠 때 이것만 남는다. */
+      var ink = getComputedStyle(d.documentElement)
+                  .getPropertyValue('--ink').trim() || '#1B2733';
+      bigLine = new w.kakao.maps.Polyline({
+        path: path, strokeWeight: 5, strokeColor: ink,
+        strokeOpacity: .85, strokeStyle: 'solid'
+      });
+      bigLine.setMap(big);
+    } else {
+      bigLine.setPath(path);
+    }
   }
 
   /* ── 카메라 ──────────────────────────────────────────
@@ -260,81 +301,15 @@
      읽히지 않는다. */
   /* 동선이 다 보이는 배율과 위치.
 
-     몇 번 불러도 같은 값이 나와야 한다. 그래서 「지금 보이는 크기」가
-     아니라 배율 1 기준 좌표에서 잰다 —
-       핀이 놓인 자리는 %로 알고 있다.
-       이름표가 핀에서 얼마나 뻗는지만 화면에서 재고 배율로 나눈다.
-     전에는 결과에 지금 배율을 다시 곱해서, render 가 여러 번 불릴 때마다
-     배율이 곱해져 2.02 까지 올라갔다.
+     기하로 맞추려고 두 번 고쳤는데 두 번 다 어긋났다 —
+       핀 요소만 재면 15px 동그라미만 잰다(이름표는 절대배치라 안 들어온다)
+       이름표를 합쳐도 배율이 높아 위쪽 핀이 무대 밖으로 넘어갔다
+     그래서 계산 대신 결과를 쓴다. 맞춰 보고, 넘친 양을 재고, 줄인다.
+     두 번까지만. 렌더한 값을 쓰므로 가정이 틀려도 맞는다.
 
-     이름표까지 재는 이유 — 말풍선이 핀보다 옆으로 150px 넘게 나간다.
-     핀 좌표만 맞추면 장소 이름이 가장자리에서 잘린다. */
-  function camFit(force) {
-    if (camLocked && !force) return false;      /* 들어오는 장면이 쥐고 있다 */
-    var f = $('ck_frame');
-    var layer = $('ck_pinlayer');
-    if (!f || !layer || !f.offsetWidth) return false;
-    var st = f.parentElement;
-    if (!st || !st.clientWidth) return false;
+     여기서 정한 배율이 축소 하한이 된다. 그보다 줄이면 모형 전체가
+     들어와 렉이 심해지고 동선을 보는 데 도움도 안 된다. */
 
-    var els = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
-    if (els.length < 2) return false;
-
-    var fw = f.offsetWidth, fh = f.offsetHeight;
-    var z0 = cam.z || 1;
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    var got = 0;
-
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      var r = el.getBoundingClientRect();
-      if (!r.width) continue;
-
-      /* 핀이 놓인 자리 — 배율과 무관하다 */
-      var px = parseFloat(el.style.left) / 100 * fw;
-      var py = parseFloat(el.style.top) / 100 * fh;
-      if (!isFinite(px) || !isFinite(py)) continue;
-
-      /* 이름표가 핀 자리에서 얼마나 뻗는가. 화면 값을 배율로 나눠
-         배율 1 기준으로 되돌린다. .ck-pin 은 translate(-50%,-100%) 라
-         핀 자리가 상자 안의 어디인지 비율로 잡는다 */
-      var w0 = r.width / z0, h0 = r.height / z0;
-      x0 = Math.min(x0, px - w0 * 0.5);
-      x1 = Math.max(x1, px + w0 * 0.9);      /* 이름표는 대개 오른쪽으로 */
-      y0 = Math.min(y0, py - h0);
-      y1 = Math.max(y1, py + h0 * 0.3);
-      got++;
-    }
-    if (got < 2 || !isFinite(x0) || x1 <= x0) return false;
-
-    var pad = 40;   /* 이름표가 가장자리에 닿으면 안 읽힌다 */
-    var needW = (x1 - x0) + pad * 2;
-    var needH = (y1 - y0) + pad * 2;
-
-    /* 동선 상자가 무대보다 크면 줄이고, 작으면 조금 키운다.
-       .58 아래로는 안 내린다 — 모형 전체가 들어와 렉이 심해지고
-       동선을 보는 데 도움도 안 된다.
-       1.6 위로는 안 올린다 — 세 곳이 붙어 있어도 너무 당기지 않게 */
-    var z = Math.min(st.clientWidth / needW, st.clientHeight / needH);
-    z = Math.max(.58, Math.min(1.6, z));
-    CAM_MIN = z;                             /* 축소 하한 = 이 자리 */
-    cam.z = z;
-
-    /* 상자 가운데를 무대 가운데로. 세로는 조금 위 —
-       아래쪽에 경로 만들기 바가 있다 */
-    var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-    cam.x = st.clientWidth / 2 - cx * z;
-    cam.y = st.clientHeight * .46 - cy * z;
-    camApply();
-    return true;
-  }
-
-  /* 배율은 버튼으로만 바꾼다.
-
-     전에는 휠과 두 손가락으로도 됐다. 그런데 이 모형은 페이지 맨 위에
-     화면을 꽉 채우고 있어서, 스크롤하려고 휠을 굴리면 페이지가 안 내려가고
-     모형만 확대됐다. 내려갈 방법이 없어진다.
-     실제 지도(카카오)는 지도 안에서만 휠을 먹으므로 그대로 둔다. */
   function initCamTools() {
     var rz = 0;
     w.addEventListener('resize', function () {
@@ -440,14 +415,67 @@
   }
 
   /* ── app_home.js 가 부른다 ───────────────────────── */
+
+  /* ── 모형 갈아 끼우기 ────────────────────────────────
+     장소마다 자기 모형을 쓴다. 한 모형(해운대 2km)에 세 곳을 놓으면
+     아무리 벌려도 걸어서 갈 거리라서, 순서를 바꾸는 이유가 안 보인다.
+
+     미리 다 받지 않는다. 자기 차례 직전에 받는다 —
+     해운대 463KB · 광안리 1.1MB · 감천 954KB 를 한꺼번에 받으면
+     첫 화면이 늦는다. 받은 것은 들고 있다(두 번째부터는 즉시).
+
+     모형마다 가로세로 비가 달라서 판 크기를 같이 바꾼다.
+     안 바꾸면 무대를 덮지 못하고 가장자리에 바닥색이 드러난다. */
+  var sceneCache = {};
+  var sceneNow = null;
+
+  function sceneDefs() {
+    return (w.__ckScenes || {});
+  }
+
+  function loadScene(name, whenDone) {
+    var defs = sceneDefs();
+    var def = defs[name];
+    var host = $('ck_scene');
+    if (!def || !host) { if (whenDone) whenDone(false); return; }
+    if (sceneNow === name) { if (whenDone) whenDone(true); return; }
+
+    function put(svg) {
+      host.innerHTML = svg;
+      var el = host.querySelector('svg');
+      if (el) { el.classList.add('mass'); el.setAttribute('aria-hidden', 'true'); }
+      /* 판의 가로세로 비를 이 모형에 맞춘다 */
+      var f = $('ck_frame');
+      if (f && def.ar) f.style.setProperty('--st-ar', def.ar);
+      sceneNow = name;
+      if (whenDone) whenDone(true);
+    }
+
+    if (sceneCache[name]) { put(sceneCache[name]); return; }
+
+    fetch(def.svg, { cache: 'force-cache' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (svg) { sceneCache[name] = svg; put(svg); })
+      .catch(function () { if (whenDone) whenDone(false); });
+  }
+
+  /* 다음 모형을 미리 받아 둔다. 전환할 때 기다리지 않게 */
+  function preloadScene(name) {
+    var def = sceneDefs()[name];
+    if (!def || sceneCache[name]) return;
+    fetch(def.svg, { cache: 'force-cache' })
+      .then(function (r) { return r.ok ? r.text() : Promise.reject(r.status); })
+      .then(function (svg) { sceneCache[name] = svg; })
+      .catch(function () {});
+  }
+
   /* ── 들어오는 장면이 쓰는 손잡이 ──────────────────────
-     app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다.
-     둘을 한 파일에 합치면 서로를 못 읽는다. */
+     app_home.js 가 연출을 맡고, 장면·지도·카메라는 여기 있다. */
 
   /* 지도를 띄우고 세 곳이 다 들어오게 맞춘다.
      level 을 직접 주지 않는다 — 카카오가 좌표에서 계산하게 둔다.
      그래야 화면 폭이 달라도 세 곳이 안 잘린다. */
-  function showWideMap() {
+  function showWideMap(only) {
     var stage = d.querySelector('.ck-stage');
     var scene = stage && stage.querySelector('.ck-scene');
     var bmap = $('st_bigmap');
@@ -458,7 +486,10 @@
     makeBig();
     if (!big) return false;
 
-    var pts = route.filter(function (p) { return p.lat && p.lng; });
+    /* 순서를 바꾼 갈래를 보여 줄 때는 바뀐 목록을 넘겨받는다 */
+    var list = only || route;
+    bigDraw(list);
+    var pts = list.filter(function (p) { return p.lat && p.lng; });
     if (pts.length < 2) return true;
 
     var b = new w.kakao.maps.LatLngBounds();
@@ -489,6 +520,92 @@
     if (mp) mp.setAttribute('aria-pressed', 'false');
   }
 
+  /* 핀과 이름표를 합친 화면 상자 */
+  function pinBox(el) {
+    var r = el.getBoundingClientRect();
+    var L = r.left, R = r.right, T = r.top, B = r.bottom;
+    var bub = el.querySelector('.ck-bub');
+    if (bub) {
+      var b = bub.getBoundingClientRect();
+      if (b.width) {
+        L = Math.min(L, b.left); R = Math.max(R, b.right);
+        T = Math.min(T, b.top);  B = Math.max(B, b.bottom);
+      }
+    }
+    return { left: L, right: R, top: T, bottom: B };
+  }
+
+  /* 지금 배치에서 무대를 얼마나 넘쳤나. 0 이면 다 들어와 있다 */
+  function overflowOf(els, sr, pad) {
+    var over = 0;
+    for (var i = 0; i < els.length; i++) {
+      var b = pinBox(els[i]);
+      over = Math.max(over,
+        (sr.left + pad) - b.left,
+        b.right - (sr.right - pad),
+        (sr.top + pad) - b.top,
+        b.bottom - (sr.bottom - pad));
+    }
+    return Math.max(0, over);
+  }
+
+  /* 핀 무리의 화면 가운데 */
+  function pinCenter(els) {
+    var L = Infinity, R = -Infinity, T = Infinity, B = -Infinity;
+    for (var i = 0; i < els.length; i++) {
+      var b = pinBox(els[i]);
+      L = Math.min(L, b.left); R = Math.max(R, b.right);
+      T = Math.min(T, b.top);  B = Math.max(B, b.bottom);
+    }
+    return { x: (L + R) / 2, y: (T + B) / 2, w: R - L, h: B - T };
+  }
+
+  function camFit(force) {
+    if (camLocked && !force) return false;
+    var f = $('ck_frame');
+    var layer = $('ck_pinlayer');
+    if (!f || !layer || !f.offsetWidth) return false;
+    var st = f.parentElement;
+    if (!st || !st.clientWidth) return false;
+
+    var els = layer.querySelectorAll('.ck-pin:not(.ck-cand)');
+    if (els.length < 2) return false;
+
+    var PAD = 18;          /* 가장자리 여백. 이름표가 닿으면 안 읽힌다 */
+    cam.user = false;
+
+    /* 1차 — 지금 배율에서 무리 가운데를 무대 가운데로 */
+    function recenter() {
+      var sr = st.getBoundingClientRect();
+      var c = pinCenter(els);
+      cam.x += (sr.left + sr.width / 2) - c.x;
+      cam.y += (sr.top + sr.height * 0.46) - c.y;
+      camApply();
+    }
+
+    recenter();
+
+    /* 2차 — 넘친 만큼 줄이고 다시 가운데로. 두 번까지 */
+    for (var pass = 0; pass < 2; pass++) {
+      var sr2 = st.getBoundingClientRect();
+      if (overflowOf(els, sr2, PAD) <= 0) break;
+
+      var c2 = pinCenter(els);
+      /* 무리 상자가 무대 안에 들어가는 비율. 여유를 조금 더 둔다 */
+      var kx = (sr2.width - PAD * 2) / Math.max(1, c2.w);
+      var ky = (sr2.height - PAD * 2) / Math.max(1, c2.h);
+      var k = Math.min(kx, ky) * 0.97;
+      if (k >= 1) break;                       /* 줄일 이유가 없다 */
+
+      cam.z = Math.max(.58, Math.min(1.6, cam.z * k));
+      camApply();
+      recenter();
+    }
+
+    CAM_MIN = cam.z;       /* 축소 하한 = 동선이 다 보이는 이 자리 */
+    return true;
+  }
+
   /* 한 정거장을 화면 가운데로 — 그냥 옮긴다 */
   function camStop(i, zoom) {
     var f = $('ck_frame');
@@ -499,6 +616,19 @@
     cam.z = zoom || 1.95;
     cam.x = st.clientWidth / 2 - (p.x / 100 * f.offsetWidth) * cam.z;
     cam.y = st.clientHeight * .48 - (p.y / 100 * f.offsetHeight) * cam.z;
+    camApply();
+  }
+
+  /* 좌표로 바로 겨눈다. 장소를 갈아 끼우는 갈래는 바뀐 곳이
+     route 에 없어서 번호로는 못 잡는다. */
+  function camAt(x, y, zoom) {
+    var f = $('ck_frame');
+    if (!f || !f.offsetWidth || !isFinite(x) || !isFinite(y)) return;
+    var st = f.parentElement;
+    cam.user = false;
+    cam.z = zoom || 1.6;
+    cam.x = st.clientWidth / 2 - (x / 100 * f.offsetWidth) * cam.z;
+    cam.y = st.clientHeight * .48 - (y / 100 * f.offsetHeight) * cam.z;
     camApply();
   }
 
@@ -559,7 +689,11 @@
     showWideMap: showWideMap,
     zoomMapTo: zoomMapTo,
     showModel: showModel,
+    loadScene: loadScene,
+    preloadScene: preloadScene,
     camStop: camStop,
+    camAt: camAt,
+    bigDraw: bigDraw,
     camFly: camFly,
     camFlyStop: camFlyStop,
     camLock: function (on) { camLocked = !!on; },

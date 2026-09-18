@@ -8,6 +8,7 @@ import idusw.sbb.checkin.domain.place.service.PlaceService;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.route.engine.ScheduleDensity;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,6 +51,8 @@ public class AiRouteService {
     private final ExpenseRepository expenseRepository;
     private final PlaceService placeService;
     private final idusw.sbb.checkin.domain.crowd.CrowdService crowdService;  // 관광공사 집중률 — 저장 직전에 붙인다
+    private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;      // 기상청 예보 — 저장 직전에 붙인다
+    private final idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService;     // TMAP 구간 이동시간 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository;
     private final ObjectMapper objectMapper;
 
@@ -58,6 +61,16 @@ public class AiRouteService {
 
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
+
+    /**
+     * 동선 엔진 경로 사용 여부. 기본값 false — 켜는 건 {@code application-local.properties} 에서만 한다
+     * ({@code application.properties} 는 skip-worktree 라 팀에 안 나간다).
+     */
+    @org.springframework.beans.factory.annotation.Value("${route.engine.enabled:false}")
+    private boolean routeEngineEnabled;
+
+    private final idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler routeEngineAssembler =
+            new idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler();
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
@@ -69,6 +82,8 @@ public class AiRouteService {
             ExpenseRepository expenseRepository,
             PlaceService placeService,
             idusw.sbb.checkin.domain.crowd.CrowdService crowdService,
+            idusw.sbb.checkin.domain.weather.service.WeatherService weatherService,
+            idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService,
             idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
@@ -92,6 +107,8 @@ public class AiRouteService {
         this.expenseRepository = expenseRepository;
         this.placeService = placeService;
         this.crowdService = crowdService;
+        this.weatherService = weatherService;
+        this.travelTimeService = travelTimeService;
         this.placeRepository = placeRepository;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
@@ -253,7 +270,7 @@ public class AiRouteService {
             [
               {
                 "day": 1,
-                "label": "📅 Day 1 · 06/14 (토)",
+                "label": "Day 1 · 06/14 (토)",
                 "budget": "₩184,000",
                 "places": [
                   { "type": "stay", "icon": "🏨", "name": "제주신라호텔", "sub": "숙소 · ₩180,000", "stars": "평점 정보 없음", "key": "uniq1", "time": "13:00", "replacePh": "예: 더 저렴한 펜션으로 교체해줘" },
@@ -477,7 +494,6 @@ public class AiRouteService {
         return fixedJson;
     }
 
-    @Transactional
     /**
      * 동선의 장소마다 그 날짜의 관광공사 집중률을 적어 둔다.
      *
@@ -544,6 +560,287 @@ public class AiRouteService {
         }
     }
 
+    /**
+     * 기상청 예보를 그 날짜로 동선에 박는다. annotateCrowd 와 같은 결이다.
+     *
+     * 왜 필요한가 — 「비가 와서 실내로 바꿨다」가 지금은 화면 연출이었다. 저장된
+     * 동선에 날씨가 없으면 나중에 같은 동선을 열었을 때 왜 그 순서였는지 설명할
+     * 근거가 없다. 심사에서 「공공 데이터로 동선을 다시 짠다」를 물으면 답할 자리다.
+     *
+     * 하루에 한 번만 부른다. 사흘 일정이면 세 번이다.
+     * 받지 못하면 그 날 칸을 비워 두고 저장은 계속한다 — 날씨 때문에 동선을
+     * 못 저장하는 건 말이 안 된다. 「맑음」이나 0 으로 채우지 않는다.
+     *
+     * 예보 격자가 없는 여행지는 아예 건너뛴다. WeatherRegion 이 null 을 준다 —
+     * WeatherServiceImpl 은 모르는 지역을 서울 격자로 떨어뜨리기 때문에,
+     * 그걸 그대로 쓰면 「여수 여행에 서울 날씨」가 실제 예보처럼 저장된다.
+     */
+    private String annotateWeather(String json, TravelPlan plan) {
+        if (json == null || json.isBlank()) return json;
+
+        String region = idusw.sbb.checkin.domain.weather.WeatherRegion.of(plan.getDestination());
+        if (region == null) return json;   /* 예보를 받을 수 없는 지역 — 칸을 만들지 않는다 */
+
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            LocalDate start = plan.getStartDate() != null ? plan.getStartDate() : LocalDate.now();
+
+            for (int d = 0; d < root.size(); d++) {
+                JsonNode day = root.get(d);
+                JsonNode places = day.path("places");
+                if (!places.isArray() || places.isEmpty()) continue;
+
+                idusw.sbb.checkin.domain.weather.dto.DayWeather dw;
+                try {
+                    dw = weatherService.getDayWeather(region, start.plusDays(d));
+                } catch (Exception e) {
+                    log.warn("[동선] {} {}일차 날씨를 받지 못했습니다: {}", region, d + 1, e.getMessage());
+                    continue;
+                }
+                if (dw == null) continue;
+
+                String label = weatherLabel(dw);
+                if (label == null) continue;   /* 쓸 값이 하나도 없으면 칸을 만들지 않는다 */
+
+                /* 날짜 단위로도 남긴다 — 화면이 「2일차 비 예보」를 말하려면
+                   장소를 훑지 않고 이 값만 보면 된다. */
+                if (day instanceof com.fasterxml.jackson.databind.node.ObjectNode dayObj) {
+                    dayObj.put("wxLabel", label);
+                    dayObj.put("wxSource", dw.getSource());
+                    dayObj.put("wxRain", dw.isRainExpected());
+                    if (dw.getRainProb() != null) dayObj.put("wx", dw.getRainProb());
+                }
+
+                for (JsonNode p : places) {
+                    if (!(p instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                    if (o.hasNonNull("transit")) continue;
+
+                    o.put("wxLabel", label);
+                    o.put("wxSource", dw.getSource());
+                    if (dw.getRainProb() != null) o.put("wx", dw.getRainProb());
+
+                    /* 비 예보에 야외 장소가 걸린 자리. 여기만 실내 대안을 권한다 —
+                       하루 전체를 갈아 끼우라고 하지 않는다. */
+                    if (dw.isRainExpected() && idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(
+                            o.path("name").asText(""), o.path("type").asText(""))) {
+                        o.put("outdoorRisk", true);
+                    }
+                }
+            }
+            return objectMapper.writeValueAsString(root);
+
+        } catch (Exception e) {
+            log.warn("[동선] 날씨를 붙이지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
+
+    /**
+     * 사람이 읽는 한 줄. 받은 값만 넣는다 — 기온을 못 받았으면 기온을 쓰지 않는다.
+     * 하나도 못 받았으면 null 을 준다. 부르는 쪽이 칸을 만들지 않는다.
+     */
+    private String weatherLabel(idusw.sbb.checkin.domain.weather.dto.DayWeather dw) {
+        java.util.List<String> parts = new java.util.ArrayList<>(3);
+
+        if (dw.getSky() != null && !dw.getSky().isBlank()) parts.add(dw.getSky());
+
+        if (dw.getTempMin() != null && dw.getTempMax() != null) {
+            parts.add(dw.getTempMin() + "~" + dw.getTempMax() + "도");
+        } else if (dw.getTempMax() != null) {
+            parts.add("최고 " + dw.getTempMax() + "도");
+        }
+
+        if (dw.getRainProb() != null) parts.add("강수 " + dw.getRainProb() + "%");
+
+        return parts.isEmpty() ? null : String.join(" · ", parts);
+    }
+
+    /**
+     * TMAP 으로 구간 이동시간을 재서 동선에 박는다.
+     *
+     * 왜 필요한가 — 화면의 「12분」은 직선거리로 만든 값이었다. 「순서를 바꾸면
+     * 31분 빠름」을 말하려면 실제로 잰 값이 저장돼 있어야 한다.
+     *
+     * 고른 수단 하나만 잰다. 셋을 다 재는 compare() 를 쓰지 않는 이유가 있다 —
+     * 지금 이 계정은 TMAP 대중교통·도보 상품이 열려 있지 않아 403 이 온다.
+     * 그런데 KeyRing 은 403 을 「이 키를 오늘 쓰지 않는다」로 읽고 키를 링에서
+     * 뺀다. 그래서 대중교통을 한 번 물으면 <b>잘 되던 자차까지 그날 멈춘다.</b>
+     * 실측으로 확인했다 — 2일차부터 이동시간이 통째로 비었다.
+     * 상품이 열리면 compare() 로 바꿔 갈래를 보여 주면 된다.
+     *
+     * 고른 수단으로 못 쟀으면 자차로 한 번 더 잰다. 그때 legMode 는 CAR 로
+     * 남으므로 화면이 「자차 기준」이라고 말할 수 있다. 값을 지어내지 않는다.
+     *
+     * TMAP 키가 없으면 HTTP 를 타지 않고 ready=false 로 돌아온다.
+     * 그때는 아무 칸도 만들지 않는다. 0분이라고 쓰지 않는다.
+     *
+     * 좌표가 필요하다. recalcTransitWithKakao 가 lat·lng 를 박은 뒤에 불러야 한다.
+     */
+    private String annotateTravel(String json, TravelPlan plan) {
+        if (json == null || json.isBlank()) return json;
+
+        PlanInputForm form = plan.getForm();
+        String transportType = form != null ? form.getTransportType() : null;
+        String primaryMode = primaryTravelMode(transportType);
+
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            for (JsonNode day : root) {
+                JsonNode places = day.path("places");
+                if (!places.isArray() || places.size() < 2) continue;
+
+                /* 좌표가 있는 실제 장소만, 동선 순서대로 */
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stops = new java.util.ArrayList<>();
+                for (JsonNode p : places) {
+                    if (!(p instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                    if (o.hasNonNull("transit")) continue;
+                    if (!o.hasNonNull("lat") || !o.hasNonNull("lng")) continue;
+                    stops.add(o);
+                }
+                if (stops.size() < 2) continue;
+
+                com.fasterxml.jackson.databind.node.ObjectNode origin = stops.get(0);
+                java.util.List<idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop> rest =
+                        new java.util.ArrayList<>(stops.size() - 1);
+                for (int i = 1; i < stops.size(); i++) {
+                    com.fasterxml.jackson.databind.node.ObjectNode o = stops.get(i);
+                    rest.add(new idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop(
+                            o.path("name").asText(""),
+                            o.path("lat").asDouble(),
+                            o.path("lng").asDouble(),
+                            o.path("time").asText(null)));
+                }
+
+                idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan chosen =
+                        measure(origin, rest, primaryMode);
+
+                /* 고른 수단으로 한 구간도 못 쟀으면 자차로 한 번 더 본다 */
+                if (!hasMeasuredLeg(chosen) && !"CAR".equals(primaryMode)) {
+                    chosen = measure(origin, rest, "CAR");
+                }
+                if (!hasMeasuredLeg(chosen)) continue;   /* 못 쟀다 — 칸을 만들지 않는다 */
+
+                for (int i = 1; i < stops.size(); i++) {
+                    com.fasterxml.jackson.databind.node.ObjectNode target = stops.get(i);
+                    idusw.sbb.checkin.domain.route.tmap.dto.TravelLeg leg = legAt(chosen, i - 1);
+                    if (leg == null || leg.minutes() == null) continue;
+
+                    target.put("legMode", leg.mode());
+                    target.put("legMinutes", leg.minutes());
+                    if (leg.meters() != null)    target.put("legDistance", leg.meters());
+                    if (leg.fare() != null)      target.put("legFare", leg.fare());
+                    if (leg.transfers() != null) target.put("legTransfers", leg.transfers());
+                }
+
+                /* 합계는 0 보다 클 때만 쓴다. 구간을 하나도 못 쟀을 때 TravelPlan 이
+                   totalMinutes 를 null 이 아니라 0 으로 준다 — 실측으로 확인했다.
+                   대중교통은 지금 길을 못 찾아서 legs 가 전부 null 인데 합계만 0 이 온다.
+                   그 0 을 저장하면 화면이 「0분」을 실제로 잰 값처럼 보여 준다. */
+                if (day instanceof com.fasterxml.jackson.databind.node.ObjectNode dayObj
+                        && chosen.totalMinutes() != null && chosen.totalMinutes() > 0) {
+                    dayObj.put("legTotalMinutes", chosen.totalMinutes());
+                    dayObj.put("legMode", chosen.mode());
+                }
+            }
+            return objectMapper.writeValueAsString(root);
+
+        } catch (Exception e) {
+            log.warn("[동선] 이동시간을 붙이지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
+
+    /** 사용자가 고른 이동수단 -> TMAP 이 아는 이름. 화면은 「자차」·「대중교통」·「도보」로 쓴다. */
+    private String primaryTravelMode(String transportType) {
+        if (transportType == null) return "CAR";
+        if (transportType.contains("대중교통") || transportType.contains("버스")
+                || transportType.contains("지하철") || transportType.contains("기차")) return "TRANSIT";
+        if (transportType.contains("도보") || transportType.contains("걷")) return "WALK";
+        return "CAR";
+    }
+
+    /** 한 수단으로 하루치 구간을 잰다. 실패하면 null 을 준다 — 예외를 위로 올리지 않는다. */
+    private idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan measure(
+            com.fasterxml.jackson.databind.node.ObjectNode origin,
+            java.util.List<idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop> stops,
+            String mode) {
+        try {
+            return travelTimeService.plan(new idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest(
+                    origin.path("name").asText(""),
+                    origin.path("lat").asDouble(),
+                    origin.path("lng").asDouble(),
+                    mode, null, stops));
+        } catch (Exception e) {
+            log.warn("[동선] {} 이동시간을 재지 못했습니다: {}", mode, e.getMessage());
+            return null;
+        }
+    }
+
+    /** 실제로 잰 구간이 하나라도 있는가. ready 만 보면 안 된다 — legs 가 전부 null 인 채 ready 인 경우가 있다. */
+    private boolean hasMeasuredLeg(idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan p) {
+        if (p == null || !p.ready() || p.legs() == null) return false;
+        for (idusw.sbb.checkin.domain.route.tmap.dto.TravelLeg l : p.legs()) {
+            if (l != null && l.minutes() != null) return true;
+        }
+        return false;
+    }
+
+    private idusw.sbb.checkin.domain.route.tmap.dto.TravelLeg legAt(
+            idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan p, int index) {
+        if (p == null || p.legs() == null || index < 0 || index >= p.legs().size()) return null;
+        return p.legs().get(index);
+    }
+
+    /**
+     * 날짜 라벨에서 이모지를 걷어낸다.
+     *
+     * 프롬프트 예시가 「📅 Day 1 · 06/14 (토)」였던 탓에 생성되는 동선마다 이모지가
+     * 따라 들어왔다. 예시는 고쳤지만 이미 저장된 동선에도 남아 있어서, 저장 경로에서
+     * 한 번 더 걷어낸다. UI 문구에 이모지를 쓰지 않는 것이 이 제품의 규칙이다.
+     *
+     * label 만 손댄다. 장소의 icon 은 화면이 그걸로 종류를 표시하고 있어서
+     * 여기서 지우면 아이콘이 통째로 빈다. 그건 선 아이콘으로 바꿔야 하는 일이라
+     * 화면 쪽에서 따로 한다.
+     */
+    private String stripLabelEmoji(String json) {
+        if (json == null || json.isBlank()) return json;
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return json;
+
+            boolean changed = false;
+            for (JsonNode day : root) {
+                if (!(day instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                String label = o.path("label").asText("");
+                if (label.isBlank()) continue;
+                String clean = EMOJI.matcher(label).replaceAll("").trim();
+                if (!clean.equals(label)) { o.put("label", clean); changed = true; }
+            }
+            return changed ? objectMapper.writeValueAsString(root) : json;
+        } catch (Exception e) {
+            log.warn("[동선] 라벨을 정리하지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
+
+    /* 그림문자(Symbol, other)와 이형 선택자. 대부분의 이모지가 여기 든다 */
+    private static final Pattern EMOJI = Pattern.compile("[\\p{So}\\uFE0F\\u200D]+");
+
+    /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
+       하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
+       옛 동선으로 돌아가던 원인이다.
+
+       주의 — 이 애너테이션은 컨트롤러가 이 메서드를 직접 부를 때만 듣는다.
+       finalizeRoute 에서 들어오는 경로는 같은 빈 안의 호출이라 프록시를
+       안 타므로, 그쪽에도 따로 붙어 있어야 한다.
+       애너테이션과 메서드 선언 사이에 다른 선언을 끼워 넣지 말 것 —
+       그러면 애너테이션이 그 선언으로 옮겨 붙고, private 이면 조용히 죽는다.
+       AiRouteServiceTransactionGuardTest 가 이 자리를 지킨다. */
+    @Transactional
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
@@ -556,8 +853,17 @@ public class AiRouteService {
         // ★식당 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화 (AI 라벨-시간 불일치 교정)
         json = syncMealLabelByTime(json);
 
+        // ★날짜 라벨에 섞여 들어온 이모지를 걷어낸다 (UI 문구에 이모지를 쓰지 않는다)
+        json = stripLabelEmoji(json);
+
         // ★관광공사 집중률을 그 날짜로 붙인다 (없으면 그냥 넘어간다)
         json = annotateCrowd(json, plan);
+
+        // ★기상청 예보를 그 날짜로 붙인다 (예보 격자가 없는 지역이면 그냥 넘어간다)
+        json = annotateWeather(json, plan);
+
+        // ★TMAP 으로 구간 이동시간을 재서 붙인다 (좌표가 박힌 뒤여야 한다)
+        json = annotateTravel(json, plan);
 
         // ★당일치기(0박)면 숙소(stay)를 강제 제거 (AI가 규칙 어겨도 최종 차단)
         if (plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate())) {
@@ -862,12 +1168,32 @@ public class AiRouteService {
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
 
+        /* 모델이 빈 응답이나 대괄호 없는 글을 주면 여기까지 "[]" 가 내려온다.
+           그걸 저장하면 DB 의 동선이 지워지고 화면 세션까지 덮어쓴다.
+           원본보다 나쁜 것을 결과로 삼지 않는다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 장소 교체 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            String stripped = stripBadPlaces(originalJson, requests);
+            if (usableRoute(stripped) && !stripped.equals(originalJson)) {
+                saveAiRouteToDb(tripId, stripped);
+                return stripped;
+            }
+            return originalJson;
+        }
+
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
         }
 
         return finalJson;
     }
+    /** 쓸 만한 동선인가. 판정은 {@link idusw.sbb.checkin.domain.route.RouteJson} 에 있다 —
+     *  지도 화면의 _mpUsable 과 같은 기준을 한 곳에서 지킨다. */
+    private boolean usableRoute(String json) {
+        return idusw.sbb.checkin.domain.route.RouteJson.usable(json);
+    }
+
     // 모든 모델이 실패했을 때, 검증에서 걸린 장소(requests의 place)를 일정에서 제거한다.
     // 가짜·타지역 장소가 그대로 지도까지 흘러가는 것을 막는 최종 안전장치.
     private String stripBadPlaces(String json, java.util.List<java.util.Map<String, String>> requests) {
@@ -1019,6 +1345,14 @@ public class AiRouteService {
         }
 
         String finalJson = updatedJson != null ? updatedJson.trim() : originalJson;
+
+        /* 실내 전환도 같은 구멍이 있었다. 모델이 빈 응답을 주면 "[]" 가 저장돼
+           비 오는 날 「실내로 바꾸기」를 누른 사람의 하루가 통째로 사라진다. */
+        if (!usableRoute(finalJson)) {
+            log.warn("[동선] 실내 전환 결과가 비어 있어 원본을 지킵니다. 받은 길이={}",
+                    finalJson == null ? 0 : finalJson.length());
+            return originalJson;
+        }
 
         if (!finalJson.equals(originalJson)) {
             saveAiRouteToDb(tripId, finalJson);
@@ -1179,11 +1513,9 @@ public class AiRouteService {
     // ════════════════════════════════════════════════════════════════
     private static final double FAR_LIMIT = 40_000; // 40km
 
-    /** 밀도별 카테고리 상한 [food, cafe, tour]. */
+    /** 밀도별 카테고리 상한 [food, cafe, tour]. 매핑은 {@link ScheduleDensity} 가 유일한 출처다. */
     private int[] densityCaps(String density) {
-        if ("빡빡하게".equals(density)) return new int[]{3, 2, 3};
-        if ("여유롭게".equals(density)) return new int[]{3, 1, 1};
-        return new int[]{3, 1, 2}; // 보통
+        return ScheduleDensity.of(density).caps();
     }
 
     /**
@@ -1330,7 +1662,12 @@ public class AiRouteService {
      *   2) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
      *   Claude 검증/교체는 새 장소를 지어내 환각을 유발하므로 생성 흐름에서 쓰지 않는다.
      *   @return 사용자요청인데 먼 장소(프론트 알림용 over50)
+     *
+     *   ★쓰기 트랜잭션이어야 한다. 이 안에서 부르는 saveAiRouteToDb·postProcessRoute 는
+     *     같은 빈 내부 호출(self-invocation)이라 프록시를 안 타고, 그쪽 @Transactional 이
+     *     적용되지 않는다. 여기가 readOnly 면 그 체인의 저장이 통째로 버려진다.
      */
+    @Transactional
     public java.util.List<String> finalizeRoute(Long tripId) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return java.util.Collections.emptyList();
@@ -1342,7 +1679,21 @@ public class AiRouteService {
         String json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
         if (json == null || json.isBlank() || !json.contains("[")) return java.util.Collections.emptyList();
 
-        // 1) 한 방향 정렬
+        // 1) 한 방향 정렬 — ★엔진 경로에서는 건너뛴다 (결정 10-(2)).
+        //    reorderWithinTimeBlocks 는 최근접 이웃 그리디라, SlotOptimizer 가 완전탐색으로 찾은
+        //    순서를 뒤에서 덮어쓴다. 테스트는 통과하는데 화면 결과만 안 바뀌는 형태로 망가진다.
+        //    2) 의 후처리·최종 저장은 두 경로가 똑같이 탄다.
+        if (routeEngineEnabled) {
+            try {
+                log.info("[route.engine] tripId={} 엔진 경로 — 그리디 재정렬을 건너뛴다", tripId);
+                return postProcessRoute(tripId, json, userRequested, density);
+            } catch (RuntimeException e) {
+                // 조용한 폴백은 "엔진이 돌았다고 믿는데 화면은 before" 가 되는 길이다.
+                log.error("[route.engine] tripId={} 실패 지점=finalizeRoute/postProcessRoute(엔진 순서 유지)"
+                        + " — 기존 경로로 폴백한다", tripId, e);
+            }
+        }
+
         String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);
@@ -2081,6 +2432,17 @@ public class AiRouteService {
             // ★카카오에서 실존 장소를 직접 수집(환각 차단). AI 후보(candidatesJson)는 더 이상 쓰지 않는다.
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
                     collectCandidatesFromKakao(plan, form, userRequested);
+
+            // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
+            if (routeEngineEnabled) {
+                try {
+                    return routeEngineAssembler.assemble(plan, form, filtered, userRequested);
+                } catch (RuntimeException e) {
+                    log.error("[route.engine] tripId={} 실패 지점=assembleCandidates/engine"
+                            + " — 기존 경로로 폴백한다", tripId, e);
+                }
+            }
+
             return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
             System.err.println("[assembleCandidates] 실패: " + e.getMessage());
@@ -2422,7 +2784,7 @@ public class AiRouteService {
                 + "[\n"
                 + "  {\n"
                 + "    \"day\": 1,\n"
-                + "    \"label\": \"📅 Day 1 · MM/DD (요일)\",\n"
+                + "    \"label\": \"Day 1 · MM/DD (요일)\",\n"
                 + "    \"budget\": \"₩금액\",\n"
                 + "    \"places\": [\n"
                 + "      {\"type\":\"food\",\"icon\":\"🍽️\",\"name\":\"후보명\",\"sub\":\"후보sub 그대로\",\"stars\":\"평점 정보 없음\",\"key\":\"d1_1\",\"time\":\"12:00\",\"replacePh\":\"장소 교체 요청\"},\n"

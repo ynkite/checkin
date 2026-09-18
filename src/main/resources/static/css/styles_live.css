@@ -153,3 +153,44 @@
 .rl-src{
   margin:18px 0 0; font-size:11px; line-height:1.6; color:var(--ink-3);
 }
+
+/* 이동수단 셋 — 같은 구간을 자차·대중교통·도보로 */
+.rl-modes{
+  margin-top:14px; padding:16px 20px 18px;
+  border-radius:var(--r-panel); background:var(--panel); box-shadow:var(--lift);
+}
+.rl-modes-lb{
+  margin:0 0 8px; font-family:var(--fig); font-size:11px; font-weight:500;
+  color:var(--ink-3); letter-spacing:.02em;
+}
+.rl-modes-note{ margin:0; font-size:12.5px; color:var(--ink-3) }
+.rl-mode{
+  display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+  padding:9px 0;
+}
+.rl-mode + .rl-mode{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
+.rl-mode-n{ font-size:14.5px; font-weight:500; color:var(--ink) }
+.rl-mode-v{ font-size:13px; color:var(--ink-2) }
+.rl-mode-v b{
+  font-family:var(--fig); font-size:15px; font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-num); font-variant-numeric:tabular-nums;
+}
+.rl-mode-x{ font-size:12.5px; color:var(--ink-3); text-align:right }
+
+/* ── 주행모드 · 음성 오버레이 (nav-drive.js) ── */
+.rl-drive, .rl-voice{
+  position:fixed; left:0; right:0; z-index:50;
+  padding:16px; background:var(--panel);
+  border-top:1px solid var(--ui-line);
+  box-shadow:var(--lift);
+}
+.rl-drive{ bottom:0 }
+.rl-voice{ bottom:0 }
+.rl-drive .rl-drive-head, .rl-voice .rl-voice-msg{
+  font-size:20px; font-weight:700; color:var(--ink);
+  margin-bottom:12px; word-break:keep-all;
+}
+.rl-drive .rl-act, .rl-voice .rl-act{ width:100% }
+/* 주행 중(10km/h↑) — 조작을 큰 것만 남긴다 */
+body.rl-driving .rl-drive-head{ font-size:24px }
+body.rl-driving input, body.rl-driving textarea{ display:none }

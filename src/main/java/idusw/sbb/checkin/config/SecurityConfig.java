@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/error",
+                                "/privacy",                         //개인정보 처리방침. 로그인 전에 읽을 수 있어야 한다
                                 "/api/auth/signup",                 //회원가입
                                 "/api/auth/login",                  //로그인
                                 "/api/auth/check-username",         //아이디 중복 확인
@@ -88,6 +89,10 @@ public class SecurityConfig {
                                 "/api/route/travel-time",           //출발지 기준 구간 이동시간 (TMAP)
                                 "/api/route/travel-time/compare",   //자차·대중교통·도보 비교 (TMAP)
                                 "/api/route/reverse",               //좌표 -> 주소 (TMAP)
+                                "/api/route/navi",                  //주행 네비 경로 (경로선+턴안내, TMAP)
+                                "/api/route/optimize",              //경유지 최적화 (방문 순서 재정렬, TMAP)
+                                "/api/route/nearby",                //주변 검색 (주유소·화장실 등, TMAP)
+                                "/api/route/fuel",                  //싼 주유소 (오피넷 + 카카오 좌표변환)
                                 "/api/puzzle/**",                   //SK 지오비전 퍼즐
                                 "/api/live/**",                     //실시간 화면. 목록은 로그인한 사람 것만 나온다
                                                                     //  (익명이면 빈 배열). 경로 읽기는 이미
@@ -97,6 +102,7 @@ public class SecurityConfig {
                                 "/api/crowd/**",                    //날짜별 혼잡도 예측
                                 "/api/budget/estimate",             //성수기·축제 반영 예산 산출
                                 "/api/budget/festivals",            //여행 기간에 열리는 축제
+                                "/api/budget/festivals/status",     //축제 확인여부(FOUND/NONE/UNKNOWN)
                                 "/api/budget/season",               //성수기 판정
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
@@ -111,6 +117,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/places").permitAll()                // 장소 카드 탭 목록
                         .requestMatchers(HttpMethod.GET, "/api/places/**").permitAll()             // 장소 상세 (후기·리뷰)
                         .requestMatchers(HttpMethod.GET, "/api/trips/scrapped").authenticated()     // 내 스크랩 목록(로그인 필수). /api/trips/* permitAll 보다 먼저
+                        .requestMatchers(HttpMethod.GET, "/api/trips/budget-accuracy").authenticated() // 내 예측 정확도(로그인 필수). /api/trips/* permitAll 보다 먼저
                         .requestMatchers(HttpMethod.GET, "/api/trips/*").permitAll()               // 비회원 공유 링크
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll()        // 공유 링크 읽기 전용
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/input-form").permitAll()     // 비회원 인원수/이동수단 정보

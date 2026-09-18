@@ -1,462 +1,306 @@
-/*
- * 체크인 — 메인 무대 (styles_stage.css)
- *
- * 레퍼런스 구조를 그대로 옮긴다 — 모형이 화면을 채우고 판이 그 위에 뜬다.
- * 판 부품은 styles_float.css 가 갖고 있고, 여기는 그 판을 어디에 둘지만 정한다.
- *
- * 이전 히어로의 문제 두 개를 여기서 없앤다.
- *   왼쪽 절반이 빈 크림이었다  -> 모형이 화면 전체를 덮는다
- *   아래쪽 핀이 잘렸다          -> 판을 모서리로 밀고 가운데를 비워 둔다
- *
- * styles_home.css 뒤에 둔다. 색·간격은 tokens.css 변수만 쓴다.
- */
-
+/* 메인 무대. 장면·좌우 읽는 면·입력은 각각 독립된 칸을 쓴다. */
+.ck-home{ min-height:100dvh }
 .ck-home .ck-hero.ck-stage{
-  /* 네비가 흐름 안에 있다. 100dvh 로 두면 무대가 네비 높이만큼 아래로
-     밀려 폼 바 아랫단이 화면 밖으로 나간다 — 1320x800 실측 831 > 800. */
-  position:relative; height:calc(100dvh - var(--nav-h, 62px));
-  min-height:620px;
-  padding:0; margin:0; background:var(--page-2);
-  /* overflow 를 여기에 걸면 접시 곡선이 경로 만들기 바의 좌우 끝을
-     같이 잘라 낸다. 잘라야 하는 것은 모형이지 판이 아니다.
-     자르기와 곡선은 아래에서 .ck-scene 에만 건다. */
-  /* 아래 모서리를 크게 굴려 땅이 말려 내려가게 한다.
-     레퍼런스(도쿄)의 「접시 위 디오라마」가 이 선 하나에서 온다.
-     50% / 5.5% — 가로 반지름은 폭의 절반, 세로는 아주 얕게. 이 비율이라야
-     둥근 상자가 아니라 「휘어 내려가는 땅」으로 읽힌다. */
-  border-radius:0;
+  position:relative; isolation:isolate; display:grid;
+  grid-template-columns:var(--home-left) minmax(0,1fr) var(--home-right);
+  grid-template-rows:var(--home-scene) auto auto;
+  column-gap:calc(var(--u) * 3); row-gap:0;
+  height:auto; min-height:0; margin:0;
+  padding:0 var(--home-inset) calc(var(--u) * 3);
+  overflow:visible; background:var(--page);
 }
+.ck-home .ck-hero.ck-stage::before,
+.ck-home .ck-hero.ck-stage::after{ content:none }
 
-/* 접시 곡선과 자르기는 모형에만. 판은 곡선 밖으로 나가도 된다 */
+/* 도시만 자른다. 입력과 팝오버는 이 상자 밖에 있다. */
+.st-viewport{
+  grid-area:1 / 1 / 2 / -1; position:relative; min-width:0;
+  margin-inline:calc(-1 * var(--home-inset)); overflow:hidden;
+  isolation:isolate; background:var(--void);
+}
 .ck-home .ck-stage .ck-scene,
-.ck-home .ck-hero.ck-stage::after{
-  border-radius:0 0 50% 50% / 0 0 5.5% 5.5%;
-}
-.ck-home .ck-stage .ck-scene{
-  overflow:hidden;
-  /* 축소하면 판 밖이 드러난다. 페이지 바닥색이 나오면 「잘렸다」로
-     보이지만, 모형의 바닥색을 깔아 두면 「멀어진 바다」로 읽힌다.
-     그래서 1 아래로도 줄일 수 있다. */
-  background:var(--void);
-}
-/* 드러난 가장자리를 흐린다. 경계가 선으로 보이지 않게 */
-.ck-home .ck-stage .ck-frame::after{
-  content:""; position:absolute; inset:0; pointer-events:none;
-  box-shadow:inset 0 0 90px 30px rgba(var(--w-rgb), .28);
-}
-
-/* 먼 쪽(위)의 안개와 가까운 쪽(아래)의 그늘.
-   미니어처가 깊이를 갖는 고전적인 방법이다. 판보다 아래(z-index 1)에 둬서
-   글을 흐리지 않는다. */
-.ck-home .ck-hero.ck-stage::after{
-  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
-  border-radius:inherit;
-  background:
-    linear-gradient(180deg,
-      rgba(var(--w-rgb),.42) 0,
-      rgba(var(--w-rgb),.10) 13%,
-      rgba(var(--w-rgb),0) 27%),
-    linear-gradient(0deg,
-      rgba(var(--sh-rgb),.09) 0,
-      rgba(var(--sh-rgb),0) 15%);
-}
-
-/* ── 무대 ────────────────────────────────────────────
-   모형이 무대를 덮는다. 세로가 긴 창에서도 여백이 안 생기게
-   가로를 비율(1.3892)로 밀어 준다. object-fit:cover 와 같은 계산이다. */
-.ck-home .ck-stage .ck-scene{
-  position:absolute; inset:0; overflow:hidden; pointer-events:none;
-}
+.ck-home .ck-stage .st-bigmap{ position:absolute; inset:0; height:auto; background:var(--void) }
+.ck-home .ck-stage .ck-scene{ overflow:hidden; pointer-events:none }
 .ck-home .ck-stage .ck-frame{
   position:absolute; left:50%; top:50%;
-  width:max(100%, calc(100dvh * 1.3892)); height:auto;
-  transform:translate(calc(-50% + var(--st-x, 0px)), calc(-50% + var(--st-y, 0px)))
-            scale(var(--st-z, 1));
-  transform-origin:50% 50%;
-  transition:transform .5s cubic-bezier(.22,.61,.36,1);
-  -webkit-mask-image:none; mask-image:none;
+  width:max(100%, calc(var(--home-scene) * var(--st-ar, 1.3892)));
+  height:auto; aspect-ratio:var(--st-ar, 1.3892);
+  transform:translate(calc(-50% + var(--st-x, 0px)), calc(-50% + var(--st-y, 0px))) scale(var(--st-z, 1));
+  transform-origin:center; transition:transform .5s var(--home-ease);
 }
-.ck-home .ck-stage .ck-frame svg.mass{ width:100%; height:auto; display:block }
+.ck-home .ck-stage .ck-frame svg.mass{ display:block; width:100%; height:100% }
 
-/* 큰 지도로 바꿀 자리 */
-.st-bigmap{ position:absolute; inset:0; background:var(--ui-plate-2) }
-
-/* 사람 움직임을 멈춘다 (도구줄에서 끈다) */
+/* 비는 도시 위의 얇은 막과 기존 강수 레이어로만 표현한다. */
+.st-viewport::before{
+  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
+  background:var(--home-wash); opacity:0; transition:opacity .5s ease;
+}
+[data-wx="rain"] .st-viewport::before{ opacity:1 }
+/* 190ms 뒤 장면을 바꾸는 기존 컷에 맞춘 셔터. SVG 자체는 변형하지 않는다. */
+.st-viewport::after{
+  content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:linear-gradient(105deg,var(--home-cut),transparent 32%),var(--void);
+  transform:translateX(101%); transition:transform .18s var(--home-ease);
+}
+.ck-cut .st-viewport::after{ transform:translateX(0) }
+.ck-home .ck-stage .ck-scene,
+.ck-home .ck-stage .st-bigmap{ transition:opacity .18s ease }
+.ck-home .ck-cut .ck-scene,
+.ck-home .ck-cut .st-bigmap{ opacity:0 }
 .ck-stage.st-still .crowd .cw,
 .ck-stage.st-still .wv,
 .ck-stage.st-still .cb,
 .ck-stage.st-still .ct{ animation:none !important }
 
-/* ── 판 자리 ─────────────────────────────────────────
-   --st-m 은 모서리 여백. 좁아지면 같이 줄어든다. */
-.ck-stage{ --st-m:clamp(14px, 2.2vw, 30px); --st-col:clamp(330px, 27vw, 396px) }
+/* 높이는 장면 칸 안에서만 제한한다. 아래 폼 높이에 기대지 않는다. */
+.ck-home .st-tl{
+  grid-area:1 / 1; z-index:3; min-height:0; align-self:stretch;
+  display:flex; flex-direction:column; gap:calc(var(--u) * 2);
+  margin-block:var(--home-inset); padding:calc(var(--u) / 2);
+  overflow:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; scrollbar-color:var(--ink-3) var(--panel);
+  scroll-padding:var(--u);
+}
+.ck-home .st-tl > *{ flex-shrink:0 }
+.ck-home .st-head{
+  padding:calc(var(--u) * 2); border-radius:0;
+  border-inline-start:calc(var(--u) / 2) solid var(--sig);
+  background:var(--panel); box-shadow:none;
+}
+.ck-home .st-head .st-h1{
+  max-width:none; font-size:var(--home-title); line-height:1.16;
+  font-weight:700; letter-spacing:var(--tracking-tight);
+}
+.ck-home .st-head .fl-eye{
+  margin-bottom:calc(var(--u) * 1.5); font-size:var(--home-meta); color:var(--ink-2);
+}
+.ck-home .st-head .fl-sub{
+  margin-top:calc(var(--u) * 1.5); font-size:var(--t-sm); line-height:1.7; color:var(--ink-2);
+}
+.ck-home .st-head .fl-path{ margin-top:var(--u); line-height:1.6 }
+.st-stops{ gap:var(--u) }
+.ck-home .st-stops .fl-pill{
+  height:auto; min-height:var(--home-control); padding:var(--u) calc(var(--u) * 1.5);
+  white-space:normal; text-align:left; font-size:var(--home-meta); box-shadow:var(--lift2);
+}
+.ck-home .st-stops .fl-pill.fl-hot{ background:var(--ink); color:var(--panel) }
+.ck-home .st-stops .fl-pill.fl-hot b{ background:var(--ink); color:var(--sig) }
 
-/* 무대가 네비 아래에서 시작하므로 자리는 무대 기준(%)으로 잡는다.
-   전에는 dvh 에서 네비를 빼는 식이라 무대 높이가 바뀔 때마다 어긋났다 —
-   1320x800 실측에서 왼쪽 열이 폼 바를 84px 덮었다. */
-.st-tl{
-  position:absolute; left:var(--st-m); top:var(--st-m);
-  width:var(--st-col); display:grid; gap:9px; z-index:3;
-  /* 아래 폼 바 위까지만. 넘치면 판이 폼을 덮는다 */
-  max-height:calc(100% - var(--st-m) * 2 - 100px);
-  overflow:visible;
+/* 현재 상황은 한 면, 대응은 그 안의 행이다. 세 겹의 카드로 쌓지 않는다. */
+.ck-home .st-note{
+  background:var(--home-dark); color:var(--home-on-dark);
+  border-radius:var(--r-card); padding:calc(var(--u) * 2); box-shadow:none;
 }
-/* 오른쪽은 위에서 아래로 — 판 · 작은 지도 · 시점.
-   왼쪽 열이 길어서(머리 + 정거장 + 대응 세 갈래) 작은 지도를 왼쪽에 두면 덮인다. */
-/* 오른쪽 열은 위에서 아래로 네 칸이다 — 도구줄 · 판 · 작은 지도 · 시점.
-   실측(1320x800): 판이 519 에서 끝나는데 작은 지도가 489 에서 시작하고,
-   작은 지도(727)와 시점 버튼(698)이 겹쳤다. 셋 다 bottom 을 같은 값으로
-   잡아 둔 탓이다. 아래에서부터 칸을 쌓아 올린다.
-     폼 바 104 + 시점 39 + 작은 지도 238 + 사이 여백 29 = 410 */
-.st-side{
-  position:absolute; right:var(--st-m); top:52px;
-  width:var(--st-col); z-index:3;
-  max-height:calc(100% - 52px - 420px);
-  overflow-y:auto; overscroll-behavior:contain;
+.st-line{ font-size:var(--t-body); font-weight:700; line-height:1.5; word-break:keep-all }
+.ck-home .st-note .st-line em{ font-style:normal; color:var(--sig) }
+.ck-home .st-note .fl-tx{ margin-top:var(--u); color:var(--home-muted-dark); line-height:1.65 }
+.ck-home .st-note .ck-ph{ display:flex; gap:var(--u); margin-bottom:var(--u) }
+.ck-home .st-note .ck-phbtn{
+  width:var(--home-control); height:var(--home-control); margin:0;
+  background:var(--home-dark-hover); color:var(--home-on-dark);
 }
-.st-tools{
-  position:absolute; right:var(--st-m); top:12px; z-index:4;
+.ck-home .st-note .ck-ph > i{
+  flex:1; height:calc(var(--u) / 4); background:var(--home-dark-line); overflow:hidden;
 }
-.st-mini{
-  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 143px); z-index:3;
+.ck-home .st-note .ck-ph > i b{
+  display:block; height:100%; background:var(--sig); transform:scaleX(0); transform-origin:left;
 }
-.st-view{
-  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 104px); z-index:3;
-  justify-content:flex-end;
+.ck-home .st-note .ck-ph > i.ck-on b{ transform:scaleX(1); transition:transform 2.5s linear }
+.ck-home .st-note .ck-ph > i.ck-done b{ transform:scaleX(1) }
+.ck-home .st-note .ck-opts{ margin-top:calc(var(--u) * 2); gap:0 }
+.ck-home .st-note .ck-opt{
+  grid-template-columns:minmax(0,1fr) auto; gap:calc(var(--u) / 2) var(--u);
+  padding:calc(var(--u) * 1.5) var(--u);
+  border-radius:0; border:0; border-top:1px solid var(--home-dark-line);
+  background:transparent; box-shadow:none; color:var(--home-on-dark);
 }
-/* 경로 만들기 바는 가운데. 좌우 열 사이에 남는 폭만 쓴다 */
-/* 경로 만들기 바 — 아래를 가로지른다 (데모 「체크인 시작하기」가 그렇다).
-   왼쪽 칸 밑에 640px 짜리로 두니 어두운 상태 판과 겹쳤다 (실측 776 > 717).
-   가로로 눕히면 겹칠 일이 없고 「여기서 시작한다」가 분명해진다. */
-.st-form{
-  position:absolute; left:var(--st-m); right:var(--st-m); bottom:var(--st-m);
-  z-index:4; width:auto;
+.ck-home .st-note .ck-opt b{ font-size:var(--t-sm); color:inherit }
+.ck-home .st-note .ck-opt span{
+  grid-column:1 / -1; white-space:normal; overflow:visible;
+  color:var(--home-muted-dark); font-size:var(--home-meta); line-height:1.55;
 }
+.ck-home .st-note .ck-opt em{
+  grid-row:1; max-width:18ch; white-space:normal; color:var(--sig); font-family:var(--fig);
+}
+.ck-home .st-note .ck-opt em i{ color:var(--home-muted-dark); font-family:var(--sans) }
+.ck-home .st-note .ck-opt:hover{ background:var(--home-dark-hover) }
+.ck-home .st-note .ck-opt[aria-pressed="true"]{
+  border-radius:var(--r-field); background:var(--sig); color:var(--on-sig); border-top-color:transparent;
+}
+.ck-home .st-note .ck-opt[aria-pressed="true"] :is(span,em,em i){ color:var(--on-sig) }
 
-/* ── 왼쪽 위 판 안쪽 ───────────────────────────────── */
-/* 제목이 폭을 다 쓴다. 큰 숫자를 옆에 두면 세 줄로 꺾였다 */
-.st-h1{ margin:0; font-size:clamp(23px, 2.1vw, 29px) }
-
-/* 오른쪽 판 머리 — 일차 숫자가 여기 있다 */
-.st-sidehd{
-  display:flex; align-items:baseline; gap:11px; margin-bottom:14px;
-  padding-bottom:13px; border-bottom:1px solid var(--ui-line-2);
+/* 오른쪽은 표와 지도. 내용이 늘면 표 안에서 스크롤한다. */
+.st-rail{
+  grid-area:1 / 3; z-index:3; min-height:0;
+  display:flex; flex-direction:column; gap:var(--u);
+  margin-block:calc(var(--home-inset) + var(--home-control) + var(--u));
 }
-.st-sidehd > span{
-  font-size:11.5px; font-weight:600; color:var(--ink-2); line-height:1.45;
+.ck-home .st-side{
+  flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;
+  scrollbar-width:thin; background:var(--panel); border-radius:var(--r-field);
+  padding:calc(var(--u) * 2); box-shadow:none;
 }
-.st-sidehd > span i{
-  display:block; font-style:normal; font-weight:400; color:var(--ink-3);
-}
-
-.st-stops{ padding:1px }           /* 그림자가 잘리지 않게 */
-
-/* 지금 상황 판 */
-.st-note .ck-ph{ margin-bottom:11px }
-.st-line{
-  margin:0; font-size:15.5px; font-weight:700; line-height:1.4;
-  letter-spacing:var(--tracking-tight); color:var(--ink); word-break:keep-all;
-}
-.st-line em{ font-style:normal; color:var(--num) }
-
-/* ── 오른쪽 판 ─────────────────────────────────────── */
-.st-tabs{ display:flex; gap:5px; margin-bottom:14px }
-.st-tabs .fl-pill{ flex:1; justify-content:center; height:30px; font-size:12px }
-
-/* 오늘 순서 — 이름과 혼잡도 막대가 한 줄에 선다 */
-#st_plan .fl-row > dd{ display:flex; align-items:center; gap:12px }
-#st_plan .fl-row > dd > b{ font-size:13.5px; font-weight:700; color:var(--ink) }
-#st_plan .st-cwbar{ flex:0 0 74px; margin:0 0 0 auto }
-
-/* 혼잡도 줄 — 등급이 색으로 읽힌다 */
-.st-cw{ display:flex; align-items:center; gap:7px }
-.st-cw b{
-  font-family:var(--fig); font-size:13px; font-weight:600; color:var(--ink);
-  font-variant-numeric:tabular-nums;
-}
-.st-cw i{
-  font-style:normal; font-size:11px; font-weight:700; padding:2px 7px 3px;
-  border-radius:99px;
-}
-.st-cw i.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
-.st-cw i.cw-high { background:var(--terra-pale); color:var(--terra) }
-.st-cw i.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
-.st-cw i.cw-low  { background:var(--slate-pale); color:var(--slate) }
-.st-cw i.cw-vlow { background:var(--slate-pale); color:var(--slate) }
-/* 이름 밑에 길게 깔면 진행바로 읽힌다. 짧게 잘라 오른쪽에 붙인다 */
-.st-cwbar{
-  display:block; width:74px; height:4px; border-radius:99px;
-  background:var(--ui-line-2); margin:6px 0 0 auto;
-}
-.st-cwbar i{ display:block; height:100%; border-radius:99px; background:var(--ink-3) }
+.st-sidehd{ display:flex; align-items:baseline; gap:calc(var(--u) * 1.5); margin-bottom:calc(var(--u) * 2) }
+.st-sidehd > span{ font-size:var(--home-meta); line-height:1.5; color:var(--ink-2) }
+.st-sidehd > span i{ display:block; font-style:normal; color:var(--ink-3) }
+.st-tabs{ display:flex; gap:var(--u); margin-bottom:calc(var(--u) * 2) }
+.st-tabs .fl-pill{ flex:1; justify-content:center; padding-inline:var(--u); font-size:var(--home-meta) }
+#st_plan .fl-row{ grid-template-columns:5ch minmax(0,1fr); gap:var(--u) }
+#st_plan .fl-row > dd{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--u) }
+#st_plan .fl-row > dd > b{ flex:1 1 100%; font-size:var(--t-sm); font-weight:600; color:var(--ink); line-height:1.5 }
+.st-cw{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--u) }
+.st-cw b{ font-family:var(--fig); font-size:var(--t-sm); font-weight:600; color:var(--ink) }
+.st-cw i{ font-style:normal; font-size:var(--home-meta); padding:calc(var(--u) / 4) var(--u); border-radius:var(--r-pill) }
+.st-cw i.cw-vhigh{ background:var(--tile); color:var(--panel) }
+.st-cw i.cw-high{ background:var(--terra-pale); color:var(--terra) }
+.st-cw i.cw-mid{ background:var(--ui-plate-2); color:var(--ink-2) }
+.st-cw i.cw-low,.st-cw i.cw-vlow{ background:var(--slate-pale); color:var(--slate) }
+.st-cwbar{ display:block; width:calc(var(--u) * 8); height:calc(var(--u) / 2); background:var(--ui-line-2); border-radius:var(--r-pill) }
+.st-cwbar i{ display:block; height:100%; background:var(--ink-3); border-radius:inherit }
 .st-cwbar i.cw-vhigh{ background:var(--tile) }
 .st-cwbar i.cw-high{ background:var(--terra) }
-.st-cwbar i.cw-low,
-.st-cwbar i.cw-vlow{ background:var(--slate) }
-
-/* ── 경로 만들기 바 — 무대 위에 뜨는 판이다 ────────── */
-.st-form .ck-bar{
-  /* 전에는 backdrop-filter:blur(14px) 였다. 아래에서 SVG 가 움직이는
-     동안 유리 한 장마다 매 프레임 뒤 배경을 다시 읽는다.
-     거의 불투명한 바탕으로 바꿨다 — 보기에 큰 차이가 없다. */
-  background:var(--void-veil-2);
-  border:0; border-radius:16px; box-shadow:var(--lift); padding:13px 15px 14px;
+.st-cwbar i.cw-low,.st-cwbar i.cw-vlow{ background:var(--slate) }
+.st-src{ margin-top:calc(var(--u) * 1.5); font-size:var(--home-meta); line-height:1.65; color:var(--ink-3) }
+.ck-home .st-mini{
+  flex:none; width:100%; padding:0; border-radius:var(--r-card);
+  background:var(--panel); box-shadow:var(--home-shadow); overflow:hidden;
 }
+.st-mini .fl-mini-map{ height:var(--home-map) }
+.st-mini .fl-mini-hd{ padding:calc(var(--u) / 2) var(--u); gap:calc(var(--u) / 2) }
+.st-mini .fl-mini-hd button{ min-height:var(--home-control); min-width:var(--home-control) }
+.st-mini .fl-mz{ display:flex; margin-inline-start:auto }
+.st-mini .fl-mz button{ background:var(--ui-plate); border-radius:var(--r-field); font-family:var(--fig) }
+.st-tools,.st-view{ position:absolute; right:var(--home-inset); z-index:4; gap:calc(var(--u) / 2) }
+.st-tools{ top:var(--home-inset) }
+.st-view{ bottom:var(--home-inset) }
+.ck-home .st-viewport .fl-tool{
+  min-height:var(--home-control); padding-inline:var(--u);
+  background:var(--panel); border-radius:var(--r-field); box-shadow:var(--lift2);
+  font-size:var(--home-meta); color:var(--ink-2);
+}
+.ck-home .st-viewport .fl-tool[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
 
-/* ── 좁은 화면 — 무대를 흐름으로 되돌린다 ──────────
-   판을 겹쳐 두면 1180px 아래에서 서로를 덮는다. 모형을 위에 두고
-   판을 아래로 쌓는다. */
+/* 날씨와 집중률 설명은 장면 아래 한 줄. 펼친 설명도 폼을 밀어낸다. */
+.st-meta{
+  grid-area:2 / 1 / 3 / -1; display:flex; align-items:start; justify-content:space-between;
+  flex-wrap:wrap; gap:var(--u) calc(var(--u) * 3); padding-block:var(--u);
+}
+.st-wx{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u); padding-block:var(--u); font-size:var(--home-meta); color:var(--ink-2) }
+.st-wx b,.st-cwkey-t b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+.st-wx i{ font-style:normal; color:var(--ink-3) }
+.st-cwkey{ margin-inline-start:auto; max-width:100% }
+.ck-home .st-cwkey-t{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u);
+  min-height:var(--home-control); padding:var(--u) 0; text-align:left;
+  font-size:var(--home-meta); color:var(--ink-2);
+}
+.st-cwkey-t span{ color:var(--ink-3) }
+.st-cwkey-t::after{ content:"+"; font-family:var(--fig); margin-inline-start:var(--u) }
+.st-cwkey-t[aria-expanded="true"]::after{ content:"−" }
+.st-cwkey-b{ padding:calc(var(--u) * 2); background:var(--panel); border:1px solid var(--ui-line); border-radius:var(--r-field) }
+.st-cwrow{ display:grid; grid-template-columns:5ch auto minmax(0,1fr); gap:var(--u); align-items:baseline; padding-block:var(--u); font-size:var(--home-meta); color:var(--ink-2) }
+.st-cwrow i{ font-style:normal; font-family:var(--fig); color:var(--ink-3) }
+.st-cwrow b{ font-size:inherit; color:var(--ink) }
+.st-cwkey-n{ padding-top:var(--u); font-size:var(--home-meta); line-height:1.65; color:var(--ink-3) }
+
+/* 입력은 장면과 별개인 실제 행이다. 조건·오류가 늘어도 겹치지 않는다. */
+.st-form{ grid-area:3 / 1 / 4 / -1; position:relative; z-index:4; min-width:0 }
+.ck-home .st-form .ck-bar{
+  display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end;
+  gap:calc(var(--u) * 2); padding:calc(var(--u) * 2);
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:var(--r-panel); box-shadow:var(--home-shadow);
+}
+.ck-home .st-form .ck-fr{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:calc(var(--u) * 2); min-width:0 }
+.ck-home .st-form .ck-fld label{ margin-bottom:calc(var(--u) / 2); font-size:var(--home-meta); color:var(--ink-2) }
+.ck-home .st-form .ck-fld :is(select,input){ min-height:var(--home-target); padding:var(--u); font-size:var(--t-sm); border-radius:0 }
+.ck-home .st-form .ck-go{ grid-area:1 / 3; min-height:var(--home-target); padding:var(--u) calc(var(--u) * 3); border-radius:var(--r-field); font-size:var(--t-sm) }
+.ck-home .st-form .ck-condbtn{ min-height:var(--home-target); padding:var(--u) calc(var(--u) * 2); border-radius:var(--r-field); font-size:var(--t-sm) }
+.ck-home .st-form .ck-cond:has(.ck-open){ grid-column:1 / -1; grid-row:2 }
+.ck-home .st-form .ck-chips2.ck-open{ margin-top:var(--u); gap:var(--u) }
+.ck-home .st-form .ck-chips2 button{ min-height:var(--home-control) }
+.ck-home .st-form .ck-note{ grid-column:1 / -1; margin:0; color:var(--ink-2) }
+.ck-home .st-form .ck-note:empty{ display:none }
+
+/* 기존 hidden 상태를 grid/flex 표시 규칙보다 우선한다. */
+.ck-home .ck-stage [hidden]{ display:none }
+.ck-home .ck-stage button:active{ transform:translateY(1px) }
+.ck-home .ck-stage button:focus-visible,
+.ck-home .st-tl:focus-visible,
+.ck-home .st-side:focus-visible{ outline:2px solid var(--sig-deep); outline-offset:calc(var(--u) / 2) }
+
+/* 제목과 입력은 연출 중에도 읽힌다. 주변 정보만 물려 둔다. */
+.ck-home .ck-intro :is(.st-note,.st-stops,.st-rail){ opacity:.16; transition:opacity .35s ease }
+.ck-home :is(.st-note,.st-stops,.st-rail){ transition:opacity .35s ease }
+
 @media (max-width:1180px){
-  .ck-home .ck-hero.ck-stage{
-    height:auto; min-height:0; padding-bottom:26px;
-    display:grid; gap:12px;
-  }
-  /* 좁은 화면에서는 장면을 확대하지 않는다. 140% 로 당기면 왼쪽이 잘려
-     세 번째 정거장(동백섬, x 15%)이 화면 밖으로 나간다 — 실측 left -77px.
-     폰에서는 하루 동선이 다 보이는 쪽이 낫다. 비율만큼 낮아진다. */
-  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 460px) }
-  /* 장면이 흐름으로 바뀌면 무대가 아니라 장면 상자가 휘어야 한다 */
-  .ck-home .ck-hero.ck-stage{ border-radius:0 }
-  .ck-home .ck-hero.ck-stage::after{ content:none }
-  .ck-home .ck-stage .ck-scene{
-    border-radius:0 0 50% 50% / 0 0 9% 9%;
-    box-shadow:0 14px 30px -22px rgba(var(--sh-rgb),.5);
-  }
-  .ck-home .ck-stage .ck-scene{
-    position:relative; inset:auto; height:var(--sc-h);
-    grid-row:1; border-radius:0;
-  }
-  .ck-home .ck-stage .ck-frame{
-    width:100%; left:50%;
-  }
-  .st-bigmap{ position:relative; inset:auto; height:calc(100vw / 1.3892); max-height:460px; grid-row:1 }
-
-  .st-tl,.st-side,.st-mini,.st-view,.st-form{
-    position:static; width:auto; max-height:none; transform:none;
-    margin:0 var(--st-m);
-  }
-  .st-tl{ grid-row:2 }
-  .st-form{ grid-row:3; width:auto }
-  .st-side{ grid-row:4; overflow:visible }
-  .st-mini{ grid-row:5 }
-  .st-view{ grid-row:6; justify-content:flex-end }
-
-  /* 도구줄은 모형 위에 그대로 띄운다 — 모형을 바꾸는 것이니 모형 옆이 맞다.
-     위쪽에 두면 핀 이름표와 겹친다(375px 실측: 「해운대 해수욕장 14:20」과
-     같은 줄에 섰다). 장면 아래 오른쪽으로 내린다. */
-  .st-tools{
-    position:absolute; right:var(--st-m);
-    top:calc(var(--sc-h, 270px) - 41px);
-  }
-}
-
-@media (max-width:760px){
-  /* 폰에서도 폭을 꽉 채운다. 170% 로 당기면 왼쪽이 잘려 세 번째 정거장이
-     화면 밖으로 나간다 — 375px 실측 동백섬 핀 left -77px.
-     비율(1.3892)만큼 낮아지는 대신 하루 동선이 다 보인다. */
-  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 330px) }
-  .ck-home .ck-stage .ck-scene,
-  .st-bigmap{ height:var(--sc-h) }
-  .ck-home .ck-stage .ck-frame{ width:100%; left:50% }
-  .st-tools .fl-tool{ height:27px; padding:0 9px; font-size:11px }
-  .st-tools .fl-tool svg{ width:12px; height:12px }
-}
-
-@media (prefers-reduced-motion:reduce){
-  .ck-home .ck-stage .ck-frame{ transition:none }
-}
-
-/* 값의 출처. 받은 값과 예시 값을 같은 얼굴로 두지 않는다 */
-.st-src{
-  margin:11px 0 0; padding-top:9px; border-top:1px solid var(--ui-line-2);
-  font-size:10.5px; line-height:1.5; color:var(--ink-3); word-break:keep-all;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   761~1180 — 제목을 무대 위로 되돌린다
-
-   이 구간에서 히어로가 「모형 한 장 + 그 아래 판 여섯 장」이었다.
-   모형이 맨 위에 띠처럼 얹혀 있고 글은 아래 흰 판에서 다시 시작하니
-   모형이 장식으로 읽힌다.
-
-   초기 데모 두 벌은 둘 다 글이 그림 위에 있었다 —
-   「체크인 시작하기」는 제목 왼쪽 + 미니어처 카드 오른쪽,
-   「체크인」은 전면 지도 위 왼쪽에 「01 + 제목」.
-   ══════════════════════════════════════════════════════════════ */
-@media (min-width:761px) and (max-width:1180px){
-
-  /* 모형을 조금 키운다 — 글을 얹을 자리가 필요하다 */
-  .ck-home .ck-stage{ --sc-h:min(calc(100vw / 1.3892), 540px) }
-
-  /* 제목 — 모형 아래쪽 왼편. 위쪽 왼편에는 핀(동백섬)이 서 있어서
-     제목 줄과 겹쳤다. 아래 왼편은 바다뿐이라 비어 있다. */
-  .ck-home .ck-hero.ck-stage .st-head{
-    position:absolute; z-index:5;
-    left:var(--st-m); top:calc(var(--sc-h, 480px) - 58px);
-    transform:translateY(-100%);
-    width:min(var(--st-col), calc(100% - var(--st-m) * 2 - 150px));
-    background:none; box-shadow:none; padding:0;
-  }
-  /* 아래쪽에 아주 옅은 막. 바다 위 글자가 어느 날에도 읽히게 */
-  .ck-home .ck-hero.ck-stage .ck-scene::before{
-    content:""; position:absolute; inset:auto 0 0 0; height:58%;
-    z-index:2; pointer-events:none;
-    background:linear-gradient(0deg,
-      rgba(var(--w-rgb),.62) 0,
-      rgba(var(--w-rgb),.26) 46%,
-      rgba(var(--w-rgb),0) 100%);
-  }
-
-  /* 모형 도구와 시점 버튼 — 오른쪽 아래 두 줄로. 한 줄에 여섯 개를
-     나란히 두면 800px 에서 서로를 덮는다 (실측). */
-  .st-tools{
-    top:calc(var(--sc-h, 480px) - 80px); right:var(--st-m);
-  }
-  .st-view{
-    position:absolute; right:var(--st-m);
-    top:calc(var(--sc-h, 480px) - 41px); z-index:4;
-    margin:0; justify-content:flex-end;
-  }
-
-  /* 상황 판과 작은 지도를 나란히 — 세로로 쌓으면 스크롤이 길어진다 */
   .ck-home .ck-hero.ck-stage{
     grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+    grid-template-rows:auto var(--home-scene-small); gap:calc(var(--u) * 2);
+    padding-top:calc(var(--u) * 3);
   }
-  .ck-home .ck-stage .ck-scene,
-  .st-bigmap{ grid-column:1 / -1 }
-  .st-tl{ grid-column:1 / -1; grid-row:2 }
-  .st-form{ grid-column:1 / -1; grid-row:3 }
-  .st-side{ grid-column:1; grid-row:4; margin-right:0 }
-  .st-mini{ grid-column:2; grid-row:4; margin-left:0; align-self:start }
-
-  /* 제목이 위로 빠졌으니 아래 판은 정거장 + 상황만 남는다 */
-  .st-tl{ margin-top:2px }
+  .ck-home .st-tl{ display:contents }
+  .ck-home .st-head{ grid-area:1 / 1 / 2 / -1; padding:0; border:0; background:none }
+  .ck-home .st-head .st-h1{ font-size:var(--home-title) }
+  .ck-home .st-head .fl-eye{ margin-bottom:var(--u) }
+  .ck-home .st-head .fl-sub{ margin-top:var(--u); max-width:52ch }
+  .ck-home .st-head .fl-path{ display:none }
+  .st-viewport{ grid-area:2 / 1 / 3 / -1 }
+  .ck-home .ck-stage .ck-frame{ width:max(100%, calc(var(--home-scene-small) * var(--st-ar, 1.3892))) }
+  .st-tools{ top:auto; bottom:var(--u); left:var(--home-inset); right:auto }
+  .st-view{ bottom:var(--u) }
+  .st-form{ grid-area:4 / 1 / 5 / -1 }
+  .st-stops{ grid-area:5 / 1 / 6 / -1 }
+  .ck-home .st-note{ grid-area:6 / 1; align-self:start }
+  .st-rail{ grid-area:6 / 2; margin:0; min-height:0 }
+  .ck-home .st-side{ flex:none; overflow:visible }
+  .st-meta{ grid-area:7 / 1 / 8 / -1; padding:0 }
+  .ck-home .st-form .ck-bar{ grid-template-columns:minmax(0,1fr) auto }
+  .ck-home .st-form .ck-fr{ grid-column:1 / -1 }
+  .ck-home .st-form .ck-cond:has(.ck-open){ grid-column:1; grid-row:auto }
+  .ck-home .st-form .ck-go{ grid-area:auto / 2; align-self:start }
 }
-
-/* 폰 — 모형이 330px 라 제목을 얹으면 모형이 안 보인다. 그대로 쌓는다 */
 @media (max-width:760px){
-  .ck-home .ck-hero.ck-stage .st-head{ position:static; width:auto }
-  .ck-home .ck-hero.ck-stage .ck-scene::before{ content:none }
+  .ck-home .ck-hero.ck-stage{ grid-template-columns:minmax(0,1fr); padding-top:calc(var(--u) * 2) }
+  .ck-home .st-head .fl-sub{ max-width:36ch }
+  .ck-home .st-head .st-h1{ max-width:none }
+  .ck-home .st-form .ck-bar{ gap:var(--u); padding:calc(var(--u) * 1.5) }
+  .ck-home .st-form .ck-fr{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--u) calc(var(--u) * 2) }
+  .ck-home .st-form .ck-go{ width:auto; padding-inline:calc(var(--u) * 2) }
+  .ck-home .st-form .ck-condbtn{ padding-inline:var(--u) }
+  .st-tools{ gap:calc(var(--u) / 2) }
+  .st-view{ top:var(--u); bottom:auto; gap:calc(var(--u) / 2) }
+  .ck-home .st-note{ grid-area:6 / 1 }
+  .st-rail{ grid-area:7 / 1 }
+  .st-meta{ grid-area:8 / 1; gap:0 }
+  .st-cwkey{ width:100%; margin:0 }
+  .st-cwkey-t{ width:100% }
+  .st-cwkey-t::after{ margin-inline-start:auto }
+  .st-cwrow{ grid-template-columns:5ch auto; gap:calc(var(--u) / 2) var(--u) }
+  .st-cwrow span{ grid-column:1 / -1 }
+  .st-mini .fl-mini-map{ height:calc(var(--home-map) + var(--u) * 6) }
+  .ck-home .ck-intro :is(.st-note,.st-stops,.st-rail){ opacity:1 }
 }
-
-
-/* ── 지금 시각·날씨 ─────────────────────────────────────────
-   배경색이 시각과 날씨를 따라 바뀌는데 왜 바뀌는지 말해 주지 않으면
-   그냥 색이 이상한 화면이 된다. 한 줄로 적는다. */
-.ck-home .st-wx{
-  position:absolute; left:var(--st-m); bottom:calc(var(--st-m) + 96px);
-  z-index:5; display:flex; align-items:center; gap:9px;
-  padding:9px 14px 10px; border-radius:var(--r-pill);
-  background:var(--glass);
-  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
-  box-shadow:inset 0 0 0 1px var(--glass-line);
-  font-size:12px; color:var(--ink-2); word-break:keep-all;
+@media (min-width:1181px) and (max-height:800px){
+  .ck-home .st-tl{ gap:var(--u) }
+  .ck-home .st-head{ padding:calc(var(--u) * 1.5) }
+  .ck-home .st-head .st-h1{ font-size:calc(var(--u) * 4.5) }
+  .ck-home .st-note{ padding:calc(var(--u) * 1.5) }
+  .ck-home .st-note .ck-opt{ padding-block:var(--u) }
+  .ck-home .st-side{ padding:calc(var(--u) * 1.5) }
+  .st-side .fl-no{ font-size:calc(var(--u) * 4) }
+  .st-sidehd,.st-tabs{ margin-bottom:var(--u) }
+  .st-side .fl-rows{ gap:var(--u); margin-top:0 }
+  #st_plan .fl-row > dd{ gap:calc(var(--u) / 2) }
+  .st-mini .fl-mini-map{ height:calc(var(--home-map) - var(--u) * 4) }
 }
-.ck-home .st-wx b{
-  font-family:var(--fig); font-weight:600; color:var(--ink);
-  letter-spacing:var(--tracking-num);
-}
-.ck-home .st-wx i{ font-style:normal; color:var(--ink-3) }
-
-/* ── 혼잡도 눈금 ────────────────────────────────────────────
-   「95」만 보면 그게 얼마나 많은 건지 모른다. 사람은 숫자가 아니라
-   장면으로 안다. 단계마다 어떤 모습인지 한 줄로 붙인다. */
-.ck-home .st-cwkey{
-  position:absolute; right:var(--st-m); bottom:calc(var(--st-m) + 96px);
-  z-index:5; width:min(360px, 40vw);
-}
-.ck-home .st-cwkey-t{
-  display:flex; align-items:baseline; gap:8px; width:100%;
-  padding:9px 14px 10px; border:0; cursor:pointer;
-  border-radius:var(--r-pill); background:var(--glass);
-  -webkit-backdrop-filter:var(--glass-blur); backdrop-filter:var(--glass-blur);
-  box-shadow:inset 0 0 0 1px var(--glass-line);
-  font-family:inherit; font-size:12px; color:var(--ink-2); text-align:left;
-}
-.ck-home .st-cwkey-t b{
-  font-family:var(--fig); font-weight:600; color:var(--ink);
-  letter-spacing:var(--tracking-num);
-}
-.ck-home .st-cwkey-t span{ margin-left:auto; color:var(--ink-3); font-size:11px }
-.ck-home .st-cwkey-t[aria-expanded="true"]{ border-bottom-left-radius:0; border-bottom-right-radius:0 }
-
-.ck-home .st-cwkey-b{
-  margin-top:6px; padding:12px 14px 13px;
-  border-radius:var(--r-panel); background:var(--panel); box-shadow:var(--lift);
-}
-.ck-home .st-cwrow{
-  display:grid; grid-template-columns:52px auto 1fr; align-items:baseline; gap:9px;
-  padding:6px 0; font-size:11.5px; color:var(--ink-2);
-}
-.ck-home .st-cwrow + .st-cwrow{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
-.ck-home .st-cwrow i{
-  font-style:normal; font-family:var(--fig); font-size:11px; font-weight:600;
-  letter-spacing:var(--tracking-num); color:var(--ink-3);
-  font-variant-numeric:tabular-nums;
-}
-.ck-home .st-cwrow b{
-  padding:2px 8px 3px; border-radius:var(--r-pill);
-  font-size:11px; font-weight:600; white-space:nowrap;
-}
-.ck-home .st-cwrow.cw-vhigh b{ background:var(--tile);       color:var(--panel) }
-.ck-home .st-cwrow.cw-high  b{ background:var(--terra);      color:var(--panel) }
-.ck-home .st-cwrow.cw-mid   b{ background:var(--ui-plate-2); color:var(--ink-2) }
-.ck-home .st-cwrow.cw-low   b,
-.ck-home .st-cwrow.cw-vlow  b{ background:var(--slate-pale); color:var(--slate) }
-.ck-home .st-cwkey-n{
-  margin:10px 0 0; padding-top:9px; border-top:1px solid var(--ui-line-2);
-  font-size:10.5px; line-height:1.55; color:var(--ink-3);
-}
-
-@media (max-width:1180px){
-  .ck-home .st-wx,
-  .ck-home .st-cwkey{ position:static; width:auto; margin:10px var(--st-m) 0 }
-  .ck-home .st-cwkey{ margin-bottom:4px }
-}
-
-/* 작은 지도 배율 — 여기도 버튼으로만. 휠은 막아 뒀다.
-   지도 안에서 휠이 먹으면 페이지를 내리려다 지도만 확대된다. */
-.ck-home .fl-mini-hd .fl-mz{
-  display:inline-flex; gap:2px; margin-left:auto; margin-right:8px;
-}
-.ck-home .fl-mini-hd .fl-mz button{
-  width:24px; height:22px; padding:0; border:0; cursor:pointer;
-  border-radius:6px; background:var(--ui-plate); color:var(--ink-2);
-  font-family:var(--fig); font-size:13px; line-height:1;
-  transition:background .14s ease, color .14s ease;
-}
-.ck-home .fl-mini-hd .fl-mz button:hover{ background:var(--ui-plate-2); color:var(--ink) }
-
-/* ── 무대 위 판에서 유리를 걷는다 ──────────────────────────
-   아래에서 모형이 움직이는 동안 backdrop-filter 는 매 프레임
-   뒤 배경을 다시 읽는다. 무대 위에만 네 겹이 떠 있었다.
-   지도 화면 쪽 유리는 그대로 둔다 — 거기는 아래가 안 움직인다. */
-.ck-home .st-wx,
-.ck-home .st-cwkey-t{
-  -webkit-backdrop-filter:none; backdrop-filter:none;
-  background:var(--void-veil-2);
-}
-
-/* ── 화면이 바뀌는 전환 ─────────────────────────────────────
-   장소에서 장소로 미끄러지지 않고 끊어 간다. 미끄러지면
-   「코앞에서 조금 움직인」 것으로 보이고, 끊으면 「다른 데로 갔다」로
-   읽힌다. 실제 거리가 짧아도 그렇다.
-
-   덮는 것은 판이 아니라 장면이다. 글은 계속 읽혀야 한다. */
-.ck-home .ck-hero.ck-stage .ck-scene,
-.ck-home .ck-hero.ck-stage #st_bigmap{
-  transition:opacity .19s ease;
-}
-.ck-home .ck-hero.ck-cut .ck-scene,
-.ck-home .ck-hero.ck-cut #st_bigmap{ opacity:0 }
-
-/* 들어오는 동안은 판을 물려 둔다. 화면에 눈이 가야 한다 */
-.ck-home .ck-hero.ck-intro .st-tl,
-.ck-home .ck-hero.ck-intro .st-side,
-.ck-home .ck-hero.ck-intro .st-mini,
-.ck-home .ck-hero.ck-intro .st-form,
-.ck-home .ck-hero.ck-intro .st-view,
-.ck-home .ck-hero.ck-intro .st-cwkey,
-.ck-home .ck-hero.ck-intro .st-wx{
-  opacity:.12; transition:opacity .45s ease; pointer-events:none;
+[data-motion="lite"] .st-viewport::after{ transition-duration:.16s }
+[data-motion="lite"] .ck-home .ck-stage .ck-frame{ transition-duration:.25s }
+@media (prefers-reduced-motion:reduce){
+  .st-viewport::before,.st-viewport::after,
+  .ck-home .ck-stage .ck-frame,
+  .ck-home .ck-stage .ck-scene,
+  .ck-home .ck-stage .st-bigmap,
+  .ck-home .st-note .ck-ph > i.ck-on b,
+  .ck-home :is(.st-note,.st-stops,.st-rail){ transition:none }
+  .st-viewport::after{ content:none }
 }

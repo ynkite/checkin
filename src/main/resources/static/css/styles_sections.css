@@ -7,10 +7,57 @@
  * styles_stage.css 뒤에 둔다. 색·간격은 tokens.css 변수만 쓴다.
  */
 
-/* 절 눈썹은 styles_home.css 가 정한다.
-   전에 여기서 테라코타 10px / 700 / 자간 .14em 으로 덮고 있었다.
-   작고 굵고 넓게 벌린 색 있는 한글은 읽히지도 않고 촌스럽다.
-   보내 준 두 곳(b2tf · inspora) 모두 눈썹에 색을 쓰지 않는다. */
+/* 제목은 라벨·제목·보조 설명 순서로 흐른다. 긴 출처도 줄바꿈한다. */
+.ck-home .ck-hd{
+  display:grid; grid-template-columns:minmax(0,1fr) auto;
+  gap:var(--u) calc(var(--u) * 3); align-items:end;
+  margin-bottom:calc(var(--u) * 4); padding-top:calc(var(--u) * 2);
+  border-top:1px solid var(--hair);
+}
+.ck-home .ck-hd[data-label]::before{
+  content:attr(data-label); grid-area:1 / 1;
+  font-size:var(--home-meta); line-height:1.6; color:var(--ink-3);
+  word-break:keep-all; overflow-wrap:anywhere;
+}
+.ck-home .ck-hd[data-meta]::after{
+  content:attr(data-meta); grid-area:1 / 2;
+  font-size:var(--home-meta); line-height:1.6; color:var(--ink-3);
+}
+.ck-home .ck-hd h2{
+  grid-area:2 / 1; min-width:0; max-width:none;
+  font-size:var(--t-h2); font-weight:700; line-height:1.2;
+  letter-spacing:var(--tracking-tight);
+}
+.ck-home .ck-hd .ck-side{
+  grid-area:2 / 2; max-width:34ch; margin:0;
+  font-size:var(--t-sm); line-height:1.65; color:var(--ink-2);
+}
+.ck-home .ck-hd .ck-side:empty{ display:none }
+.ck-home section.ck-blk{ padding-block:var(--home-section) }
+.ck-home .ck-blk + .ck-blk{ padding-top:0 }
+
+/* 처음부터 보이는 상태를 기본으로 한다. 지원 브라우저에서 이동만 더한다. */
+@supports (animation-timeline:view()){
+  @media (prefers-reduced-motion:no-preference){
+    .ck-home .ck-blk > :is(.ck-hd,.ck-cur,.ck-free,.ck-conf2,.ck-flow,.ck-row),
+    .ck-home .ck-flow > li{
+      animation:ck-section-enter 1s linear both;
+      animation-timeline:view(); animation-range:entry 0% entry 100%;
+    }
+    .ck-home .ck-blk > .ck-hd{ animation-range:entry 0% entry 65% }
+    .ck-home .ck-flow > li:nth-child(2){ animation-range:entry 0% entry 85% }
+    .ck-home .ck-flow > li:nth-child(3){ animation-range:entry 0% entry 100% }
+  }
+}
+@keyframes ck-section-enter{
+  from{ transform:translateY(calc(var(--u) * 2)) }
+  to{ transform:none }
+}
+@media (max-width:760px){
+  .ck-home .ck-hd{ gap:var(--u); margin-bottom:calc(var(--u) * 3) }
+  .ck-home .ck-hd .ck-side{ grid-area:3 / 1 / 4 / -1; max-width:none }
+  .ck-home .ck-wr{ padding-inline:var(--home-inset) }
+}
 
 /* ── 지금 한가한 곳 ──────────────────────────────────
    숫자만 크게 두면 64가 높은 건지 낮은 건지 모른다. 등급을 붙인다. */
@@ -24,7 +71,7 @@
   font-style:normal; font-size:11px; font-weight:700; padding:3px 8px 4px;
   border-radius:99px; white-space:nowrap;
 }
-.ck-home .ck-vv i.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
+.ck-home .ck-vv i.cw-vhigh{ background:var(--tile); color:var(--panel) }
 .ck-home .ck-vv i.cw-high { background:var(--terra-pale); color:var(--terra) }
 .ck-home .ck-vv i.cw-mid  { background:var(--ui-plate-2); color:var(--ink-2) }
 .ck-home .ck-vv i.cw-low,

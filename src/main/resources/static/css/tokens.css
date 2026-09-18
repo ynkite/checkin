@@ -45,6 +45,31 @@
   --pad-card:20px;
   --pad-page:30px;
 
+  /* 메인 무대 — 풍경 팔레트와 독립된 배치·표면 */
+  --home-inset:clamp(16px, 2.2vw, 32px);
+  --home-left:clamp(310px, 25vw, 360px);
+  --home-right:264px;
+  --home-scene:clamp(440px, 66dvh, 680px);
+  --home-scene-small:clamp(224px, 56vw, 420px);
+  --home-title:clamp(34px, 3.2vw, 46px);
+  --home-section:clamp(48px, 5.6vw, 80px);
+  --home-caption:22px;
+  --home-caption-width:430px;
+  --home-pin:21px;
+  --home-meta:12px;
+  --home-control:36px;
+  --home-target:44px;
+  --home-map:136px;
+  --home-on-dark:#FFFFFF;
+  --home-muted-dark:#C4CBD5;
+  --home-dark:#101620;
+  --home-dark-hover:#253040;
+  --home-dark-line:#46505E;
+  --home-wash:rgba(16,22,32,.15);
+  --home-cut:rgba(255,158,18,.16);
+  --home-shadow:0 8px 24px -16px rgba(16,22,32,.3);
+  --home-ease:cubic-bezier(.2,.75,.25,1);
+
   /* ── 모서리 · 그림자 ───────────────────────────────────── */
   /* 데모는 카드 12 · 판 14 였다. 레퍼런스 18곳 중 대부분이 0~8 이다.
      알약은 알약으로 둔다 — 트리플 CTA 가 radius 36 이다. */
@@ -75,7 +100,11 @@
   --panel-2:#E6EAEF;
   --ink:#101620;
   --ink-2:#556071;
-  --ink-3:#7C8798;   /* 흰 바탕 대비 4.54 */
+  /* 실제로 재 보니 주석이 틀렸다. #7C8798 은 흰 바탕 4.54 가 아니라
+     3.64 였고, --page 위에서 3.47, --page-2 위에서 3.36 이었다.
+     본문 크기 글자에 쓰려면 4.5 가 필요하다. 색조를 유지하고 어둡게 잡았다.
+     지금 값: 흰 4.93 · --page 4.71 · --page-2 4.55 */
+  --ink-3:#687180;
   --hair:rgba(16,22,32,.16);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
@@ -83,7 +112,7 @@
      밝은 배경 위 글자에는 --sig 가 아니라 --num 을 쓴다(대비 확보). */
   --sig:#FF9E12;
   --sig-deep:#8A5000;
-  --num:#B05F00;
+  --num:#AB5C00;
 
   /* ── UI 크롬 ────────────────────────────────────────────
      주 버튼은 잉크다. 데모가 그랬고, 미니어처가 주황을 다 갖고 있어
@@ -248,7 +277,7 @@
   --pc5:#3C4756;
   --onmap:#151C28;
   --halo:rgba(255,255,255,.94);
-  --num:#B05F00;
+  --num:#AB5C00;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -358,7 +387,7 @@
   --pc5:#7F675C;
   --onmap:#151C28;
   --halo:rgba(255,255,255,.94);
-  --num:#B05F00;
+  --num:#AB5C00;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -468,7 +497,7 @@
   --pc5:#2C3343;
   --onmap:#F2F5FA;
   --halo:rgba(18,26,46,0.94);
-  --num:#B05F00;
+  --num:#AB5C00;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -578,7 +607,7 @@
   --pc5:#6F707B;
   --onmap:#AEAEB4;
   --halo:rgba(18,26,46,0.94);
-  --num:#B05F00;
+  --num:#AB5C00;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;

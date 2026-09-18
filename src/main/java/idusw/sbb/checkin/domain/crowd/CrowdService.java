@@ -154,12 +154,12 @@ public class CrowdService {
     }
 
     /** 공백·괄호를 지우고 비교한다. 「해운대 해수욕장」과 「해운대해수욕장」은 같은 곳이다. */
-    static String norm(String s) {
+    public static String norm(String s) {
         if (s == null) return "";
         return s.replaceAll("[\\s()\\[\\]·,.-]", "");
     }
 
-    static boolean matches(String a, String b) {
+    public static boolean matches(String a, String b) {
         if (a.isEmpty() || b.isEmpty()) return false;
         return a.equals(b) || a.contains(b) || b.contains(a);
     }

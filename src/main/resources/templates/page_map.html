@@ -724,8 +724,7 @@
       if (!plan.ready) {
         box.hidden = false;
         box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
-          '<p class="mp-dp-2">이동시간 연동(티맵)은 준비 중입니다. ' +
-          '연동되면 몇 시에 나가야 하는지 여기에 적습니다.</p>';
+          '<p class="mp-dp-2">이동시간을 불러오지 못했습니다. 경로를 다시 확인해 주세요.</p>';
         return;
       }
       if (!leg || leg.minutes == null) {
@@ -1342,9 +1341,9 @@
 
               // 백틱(`) 대신 작은따옴표(')를 사용하여 템플릿 깨짐을 방지합니다.
               if (window._isInvitedEditView || hasShareToken) {
-                descEl.innerHTML = '해당 여행 플랜은 링크 보관하기 클릭시<br>초대받은 일정에서 언제든지 다시 확인할 수 있습니다.';
+                descEl.innerHTML = '링크를 보관하면 초대받은 일정에서 다시 볼 수 있습니다.';
               } else {
-                descEl.innerHTML = '완성된 여행 플랜은 마이페이지와 가계부에서<br>언제든지 다시 확인할 수 있습니다.';
+                descEl.innerHTML = '완성한 일정은 마이페이지와 가계부에 저장됩니다.';
               }
             }
             modal.classList.add('open');
@@ -2948,6 +2947,9 @@
             api.post('/api/trips/' + window._currentTripId + '/routes/reorder', MAP_ITINERARY)
                     .then(function(res) {
                       if (!res.success) { toast('순서를 저장하지 못했습니다. ' + (res.message || '')); return; }
+                      // 순서를 바꾸면 시간과 돈이 같이 움직인다 (예산 엔진 2층)
+                      var pair = (typeof _fmtRoutePair === 'function') ? _fmtRoutePair(res.delta) : '';
+                      if (pair) toast('바뀐 동선 · ' + pair, 4200);
                       // 보정된 JSON으로 화면 전체 재렌더 (transit 거리·시간·비용 + 동선 갱신)
                       if (typeof initMapPage === 'function') initMapPage();
                     })
@@ -3544,9 +3546,10 @@
 
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       try {
-        await api.post(`/api/trips/${tripId}/routes/reorder`, MAP_ITINERARY);
+        const res = await api.post(`/api/trips/${tripId}/routes/reorder`, MAP_ITINERARY);
         sessionStorage.setItem('ai_generated_route', JSON.stringify(MAP_ITINERARY));
-        toast('저장되었습니다.');
+        const pair = (typeof _fmtRoutePair === 'function') ? _fmtRoutePair(res && res.delta) : '';
+      toast(pair ? '저장했습니다 · ' + pair : '저장했습니다.', pair ? 4200 : 2800);
         if (typeof initMapPage === 'function') initMapPage();
       } catch (e) {
         toast('저장 실패: ' + e.message);
@@ -3705,7 +3708,7 @@
           <div class="modal-hd">
             <div>
               <div class="modal-ttl">플랜 공유</div>
-              <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px">같이 편집할 사람을 부르거나, 링크만 보낼 수 있습니다.</div>
+              <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px">함께 고칠 사람을 초대하거나 보기 전용 링크를 보냅니다.</div>
             </div>
             <button class="modal-x" onclick="document.getElementById('shareModal').classList.remove('open')">✕</button>
           </div>
@@ -3719,7 +3722,7 @@
 
             <!-- 멤버 초대 탭 -->
             <div id="share-members">
-              <div class="mp-mnote">초대받은 사람은 일정을 같이 고칠 수 있습니다.</div>
+              <div class="mp-mnote">초대받은 사람도 일정을 고칠 수 있습니다.</div>
               <div class="mp-mrow">
                 <input class="mp-minp" id="share-email-inp" type="email" placeholder="초대할 이메일">
                 <button class="mp-mbtn" onclick="inviteShareMember(this)">초대</button>
@@ -3733,7 +3736,7 @@
 
             <!-- 링크 공유 탭 -->
             <div id="share-post" style="display:none">
-              <div class="mp-mnote">링크를 받은 사람은 보기만 할 수 있습니다.</div>
+              <div class="mp-mnote">링크를 받은 사람은 보기만 합니다.</div>
               <div class="mp-mrow">
                 <input class="mp-minp" id="share-link-val" readonly placeholder="플랜을 먼저 만들어 주세요">
                 <button class="mp-mbtn" onclick="copyShareLink()">복사</button>
@@ -3742,8 +3745,8 @@
               <button class="mp-kakao" onclick="shareInviteToKakaoTalk()">카카오톡으로 보내기</button>
 
               <div class="mp-mhint">
-                로그인하지 않아도 지도와 일정은 열립니다.<br>
-                같이 고칠 사람은 멤버 초대 쪽에서 이메일로 부르세요.
+                보기 전용 링크는 로그인 없이 열립니다.<br>
+                함께 고칠 사람은 이메일로 초대해 주세요.
               </div>
             </div>
 
@@ -3764,8 +3767,8 @@
           <div id="mwp-no-data" style="display:none;padding:24px 0 8px">
             <div class="mp-mttl" style="margin-bottom:10px">아직 예보가 나오지 않은 날짜입니다</div>
             <div class="mp-mhint">
-              기상청 예보는 오늘부터 14일까지만 나옵니다.<br>
-              출발이 가까워지면 이 자리에 날씨가 들어옵니다.
+              기상청 예보는 오늘부터 14일까지 나옵니다.<br>
+              출발이 가까워지면 다시 확인해 주세요.
             </div>
           </div>
 
@@ -3786,9 +3789,9 @@
 
       <div class="overlay" id="confirmDoneModal" onclick="if(event.target===this)this.classList.remove('open')">
         <div class="modal" style="width:400px; padding:30px 26px 26px;">
-          <div class="mp-mttl" style="margin-bottom:9px">일정을 확정했습니다</div>
+          <div class="mp-mttl" style="margin-bottom:9px">일정을 저장했습니다</div>
           <div id="confirmDoneDesc" class="mp-mhint" style="margin-bottom:22px">
-            완성된 여행 플랜은 마이페이지와 가계부에서<br>언제든지 다시 확인할 수 있습니다.
+            완성한 일정은 마이페이지와 가계부에 저장됩니다.
           </div>
           <div style="display:flex; gap:9px">
             <button class="mp-mbtn mp-mbtn-q" onclick="document.getElementById('confirmDoneModal').classList.remove('open')">
@@ -3809,7 +3812,7 @@
         <div class="mp-mttl">금액은 예약 사이트에서</div>
         <div id="staySiteName" class="mp-sheet-sub"></div>
         <p class="mp-mhint" style="margin:0 0 16px">
-          AI가 적어 둔 값은 어림잡은 금액입니다. 실제로 묵을 날짜와 인원으로 확인해 보세요.
+          표시된 금액은 예상값입니다. 숙박 날짜와 인원에 맞는 금액을 확인해 주세요.
         </p>
         <div class="mp-sheet-row">
           <button onclick="gotoSite('yeogi')" class="site-btn">여기어때</button>
@@ -3825,7 +3828,7 @@
         <div class="mp-mttl">숙박비 적기</div>
         <div id="stayPriceName" class="mp-sheet-sub"></div>
         <div class="mp-warn" style="margin-bottom:16px">
-          비워 두면 AI가 어림잡은 금액이 그대로 남습니다.
+          비워 두면 예상 금액을 그대로 씁니다.
         </div>
         <label class="mp-flab" for="stayPriceInput">1박 금액</label>
         <div class="mp-fmoney">

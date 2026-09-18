@@ -13,6 +13,7 @@
    * API
    *   GET /api/live/trips                    열 수 있는 여행 목록
    *   GET /api/live/now?tripId=&lat=&lng=    지금 상황 한 벌
+   *   POST /api/route/travel-time/compare    자차·대중교통·도보 한 번에
    =================================================== -->
   <div class="page" id="page-live">
     <div class="rl-wrap">
@@ -21,7 +22,7 @@
       <section class="rl-pick" id="rlPick">
         <div class="rl-hd">
           <p class="rl-eye">실시간</p>
-          <h1 class="rl-ttl">어느 여행을 보고 계세요</h1>
+          <h1 class="rl-ttl">지금 볼 여행을 골라 주세요</h1>
           <p class="rl-sub">고르면 지금 어디쯤인지, 다음이 어디인지 바로 나옵니다.
             여행 전날에도 미리 볼 수 있습니다.</p>
         </div>
@@ -38,12 +39,12 @@
         <h2 class="rl-head" id="rlHead"></h2>
 
         <div class="rl-next" id="rlNext"></div>
+        <div class="rl-modes" id="rlModes" hidden></div>
         <div class="rl-acts" id="rlActs"></div>
 
         <div class="rl-rail" id="rlRail"></div>
 
-        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측입니다.
-          이동시간은 티맵, 실시간 인원은 SK 연동 뒤에 들어옵니다.</p>
+        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측값, 이동시간은 티맵입니다.</p>
       </section>
 
     </div>
@@ -61,6 +62,19 @@
       'use strict';
 
       var rlTrip = null, rlTimer = null, rlPos = null;
+      /* 다음 정거장. rlPaint 가 채우고 「길 안내」가 읽는다.
+         좌표가 없으면 null 로 둔다 — 좌표 없이 안내를 시작하면 바로 막힌다. */
+      var rlNextStop = null;
+
+      /* 로그인 토큰. 이 프로젝트는 전역 fetch 래퍼가 없어서 부르는 쪽이 직접 붙인다 —
+         안 붙이면 내 여행 목록이 비어서 「열 여행이 없습니다」가 뜬다 */
+      function rlToken() {
+        return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      }
+      function rlAuth() {
+        var t = rlToken();
+        return t ? { Authorization: 'Bearer ' + t } : {};
+      }
 
       function esc(s) {
         return String(s == null ? '' : s)
@@ -73,7 +87,7 @@
         var box = document.getElementById('rlTrips');
         if (!box) return;
         try {
-          var r = await fetch('/api/live/trips');
+          var r = await fetch('/api/live/trips', { headers: rlAuth() });
           var j = await r.json();
           var list = (j && j.success && j.data) || [];
 
@@ -91,7 +105,7 @@
                 '</div>'
               : '<div class="rl-empty">' +
                   '<p class="rl-empty-1">실시간으로 열 여행이 없습니다.</p>' +
-                  '<p class="rl-empty-2">경로를 만들면 여기에 올라옵니다. ' +
+                  '<p class="rl-empty-2">일정을 만들면 여기에 나타납니다. ' +
                     '지난 여행은 이틀이 지나면 내려갑니다.</p>' +
                   '<button type="button" class="rl-go" onclick="goNewPlanner()">경로 만들기</button>' +
                 '</div>';
@@ -121,7 +135,7 @@
         if (rlPos) q += '&lat=' + rlPos[0] + '&lng=' + rlPos[1];
 
         try {
-          var r = await fetch(q);
+          var r = await fetch(q, { headers: rlAuth() });
           var j = await r.json();
           var d = (j && j.success && j.data) || null;
           if (d) rlPaint(d);
@@ -129,6 +143,7 @@
       }
 
       function rlPaint(d) {
+        rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
         var when = document.getElementById('rlWhen');
         var head = document.getElementById('rlHead');
         var next = document.getElementById('rlNext');
@@ -182,12 +197,98 @@
             '</div>';
           }).join('');
         }
+
+        rlModes(d);
       }
+
+      /* ── 이동수단 셋 ─────────────────────────────────
+       * 지금 있는 곳에서 다음 정거장까지를 자차·대중교통·도보로 각각 잰다.
+       * 「차로 24분」만 보면 지하철이 더 빠른 날인지 알 수 없다.
+       *
+       * 서버로는 격자로 뭉갠 좌표만 보낸다 (소수 3자리, 약 110m).
+       * 정밀 좌표는 브라우저 안에서만 쓴다.
+       */
+      var MODE_KO = { CAR: '자차', TRANSIT: '대중교통', WALK: '도보' };
+      var rlModeKey = null;   // 같은 구간을 두 번 재지 않는다. 티맵 호출 한도가 있다
+
+      function grid(v) { return Math.round(v * 1000) / 1000; }
+
+      function rlModes(d) {
+        var box = document.getElementById('rlModes');
+        if (!box) return;
+
+        var n = d.next || {};
+        var from = rlPos ? { lat: +rlPos[0], lng: +rlPos[1] } : (d.here || {});
+        /* 좌표가 없으면 아예 안 띄운다. 「0분」으로 채우지 않는다 */
+        if (n.lat == null || n.lng == null || from.lat == null || from.lng == null) {
+          box.hidden = true; box.innerHTML = ''; rlModeKey = null;
+          return;
+        }
+        box.hidden = false;
+
+        var key = grid(from.lat) + ',' + grid(from.lng) + '>' + n.lat + ',' + n.lng;
+        if (key === rlModeKey) return;   // 같은 자리, 같은 목적지면 다시 재지 않는다
+        rlModeKey = key;
+        box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
+                        '<p class="rl-modes-note">재는 중</p>';
+
+        fetch('/api/route/travel-time/compare', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originName: (d.here && d.here.name) || '지금 위치',
+            originLat: grid(from.lat),
+            originLng: grid(from.lng),
+            stops: [{ name: n.name, lat: n.lat, lng: n.lng }]
+          })
+        }).then(function (r) { return r.json(); })
+          .then(function (j) {
+            var m = (j && j.success && j.data) || null;
+            if (!m) throw new Error('no data');
+            rlPaintModes(box, m);
+          })
+          .catch(function () {
+            rlModeKey = null;   // 다음 주기에 다시 잰다
+            box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
+                            '<p class="rl-modes-note">이동시간을 재지 못했습니다.</p>';
+          });
+      }
+
+      function rlPaintModes(box, m) {
+        var rows = ['CAR', 'TRANSIT', 'WALK'].map(function (k) {
+          var p = m[k];
+          if (!p) return '';
+          var min = p.totalMinutes, fare = p.totalFare;
+          return '<div class="rl-mode">' +
+            '<span class="rl-mode-n">' + MODE_KO[k] + '</span>' +
+            (min != null
+              ? '<span class="rl-mode-v"><b>' + min + '</b>분' +
+                  (fare ? ' · <b>' + fare.toLocaleString() + '</b>원' : '') +
+                '</span>'
+              : '<span class="rl-mode-x">' + esc(p.note || '재지 못했습니다') + '</span>') +
+          '</div>';
+        }).join('');
+        box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows;
+      }
+
+      /* 콘솔에서 부르는 점검 — 좌표 뭉개기와 같은 구간 건너뛰기 */
+      window._rlModeCheck = function () {
+        console.assert(grid(35.158698) === 35.159, '3자리로 뭉갠다: ' + grid(35.158698));
+        console.assert(grid(35.158612) === grid(35.158988), '같은 격자면 같은 값');
+        console.assert(grid(35.1586) !== grid(35.1600), '다른 격자면 다른 값');
+        var before = rlModeKey;
+        rlModeKey = '1,2>3,4';
+        console.assert(rlModeKey === '1,2>3,4', '키가 남는다');
+        rlModeKey = before;
+        console.log('OK _rlModeCheck 통과');
+        return true;
+      };
 
       /* ── 바깥에서 부르는 것 ──────────────────────────── */
 
       window.rlOpen = function (tripId) {
         rlTrip = tripId;
+        window._authToken = rlToken();   /* nav-drive 의 경로 요청이 이 값을 쓴다 */
         document.getElementById('rlPick').hidden = true;
         document.getElementById('rlNow').hidden = false;
 
@@ -207,7 +308,7 @@
 
       window.rlBack = function () {
         clearInterval(rlTimer);
-        rlTrip = null; rlPos = null;
+        rlTrip = null; rlPos = null; rlModeKey = null;
         document.getElementById('rlNow').hidden = true;
         document.getElementById('rlPick').hidden = false;
         rlLoadTrips();
@@ -221,8 +322,15 @@
           return;
         }
         if (key === 'navi') {
-          /* 길 안내는 티맵 키가 들어온 뒤에 켠다. 없는 걸 있다고 하지 않는다 */
-          toast('길 안내는 티맵 연동 뒤에 켭니다.');
+          /* 좌표가 있으면 실제로 안내를 시작한다. 없으면 없다고 말한다 —
+             좌표 없이 시작하면 nav-drive 가 바로 막히고 사용자는 이유를 모른다. */
+          if (rlNextStop && window.startDrive) {
+            window.startDrive(rlNextStop);
+          } else if (!rlNextStop) {
+            toast('다음 목적지 좌표가 없어 길 안내를 켤 수 없습니다.');
+          } else {
+            toast('길 안내를 불러오지 못했습니다. 새로 고쳐 주세요.');
+          }
           return;
         }
         if (key === 'swap' || key === 'quiet') {
@@ -236,7 +344,7 @@
 
       window.initLivePage = function () {
         clearInterval(rlTimer);
-        rlTrip = null; rlPos = null;
+        rlTrip = null; rlPos = null; rlModeKey = null;
         var pick = document.getElementById('rlPick');
         var now = document.getElementById('rlNow');
         if (pick) pick.hidden = false;

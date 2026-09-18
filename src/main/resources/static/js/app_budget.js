@@ -32,7 +32,7 @@ async function updateLedgerList() {
           <div style="width:42px;height:42px;border-radius:10px;background:var(--sage);
                       display:flex;align-items:center;justify-content:center;font-size:20px">지도</div>
           <div style="flex:1">
-            <div style="font-weight:700;font-size:14px">${l.title || '여행 플랜'}</div>
+      <div style="font-weight:700;font-size:14px">${l.title || '여행 일정'}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">
               ${l.startDate || ''} ~ ${l.endDate || ''} · ${l.destination || ''}
             </div>
@@ -132,7 +132,7 @@ function _populateLedgerTripCards() {
       <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
         <div class="ts-thumb">지도</div>
         <div class="ts-info">
-          <div class="ts-name">${t.title || '여행 플랜'}</div>
+          <div class="ts-name">${t.title || '여행 일정'}</div>
           <div class="ts-meta">${t.startDate || ''} ~ ${t.endDate || ''} · ${t.destination || ''}</div>
         </div>
         <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '확정' : '초안'}</div>
@@ -335,7 +335,7 @@ async function _loadExpenses(tripId) {
     const listEl = document.getElementById('ledger-item-list');
     if (listEl) {
         if (cats.length === 0) {
-            listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
+    listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">예상 비용을 불러오지 못했습니다.</div>';
         } else {
             const items = cats.map(c => {
                 const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
@@ -409,6 +409,127 @@ async function _loadExpenses(tripId) {
         }
         if (addForm) addForm.style.display = tripStarted ? '' : 'none';
     }
+
+    // 숙박비 근거 표 · 예측 정확도 — 실패해도 가계부 화면은 그대로 뜬다
+    _loadBudgetEstimate(tripId);
+    _loadBudgetAccuracy();
+}
+
+// 항목 상태 3종. 색만으로 구분하지 않고 기호를 같이 찍는다.
+const _BASIS_STATUS = {
+    CONFIRMED: { mark: '●', label: '확정',   color: 'var(--terra)' },
+    ESTIMATED: { mark: '○', label: '추정',   color: 'var(--ink-3)' },
+    NONE:      { mark: '—', label: '해당없음', color: 'var(--ink-3)' }
+};
+
+/** GET /api/trips/{tripId}/budget-estimate → 숙박비 항목별 근거 표 (예산 엔진 2층) */
+async function _loadBudgetEstimate(tripId) {
+    const card = document.getElementById('budget-basis-card');
+    const rows = document.getElementById('budget-basis-rows');
+    if (!card || !rows) return;
+
+    // 숙소를 못 찾거나 API 가 죽으면 카드만 안 뜬다 — 가계부 화면은 그대로 산다
+    const res = await api.get('/api/trips/' + tripId + '/budget-estimate');
+    if (!res || !res.success || !res.data) return;
+
+    const d     = res.data;
+    const items = d.items || [];
+    if (items.length === 0) return;
+
+    const esc = v => String(v == null ? '' : v)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    const itemHtml = items.map(function (it) {
+        const st = _BASIS_STATUS[it.status] || _BASIS_STATUS.NONE;
+        return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;'
+             +   'padding:9px 0;border-bottom:1px solid var(--ui-line)">'
+             +   '<div>'
+             +     '<div style="font-size:13px;color:var(--ink)">' + esc(it.label) + '</div>'
+             +     '<div style="font-size:11px;color:var(--ink-3);margin-top:2px">' + esc(it.basis) + '</div>'
+             +   '</div>'
+             +   '<div style="font-size:13px;font-weight:700;color:' + st.color + ';text-align:right;'
+             +     'font-variant-numeric:tabular-nums">'
+             /* 해당없음은 0원이 아니다. 값이 없는 것과 0원인 것을 같은
+                얼굴로 두면 「반려동물 요금 0원」이 「안 받는다」로 읽힌다.
+                _fmtWon 은 공통 포맷터라 여기서만 갈라 쓴다. */
+             +     (it.status === 'NONE' ? '\u2014' : _fmtWon(it.amount)) + '</div>'
+             +   '<div style="font-size:11px;color:' + st.color + ';white-space:nowrap">'
+             +     st.mark + ' ' + st.label + '</div>'
+             + '</div>';
+    }).join('');
+
+    rows.innerHTML = itemHtml
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px">'
+        +   '<div style="font-size:13px;font-weight:800;color:var(--ink)">총액</div>'
+        +   '<div style="font-size:18px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums">'
+        +     _fmtWon(d.total) + '</div>'
+        + '</div>'
+        // 추정 항목이 없으면 구간 폭이 0 이다 — 의미 없는 줄은 내보내지 않는다
+        + (d.low === d.high ? '' :
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-3)">'
+          +   '<div>예측 구간</div>'
+          +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
+          + '</div>')
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:6px">'
+        +   '<div style="color:var(--ink-3)">신뢰도</div>'
+        +   '<div style="font-weight:800;color:var(--terra)">' + (d.confidence || 0) + '%</div>'
+        + '</div>'
+        // 산출식을 같이 싣는다 — 근거 없는 정확도 수치는 화면에 올리지 않는다
+        + '<div style="font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5">'
+        +   esc(d.note || '') + '</div>';
+
+    card.style.display = '';
+}
+
+/** GET /api/trips/budget-accuracy → 예측 vs 실측 오차 표 (예산 엔진 3층) */
+async function _loadBudgetAccuracy() {
+    const card = document.getElementById('budget-accuracy-card');
+    const rows = document.getElementById('budget-accuracy-rows');
+    const nEl  = document.getElementById('budget-accuracy-n');
+    if (!card || !rows) return;
+
+    const res = await api.get('/api/trips/budget-accuracy');
+    if (!res || !res.success || !res.data) return;
+
+    const d = res.data;
+    // 실측을 한 번도 입력하지 않았으면 오차가 아니라 빈 루프다 — 카드를 안 띄운다
+    if (!d.rows || d.rows.length === 0) return;
+
+    const esc = v => String(v == null ? '' : v)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    // 막대는 이 화면에서 가장 큰 오차를 100% 로 잡는다. 절대 기준이 아니라 비교용이다
+    const maxErr = Math.max.apply(null, d.rows.map(r => Math.abs(r.errorPct))) || 1;
+
+    rows.innerHTML = d.rows.map(function (r) {
+        const over  = r.errorPct > 0;                            // 예측보다 더 썼다
+        const color = over ? 'var(--terra)' : 'var(--ink-3)';
+        const sign  = over ? '+' : '';
+        return '<div style="padding:9px 0;border-bottom:1px solid var(--ui-line)">'
+             +   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">'
+             +     '<div style="font-size:13px;color:var(--ink)">' + esc(r.tripTitle) + '</div>'
+             +     '<div style="font-size:12px;font-weight:700;color:' + color + ';white-space:nowrap;'
+             +       'font-variant-numeric:tabular-nums">' + sign + r.errorPct.toFixed(1) + '%</div>'
+             +   '</div>'
+             +   '<div style="font-size:11px;color:var(--ink-3);margin-top:2px;font-variant-numeric:tabular-nums">'
+             +     '예측 ' + _fmtWon(r.predicted) + ' · 실제 ' + _fmtWon(r.actual) + '</div>'
+             +   '<div style="height:6px;border-radius:3px;background:var(--ui-line);margin-top:6px">'
+             +     '<div style="height:6px;border-radius:3px;background:' + color + ';width:'
+             +       (Math.abs(r.errorPct) / maxErr * 100) + '%"></div>'
+             +   '</div>'
+             + '</div>';
+    }).join('')
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px">'
+        +   '<div style="font-size:13px;font-weight:800;color:var(--ink)">누적 평균 오차</div>'
+        +   '<div style="font-size:18px;font-weight:800;color:var(--terra);font-variant-numeric:tabular-nums">'
+        +     d.avgErrorPct.toFixed(1) + '%</div>'
+        + '</div>'
+        // 산출식과 「시연」 표기를 같이 싣는다 — 근거 없는 정확도 수치는 화면에 올리지 않는다
+        + '<div style="font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.5">'
+        +   esc(d.note || '') + '</div>';
+
+    if (nEl) nEl.textContent = '현재 N=' + d.n + ' · 시연';
+    card.style.display = '';
 }
 
 // 일정별 장소 목록 + Day별 예상/실제 비교 렌더링
@@ -536,7 +657,7 @@ async function _loadMapBudget() {
     // 바 차트 아이템
     if (itemsEl) {
         if (cats.length === 0) {
-            itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">AI 예상 비용 데이터가 없습니다.</div>';
+    itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">예상 비용을 불러오지 못했습니다.</div>';
         } else {
             itemsEl.innerHTML = cats.map(c => {
                 const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
@@ -584,7 +705,7 @@ async function _loadMapBudget() {
         if (base > 0) {
             const remain = base - spent;
             remainEl.textContent       = remain >= 0
-                ? `예산 범위 내 ✓잔여 ${_fmtWon(remain)}`
+      ? `예산에서 ${_fmtWon(remain)} 남음`
                 : `예산 ${_fmtWon(-remain)} 초과`;
             remainEl.style.background  = remain >= 0 ? 'var(--sage-pale)' : 'var(--tile-pale)';
             remainEl.style.borderColor = remain >= 0 ? 'var(--sage-l)'    : 'var(--tile)';
@@ -703,12 +824,12 @@ async function addLedgerExpense() {
     if (memo) payload.description = memo;
 
     const res = await api.post('/api/trips/' + _budgetSelectedTripId + '/expenses', payload);
-    if (!res.success) { toast('저장 실패: ' + res.message); return; }
+    if (!res.success) { toast('지출을 저장하지 못했습니다. 입력 내용을 확인해 주세요.'); return; }
 
     document.getElementById('ledger-exp-amount').value = '';
     const memoEl = document.getElementById('ledger-exp-memo');
     if (memoEl) memoEl.value = '';
-    toast('지출이 저장됐습니다.');
+    toast('지출을 저장했습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -742,8 +863,8 @@ async function saveEditExpense(id) {
     if (date) payload.expenseDate = date;
     if (desc) payload.description = desc;
     const res = await api.put('/api/trips/' + _budgetSelectedTripId + '/expenses/' + id, payload);
-    if (!res.success) { toast('수정 실패: ' + res.message); return; }
-    toast('수정됐습니다.');
+    if (!res.success) { toast('지출을 고치지 못했습니다. 입력 내용을 확인해 주세요.'); return; }
+    toast('지출을 고쳤습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -751,8 +872,8 @@ async function saveEditExpense(id) {
 async function deleteExpense(id) {
     if (!confirm('이 지출 내역을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/trips/' + _budgetSelectedTripId + '/expenses/' + id);
-    if (!res.success) { toast('삭제 실패: ' + res.message); return; }
-    toast('삭제됐습니다.');
+    if (!res.success) { toast('지출을 삭제하지 못했습니다. 다시 눌러 주세요.'); return; }
+    toast('지출을 삭제했습니다.');
     await _loadExpenses(_budgetSelectedTripId);
 }
 
@@ -776,7 +897,7 @@ function _updateExportButtons() {
 
 /** 가계부 PDF 자동 다운로드 (jsPDF + html2canvas) */
 async function exportBudgetPDF() {
-    if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  if (!_lastExpenseData) { toast('가계부를 먼저 불러와 주세요.'); return; }
     /* PDF 라이브러리는 누를 때 받는다. 모든 화면에서 미리 받으면 550KB 를
        거저 쓴다 — 쓰는 곳은 이 함수 하나뿐이다. */
     if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
@@ -885,13 +1006,13 @@ async function exportBudgetPDF() {
         toast('PDF 를 내려받았습니다.');
     } catch (e) {
         console.error(e);
-        toast('PDF 생성 실패: ' + e.message);
+    toast('PDF를 만들지 못했습니다. 다시 눌러 주세요.');
     }
 }
 
 /** 가계부 Excel 다운로드 (XML SpreadsheetML — 색상·열 너비 포함) */
 function exportBudgetCSV() {
-    if (!_lastExpenseData) { toast('가계부 데이터를 먼저 불러주세요.'); return; }
+  if (!_lastExpenseData) { toast('가계부를 먼저 불러와 주세요.'); return; }
     const d = _lastExpenseData;
 
     const esc = v => String(v == null ? '' : v)

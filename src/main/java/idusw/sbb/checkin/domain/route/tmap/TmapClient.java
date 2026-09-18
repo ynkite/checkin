@@ -70,6 +70,21 @@ public class TmapClient {
         return get("/tmap/pois", q);
     }
 
+    /** 주변 검색 — 현재 좌표 반경에서 「주유소·화장실·편의점」 같은 걸 찾는다. */
+    public JsonNode poisAround(double lat, double lon, String keyword, int radiusKm, int count) {
+        if (!ready()) return null;
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("version", "1");
+        q.put("centerLat", String.valueOf(lat));
+        q.put("centerLon", String.valueOf(lon));
+        q.put("radius", String.valueOf(Math.max(1, Math.min(33, radiusKm)))); // km, 최대 33
+        q.put("count", String.valueOf(Math.max(1, Math.min(20, count))));
+        q.put("reqCoordType", "WGS84GEO");
+        q.put("resCoordType", "WGS84GEO");
+        if (keyword != null && !keyword.isBlank()) q.put("searchKeyword", keyword);
+        return get("/tmap/pois/search/around", q);
+    }
+
     /**
      * 자동차 경로. departAt 이 있으면 예측경로(타임머신)로 부른다.
      * searchOption 0 = 교통최적+추천.
@@ -98,6 +113,42 @@ public class TmapClient {
             path = "/tmap/routes/prediction?version=1";
         }
         return post(path, body);
+    }
+
+    /**
+     * 경유지 최적화 — 출발/도착 사이 여러 곳을 가장 짧게 도는 순서로 재정렬.
+     * viaPoints: 각 {viaPointId, viaPointName, viaX(경도), viaY(위도)}. 최대 10곳.
+     */
+    public JsonNode routeOptimization(double sx, double sy, double ex, double ey,
+                                      String startName, String endName,
+                                      java.util.List<Map<String, Object>> viaPoints) {
+        if (!ready()) return null;
+        Map<String, Object> body = new LinkedHashMap<>();
+        // 좌표는 문자열로 넣는다 — 숫자로 주면 TMAP 이 500 을 낸다.
+        body.put("startX", String.valueOf(sx));
+        body.put("startY", String.valueOf(sy));
+        body.put("endX", String.valueOf(ex));
+        body.put("endY", String.valueOf(ey));
+        body.put("startName", enc(startName));
+        body.put("endName", enc(endName));
+        // startTime 은 필수. 지금 출발 기준(현재 시각, YYYYMMDDHHmm).
+        body.put("startTime", java.time.LocalDateTime.now()
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmm")));
+        body.put("reqCoordType", "WGS84GEO");
+        body.put("resCoordType", "WGS84GEO");
+        body.put("searchOption", "0");
+        // viaPointName URL 인코딩, viaX/viaY 도 문자열로.
+        java.util.List<Map<String, Object>> vps = new java.util.ArrayList<>();
+        for (Map<String, Object> v : viaPoints) {
+            Map<String, Object> e = new LinkedHashMap<>(v);
+            Object nm = v.get("viaPointName");
+            e.put("viaPointName", enc(nm == null ? "경유지" : nm.toString()));
+            e.put("viaX", String.valueOf(v.get("viaX")));
+            e.put("viaY", String.valueOf(v.get("viaY")));
+            vps.add(e);
+        }
+        body.put("viaPoints", vps);
+        return post("/tmap/routes/routeOptimization10?version=1", body);
     }
 
     /** 대중교통 경로. 길이 없으면 result.status 로 온다. */

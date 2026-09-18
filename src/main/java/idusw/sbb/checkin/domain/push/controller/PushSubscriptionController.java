@@ -42,11 +42,13 @@ public class PushSubscriptionController {
         }
     }
 
-    // 구독 해제
+    // 구독 해제 — 로그인한 본인 구독만 지운다 (endpoint 만으로 남의 구독 삭제 금지)
     @PostMapping("/unsubscribe")
-    public ResponseEntity<ApiResponse<Void>> unsubscribe(@RequestBody Map<String, String> body) {
+    public ResponseEntity<ApiResponse<Void>> unsubscribe(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestBody Map<String, String> body) {
         String endpoint = body.get("endpoint");
-        if (endpoint != null) pushService.unsubscribe(endpoint);
+        if (endpoint != null) pushService.unsubscribe(user.getUserId(), endpoint);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
