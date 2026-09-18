@@ -3036,7 +3036,8 @@ function _fmtRoutePair(delta) {
     const parts = [];
     if (has(delta.minutes)) parts.push(sign(delta.minutes) + Math.abs(delta.minutes) + '분');
     if (has(delta.won))     parts.push(sign(delta.won) + Math.abs(delta.won).toLocaleString() + '원');
-    return parts.join(' / ');
+    // 기준을 여기서 붙인다 — 호출부 네 곳이 접두사가 제각각이라 각자 붙이면 또 갈린다
+    return '원래보다 ' + parts.join(' / ');
 }
 
 /** POST /api/trips/{tripId}/routes/replace */
