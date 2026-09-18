@@ -1024,14 +1024,14 @@
                         req: '이 장소가 다른 일정과 50km 이상 멀리 떨어져 있습니다. 같은 권역의 가까운 다른 실존 장소로 교체해 주세요.'
                     }));
                     const r = await api.post(`/api/trips/${tripId}/routes/replace`, { requests });
-                    let j = r.data;
-                    if (typeof j === 'string' && j.includes('[')) {
-                        j = j.substring(j.indexOf('['), j.lastIndexOf(']') + 1);
+                    /* 교체 결과가 비면 먼 장소가 남은 원래 경로로 간다. 빈 경로로 넘기지 않는다 */
+                    const newRoute = (r && r.success) ? _usableRouteFrom(r.data) : null;
+                    if (!newRoute) {
+                        toast('먼 장소를 바꾸지 못해 처음 만든 일정으로 진행합니다.');
                     }
-                    const newRoute = JSON.parse(j);
                     _showGenLoading('일정을 만드는 중입니다…');
                     sessionStorage.setItem('autoHealingRetries', '0');
-                    validateAndHealingRoute(tripId, newRoute, btn);
+                    validateAndHealingRoute(tripId, newRoute || draftRoute, btn);
                 } catch (e) {
                     _hideGenLoading();
                     toast('교체 실패: ' + e.message);
@@ -1226,6 +1226,40 @@
             };
 
             wrap.onclick = (e) => { if (e.target === wrap) { close(); onCancel && onCancel(); } };
+        }
+
+        /* ── 경로가 쓸 만한가 ──────────────────────────────────
+           배열이고, 하루라도 있고, 이름 있는 들를 곳이 하나라도 있는가.
+           서버 RouteJson.usable · 지도 화면 _mpUsable 과 같은 기준이다. 바꾸면 셋을 같이 바꾼다.
+           보정 결과가 이 기준에 못 미치면 버리고 직전 경로를 쓴다 — 잘못된 장소가 남는 편이
+           빈 화면보다 낫다. */
+        function _routeUsable(r) {
+            return Array.isArray(r) && r.some(d => d && Array.isArray(d.places) &&
+                d.places.some(p => p && p.transit == null && typeof p.name === 'string' && p.name.trim() !== ''));
+        }
+
+        /** 서버가 준 문자열·배열을 경로로. 못 쓰면 null */
+        function _usableRouteFrom(raw) {
+            try {
+                let v = raw;
+                if (typeof v === 'string') {
+                    if (!v.includes('[')) return null;
+                    v = JSON.parse(v.substring(v.indexOf('['), v.lastIndexOf(']') + 1));
+                }
+                return _routeUsable(v) ? v : null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /** 쓸 만한 경로만 세션에 둔다. 빈 배열로 직전 경로를 덮지 않는다 */
+        function _storeRoute(r) {
+            if (!_routeUsable(r)) {
+                console.warn('[플래너] 들를 곳이 없는 경로라 저장하지 않았습니다.', r);
+                return false;
+            }
+            sessionStorage.setItem('ai_generated_route', JSON.stringify(r));
+            return true;
         }
 
         // ── 백그라운드 가상 카카오맵 검증 및 버튼 텍스트 제어 서브루틴 ──
@@ -1497,20 +1531,23 @@
                             })
                                 .then(res => res.json())
                                 .then(res => {
-                                    if (res.success && res.data) {
-                                        let nextJson = res.data;
-                                        if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
-
-                                        const cleanData = JSON.parse(nextJson);
-                                        sessionStorage.setItem('ai_generated_route', nextJson);
-
+                                    /* 응답을 쓰기 전에 본다. 비었거나 들를 곳이 없으면 버리고
+                                       지금 가진 경로(routeData)로 끝낸다 */
+                                    const cleanData = (res && res.success) ? _usableRouteFrom(res.data) : null;
+                                    if (cleanData) {
+                                        _storeRoute(cleanData);
                                         // 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
                                         validateAndHealingRoute(tripId, cleanData, btn);
                                     } else {
+                                        console.warn('[플래너] 보정 결과를 쓸 수 없어 직전 경로를 유지합니다.', res);
+                                        toast('장소 보정이 되지 않아 처음 만든 일정으로 보여 드립니다. 여행지 밖 장소가 섞였을 수 있습니다.');
                                         _finalizePlannerRoute(routeData, btn);
                                     }
                                 })
-                                .catch(() => _finalizePlannerRoute(routeData, btn));
+                                .catch(() => {
+                                    toast('장소 보정 중 연결이 끊겨 처음 만든 일정으로 보여 드립니다.');
+                                    _finalizePlannerRoute(routeData, btn);
+                                });
 
                         } else if (autoFixRequests.length > 0) {
                             // [최종 방어] 2회 교체를 다 썼는데도 여행지 밖/가짜 장소가 남았다면,
@@ -1537,16 +1574,22 @@
                                 });
                                 return { ...d, places: tidy };
                             });
+                            /* 빼고 나서 들를 곳이 하나도 없으면 빼지 않는다. 잘못된 장소가 남는 편이 빈 화면보다 낫다 */
+                            if (!_routeUsable(cleaned)) {
+                                console.warn('[플래너] 벗어난 장소를 빼면 일정이 비어 그대로 둡니다:', [...badNames]);
+                                toast('여행지를 벗어난 장소가 있지만, 빼면 일정이 비어 그대로 두었습니다. 지도에서 직접 바꿔 주세요.');
+                                const kept = _reorderRouteByProximity(routeData, allPins, _lockedNames);
+                                _finalizePlannerRoute(_routeUsable(kept) ? kept : routeData, btn);
+                                return;
+                            }
                             console.warn('2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
-                            toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
+                            toast('여행지를 벗어난 장소 ' + badNames.size + '곳을 일정에서 뺐습니다.');
                             const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
-                            sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
-                            _finalizePlannerRoute(cleanedReordered, btn);
+                            _finalizePlannerRoute(_routeUsable(cleanedReordered) ? cleanedReordered : cleaned, btn);
                         } else {
                             console.log("정밀 보정 완료. 숙소 기준 동선 정렬 후 지도로 이동합니다.");
                             const finalRoute = _reorderRouteByProximity(routeData, allPins, _lockedNames);
-                            sessionStorage.setItem('ai_generated_route', JSON.stringify(finalRoute));
-                            _finalizePlannerRoute(finalRoute, btn);
+                            _finalizePlannerRoute(_routeUsable(finalRoute) ? finalRoute : routeData, btn);
                         }
                     }
                 });
@@ -1669,13 +1712,15 @@
                 btn.disabled = false;
             }
 
-            if (!routeData) {
-                toast('일정 데이터를 불러오지 못했습니다.');
+            /* 들를 곳이 없는 경로로는 지도로 가지 않는다. 세션에 든 직전 경로도 덮지 않는다 */
+            if (!_routeUsable(routeData)) {
+                console.warn('[플래너] 들를 곳이 없는 경로라 지도로 넘기지 않습니다.', routeData);
+                toast('일정을 만들지 못했습니다. 조건에 맞는 장소를 찾지 못했을 수 있으니 여행지나 취향을 바꿔 다시 눌러 주세요.');
                 return;
             }
 
             // 1. 결과 저장
-            sessionStorage.setItem('ai_generated_route', JSON.stringify(routeData));
+            _storeRoute(routeData);
             _planDirty = false; // 더티 플래그 해제
 
             // 2. 화면 이동 (지도 페이지)
