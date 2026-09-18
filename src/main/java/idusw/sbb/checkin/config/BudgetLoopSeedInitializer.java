@@ -2,7 +2,9 @@ package idusw.sbb.checkin.config;
 
 import idusw.sbb.checkin.domain.expense.entity.Expense;
 import idusw.sbb.checkin.domain.expense.repository.ExpenseRepository;
+import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
+import idusw.sbb.checkin.domain.plan.repository.PlanInputFormRepository;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.checkin.domain.user.entity.User;
 import idusw.sbb.checkin.domain.user.repository.UserRepository;
@@ -42,6 +44,7 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
     private final ExpenseRepository expenseRepository;
+    private final PlanInputFormRepository planInputFormRepository;
 
     @Override
     public void run(String... args) {
@@ -56,6 +59,43 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
         seedTrip(judge, mine, "경주 1박 2일 · 시연", "경주", 63, 1, 120_000, 120_000, 48_000, 55_000, 30_000, 30_000);
         seedTrip(judge, mine, "강릉 2박 3일 · 시연", "강릉", 42, 2, 240_000, 220_000, 70_000, 66_000, 30_000, 20_000);
         seedTrip(judge, mine, "전주 1박 2일 · 시연", "전주", 21, 1,  90_000,  90_000, 42_000, 51_000, 20_000, 20_000);
+
+        seedJudgeTripForm(judge);
+    }
+
+    /**
+     * 심사 시드 여행에 입력 폼을 붙인다 — 2층 숙박비 근거표가 이 폼 위에 서 있다.
+     *
+     * <p>어떤 시더도 {@link PlanInputForm} 을 만들지 않는다(생성 경로는 사용자 UI 플로우뿐).
+     * 폼이 없으면 {@code BudgetEstimator.toInput} 이 인원을 2명으로 떨어뜨리고 옵션을 빈
+     * 문자열로 둬서 <b>인원 추가·바베큐·레이트 체크아웃이 전부 「해당없음」으로 접힌다.</b>
+     * 그러면 추정 항목이 0개가 되고 신뢰도가 100% 로 찍혀, 「확정과 추정의 경계를 보여준다」는
+     * 근거표의 논지가 화면에서 사라진다.
+     *
+     * <p>값은 9/17 캡처를 만든 폼 그대로다 — 4명 · 바베큐 · 레이트 체크아웃.
+     * 총액 1,180,000 / 신뢰도 89% 가 이 조합에서 나온다.
+     */
+    private void seedJudgeTripForm(User judge) {
+        TravelPlan plan = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
+                .filter(p -> JudgeSeedInitializer.SEED_TITLE.equals(p.getTitle()))
+                .findFirst().orElse(null);
+        if (plan == null) return;                                              // 심사 시드가 아직 없다
+        if (planInputFormRepository.findByPlanId(plan.getId()).isPresent()) return;   // 손으로 넣은 폼을 덮지 않는다
+
+        planInputFormRepository.save(PlanInputForm.builder()
+                .plan(plan).user(judge)
+                .departure("서울")
+                .transportType("PUBLIC")
+                .accommodationType("호텔")
+                .companionType("FRIENDS")
+                .companionCount(4)                                   // 기준인원 2명 초과 → 「인원 추가 2명」
+                .travelStyles("[\"힐링\"]")
+                .dietaryInfo("[]")
+                .scheduleDensity("RELAXED")
+                .accommodationOptions("[\"바베큐\",\"레이트 체크아웃\"]")   // 두 항목이 추정으로 잡히는 근거
+                .budget(1_200_000L)
+                .build());
+        log.info("[근거표시드] 심사 시드 여행에 입력 폼을 붙였습니다 (4명 · 바베큐 · 레이트 체크아웃).");
     }
 
     /** 이미 있으면 날짜만 다시 맞추고, 없으면 여행 + 예측·실측 지출을 심는다. */
