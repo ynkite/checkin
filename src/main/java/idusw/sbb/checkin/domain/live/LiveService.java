@@ -42,6 +42,11 @@ public class LiveService {
     private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;
     private final ObjectMapper objectMapper;
 
+    /** 이 확률부터 비로 본다. 감지 엔진과 같은 설정값을 읽는다 —
+        두 곳이 다른 값을 쓰면 화면과 알림이 서로 다른 말을 한다 */
+    @org.springframework.beans.factory.annotation.Value("${detection.weather.rain-prob-threshold:60}")
+    private int rainProbThreshold;
+
     /** 실시간으로 열 수 있는 여행. 끝난 지 이틀 넘은 것은 뺀다 */
     public List<Map<String, Object>> openableTrips() {
         Long userId = currentUserId();
@@ -268,7 +273,11 @@ public class LiveService {
 
             String name = String.valueOf(next.getOrDefault("name", ""));
             String type = String.valueOf(next.getOrDefault("type", ""));
-            m.put("outdoorRisk", dw.isRainExpected()
+            /* rainExpected 플래그만 보면 「강수확률 70%인데 플래그는 false」인 예보를 놓친다.
+               감지 엔진과 같은 규칙으로 판정한다 */
+            boolean rainy = idusw.sbb.checkin.domain.detection.DetectionRules
+                    .weather(dw.isRainExpected(), dw.getRainProb(), rainProbThreshold).triggered();
+            m.put("outdoorRisk", rainy
                     && idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(name, type));
 
             return m.isEmpty() ? Map.of() : m;
