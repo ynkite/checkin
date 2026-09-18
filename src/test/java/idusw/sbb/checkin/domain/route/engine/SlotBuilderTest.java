@@ -55,7 +55,7 @@ class SlotBuilderTest {
     @Test
     void 평범한_하루는_다섯_슬롯이_리듬_순서대로_나온다() {
         // 활동 슬롯(오전/오후/저녁)은 셋 다 TOUR/CAFE 를 받을 수 있어 셋 중 어디로 갈지는
-        // 거리에 따라 정해진다 — 여기서는 "카테고리가 안 섞이고 6개 다 소비된다"만 본다.
+        // 거리에 따라 정해진다 — 여기서는 "카테고리가 안 섞인다"만 본다.
         List<Candidate> nonFood = List.of(
                 alwaysOpen("act1", northOf(ANCHOR_POINT, 1), CandidateCategory.TOUR),
                 alwaysOpen("act2", northOf(ANCHOR_POINT, 1.2), CandidateCategory.TOUR),
@@ -91,11 +91,15 @@ class SlotBuilderTest {
         assertThat(slots.get(3).candidates()).extracting(Candidate::id)
                 .containsExactlyInAnyOrder("dinner1", "dinner2");
 
-        List<String> activityIds = new java.util.ArrayList<>();
-        activityIds.addAll(slots.get(0).candidates().stream().map(Candidate::id).toList());
-        activityIds.addAll(slots.get(2).candidates().stream().map(Candidate::id).toList());
-        activityIds.addAll(slots.get(4).candidates().stream().map(Candidate::id).toList());
-        assertThat(activityIds).containsExactlyInAnyOrder("act1", "act2", "act3", "act4", "act5", "act6");
+        // 결정 14 : 활동 슬롯은 각자 상위 5를 담는다. 6개를 셋으로 쪼개지 않는다 — 소비는 DayPlanner 몫.
+        java.util.Set<String> activityIds = new java.util.HashSet<>();
+        for (int i : new int[]{0, 2, 4}) {
+            assertThat(slots.get(i).size()).isEqualTo(TimeSlot.MAX_CANDIDATES);
+            slots.get(i).candidates().forEach(c -> activityIds.add(c.id()));
+        }
+        // 여섯 개가 다 나오진 않는다 — 셋 다 기준점에서 가까운 상위 5를 담으니 제일 먼 act6 은 빠질 수 있다
+        assertThat(activityIds).isSubsetOf("act1", "act2", "act3", "act4", "act5", "act6");
+        assertThat(activityIds).hasSizeGreaterThanOrEqualTo(TimeSlot.MAX_CANDIDATES);
     }
 
     @Test
@@ -109,11 +113,13 @@ class SlotBuilderTest {
         assertThat(typesOf(slots)).containsExactly(
                 SlotType.MORNING_ACTIVITY, SlotType.LUNCH, SlotType.AFTERNOON_ACTIVITY,
                 SlotType.DINNER, SlotType.EVENING_ACTIVITY);
+        // 활동 후보 하나뿐이라 활동 슬롯 셋이 같은 후보를 담는다 (결정 14 — 소비는 DayPlanner 가 한다)
         assertThat(slots.get(0).size()).isEqualTo(1);
-        assertThat(slots.get(1).size()).isEqualTo(0);
-        assertThat(slots.get(2).size()).isEqualTo(0);
-        assertThat(slots.get(3).size()).isEqualTo(0);
-        assertThat(slots.get(4).size()).isEqualTo(0);
+        assertThat(slots.get(2).size()).isEqualTo(1);
+        assertThat(slots.get(4).size()).isEqualTo(1);
+        // 식사 후보가 없으니 식사 슬롯은 창이 있어도 빈다 — "시간이 없었다"와 다른 신호다
+        assertThat(slots.get(1).size()).isZero();
+        assertThat(slots.get(3).size()).isZero();
     }
 
     // ── 결정 7-1 : 첫날/마지막날 특례 ────────────────────────────────────
@@ -189,9 +195,9 @@ class SlotBuilderTest {
     }
 
     @Test
-    void 한_슬롯에_배정된_후보는_다른_슬롯에_다시_나오지_않는다() {
-        // 앵커에서 1~6km 북쪽, 6개. MORNING 이 가장 가까운 5개(1~5km)를 전부 가져가면
-        // AFTERNOON 에는 6km 짜리 하나만 남아야 한다 — usedToday 가 없으면 5개가 다시 뜬다.
+    void 슬롯_풀은_서로_겹친다_소비는_DayPlanner_몫이다() {
+        // 앵커에서 1~6km 북쪽, 6개. 예전에는 MORNING 이 5개를 소비해 AFTERNOON 에 1개만 남았다.
+        // 결정 14 이후로는 두 슬롯 다 상위 5를 담고, 실제로 간 곳만 DayPlanner 가 뺀다.
         List<Candidate> candidates = new java.util.ArrayList<>();
         for (int km = 1; km <= 6; km++) {
             candidates.add(alwaysOpen("c" + km, northOf(ANCHOR_POINT, km), CandidateCategory.TOUR));
@@ -202,8 +208,9 @@ class SlotBuilderTest {
 
         assertThat(slots.get(0).candidates()).extracting(Candidate::id)
                 .containsExactlyInAnyOrder("c1", "c2", "c3", "c4", "c5");
+        assertThat(slots.get(2).size()).isEqualTo(TimeSlot.MAX_CANDIDATES);
         assertThat(slots.get(2).candidates()).extracting(Candidate::id)
-                .containsExactly("c6");
+                .containsAnyElementsOf(slots.get(0).candidates().stream().map(Candidate::id).toList());
     }
 
     // ── 결정 7-2 : 기준점은 직전 슬롯 후보의 무게중심 ─────────────────────
@@ -213,9 +220,12 @@ class SlotBuilderTest {
         // MORNING: 앵커에서 동쪽 5.0~5.4km, 5개 — 다른 후보는 전부 훨씬 멀어서 이 5개가 그대로 뽑힌다.
         // MORNING 무게중심 ≈ 동쪽 5.2km.
         List<Candidate> candidates = new java.util.ArrayList<>();
+        // 오전에만 여는 곳으로 둔다 — 결정 14 이후 소비가 없으므로, 영업시간으로 빠져야
+        // 오후 컷이 무게중심만으로 갈린다.
         double[] morningKm = {5.0, 5.1, 5.2, 5.3, 5.4};
         for (double km : morningKm) {
-            candidates.add(alwaysOpen("morning-" + km, eastOf(ANCHOR_POINT, km), CandidateCategory.TOUR));
+            candidates.add(candidate("morning-" + km, eastOf(ANCHOR_POINT, km), CandidateCategory.TOUR,
+                    LocalTime.of(8, 0), LocalTime.of(11, 0)));
         }
 
         // near: 무게중심에서 ~9.8km. far: 무게중심에서 ~20.2km — 둘 다 앵커에서는 똑같이 15km 인
@@ -298,5 +308,25 @@ class SlotBuilderTest {
         SlotBuilder builder = SlotBuilder.withDefaults();
         assertThatThrownBy(() -> builder.build(poolOf(0, List.of()), ANCHOR, noLunch, 3))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ── 필수 포함 : 상위 5 컷에서 먼저 자리를 잡는다 (결정 13) ───────────
+
+    @Test
+    void 필수_후보는_상위_5_컷에서_안_잘린다() {
+        List<Candidate> pool = new java.util.ArrayList<>();
+        for (int k = 1; k <= 5; k++) {
+            pool.add(alwaysOpen("near" + k, northOf(ANCHOR_POINT, k), CandidateCategory.TOUR));
+        }
+        // 가장 멀어서 거리순으로는 6번째 — 컷에서 잘릴 자리다
+        pool.add(alwaysOpen("요청장소", northOf(ANCHOR_POINT, 20), CandidateCategory.TOUR));
+
+        List<TimeSlot> withoutRequirement =
+                SlotBuilder.withDefaults().build(poolOf(1, pool), ANCHOR, constraints(null, null), 3);
+        assertThat(withoutRequirement.get(0).candidates()).extracting(Candidate::id).doesNotContain("요청장소");
+
+        List<TimeSlot> withRequirement = SlotBuilder.withDefaults()
+                .build(poolOf(1, pool), ANCHOR, constraints(null, null), 3, java.util.Set.of("요청장소"));
+        assertThat(withRequirement.get(0).candidates()).extracting(Candidate::id).contains("요청장소");
     }
 }

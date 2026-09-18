@@ -60,14 +60,15 @@ public class AiRouteService {
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AiRouteService.class);
-
     /**
      * 동선 엔진 경로 사용 여부. 기본값 false — 켜는 건 {@code application-local.properties} 에서만 한다
      * ({@code application.properties} 는 skip-worktree 라 팀에 안 나간다).
      */
     @org.springframework.beans.factory.annotation.Value("${route.engine.enabled:false}")
     private boolean routeEngineEnabled;
+
+    private final idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler routeEngineAssembler =
+            new idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler();
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (검증·교정 담당)  ★ NEW
@@ -2118,6 +2119,17 @@ public class AiRouteService {
             // ★카카오에서 실존 장소를 직접 수집(환각 차단). AI 후보(candidatesJson)는 더 이상 쓰지 않는다.
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> filtered =
                     collectCandidatesFromKakao(plan, form, userRequested);
+
+            // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
+            if (routeEngineEnabled) {
+                try {
+                    return routeEngineAssembler.assemble(plan, form, filtered, userRequested);
+                } catch (RuntimeException e) {
+                    log.error("[route.engine] tripId={} 실패 지점=assembleCandidates/engine"
+                            + " — 기존 경로로 폴백한다", tripId, e);
+                }
+            }
+
             return buildRouteWithAI(filtered, plan, form, userRequested);
         } catch (Exception e) {
             System.err.println("[assembleCandidates] 실패: " + e.getMessage());

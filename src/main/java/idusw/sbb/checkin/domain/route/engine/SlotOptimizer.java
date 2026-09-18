@@ -1,10 +1,15 @@
 package idusw.sbb.checkin.domain.route.engine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.ToDoubleBiFunction;
+import java.util.stream.Collectors;
 
 /**
  * 슬롯 하나 + 시작 지점 + 시작 시각 → 최적 조합·순서·종료 상태. 순수 함수다 — 같은
@@ -29,6 +34,8 @@ import java.util.function.ToDoubleBiFunction;
  * 끼우면 이 함수만 바뀐다 — 계산식은 안 바뀐다 (결정 2/5-5 와 같은 원칙).
  */
 public final class SlotOptimizer {
+
+    private static final Logger log = LoggerFactory.getLogger(SlotOptimizer.class);
 
     public static final double DEFAULT_AVERAGE_SPEED_KMH = TravelCostMetric.DEFAULT_AVERAGE_SPEED_KMH;
 
@@ -60,6 +67,18 @@ public final class SlotOptimizer {
      */
     public SlotPlan optimize(TimeSlot slot, GeoPoint startPoint, LocalTime startTime,
                               LocalTime windowStart, LocalTime windowEnd, int maxVisits) {
+        return optimize(slot, startPoint, startTime, windowStart, windowEnd, maxVisits, Set.of());
+    }
+
+    /**
+     * @param requiredIds 반드시 포함해야 하는 후보 id (사용자가 직접 요청한 장소). 이 슬롯에 들어 있는
+     *                    필수 후보를 <b>전부</b> 담지 못하는 조합은 버린다. 그런 조합이 하나도 없으면
+     *                    제약을 풀고 WARN 을 남긴다 — 요청 장소 때문에 슬롯을 통째로 비우는 건
+     *                    "왔다갔다 하지 않는 동선" 보다 나쁜 결과다.
+     */
+    public SlotPlan optimize(TimeSlot slot, GeoPoint startPoint, LocalTime startTime,
+                              LocalTime windowStart, LocalTime windowEnd, int maxVisits,
+                              Set<String> requiredIds) {
         if (slot == null) {
             throw new IllegalArgumentException("slot must not be null");
         }
@@ -76,9 +95,32 @@ public final class SlotOptimizer {
             throw new IllegalArgumentException("maxVisits must not be negative");
         }
 
+        Set<String> mustInclude = slot.candidates().stream()
+                .map(Candidate::id)
+                .filter(requiredIds::contains)
+                .collect(Collectors.toSet());
+
+        SlotPlan best = search(slot, startPoint, startTime, windowStart, windowEnd, maxVisits, mustInclude);
+        if (!mustInclude.isEmpty() && best.visitCount() == 0) {
+            SlotPlan withoutRequirement =
+                    search(slot, startPoint, startTime, windowStart, windowEnd, maxVisits, Set.of());
+            if (withoutRequirement.visitCount() > 0) {
+                log.warn("필수 포함 후보를 넣을 수 있는 조합이 없어 제약을 푼다 — slot={} required={}",
+                        slot.type(), mustInclude);
+                return withoutRequirement;
+            }
+        }
+        return best;
+    }
+
+    private SlotPlan search(TimeSlot slot, GeoPoint startPoint, LocalTime startTime,
+                             LocalTime windowStart, LocalTime windowEnd, int maxVisits, Set<String> mustInclude) {
         SlotPlan best = SlotPlan.empty(slot.type(), startPoint, startTime);
 
         for (List<Candidate> sequence : enumerateSequences(slot.candidates(), maxVisits)) {
+            if (!containsAll(sequence, mustInclude)) {
+                continue;
+            }
             Optional<SlotPlan> candidate = simulate(slot.type(), sequence, startPoint, startTime, windowStart, windowEnd);
             if (candidate.isPresent() && isBetter(candidate.get(), best)) {
                 best = candidate.get();
@@ -86,6 +128,14 @@ public final class SlotOptimizer {
         }
 
         return best;
+    }
+
+    private static boolean containsAll(List<Candidate> sequence, Set<String> mustInclude) {
+        if (mustInclude.isEmpty()) {
+            return true;
+        }
+        Set<String> ids = sequence.stream().map(Candidate::id).collect(Collectors.toSet());
+        return ids.containsAll(mustInclude);
     }
 
     /** 크기 1..limit 인 모든 순서 있는 부분집합(순열) — 결정 8 의 P(n,1)+…+P(n,limit). */

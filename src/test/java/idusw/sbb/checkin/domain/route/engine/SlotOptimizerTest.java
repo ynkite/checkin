@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -255,5 +256,63 @@ class SlotOptimizerTest {
         assertThatThrownBy(() -> optimizer.optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
                 LocalTime.of(9, 0), LocalTime.of(10, 0), -1))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ── 필수 포함 : 사용자가 직접 요청한 장소 (결정 13) ─────────────────
+
+    @Test
+    void 필수_후보를_포함하지_않는_조합은_버린다() {
+        List<Candidate> pool = new ArrayList<>();
+        for (double d : new double[]{1, 2, 3, 4, 5}) {
+            pool.add(alwaysOpen("tour" + d, northOf(ANCHOR_POINT, d), 30));
+        }
+        TimeSlot slot = new TimeSlot(SlotType.MORNING_ACTIVITY, pool);
+
+        // 방문 한 곳만 허용 — 제약이 없으면 가장 가까운 tour1.0 이 뽑힌다
+        SlotPlan free = SlotOptimizer.withDefaults().optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
+                LocalTime.of(9, 0), LocalTime.of(12, 0), 1);
+        assertThat(free.visitOrder().get(0).id()).isEqualTo("tour1.0");
+
+        SlotPlan required = SlotOptimizer.withDefaults().optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
+                LocalTime.of(9, 0), LocalTime.of(12, 0), 1, Set.of("tour5.0"));
+        assertThat(required.visitOrder()).extracting(Candidate::id).containsExactly("tour5.0");
+    }
+
+    @Test
+    void 필수_후보가_여럿이면_전부_들어간_조합만_본다() {
+        List<Candidate> pool = new ArrayList<>();
+        for (double d : new double[]{1, 2, 3}) {
+            pool.add(alwaysOpen("tour" + d, northOf(ANCHOR_POINT, d), 30));
+        }
+        TimeSlot slot = new TimeSlot(SlotType.MORNING_ACTIVITY, pool);
+
+        SlotPlan plan = SlotOptimizer.withDefaults().optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
+                LocalTime.of(9, 0), LocalTime.of(12, 0), 2, Set.of("tour2.0", "tour3.0"));
+
+        assertThat(plan.visitOrder()).extracting(Candidate::id).containsExactlyInAnyOrder("tour2.0", "tour3.0");
+    }
+
+    @Test
+    void 필수_후보를_넣을_수_있는_조합이_0개면_제약을_풀고_나머지로_채운다() {
+        Candidate near = alwaysOpen("near", northOf(ANCHOR_POINT, 1), 30);
+        Candidate unreachable = alwaysOpen("unreachable", northOf(ANCHOR_POINT, 300), 30); // 창 안에 못 들어옴
+        TimeSlot slot = new TimeSlot(SlotType.MORNING_ACTIVITY, List.of(near, unreachable));
+
+        SlotPlan plan = SlotOptimizer.withDefaults().optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
+                LocalTime.of(9, 0), LocalTime.of(10, 0), TimeSlot.MAX_CANDIDATES, Set.of("unreachable"));
+
+        // 요청 장소 하나 때문에 슬롯을 통째로 비우지 않는다
+        assertThat(plan.visitOrder()).extracting(Candidate::id).containsExactly("near");
+    }
+
+    @Test
+    void 슬롯에_없는_필수_id는_아무_영향이_없다() {
+        TimeSlot slot = new TimeSlot(SlotType.MORNING_ACTIVITY,
+                List.of(alwaysOpen("tour1", northOf(ANCHOR_POINT, 1), 30)));
+
+        SlotPlan plan = SlotOptimizer.withDefaults().optimize(slot, ANCHOR_POINT, LocalTime.of(9, 0),
+                LocalTime.of(9, 0), LocalTime.of(12, 0), 5, Set.of("다른날에있는장소"));
+
+        assertThat(plan.visitCount()).isEqualTo(1);
     }
 }
