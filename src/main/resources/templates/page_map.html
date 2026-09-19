@@ -953,10 +953,7 @@
       var sum = 0;
       (MAP_ITINERARY || []).forEach(function (day) {
         (day.places || []).forEach(function (p) {
-          if (p.sub) {
-            var m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
-            if (m) sum += (parseInt(m[1].replace(/,/g, ''), 10) || 0) * parseInt(m[2] || '1', 10);
-          }
+          if (p.sub) sum += extractAmount(p.sub);
           if (p.transit) {
             /* ₩ 나 「원」이 붙은 숫자만 금액이다. 표시를 빼면 「9분」의 9 를
                9원으로 읽는다 — 실제로 하루 32원이 나왔다. */
@@ -1011,8 +1008,9 @@
       var b = _mpBudget;
       if (!b) return;
 
-      var bar = document.getElementById('totalBudget');
-      if (bar) bar.textContent = b.total.toLocaleString() + '원';
+      /* #totalBudget 은 「전체 여행 예산」 — 동선에 적힌 금액의 합이다. 여기서 덮으면
+         같은 칸의 숫자가 예산 패널을 한 번 열었다는 이유로 바뀐다. 실제로 그렇게 보였다.
+         이 값(b.total)은 요금표·성수기를 본 별도 산출이라 「예상 총액」 칸에만 쓴다 */
       var tot = document.getElementById('map-budget-total');
       if (tot) tot.textContent = b.total.toLocaleString() + '원';
       var lab = document.getElementById('map-budget-total-label');
@@ -1709,11 +1707,12 @@
             day.places.forEach(p => {
               // 1. 일반 장소 금액 계산 (x, X, ×, * 대소문자 특수문자 모두 허용)
               if (p.sub) {
-                const amountMatch = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
-                if (amountMatch) {
-                  const unit = parseInt(amountMatch[1].replace(/,/g, '')) || 0;
-                  const qty  = parseInt(amountMatch[2] || '1');
-                  const total = unit * qty;
+                /* 서버가 day.budget 을 낼 때 쓰는 파서와 같은 것을 쓴다(extractAmount).
+                   전에는 여기서 따로 정규식을 굴렸는데 ₩ 를 optional 로 둬서
+                   「관광지 · 1h · ₩15,000×3」의 1h 를 1원으로 읽었다 — 무료 관광지가
+                   0원이 아니라 1원이 되고, 유료는 45,000원이 1원이 됐다 */
+                const total = extractAmount(p.sub);
+                if (total > 0) {
                   if (p.type === 'stay') catSums.stay += total;
                   else if (p.type === 'food' || p.type === 'cafe') catSums.food += total;
                   else catSums.tour += total;
@@ -1732,10 +1731,10 @@
               }
             });
           }
-          /* AI 가 적어 둔 일차별 예산은 쓰지 않는다. 장소 설명에 적힌 금액을
-             더한 값만 쓴다. 금액이 하나도 안 적혀 있으면 「0원」이라고 쓰지 않고
-             비워 둔다 — 0원은 공짜라는 말이지 모른다는 말이 아니다.
-             전체 예산은 서버가 낸다(_mpLoadBudget). */
+          /* day.budget 은 AI 가 적은 값이 아니라 서버가 카카오 보정 뒤 다시 합친 값이다
+             (recalcTransitWithKakao). 같은 파서를 쓰므로 여기 합계와 일치한다.
+             금액이 하나도 안 적혀 있으면 「0원」이라고 쓰지 않고 비워 둔다 —
+             0원은 공짜라는 말이지 모른다는 말이 아니다. */
           day.budget = dailySum > 0 ? `${dailySum.toLocaleString()}원` : '';
           realTotalBudget += dailySum;
         });
@@ -3718,7 +3717,8 @@
       const oldName = found.place.name;   // 이름 변경 전 기준으로 동일 숙소를 찾기 위해 보관
 
       found.place.name = finalName;
-      found.place.sub = `숙소 · ${finalVal.toLocaleString()}원`;
+      /* ₩ 를 빼면 extractAmount 가 못 읽어 그 날 예산에서 숙박비가 통째로 빠진다 */
+      found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
 
@@ -3731,9 +3731,9 @@
             pl.name = finalName;
             pl.actualPrice = finalVal;
             // 출발/조식 등 기존 sub 설명이 있으면 보존하고 금액만 교체
-            pl.sub = pl.sub && pl.sub.includes('·')
-                    ? pl.sub.replace(/₩?[\d,]+\s*원?/, `${finalVal.toLocaleString()}원`)
-                    : `숙소 · ${finalVal.toLocaleString()}원`;
+            pl.sub = pl.sub && pl.sub.includes('₩')
+                    ? pl.sub.replace(/₩[\d,]+/, `₩${finalVal.toLocaleString()}`)
+                    : `숙소 · ₩${finalVal.toLocaleString()}`;
             recalcDayBudget(di);
           }
         });

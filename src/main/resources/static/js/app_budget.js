@@ -202,10 +202,12 @@ function returnToLedgerSelector() {
 }
 
 const _CATEGORY_MAP = {
-    STAY: { label: '숙박', color: 'var(--sage)' },
-    FOOD: { label: '식비', color: 'var(--coral)' },
-    TOUR: { label: '관광', color: 'var(--num)' },
-    CAFE: { label: '카페', color: 'var(--slate)' }
+    STAY:      { label: '숙박',  color: 'var(--sage)'  },
+    FOOD:      { label: '식비',  color: 'var(--coral)' },
+    TOUR:      { label: '관광',  color: 'var(--num)'   },
+    CAFE:      { label: '카페',  color: 'var(--slate)' },
+    /* 이동 구간 — 없으면 라벨 자리에 「TRANSPORT」가 그대로 찍힌다 */
+    TRANSPORT: { label: '교통비', color: 'var(--ui-l)' }
 };
 
 function _fmtWon(n) {
@@ -560,13 +562,13 @@ function _renderItinerary(routeData, actualExps, startDate) {
         let estTotal = 0;
         places.forEach(p => {
             if (p.sub) {
-                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estTotal += (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
         });
         // 이동 비용도 포함
         (day.places || []).filter(p => p.transit).forEach(p => {
-            const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
+            const m = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
             if (m) estTotal += parseInt(m[1].replace(/,/g, '')) || 0;
         });
 
@@ -577,7 +579,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
         const placeRows = places.map(p => {
             let estAmt = 0;
             if (p.sub) {
-                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estAmt = (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
             const icon = typeIcon[p.type] || '곳';
@@ -695,8 +697,10 @@ async function _loadMapBudget() {
             totalEl.textContent = _fmtWon(totalEst);
         }
     }
-    const topBudgetEl = document.getElementById('totalBudget');
-    if (topBudgetEl) topBudgetEl.textContent = hasAct ? _fmtWon(totalAct) : _fmtWon(totalEst);
+    /* #totalBudget(지도 위 「전체 여행 예산」)은 건드리지 않는다. 그 칸은 동선에 적힌
+       금액의 합이고, 여기 숫자는 가계부에 복사해 둔 예상 지출이라 출처가 다르다.
+       덮으면 예산 탭을 한 번 열었다는 이유로 지도 숫자가 바뀐다 — 실제로 그렇게 보였다.
+       가계부 쪽 총액은 아래 #map-budget-total 에만 쓴다 */
 
     // 잔여 예산
     if (remainEl) {
