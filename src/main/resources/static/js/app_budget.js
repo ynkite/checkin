@@ -560,13 +560,13 @@ function _renderItinerary(routeData, actualExps, startDate) {
         let estTotal = 0;
         places.forEach(p => {
             if (p.sub) {
-                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estTotal += (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
         });
         // 이동 비용도 포함
         (day.places || []).filter(p => p.transit).forEach(p => {
-            const m = p.transit.match(/₩?\s*([\d,]+)\s*원?/);
+            const m = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
             if (m) estTotal += parseInt(m[1].replace(/,/g, '')) || 0;
         });
 
@@ -577,7 +577,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
         const placeRows = places.map(p => {
             let estAmt = 0;
             if (p.sub) {
-                const m = p.sub.match(/₩?\s*([\d,]+)\s*원?(?:\s*[xX×*]\s*(\d+))?/);
+                const m = p.sub.match(/₩\s*([\d,]+)(?:\s*[xX×*]\s*(\d+))?/);
                 if (m) estAmt = (parseInt(m[1].replace(/,/g, '')) || 0) * parseInt(m[2] || '1');
             }
             const icon = typeIcon[p.type] || '곳';
