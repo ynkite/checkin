@@ -2560,9 +2560,18 @@ public class AiRouteService {
         if (!isDayTrip) {
             String accType = form.getAccommodationType();
             if (accType == null || accType.isBlank() || accType.startsWith("기타(")) accType = "숙소";
-            // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
+
+            /* 반려동물 조건이면 숙소부터 조건에 맞는 곳으로 잡는다.
+               숙소가 먼저 정해지고 나머지 후보가 그 주변 5km 로 모이기 때문에, 숙소를 아무 데나
+               잡으면 조건 충족 장소가 전부 「너무 멀다」로 밀린다. 실제로 그랬다 — 해운대 여행에
+               송정 펜션이 잡히자 반려동물 5곳이 전부 5~8km 밖이 되어 하나도 안 뽑혔다.
+               ponytail: 반려동물만 본다. 무장애 목록은 관광지가 대부분이라 숙소 적중이 낮다 */
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stays =
-                    kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+                    findConditionStay(plan, form, sigungu);
+            if (stays.isEmpty()) {
+                // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
+                stays = kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+            }
             if (stays.isEmpty()) {  // 유형으로 못 찾으면 "숙소"로 재시도
                 stays = kakaoSearchPlaces(dest + " 숙소", sigungu, null, 0, 1);
             }
@@ -2684,6 +2693,56 @@ public class AiRouteService {
         }
 
         return result;
+    }
+
+    /**
+     * 반려동물 조건일 때 관광공사 목록에서 <b>숙소</b>를 찾는다. 없으면 빈 목록 — 호출부가 기존
+     * 카카오 검색으로 넘어간다.
+     *
+     * <p>관광공사 목록에는 숙소·관광지·식당이 섞여 있고 분류가 안 온다. 그래서 이름을 카카오로
+     * 다시 찾아 업종에 「숙박」이 들어가는 것만 고른다. 좌표도 카카오 값으로 통일된다 —
+     * 뒤따르는 반경 검색이 이 좌표를 기준점으로 쓴다.
+     */
+    private java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> findConditionStay(
+            TravelPlan plan, PlanInputForm form, String sigungu) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> none = new java.util.ArrayList<>();
+        if (form.getHasPet() != 1) return none;
+
+        try {
+            /* 숙소를 정하기 전이라 좌표가 없다. 여행지 이름만으로 지역을 잡는다 —
+               「부산」처럼 넓게 들어오면 첫 시군구가 잡히지만, 그 시군구의 반려동물 숙소를
+               고르면 동선 전체가 거기로 모이므로 앞뒤가 맞는다 */
+            idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
+                    tourAreaInfoService.resolveArea(plan.getDestination(), null, null);
+            if (area == null) return none;
+
+            var pet = tourAreaInfoService.lookup(area.fullName(), null, null).pet();
+            if (pet.status() != idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Status.OK) {
+                System.out.println("🐾 [조건숙소] 반려동물 목록 " + pet.status() + " — 일반 숙소로 간다");
+                return none;
+            }
+
+            for (var pl : pet.items()) {
+                var hit = kakaoSearchPlaces(pl.name(), sigungu, null, 0, 1);
+                if (hit.isEmpty()) continue;
+                var n = hit.get(0);
+                // 엉뚱한 근처 가게가 아니라 그 장소인지 확인한다
+                String want = pl.name().replaceAll("\\s+", "");
+                if (!n.path("name").asText("").replaceAll("\\s+", "").contains(want)) continue;
+                if (!n.path("category").asText("").contains("숙박")) continue;
+
+                n.put("petOk", true);
+                System.out.println("🐾 [조건숙소] " + n.path("name").asText("") + " — 반려동물 동반 숙소로 잡았다");
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+                out.add(n);
+                return out;
+            }
+            System.out.println("🐾 [조건숙소] 반려동물 목록 " + pet.count() + "곳에 숙소가 없다 — 일반 숙소로 간다");
+        } catch (RuntimeException e) {
+            log.warn("[조건숙소] 조회 실패 — 일반 숙소로 간다: {}", e.getMessage());
+        }
+        return none;
     }
 
     /**
