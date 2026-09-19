@@ -964,48 +964,164 @@
             toast('비웠습니다. 처음부터 다시 고르면 됩니다.');
         }
 
-        // ── 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
+        /* ── 일정 만드는 중 표시 ─────────────────────────────────
+           전에는 화면 전체를 덮었다. 30초 동안 아무것도 못 하고 얼마나 됐는지도 안 보였다.
+           이제 아래쪽에 작은 줄 하나만 띄운다. 다른 화면으로 가도 따라다닌다.
+           퍼센트는 서버(/routes/progress)가 준 값만 쓴다. 남은 시간은 알 수 없어 적지 않는다. */
+        const GEN_KEY = 'genInFlight';      // { tripId, at } — 새로고침해도 이어 보려고 둔다
+        const GEN_POLL_MS = 1500;
+        const GEN_STALE_MS = 10 * 60 * 1000; // 서버도 10분 뒤 진행 기록을 지운다
+        let _genPollTimer = null;
+
+        function _genBar() {
+            let bar = document.getElementById('genLoadOverlay');
+            if (bar) return bar;
+            if (!document.getElementById('genLoadStyle')) {
+                const st = document.createElement('style');
+                st.id = 'genLoadStyle';
+                st.textContent =
+                    '#genLoadOverlay{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:100000;'
+                    + 'width:min(440px,calc(100vw - 32px));display:none;flex-direction:column;gap:8px;padding:12px 14px;'
+                    + 'border-radius:12px;background:var(--panel);color:var(--ink);border:1px solid var(--border2);'
+                    + 'box-shadow:0 2px 0 var(--border2),0 6px 0 var(--ui-plate);word-break:keep-all}'
+                    + '#genLoadOverlay .gl-row{display:flex;align-items:center;gap:10px}'
+                    + '#genLoadOverlay .gl-txt{flex:1;font-size:13px;font-weight:700}'
+                    + '#genLoadOverlay .gl-pct{font-size:13px;font-weight:800;color:var(--num);font-variant-numeric:tabular-nums}'
+                    + '#genLoadOverlay .gl-track{height:6px;border-radius:3px;background:var(--ui-plate);overflow:hidden}'
+                    + '#genLoadOverlay .gl-fill{height:100%;width:0;background:var(--num);transition:width .4s}'
+                    + '#genLoadOverlay .gl-sub{font-size:12px;color:var(--text3)}'
+                    + '#genLoadOverlay button{padding:6px 12px;border-radius:8px;border:1px solid var(--border2);'
+                    + 'background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;cursor:pointer}';
+                document.head.appendChild(st);
+            }
+            bar = document.createElement('div');
+            bar.id = 'genLoadOverlay';
+            bar.setAttribute('role', 'status');
+            bar.setAttribute('aria-live', 'polite');
+            bar.innerHTML =
+                '<div class="gl-row"><span class="gl-txt" id="genLoadTxt"></span><span class="gl-pct" id="genLoadPct"></span>'
+                + '<button type="button" id="genLoadCancel" onclick="_cancelGenLoading()">그만 보기</button></div>'
+                + '<div class="gl-track" id="genLoadTrack" hidden><div class="gl-fill" id="genLoadFill"></div></div>'
+                + '<div class="gl-sub" id="genLoadSub">다른 화면을 봐도 됩니다. 다 되면 여기에 알려 드립니다.</div>';
+            document.body.appendChild(bar);
+            return bar;
+        }
+
         function _showGenLoading(text) {
             window._genCancelled = false;
-            let ov = document.getElementById('genLoadOverlay');
-            if (!ov) {
-                if (!document.getElementById('genLoadStyle')) {
-                    const st = document.createElement('style');
-                    st.id = 'genLoadStyle';
-                    st.textContent =
-                        '@keyframes genSpin{to{transform:rotate(360deg)}}'
-                        + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
-                        + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
-                        + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
-                        + 'border-top-color:var(--terra);border-radius:50%;animation:genSpin .8s linear infinite}'
-                        + '#genLoadOverlay .gl-txt{color:var(--panel);font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-                        + '#genLoadOverlay .gl-cancel{margin-top:6px;padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.5);'
-                        + 'background:rgba(255,255,255,.12);color:var(--panel);font-size:13px;font-weight:700;cursor:pointer}'
-                        + '#genLoadOverlay .gl-cancel:hover{background:rgba(255,255,255,.22)}';
-                    document.head.appendChild(st);
-                }
-                ov = document.createElement('div');
-                ov.id = 'genLoadOverlay';
-                ov.innerHTML = '<div class="gl-ring"></div><div class="gl-txt" id="genLoadTxt"></div>'
-                    + '<button class="gl-cancel" id="genLoadCancel" onclick="_cancelGenLoading()">취소</button>';
-                document.body.appendChild(ov);
-            }
-            ov.style.display = 'flex';
+            const bar = _genBar();
+            bar.style.display = 'flex';
             const t = document.getElementById('genLoadTxt');
-            if (t) t.textContent = text || '일정을 만드는 중입니다…';
+            if (t) t.textContent = text || '일정을 만드는 중입니다';
+            const c = document.getElementById('genLoadCancel');
+            if (c) { c.textContent = '그만 보기'; c.onclick = _cancelGenLoading; }
         }
         function _hideGenLoading() {
-            const ov = document.getElementById('genLoadOverlay');
-            if (ov) ov.style.display = 'none';
+            const bar = document.getElementById('genLoadOverlay');
+            if (bar) bar.style.display = 'none';
         }
-        // 취소: 진행 중인 생성/보정을 무시 플래그로 중단하고 버튼·오버레이 원상복구
+        function _genSetPercent(p, message) {
+            _genBar();
+            const track = document.getElementById('genLoadTrack');
+            const fill = document.getElementById('genLoadFill');
+            const pct = document.getElementById('genLoadPct');
+            const txt = document.getElementById('genLoadTxt');
+            if (typeof p === 'number') {
+                if (track) track.hidden = false;
+                if (fill) fill.style.width = Math.max(0, Math.min(100, p)) + '%';
+                if (pct) pct.textContent = p + '% 완료';
+            }
+            if (message && txt) txt.textContent = message;
+        }
+
+        /* 서버 진행을 1.5초마다 묻는다. 끝나거나 실패하면 멈춘다 */
+        function _genWatch(tripId, onEnd) {
+            clearInterval(_genPollTimer);
+            const tick = async () => {
+                let pr = null;
+                try {
+                    const r = await api.get(`/api/trips/${tripId}/routes/progress`);
+                    pr = r && r.success ? r.data : null;
+                } catch (e) {}
+                if (!pr || !pr.known) return;              // 아직 기록 전이거나 못 물었다 — 숫자를 지어내지 않는다
+                _genSetPercent(pr.percent, pr.message);
+                if (pr.done || pr.failed) {
+                    clearInterval(_genPollTimer);
+                    _genPollTimer = null;
+                    if (onEnd) onEnd(pr);
+                }
+            };
+            tick();
+            _genPollTimer = setInterval(tick, GEN_POLL_MS);
+        }
+        function _genStopWatch() { clearInterval(_genPollTimer); _genPollTimer = null; }
+
+        function _genMark(tripId) {
+            try { sessionStorage.setItem(GEN_KEY, JSON.stringify({ tripId: tripId, at: Date.now() })); } catch (e) {}
+        }
+        function _genUnmark() { try { sessionStorage.removeItem(GEN_KEY); } catch (e) {} }
+        function _genMarked() {
+            try {
+                const m = JSON.parse(sessionStorage.getItem(GEN_KEY) || 'null');
+                return m && m.tripId && (Date.now() - m.at) < GEN_STALE_MS ? m : null;
+            } catch (e) { return null; }
+        }
+
+        /* 실패는 조용히 비우지 않는다. 이유를 줄에 남기고 3단계에 머문다 */
+        function _genShowFailure(reason) {
+            _genStopWatch();
+            _genUnmark();
+            _showGenLoading('일정을 만들지 못했습니다');
+            const sub = document.getElementById('genLoadSub');
+            if (sub) sub.textContent = reason || '입력 내용을 확인하고 다시 눌러 주세요.';
+            const track = document.getElementById('genLoadTrack');
+            if (track) track.hidden = true;
+            const pct = document.getElementById('genLoadPct');
+            if (pct) pct.textContent = '';
+            const c = document.getElementById('genLoadCancel');
+            if (c) { c.textContent = '닫기'; c.onclick = _hideGenLoading; }
+        }
+
+        // 그만 보기: 화면에서만 멈춘다. 서버는 이미 만들고 있어 끝까지 간다 — 그렇다고 말한다
         function _cancelGenLoading() {
             window._genCancelled = true;
+            _genStopWatch();
             _hideGenLoading();
             const btn = document.querySelector('#sp-3 .btn-gen');
             if (btn) { btn.innerHTML = '일정 만들기 → 동선 다듬기'; btn.disabled = false; }
-            toast('일정 생성을 취소했습니다.');
+            toast('화면에서 기다리기를 멈췄습니다. 서버에서 만들던 일정은 끝까지 만들어지고, 다 되면 지도에서 볼 수 있습니다.');
         }
+
+        /* 새로고침으로 기다리던 화면이 사라진 경우 — 기록이 남아 있으면 진행을 이어서 보여 준다.
+           다 되면 저장된 경로를 읽어 「지도에서 보기」를 띄운다(바로 넘기지 않는다) */
+        function _genResume() {
+            const m = _genMarked();
+            if (!m || _genPollTimer || window._genInFlightTrip) return;
+            if (typeof api === 'undefined') { setTimeout(_genResume, 300); return; }
+            _showGenLoading('일정을 만드는 중입니다');
+            _genWatch(m.tripId, async (pr) => {
+                _genUnmark();
+                if (pr.failed) { _genShowFailure(pr.detail || pr.message); return; }
+                let route = null;
+                try {
+                    const r = await api.get(`/api/trips/${m.tripId}/routes?t=${Date.now()}`);
+                    const raw = r && r.success ? r.data : null;
+                    route = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                } catch (e) {}
+                if (!route || !_routeUsable(route)) { _genShowFailure('만든 일정을 읽어 오지 못했습니다. 다시 눌러 주세요.'); return; }
+                _showGenLoading('일정이 다 만들어졌습니다');
+                _genSetPercent(100, '일정이 다 만들어졌습니다');
+                const sub = document.getElementById('genLoadSub');
+                if (sub) sub.textContent = '지도에서 확인해 보세요.';
+                const c = document.getElementById('genLoadCancel');
+                if (c) {
+                    c.textContent = '지도에서 보기';
+                    c.onclick = () => { _hideGenLoading(); window._currentTripId = m.tripId; _finalizePlannerRoute(route, null); };
+                }
+            });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _genResume);
+        else setTimeout(_genResume, 0);
 
         /* ─────────────────────────────────────────────────────────
          * AI 일정 생성 요청
@@ -1018,14 +1134,43 @@
             // [예산 보존] 생성 중 예산칸이 비워지는 문제 방지용 스냅샷
             window._budgetSnapshot = (document.getElementById('s1-budget')?.value || '').trim();
 
-            // 1. 버튼 비활성화 + 반투명 로딩 오버레이 표시
+            /* 같은 플랜을 또 누르면 막는다. 이 화면에서 기다리는 중이거나(새로고침 전 포함),
+               서버가 아직 만들고 있다고 답하면 두 번째 요청을 보내지 않는다 */
+            if (window._genInFlightTrip === tripId) { toast('이 플랜은 지금 만드는 중입니다. 아래 표시에서 진행을 볼 수 있습니다.'); return; }
+            const marked = _genMarked();
+            if (marked && String(marked.tripId) === String(tripId)) {
+                try {
+                    const pr = await api.get(`/api/trips/${tripId}/routes/progress`);
+                    const d = pr && pr.success ? pr.data : null;
+                    if (d && d.known && !d.done && !d.failed) {
+                        toast('이 플랜은 지금 만드는 중입니다. 아래 표시에서 진행을 볼 수 있습니다.');
+                        _genResume();
+                        return;
+                    }
+                } catch (e) {}
+                _genUnmark();
+            }
+
+            // 1. 버튼 비활성화 + 아래쪽 진행 표시 (화면은 덮지 않는다)
             btn.innerHTML = '일정을 만드는 중입니다…';
             btn.disabled = true;
-            _showGenLoading('일정을 만드는 중입니다…');
+            window._genInFlightTrip = tripId;
+            _genMark(tripId);
+            _showGenLoading('일정을 만드는 중입니다');
+            _genWatch(tripId);
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
+                window._genInFlightTrip = null;
+                _genStopWatch();
+                _genUnmark();
+                if (window._genCancelled) {
+                    /* 그만 보기를 눌렀어도 서버는 끝까지 만들었다. 결과가 있으면 알려만 준다 */
+                    if (res && res.success) toast('일정이 다 만들어졌습니다. 지도 화면에서 볼 수 있습니다.');
+                    return;
+                }
                 if (res.success && res.data) {
+                    _genSetPercent(100, '다 됐습니다. 동선을 점검하는 중입니다');
                     // 방법1: data가 {route, over50} 객체. route는 기존처럼 JSON 문자열
                     let cleanJson = res.data.route;
                     const over50 = res.data.over50 || [];
@@ -1066,15 +1211,15 @@
                     }
 
                 } else {
-                    _hideGenLoading();
-                    toast('' + (res.message || '일정을 만들지 못했습니다. 입력 내용을 확인하고 다시 눌러 주세요.'));
+                    /* 왜 실패했는지 줄에 남기고 3단계에 머문다 */
+                    _genShowFailure(res.message || '입력 내용을 확인하고 다시 눌러 주세요.');
                     // 실패 시 버튼 즉시 원상복구
                     btn.innerHTML = '일정 만들기 → 동선 다듬기';
                     btn.disabled = false;
                 }
             } catch (e) {
-                _hideGenLoading();
-                toast('연결이 끊겼습니다. 잠시 뒤에 다시 눌러 주세요.');
+                window._genInFlightTrip = null;
+                _genShowFailure('서버와 연결이 끊겼습니다. 서버에서는 계속 만들고 있을 수 있으니 잠시 뒤에 다시 열어 보세요.');
                 // 에러 발생 시 버튼 즉시 원상복구
                 btn.innerHTML = '일정 만들기 → 동선 다듬기';
                 btn.disabled = false;
