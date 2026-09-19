@@ -51,6 +51,13 @@ public class TmapClient {
     private String baseUrl;
 
     private final RestTemplate restTemplate;   // 타임아웃은 AppConfig (연결 3s · 응답 5s)
+
+    /* 경유지 최적화만 유별나게 느리다 — 실측 4.9~5.7초로 전역 5초 제한에 딱 걸려 매번 끊겼다.
+       전역을 늘리면 카카오·기상청이 죽을 때 화면이 그만큼 더 멈춘다. 이 API 만 따로 둔다 */
+    private final RestTemplate slowTemplate = new org.springframework.boot.web.client.RestTemplateBuilder()
+            .connectTimeout(java.time.Duration.ofSeconds(3))
+            .readTimeout(java.time.Duration.ofSeconds(20))
+            .build();
     private final ObjectMapper objectMapper;
 
     /** 키가 들어와 있는가. 화면에 「연동 전」이라고 정직하게 쓰려면 알아야 한다. */
@@ -220,16 +227,38 @@ public class TmapClient {
         return call(HttpMethod.POST, path, body);
     }
 
+    /* 403 을 받은 API 경로. 「이 키로는 그 상품을 못 쓴다」는 뜻이라 다시 불러도 같은 답이다 */
+    private final java.util.Set<String> forbidden = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
     private JsonNode call(HttpMethod method, String path, Object body) {
+        String api = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
+        if (forbidden.contains(api)) return null;
+
         String url = baseUrl + path;
         try {
             HttpEntity<Object> req = new HttpEntity<>(body, headers());
-            String raw = restTemplate.exchange(URI.create(url), method, req, String.class).getBody();
+            RestTemplate rt = api.contains("routeOptimization") ? slowTemplate : restTemplate;
+            String raw = rt.exchange(URI.create(url), method, req, String.class).getBody();
             return raw == null ? null : objectMapper.readTree(raw);
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
             /* 한도가 찼거나(429) 키가 거부되면(401·403) 다음 키로 넘기고
                한 번 더 부른다. 서버가 느린 것(5xx)으로는 키를 죽이지 않는다 */
             int st = e.getStatusCode().value();
+
+            /* 403 으로는 키를 죽이지 않는다. SK 게이트웨이의 403 은 「한도 초과」가 아니라
+               「이 앱키가 그 상품을 안 샀다」는 뜻이다. 대중교통(/transit/routes)은 TMAP 과
+               별도 상품이라 우리 키로는 403 이 온다 — 그런데 그걸 키 소진으로 보고 키를
+               통째로 꺼 버려서, 대중교통 여행 하나만 뽑으면 그날 자차 경로·이동시간·경유지
+               최적화까지 다 죽었다. 안 되는 것은 그 API 하나뿐이다.
+               다른 키로 다시 불러도 같은 답이므로(키가 다 같은 상품이다) 재시도도 하지 않는다 */
+            if (st == 403) {
+                if (forbidden.add(api)) {
+                    log.warn("[tmap] {} 는 이 앱키로 쓸 수 없습니다 (403). 이 API 만 끕니다 —"
+                            + " 나머지 티맵 기능은 그대로 씁니다. 쓰려면 SK OPEN API 에서 해당 상품을 받아야 합니다", api);
+                }
+                return null;
+            }
+
             if (ring.fail(st)) {
                 log.info("[tmap] 다음 키로 다시 부릅니다 ({})", path);
                 return call(method, path, body);
