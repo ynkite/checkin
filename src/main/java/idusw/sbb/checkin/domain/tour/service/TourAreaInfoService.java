@@ -79,7 +79,7 @@ public class TourAreaInfoService {
     }
 
     /* 여행지가 「부산」처럼 시도만이면 AreaCode 는 첫 시군구를 고른다. 좌표가 있으면 그 시군구로 바로잡는다 */
-    AreaCode.Area resolveArea(String destination, Double lat, Double lng) {
+    public AreaCode.Area resolveArea(String destination, Double lat, Double lng) {
         AreaCode.Area dest = AreaCode.find(destination);
         if (lat == null || lng == null) return dest;
         String region = originSearchService.regionAt(lat, lng);

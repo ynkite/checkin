@@ -54,6 +54,8 @@ public class AiRouteService {
     private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;      // 기상청 예보 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService;     // TMAP 구간 이동시간 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository;
+    private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService; // 관광공사 반려동물·무장애 — 후보를 모을 때 쓴다
+    private final idusw.sbb.checkin.domain.route.tmap.NaviService naviService;                    // TMAP 경유지 순서 최적화 — 한 방향 정렬에 쓴다
     private final ObjectMapper objectMapper;
 
     // ★카카오 거리 계산용
@@ -85,6 +87,8 @@ public class AiRouteService {
             idusw.sbb.checkin.domain.weather.service.WeatherService weatherService,
             idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService,
             idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository,
+            idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService,
+            idusw.sbb.checkin.domain.route.tmap.NaviService naviService,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
 
@@ -110,6 +114,8 @@ public class AiRouteService {
         this.weatherService = weatherService;
         this.travelTimeService = travelTimeService;
         this.placeRepository = placeRepository;
+        this.tourAreaInfoService = tourAreaInfoService;
+        this.naviService = naviService;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
 
@@ -1468,6 +1474,12 @@ public class AiRouteService {
                     return "stay".equals(t) || "food".equals(t) || userRequested.contains(nm);
                 };
 
+                /* 자리마다 붙어 있던 시각을 따로 떼어 둔다. 장소만 옮기고 시각을 안 옮기면
+                   10:30 다음에 09:00 이 오는 동선이 나온다 — 실제로 5번 중 3번 그랬다.
+                   시각은 장소가 아니라 「그 날의 몇 번째 자리」에 속한다 */
+                java.util.List<String> slotTimes = new java.util.ArrayList<>();
+                for (JsonNode sp : spots) slotTimes.add(sp.path("time").asText(""));
+
                 java.util.List<JsonNode> result = new java.util.ArrayList<>();
                 int i = 0;
                 while (i < n) {
@@ -1503,6 +1515,14 @@ public class AiRouteService {
                     i = j;
                 }
 
+                // 떼어 둔 시각을 자리 순서대로 도로 붙인다 (고정점은 제자리라 자기 시각을 그대로 받는다)
+                for (int k = 0; k < result.size() && k < slotTimes.size(); k++) {
+                    String t = slotTimes.get(k);
+                    if (!t.isBlank() && result.get(k) instanceof com.fasterxml.jackson.databind.node.ObjectNode o) {
+                        o.put("time", t);
+                    }
+                }
+
                 // 정렬된 장소 사이에 transit "이동" 재삽입(거리·시간은 카카오 보정이 채움)
                 com.fasterxml.jackson.databind.node.ArrayNode rebuilt = objectMapper.createArrayNode();
                 for (int k = 0; k < result.size(); k++) {
@@ -1520,6 +1540,166 @@ public class AiRouteService {
             System.err.println("[reorderWithinTimeBlocks] 실패, 원본 유지: " + e.getMessage());
             return json;
         }
+    }
+
+    /**
+     * TMAP 경유지 순서 최적화로 하루의 방문 순서를 다시 잡는다 (작업지시 3번).
+     *
+     * <p><b>왜 필요한가</b> — 전에는 직선거리(haversine)로 순서를 정했다. 직선으로 가까운 곳이
+     * 도로로도 가깝지는 않다. 강 건너편, 산 너머, 일방통행 안쪽이 전부 「가깝다」로 읽힌다.
+     * 그래서 동 → 서 → 동 으로 되돌아가는 동선이 나왔다.
+     *
+     * <p><b>하루의 앵커</b> — 첫 자리와 끝 자리는 그대로 둔다. 대개 숙소이고, 「숙소에서 출발해
+     * 숙소로 돌아온다」가 작업지시가 말한 한 방향 흐름이다. 그 사이만 최적화한다.
+     *
+     * <p><b>자리의 성격은 지킨다.</b> 최적 순서를 그대로 쓰면 12:00 에 카페가, 13:30 에 맛집이
+     * 오는 날이 생긴다. 그래서 순서는 최적 경로에서 가져오되 <b>같은 type 끼리만</b> 자리를 바꾼다.
+     * 동쪽 식당이 점심, 서쪽 식당이 저녁이던 것이 뒤집히는 정도인데, 되돌아가는 구간은 그게 만든다.
+     * 끼니 라벨은 {@code syncMealLabelByTime} 이 최종 시각을 보고 다시 붙이므로 어긋나지 않는다.
+     *
+     * <p>사용자가 직접 요청한 장소는 자리를 고정한다.
+     *
+     * @return 재정렬된 JSON. 최적화를 못 쓴 날만 있으면 {@code null} — 호출부가 기존 정렬로 간다
+     */
+    private String reorderByTmapOptimize(String json, java.util.Set<String> userRequested) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return null;
+
+            boolean changedAny = false;
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> spots = new java.util.ArrayList<>();
+                for (JsonNode pl : placesNode) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    if (!(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                    if (!o.hasNonNull("lat") || !o.hasNonNull("lng")) { spots.clear(); break; }  // 좌표가 빠지면 이 날은 손대지 않는다
+                    spots.add(o);
+                }
+                if (spots.size() < 4) continue;   // 앵커 둘 + 옮길 것 둘은 있어야 의미가 있다
+
+                var start = spots.get(0);
+                var end   = spots.get(spots.size() - 1);
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> mid =
+                        new java.util.ArrayList<>(spots.subList(1, spots.size() - 1));
+
+                // 옮길 수 있는 것만 경유지로 넘긴다. 사용자 요청 장소는 자리를 지킨다
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> movable = new java.util.ArrayList<>();
+                for (var m : mid) if (!userRequested.contains(m.path("name").asText(""))) movable.add(m);
+                if (movable.size() < 2) continue;
+                if (movable.size() > 10) {         // 티맵 제한
+                    log.info("[한방향] 경유지 {}곳 — 티맵 10곳 제한을 넘어 이 날은 건너뛴다", movable.size());
+                    continue;
+                }
+
+                /* id 를 "0" 으로 주면 티맵이 빈 값으로 읽고 「필수 파라메터가 없습니다」(9401) 를 낸다.
+                   실호출로 확인했다 — 같은 본문에서 id 만 "0" 이면 400, "t0" 이면 200 이다 */
+                java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byVia = new java.util.HashMap<>();
+                java.util.List<java.util.Map<String, Object>> via = new java.util.ArrayList<>();
+                for (int i = 0; i < movable.size(); i++) {
+                    java.util.Map<String, Object> w = new java.util.LinkedHashMap<>();
+                    w.put("id", "v" + i);
+                    byVia.put("v" + i, movable.get(i));
+                    w.put("name", movable.get(i).path("name").asText(""));
+                    w.put("lat", movable.get(i).path("lat").asDouble());
+                    w.put("lng", movable.get(i).path("lng").asDouble());
+                    via.add(w);
+                }
+
+                var opt = naviService.optimize(
+                        start.path("lng").asDouble(), start.path("lat").asDouble(),
+                        end.path("lng").asDouble(),   end.path("lat").asDouble(),
+                        start.path("name").asText(""), end.path("name").asText(""), via);
+
+                if (!opt.ready() || opt.order().size() != movable.size()) {
+                    log.info("[한방향] 티맵 최적화를 못 썼다 — {}", opt.note());
+                    continue;
+                }
+
+                // 최적 방문 순서대로 줄을 세운다
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> optimized = new java.util.ArrayList<>();
+                for (String id : opt.order()) {
+                    var o = byVia.get(id);
+                    if (o == null) { optimized.clear(); break; }
+                    optimized.add(o);
+                }
+                if (optimized.size() != movable.size()) continue;   // 응답이 이상하면 이 날은 손대지 않는다
+
+                var rebuiltMid = assignByType(mid, optimized, userRequested);
+
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> result = new java.util.ArrayList<>();
+                result.add(start);
+                result.addAll(rebuiltMid);
+                result.add(end);
+
+                boolean moved = false;
+                for (int i = 0; i < result.size(); i++) if (result.get(i) != spots.get(i)) moved = true;
+                if (!moved) continue;
+
+                /* 시각은 장소가 아니라 「그 날의 몇 번째 자리」에 속한다 */
+                java.util.List<String> slotTimes = new java.util.ArrayList<>();
+                for (var sp : spots) slotTimes.add(sp.path("time").asText(""));
+                for (int k = 0; k < result.size() && k < slotTimes.size(); k++) {
+                    String t = slotTimes.get(k);
+                    if (!t.isBlank()) result.get(k).put("time", t);
+                }
+
+                com.fasterxml.jackson.databind.node.ArrayNode rebuilt = objectMapper.createArrayNode();
+                for (int k = 0; k < result.size(); k++) {
+                    if (k > 0) {
+                        com.fasterxml.jackson.databind.node.ObjectNode t = objectMapper.createObjectNode();
+                        t.put("transit", "이동");
+                        rebuilt.add(t);
+                    }
+                    rebuilt.add(result.get(k));
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode).set("places", rebuilt);
+                changedAny = true;
+                System.out.println("🧭 [한방향] " + dayNode.path("label").asText("")
+                        + " — 티맵 실측 " + (opt.totalMeters() / 1000) + "km / "
+                        + (opt.totalSeconds() / 60) + "분 순서로 재정렬");
+            }
+            return changedAny ? objectMapper.writeValueAsString(root) : null;
+
+        } catch (Exception e) {
+            log.warn("[한방향] 티맵 재정렬 실패 — 기존 정렬로 간다: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 최적 방문 순서를 <b>자리의 성격을 지키며</b> 하루에 끼워 넣는다.
+     *
+     * <p>최적 순서를 그대로 쓰면 12:00 에 카페가, 13:30 에 맛집이 오는 날이 생긴다. 자리(=시각)는
+     * 그대로 두고 <b>같은 {@code type} 끼리만</b> 바꾼다. 동쪽 식당이 점심, 서쪽 식당이 저녁이던 것이
+     * 뒤집히는 정도인데, 되돌아가는 구간은 대개 그게 만든다.
+     *
+     * <p>사용자가 직접 요청한 장소는 자리를 지킨다. 같은 성격이 동나면 순서대로 채운다.
+     */
+    static java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> assignByType(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> slots,
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> optimized,
+            java.util.Set<String> userRequested) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+        java.util.Set<com.fasterxml.jackson.databind.node.ObjectNode> taken =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+        for (var slot : slots) {
+            if (userRequested.contains(slot.path("name").asText(""))) { out.add(slot); continue; }
+            String type = slot.path("type").asText("");
+            com.fasterxml.jackson.databind.node.ObjectNode pick = null;
+            for (var o : optimized)
+                if (!taken.contains(o) && type.equals(o.path("type").asText(""))) { pick = o; break; }
+            if (pick == null)
+                for (var o : optimized) if (!taken.contains(o)) { pick = o; break; }
+            if (pick == null) { out.add(slot); continue; }
+            taken.add(pick);
+            out.add(pick);
+        }
+        return out;
     }
 
     /** 두 좌표[위도,경도] 간 직선거리(m). null이면 큰 값(맨 뒤로 밀림). */
@@ -1741,7 +1921,13 @@ public class AiRouteService {
             }
         }
 
-        String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        /* 1-1) TMAP 경유지 순서 최적화가 먼저다. 직선거리로 순서를 정하면 강 건너편·산 너머가
+               「가깝다」로 읽힌다 — 작업지시가 「직선거리로 판단하지 않는다」고 못박은 자리다.
+               못 쓸 때(키 없음·10곳 초과·응답 실패)에만 기존 그리디로 내려간다 */
+        String reordered = reorderByTmapOptimize(json, userRequested);
+        if (reordered == null) {
+            reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        }
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);
             json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
@@ -1759,9 +1945,9 @@ public class AiRouteService {
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
         java.util.Set<String> userRequested = extractUserRequestedNames(form);
 
-        // ★0) LLM 없이 코드로 먼저 동선 순서를 최적화(시간대 보존 정렬).
-        //    끼니/숙소/사용자요청 장소는 고정하고 tour·cafe만 끼니 사이에서 거리순 정렬.
-        //    카카오 길찾기 호출 없이 직선거리만 쓰므로 빠르고 토큰 0.
+        /* ★0) 순서는 finalizeRoute 에서 이미 티맵으로 잡았다. 여기서 또 부르면 같은 날에
+               티맵 호출이 두 번 나간다. 이 함수는 50km 검사가 일이라, 순서는 직선거리
+               미세 정렬로 충분하다 */
         String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);   // 내부 카카오 보정이 transit 숫자 채움
@@ -2487,8 +2673,11 @@ public class AiRouteService {
             // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
             if (routeEngineEnabled) {
                 try {
-                    return routeEngineAssembler.assemble(plan, form, filtered, userRequested);
-                } catch (RuntimeException e) {
+                    /* 엔진도 자기 JSON 을 새로 쓴다. 표시를 옮기지 않으면 조건이 후보에만 남고
+                       동선에는 사라진다 — AI 조립 경로와 같은 문제라 같은 함수를 태운다 */
+                    String engineJson = routeEngineAssembler.assemble(plan, form, filtered, userRequested);
+                    return carryCandidateFlags(objectMapper.readTree(engineJson), filtered);
+                } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException e) {
                     log.error("[route.engine] tripId={} 실패 지점=assembleCandidates/engine"
                             + " — 기존 경로로 폴백한다", tripId, e);
                 }
@@ -2566,9 +2755,18 @@ public class AiRouteService {
         if (!isDayTrip) {
             String accType = form.getAccommodationType();
             if (accType == null || accType.isBlank() || accType.startsWith("기타(")) accType = "숙소";
-            // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
+
+            /* 반려동물 조건이면 숙소부터 조건에 맞는 곳으로 잡는다.
+               숙소가 먼저 정해지고 나머지 후보가 그 주변 5km 로 모이기 때문에, 숙소를 아무 데나
+               잡으면 조건 충족 장소가 전부 「너무 멀다」로 밀린다. 실제로 그랬다 — 해운대 여행에
+               송정 펜션이 잡히자 반려동물 5곳이 전부 5~8km 밖이 되어 하나도 안 뽑혔다.
+               ponytail: 반려동물만 본다. 무장애 목록은 관광지가 대부분이라 숙소 적중이 낮다 */
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stays =
-                    kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+                    findConditionStay(plan, form, sigungu);
+            if (stays.isEmpty()) {
+                // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
+                stays = kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+            }
             if (stays.isEmpty()) {  // 유형으로 못 찾으면 "숙소"로 재시도
                 stays = kakaoSearchPlaces(dest + " 숙소", sigungu, null, 0, 1);
             }
@@ -2664,6 +2862,17 @@ public class AiRouteService {
             System.out.println("✅ [사용자요청 포함] " + reqName + " (" + type + (("food".equals(type)) ? "/" + meal : "") + ")");
         }
 
+        // ── 3.5) 조건(반려동물·유아) 후보 합류 · 집중률 표시 — 짜기 전에 붙인다 ──
+        /* 여행지 이름만으로는 시군구가 틀린다. destination 이 「부산」이면 AreaCode 가 첫 시군구인
+           중구를 집는데 이 여행은 해운대다 — 중구의 반려동물 목록을 받아 0건을 보고 「없다」고
+           말하게 된다. 숙소(또는 여행지 중심) 좌표로 시군구를 바로잡는다 */
+        idusw.sbb.checkin.domain.crowd.AreaCode.Area area = tourAreaInfoService.resolveArea(
+                dest,
+                stayXY != null ? stayXY[1] : null,
+                stayXY != null ? stayXY[0] : null);
+        mergeConditionPlaces(result, form, area);
+        annotateCandidateCrowd(result, plan, area);
+
         // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
         estimatePricesWithAi(result, dest);
         for (var entry : result.entrySet()) {
@@ -2679,6 +2888,329 @@ public class AiRouteService {
         }
 
         return result;
+    }
+
+    /**
+     * 반려동물 조건일 때 관광공사 목록에서 <b>숙소</b>를 찾는다. 없으면 빈 목록 — 호출부가 기존
+     * 카카오 검색으로 넘어간다.
+     *
+     * <p>관광공사 목록에는 숙소·관광지·식당이 섞여 있고 분류가 안 온다. 그래서 이름을 카카오로
+     * 다시 찾아 업종에 「숙박」이 들어가는 것만 고른다. 좌표도 카카오 값으로 통일된다 —
+     * 뒤따르는 반경 검색이 이 좌표를 기준점으로 쓴다.
+     */
+    private java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> findConditionStay(
+            TravelPlan plan, PlanInputForm form, String sigungu) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> none = new java.util.ArrayList<>();
+        if (form.getHasPet() != 1) return none;
+
+        try {
+            /* 숙소를 정하기 전이라 좌표가 없다. 여행지 이름만으로 지역을 잡는다 —
+               「부산」처럼 넓게 들어오면 첫 시군구가 잡히지만, 그 시군구의 반려동물 숙소를
+               고르면 동선 전체가 거기로 모이므로 앞뒤가 맞는다 */
+            idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
+                    tourAreaInfoService.resolveArea(plan.getDestination(), null, null);
+            if (area == null) return none;
+
+            var pet = tourAreaInfoService.lookup(area.fullName(), null, null).pet();
+            if (pet.status() != idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Status.OK) {
+                System.out.println("🐾 [조건숙소] 반려동물 목록 " + pet.status() + " — 일반 숙소로 간다");
+                return none;
+            }
+
+            for (var pl : pet.items()) {
+                var hit = kakaoSearchPlaces(pl.name(), sigungu, null, 0, 1);
+                if (hit.isEmpty()) continue;
+                var n = hit.get(0);
+                // 엉뚱한 근처 가게가 아니라 그 장소인지 확인한다
+                String want = pl.name().replaceAll("\\s+", "");
+                if (!n.path("name").asText("").replaceAll("\\s+", "").contains(want)) continue;
+                if (!n.path("category").asText("").contains("숙박")) continue;
+
+                n.put("petOk", true);
+                System.out.println("🐾 [조건숙소] " + n.path("name").asText("") + " — 반려동물 동반 숙소로 잡았다");
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+                out.add(n);
+                return out;
+            }
+            System.out.println("🐾 [조건숙소] 반려동물 목록 " + pet.count() + "곳에 숙소가 없다 — 일반 숙소로 간다");
+        } catch (RuntimeException e) {
+            log.warn("[조건숙소] 조회 실패 — 일반 숙소로 간다: {}", e.getMessage());
+        }
+        return none;
+    }
+
+    /**
+     * 반려동물·유아 조건을 <b>후보 단계에서</b> 반영한다.
+     *
+     * <p>전에는 조건이 프롬프트에 「반려동물: O」 한 글자로만 들어갔다. 화면에 칩이 있는데
+     * 장소 고르는 데 아무 영향을 안 줬다. 관광공사에 실제 목록이 있으므로 그것을 후보에 넣는다.
+     *
+     * <p><b>거르지 않고 합류시킨다.</b> 관광공사 목록은 시군구당 몇 건뿐이라 그것만 남기면
+     * 동선이 비거나 한 곳만 반복된다. 조건에 맞는 곳을 후보 앞에 넣고 표시만 해서,
+     * 배치는 뒤에 맡기되 근거는 남긴다.
+     *
+     * <p>못 받았을 때 「조건에 맞는 곳이 없다」고 말하지 않는다. {@code UNAVAILABLE} 은
+     * 확인되지 않은 것이고 {@code NONE} 이 없는 것이다 — 둘을 섞으면 거짓이 된다.
+     */
+    private void mergeConditionPlaces(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            PlanInputForm form, idusw.sbb.checkin.domain.crowd.AreaCode.Area area) {
+
+        boolean pet    = form.getHasPet() == 1;
+        boolean infant = form.getHasInfant() == 1;
+        if (!pet && !infant) return;   // 조건이 없으면 호출하지 않는다
+        if (area == null) {
+            System.out.println("ℹ️ [조건후보] 여행지를 지역 코드로 못 바꿨다 — 조건 없이 간다");
+            return;
+        }
+
+        idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.AreaInfo info;
+        try {
+            /* 이미 바로잡은 시군구 이름으로 넘긴다. lookup 안에서 다시 좌표를 풀지 않게 한다 */
+            info = tourAreaInfoService.lookup(area.fullName(), null, null);
+        } catch (RuntimeException e) {
+            log.warn("[조건후보] 관광공사 조회 실패 — 조건 없이 간다: {}", e.getMessage());
+            return;
+        }
+
+        if (pet)    mergeOneCondition(result, info.pet(),         "petOk",       "반려동물 동반");
+        if (infant) mergeOneCondition(result, info.barrierFree(), "barrierFree", "무장애");
+    }
+
+    /** 한 조건의 장소들을 후보에 표시하거나 새로 넣는다. */
+    private void mergeOneCondition(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Section
+                    <idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Place> section,
+            String flag, String label) {
+
+        if (section.status() != idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Status.OK) {
+            System.out.println("ℹ️ [조건후보] " + label + " — " + section.status() + " (후보를 더하지 않는다)");
+            return;
+        }
+
+        // 이미 후보에 있는 같은 이름에는 표시만 한다
+        java.util.Set<String> marked = new java.util.HashSet<>();
+        for (var list : result.values()) {
+            for (var n : list) {
+                String nm = n.path("name").asText("");
+                if (section.items().stream().anyMatch(pl -> nm.equals(pl.name()))) {
+                    n.put(flag, true);
+                    marked.add(nm);
+                }
+            }
+        }
+
+        // 나머지는 tour 후보 앞에 넣는다. 좌표가 없는 것은 버린다 — 지도에 못 올린다
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> tour = result.get("tour");
+        int added = 0;
+        for (var pl : section.items()) {
+            if (pl.lat() == null || pl.lng() == null) continue;
+            if (marked.contains(pl.name())) continue;
+            if (tour.stream().anyMatch(x -> pl.name().equals(x.path("name").asText("")))) continue;
+
+            com.fasterxml.jackson.databind.node.ObjectNode n = objectMapper.createObjectNode();
+            n.put("name", pl.name());
+            n.put("lat", pl.lat());
+            n.put("lng", pl.lng());
+            n.put("type", "tour");
+            n.put("stars", "평점 정보 없음");
+            n.put("_unit", resolveDbPrice(pl.name()));   // -1 이면 뒤에서 AI 가 단가를 매긴다
+            n.put("_meal", "점심");
+            n.put(flag, true);
+            tour.add(0, n);
+            added++;
+        }
+        System.out.println("🐾 [조건후보] " + label + " — 표시 " + marked.size() + "곳 · 추가 " + added + "곳");
+    }
+
+    /**
+     * 집중률을 <b>후보 단계에서</b> 붙인다.
+     *
+     * <p>{@code annotateCrowd} 는 저장 직전에 돈다 — 순서와 시각이 다 정해진 뒤라 그때 알아도
+     * 못 피한다. 여기서 붙여 두면 배치가 그 값을 보고 정할 수 있다.
+     *
+     * <p><b>혼잡한 곳을 버리지 않는다.</b> 부산·경주처럼 유명 장소가 몰린 곳에서 90 이상을
+     * 다 빼면 후보가 통째로 사라진다. 값을 실어 보내고 판단을 뒤에 맡긴다.
+     *
+     * <p>광주(29)·전남(46)처럼 집중률 데이터가 없는 지역은 {@code AreaCode.hasCrowdData} 에서
+     * 걸러져 필드 자체가 안 붙는다. 0(한적)으로 두지 않는다 — 없는 것과 한적한 것은 다르다.
+     */
+    private void annotateCandidateCrowd(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            TravelPlan plan, idusw.sbb.checkin.domain.crowd.AreaCode.Area area) {
+
+        if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) return;
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> tour = result.get("tour");
+        if (tour == null || tour.isEmpty()) return;
+
+        /* ponytail: 첫날 기준으로 한 번만 잰다. 후보는 아직 날짜에 안 붙어 있어 날짜별로 물을 수가
+           없다. 일자별 값이 필요해지면 배치 뒤에 도는 annotateCrowd 가 이미 그 일을 한다 */
+        java.time.LocalDate day = plan.getStartDate() != null
+                ? plan.getStartDate() : java.time.LocalDate.now();
+
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (var n : tour) {
+            String nm = n.path("name").asText("");
+            if (!nm.isBlank()) names.add(nm);
+        }
+        if (names.isEmpty()) return;
+
+        try {
+            int hit = 0;
+            for (var f : crowdService.forecast(area.areaCd(), area.signguCd(), names, day)) {
+                if (f.rate() == null) continue;
+                for (var n : tour) {
+                    if (!f.placeName().equals(n.path("name").asText(""))) continue;
+                    n.put("crowd", Math.round(f.rate()));
+                    n.put("crowdLabel", f.levelLabel());
+                    hit++;
+                }
+            }
+            System.out.println("📊 [후보 집중률] " + hit + "곳에 붙였다 (기준일 " + day + ")");
+        } catch (Exception e) {
+            log.warn("[후보 집중률] 붙이지 못했습니다: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 카카오 업종 문자열 → 거친 성격 한 단어.
+     *
+     * <p>「여행 &gt; 관광,명소 &gt; 해수욕장」과 「여행 &gt; 관광,명소 &gt; 해변」은 사람 눈에 같은 곳이다.
+     * type(tour/cafe/food)만으로는 이게 안 갈린다 — 해운대와 광안리가 둘 다 tour 다.
+     * 못 알아보는 업종은 {@code null} 이다. <b>모르는 것을 한 덩어리로 묶지 않는다</b> —
+     * 묶으면 서로 무관한 두 곳이 「겹친다」고 잘못 걸린다.
+     */
+    static String categoryBucket(String kakaoCategory) {
+        if (kakaoCategory == null || kakaoCategory.isBlank()) return null;
+        /* 맨 끝 마디만 본다. 전체 문자열로 「산」을 찾으면 「서비스,산업 > 미용」이 산이 된다 */
+        String c = kakaoCategory.substring(kakaoCategory.lastIndexOf('>') + 1).trim();
+        if (c.contains("해수욕장") || c.contains("해변") || c.contains("해안")) return "해변";
+        if (c.equals("산") || c.contains("등산") || c.contains("산악"))          return "산";
+        if (c.contains("계곡") || c.contains("폭포") || c.contains("호수"))      return "물가";
+        if (c.contains("시장"))                                                return "시장";
+        if (c.contains("박물관") || c.contains("미술관") || c.contains("전시")
+                || c.contains("기념관") || c.contains("과학관"))                return "전시";
+        if (c.contains("사찰") || c.contains("종교") || c.contains("절"))        return "사찰";
+        if (c.contains("공원") || c.contains("유원지") || c.contains("수목원"))   return "공원";
+        if (c.contains("전망"))                                                return "전망대";
+        /* 해운대 후보 15곳 중 3곳이 테마거리였다 — 해리단길·달맞이길·영화의거리. 겹칠 일이 잦다 */
+        if (c.contains("테마거리") || c.contains("거리"))                        return "거리";
+        if (c.contains("테마파크") || c.contains("놀이"))                        return "테마파크";
+        return null;
+    }
+
+    /**
+     * 같은 날 같은 성격이 두 번 들어가지 않게 한다 (작업지시 2번).
+     *
+     * <p>기존 규칙은 <b>동일 상호명</b>만 막았다. 해운대와 광안리는 이름이 달라 그대로 통과한다.
+     * 실제로 광주에서 「월산공원」과 「월산근린공원 무장애나눔길」이 한 날에 같이 들어왔다.
+     *
+     * <p><b>지우지 않고 바꾼다.</b> 지우면 하루가 비는데, 엔진 경로에서 그 꼴을 봤다
+     * (3일에 7곳, 11시에 일정 종료). 성격이 겹치지 않는 안 쓴 후보로 갈아 끼우고,
+     * 갈아 낄 것이 없으면 그냥 둔다 — 억지로 비우는 것보다 낫다.
+     */
+    static void dedupeDayCategories(
+            JsonNode route,
+            java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName,
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates) {
+
+        // 동선에 이미 쓴 이름 — 갈아 끼울 때 다른 날과도 겹치면 안 된다
+        java.util.Set<String> usedNames = new java.util.HashSet<>();
+        for (JsonNode day : route)
+            for (JsonNode pl : day.path("places"))
+                if (!pl.has("transit")) usedNames.add(pl.path("name").asText(""));
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool =
+                candidates.getOrDefault("tour", java.util.List.of());
+        int swapped = 0, left = 0;
+
+        for (JsonNode day : route) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (JsonNode pl : day.path("places")) {
+                if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                if (!"tour".equals(o.path("type").asText(""))) continue;   // 끼니·숙소는 하루에 여러 번이 정상이다
+
+                var cand = byName.get(o.path("name").asText(""));
+                String bucket = cand == null ? null : categoryBucket(cand.path("category").asText(""));
+                if (bucket == null) continue;                              // 성격을 모르면 판단하지 않는다
+                if (seen.add(bucket)) continue;                            // 처음 나온 성격 — 통과
+
+                var alt = pickOtherBucket(pool, usedNames, seen);
+                if (alt == null) {
+                    left++;
+                    log.warn("[성격중복] {} ({}) — 갈아 낄 후보가 없어 그대로 둔다",
+                            o.path("name").asText(""), bucket);
+                    continue;
+                }
+                String before = o.path("name").asText("");
+                usedNames.remove(before);
+                usedNames.add(alt.path("name").asText(""));
+                o.put("name", alt.path("name").asText(""));
+                o.put("sub", alt.path("sub").asText(o.path("sub").asText("")));
+                o.remove("lat"); o.remove("lng"); o.remove("isFound");      // 좌표는 뒤에서 다시 박힌다
+                copyFlags(alt, o);
+                seen.add(categoryBucket(alt.path("category").asText("")));
+                swapped++;
+                System.out.println("🔁 [성격중복] " + before + " (" + bucket + ") → " + alt.path("name").asText(""));
+            }
+        }
+        if (swapped > 0 || left > 0) {
+            System.out.println("🔁 [성격중복] 교체 " + swapped + "곳 · 그대로 둠 " + left + "곳");
+        }
+    }
+
+    /** 아직 안 쓴 tour 후보 중 그 날에 없는 성격인 것 하나. 없으면 null. */
+    private static com.fasterxml.jackson.databind.node.ObjectNode pickOtherBucket(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
+            java.util.Set<String> usedNames, java.util.Set<String> seen) {
+
+        for (var c : pool) {
+            String nm = c.path("name").asText("");
+            if (nm.isBlank() || usedNames.contains(nm)) continue;
+            String b = categoryBucket(c.path("category").asText(""));
+            if (b == null || seen.contains(b)) continue;
+            return c;
+        }
+        return null;
+    }
+
+    /** 후보에 있는 표시만 옮긴다. 없는 것은 안 붙인다 — false 를 박으면 「확인 안 됨」이 「아님」이 된다. */
+    static void copyFlags(com.fasterxml.jackson.databind.node.ObjectNode from,
+                          com.fasterxml.jackson.databind.node.ObjectNode to) {
+        for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel"}) {
+            if (from.hasNonNull(f)) to.set(f, from.get(f));
+        }
+    }
+
+    /** 후보 줄 끝에 붙는 표시 — 조건 충족 · 집중률. 없으면 빈 문자열이라 줄 모양이 그대로다. */
+    private static String candidateFlags(com.fasterxml.jackson.databind.node.ObjectNode n) {
+        StringBuilder sb = new StringBuilder();
+        if (n.path("petOk").asBoolean(false))       sb.append(" | 반려동물동반가능");
+        if (n.path("barrierFree").asBoolean(false)) sb.append(" | 무장애");
+        /* 값이 없는 것과 한적한 것은 다르다. 없으면 아무 말도 하지 않는다 */
+        if (n.hasNonNull("crowd")) {
+            sb.append(" | 집중률=").append(n.path("crowd").asInt())
+              .append('(').append(n.path("crowdLabel").asText("")).append(')');
+        }
+        return sb.toString();
+    }
+
+    /** 조건을 고른 사람에게만 규칙 14 를 준다. 안 고르면 규칙 자체가 없다. */
+    private static String conditionRule(PlanInputForm form) {
+        boolean pet    = form.getHasPet() == 1;
+        boolean infant = form.getHasInfant() == 1;
+        if (!pet && !infant) return "";
+
+        StringBuilder sb = new StringBuilder("14. 조건 우선: ");
+        if (pet)    sb.append("반려동물 동반 여행입니다. '반려동물동반가능' 표시가 붙은 후보를 먼저 쓰세요. ");
+        if (infant) sb.append("유아 동반 여행입니다. '무장애' 표시가 붙은 후보를 먼저 쓰세요. ");
+        /* 표시가 없는 것을 「조건에 안 맞는 곳」으로 읽으면 거짓이 된다 */
+        sb.append("\n").append("    표시가 없는 후보는 '조건에 맞지 않는 곳'이 아니라 '확인되지 않은 곳'입니다.").append("\n")
+          .append("    표시된 후보가 모자라면 나머지로 채우되, 표시된 곳을 빼지 마세요.").append("\n");
+        return sb.toString();
     }
 
     /**
@@ -2761,12 +3293,13 @@ public class AiRouteService {
             candidatesSb.append("\n[").append(type.toUpperCase()).append(" — ").append(list.size()).append("개]\n");
             for (int i = 0; i < list.size(); i++) {
                 com.fasterxml.jackson.databind.node.ObjectNode n = list.get(i);
-                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%n",
+                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%s%n",
                         i + 1,
                         n.path("name").asText(""),
                         n.path("sub").asText(""),
                         n.path("lat").asDouble(),
-                        n.path("lng").asDouble()));
+                        n.path("lng").asDouble(),
+                        candidateFlags(n)));
             }
         }
 
@@ -2837,7 +3370,10 @@ public class AiRouteService {
                 + "10. replacePh: \"장소 교체 요청\" 고정.\n"
                 + "11. budget: 그 날 sub 금액 합산, ₩ 표기.\n"
                 + "12. label: \"📅 Day {N} · MM/DD (요일)\" 형식.\n"
-                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n\n"
+                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n"
+                + conditionRule(form)
+                + "15. 같은 날 같은 성격을 두 번 넣지 마세요. 해변·산·시장·전시·카페처럼\n"
+                + "    성격이 겹치는 후보는 하루에 하나만. 사람이 짜면 그렇게 안 짭니다.\n\n"
                 + "[출력 — 아래 JSON 배열만, 설명·마크다운 코드블럭 금지]\n"
                 + "[\n"
                 + "  {\n"
@@ -2876,11 +3412,54 @@ public class AiRouteService {
         try {
             JsonNode parsed = objectMapper.readTree(result);
             if (!parsed.isArray() || parsed.isEmpty()) return "[]";
+            return carryCandidateFlags(parsed, geocodedCandidates);
         } catch (Exception e) {
             return "[]";
         }
+    }
 
-        return result;
+    /**
+     * 후보에 붙여 둔 표시(조건 충족 · 집중률)를 AI 가 낸 일정으로 옮긴다.
+     *
+     * <p>AI 는 출력 형식대로 name·sub·time 만 다시 쓴다. 표시는 후보 쪽 객체에만 있어서
+     * 그대로 두면 <b>반영은 됐는데 근거가 사라진다</b> — 화면도 심사 답변도 그 값을 못 쓴다.
+     * 이름으로 짝지어 도로 붙인다.
+     */
+    private String carryCandidateFlags(
+            JsonNode route,
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+
+        java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName = new java.util.HashMap<>();
+        for (var list : candidates.values())
+            for (var n : list) byName.putIfAbsent(n.path("name").asText(""), n);
+
+        int total = 0;
+        java.util.List<String> offCandidate = new java.util.ArrayList<>();
+
+        for (JsonNode day : route) {
+            for (JsonNode pl : day.path("places")) {
+                if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                total++;
+                String nm = o.path("name").asText("");
+                var cand = byName.get(nm);
+                if (cand == null) { offCandidate.add(nm); continue; }
+                copyFlags(cand, o);
+            }
+        }
+
+        /* 후보 밖 이름이 나오면 AI 가 「후보만 사용」 규칙을 어긴 것이다. 여기서 지우지는 않는다 —
+           카카오가 좌표를 못 잡으면 finalizeRoute 가 「좌표없음」으로 이미 버린다. 좌표가 잡히는
+           실존 장소라면 지우는 쪽이 더 손해다. 대신 몇 개인지는 남긴다. 이 수가 0 이 아니면
+           환각 차단이 프롬프트 부탁에만 기대고 있다는 뜻이다 */
+        dedupeDayCategories(route, byName, candidates);
+
+        if (offCandidate.isEmpty()) {
+            System.out.println("✅ [후보검증] " + total + "곳 전부 카카오 후보에서 나왔다");
+        } else {
+            log.warn("[후보검증] {}곳 중 {}곳이 후보 밖이다 — {}", total, offCandidate.size(), offCandidate);
+        }
+        return objectMapper.writeValueAsString(route);
     }
 
     /**

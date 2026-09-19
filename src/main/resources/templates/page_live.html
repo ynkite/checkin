@@ -181,8 +181,10 @@
                 (n.time ? '<em>' + esc(n.time) + '</em>' : '') +
                 (n.sub ? ' · ' + esc(n.sub) : '') +
               '</p>' +
+              /* 실측(SK)과 예측(관광공사)을 같은 얼굴로 두지 않는다 */
               (c.rate != null
                 ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">' +
+                    (c.source === 'SK' || c.source === 'SK_LIVE' ? '지금 ' : '예측 ') +
                     esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
                 : '<span class="rl-cw rl-cw-none">혼잡도 없음</span>');
           }
@@ -307,44 +309,71 @@
 
       function rlCheckBox() { return document.getElementById('rlCheck'); }
 
+      /* 서버에 확인을 한 번 묻는다. 실패하면 사람이 읽을 이유를 던진다 */
+      async function rlFetchCheck() {
+        var body = { tripId: rlTrip };
+        /* 서버에는 뭉갠 좌표만 보낸다 (소수 3자리, 약 110m) */
+        if (rlPos) { body.lat = grid(+rlPos[0]); body.lng = grid(+rlPos[1]); }
+        var r = await fetch('/api/crowd/check', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, rlAuth()),
+          body: JSON.stringify(body)
+        });
+        var j = await r.json().catch(function () { return null; });
+        if (!j || !j.success || !j.data) {
+          throw new Error((j && j.message) || '지금은 확인하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
+        }
+        return j.data;
+      }
+
       window.rlCheck = async function () {
         if (!rlTrip || rlChecking) return;
         var box = rlCheckBox(), btn = document.getElementById('rlCheckBtn');
         rlChecking = true;
         if (btn) btn.disabled = true;
         if (box) { box.hidden = false; box.innerHTML = '<p class="rl-modes-note">확인하는 중</p>'; }
-        var body = { tripId: rlTrip };
-        /* 서버에는 뭉갠 좌표만 보낸다 (소수 3자리, 약 110m) */
-        if (rlPos) { body.lat = grid(+rlPos[0]); body.lng = grid(+rlPos[1]); }
         try {
-          var r = await fetch('/api/crowd/check', {
-            method: 'POST',
-            headers: Object.assign({ 'Content-Type': 'application/json' }, rlAuth()),
-            body: JSON.stringify(body)
-          });
-          var j = await r.json().catch(function () { return null; });
-          if (!j || !j.success || !j.data) {
-            if (box) box.innerHTML = '<p class="rl-modes-note">' +
-              esc((j && j.message) || '지금은 확인하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.') + '</p>';
-            return;
-          }
-          rlPaintCheck(j.data);
+          rlPaintCheck(await rlFetchCheck());
         } catch (e) {
-          if (box) box.innerHTML = '<p class="rl-modes-note">연결이 끊겨 확인하지 못했습니다.</p>';
+          if (box) box.innerHTML = '<p class="rl-modes-note">' +
+            esc(e && e.message && !/fetch/i.test(e.message) ? e.message : '연결이 끊겨 확인하지 못했습니다.') + '</p>';
         } finally {
           rlChecking = false;
           if (btn) btn.disabled = false;
         }
       };
 
+      /* ── 확인한 때 ─────────────────────────────────────
+       * 실시간이라면서 지난 값을 지금처럼 보이면 안 된다. 몇 분 전 값인지 늘 적고,
+       * 10분이 넘으면 오래됐다고 말하고 한 번에 바꾸는 갈래를 막는다. */
+      var RL_STALE_MS = 10 * 60 * 1000;
+      var rlAgeTimer = null;
+      function rlStale() { return !rlLastCheck || (Date.now() - rlLastCheck._at) > RL_STALE_MS; }
+      function rlAgeTick() {
+        var el = document.getElementById('rlCheckAge');
+        if (!el || !rlLastCheck) { clearInterval(rlAgeTimer); return; }
+        var min = Math.floor((Date.now() - rlLastCheck._at) / 60000);
+        var stale = rlStale();
+        el.textContent = (min < 1 ? '방금 확인' : min + '분 전 확인') +
+          (stale ? ' · 오래된 결과입니다. 다시 확인해 주세요' : '');
+        el.style.color = stale ? 'var(--num)' : '';
+        document.querySelectorAll('#rlCheck .rl-oneclick').forEach(function (b) {
+          b.disabled = stale;
+          b.title = stale ? '확인한 지 10분이 넘었습니다. 다시 확인한 뒤 바꿔 주세요' : '';
+        });
+      }
+
       var rlLastCheck = null;
-      function rlPaintCheck(d) {
+      function rlPaintCheck(d, changeHtml) {
+        d._at = Date.now();
         rlLastCheck = d;
         var box = rlCheckBox();
         if (!box) return;
         var small = 'font-size:12px;color:var(--text3)';
-        var html = '<p style="' + small + ';margin:0 0 6px">' + esc(d.modeLabel || '') +
-          (d.checkedAt ? ' · ' + esc(d.checkedAt.slice(11)) + ' 확인' : '') + '</p>' +
+        var html = (changeHtml || '') +
+          '<p style="' + small + ';margin:0 0 6px">' + esc(d.modeLabel || '') +
+          (d.checkedAt ? ' · ' + esc(d.checkedAt.slice(11)) : '') +
+          ' · <span id="rlCheckAge">방금 확인</span></p>' +
           '<p style="font-size:15px;font-weight:800;margin:0 0 10px">' + esc(d.verdict ? d.verdict.text : '') + '</p>';
 
         (d.findings || []).forEach(function (f) {
@@ -361,13 +390,173 @@
 
         if ((d.options || []).length) {
           html += '<div class="rl-acts" style="margin-top:10px">' + d.options.map(function (o, i) {
-            return '<button type="button" class="rl-act" onclick="rlCheckPick(' + i + ')">' +
+            return '<button type="button" class="rl-act' + (o.oneClick ? ' rl-oneclick' : '') +
+              '" onclick="rlCheckPick(' + i + ')">' +
               '<b>' + esc(o.label) + '</b><span>' + esc(o.note || '') + '</span></button>';
           }).join('') + '</div>';
         }
+        var undo = rlUndoGet();
+        if (undo) {
+          html += '<div class="rl-acts" style="margin-top:6px"><button type="button" class="rl-act" onclick="rlUndoChange()">' +
+            '<b>되돌리기</b><span>' + esc(undo.label) + ' 전 일정으로 돌아갑니다</span></button></div>';
+        }
         box.innerHTML = html;
         box.hidden = false;
+        clearInterval(rlAgeTimer);
+        rlAgeTick();
+        rlAgeTimer = setInterval(rlAgeTick, 30000);
       }
+
+      /* ── 바꾸기 전후 ───────────────────────────────────
+       * 숫자를 지어내지 않는다. 서버가 준 값(구간 legMinutes, 확인 결과의 붐빔·비)만 앞뒤로 놓는다. */
+      function rlUsable(route) {
+        return Array.isArray(route) && route.some(function (d) {
+          return d && Array.isArray(d.places) && d.places.some(function (p) {
+            return p && p.transit == null && typeof p.name === 'string' && p.name.trim() !== '';
+          });
+        });
+      }
+      function rlParseRoute(raw) {
+        try {
+          var v = raw;
+          if (typeof v === 'string') {
+            if (v.indexOf('[') < 0) return null;
+            v = JSON.parse(v.substring(v.indexOf('['), v.lastIndexOf(']') + 1));
+          }
+          return rlUsable(v) ? v : null;
+        } catch (e) { return null; }
+      }
+      async function rlGetRoute() {
+        var r = await fetch('/api/trips/' + rlTrip + '/routes?t=' + Date.now(), { headers: rlAuth() });
+        var j = await r.json().catch(function () { return null; });
+        return j && j.success ? rlParseRoute(j.data) : null;
+      }
+      function rlDayOf(route, day) {
+        return (route || []).filter(function (d) { return d && d.day == day; })[0] || (route || [])[day - 1] || null;
+      }
+      function rlStops(dayObj) {
+        return ((dayObj && dayObj.places) || []).filter(function (p) { return p && p.transit == null && p.name; });
+      }
+      /* 그날 이동 시간 합. 한 구간이라도 못 쟀으면 null — 모르는 걸 0 으로 더하지 않는다 */
+      function rlLegSum(dayObj) {
+        var s = rlStops(dayObj);
+        if (s.length < 2) return null;
+        var sum = 0;
+        for (var i = 1; i < s.length; i++) {
+          if (typeof s[i].legMinutes !== 'number') return null;
+          sum += s[i].legMinutes;
+        }
+        return sum;
+      }
+      function rlFind(res, kind) {
+        return ((res && res.findings) || []).filter(function (f) { return f.kind === kind && f.status === 'OK'; })[0] || null;
+      }
+
+      function rlDiffHtml(label, beforeRoute, afterRoute, day, beforeCheck, afterCheck) {
+        var b = rlDayOf(beforeRoute, day), a = rlDayOf(afterRoute, day);
+        var bn = rlStops(b).map(function (p) { return p.name; });
+        var an = rlStops(a).map(function (p) { return p.name; });
+        var gone = bn.filter(function (n) { return an.indexOf(n) < 0; });
+        var came = an.filter(function (n) { return bn.indexOf(n) < 0; });
+        var lines = [];
+        if (gone.length) lines.push('빠진 곳 — ' + gone.join(', '));
+        if (came.length) lines.push('들어간 곳 — ' + came.join(', '));
+        if (!gone.length && !came.length) lines.push('그날 들를 곳은 그대로입니다.');
+
+        var bs = rlLegSum(b), as = rlLegSum(a);
+        if (bs != null && as != null && bs !== as) {
+          lines.push('그날 이동 시간 ' + bs + '분 → ' + as + '분 (' +
+            (as < bs ? (bs - as) + '분 줄었습니다' : (as - bs) + '분 늘었습니다') + ')');
+        } else if (bs == null || as == null) {
+          lines.push('이동 시간은 재지 못한 구간이 있어 비교하지 않았습니다.');
+        }
+
+        var bp = beforeCheck && beforeCheck.place && beforeCheck.place.name;
+        var ap = afterCheck && afterCheck.place && afterCheck.place.name;
+        if (bp && ap && bp !== ap) lines.push('다음 장소 ' + bp + ' → ' + ap);
+
+        var bc = rlFind(beforeCheck, 'CROWD'), ac = rlFind(afterCheck, 'CROWD');
+        var br = bc && bc.values && bc.values.rate, ar = ac && ac.values && ac.values.rate;
+        if (typeof br === 'number' && typeof ar === 'number' && br !== ar) {
+          lines.push('붐빔 ' + br + ' → ' + ar + ' (' + (ac.sourceLabel || '') + ')');
+        }
+        var bw = rlFind(beforeCheck, 'RAIN'), aw = rlFind(afterCheck, 'RAIN');
+        if (bw && aw && bw.issue && !aw.issue) lines.push('비 맞는 야외 일정이 없어졌습니다.');
+        if (bw && aw && bw.issue && aw.issue) lines.push('아직 비 맞는 야외 일정이 남아 있습니다.');
+
+        return '<div style="margin:0 0 12px;padding:10px 12px;border-radius:10px;background:var(--ui-plate)">' +
+          '<p style="font-size:13px;font-weight:800;margin:0 0 4px">' + esc(label) + ' — 바꿨습니다</p>' +
+          lines.map(function (l) { return '<div style="font-size:13px">' + esc(l) + '</div>'; }).join('') +
+        '</div>';
+      }
+
+      /* 되돌리기 — 바꾸기 전 일정을 그대로 다시 저장한다. 새로고침해도 이어지게 세션에 둔다 */
+      function rlUndoKey() { return 'liveUndo:' + rlTrip; }
+      function rlUndoGet() {
+        try { return JSON.parse(sessionStorage.getItem(rlUndoKey()) || 'null'); } catch (e) { return null; }
+      }
+      function rlUndoSet(v) {
+        try {
+          if (v) sessionStorage.setItem(rlUndoKey(), JSON.stringify(v));
+          else sessionStorage.removeItem(rlUndoKey());
+        } catch (e) {}
+      }
+
+      async function rlApplyOneClick(o) {
+        if (rlStale()) { toast('확인한 지 10분이 넘었습니다. 다시 확인한 뒤 바꿔 주세요.'); return; }
+        if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+        var box = rlCheckBox();
+        var day = rlLastCheck && rlLastCheck.place ? rlLastCheck.place.day : null;
+        var beforeCheck = rlLastCheck;
+
+        /* 되돌릴 수 없으면 바꾸지 않는다 */
+        var before = null;
+        try { before = await rlGetRoute(); } catch (e) {}
+        if (!before) { toast('지금 일정을 읽지 못해 되돌릴 수 없으므로 바꾸지 않았습니다.'); return; }
+
+        if (box) box.insertAdjacentHTML('afterbegin', '<p class="rl-modes-note" id="rlApplying">바꾸는 중</p>');
+        var after = null, ok = false, msg = '';
+        try {
+          var r = await fetch(o.endpoint, { method: o.method || 'POST', headers: rlAuth() });
+          var j = await r.json().catch(function () { return null; });
+          ok = !!(j && j.success);
+          msg = (j && j.message) || '';
+          if (ok) after = rlParseRoute(j.data) || await rlGetRoute();
+        } catch (e) { msg = '연결이 끊겼습니다.'; }
+        var ap = document.getElementById('rlApplying'); if (ap) ap.remove();
+
+        if (!ok || !after) {
+          toast(msg || '바꾸지 못했습니다. 일정은 그대로입니다.');
+          return;
+        }
+        rlUndoSet({ label: o.label, route: before, at: Date.now() });
+
+        var afterCheck = null;
+        try { afterCheck = await rlFetchCheck(); } catch (e) {}
+        var diff = rlDiffHtml(o.label, before, after, day, beforeCheck, afterCheck);
+        if (afterCheck) rlPaintCheck(afterCheck, diff);
+        else if (box) box.innerHTML = diff + '<p class="rl-modes-note">바꾼 뒤 상황은 확인하지 못했습니다. 다시 확인해 주세요.</p>';
+        rlRefresh();
+      }
+
+      window.rlUndoChange = async function () {
+        var u = rlUndoGet();
+        if (!u || !rlUsable(u.route)) { rlUndoSet(null); toast('되돌릴 일정이 없습니다.'); return; }
+        if (!confirm(u.label + ' 전 일정으로 되돌릴까요?')) return;
+        try {
+          var r = await fetch('/api/trips/' + rlTrip + '/routes/reorder', {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, rlAuth()),
+            body: JSON.stringify(u.route)
+          });
+          var j = await r.json().catch(function () { return null; });
+          if (!j || !j.success) { toast((j && j.message) || '되돌리지 못했습니다.'); return; }
+        } catch (e) { toast('연결이 끊겨 되돌리지 못했습니다.'); return; }
+        rlUndoSet(null);
+        toast('바꾸기 전 일정으로 되돌렸습니다.');
+        rlRefresh();
+        rlCheck();
+      };
 
       /* 고른 갈래를 한다. 한 번에 끝나는 것(실내로 바꾸기)은 한 번 더 묻고 부른다 */
       window.rlCheckPick = async function (i) {
@@ -380,20 +569,21 @@
         }
         if (o.key === 'other_mode') { toast(o.note || '다른 이동수단은 지도 앱에서 비교해 보세요.'); return; }
         if (o.key === 'leave_now' || o.key === 'navi') { rlDo('navi'); return; }
-        if (o.key === 'swap' || o.key === 'quiet') { rlDo(o.key); return; }
-        if (o.oneClick && o.endpoint) {
-          if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요?')) return;
+        if (o.key === 'swap' || o.key === 'quiet') {
+          /* 지도에서 고르게 넘기되, 무엇을 왜 고치러 가는지 들고 간다 */
+          var p = rlLastCheck.place || {};
+          var why = (rlLastCheck.findings || []).filter(function (f) { return f.issue; })
+            .map(function (f) { return f.summary; }).join(' ');
           try {
-            var r = await fetch(o.endpoint, { method: o.method || 'POST', headers: rlAuth() });
-            var j = await r.json().catch(function () { return null; });
-            toast(j && j.success ? '바꿨습니다. 새 일정으로 다시 보여 드립니다.'
-                                 : ((j && j.message) || '바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
-            if (j && j.success) { var b = rlCheckBox(); if (b) b.hidden = true; rlRefresh(); }
-          } catch (e) {
-            toast('연결이 끊겨 바꾸지 못했습니다.');
-          }
+            sessionStorage.setItem('mapIntentDetail', JSON.stringify({
+              key: o.key, tripId: rlTrip, day: p.day, name: p.name, time: p.time,
+              reason: why, source: 'live-check', at: Date.now()
+            }));
+          } catch (e) {}
+          rlDo(o.key);
           return;
         }
+        if (o.oneClick && o.endpoint) { rlApplyOneClick(o); return; }
         toast(o.note || '');
       };
 
@@ -402,6 +592,7 @@
       window.rlOpen = function (tripId) {
         var cb = rlCheckBox(); if (cb) { cb.hidden = true; cb.innerHTML = ''; }
         rlLastCheck = null;
+        clearInterval(rlAgeTimer);
         rlTrip = tripId;
         window._authToken = rlToken();   /* nav-drive 의 경로 요청이 이 값을 쓴다 */
         document.getElementById('rlPick').hidden = true;
@@ -468,7 +659,7 @@
       };
 
       /* 화면을 떠나면 타이머를 끈다. 안 끄면 배터리를 먹는다 */
-      window.stopLivePage = function () { clearInterval(rlTimer); };
+      window.stopLivePage = function () { clearInterval(rlTimer); clearInterval(rlAgeTimer); };
     })();
   </script>
 </div>

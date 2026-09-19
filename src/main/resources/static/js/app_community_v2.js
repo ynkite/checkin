@@ -4189,7 +4189,7 @@ window._handleWriteImageSelect = function(input) {
                     `  <div class="plr-icon ${TYPE_CSS[type] || 'pr-tour'}">${TYPE_ICON[type] || '곳'}</div>`,
                     `  <div class="plr-name">${escapeHtml(p.name)}</div>`,
                     `  <div class="star-sel" data-rating="0">`,
-                    [1,2,3,4,5].map(n => `<button class="star-btn" onclick="setStars(this,${n})">★</button>`).join(''),
+                    [1,2,3,4,5].map(n => `<button class="star-btn" onclick="setStars(this,${n})" aria-label="별점"><svg viewBox="0 0 20 20" width="1em" height="1em" aria-hidden="true" style="fill:currentColor"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.7L10 14.8l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg></button>`).join(''),
                     `  </div>`,
                     `  <input class="one-line" placeholder="한줄평 (선택)" maxlength="200">`,
                     `</div>`
@@ -4952,7 +4952,7 @@ window._handleWriteImageSelect = function(input) {
                         var comment = existing ? (existing.comment || '') : '';
                         var reviewId = existing ? existing.id : '';
                         var stars = [1,2,3,4,5].map(function(n) {
-                            return '<button class="star-btn' + (n <= rating ? ' lit' : '') + '" onclick="setStars(this,' + n + ')">★</button>';
+                            return '<button class="star-btn' + (n <= rating ? ' lit' : '') + '" onclick="setStars(this,' + n + ')" aria-label="별점"><svg viewBox="0 0 20 20" width="1em" height="1em" aria-hidden="true" style="fill:currentColor"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.7L10 14.8l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg></button>';
                         }).join('');
                         return '<div class="plr-row" data-place-name="' + escapeHtml(p.name) + '" data-place-type="' + type + '"' + (reviewId ? ' data-review-id="' + reviewId + '"' : '') + '>' +
                             '<div class="plr-icon ' + css + '">' + icon + '</div>' +
@@ -4966,7 +4966,7 @@ window._handleWriteImageSelect = function(input) {
                     plrSection.style.display = 'block';
                     plrBody.innerHTML = existingReviews.map(function(r) {
                         var stars = [1,2,3,4,5].map(function(n) {
-                            return '<button class="star-btn' + (n <= (r.rating||0) ? ' lit' : '') + '" onclick="setStars(this,' + n + ')">★</button>';
+                            return '<button class="star-btn' + (n <= (r.rating||0) ? ' lit' : '') + '" onclick="setStars(this,' + n + ')" aria-label="별점"><svg viewBox="0 0 20 20" width="1em" height="1em" aria-hidden="true" style="fill:currentColor"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.7L10 14.8l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg></button>';
                         }).join('');
                         return '<div class="plr-row" data-place-name="' + escapeHtml(r.placeName||'') + '" data-place-type="' + (r.category||'tour').toLowerCase() + '" data-review-id="' + r.id + '">' +
                             '<div class="plr-icon pr-tour">관</div>' +

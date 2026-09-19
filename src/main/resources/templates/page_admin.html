@@ -181,7 +181,7 @@
         const prev=document.getElementById('cur-star-preview'); if(!prev) return;
         const parts=(val||'').split(',').map(t=>t.trim()).filter(Boolean);
         prev.innerHTML=parts.length
-                ? parts.map(t=>`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--sage-pale);color:var(--sig-deep);border:1px solid var(--sage-l)">★ ${t}</span>`).join('')
+                ? parts.map(t=>`<span style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:var(--sage-pale);color:var(--sig-deep);border:1px solid var(--sage-l)">${t}</span>`).join('')
                 : '<span style="font-size:11px;color:var(--text3)">입력하면 미리보기가 표시됩니다</span>';
       };
       const starInput=document.getElementById('cur-star-badges');
@@ -422,7 +422,7 @@
     }
 
     /* ============================================================
-     * [4구역 - 회원 관리] ★6열 / 검색 / 필터 / 승격·강등 / 정지
+     * [4구역 - 회원 관리] 6열 / 검색 / 필터 / 승격·강등 / 정지
      * ============================================================ */
     /* ── 관리자 공통 페이지네이션 렌더러 ── */
     function renderAdminPagination(containerId, currentPage, totalPages, callbackStr) {
@@ -629,7 +629,7 @@
     }
 
     /* ============================================================
-     * [5구역 - 신고 관리] ★DTO 필드명: reportId / postTitle / reporterName
+     * [5구역 - 신고 관리] DTO 필드명: reportId / postTitle / reporterName
      * ============================================================ */
     function loadAdminReports(status='PENDING', page=0){
       const token=localStorage.getItem('accessToken');
@@ -709,7 +709,7 @@
     }
 
     /* ============================================================
-     * [6구역 - 큐레이션] ★Day1 부터 / extra_notes JSON / 태그 없음
+     * [6구역 - 큐레이션] Day1 부터 / extra_notes JSON / 태그 없음
      * ============================================================ */
     let _admDayCount=0, _curEditId=null;
 
@@ -723,7 +723,7 @@
         <span class="adm-day-label" style="font-weight:800;color:var(--sage-d);font-size:13px">Day ${_admDayCount}</span>
         <div style="display:flex;gap:6px">
           <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
-          <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
+          <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)" aria-label="이 날 지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
         </div>
       </div>
       <div class="adm-day-items"></div>`;
@@ -753,7 +753,7 @@
       item.innerHTML=`
       <div style="display:flex;align-items:center;gap:8px;width:100%">
         <input style="flex:1;border:1px solid var(--border2);background:var(--cream2);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명" class="adm-pdb-name">
-        <button style="background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);font-size:11px" onclick="this.closest('.pdb-item').remove()">✕</button>
+        <button style="background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:2px 7px;cursor:pointer;color:var(--coral);font-size:11px" onclick="this.closest('.pdb-item').remove()" aria-label="이 장소 지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
         <select class="adm-pdb-type" style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit;background:var(--cream2)">${typeOpts}</select>
@@ -1087,7 +1087,7 @@
         <!-- ══ 회원 관리 ══ -->
         <div id="ad-users" style="display:none">
           <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-          <!-- ★검색 + 상태 필터 -->
+          <!-- 검색 + 상태 필터 -->
           <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
             <input class="form-input" id="admin-user-search"
                    placeholder="아이디, 이메일, 이름으로 검색"
@@ -1114,7 +1114,7 @@
         <!-- ══ 신고 관리 ══ -->
         <div id="ad-reports" style="display:none">
           <h2 style="font-size:20px;font-weight:800;margin-bottom:18px"></h2>
-          <!-- ★신고 상태 필터 -->
+          <!-- 신고 상태 필터 -->
           <div style="display:flex;gap:8px;margin-bottom:12px">
             <select class="form-input" id="admin-report-status-filter"
                     style="width:auto"
@@ -1228,7 +1228,7 @@
               </div>
             </div>
 
-            <!-- ★플랜 빌더 (출발지·출발일·귀환일 없음 / STEP1&2 동일 칩) -->
+            <!-- 플랜 빌더 (출발지·출발일·귀환일 없음 / STEP1&2 동일 칩) -->
             <div class="plan-builder" style="background:var(--cream2);border:2px solid var(--sage-l)">
               <div class="plan-builder-ttl" style="color:var(--sage-d);font-size:14px"></div>
 
@@ -1272,7 +1272,7 @@
                 <input class="other-input" id="cadm-other-accopts" placeholder="숙소에 바라는 것을 적어 주세요">
               </div>
 
-              <!-- ★Day 목록 (Day1 부터) -->
+              <!-- Day 목록 (Day1 부터) -->
               <div id="curDays"></div>
               <button class="btn-add-day" onclick="addDay()" style="margin-top:8px;border-color:var(--sage-l);color:var(--sage-d)"></button>
             </div>
@@ -1297,7 +1297,7 @@
       <div class="sus-wrap">
         <div class="sus-hd">
           <div class="sus-ttl"><span style="color:var(--coral);font-size:20px">⊘</span> 회원 정지 처리</div>
-          <button onclick="closeSuspendModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1">✕</button>
+          <button onclick="closeSuspendModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text3);line-height:1" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
         </div>
         <div class="sus-info">
           <div class="sus-row"><span class="sus-lbl">회원 ID</span><span class="sus-val" id="su-id"></span></div>
@@ -1315,7 +1315,7 @@
             <option value="기타">기타</option>
           </select>
         </div>
-        <!-- ★정지 사유 상세 (보이는 textarea) -->
+        <!-- 정지 사유 상세 (보이는 textarea) -->
         <div class="form-group" style="margin-bottom:14px">
         <textarea class="form-input" id="su-detail" rows="3"
                   placeholder="정지 사유를 적어 주세요"
@@ -1343,7 +1343,7 @@
       <div class="modal" style="width:440px">
         <div class="modal-hd">
           <div class="modal-ttl" id="reportActionTitle">신고 처리</div>
-          <button class="modal-x" onclick="closeReportAction()">✕</button>
+          <button class="modal-x" onclick="closeReportAction()" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
         </div>
         <div class="modal-bd">
           <p style="font-size:12px;color:var(--text3);margin-bottom:10px">
