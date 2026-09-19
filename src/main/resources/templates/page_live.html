@@ -40,11 +40,21 @@
 
         <div class="rl-next" id="rlNext"></div>
         <div class="rl-modes" id="rlModes" hidden></div>
+
+        <!-- 장소 확인하기 — 다음 정거장의 지금(또는 그날) 상황을 확인하고 갈래를 준다 -->
+        <div class="rl-acts">
+          <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
+            <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
+          </button>
+        </div>
+        <div id="rlCheck" hidden role="status" aria-live="polite"
+             style="margin:10px 0 14px;padding:14px 16px;border:1px solid var(--border2);border-radius:12px;background:var(--panel);word-break:keep-all"></div>
+
         <div class="rl-acts" id="rlActs"></div>
 
         <div class="rl-rail" id="rlRail"></div>
 
-        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측값, 이동시간은 티맵입니다.</p>
+        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측값, 이동시간은 티맵 자동차 경로입니다.</p>
       </section>
 
     </div>
@@ -232,20 +242,23 @@
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
                         '<p class="rl-modes-note">재는 중</p>';
 
-        fetch('/api/route/travel-time/compare', {
+        /* 자차만 잰다. 대중교통·도보는 이 계정에 TMAP 상품이 안 열려 있어 403 이 오고,
+           키가 그날 통째로 멈춰 자차까지 못 쓰게 된다(/travel-time/compare 는 셋을 다 부른다) */
+        fetch('/api/route/travel-time', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             originName: (d.here && d.here.name) || '지금 위치',
             originLat: grid(from.lat),
             originLng: grid(from.lng),
+            mode: 'CAR',
             stops: [{ name: n.name, lat: n.lat, lng: n.lng }]
           })
         }).then(function (r) { return r.json(); })
           .then(function (j) {
             var m = (j && j.success && j.data) || null;
             if (!m) throw new Error('no data');
-            rlPaintModes(box, m);
+            rlPaintModes(box, { CAR: m });
           })
           .catch(function () {
             rlModeKey = null;   // 다음 주기에 다시 잰다
@@ -268,7 +281,8 @@
               : '<span class="rl-mode-x">' + esc(p.note || '재지 못했습니다') + '</span>') +
           '</div>';
         }).join('');
-        box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows;
+        box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows +
+          '<p class="rl-modes-note">대중교통·도보 시간은 이 화면에서 재지 않습니다.</p>';
       }
 
       /* 콘솔에서 부르는 점검 — 좌표 뭉개기와 같은 구간 건너뛰기 */
@@ -284,9 +298,110 @@
         return true;
       };
 
+      /* ── 장소 확인하기 ─────────────────────────────────
+       * 당일이면 실측(SK 실시간 인원·TMAP 실시간 교통), 아니면 예측(관광공사·기상청).
+       * 무엇을 근거로 한 말인지 줄마다 적는다. 문제가 있으면 갈래를 주고 고르게 한다 —
+       * 아무 문제가 없어도 「그대로 가도 됩니다」라고 말한다. */
+      var KIND_KO = { CROWD: '붐빔', RAIN: '비', TRAFFIC: '길' };
+      var rlChecking = false;
+
+      function rlCheckBox() { return document.getElementById('rlCheck'); }
+
+      window.rlCheck = async function () {
+        if (!rlTrip || rlChecking) return;
+        var box = rlCheckBox(), btn = document.getElementById('rlCheckBtn');
+        rlChecking = true;
+        if (btn) btn.disabled = true;
+        if (box) { box.hidden = false; box.innerHTML = '<p class="rl-modes-note">확인하는 중</p>'; }
+        var body = { tripId: rlTrip };
+        /* 서버에는 뭉갠 좌표만 보낸다 (소수 3자리, 약 110m) */
+        if (rlPos) { body.lat = grid(+rlPos[0]); body.lng = grid(+rlPos[1]); }
+        try {
+          var r = await fetch('/api/crowd/check', {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, rlAuth()),
+            body: JSON.stringify(body)
+          });
+          var j = await r.json().catch(function () { return null; });
+          if (!j || !j.success || !j.data) {
+            if (box) box.innerHTML = '<p class="rl-modes-note">' +
+              esc((j && j.message) || '지금은 확인하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.') + '</p>';
+            return;
+          }
+          rlPaintCheck(j.data);
+        } catch (e) {
+          if (box) box.innerHTML = '<p class="rl-modes-note">연결이 끊겨 확인하지 못했습니다.</p>';
+        } finally {
+          rlChecking = false;
+          if (btn) btn.disabled = false;
+        }
+      };
+
+      var rlLastCheck = null;
+      function rlPaintCheck(d) {
+        rlLastCheck = d;
+        var box = rlCheckBox();
+        if (!box) return;
+        var small = 'font-size:12px;color:var(--text3)';
+        var html = '<p style="' + small + ';margin:0 0 6px">' + esc(d.modeLabel || '') +
+          (d.checkedAt ? ' · ' + esc(d.checkedAt.slice(11)) + ' 확인' : '') + '</p>' +
+          '<p style="font-size:15px;font-weight:800;margin:0 0 10px">' + esc(d.verdict ? d.verdict.text : '') + '</p>';
+
+        (d.findings || []).forEach(function (f) {
+          var mark = f.status === 'OK' ? (f.issue ? '확인 · 걸림' : '확인 · 괜찮음')
+                   : f.status === 'NO_DATA' ? '자료 없음'
+                   : f.status === 'SKIPPED' ? '보지 않음' : '확인되지 않음';
+          html += '<div style="padding:6px 0;border-top:1px solid var(--border2)">' +
+            '<b style="font-size:13px">' + esc(KIND_KO[f.kind] || f.kind) + '</b>' +
+            ' <span style="' + small + '">' + esc(mark) + '</span>' +
+            '<div style="font-size:13px">' + esc(f.summary || '') + '</div>' +
+            (f.sourceLabel ? '<div style="' + small + '">근거: ' + esc(f.sourceLabel) + '</div>' : '') +
+          '</div>';
+        });
+
+        if ((d.options || []).length) {
+          html += '<div class="rl-acts" style="margin-top:10px">' + d.options.map(function (o, i) {
+            return '<button type="button" class="rl-act" onclick="rlCheckPick(' + i + ')">' +
+              '<b>' + esc(o.label) + '</b><span>' + esc(o.note || '') + '</span></button>';
+          }).join('') + '</div>';
+        }
+        box.innerHTML = html;
+        box.hidden = false;
+      }
+
+      /* 고른 갈래를 한다. 한 번에 끝나는 것(실내로 바꾸기)은 한 번 더 묻고 부른다 */
+      window.rlCheckPick = async function (i) {
+        var o = rlLastCheck && rlLastCheck.options && rlLastCheck.options[i];
+        if (!o) return;
+        if (o.key === 'keep') {
+          var box = rlCheckBox(); if (box) box.hidden = true;
+          toast('계획대로 갑니다.');
+          return;
+        }
+        if (o.key === 'other_mode') { toast(o.note || '다른 이동수단은 지도 앱에서 비교해 보세요.'); return; }
+        if (o.key === 'leave_now' || o.key === 'navi') { rlDo('navi'); return; }
+        if (o.key === 'swap' || o.key === 'quiet') { rlDo(o.key); return; }
+        if (o.oneClick && o.endpoint) {
+          if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요?')) return;
+          try {
+            var r = await fetch(o.endpoint, { method: o.method || 'POST', headers: rlAuth() });
+            var j = await r.json().catch(function () { return null; });
+            toast(j && j.success ? '바꿨습니다. 새 일정으로 다시 보여 드립니다.'
+                                 : ((j && j.message) || '바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
+            if (j && j.success) { var b = rlCheckBox(); if (b) b.hidden = true; rlRefresh(); }
+          } catch (e) {
+            toast('연결이 끊겨 바꾸지 못했습니다.');
+          }
+          return;
+        }
+        toast(o.note || '');
+      };
+
       /* ── 바깥에서 부르는 것 ──────────────────────────── */
 
       window.rlOpen = function (tripId) {
+        var cb = rlCheckBox(); if (cb) { cb.hidden = true; cb.innerHTML = ''; }
+        rlLastCheck = null;
         rlTrip = tripId;
         window._authToken = rlToken();   /* nav-drive 의 경로 요청이 이 값을 쓴다 */
         document.getElementById('rlPick').hidden = true;
