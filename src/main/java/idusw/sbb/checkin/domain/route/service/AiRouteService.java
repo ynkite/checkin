@@ -2497,7 +2497,9 @@ public class AiRouteService {
     collectCandidatesFromKakao(TravelPlan plan, PlanInputForm form, java.util.Set<String> userRequested) {
 
         String dest = plan.getDestination();           // 예: "부산광역시 해운대구"
-        String sigungu = extractSigungu(dest);          // 예: "해운대구"
+        /* 시군구만 쓰지 않고 여행지 전체를 넘긴다. 행정구역 이름이 바뀌면
+           (인천 중구 -> 제물포구) 시군구로는 한 건도 못 맞춘다. 시도로라도 맞춘다. */
+        String sigungu = dest;                          // 예: "부산 해운대구"
         boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
         long numDays = isDayTrip ? 1
                 : (plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay()) + 1;

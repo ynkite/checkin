@@ -54,7 +54,22 @@ public final class RegionMatch {
     /**
      * 이 주소가 그 지역의 것인가.
      *
-     * @param region 고른 시군구. 비어 있으면 거르지 않는다(true)
+     * <p>여행지 이름을 낱말로 쪼개 하나라도 맞으면 받아들인다.
+     * 「부산 해운대구」면 「부산」이나 「해운대」 중 하나만 맞아도 된다.
+     *
+     * <p>왜 이렇게 느슨한가 — 행정구역 이름이 바뀐다.
+     * 인천 중구는 <b>제물포구</b>가 됐다. 카카오는 새 이름을 주는데 우리 선택지는
+     * 옛 이름이라 「중구」로 거르면 인천 안에 있는 숙소가 전부 탈락한다.
+     * 실제로 그랬다. 이름표를 하나씩 맞추는 방식은 개편이 있을 때마다 또 깨진다.
+     * 시군구로 못 맞추면 <b>시도로라도</b> 맞추는 쪽이 오래간다.
+     *
+     * <p>다른 시도는 여전히 걸러진다. 부산 여행에 서울 장소가 들어오지는 않는다.
+     * 같은 시도 안에서 옆 구가 섞일 수는 있는데, 수집 뒤에 중앙값에서 80km 넘는
+     * 것을 걷어내는 단계가 따로 있고, 무엇보다 <b>엉뚱한 곳이 하나 섞이는 편이
+     * 아무것도 못 찾는 것보다 낫다.</b>
+     *
+     * @param region 여행지. 「부산 해운대구」처럼 시도와 시군구가 같이 와도 된다.
+     *               비어 있으면 거르지 않는다
      * @param addr   카카오 지번 주소
      * @param road   카카오 도로명 주소
      */
@@ -63,10 +78,13 @@ public final class RegionMatch {
 
         String a = addr == null ? "" : addr;
         String r = road == null ? "" : road;
-        if (a.contains(region) || r.contains(region)) return true;
 
-        String core = core(region);
-        if (core.isBlank()) return false;
-        return a.contains(core) || r.contains(core);
+        for (String token : region.trim().split("\\s+")) {
+            if (token.isBlank()) continue;
+            if (a.contains(token) || r.contains(token)) return true;
+            String core = core(token);
+            if (!core.isBlank() && (a.contains(core) || r.contains(core))) return true;
+        }
+        return false;
     }
 }

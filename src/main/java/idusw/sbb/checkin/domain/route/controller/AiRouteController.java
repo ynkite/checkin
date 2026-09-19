@@ -14,29 +14,51 @@ import org.springframework.web.bind.annotation.*;
 public class AiRouteController {
 
     private final AiRouteService aiRouteService;
+    private final idusw.sbb.checkin.domain.route.RouteProgress progress;
+
+    /**
+     * 일정을 만드는 데 어디까지 왔나.
+     *
+     * 만드는 데 30초 넘게 걸린다. 화면이 덮개만 씌우고 기다리게 하지 않으려면
+     * 진행을 물어볼 자리가 있어야 한다. 남은 시간은 알려주지 않는다 —
+     * 카카오와 모델이 얼마나 걸릴지 미리 알 수 없어서 지어낼 수밖에 없기 때문이다.
+     * 끝난 단계만 말한다.
+     */
+    @GetMapping("/progress")
+    public ResponseEntity<ApiResponse<Object>> routeProgress(@PathVariable Long tripId) {
+        return ResponseEntity.ok(ApiResponse.success(progress.of(tripId)));
+    }
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Object>> generateRoute(@PathVariable Long tripId) {
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.QUEUED);
+        try {
         // 1) AI가 type별 장소 후보(이름+sub+stars)만 생성 — 좌표·순서·날짜 없음
         String candidatesJson = aiRouteService.generateCandidates(tripId);
 
         // 2) 후보 → 좌표 확보 → 일자별 클러스터링 → 시간 골격 조립
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.COLLECTING);
         String routeJson = aiRouteService.assembleCandidates(tripId, candidatesJson);
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.ASSEMBLING);
 
         /* 빈 일정을 성공으로 돌려주지 않는다. 전에는 조립이 실패해도 "[]" 가
            그대로 저장되고 성공으로 올라가서, 화면은 4단계로 넘어간 뒤 빈 지도를
            보여 줬다. 사용자는 왜 안 되는지 알 수 없었고 있던 일정까지 지워졌다. */
         if (!idusw.sbb.checkin.domain.route.RouteJson.usable(routeJson)) {
             log.warn("[동선 생성] 들를 곳이 하나도 없어 저장하지 않습니다. tripId={}", tripId);
+            progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.FAILED,
+                    "조건에 맞는 장소를 찾지 못했습니다");
             return ResponseEntity.ok(ApiResponse.error(
                     "조건에 맞는 장소를 찾지 못했습니다. 지역이나 기간을 조금 바꿔 다시 해 보세요."));
         }
 
         // 3) DB 저장 (카카오 transit 보정 + 당일치기 숙소 차단 포함)
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.SAVING);
         aiRouteService.saveAiRouteToDb(tripId, routeJson);
 
         // 4) 최종 정리(코드 기반): 한 방향 정렬 + 먼 장소/밀도초과 삭제 (AI 생성·추가 없음)
         //    - 사용자요청인데 숙소에서 먼 장소는 삭제하지 않고 over50으로 반환 → 프론트 알림
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.POLISHING);
         java.util.List<String> over50 = aiRouteService.finalizeRoute(tripId);
 
         // 최종본을 다시 읽어서 반환
@@ -47,7 +69,13 @@ public class AiRouteController {
         data.put("over50", over50);
         data.put("needConfirm", !over50.isEmpty());
 
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.DONE);
         return ResponseEntity.ok(ApiResponse.success(data));
+
+        } catch (RuntimeException e) {
+            progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.FAILED);
+            throw e;
+        }
     }
 
     // 컨트롤러에 추가해야 할 GET 매핑 (데이터 반환용)

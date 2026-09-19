@@ -364,11 +364,15 @@
   position:absolute; left:0; top:0; z-index:4; pointer-events:none;
   overflow:hidden;
 }
+/* 전에는 예정 구간도 1px 점을 7px 간격으로 찍었다. 옅은 점이 흩어져 보여서
+   「동선이 선으로 연결되지 않았다」고 읽혔다. 위계를 다시 잡는다 —
+   지난 구간만 흐린 점선, 지금과 예정은 이어진 선. */
 .mp-rt{ fill:none; stroke-linecap:round; stroke-linejoin:round }
-.mp-rt-past{ stroke:var(--ui-l); stroke-width:2.4; stroke-dasharray:1 7; opacity:.55 }
-.mp-rt-next{ stroke:var(--ui-line); stroke-width:2.4; stroke-dasharray:1 7; opacity:.9 }
-.mp-rt-live{ stroke:var(--sig); stroke-width:4; opacity:1 }
-.mp-rt-case{ stroke:var(--halo); stroke-width:8; opacity:.75 }
+.mp-rt-past{ stroke:var(--ui-l); stroke-width:2.2; stroke-dasharray:2 6; opacity:.4 }
+.mp-rt-next{ stroke:var(--ink-3); stroke-width:3; opacity:.85 }
+.mp-rt-live{ stroke:var(--sig); stroke-width:4.5; opacity:1 }
+.mp-rt-case{ stroke:var(--halo); stroke-width:9; opacity:.85 }
+.mp-rt-next-case{ stroke:var(--halo); stroke-width:7; opacity:.7 }
 .mp-chev{ fill:none; stroke:var(--ui-l); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.5 }
 .mp-chev-live{ stroke:var(--on-sig-2); opacity:.9 }
 
