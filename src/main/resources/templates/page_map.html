@@ -412,7 +412,14 @@
         return;
       }
 
-      /* 어느 장면이 이 동선을 담는가 — 절반 이상이 들어가야 쓴다 */
+      /* 어느 장면이 이 동선을 담는가 — 제일 많이 담는 것을 고른다.
+         전에는 「절반 이상」을 요구했다. 그런데 하루 동선은 도시 하나를 가로지른다 —
+         부산 하루가 위도 35.097~35.160, 경도 129.011~129.160 으로 20km 에 퍼진다.
+         장면 하나는 1.3km x 2km 다. 그러니 어떤 장면도 절반을 못 담아 모형이
+         아예 안 떴다. 장면을 더 만들어도 안 뜬다 — 규칙이 문제였다.
+
+         이제 제일 많이 담는 장면을 쓰고, 못 담은 곳은 범례에서 밝힌다.
+         한 곳만 걸리는 장면은 쓰지 않는다 — 스쳐 지나간 것을 그 동네라고 할 수 없다. */
       var pick = null;
       for (var i = 0; i < MV_SCENES.length; i++) {
         var sc = MV_SCENES[i];
@@ -424,7 +431,10 @@
           var q = _mvProject(meta.fit, p.lat, p.lng);
           return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
         });
-        if (on.length >= Math.ceil(stops.length / 2)) { pick = { sc: sc, meta: meta, inside: on }; break; }
+        var need = Math.min(2, stops.length);
+        if (on.length >= need && (!pick || on.length > pick.inside.length)) {
+          pick = { sc: sc, meta: meta, inside: on };
+        }
       }
 
       if (!pick) {
@@ -446,7 +456,8 @@
           '<b>' + _mpEsc(pick.sc.label) + '</b>' +
           '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
           (pick.inside.length < stops.length
-            ? '<em>' + (stops.length - pick.inside.length) + '곳은 이 모형 밖이라 빠졌습니다</em>' : '');
+            ? '<em>이 동네에 있는 ' + pick.inside.length + '곳만 모형에 올렸습니다. 나머지 '
+              + (stops.length - pick.inside.length) + '곳은 멀리 있어 지도에서 보세요</em>' : '');
       }
     }
 
