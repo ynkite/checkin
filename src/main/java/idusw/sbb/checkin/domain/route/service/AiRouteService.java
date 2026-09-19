@@ -2481,8 +2481,11 @@ public class AiRouteService {
             // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
             if (routeEngineEnabled) {
                 try {
-                    return routeEngineAssembler.assemble(plan, form, filtered, userRequested);
-                } catch (RuntimeException e) {
+                    /* 엔진도 자기 JSON 을 새로 쓴다. 표시를 옮기지 않으면 조건이 후보에만 남고
+                       동선에는 사라진다 — AI 조립 경로와 같은 문제라 같은 함수를 태운다 */
+                    String engineJson = routeEngineAssembler.assemble(plan, form, filtered, userRequested);
+                    return carryCandidateFlags(objectMapper.readTree(engineJson), filtered);
+                } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException e) {
                     log.error("[route.engine] tripId={} 실패 지점=assembleCandidates/engine"
                             + " — 기존 경로로 폴백한다", tripId, e);
                 }
