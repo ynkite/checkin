@@ -80,12 +80,17 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
         if (plan == null) return;
         boolean changed = false;
 
-        if (!RouteJson.usable(plan.getRouteJson())) {
+        /* 비어 있으면 채운다. 그리고 처음 심은 경로 파일은 하루 이름(label) 자리에 그날 마지막
+           구간 글(「🚗 자차 · 7.9km」)이 들어가 있었다 — 그 결함 모양이면 한 번 바꿔 넣는다.
+           파일을 못 읽으면 있던 경로는 그대로 둔다 */
+        String current = plan.getRouteJson();
+        boolean empty = !RouteJson.usable(current);
+        if (empty || hasLegAsDayLabel(current)) {
             String json = readRoute(file);
             if (RouteJson.usable(json)) {
                 plan.setRouteJson(json);
                 changed = true;
-            } else {
+            } else if (empty) {
                 log.warn("[3층시드] {} 경로 파일을 읽지 못해 비워 둡니다.", title);
             }
         }
@@ -114,6 +119,18 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
             travelPlanRepository.save(plan);
             log.info("[3층시드] {} 에 경로·취향을 채웠습니다.", title);
         }
+    }
+
+    static boolean hasLegAsDayLabel(String json) {
+        try {
+            for (com.fasterxml.jackson.databind.JsonNode day : new com.fasterxml.jackson.databind.ObjectMapper().readTree(json)) {
+                String label = day.path("label").asText("");
+                if (label.startsWith("🚗 자차 ·") || label.startsWith("🚶 도보 ·")) return true;
+            }
+        } catch (Exception ignored) {
+            // 못 읽으면 건드리지 않는다
+        }
+        return false;
     }
 
     private String readRoute(String file) {
