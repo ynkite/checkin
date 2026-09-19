@@ -960,6 +960,13 @@
   max-height:calc(100% - 190px); overflow-y:auto;
   scrollbar-width:thin;
 }
+/* 비 소식 판이 position:absolute; bottom:16px 으로 자기 칸을 벗어나 떠 있었다.
+   그래서 혼잡도 판과 겹치고 도구 막대까지 가렸다. 화면을 찍어 보고 알았다.
+   떠 있는 칸 안에서는 차례대로 쌓이게 한다. */
+.mp-float .weather-alert{
+  position:static; right:auto; bottom:auto;
+  max-width:none; width:100%;
+}
 
 /* 유리 — 데모에서 잰 값 그대로 */
 .mp-seg, .mp-chip, .mp-money, .mp-depart, .mp-alert, .mp-strip, .mp-pager,
