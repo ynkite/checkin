@@ -286,7 +286,7 @@ function filterByTag(tag, btn) {
     if (btn) btn.classList.add('active-tag');
   }
   applyTagFilter();
-  if (_activeTags.size === 0) toast('필터 해제됨');
+  if (_activeTags.size === 0) toast('필터를 풀었습니다');
   else toast('#' + [..._activeTags].join(' #') + ' 필터 중');
 }
 
@@ -447,7 +447,7 @@ async function submitEditReview() {
 
   const res = await api.patch('/api/posts/' + _openedPostId, { title, content });
   if (res.success) {
-    toast('후기가 수정했습니다.');
+    toast('후기를 고쳤습니다.');
     go('review');
     openPostDetail(_openedPostId);
   } else {
@@ -460,7 +460,7 @@ async function deleteMyPost(postId) {
   if (!confirm('게시글을 삭제하시겠습니까?')) return;
   const res = await api.del('/api/posts/' + (postId || _openedPostId));
   if (res.success) {
-    toast('게시글이 삭제했습니다.');
+    toast('글을 지웠습니다.');
     go('community');
     _commState.currentPage = 0;
     await loadCommunityPosts(0, true);
@@ -1102,7 +1102,7 @@ function renderDestBars(dests) {
     }
 
     if (res.success) {
-      toast(_editCurationId ? '큐레이션이 수정했습니다.' : '큐레이션을 올렸습니다.');
+      toast(_editCurationId ? '큐레이션을 고쳤습니다.' : '큐레이션을 올렸습니다.');
       _editCurationId = null;
       _clearCurationForm();
       loadAdminCurations();
@@ -1134,7 +1134,7 @@ function renderDestBars(dests) {
 
     const btn = document.getElementById('cur-save-btn');
     if (btn) btn.textContent = '큐레이션 수정';
-    toast('수정 모드: ' + (c.title || ''));
+    toast('고치는 중: ' + (c.title || ''));
   }
 
   /* ─── 큐레이션 삭제 ─── */
@@ -1142,7 +1142,7 @@ function renderDestBars(dests) {
     if (!confirm('큐레이션을 삭제하시겠습니까?')) return;
     const res = await api.del('/api/admin/curations/' + curationId);
     if (res.success) {
-      toast('큐레이션이 삭제했습니다.');
+      toast('큐레이션을 지웠습니다.');
       loadAdminCurations();
     } else {
       toast('삭제에 실패했습니다.');
@@ -1170,7 +1170,7 @@ function renderDestBars(dests) {
   function removeDay(btn) {
     const block = btn.closest('.plan-day-block');
     if (document.querySelectorAll('#curDays .plan-day-block').length <= 1) {
-      toast('최소 1개의 Day가 필요합니다');
+      toast('하루 일정이 하나는 있어야 합니다');
       return;
     }
     block.remove();

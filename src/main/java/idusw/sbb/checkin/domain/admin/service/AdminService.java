@@ -24,4 +24,9 @@ public interface AdminService {
     void updateCuration(Long adminId, Long curationId, CurationRequestDto dto);
     void deleteCuration(Long adminId, Long curationId);
     List<CurationResponseDto> getPublicCurations();
+
+    // 게시글 숨기기 — 지우지 않으므로 되돌릴 수 있다
+    Page<AdminPostListResponseDto> getPosts(String status, String keyword, Pageable pageable);
+    void hidePost(Long adminId, Long postId, String reason);
+    void unhidePost(Long adminId, Long postId);
 }

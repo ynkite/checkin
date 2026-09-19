@@ -2,8 +2,12 @@ package idusw.sbb.checkin.config;
 
 import idusw.sbb.checkin.domain.expense.entity.Expense;
 import idusw.sbb.checkin.domain.expense.repository.ExpenseRepository;
+import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
+import idusw.sbb.checkin.domain.plan.repository.PlanInputFormRepository;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.route.RouteJson;
+import org.springframework.core.io.ClassPathResource;
 import idusw.sbb.checkin.domain.user.entity.User;
 import idusw.sbb.checkin.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +17,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -42,6 +47,7 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
     private final ExpenseRepository expenseRepository;
+    private final PlanInputFormRepository planInputFormRepository;
 
     @Override
     public void run(String... args) {
@@ -56,6 +62,83 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
         seedTrip(judge, mine, "경주 1박 2일 · 시연", "경주", 63, 1, 120_000, 120_000, 48_000, 55_000, 30_000, 30_000);
         seedTrip(judge, mine, "강릉 2박 3일 · 시연", "강릉", 42, 2, 240_000, 220_000, 70_000, 66_000, 30_000, 20_000);
         seedTrip(judge, mine, "전주 1박 2일 · 시연", "전주", 21, 1,  90_000,  90_000, 42_000, 51_000, 20_000, 20_000);
+
+        /* 경로와 취향 입력. 전에는 여행만 심어서 지도·내 여행에서 누르면 빈 화면이었다.
+           장소·좌표는 카카오 로컬 검색, 구간은 카카오모빌리티 길찾기 값이다(resources/seed/demo-routes).
+           숙박·식비 합은 위 예측값과 같다. 이미 경로·취향이 있으면 건드리지 않는다 */
+        List<TravelPlan> seeded = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
+                .filter(p -> p.getTitle() != null && p.getTitle().contains(TITLE_MARK))
+                .toList();
+        fillRoute(judge, seeded, "경주 1박 2일 · 시연", "gyeongju",  "[\"문화·역사\",\"음식 탐방\"]", 198_000L);
+        fillRoute(judge, seeded, "강릉 2박 3일 · 시연", "gangneung", "[\"힐링\",\"음식 탐방\"]",     340_000L);
+        fillRoute(judge, seeded, "전주 1박 2일 · 시연", "jeonju",    "[\"문화·역사\",\"음식 탐방\"]", 152_000L);
+    }
+
+    private void fillRoute(User user, List<TravelPlan> seeded, String title, String file,
+                           String styles, long budget) {
+        TravelPlan plan = seeded.stream().filter(p -> title.equals(p.getTitle())).findFirst().orElse(null);
+        if (plan == null) return;
+        boolean changed = false;
+
+        /* 비어 있으면 채운다. 그리고 처음 심은 경로 파일은 하루 이름(label) 자리에 그날 마지막
+           구간 글(「🚗 자차 · 7.9km」)이 들어가 있었다 — 그 결함 모양이면 한 번 바꿔 넣는다.
+           파일을 못 읽으면 있던 경로는 그대로 둔다 */
+        String current = plan.getRouteJson();
+        boolean empty = !RouteJson.usable(current);
+        if (empty || hasLegAsDayLabel(current)) {
+            String json = readRoute(file);
+            if (RouteJson.usable(json)) {
+                plan.setRouteJson(json);
+                changed = true;
+            } else if (empty) {
+                log.warn("[3층시드] {} 경로 파일을 읽지 못해 비워 둡니다.", title);
+            }
+        }
+
+        /* 취향이 없으면 「경로 다시 만들기」가 실패한다. 경로 파일과 맞는 값만 넣는다 —
+           구간이 자차라 자차, 숙소가 호텔이라 호텔. 출발지는 근거가 없어 비워 둔다 */
+        if (plan.getForm() == null) {
+            PlanInputForm form = planInputFormRepository.save(PlanInputForm.builder()
+                    .plan(plan).user(user)
+                    .transportType("🚗 자차")
+                    .accommodationType("호텔")
+                    .accommodationOptions("[]")
+                    .companionType("커플")
+                    .companionCount(2)
+                    .travelStyles(styles)
+                    .dietaryInfo("[]")
+                    .scheduleDensity("여유롭게")
+                    .budget(budget)                   // 숙박·식비·관광교통 예측의 합
+                    .preferenceSource("AUTO_LOADED")
+                    .build());
+            plan.linkInputForm(form);
+            changed = true;
+        }
+
+        if (changed) {
+            travelPlanRepository.save(plan);
+            log.info("[3층시드] {} 에 경로·취향을 채웠습니다.", title);
+        }
+    }
+
+    static boolean hasLegAsDayLabel(String json) {
+        try {
+            for (com.fasterxml.jackson.databind.JsonNode day : new com.fasterxml.jackson.databind.ObjectMapper().readTree(json)) {
+                String label = day.path("label").asText("");
+                if (label.startsWith("🚗 자차 ·") || label.startsWith("🚶 도보 ·")) return true;
+            }
+        } catch (Exception ignored) {
+            // 못 읽으면 건드리지 않는다
+        }
+        return false;
+    }
+
+    private String readRoute(String file) {
+        try (var in = new ClassPathResource("seed/demo-routes/" + file + ".json").getInputStream()) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** 이미 있으면 날짜만 다시 맞추고, 없으면 여행 + 예측·실측 지출을 심는다. */

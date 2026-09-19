@@ -7,6 +7,7 @@ import idusw.sbb.checkin.domain.admin.repository.AdminLogRepository;
 import idusw.sbb.checkin.domain.admin.repository.CurationRepository;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.post.entity.Post;
 import idusw.sbb.checkin.domain.post.repository.PostRepository;
 import idusw.sbb.checkin.domain.system.repository.PostViewLogRepository;
 import idusw.sbb.checkin.domain.system.repository.ReportRepository;
@@ -300,5 +301,47 @@ public class AdminServiceImpl implements AdminService {
         if (dateObj instanceof LocalDate localDate) return localDate;
         if (dateObj instanceof LocalDateTime localDateTime) return localDateTime.toLocalDate();
         return LocalDate.parse(dateObj.toString());
+    }
+
+    /* ── 게시글 숨기기 ─────────────────────────────────────────── */
+
+    @Override
+    public Page<AdminPostListResponseDto> getPosts(String status, String keyword, Pageable pageable) {
+        String s = (status == null || status.isBlank() || "all".equalsIgnoreCase(status)) ? null : status.toUpperCase();
+        if (s != null && !s.equals("ACTIVE") && !s.equals("HIDDEN")) {
+            throw new IllegalArgumentException("상태는 ACTIVE 또는 HIDDEN 만 고를 수 있습니다.");
+        }
+        String k = (keyword == null || keyword.isBlank()) ? null : keyword.trim();
+        return postRepository.findForAdmin(s, k, pageable).map(AdminPostListResponseDto::from);
+    }
+
+    @Override
+    @Transactional
+    public void hidePost(Long adminId, Long postId, String reason) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("관리자 정보를 찾을 수 없습니다."));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        if (!"ACTIVE".equals(post.getStatus())) {
+            throw new IllegalStateException("게시 중인 글만 숨길 수 있습니다.");
+        }
+        String why = (reason == null || reason.isBlank()) ? "운영 정책 위반" : reason.trim();
+
+        post.hide();
+        notificationService.send(post.getUser().getId(), "POST_HIDDEN", "게시글 숨김 안내",
+                "작성하신 글이 운영 정책에 따라 숨김 처리되었습니다.\n글 제목 - " + post.getTitle() + "\n사유 - " + why);
+        adminLogRepository.save(AdminLog.of(admin, "POST_HIDE", post.getId(), why));
+    }
+
+    @Override
+    @Transactional
+    public void unhidePost(Long adminId, Long postId) {
+        User admin = userRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("관리자 정보를 찾을 수 없습니다."));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+
+        post.unhide();
+        adminLogRepository.save(AdminLog.of(admin, "POST_UNHIDE", post.getId(), "숨김 해제"));
     }
 }

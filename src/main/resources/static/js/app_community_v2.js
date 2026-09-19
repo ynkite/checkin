@@ -1401,7 +1401,7 @@
         box.innerHTML = `
             <h3>댓글</h3>
             <div style="display:flex;gap:8px;margin-bottom:14px">
-                <input id="commentInput" type="text" placeholder="댓글을 입력하세요..."
+                <input id="commentInput" type="text" placeholder="댓글을 남겨 주세요"
                        style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid var(--border2);font-size:13px">
                 <button class="btn-f" onclick="submitComment()">등록</button>
             </div>
@@ -1527,7 +1527,7 @@
 
             if (!res.ok) throw new Error('삭제에 실패했습니다.');
 
-            if (typeof toast === 'function') toast('게시글이 삭제했습니다.');
+            if (typeof toast === 'function') toast('글을 지웠습니다.');
 
             window._currentPostId = null;
             window._openedPostId = null;
@@ -1716,7 +1716,7 @@
                 <input type="hidden" id="commentEditPostId">
                 <input type="hidden" id="commentEditCommentId">
 
-                <textarea id="commentEditContent" maxlength="500" placeholder="댓글을 입력하세요..."
+                <textarea id="commentEditContent" maxlength="500" placeholder="댓글을 남겨 주세요"
                           style="width:100%;height:120px;resize:none;border:1.5px solid var(--border2);
                                  border-radius:12px;padding:12px;font-size:13px;line-height:1.6;
                                  box-sizing:border-box;outline:none"></textarea>
@@ -1789,7 +1789,7 @@
 
         if (res && res.success !== false) {
             window.closeEditCommentModal();
-            if (typeof toast === 'function') toast('댓글이 수정했습니다.');
+            if (typeof toast === 'function') toast('댓글을 고쳤습니다.');
             await window.openPostDetail(postId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 수정에 실패했습니다.');
@@ -1822,7 +1822,7 @@
         const res = await api.del(`/api/posts/${targetPostId}/comments/${commentId}`);
 
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('댓글이 삭제했습니다.');
+            if (typeof toast === 'function') toast('댓글을 지웠습니다.');
             await window.openPostDetail(targetPostId);
         } else {
             if (typeof toast === 'function') toast(res?.message || '댓글 삭제에 실패했습니다.');
@@ -1871,7 +1871,7 @@
         const planIdValue = planEl ? String(planEl.value || '').trim() : '';
 
         if (!planIdValue) {
-            if (typeof toast === 'function') toast('여행기록을 선택해야합니다.');
+            if (typeof toast === 'function') toast('연결할 여행을 골라 주세요.');
             return;
         }
 
@@ -3073,7 +3073,7 @@ window._handleWriteImageSelect = function(input) {
         const titleEl = document.getElementById('ai-reco-title');
         const box     = document.getElementById('ai-reco-list');
         if (!box) return;
-        if (titleEl) titleEl.textContent = '지난 제주 힐링 여행 기반 추천';
+        if (titleEl) titleEl.textContent = '많이 담기고 많이 본 후기';
 
         const recommendations = [...posts]
             .filter(p => p.postId && p.title)
@@ -4481,7 +4481,7 @@ window._handleWriteImageSelect = function(input) {
         try {
             const res = await fetch(`/api/posts/${postId}`, { method: 'DELETE', headers: authHeaders(false) });
             if (!res.ok) throw new Error('삭제에 실패했습니다.');
-            if (typeof toast === 'function') toast('게시글이 삭제했습니다.');
+            if (typeof toast === 'function') toast('글을 지웠습니다.');
 
             const card = document.querySelector(`[data-my-post-id="${postId}"]`);
             if (card) card.remove();
@@ -4730,7 +4730,7 @@ window._handleWriteImageSelect = function(input) {
         //             const item = this.closest('.community-edit-image-item');
         //             if (item) item.remove();
         //             if (!box.querySelector('.community-edit-image-item')) empty.style.display = 'block';
-        //             if (typeof toast === 'function') toast('이미지가 삭제했습니다.');
+        //             if (typeof toast === 'function') toast('이미지를 지웠습니다.');
         //         } catch (e) {
         //             if (typeof toast === 'function') toast(e.message || '이미지 삭제에 실패했습니다.');
         //         }
@@ -4841,7 +4841,7 @@ window._handleWriteImageSelect = function(input) {
                 }
             }
 
-            if (typeof toast === 'function') toast('후기가 수정했습니다.');
+            if (typeof toast === 'function') toast('후기를 고쳤습니다.');
             closeEditModal();
 
             if (typeof window._renderMyReviews === 'function') await window._renderMyReviews();
@@ -5071,7 +5071,7 @@ window._handleWriteImageSelect = function(input) {
     window.deleteMyPlaceScrap = async function(scrapId, btn, category) {
         const res = await api.del('/api/scraps/' + scrapId);
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('스크랩이 삭제했습니다.');
+            if (typeof toast === 'function') toast('스크랩에서 뺐습니다.');
 
             if (category && typeof window.loadMyScrap === 'function') {
                 const state = getMyCommunityPagingState('scrap-' + category);
@@ -5249,7 +5249,7 @@ window._handleWriteImageSelect = function(input) {
         }
 
         if (successCount > 0) {
-            if (typeof toast === 'function') toast('선택한 스크랩 여행 경로가 삭제했습니다.');
+            if (typeof toast === 'function') toast('고른 여행 경로를 스크랩에서 뺐습니다.');
             window._myRouteScrapDeleteMode = false;
             const state = getMyCommunityPagingState('scrap-route');
             await window.loadMyRouteScrap(state.page || 0);
@@ -5272,7 +5272,7 @@ window._handleWriteImageSelect = function(input) {
 
         const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
         if (res && res.success !== false) {
-            if (typeof toast === 'function') toast('스크랩이 삭제했습니다.');
+            if (typeof toast === 'function') toast('스크랩에서 뺐습니다.');
             const state = getMyCommunityPagingState('scrap-route');
             await window.loadMyRouteScrap(state.page || 0);
         } else {
