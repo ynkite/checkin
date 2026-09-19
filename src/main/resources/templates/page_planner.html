@@ -1239,10 +1239,28 @@
         ];
 
         function _o50FarKm(route, name) {
+            return (_o50Far(route, name) || {}).km ?? null;
+        }
+
+        /* 먼 장소 한 곳의 거리·주행 시간. 서버가 farKm·farMinutes 를 담는다. 못 받은 값은 null */
+        function _o50Far(route, name) {
             for (const d of (route || [])) for (const p of (d.places || [])) {
-                if (p && p.transit == null && p.name === name && p.farKm != null) return p.farKm;
+                if (p && p.transit == null && p.name === name && p.farKm != null) {
+                    return { km: p.farKm, min: typeof p.farMinutes === 'number' && p.farMinutes > 0 ? p.farMinutes : null };
+                }
             }
             return null;
+        }
+
+        /* 시간을 받았으면 시간을 먼저 쓴다. 40km 라도 고속도로면 30분, 산길이면 한 시간 반이다 */
+        function _o50FarText(far) {
+            if (!far) return '다른 일정과 멀리 떨어져 있습니다. 거리는 확인되지 않았습니다.';
+            if (far.min != null) {
+                const h = Math.floor(far.min / 60), m = far.min % 60;
+                const t = h ? h + '시간' + (m ? ' ' + m + '분' : '') : m + '분';
+                return '다른 일정에서 차로 약 ' + t + ' 걸립니다(도로 ' + far.km + 'km).';
+            }
+            return '다른 일정에서 도로로 약 ' + far.km + 'km 떨어져 있습니다. 차로 걸리는 시간은 받지 못했습니다.';
         }
 
         /* 이름으로 장소를 빼고, 앞뒤로 붕 뜬 이동 칸을 정리한다 */
@@ -1268,12 +1286,10 @@
             const choice = {};   // 이름 → keep | drop | swap. 비어 있으면 아직 안 고른 것
             const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
             const rows = over50.map((name, i) => {
-                const km = _o50FarKm(draftRoute, name);
+                const far = _o50Far(draftRoute, name);
                 return `<div style="padding:10px 0;border-top:1px solid var(--ui-line-2)">
                   <div style="font-weight:700;font-size:14px">${esc(name)}</div>
-                  <div style="font-size:12px;color:var(--ink-2);margin:2px 0 8px">${km != null
-                        ? '다른 일정에서 도로로 약 ' + km + 'km 떨어져 있습니다. 차로 걸리는 시간은 아직 받지 못했습니다.'
-                        : '다른 일정과 멀리 떨어져 있습니다. 거리는 확인되지 않았습니다.'}</div>
+                  <div style="font-size:12px;color:var(--ink-2);margin:2px 0 8px">${esc(_o50FarText(far))}</div>
                   <div style="display:flex;gap:6px;flex-wrap:wrap" role="radiogroup" aria-label="${esc(name)} 어떻게 할까요">
                     ${_O50_CHOICES.map(([k, l]) => `<button type="button" class="o50-opt" data-i="${i}" data-k="${k}" role="radio" aria-checked="false"
                         style="padding:7px 12px;border-radius:8px;border:1px solid var(--ui-line-2);background:var(--panel);
