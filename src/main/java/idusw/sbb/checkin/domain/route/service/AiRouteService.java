@@ -2880,6 +2880,14 @@ public class AiRouteService {
         }
     }
 
+    /** 후보에 있는 표시만 옮긴다. 없는 것은 안 붙인다 — false 를 박으면 「확인 안 됨」이 「아님」이 된다. */
+    static void copyFlags(com.fasterxml.jackson.databind.node.ObjectNode from,
+                          com.fasterxml.jackson.databind.node.ObjectNode to) {
+        for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel"}) {
+            if (from.hasNonNull(f)) to.set(f, from.get(f));
+        }
+    }
+
     /** 후보 줄 끝에 붙는 표시 — 조건 충족 · 집중률. 없으면 빈 문자열이라 줄 모양이 그대로다. */
     private static String candidateFlags(com.fasterxml.jackson.databind.node.ObjectNode n) {
         StringBuilder sb = new StringBuilder();
@@ -3129,16 +3137,28 @@ public class AiRouteService {
         for (var list : candidates.values())
             for (var n : list) byName.putIfAbsent(n.path("name").asText(""), n);
 
+        int total = 0;
+        java.util.List<String> offCandidate = new java.util.ArrayList<>();
+
         for (JsonNode day : route) {
             for (JsonNode pl : day.path("places")) {
                 if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
-                var cand = byName.get(o.path("name").asText(""));
-                if (cand == null) continue;
-                /* 없는 표시는 붙이지 않는다. false 를 박으면 「확인 안 됨」이 「아님」이 된다 */
-                for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel"}) {
-                    if (cand.hasNonNull(f)) o.set(f, cand.get(f));
-                }
+                total++;
+                String nm = o.path("name").asText("");
+                var cand = byName.get(nm);
+                if (cand == null) { offCandidate.add(nm); continue; }
+                copyFlags(cand, o);
             }
+        }
+
+        /* 후보 밖 이름이 나오면 AI 가 「후보만 사용」 규칙을 어긴 것이다. 여기서 지우지는 않는다 —
+           카카오가 좌표를 못 잡으면 finalizeRoute 가 「좌표없음」으로 이미 버린다. 좌표가 잡히는
+           실존 장소라면 지우는 쪽이 더 손해다. 대신 몇 개인지는 남긴다. 이 수가 0 이 아니면
+           환각 차단이 프롬프트 부탁에만 기대고 있다는 뜻이다 */
+        if (offCandidate.isEmpty()) {
+            System.out.println("✅ [후보검증] " + total + "곳 전부 카카오 후보에서 나왔다");
+        } else {
+            log.warn("[후보검증] {}곳 중 {}곳이 후보 밖이다 — {}", total, offCandidate.size(), offCandidate);
         }
         return objectMapper.writeValueAsString(route);
     }

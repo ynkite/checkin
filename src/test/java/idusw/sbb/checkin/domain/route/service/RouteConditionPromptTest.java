@@ -80,6 +80,47 @@ class RouteConditionPromptTest {
         assertThat(r).contains("표시된 곳을 빼지 마세요");
     }
 
+    /* ── 후보 → 동선 표시 옮기기 ────────────────────────────── */
+
+    @Test
+    void 후보에_있는_표시만_동선으로_옮긴다() {
+        ObjectNode cand = OM.createObjectNode();
+        cand.put("petOk", true);
+        cand.put("crowd", 88);
+        cand.put("crowdLabel", "혼잡");
+        ObjectNode out = OM.createObjectNode();
+        out.put("name", "해운대 해수욕장");
+
+        AiRouteService.copyFlags(cand, out);
+
+        assertThat(out.path("petOk").asBoolean()).isTrue();
+        assertThat(out.path("crowd").asInt()).isEqualTo(88);
+        assertThat(out.path("crowdLabel").asText()).isEqualTo("혼잡");
+    }
+
+    @Test
+    void 후보에_없는_표시는_아예_안_붙인다() {
+        // 「확인 안 됨」을 「아님」으로 바꾸면 안 된다. false 도 박지 않는다
+        ObjectNode cand = OM.createObjectNode();
+        cand.put("petOk", true);
+        ObjectNode out = OM.createObjectNode();
+
+        AiRouteService.copyFlags(cand, out);
+
+        assertThat(out.has("barrierFree")).isFalse();
+        assertThat(out.has("crowd")).isFalse();
+    }
+
+    @Test
+    void 집중률이_없는_지역이면_아무것도_안_옮긴다() {
+        // 광주·전남 — annotateCandidateCrowd 가 필드를 아예 안 붙인 후보
+        ObjectNode out = OM.createObjectNode();
+
+        AiRouteService.copyFlags(OM.createObjectNode(), out);
+
+        assertThat(out.isEmpty()).isTrue();
+    }
+
     /* ── 바닥 ──────────────────────────────────────────────── */
 
     private static PlanInputForm form(int pet, int infant) {
