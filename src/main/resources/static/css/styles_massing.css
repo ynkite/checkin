@@ -247,7 +247,6 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
 
    tokens.css 가 금지한 SVG filter(feTurbulence 등)를 쓰지 않는다.
    128x128 PNG 한 장이면 필터 없이 끝난다. */
-.ck-scene::after,
 .mv-scene::after{
   content:""; position:absolute; inset:0; z-index:2;
   pointer-events:none;
@@ -268,90 +267,11 @@ svg.mass{display:block; width:100%; height:auto; shape-rendering:geometricPrecis
   .ck-scene::after, .mv-scene::after{ opacity:calc(var(--grain, .5) * .6) }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   날씨 — 모형 위에 한 겹
-
-   빗방울을 하나씩 만들지 않는다. 반복 그라디언트 두 겹을 서로 다른
-   속도로 흘린다. 요소가 둘뿐이라 군중 다섯 겹이 도는 옆에서 같이
-   돌아도 프레임이 안 떨어진다. transform 만 바꾸므로 합성으로 끝난다.
-   ══════════════════════════════════════════════════════════════ */
-
-.ck-wx{
-  position:absolute; inset:-12% -12% -12% -12%; z-index:2; pointer-events:none;
-  opacity:0; transition:opacity .8s ease;
-}
-.ck-wx::before,
-.ck-wx::after{ content:""; position:absolute; inset:0; will-change:transform }
-
-/* 비 — 가는 선이 비스듬히 내린다. 두 겹의 각도와 속도를 다르게 둬서
-   앞뒤가 생긴다. 한 겹만 쓰면 벽지처럼 보인다 */
-[data-wx="rain"] .ck-wx{ opacity:1 }
-[data-wx="rain"] .ck-wx::before{
-  background:repeating-linear-gradient(74deg,
-    rgba(255,255,255,0) 0 7px,
-    rgba(255,255,255,.34) 7px 8px,
-    rgba(255,255,255,0) 8px 15px);
-  animation:ck-rain .62s linear infinite;
-}
-[data-wx="rain"] .ck-wx::after{
-  background:repeating-linear-gradient(71deg,
-    rgba(255,255,255,0) 0 13px,
-    rgba(255,255,255,.18) 13px 14px,
-    rgba(255,255,255,0) 14px 27px);
-  animation:ck-rain 1.05s linear infinite;
-}
-
-/* 눈 — 점이 느리게 떨어진다. 두 겹의 크기를 다르게 둬서 깊이가 생긴다 */
-[data-wx="snow"] .ck-wx{ opacity:1 }
-[data-wx="snow"] .ck-wx::before{
-  background:
-    radial-gradient(circle at 20% 10%, rgba(255,255,255,.9) 0 1.4px, transparent 1.6px),
-    radial-gradient(circle at 62% 38%, rgba(255,255,255,.8) 0 1.2px, transparent 1.4px),
-    radial-gradient(circle at 84% 72%, rgba(255,255,255,.9) 0 1.5px, transparent 1.7px);
-  background-size:120px 120px, 90px 90px, 150px 150px;
-  animation:ck-snow 9s linear infinite;
-}
-[data-wx="snow"] .ck-wx::after{
-  background:
-    radial-gradient(circle at 42% 24%, rgba(255,255,255,.62) 0 2.2px, transparent 2.6px),
-    radial-gradient(circle at 12% 66%, rgba(255,255,255,.55) 0 2.6px, transparent 3px);
-  background-size:200px 200px, 260px 260px;
-  animation:ck-snow 15s linear infinite;
-}
-
-/* 흐림 — 그리는 것이 없다. 채도만 내린다 */
-[data-wx="cloudy"] .ck-wx{
-  opacity:1;
-  background:linear-gradient(180deg, rgba(120,132,148,.16) 0, rgba(120,132,148,.05) 42%, transparent 70%);
-}
-
-/* 비·눈·흐림이면 장면이 조금 가라앉는다.
-   전에는 .ck-frame 에 filter 를 걸었다. 그 안에서 군중 다섯 겹이 도는데,
-   자식이 한 프레임 움직일 때마다 474KB SVG 전체에 필터를 다시 먹인다.
-   그게 렉의 가장 큰 원인이었다. 막의 색으로 같은 느낌을 낸다 —
-   합성 단계에서 끝나므로 공짜다. */
-[data-wx="rain"] .ck-wx{
-  background:linear-gradient(180deg,
-    rgba(58,72,94,.20) 0, rgba(58,72,94,.10) 46%, rgba(58,72,94,.05) 100%);
-}
-[data-wx="snow"] .ck-wx{
-  background:linear-gradient(180deg,
-    rgba(228,236,246,.26) 0, rgba(228,236,246,.10) 52%, transparent 100%);
-}
-
-@media (prefers-reduced-motion:no-preference){
-  @keyframes ck-rain{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(-42px, 150px, 0) } }
-  @keyframes ck-snow{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(-26px, 120px, 0) } }
-}
-@media (prefers-reduced-motion:reduce){
-  .ck-wx::before,.ck-wx::after{ animation:none }
-}
-
 /* ── 구워진 경로를 숨긴다 ───────────────────────────────────
    모형 SVG 안에 경로가 들어 있다(rt-case · rt-todo · rb-case · rb-hot).
    그건 모형을 만들 때의 세 지점을 이은 선이다. 정거장을 옮긴 뒤로는
    아무 데도 안 닿아서 해변 가운데서 끊긴 채로 보였다.
-   지금은 app_home.js 가 핀 좌표로 직접 긋는다 — 같은 좌표계라
+   전체 동선은 실제 지도 좌표로만 그린다 — 같은 좌표계라
    끝점이 정확히 맞는다. */
 .mass .rt-case, .mass .rt-todo, .mass .rt-done, .mass .rt-hot,
 .mass .rb-case, .mass .rb-todo, .mass .rb-done, .mass .rb-hot{
