@@ -1034,16 +1034,24 @@
             if (message && txt) txt.textContent = message;
         }
 
-        /* 서버 진행을 1.5초마다 묻는다. 끝나거나 실패하면 멈춘다 */
+        /* 서버 진행을 1.5초마다 묻는다. 끝나거나 실패하면 멈춘다.
+           멈춘 뒤에 늦게 도착한 응답은 버린다 — 실패 문구를 「다 됐습니다」로 덮은 일이 있었다.
+           onEnd 가 없는 경우(방금 누른 생성)는 끝·실패를 진행 기록으로 판단하지 않는다.
+           서버는 지난 생성의 DONE 을 10분 들고 있어서, 새로 누른 직후에 「100% 다 됐습니다」가 보일 수 있다.
+           끝은 생성 요청의 응답이 정한다 */
+        let _genWatchSeq = 0;
         function _genWatch(tripId, onEnd) {
             clearInterval(_genPollTimer);
+            const my = ++_genWatchSeq;
             const tick = async () => {
                 let pr = null;
                 try {
                     const r = await api.get(`/api/trips/${tripId}/routes/progress`);
                     pr = r && r.success ? r.data : null;
                 } catch (e) {}
+                if (my !== _genWatchSeq) return;           // 그 사이 멈췄거나 새로 시작했다
                 if (!pr || !pr.known) return;              // 아직 기록 전이거나 못 물었다 — 숫자를 지어내지 않는다
+                if (!onEnd && (pr.done || pr.failed)) return;
                 _genSetPercent(pr.percent, pr.message);
                 if (pr.done || pr.failed) {
                     clearInterval(_genPollTimer);
@@ -1054,7 +1062,7 @@
             tick();
             _genPollTimer = setInterval(tick, GEN_POLL_MS);
         }
-        function _genStopWatch() { clearInterval(_genPollTimer); _genPollTimer = null; }
+        function _genStopWatch() { clearInterval(_genPollTimer); _genPollTimer = null; _genWatchSeq++; }
 
         function _genMark(tripId) {
             try { sessionStorage.setItem(GEN_KEY, JSON.stringify({ tripId: tripId, at: Date.now() })); } catch (e) {}
