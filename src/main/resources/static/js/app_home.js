@@ -222,8 +222,19 @@
     return 'clear';
   }
 
-  function setWx(kind) {
-    document.documentElement.setAttribute('data-wx', kind || 'clear');
+  /* 메인 화면의 비·눈 연출은 「비가 와서」 갈래를 보여 줄 때만 켠다.
+     시간대에 따라 밝아지고 어두워지는 것([data-sky])은 그대로 둔다 —
+     그건 지금 몇 시인지를 말해 주는 것이라 늘 맞다.
+     반면 실제로 비가 온다고 첫 화면부터 빗줄기를 내리면, 세 갈래 중
+     세 번째에서 「비가 와서 실내로」를 보여 줄 때 달라지는 것이 없어진다.
+     연출이 말하려는 것이 무엇인지 흐려진다.
+
+     force 를 준 호출만 비·눈을 켤 수 있다. 그 밖에는 흐림까지만 간다.
+     동선을 만들 때 쓰는 실제 날씨는 서버가 따로 본다. 여기와 무관하다. */
+  function setWx(kind, force) {
+    var k = kind || 'clear';
+    if (!force && (k === 'rain' || k === 'snow')) k = 'cloudy';
+    document.documentElement.setAttribute('data-wx', k);
   }
 
   /* 지금 시각·지금 날씨를 적는다. 배경이 왜 이 색인지 말해 주지 않으면
@@ -471,7 +482,7 @@
                    .filter(Boolean);
           cut(function () { S.showWideMap(re); });
         } else if (f.to) {
-          if (f.key === 'rain') setWx('rain');
+          if (f.key === 'rain') setWx('rain', true);
           goPlace(f.to, f.at + 1);
         }
       });
@@ -569,7 +580,7 @@
 
       } else if (f.to) {
         /* 사람이 몰려서 · 비가 와서 — 그 자리를 다른 곳으로 */
-        setWx(f.key === 'rain' ? 'rain' : base);
+        setWx(f.key === 'rain' ? 'rain' : base, f.key === 'rain');
         var mix = route.slice();
         mix[f.at] = f.to;
         allPins(mix, null);
