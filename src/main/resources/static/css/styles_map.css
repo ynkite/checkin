@@ -378,14 +378,22 @@
    전부 같은 모양이면 어느 날 동선인지 알 수 없다.
    색을 새로 만들지 않고 선의 결로 가른다 — 색맹인 사람도 구분된다.
    1일차 이어진 선 · 2일차 긴 파선 · 3일차 짧은 파선 · 4일차 일점쇄선. */
-#mapRouteLayer g[data-day="2"] .mp-rt-next{ stroke-dasharray:13 7 }
-#mapRouteLayer g[data-day="3"] .mp-rt-next{ stroke-dasharray:5 6 }
-#mapRouteLayer g[data-day="4"] .mp-rt-next{ stroke-dasharray:16 6 3 6 }
-#mapRouteLayer g[data-day="5"] .mp-rt-next{ stroke-dasharray:3 7 }
+#mapRouteLayer g[data-day="1"] .mp-rt-next{ stroke:var(--ink-2) }
+#mapRouteLayer g[data-day="2"] .mp-rt-next{ stroke:var(--slate); stroke-dasharray:13 7 }
+#mapRouteLayer g[data-day="3"] .mp-rt-next{ stroke:var(--terra); stroke-dasharray:5 6 }
+#mapRouteLayer g[data-day="4"] .mp-rt-next{ stroke:var(--tile);  stroke-dasharray:16 6 3 6 }
+#mapRouteLayer g[data-day="5"] .mp-rt-next{ stroke:var(--num);   stroke-dasharray:3 7 }
+
+/* 갈매기도 그날 선 색을 따라간다 — 선과 방향 표시가 따로 놀면 안 된다 */
+#mapRouteLayer g[data-day="1"] .mp-chev{ stroke:var(--ink-2) }
+#mapRouteLayer g[data-day="2"] .mp-chev{ stroke:var(--slate) }
+#mapRouteLayer g[data-day="3"] .mp-chev{ stroke:var(--terra) }
+#mapRouteLayer g[data-day="4"] .mp-chev{ stroke:var(--tile) }
+#mapRouteLayer g[data-day="5"] .mp-chev{ stroke:var(--num) }
 
 /* 지난 구간은 일차와 무관하게 흐린 점선으로 둔다 — 이미 지나간 곳이라
    어느 날이었는지보다 「끝났다」가 먼저 읽혀야 한다. */
-.mp-chev{ fill:none; stroke:var(--ui-l); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; opacity:.5 }
+.mp-chev{ fill:none; stroke:var(--ui-l); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; opacity:.85 }
 .mp-chev-live{ stroke:var(--on-sig-2); opacity:.9 }
 
 /* ── 지도 위 — 핀 ─────────────────────────────────────────── */
@@ -398,9 +406,12 @@
   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--ui-l), var(--lift2);
   z-index:2;
 }
-.mp-pin-stay .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--slate), var(--lift2) }
-.mp-pin-food .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--terra), var(--lift2) }
-.mp-pin-cafe .mp-pd{ box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--num),   var(--lift2) }
+/* 종류를 바탕색으로 가른다. 전에는 테두리 색만 달라서 멀리서 보면 다 같아 보였다.
+   흰 글자 대비는 전부 4.9 이상이다 (slate 5.91 · tile 4.97 · num 4.93 · terra 5.10). */
+.mp-pin-stay .mp-pd{ background:var(--slate); box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--slate), var(--lift2) }
+.mp-pin-food .mp-pd{ background:var(--tile);  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--tile),  var(--lift2) }
+.mp-pin-cafe .mp-pd{ background:var(--num);   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--num),   var(--lift2) }
+.mp-pin-tour .mp-pd{ background:var(--terra); box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--terra), var(--lift2) }
 .mp-pl{
   position:absolute; left:0; top:21px; transform:translateX(-50%);
   white-space:nowrap; padding:3px 10px 4px; border-radius:99px;
@@ -1175,3 +1186,17 @@
   color:var(--ink-2); background:var(--panel-2);   /* --num 은 이 배경에서 대비 4.08 이라 못 쓴다 */
   border-radius:999px; white-space:nowrap; word-break:keep-all;
 }
+
+/* 장소 이름을 경로 층(SVG)에서 그린다. 경로 SVG 가 지도 전체 위에 얹히는 층이라
+   오버레이로 그린 이름은 무조건 선 아래로 깔렸다. z-index 로는 못 넘는 경계다.
+   그래서 오버레이 쪽 이름은 감추고 여기서 그린다 — 늘 맨 위에 온다. */
+.mp-pl{ display:none }
+
+.mp-svg-lbl{
+  font-family:var(--fig); font-size:12px; font-weight:650; letter-spacing:-.02em;
+  fill:var(--ink); paint-order:stroke fill;
+  stroke:var(--halo); stroke-width:3.5; stroke-linejoin:round;
+  dominant-baseline:middle;
+}
+#mapRouteLayer g[data-day="1"] .mp-svg-lbl,
+#mapRouteLayer g[data-day="2"] .mp-svg-lbl{ fill:var(--ink) }
