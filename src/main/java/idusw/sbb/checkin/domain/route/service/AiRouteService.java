@@ -2154,10 +2154,14 @@ public class AiRouteService {
                 if (out.size() >= want) break;
                 String addr = doc.path("address_name").asText("");
                 String road = doc.path("road_address_name").asText("");
-                // 이름 검색(반경 X)일 때만 시군구 일치 검증으로 타지역 차단.
-                // 반경 검색은 카카오가 거리로 이미 걸러주므로 완화한다.
-                if (sigungu != null && !sigungu.isBlank() && centerXY == null
-                        && !addr.contains(sigungu) && !road.contains(sigungu)) continue;
+                /* 이름 검색(반경 X)일 때만 시군구 일치 검증으로 타지역 차단.
+                   반경 검색은 카카오가 거리로 이미 걸러주므로 완화한다.
+
+                   글자 그대로 비교하면 안 된다 — 부르는 말과 주소에 적히는 말이 다르다.
+                   「세종시」로 걸렀더니 카카오가 준 「세종특별자치시 …」가 전부 탈락해
+                   후보가 0개가 됐고 일정이 통째로 비었다. 실제로 일어난 일이다. */
+                if (centerXY == null
+                        && !idusw.sbb.checkin.domain.route.RegionMatch.matches(sigungu, addr, road)) continue;
 
                 String placeName = doc.path("place_name").asText("");
                 String catName = doc.path("category_name").asText("");
@@ -2493,7 +2497,9 @@ public class AiRouteService {
     collectCandidatesFromKakao(TravelPlan plan, PlanInputForm form, java.util.Set<String> userRequested) {
 
         String dest = plan.getDestination();           // 예: "부산광역시 해운대구"
-        String sigungu = extractSigungu(dest);          // 예: "해운대구"
+        /* 시군구만 쓰지 않고 여행지 전체를 넘긴다. 행정구역 이름이 바뀌면
+           (인천 중구 -> 제물포구) 시군구로는 한 건도 못 맞춘다. 시도로라도 맞춘다. */
+        String sigungu = dest;                          // 예: "부산 해운대구"
         boolean isDayTrip = plan.getStartDate() != null && plan.getStartDate().equals(plan.getEndDate());
         long numDays = isDayTrip ? 1
                 : (plan.getEndDate().toEpochDay() - plan.getStartDate().toEpochDay()) + 1;

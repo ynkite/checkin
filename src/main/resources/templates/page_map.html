@@ -2542,7 +2542,10 @@
           var d = _mpPathD(pts);
           if (!d) return;
           var st = _mpSegState(liveIdx, i, segs.length);
+          /* 지도 타일 위에서 선이 묻히지 않게 흰 테두리를 먼저 깐다.
+             전에는 지금 구간에만 깔아서 예정 구간이 배경에 섞여 끊겨 보였다. */
           if (st === 'live') cases += '<path class="mp-rt mp-rt-case" d="' + d + '"/>';
+          else if (st === 'next') cases += '<path class="mp-rt mp-rt-next-case" d="' + d + '"/>';
           lines += '<path class="mp-rt mp-rt-' + st + '" d="' + d + '"/>';
           var cd = _mpChevron(pts);
           if (cd) chevs += '<path class="mp-chev' + (st === 'live' ? ' mp-chev-live' : '') + '" d="' + cd + '"/>';
