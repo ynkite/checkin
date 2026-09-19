@@ -665,7 +665,7 @@
                         const row = document.createElement('div');
                         row.id = 'sum-extra-' + item.label;
                         row.className = 'asc-row';
-                        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
+                        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>`;
                         extraContainer.appendChild(row);
                     });
 
@@ -2418,42 +2418,42 @@
                                 <div class="asc-row">
                                     <div class="asc-label">출발지</div>
                                     <div class="asc-val" id="sum-dep">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dep')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dep')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">여행지</div>
                                     <div class="asc-val" id="sum-dest">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dest')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dest')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">날짜</div>
                                     <div class="asc-val" id="sum-date">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('date')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('date')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">인원</div>
                                     <div class="asc-val" id="sum-people">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('people')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('people')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">동행자</div>
                                     <div class="asc-val" id="sum-comp">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('comp')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('comp')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">예산</div>
                                     <div class="asc-val" id="sum-budget">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('budget')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('budget')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">이동</div>
                                     <div class="asc-val" id="sum-trans">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('trans')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('trans')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">숙소</div>
                                     <div class="asc-val" id="sum-acc">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('acc')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('acc')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                             </div>
 
@@ -2462,32 +2462,32 @@
                                 <div class="asc-row">
                                     <div class="asc-label">숙소 옵션</div>
                                     <div class="asc-val" id="sum-accopts">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('accopts')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('accopts')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">여행 스타일</div>
                                     <div class="asc-val" id="sum-style">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('style')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('style')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">식이 정보</div>
                                     <div class="asc-val" id="sum-food">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('food')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('food')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">일정 밀도</div>
                                     <div class="asc-val" id="sum-density">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('density')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('density')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">반려동물</div>
                                     <div class="asc-val missing" id="sum-pet">— 미입력</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('pet')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('pet')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">특수 조건</div>
                                     <div class="asc-val" id="sum-special">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('special')">✕</button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('special')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                             </div>
 
@@ -2517,7 +2517,7 @@
     <!-- ===== 날씨 팝업 모달 ===== -->
     <div class="overlay" id="weatherPopup" onclick="if(event.target===this)closeWeatherPopup()">
         <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
-            <button class="modal-x" onclick="closeWeatherPopup()">✕</button>
+            <button class="modal-x" onclick="closeWeatherPopup()" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
             <div style="padding:4px 0 14px">
                 <div class="planner-ey">대화로 만드는 일정</div>
                 <div style="font-size:16px;font-weight:800" id="wp-title">여행 날씨 예보</div>
