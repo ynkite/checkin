@@ -348,9 +348,28 @@
      *  자리에 핀이 선다.
      * ════════════════════════════════════════════════════════ */
 
+    /* 모형 장면. json 에 bbox·fit 이 있어야 핀을 얹을 수 있다 —
+       없으면 _mvOpen 이 그 장면을 건너뛴다.
+       전에는 해운대 하나만 등록돼 있어서 다른 지역은 모형이 아예 안 떴다.
+       장면은 tools/massing.py 가 OSM 건물 데이터로 만든다.
+       새 지역을 늘리려면 그 스크립트의 SCENES 에 bbox 한 줄을 더하고
+       만든 svg·json 을 static/img/ 로 옮긴 뒤 여기에 등록한다. */
     var MV_SCENES = [
-      { key: 'haeundae', label: '부산 해운대',
-        svg: '/img/mass_haeundae.svg', json: '/img/mass_haeundae.json' }
+      { key: 'haeundae',      label: '부산 해운대',   svg: '/img/mass_haeundae.svg',      json: '/img/mass_haeundae.json' },
+      { key: 'gwangalli',     label: '부산 광안리',   svg: '/img/mass_gwangalli.svg',     json: '/img/mass_gwangalli.json' },
+      { key: 'gamcheon',      label: '부산 감천문화마을', svg: '/img/mass_gamcheon.svg',  json: '/img/mass_gamcheon.json' },
+      { key: 'huinnyeoul',    label: '부산 흰여울문화마을', svg: '/img/mass_huinnyeoul.svg', json: '/img/mass_huinnyeoul.json' },
+      { key: 'nampo',         label: '부산 남포동',   svg: '/img/mass_nampo.svg',         json: '/img/mass_nampo.json' },
+      { key: 'taejongdae',    label: '부산 태종대',   svg: '/img/mass_taejongdae.svg',    json: '/img/mass_taejongdae.json' },
+      { key: 'gyeongbokgung', label: '서울 경복궁',   svg: '/img/mass_gyeongbokgung.svg', json: '/img/mass_gyeongbokgung.json' },
+      { key: 'bukchon',       label: '서울 북촌',     svg: '/img/mass_bukchon.svg',       json: '/img/mass_bukchon.json' },
+      { key: 'namsan',        label: '서울 남산',     svg: '/img/mass_namsan.svg',        json: '/img/mass_namsan.json' },
+      { key: 'bulguksa',      label: '경주 불국사',   svg: '/img/mass_bulguksa.svg',      json: '/img/mass_bulguksa.json' },
+      { key: 'cheomseongdae', label: '경주 첨성대',   svg: '/img/mass_cheomseongdae.svg', json: '/img/mass_cheomseongdae.json' },
+      { key: 'gyeongpo',      label: '강릉 경포',     svg: '/img/mass_gyeongpo.svg',      json: '/img/mass_gyeongpo.json' },
+      { key: 'jeongdongjin',  label: '강릉 정동진',   svg: '/img/mass_jeongdongjin.svg',  json: '/img/mass_jeongdongjin.json' },
+      { key: 'hyeopjae',      label: '제주 협재',     svg: '/img/mass_hyeopjae.svg',      json: '/img/mass_hyeopjae.json' },
+      { key: 'seongsan',      label: '제주 성산',     svg: '/img/mass_seongsan.svg',      json: '/img/mass_seongsan.json' }
     ];
     var _mvLoaded = null;      /* {key, meta} */
 
