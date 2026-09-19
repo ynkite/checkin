@@ -2420,32 +2420,59 @@
     }
 
     // 구간 가운데에 진행 방향 갈매기 하나. 화살표를 수백 개 찍던 것을 대신한다.
-    function _mpChevron(pts) {
+    /* 진행 방향 갈매기. 전에는 구간 가운데 하나만 찍어서 긴 구간에서는
+       어느 쪽으로 가는지 보이지 않았다. 이제 선을 따라가며 일정 간격으로 찍는다.
+       짧은 구간에는 하나만 — 촘촘히 찍으면 선이 지저분해진다. */
+    var MP_CHEV_STEP = 86;     /* 갈매기 사이 거리(px) */
+    var MP_CHEV_EDGE = 26;     /* 핀 근처에는 찍지 않는다 */
+
+    function _mpChevronAt(pts, want) {
+      /* 폴리라인을 따라 want px 지점의 좌표와 방향 */
+      var acc = 0;
+      for (var k = 1; k < pts.length; k++) {
+        var a = pts[k - 1], b = pts[k];
+        var dx = b[0] - a[0], dy = b[1] - a[1];
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 0.01) continue;
+        if (acc + len >= want) {
+          var r = (want - acc) / len;
+          return { x: a[0] + dx * r, y: a[1] + dy * r, ang: Math.atan2(dy, dx) };
+        }
+        acc += len;
+      }
+      return null;
+    }
+
+    function _mpChevrons(pts) {
       var live = [];
       for (var k = 0; k < pts.length; k++) if (pts[k]) live.push(pts[k]);
       if (live.length < 2) return '';
 
-      // 가운데에서 시작해, 방향이 흔들리지 않을 만큼(14px) 벌어질 때까지 양옆으로 넓힌다.
-      var mid = Math.floor(live.length / 2);
-      var i = Math.max(0, mid - 1), j = Math.min(live.length - 1, mid);
-      var dx, dy, len;
-      while (true) {
-        dx = live[j][0] - live[i][0];
-        dy = live[j][1] - live[i][1];
-        len = Math.sqrt(dx * dx + dy * dy);
-        if (len >= 14) break;
-        if (i === 0 && j === live.length - 1) return '';
-        if (i > 0) i--;
-        if (j < live.length - 1) j++;
+      var total = 0;
+      for (var i = 1; i < live.length; i++) {
+        var dx = live[i][0] - live[i - 1][0], dy = live[i][1] - live[i - 1][1];
+        total += Math.sqrt(dx * dx + dy * dy);
+      }
+      if (total < 18) return '';
+
+      var marks = [];
+      if (total <= MP_CHEV_EDGE * 2 + MP_CHEV_STEP) {
+        marks.push(total / 2);
+      } else {
+        for (var d = MP_CHEV_EDGE; d <= total - MP_CHEV_EDGE; d += MP_CHEV_STEP) marks.push(d);
       }
 
-      var ang = Math.atan2(dy, dx), s = 5.5, off = Math.PI * 0.78;
-      var cx = (live[i][0] + live[j][0]) / 2, cy = (live[i][1] + live[j][1]) / 2;
-      var lx = cx + Math.cos(ang - off) * s, ly = cy + Math.sin(ang - off) * s;
-      var rx = cx + Math.cos(ang + off) * s, ry = cy + Math.sin(ang + off) * s;
-      return 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1)
-              + 'L' + cx.toFixed(1) + ' ' + cy.toFixed(1)
-              + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1);
+      var out = '', s = 5.5, off = Math.PI * 0.78;
+      for (var m = 0; m < marks.length; m++) {
+        var q = _mpChevronAt(live, marks[m]);
+        if (!q) continue;
+        var lx = q.x + Math.cos(q.ang - off) * s, ly = q.y + Math.sin(q.ang - off) * s;
+        var rx = q.x + Math.cos(q.ang + off) * s, ry = q.y + Math.sin(q.ang + off) * s;
+        out += 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1)
+             + 'L' + q.x.toFixed(1) + ' ' + q.y.toFixed(1)
+             + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1);
+      }
+      return out;
     }
 
     // 「지금 여기」 — 앰버 링 + 사람. 오늘 일정이 진행 중일 때만 만든다.
@@ -2547,7 +2574,7 @@
           if (st === 'live') cases += '<path class="mp-rt mp-rt-case" d="' + d + '"/>';
           else if (st === 'next') cases += '<path class="mp-rt mp-rt-next-case" d="' + d + '"/>';
           lines += '<path class="mp-rt mp-rt-' + st + '" d="' + d + '"/>';
-          var cd = _mpChevron(pts);
+          var cd = _mpChevrons(pts);
           if (cd) chevs += '<path class="mp-chev' + (st === 'live' ? ' mp-chev-live' : '') + '" d="' + cd + '"/>';
         });
         if (!lines) return;
