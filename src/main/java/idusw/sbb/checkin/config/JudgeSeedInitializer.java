@@ -37,7 +37,8 @@ public class JudgeSeedInitializer implements CommandLineRunner {
 
     private static final String JUDGE_USERNAME = "openapi";
     private static final String JUDGE_PASSWORD = "2026openapi!";   // 제출 지정 계정
-    private static final String SEED_TITLE = "부산 2박 3일 · 진행 중";
+    // 예산 엔진 3층 시드(BudgetLoopSeedInitializer)가 이 여행에 입력 폼을 붙인다 — package-private
+    static final String SEED_TITLE = "부산 2박 3일 · 진행 중";
 
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
