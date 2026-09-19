@@ -39,8 +39,15 @@ class PlaceCheckTest {
                 List.of(ok(Kind.CROWD, false, "TOUR_FORECAST"), ok(Kind.RAIN, false, "KMA_SHORT"), miss(Kind.TRAFFIC)),
                 ACTIONS, null);
         assertThat(r.verdict().status()).isEqualTo("OK");
-        assertThat(r.verdict().text()).contains("그대로 가도 됩니다");
+        assertThat(r.verdict().text()).contains("그대로 가도 됩니다").contains("길은 확인하지 못했습니다");
         assertThat(keys(r)).containsExactly("keep");
+    }
+
+    @Test
+    void 조사는_받침에_맞춘다() {
+        assertThat(PlaceCheck.topic("길")).isEqualTo("길은");
+        assertThat(PlaceCheck.topic("비")).isEqualTo("비는");
+        assertThat(PlaceCheck.topic("붐빔·비")).isEqualTo("붐빔·비는");
     }
 
     @Test

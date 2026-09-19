@@ -3051,8 +3051,10 @@ window._handleWriteImageSelect = function(input) {
             .map(([name, count]) => ({ name, count }))
             .slice(0, 9);
 
+        /* 태그가 붙은 글이 없으면 없다고 쓴다. 전에는 지어낸 태그 여섯 개를 「인기 태그」로 띄웠다 */
         if (!tags.length) {
-            tags = ['힐링','맛집','카페','가성비','바다','커뮤니티'].map(name => ({ name, count: 1 }));
+            box.innerHTML = '<div class="tag-help">아직 태그가 붙은 후기가 없습니다.</div>';
+            return;
         }
 
         box.innerHTML = tags.map(t => `
@@ -3085,16 +3087,18 @@ window._handleWriteImageSelect = function(input) {
         }
 
         const post     = recommendations[0];
+        /* 아무도 담거나 보지 않았으면 「많이 담긴」이 아니다. 그때는 최근 글이라고 말한다 */
+        if (titleEl && getPostScore(post) === 0) titleEl.textContent = '최근 올라온 후기';
         const tags     = parseStyleTags(post.styleTags);
         const likes    = post.likes ?? post.likeCount ?? 0;
         const scraps   = post.scraps ?? post.scrapCount ?? 0;
-        const matchCount = Math.max(1, tags.length + (likes > 0 ? 1 : 0) + (scraps > 0 ? 1 : 0));
+        const views    = post.views ?? post.viewCount ?? 0;
 
         box.innerHTML = `
             <div class="community-ai-simple-card" onclick="openPostDetail(${post.postId})">
                 <div class="community-ai-simple-cat">${escapeHtml(post.catLabel || '여행 경로')}</div>
                 <div class="community-ai-simple-title">${escapeHtml(post.title)}</div>
-                <div class="community-ai-simple-match">내 취향과 겹치는 항목 ${escapeHtml(matchCount)}개</div>
+                <div class="community-ai-simple-match">좋아요 ${escapeHtml(likes)} · 스크랩 ${escapeHtml(scraps)} · 조회 ${escapeHtml(views)}</div>
             </div>
         `;
     }

@@ -83,7 +83,35 @@
       cityEl.innerHTML = cities.map(c=>`<option value="${c}">${c}</option>`).join('');
     }
 
+    /* 로그인 토큰의 역할. 사용자 정보는 늦게 오므로 토큰에서 바로 읽는다 */
+    function _admRole() {
+      try {
+        const t = localStorage.getItem('accessToken');
+        if (!t) return null;
+        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return p.role || null;
+      } catch (e) { return null; }
+    }
+
     function initAdminPage() {
+      /* 관리자가 아니면 관리자 API 를 부르지 않는다. 전에는 화면을 열 때마다 403 이 네 번 콘솔에 찍혔다 */
+      const layout = document.querySelector('#page-admin .admin-layout');
+      let deny = document.getElementById('adminDeny');
+      if (_admRole() !== 'ADMIN') {
+        if (layout) layout.style.display = 'none';
+        if (!deny) {
+          deny = document.createElement('p');
+          deny.id = 'adminDeny';
+          deny.style.cssText = 'max-width:520px;margin:80px auto;padding:0 16px;text-align:center;color:var(--text2);word-break:keep-all';
+          deny.textContent = '관리자만 볼 수 있는 화면입니다. 관리자 계정으로 로그인해 주세요.';
+          document.getElementById('page-admin')?.appendChild(deny);
+        }
+        deny.hidden = false;
+        return;
+      }
+      if (layout) layout.style.display = '';
+      if (deny) deny.hidden = true;
+
       // 중복 실행 방지 (go 훅 + 복원 fallback 이 동시에 호출하는 경우)
       if (window._adminPageInitialized) {
         // 이미 초기화됨: 대기 중인 섹션만 반영

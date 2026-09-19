@@ -99,6 +99,21 @@ class TripContextPromptTest {
     }
 
     @Test
+    void 날씨는_예보라고_적고_못_받으면_지어내지_말라고_적는다() {
+        assertThat(TripContextPrompt.weatherLine(java.util.Map.of("source", "SHORT", "sky", "흐림", "rainProb", 30)))
+                .contains("기상청 단기예보, 예보이지 관측값이 아님").contains("흐림").contains("비 올 확률 30%");
+        assertThat(TripContextPrompt.weatherLine(java.util.Map.of("source", "SHORT", "rainProb", 70, "outdoorRisk", true)))
+                .contains("다음 장소가 야외인데 비 예보가 있음");
+        assertThat(TripContextPrompt.weatherLine(java.util.Map.of("source", "NORMAL"))).contains("확인되지 않았습니다");
+        assertThat(TripContextPrompt.weatherLine(null)).contains("받지 못함");
+
+        ZonedDateTime now = ZonedDateTime.of(2026, 9, 18, 13, 0, 0, 0, SEOUL);
+        String p = TripContextPrompt.build(now, "부산", LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 19),
+                stops(), null, null, null, java.util.Map.of("source", "SHORT", "rainProb", 30));
+        assertThat(p).contains("비 올 확률 30%").contains("대중교통 노선·환승역·걸리는 시간은 위에 적힌 값이 없으면 말하지 마세요");
+    }
+
+    @Test
     void 연관_관광지를_못_받으면_통계를_근거로_대지_말라고_적는다() {
         assertThat(TripContextPrompt.relatedSection(null)).contains("받지 못했습니다");
         assertThat(TripContextPrompt.relatedSection(new Suggestion(Status.NO_AREA, null, null, null, List.of())))

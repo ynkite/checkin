@@ -219,9 +219,11 @@
 
 /* 여러 개 고를 수 있는 칸은 켜졌을 때 체크가 붙는다.
    「(다중 선택 가능)」 이라고 적어 두는 대신 고른 모양으로 보인다. */
+/* 글리프 대신 선 두 줄로 그린다. 색은 글자색을 따른다 */
 #page-planner .chip[data-multi].on::before{
-  content:"✓"; margin-right:6px; font-size:11px; font-weight:700;
-  vertical-align:1px;
+  content:""; display:inline-block; width:4px; height:8px; margin-right:8px;
+  border:solid currentColor; border-width:0 2px 2px 0;
+  transform:translateY(-2px) rotate(45deg);
 }
 
 @media (max-width:620px){
