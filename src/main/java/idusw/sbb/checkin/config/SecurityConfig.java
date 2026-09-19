@@ -33,6 +33,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
 
     //비밀번호 암호화 도구 등록
     @Bean
@@ -141,6 +142,10 @@ public class SecurityConfig {
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
                 )
+
+                // 로그인 안 된 /api 요청은 로그인 화면(302 → HTML) 대신 401 JSON. 화면 요청은 그대로 로그인 화면
+                .exceptionHandling(e -> e.defaultAuthenticationEntryPointFor(
+                        apiAuthenticationEntryPoint, ApiAuthenticationEntryPoint.API_REQUEST))
 
                 // Spring Security의 기본 인증 필터가 동작하기 전에, 커스텀 JWT 필터가 먼저 토큰을 검증하도록 설정
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

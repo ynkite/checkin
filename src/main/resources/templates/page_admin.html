@@ -90,7 +90,7 @@
         var _ps = window._pendingAdminSection;
         if (_ps) {
           window._pendingAdminSection = null;
-          var _o = ['dashboard','users','reports','curation'];
+          var _o = ['dashboard','users','reports','curation','posts'];
           var _l = document.querySelectorAll('.admin-nav .admin-link');
           var _i = _o.indexOf(_ps);
           showAdmin(_ps, (_i !== -1 && _l[_i]) ? _l[_i] : null);
@@ -199,7 +199,7 @@
 
       /* showAdmin 오버라이드 — 탭 전환 시 데이터 로드 */
       window.showAdmin = function(sec, btn){
-        ['dashboard','users','reports','curation'].forEach(s=>{
+        ['dashboard','users','reports','curation','posts'].forEach(s=>{
           const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
         });
         const t=document.getElementById('ad-'+sec); if(t) t.style.display='block';
@@ -213,6 +213,7 @@
         if(sec==='users')    loadAdminUsers();
         if(sec==='reports')  loadAdminReports('PENDING');
         if(sec==='curation') loadAdminCurations();
+        if(sec==='posts')    loadAdminPosts(0);
       };
 
       /* addDay Day1 부터 시작 */
@@ -394,7 +395,7 @@
       var _pendingSec = window._pendingAdminSection;
       window._pendingAdminSection = null;
       if (_pendingSec) {
-        var _order = ['dashboard','users','reports','curation'];
+        var _order = ['dashboard','users','reports','curation','posts'];
         var _links = document.querySelectorAll('.admin-nav .admin-link');
         var _idx = _order.indexOf(_pendingSec);
         var _btn = (_idx !== -1 && _links[_idx]) ? _links[_idx] : null;
@@ -541,11 +542,76 @@
       if(res.success) loadAdminUsers();
     }
 
+    /* ============================================================
+     * [게시글 관리] 스팸 글 숨기기 · 다시 보이기. 지우지 않는다
+     * ============================================================ */
+    function _admEsc(s){
+      return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    function _goPostPage(page){ loadAdminPosts(page); }
+
+    async function loadAdminPosts(page=0){
+      const tbody=document.getElementById('adminPostTable'); if(!tbody) return;
+      const status=document.getElementById('admin-post-status-filter')?.value||'';
+      const keyword=(document.getElementById('admin-post-search')?.value||'').trim();
+      const qs=new URLSearchParams({page:String(page),size:'20'});
+      if(status) qs.set('status',status);
+      if(keyword) qs.set('keyword',keyword);
+
+      const res=await api.get('/api/admin/posts?'+qs.toString());
+      if(!res||!res.success||!res.data){
+        tbody.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--text3)">목록을 불러오지 못했습니다. ${_admEsc(res&&res.message||'')}</td></tr>`;
+        renderAdminPagination('admin-post-pagination',0,0,'_goPostPage');
+        return;
+      }
+      const list=res.data.content||[];
+      if(!list.length){
+        tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">조건에 맞는 글이 없습니다</td></tr>';
+        renderAdminPagination('admin-post-pagination',0,0,'_goPostPage');
+        return;
+      }
+      tbody.innerHTML=list.map(p=>{
+        const hidden=p.status==='HIDDEN';
+        const badge=hidden
+          ?'<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">숨김</span>'
+          :'<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">게시 중</span>';
+        const action=hidden
+          ?`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="unhideAdminPost(${Number(p.postId)})">다시 보이기</button>`
+          :`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="hideAdminPost(${Number(p.postId)})">숨기기</button>`;
+        const date=p.createdAt?String(p.createdAt).substring(0,10).replaceAll('-','.'):'';
+        return `<tr>
+          <td>#${Number(p.postId)}</td>
+          <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_admEsc(p.title)}">${_admEsc(p.title)}</td>
+          <td>${_admEsc(p.writerName||'-')}</td>
+          <td>${date}</td>
+          <td>${Number(p.viewCount)||0}</td>
+          <td>${badge}</td>
+          <td style="white-space:nowrap">${action}</td>
+        </tr>`;
+      }).join('');
+      renderAdminPagination('admin-post-pagination',res.data.number||0,res.data.totalPages||0,'_goPostPage');
+    }
+
+    async function hideAdminPost(postId){
+      const reason=prompt('숨기는 이유를 적어 주세요. 작성자에게 알림으로 갑니다.','광고·도배 글');
+      if(reason===null) return;
+      const res=await api.patch('/api/admin/posts/'+postId+'/hide',{reason:reason});
+      toast(res&&res.success?'글을 숨겼습니다. 작성자에게 알렸습니다.':(res&&res.message)||'숨기지 못했습니다.');
+      if(res&&res.success) loadAdminPosts(0);
+    }
+
+    async function unhideAdminPost(postId){
+      if(!confirm('이 글을 다시 커뮤니티에 보이게 할까요?')) return;
+      const res=await api.patch('/api/admin/posts/'+postId+'/unhide',{});
+      toast(res&&res.success?'글이 다시 보입니다.':(res&&res.message)||'되돌리지 못했습니다.');
+      if(res&&res.success) loadAdminPosts(0);
+    }
+
     async function searchAdminUserByName(name){
       if(!name){toast('작성자 정보를 찾을 수 없습니다.');return;}
       const usersBtn=document.querySelector('.admin-link[onclick*="\'users\'"]');
       /* 탭 전환 */
-      ['dashboard','users','reports','curation'].forEach(s=>{
+      ['dashboard','users','reports','curation','posts'].forEach(s=>{
         const e=document.getElementById('ad-'+s); if(e) e.style.display='none';
       });
       document.getElementById('ad-users').style.display='block';
@@ -970,6 +1036,7 @@
         <button class="admin-link"    onclick="showAdmin('users',this)">회원 관리</button>
         <button class="admin-link"    onclick="showAdmin('reports',this)">신고 관리</button>
         <button class="admin-link"    onclick="showAdmin('curation',this)">큐레이션 관리</button>
+        <button class="admin-link"    onclick="showAdmin('posts',this)">게시글 관리</button>
         <div class="admin-nav-foot">
           <button class="admin-link" onclick="go('main')">← 메인으로</button>
         </div>
@@ -1063,6 +1130,31 @@
             <tbody id="adminReportTable"></tbody>
           </table>
           <div id="admin-report-pagination"></div>
+        </div>
+
+        <!-- ══ 게시글 관리 ══ -->
+        <div id="ad-posts" style="display:none">
+          <h2 style="font-size:20px;font-weight:800;margin-bottom:6px">게시글 관리</h2>
+          <p style="font-size:13px;color:var(--text3);margin-bottom:14px;word-break:keep-all">
+            숨긴 글은 커뮤니티 목록과 상세에서 빠지고, 작성자와 관리자에게만 보입니다. 지우지 않으니 언제든 다시 보이게 할 수 있습니다.
+          </p>
+          <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+            <input class="form-input" id="admin-post-search" placeholder="제목이나 작성자 이름"
+                   style="flex:1;min-width:220px"
+                   onkeydown="if(event.key==='Enter')loadAdminPosts(0)">
+            <select class="form-input" id="admin-post-status-filter" style="width:auto"
+                    onchange="loadAdminPosts(0)">
+              <option value="">전체</option>
+              <option value="ACTIVE">게시 중</option>
+              <option value="HIDDEN">숨김</option>
+            </select>
+            <button class="btn-o" style="padding:6px 14px;font-size:12px" onclick="loadAdminPosts(0)">찾기</button>
+          </div>
+          <table class="admin-table">
+            <thead><tr><th>번호</th><th>제목</th><th>작성자</th><th>작성일</th><th>조회</th><th>상태</th><th>관리</th></tr></thead>
+            <tbody id="adminPostTable"></tbody>
+          </table>
+          <div id="admin-post-pagination"></div>
         </div>
 
         <!-- ══ 큐레이션 관리 ══ -->
