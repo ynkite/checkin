@@ -19,6 +19,8 @@
        둘 다 절대 주소여야 하고, 카카오·페이스북은 svg 를 안 받는다.
        지금 로고는 카드에 쓸 크기(1200x630)가 아니다. -->
   <meta name="twitter:card" content="summary">
+  <!-- 홈 화면에 추가. 아이폰은 이렇게 연 상태여야 푸시가 온다 (iOS 16.4+) -->
+  <link rel="manifest" th:href="@{/manifest.json}">
   <!-- 주소창 색. meta 는 CSS 변수를 못 받아서 값을 직접 적는다.
        tokens.css 의 --page 와 같아야 한다. --page 를 바꾸면 여기도 바꾼다. -->
   <meta name="theme-color" content="#F8FAFC">
@@ -222,6 +224,7 @@
 <script th:src="@{/js/app_community.js(v=20260620a)}"></script>
 <script th:src="@{/js/app_community_v2.js(v=20260620a)}"></script>
 <script th:src="@{/js/nav-drive.js(v=20260918a)}"></script>
+<script th:src="@{/js/app_push.js(v=20260919a)}"></script>
 
 <!--제미나이에서 추가-->
 <div id="notifPopup"
