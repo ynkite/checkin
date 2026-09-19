@@ -62,4 +62,26 @@ class RegionMatchTest {
         assertThat(RegionMatch.core("구")).isEqualTo("구");
         assertThat(RegionMatch.core(null)).isEmpty();
     }
+
+    @Test
+    void 행정구역_이름이_바뀌어도_시도로_맞춘다() {
+        /* 인천 중구가 제물포구가 됐다. 시군구로는 한 건도 못 맞춘다.
+           이게 깨지면 그 지역 숙소가 전부 탈락해 일정이 비었다. */
+        assertThat(RegionMatch.matches("인천 중구",
+                "인천 제물포구 항동3가 5", "인천 제물포구 제물량로 217")).isTrue();
+    }
+
+    @Test
+    void 여행지_전체가_와도_맞는다() {
+        assertThat(RegionMatch.matches("부산 해운대구", "부산 해운대구 우동", "")).isTrue();
+        assertThat(RegionMatch.matches("세종 세종시", "세종특별자치시 연기면 보통리", "")).isTrue();
+        assertThat(RegionMatch.matches("강원 강릉시", "강원특별자치도 강릉시 초당동", "")).isTrue();
+    }
+
+    @Test
+    void 다른_시도는_여전히_걸러진다() {
+        /* 느슨하게 했다고 아무거나 받으면 안 된다. */
+        assertThat(RegionMatch.matches("부산 해운대구", "서울 강남구 역삼동", "")).isFalse();
+        assertThat(RegionMatch.matches("제주 제주시", "경기 수원시 팔달구", "")).isFalse();
+    }
 }
