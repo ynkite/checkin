@@ -2773,6 +2773,20 @@ public class AiRouteService {
         result.put("cafe", new java.util.ArrayList<>());
         result.put("tour", new java.util.ArrayList<>());
 
+        /* 여행지 중심 좌표를 먼저 잡는다. 숙소가 동선 전체의 중심을 정하기 때문이다 —
+           나머지 후보를 숙소 반경 5km 로 모으므로, 숙소가 외곽이면 여행이 통째로 외곽으로
+           끌려간다. 실제로 그랬다: 「대전 중구 펜션」 검색 1위가 등나무집(중구청에서 5.6km,
+           목달동 시골)이라 3일치 동선이 전부 국사봉유적·배나무골천·목달동유래비가 됐다.
+           도심인 으능정이·보운대는 후보에도 못 들어왔다 — 후보 풀 문제가 아니라 앵커 문제다 */
+        double[] centerXY = regionCenterXY(dest);
+        if (centerXY == null) {          // 주소로 못 찾는 여행지면 장소 검색으로라도 잡는다
+            var anchor = kakaoSearchPlaces(dest, sigungu, null, 0, 1);
+            if (!anchor.isEmpty()) {
+                centerXY = new double[]{ anchor.get(0).path("lng").asDouble(),
+                                         anchor.get(0).path("lat").asDouble() };
+            }
+        }
+
         // ── 1) 숙소 1곳 선정 (당일치기면 건너뜀) ──
         double[] stayXY = null;       // [경도(x), 위도(y)] — 반경 검색용
         String stayName = null;
@@ -2788,11 +2802,13 @@ public class AiRouteService {
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stays =
                     findConditionStay(plan, form, sigungu);
             if (stays.isEmpty()) {
-                // "{여행지} {숙소유형}" 으로 검색 (예: "부산광역시 해운대구 호텔")
-                stays = kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 1);
+                /* 하나만 받아 그것을 쓰면 카카오 정확도 1위에 여행이 끌려간다. 열 곳을 받아
+                   여행지 중심에 가장 가까운 곳을 고른다 — 「대전 중구 펜션」이면 1위 등나무집
+                   (5.6km) 대신 2위 스테이 연월(0.5km)이 잡힌다 */
+                stays = nearestToCenter(kakaoSearchPlaces(dest + " " + accType, sigungu, null, 0, 10), centerXY);
             }
             if (stays.isEmpty()) {  // 유형으로 못 찾으면 "숙소"로 재시도
-                stays = kakaoSearchPlaces(dest + " 숙소", sigungu, null, 0, 1);
+                stays = nearestToCenter(kakaoSearchPlaces(dest + " 숙소", sigungu, null, 0, 10), centerXY);
             }
             if (!stays.isEmpty()) {
                 var s = stays.get(0);
@@ -2813,12 +2829,8 @@ public class AiRouteService {
                 new Cat("tour", "관광지"),
                 new Cat("cafe", "카페"),
         };
-        // 검색 기준점: 숙소가 있으면 숙소명/숙소좌표, 없으면(당일치기) 여행지 중심 좌표
-        if (stayXY == null) {
-            var anchor = kakaoSearchPlaces(dest, sigungu, null, 0, 1);
-            if (!anchor.isEmpty())
-                stayXY = new double[]{ anchor.get(0).path("lng").asDouble(), anchor.get(0).path("lat").asDouble() };
-        }
+        // 검색 기준점: 숙소가 있으면 숙소 좌표, 없으면(당일치기) 위에서 잡아 둔 여행지 중심
+        if (stayXY == null) stayXY = centerXY;
         for (Cat c : cats) {
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> merged = result.get(c.type());
             // (a) "{숙소명} 주변 {카테고리}" 이름 검색
@@ -2912,6 +2924,71 @@ public class AiRouteService {
         }
 
         return result;
+    }
+
+    /**
+     * 여행지의 <b>행정구역 중심</b> 좌표 [경도, 위도]. 못 구하면 {@code null}.
+     *
+     * <p>장소 검색(keyword.json)으로 중심을 잡으면 안 된다. 「대전 중구」를 물으면 첫 결과가
+     * <b>대전오월드</b>(중구청에서 4.5km, 외곽)다. 그걸 중심으로 삼으면 외곽 숙소가 「중심에서
+     * 제일 가깝다」로 뽑히고 여행이 통째로 딸려 간다 — 실제로 3일치가 목달동 시골로 갔다.
+     * 주소 검색(address.json)은 같은 질의에 행정구역 중심을 정확히 준다.
+     */
+    private double[] regionCenterXY(String destination) {
+        if (destination == null || destination.isBlank()) return null;
+        try {
+            /* geocodeOnce 와 같은 이유로 직접 encode 한 문자열로 URI 를 만든다 —
+               RestTemplate 이 % 를 또 인코딩하면 결과가 0개가 된다 */
+            String enc = java.net.URLEncoder.encode(destination, java.nio.charset.StandardCharsets.UTF_8);
+            java.net.URI uri = java.net.URI.create(
+                    "https://dapi.kakao.com/v2/local/search/address.json?query=" + enc);
+
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
+            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
+                    uri, org.springframework.http.HttpMethod.GET,
+                    new org.springframework.http.HttpEntity<Void>(headers), String.class);
+
+            JsonNode docs = objectMapper.readTree(res.getBody()).path("documents");
+            if (!docs.isArray() || docs.isEmpty()) return null;
+            JsonNode d = docs.get(0);
+            double x = d.path("x").asDouble(), y = d.path("y").asDouble();
+            if (x == 0 || y == 0) return null;
+            System.out.println("📍 [여행지 중심] " + d.path("address_name").asText(destination));
+            return new double[]{ x, y };
+        } catch (Exception e) {
+            System.err.println("[여행지 중심] 주소 검색 실패(" + destination + "): " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 후보 중 여행지 중심에 가장 가까운 것 하나만 남긴다. 중심을 모르면 원래 순서 그대로 둔다.
+     *
+     * <p>숙소에만 쓴다. 숙소가 동선 전체의 중심을 정하므로 거기서 한 번 잘못 잡으면 여행이
+     * 통째로 딸려 간다. 다른 후보는 여러 곳을 넘겨 AI 가 고르게 두는 편이 낫다.
+     */
+    private java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> nearestToCenter(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> found, double[] centerXY) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+        if (found.isEmpty()) return out;
+        if (centerXY == null) { out.add(found.get(0)); return out; }
+
+        double[] center = { centerXY[1], centerXY[0] };   // haversine 은 [위도, 경도] 를 받는다
+        com.fasterxml.jackson.databind.node.ObjectNode best = null;
+        double bestD = Double.MAX_VALUE;
+        for (var n : found) {
+            double[] here = { n.path("lat").asDouble(), n.path("lng").asDouble() };
+            double d = haversine(center, here);
+            if (d < bestD) { bestD = d; best = n; }
+        }
+        if (best == null) best = found.get(0);
+        System.out.println("🏨 [숙소] " + best.path("name").asText("")
+                + " — 후보 " + found.size() + "곳 중 여행지 중심에서 "
+                + String.format("%.1f", bestD / 1000) + "km 로 가장 가깝다");
+        out.add(best);
+        return out;
     }
 
     /**
