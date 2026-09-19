@@ -2659,8 +2659,15 @@ public class AiRouteService {
         }
 
         // ── 3.5) 조건(반려동물·유아) 후보 합류 · 집중률 표시 — 짜기 전에 붙인다 ──
-        mergeConditionPlaces(result, plan, form);
-        annotateCandidateCrowd(result, plan);
+        /* 여행지 이름만으로는 시군구가 틀린다. destination 이 「부산」이면 AreaCode 가 첫 시군구인
+           중구를 집는데 이 여행은 해운대다 — 중구의 반려동물 목록을 받아 0건을 보고 「없다」고
+           말하게 된다. 숙소(또는 여행지 중심) 좌표로 시군구를 바로잡는다 */
+        idusw.sbb.checkin.domain.crowd.AreaCode.Area area = tourAreaInfoService.resolveArea(
+                dest,
+                stayXY != null ? stayXY[1] : null,
+                stayXY != null ? stayXY[0] : null);
+        mergeConditionPlaces(result, form, area);
+        annotateCandidateCrowd(result, plan, area);
 
         // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
         estimatePricesWithAi(result, dest);
@@ -2694,17 +2701,20 @@ public class AiRouteService {
      */
     private void mergeConditionPlaces(
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
-            TravelPlan plan, PlanInputForm form) {
+            PlanInputForm form, idusw.sbb.checkin.domain.crowd.AreaCode.Area area) {
 
         boolean pet    = form.getHasPet() == 1;
         boolean infant = form.getHasInfant() == 1;
         if (!pet && !infant) return;   // 조건이 없으면 호출하지 않는다
+        if (area == null) {
+            System.out.println("ℹ️ [조건후보] 여행지를 지역 코드로 못 바꿨다 — 조건 없이 간다");
+            return;
+        }
 
         idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.AreaInfo info;
         try {
-            /* 좌표를 안 넘긴다 — 후보를 모으는 시점엔 숙소가 아직 안 정해진 날도 있다.
-               여행지 이름만으로 시군구를 잡고, 못 잡으면 NO_AREA 가 온다 */
-            info = tourAreaInfoService.lookup(plan.getDestination(), null, null);
+            /* 이미 바로잡은 시군구 이름으로 넘긴다. lookup 안에서 다시 좌표를 풀지 않게 한다 */
+            info = tourAreaInfoService.lookup(area.fullName(), null, null);
         } catch (RuntimeException e) {
             log.warn("[조건후보] 관광공사 조회 실패 — 조건 없이 간다: {}", e.getMessage());
             return;
@@ -2775,10 +2785,8 @@ public class AiRouteService {
      */
     private void annotateCandidateCrowd(
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
-            TravelPlan plan) {
+            TravelPlan plan, idusw.sbb.checkin.domain.crowd.AreaCode.Area area) {
 
-        idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
-                idusw.sbb.checkin.domain.crowd.AreaCode.find(plan.getDestination());
         if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) return;
 
         java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> tour = result.get("tour");
@@ -3040,11 +3048,40 @@ public class AiRouteService {
         try {
             JsonNode parsed = objectMapper.readTree(result);
             if (!parsed.isArray() || parsed.isEmpty()) return "[]";
+            return carryCandidateFlags(parsed, geocodedCandidates);
         } catch (Exception e) {
             return "[]";
         }
+    }
 
-        return result;
+    /**
+     * 후보에 붙여 둔 표시(조건 충족 · 집중률)를 AI 가 낸 일정으로 옮긴다.
+     *
+     * <p>AI 는 출력 형식대로 name·sub·time 만 다시 쓴다. 표시는 후보 쪽 객체에만 있어서
+     * 그대로 두면 <b>반영은 됐는데 근거가 사라진다</b> — 화면도 심사 답변도 그 값을 못 쓴다.
+     * 이름으로 짝지어 도로 붙인다.
+     */
+    private String carryCandidateFlags(
+            JsonNode route,
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates)
+            throws com.fasterxml.jackson.core.JsonProcessingException {
+
+        java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName = new java.util.HashMap<>();
+        for (var list : candidates.values())
+            for (var n : list) byName.putIfAbsent(n.path("name").asText(""), n);
+
+        for (JsonNode day : route) {
+            for (JsonNode pl : day.path("places")) {
+                if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                var cand = byName.get(o.path("name").asText(""));
+                if (cand == null) continue;
+                /* 없는 표시는 붙이지 않는다. false 를 박으면 「확인 안 됨」이 「아님」이 된다 */
+                for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel"}) {
+                    if (cand.hasNonNull(f)) o.set(f, cand.get(f));
+                }
+            }
+        }
+        return objectMapper.writeValueAsString(route);
     }
 
     /**
