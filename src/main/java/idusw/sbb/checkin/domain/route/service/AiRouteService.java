@@ -54,6 +54,7 @@ public class AiRouteService {
     private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;      // 기상청 예보 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService;     // TMAP 구간 이동시간 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository;
+    private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService; // 관광공사 반려동물·무장애 — 후보를 모을 때 쓴다
     private final ObjectMapper objectMapper;
 
     // ★카카오 거리 계산용
@@ -85,6 +86,7 @@ public class AiRouteService {
             idusw.sbb.checkin.domain.weather.service.WeatherService weatherService,
             idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService,
             idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository,
+            idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
 
@@ -110,6 +112,7 @@ public class AiRouteService {
         this.weatherService = weatherService;
         this.travelTimeService = travelTimeService;
         this.placeRepository = placeRepository;
+        this.tourAreaInfoService = tourAreaInfoService;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
 
@@ -2655,6 +2658,10 @@ public class AiRouteService {
             System.out.println("✅ [사용자요청 포함] " + reqName + " (" + type + (("food".equals(type)) ? "/" + meal : "") + ")");
         }
 
+        // ── 3.5) 조건(반려동물·유아) 후보 합류 · 집중률 표시 — 짜기 전에 붙인다 ──
+        mergeConditionPlaces(result, plan, form);
+        annotateCandidateCrowd(result, plan);
+
         // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
         estimatePricesWithAi(result, dest);
         for (var entry : result.entrySet()) {
@@ -2670,6 +2677,168 @@ public class AiRouteService {
         }
 
         return result;
+    }
+
+    /**
+     * 반려동물·유아 조건을 <b>후보 단계에서</b> 반영한다.
+     *
+     * <p>전에는 조건이 프롬프트에 「반려동물: O」 한 글자로만 들어갔다. 화면에 칩이 있는데
+     * 장소 고르는 데 아무 영향을 안 줬다. 관광공사에 실제 목록이 있으므로 그것을 후보에 넣는다.
+     *
+     * <p><b>거르지 않고 합류시킨다.</b> 관광공사 목록은 시군구당 몇 건뿐이라 그것만 남기면
+     * 동선이 비거나 한 곳만 반복된다. 조건에 맞는 곳을 후보 앞에 넣고 표시만 해서,
+     * 배치는 뒤에 맡기되 근거는 남긴다.
+     *
+     * <p>못 받았을 때 「조건에 맞는 곳이 없다」고 말하지 않는다. {@code UNAVAILABLE} 은
+     * 확인되지 않은 것이고 {@code NONE} 이 없는 것이다 — 둘을 섞으면 거짓이 된다.
+     */
+    private void mergeConditionPlaces(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            TravelPlan plan, PlanInputForm form) {
+
+        boolean pet    = form.getHasPet() == 1;
+        boolean infant = form.getHasInfant() == 1;
+        if (!pet && !infant) return;   // 조건이 없으면 호출하지 않는다
+
+        idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.AreaInfo info;
+        try {
+            /* 좌표를 안 넘긴다 — 후보를 모으는 시점엔 숙소가 아직 안 정해진 날도 있다.
+               여행지 이름만으로 시군구를 잡고, 못 잡으면 NO_AREA 가 온다 */
+            info = tourAreaInfoService.lookup(plan.getDestination(), null, null);
+        } catch (RuntimeException e) {
+            log.warn("[조건후보] 관광공사 조회 실패 — 조건 없이 간다: {}", e.getMessage());
+            return;
+        }
+
+        if (pet)    mergeOneCondition(result, info.pet(),         "petOk",       "반려동물 동반");
+        if (infant) mergeOneCondition(result, info.barrierFree(), "barrierFree", "무장애");
+    }
+
+    /** 한 조건의 장소들을 후보에 표시하거나 새로 넣는다. */
+    private void mergeOneCondition(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Section
+                    <idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Place> section,
+            String flag, String label) {
+
+        if (section.status() != idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.Status.OK) {
+            System.out.println("ℹ️ [조건후보] " + label + " — " + section.status() + " (후보를 더하지 않는다)");
+            return;
+        }
+
+        // 이미 후보에 있는 같은 이름에는 표시만 한다
+        java.util.Set<String> marked = new java.util.HashSet<>();
+        for (var list : result.values()) {
+            for (var n : list) {
+                String nm = n.path("name").asText("");
+                if (section.items().stream().anyMatch(pl -> nm.equals(pl.name()))) {
+                    n.put(flag, true);
+                    marked.add(nm);
+                }
+            }
+        }
+
+        // 나머지는 tour 후보 앞에 넣는다. 좌표가 없는 것은 버린다 — 지도에 못 올린다
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> tour = result.get("tour");
+        int added = 0;
+        for (var pl : section.items()) {
+            if (pl.lat() == null || pl.lng() == null) continue;
+            if (marked.contains(pl.name())) continue;
+            if (tour.stream().anyMatch(x -> pl.name().equals(x.path("name").asText("")))) continue;
+
+            com.fasterxml.jackson.databind.node.ObjectNode n = objectMapper.createObjectNode();
+            n.put("name", pl.name());
+            n.put("lat", pl.lat());
+            n.put("lng", pl.lng());
+            n.put("type", "tour");
+            n.put("stars", "평점 정보 없음");
+            n.put("_unit", resolveDbPrice(pl.name()));   // -1 이면 뒤에서 AI 가 단가를 매긴다
+            n.put("_meal", "점심");
+            n.put(flag, true);
+            tour.add(0, n);
+            added++;
+        }
+        System.out.println("🐾 [조건후보] " + label + " — 표시 " + marked.size() + "곳 · 추가 " + added + "곳");
+    }
+
+    /**
+     * 집중률을 <b>후보 단계에서</b> 붙인다.
+     *
+     * <p>{@code annotateCrowd} 는 저장 직전에 돈다 — 순서와 시각이 다 정해진 뒤라 그때 알아도
+     * 못 피한다. 여기서 붙여 두면 배치가 그 값을 보고 정할 수 있다.
+     *
+     * <p><b>혼잡한 곳을 버리지 않는다.</b> 부산·경주처럼 유명 장소가 몰린 곳에서 90 이상을
+     * 다 빼면 후보가 통째로 사라진다. 값을 실어 보내고 판단을 뒤에 맡긴다.
+     *
+     * <p>광주(29)·전남(46)처럼 집중률 데이터가 없는 지역은 {@code AreaCode.hasCrowdData} 에서
+     * 걸러져 필드 자체가 안 붙는다. 0(한적)으로 두지 않는다 — 없는 것과 한적한 것은 다르다.
+     */
+    private void annotateCandidateCrowd(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            TravelPlan plan) {
+
+        idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
+                idusw.sbb.checkin.domain.crowd.AreaCode.find(plan.getDestination());
+        if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) return;
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> tour = result.get("tour");
+        if (tour == null || tour.isEmpty()) return;
+
+        /* ponytail: 첫날 기준으로 한 번만 잰다. 후보는 아직 날짜에 안 붙어 있어 날짜별로 물을 수가
+           없다. 일자별 값이 필요해지면 배치 뒤에 도는 annotateCrowd 가 이미 그 일을 한다 */
+        java.time.LocalDate day = plan.getStartDate() != null
+                ? plan.getStartDate() : java.time.LocalDate.now();
+
+        java.util.List<String> names = new java.util.ArrayList<>();
+        for (var n : tour) {
+            String nm = n.path("name").asText("");
+            if (!nm.isBlank()) names.add(nm);
+        }
+        if (names.isEmpty()) return;
+
+        try {
+            int hit = 0;
+            for (var f : crowdService.forecast(area.areaCd(), area.signguCd(), names, day)) {
+                if (f.rate() == null) continue;
+                for (var n : tour) {
+                    if (!f.placeName().equals(n.path("name").asText(""))) continue;
+                    n.put("crowd", Math.round(f.rate()));
+                    n.put("crowdLabel", f.levelLabel());
+                    hit++;
+                }
+            }
+            System.out.println("📊 [후보 집중률] " + hit + "곳에 붙였다 (기준일 " + day + ")");
+        } catch (Exception e) {
+            log.warn("[후보 집중률] 붙이지 못했습니다: {}", e.getMessage());
+        }
+    }
+
+    /** 후보 줄 끝에 붙는 표시 — 조건 충족 · 집중률. 없으면 빈 문자열이라 줄 모양이 그대로다. */
+    private static String candidateFlags(com.fasterxml.jackson.databind.node.ObjectNode n) {
+        StringBuilder sb = new StringBuilder();
+        if (n.path("petOk").asBoolean(false))       sb.append(" | 반려동물동반가능");
+        if (n.path("barrierFree").asBoolean(false)) sb.append(" | 무장애");
+        /* 값이 없는 것과 한적한 것은 다르다. 없으면 아무 말도 하지 않는다 */
+        if (n.hasNonNull("crowd")) {
+            sb.append(" | 집중률=").append(n.path("crowd").asInt())
+              .append('(').append(n.path("crowdLabel").asText("")).append(')');
+        }
+        return sb.toString();
+    }
+
+    /** 조건을 고른 사람에게만 규칙 14 를 준다. 안 고르면 규칙 자체가 없다. */
+    private static String conditionRule(PlanInputForm form) {
+        boolean pet    = form.getHasPet() == 1;
+        boolean infant = form.getHasInfant() == 1;
+        if (!pet && !infant) return "";
+
+        StringBuilder sb = new StringBuilder("14. 조건 우선: ");
+        if (pet)    sb.append("반려동물 동반 여행입니다. '반려동물동반가능' 표시가 붙은 후보를 먼저 쓰세요. ");
+        if (infant) sb.append("유아 동반 여행입니다. '무장애' 표시가 붙은 후보를 먼저 쓰세요. ");
+        /* 표시가 없는 것을 「조건에 안 맞는 곳」으로 읽으면 거짓이 된다 */
+        sb.append("\n").append("    표시가 없는 후보는 '조건에 맞지 않는 곳'이 아니라 '확인되지 않은 곳'입니다.").append("\n")
+          .append("    표시된 후보가 모자라면 나머지로 채우되, 표시된 곳을 빼지 마세요.").append("\n");
+        return sb.toString();
     }
 
     /**
@@ -2752,12 +2921,13 @@ public class AiRouteService {
             candidatesSb.append("\n[").append(type.toUpperCase()).append(" — ").append(list.size()).append("개]\n");
             for (int i = 0; i < list.size(); i++) {
                 com.fasterxml.jackson.databind.node.ObjectNode n = list.get(i);
-                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%n",
+                candidatesSb.append(String.format("  %d. name=%s | sub=%s | lat=%.6f | lng=%.6f%s%n",
                         i + 1,
                         n.path("name").asText(""),
                         n.path("sub").asText(""),
                         n.path("lat").asDouble(),
-                        n.path("lng").asDouble()));
+                        n.path("lng").asDouble(),
+                        candidateFlags(n)));
             }
         }
 
@@ -2828,7 +2998,10 @@ public class AiRouteService {
                 + "10. replacePh: \"장소 교체 요청\" 고정.\n"
                 + "11. budget: 그 날 sub 금액 합산, ₩ 표기.\n"
                 + "12. label: \"📅 Day {N} · MM/DD (요일)\" 형식.\n"
-                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n\n"
+                + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n"
+                + conditionRule(form)
+                + "15. 같은 날 같은 성격을 두 번 넣지 마세요. 해변·산·시장·전시·카페처럼\n"
+                + "    성격이 겹치는 후보는 하루에 하나만. 사람이 짜면 그렇게 안 짭니다.\n\n"
                 + "[출력 — 아래 JSON 배열만, 설명·마크다운 코드블럭 금지]\n"
                 + "[\n"
                 + "  {\n"
