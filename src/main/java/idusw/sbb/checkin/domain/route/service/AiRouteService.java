@@ -982,8 +982,18 @@ public class AiRouteService {
                 JsonNode places = dayNode.path("places");
                 if (!places.isArray()) continue;
 
+                long transitOfDay = 0;
+
                 for (JsonNode place : places) {
-                    if (!place.has("type")) continue; // transit 항목 스킵
+                    /* 이동 구간은 장소가 아니라서 type 이 없다. 전에는 여기서 건너뛰어
+                       예상 지출에 교통비가 통째로 빠졌다 — 가계부 예상 총액이 지도에 뜨는
+                       동선 금액보다 늘 교통비만큼 적었고, 3층 오차도 그만큼 부풀었다.
+                       구간마다 한 줄씩 넣으면 짧은 이동이 수십 줄 쌓여 화면이 읽히지 않는다.
+                       그 날 몫을 하나로 합쳐 「이동 N구간」 한 줄로 넣는다 */
+                    if (!place.has("type")) {
+                        transitOfDay += parseAmountFromSub(place.path("transit").asText(""));
+                        continue;
+                    }
 
                     String category = mapTypeToCategory(place.path("type").asText(""));
                     if (category == null) continue;
@@ -997,6 +1007,20 @@ public class AiRouteService {
                             .category(category)
                             .description(place.path("name").asText(""))
                             .amount(amount)
+                            .isEstimated(true)
+                            .expenseDate(expenseDate)
+                            .build());
+                }
+
+                if (transitOfDay > 0) {
+                    int legs = 0;
+                    for (JsonNode place : places) if (!place.has("type")) legs++;
+                    expenseRepository.save(Expense.builder()
+                            .plan(plan)
+                            .user(plan.getUser())
+                            .category("TRANSPORT")
+                            .description("이동 " + legs + "구간")
+                            .amount(transitOfDay)
                             .isEstimated(true)
                             .expenseDate(expenseDate)
                             .build());

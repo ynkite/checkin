@@ -79,6 +79,34 @@ final class TripContextPrompt {
 
     static String build(ZonedDateTime now, String destination, LocalDate start, LocalDate end,
                         List<Stop> all, Double lat, Double lng, Suggestion related) {
+        return build(now, destination, start, end, all, lat, lng, related, null);
+    }
+
+    /**
+     * 날씨 한 줄. 실시간 화면(LiveService)이 쓰는 것과 같은 값을 받는다 —
+     * 키: sky · rainProb · source(SHORT|MID|NORMAL) · outdoorRisk. 비었으면 「받지 못함」이라고 적는다.
+     */
+    static String weatherLine(java.util.Map<String, Object> w) {
+        if (w == null || w.isEmpty()) {
+            return "- 날씨: 예보를 받지 못함. 날씨를 지어내지 말고 확인되지 않았다고 말하세요.\n";
+        }
+        String src = String.valueOf(w.getOrDefault("source", ""));
+        if ("NORMAL".equals(src)) {
+            return "- 날씨: 아직 기상청 예보가 없는 날입니다. 비 여부는 확인되지 않았습니다.\n";
+        }
+        String label = "SHORT".equals(src) ? "기상청 단기예보" : "MID".equals(src) ? "기상청 중기예보" : "기상청 예보";
+        StringBuilder sb = new StringBuilder("- 날씨(" + label + ", 예보이지 관측값이 아님): ");
+        Object sky = w.get("sky") != null ? w.get("sky") : w.get("label");
+        if (sky != null) sb.append(sky).append(", ");
+        Object rp = w.get("rainProb");
+        sb.append(rp instanceof Number n ? "비 올 확률 " + n.intValue() + "%" : "비 올 확률은 확인되지 않음");
+        if (Boolean.TRUE.equals(w.get("outdoorRisk"))) sb.append(". 다음 장소가 야외인데 비 예보가 있음");
+        return sb.append('\n').toString();
+    }
+
+    static String build(ZonedDateTime now, String destination, LocalDate start, LocalDate end,
+                        List<Stop> all, Double lat, Double lng, Suggestion related,
+                        java.util.Map<String, Object> weather) {
         LocalDate today = now.toLocalDate();
         Phase phase = phase(today, start, end);
         int day = focusDay(phase, today, start);
@@ -98,6 +126,8 @@ final class TripContextPrompt {
             case DURING -> sb.append("- 여행 단계: 여행 중, 오늘은 ").append(day).append("일차\n");
             case AFTER -> sb.append("- 여행 단계: 여행이 끝났음\n");
         }
+
+        if (phase != Phase.AFTER) sb.append(weatherLine(weather));
 
         /* 위치 */
         if (lat != null && lng != null) {
@@ -130,6 +160,12 @@ final class TripContextPrompt {
 
         /* 연관 관광지 */
         sb.append(relatedSection(related));
+        sb.append("""
+
+                [길 안내 규칙]
+                - 대중교통 노선·환승역·걸리는 시간은 위에 적힌 값이 없으면 말하지 마세요. 틀린 노선을 알려 주면 사람이 길을 잃습니다.
+                  「지도 앱에서 지금 경로를 확인해 보세요」라고 안내하세요.
+                """);
         return sb.toString();
     }
 

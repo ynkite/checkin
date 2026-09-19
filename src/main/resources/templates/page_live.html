@@ -42,7 +42,7 @@
         <div class="rl-modes" id="rlModes" hidden></div>
 
         <!-- 장소 확인하기 — 다음 정거장의 지금(또는 그날) 상황을 확인하고 갈래를 준다 -->
-        <div class="rl-acts">
+        <div class="rl-acts" style="grid-template-columns:1fr">
           <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
             <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
           </button>
@@ -274,6 +274,11 @@
           var p = m[k];
           if (!p) return '';
           var min = p.totalMinutes, fare = p.totalFare;
+          /* 길을 못 찾으면 서버가 0 을 합계로 준다. 0분으로 적지 않고 못 쟀다고 적는다 */
+          var measured = (p.legs || []).some(function (l) { return l && l.minutes != null; });
+          if (!measured || !(min > 0)) min = null;
+          /* 한 구간도 못 쟀는데 「나머지만 더한 값」이라고 하면 없는 값을 말하는 셈이다 */
+          if (!measured) p = Object.assign({}, p, { note: '길을 찾지 못했습니다' });
           return '<div class="rl-mode">' +
             '<span class="rl-mode-n">' + MODE_KO[k] + '</span>' +
             (min != null

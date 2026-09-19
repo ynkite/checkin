@@ -26,6 +26,8 @@ public final class PlaceCheck {
 
     public enum Kind { CROWD, RAIN, TRAFFIC }
 
+    private static final Map<Kind, String> KIND_KO = Map.of(Kind.CROWD, "붐빔", Kind.RAIN, "비", Kind.TRAFFIC, "길");
+
     /**
      * 확인한 것 하나.
      * @param issue  문제가 있다고 판단했는가
@@ -94,7 +96,12 @@ public final class PlaceCheck {
         if (!problems.isEmpty()) {
             v = new Verdict("ISSUE", name + " — " + String.join(", ", problems) + ". 아래에서 고르시면 됩니다.");
         } else if (anyChecked) {
-            v = new Verdict("OK", name + " — 그대로 가도 됩니다. 확인한 것 중에 걸리는 게 없습니다.");
+            /* 확인하지 못한 것을 감추지 않는다. 「괜찮다」가 전부를 본 말로 읽히지 않게 */
+            List<String> unseen = findings.stream()
+                    .filter(f -> f.status() == Status.UNAVAILABLE || f.status() == Status.NO_DATA)
+                    .map(f -> KIND_KO.get(f.kind())).toList();
+            v = new Verdict("OK", name + " — 그대로 가도 됩니다. 확인한 것 중에 걸리는 게 없습니다."
+                    + (unseen.isEmpty() ? "" : " " + topic(String.join("·", unseen)) + " 확인하지 못했습니다."));
         } else {
             v = new Verdict("UNKNOWN", name + "의 지금 상황을 확인하지 못했습니다. 아래에 이유를 적었습니다.");
         }
@@ -110,6 +117,14 @@ public final class PlaceCheck {
         return new Option(key, String.valueOf(a.getOrDefault("label", label)), String.valueOf(a.getOrDefault("note", note)),
                 m == null ? null : String.valueOf(m), e == null ? null : String.valueOf(e),
                 Boolean.TRUE.equals(a.get("oneClick")));
+    }
+
+    /* 받침이 있으면 「은」, 없으면 「는」 — 「비은」이 되지 않게 */
+    static String topic(String word) {
+        if (word == null || word.isEmpty()) return "";
+        char last = word.charAt(word.length() - 1);
+        boolean batchim = last >= 0xAC00 && last <= 0xD7A3 && (last - 0xAC00) % 28 != 0;
+        return word + (batchim ? "은" : "는");
     }
 
     private static void add(List<Option> opts, Option o) {
