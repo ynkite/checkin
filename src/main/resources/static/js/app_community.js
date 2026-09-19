@@ -1186,7 +1186,7 @@ function renderDestBars(dests) {
         '<span style="font-weight:800;color:var(--sage-d)">Day ' + _curDayN + '</span>' +
         '<div style="display:flex;gap:6px">' +
         '<button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>' +
-        '<button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>' +
+        '<button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)" aria-label="이 날 지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>' +
         '</div>' +
         '</div>' +
         '<div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해 주세요</div>';
@@ -1207,7 +1207,7 @@ function renderDestBars(dests) {
         '<div style="display:flex;align-items:center;gap:8px;width:100%">' +
         '<span class="pdb-type-icon">곳</span>' +
         '<input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">' +
-        '<button class="btn-pdb-rm" onclick="this.closest(\'.pdb-item\').remove()" style="flex-shrink:0">✕</button>' +
+        '<button class="btn-pdb-rm" onclick="this.closest(\'.pdb-item\').remove()" style="flex-shrink:0" aria-label="이 장소 지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">' +
         '<select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">' +

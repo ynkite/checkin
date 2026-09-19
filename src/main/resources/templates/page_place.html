@@ -159,7 +159,7 @@
          ===================================================== -->
     <div class="overlay" id="prevModal" onclick="if(event.target===this)closePrev()">
         <div class="modal" style="width:580px">
-            <button class="modal-x" onclick="closePrev()">✕</button>
+            <button class="modal-x" onclick="closePrev()" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
             <div class="modal-hd">
                 <div style="flex:1">
                     <div class="prev-tags" id="prevTags"></div>
@@ -208,7 +208,7 @@
             <div class="modal-hd">
                 <div class="modal-ttl">플랜 확정</div>
                 <button class="modal-x"
-                        onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+                        onclick="this.closest('.overlay').classList.remove('open')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
             </div>
             <div class="modal-bd">
                 <p style="font-size:13px;color:var(--text2);margin-bottom:14px">
@@ -238,7 +238,7 @@
                 <h2 style="font-size:18px; font-weight:800; display:flex; align-items:center; gap:6px;">
                     여행 플랜 공유
                 </h2>
-                <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')">✕</button>
+                <button class="modal-x" onclick="this.closest('.overlay').classList.remove('open')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
             </div>
 
             <div style="display:flex; gap:16px; border-bottom:1px solid var(--border2); margin-bottom:20px;">
@@ -568,7 +568,7 @@
                             <div class="star-sel" data-rating="${r.rating || 0}">
                                 ${[1,2,3,4,5].map(n =>
                 `<button class="star-btn${n <= (r.rating||0) ? ' lit' : ''}"
-                                             onclick="setStars(this,${n})">★</button>`
+                                             onclick="setStars(this,${n})" aria-label="별점"><svg viewBox="0 0 20 20" width="1em" height="1em" aria-hidden="true" style="fill:currentColor"><path d="M10 1.8l2.5 5.2 5.7.8-4.1 4 1 5.7L10 14.8l-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg></button>`
             ).join('')}
                             </div>
                             <input class="one-line edit-plr-comment"
