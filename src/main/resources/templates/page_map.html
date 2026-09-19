@@ -50,6 +50,8 @@
       var mc = /₩\s*([\d,]+)/.exec(s);
       if (mc) o.cost = mc[1] + '원';
       if (s.indexOf('도보') >= 0) o.mode = '도보';
+      /* 아래 그림문자는 화면에 쓰는 것이 아니라, 모델이 만든 글에서 이동수단을
+         알아내려고 견주는 값이다. UI 문구가 아니므로 이모지 금지에 걸리지 않는다. */
       else if (s.indexOf('대중교통') >= 0 || s.indexOf('🚌') >= 0) o.mode = '대중교통';
       else if (s.indexOf('자차') >= 0 || s.indexOf('차로') >= 0 || s.indexOf('🚗') >= 0) o.mode = '차로';
       return o;
@@ -369,7 +371,10 @@
       { key: 'gyeongpo',      label: '강릉 경포',     svg: '/img/mass_gyeongpo.svg',      json: '/img/mass_gyeongpo.json' },
       { key: 'jeongdongjin',  label: '강릉 정동진',   svg: '/img/mass_jeongdongjin.svg',  json: '/img/mass_jeongdongjin.json' },
       { key: 'hyeopjae',      label: '제주 협재',     svg: '/img/mass_hyeopjae.svg',      json: '/img/mass_hyeopjae.json' },
-      { key: 'seongsan',      label: '제주 성산',     svg: '/img/mass_seongsan.svg',      json: '/img/mass_seongsan.json' }
+      { key: 'seongsan',      label: '제주 성산',     svg: '/img/mass_seongsan.svg',      json: '/img/mass_seongsan.json' },
+      { key: 'tongyeong',     label: '통영 동피랑',   svg: '/img/mass_tongyeong.svg',     json: '/img/mass_tongyeong.json' },
+      { key: 'jeonju',        label: '전주 한옥마을', svg: '/img/mass_jeonju.svg',        json: '/img/mass_jeonju.json' },
+      { key: 'yeosu',         label: '여수 오동도',   svg: '/img/mass_yeosu.svg',         json: '/img/mass_yeosu.json' }
     ];
     var _mvLoaded = null;      /* {key, meta} */
 
