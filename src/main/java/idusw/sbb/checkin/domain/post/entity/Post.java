@@ -81,6 +81,11 @@ public class Post {
     public void increaseViewCount() {this.viewCount++;}
     public void delete() {this.status = "DELETED";}
     public void hide()   {this.status = "HIDDEN";}
+    /** 숨긴 글만 되돌린다. 작성자가 지운 글(DELETED)은 되살리지 않는다 */
+    public void unhide() {
+        if (!"HIDDEN".equals(this.status)) throw new IllegalStateException("숨긴 글이 아닙니다.");
+        this.status = "ACTIVE";
+    }
 
     public void update(String title, String content, String styleTags, String category, Boolean isPublic) {
         this.title = title;

@@ -51,6 +51,7 @@ public class PostController {
     // 커뮤니티 - 게시글 목록 조회
     @GetMapping
     public ResponseEntity<ApiResponse<Page<PostListResponseDto>>> getPosts(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String sort,
@@ -71,7 +72,8 @@ public class PostController {
         // Pageable 객체 생성 (안전하게 변환된 sortProperty 사용)
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, sortProperty));
 
-        Page<PostListResponseDto> posts = postService.getPosts(pageable, category, normalizedSort);
+        Page<PostListResponseDto> posts = postService.getPosts(pageable, category, normalizedSort,
+                userDetails != null ? userDetails.getUserId() : null, isAdmin(userDetails));
 
         return ResponseEntity.ok(
                 ApiResponse.success("게시글 목록 조회 성공", posts)
@@ -123,11 +125,16 @@ public class PostController {
     ) {
         Long userId = userDetails != null ? userDetails.getUserId() : null;
 
-        PostDetailResponseDto post = postService.getPost(userId, postId);
+        PostDetailResponseDto post = postService.getPost(userId, postId, isAdmin(userDetails));
 
         return ResponseEntity.ok(
                 ApiResponse.success("게시글 상세 조회 성공", post)
         );
+    }
+
+    private static boolean isAdmin(CustomUserDetails userDetails) {
+        return userDetails != null && userDetails.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     // 커뮤니티 - 게시글 수정

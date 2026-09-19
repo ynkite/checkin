@@ -82,7 +82,7 @@
     }
     async function applyOpt(n) {
       var f = fixes[n]; if (!f) return;
-      say(f,n); setWx(f.key === 'rain' ? 'rain' : (window.__ckWx || {}).kind);
+      say(f,n); setWx(f.key === 'rain' ? 'rain' : (window.__ckWx || {}).kind, f.key === 'rain');
       if (f.kind === 'reorder') {
         render(route,f.order,0); await S.showWideMap(f.order.map(function (i) { return route[i]; }));
       } else {
@@ -239,7 +239,20 @@
   }
 
   var rainEnd;
-  function setWx(kind) {
+  /* 메인 화면의 비·눈 연출은 「비가 와서」 갈래를 보여 줄 때만 켠다.
+     시간대에 따라 밝아지고 어두워지는 것([data-sky])은 그대로 둔다 —
+     그건 지금 몇 시인지를 말해 주는 것이라 늘 맞다.
+     반면 실제로 비가 온다고 첫 화면부터 빗줄기를 내리면, 세 갈래 중
+     세 번째에서 「비가 와서 실내로」를 보여 줄 때 달라지는 것이 없어진다.
+
+     force 를 준 호출만 비·눈을 켤 수 있다. 그 밖에는 흐림까지만 간다.
+     동선을 만들 때 쓰는 실제 날씨는 서버가 따로 본다. 여기와 무관하다. */
+  function setWx(kind, force) {
+    if (!force && (kind === 'rain' || kind === 'snow')) kind = 'cloudy';
+    return _setWxRaw(kind);
+  }
+
+  function _setWxRaw(kind) {
     kind = kind || 'clear';
     document.documentElement.setAttribute('data-wx', kind);
     var layer = $('ck_wx'); if (!layer) return;

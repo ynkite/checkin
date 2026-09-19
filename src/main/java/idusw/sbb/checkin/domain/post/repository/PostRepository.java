@@ -66,4 +66,31 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             @Param("cat") String cat,
             Pageable pageable);
     // 여기까지
+
+    /**
+     * 커뮤니티 목록. 숨긴 글은 관리자와 작성자에게만 나온다.
+     * cat 이 null 이면 전체. ORDER BY 를 두지 않아 Pageable 정렬(최신·좋아요·조회)이 그대로 먹는다.
+     */
+    @Query("""
+        SELECT p FROM Post p
+        WHERE (p.status = 'ACTIVE'
+               OR (p.status = 'HIDDEN' AND (:admin = true OR p.user.id = :viewerId)))
+          AND (:cat IS NULL OR p.category = :cat
+               OR (:cat = 'ROUTE' AND (p.category IS NULL OR p.category = '')))
+        """)
+    Page<Post> findVisible(@Param("viewerId") Long viewerId,
+                           @Param("admin") boolean admin,
+                           @Param("cat") String cat,
+                           Pageable pageable);
+
+    /** 관리자 게시글 목록. status 가 null 이면 ACTIVE·HIDDEN 전부, keyword 는 제목·작성자 이름. */
+    @Query("""
+        SELECT p FROM Post p JOIN p.user u
+        WHERE ((:status IS NULL AND p.status IN ('ACTIVE', 'HIDDEN')) OR p.status = :status)
+          AND (:keyword IS NULL OR p.title LIKE CONCAT('%', :keyword, '%') OR u.name LIKE CONCAT('%', :keyword, '%'))
+        ORDER BY p.createdAt DESC
+        """)
+    Page<Post> findForAdmin(@Param("status") String status,
+                            @Param("keyword") String keyword,
+                            Pageable pageable);
 }

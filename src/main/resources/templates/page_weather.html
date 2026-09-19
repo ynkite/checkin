@@ -2,7 +2,7 @@
     <!-- ===================================================
      * 파일명: page_weather.html
      * 도메인: 날씨(Weather)
-     * 기능:   이레(7일) 예보 + 날짜 하나 조회
+     * 기능:   7일 예보 + 날짜 하나 조회
      * API:
      *   GET /api/maps/weather/range?region=&from=&to=   날짜 범위 (DayWeather)
      *   GET /api/maps/weather/day?region=&date=         날짜 하나
@@ -17,9 +17,9 @@
 
             <header class="wx-hd">
                 <span class="wx-eye">날씨</span>
-                <h2 class="wx-h1">가는 날 하늘을 먼저 봅니다</h2>
-                <p class="wx-sub">오늘부터 이레까지는 기상청 예보입니다.
-                    앞 사흘은 세 시간 단위 단기예보, 뒤 나흘은 중기예보라 조금 거칩니다.</p>
+                <h2 class="wx-h1">가는 날 날씨를 미리 확인하세요</h2>
+                <p class="wx-sub">오늘부터 7일 치 기상청 예보입니다.
+                    사흘 뒤까지는 단기예보라 비교적 잘 맞고, 그다음 나흘은 중기예보라 빗나갈 때가 더 많습니다.</p>
             </header>
 
             <div class="wx-pick">
@@ -51,10 +51,10 @@
 
             <section class="fl wx-one">
                 <h3>날짜로 보기</h3>
-                <p class="wx-one-sub">여행 날짜를 고르면 그날 예보만 봅니다.</p>
+                <p class="wx-one-sub">여행 날짜를 고르면 그날 기온과 비 올 확률을 보여 드립니다.</p>
                 <input type="date" id="wxDate" aria-label="날짜">
                 <div class="wx-one-body" id="wxOne">
-                    <p class="wx-one-sub">날짜를 고르면 그 날 기온과 강수 확률이 여기에 나옵니다.</p>
+                    <p class="wx-one-sub">아직 고른 날짜가 없습니다.</p>
                 </div>
             </section>
 
@@ -113,7 +113,7 @@
                 return '예보 없음';
             }
 
-            /* ── 이레 ─────────────────────────────────────── */
+            /* ── 7일 ─────────────────────────────────────── */
             function drawWeek(region, list) {
                 var title = document.getElementById('wxWeekTitle');
                 var box = document.getElementById('wxDays');
@@ -159,7 +159,7 @@
                 if (wet.length) {
                     note.hidden = false;
                     note.innerHTML = '<b>' + wet.join(' · ') + '</b>에 비 소식이 있습니다. ' +
-                        '그 날 일정은 실내를 먼저 넣고 바깥은 뒤로 미룹니다.';
+                        '그날은 실내 일정을 먼저 살펴보세요.';
                 } else {
                     note.hidden = true;
                 }
@@ -184,8 +184,8 @@
                         '<div class="wx-o-none"><b>아직 예보가 나오지 않았습니다.</b>' +
                         '기상청 예보는 열흘 뒤까지만 나옵니다. 그 뒤 날짜는 여행이 가까워지면 채워집니다.' +
                         (d && d.tempMin != null
-                            ? '<div class="wx-o-normal">지난 십 년 이맘때는 <b>' + d.tempMin +
-                              '°~' + d.tempMax + '°</b> 였습니다. 예보가 아니라 평년값입니다.</div>'
+                            ? '<div class="wx-o-normal">이 달 평년 기온은 <b>' + d.tempMin +
+                              '°~' + d.tempMax + '°</b>쯤입니다. 예보가 아니라 2011~2020년 월평균을 어림한 값입니다.</div>'
                             : '') +
                         '</div>' +
                         '<div class="wx-links">' +
@@ -233,7 +233,7 @@
                     drawWeek(region, list || []);
                 } catch (e) {
                     drawWeek(region, []);
-                    console.warn('[날씨] 이레 예보 실패:', e);
+                    console.warn('[날씨] 7일 예보 실패:', e);
                 }
             }
 
