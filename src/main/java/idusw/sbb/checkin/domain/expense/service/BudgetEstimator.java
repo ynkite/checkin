@@ -102,7 +102,8 @@ public class BudgetEstimator {
         String note = total == 0
                 ? "공개된 요금 자료를 찾지 못했습니다."
                 : "신뢰도 = 확정 " + won(confirmed) + " ÷ 총액 " + won(total)
-                  + " · 구간은 추정 항목 ±" + (int) (ESTIMATE_BAND * 100) + "%";
+                  + " · 구간은 추정 " + won(estimated) + " 에만 ±" + (int) (ESTIMATE_BAND * 100) + "%"
+                  + " (확정 항목은 공개 요금이라 흔들리지 않는다고 본다. 20%는 측정치가 아니라 정해 둔 폭)";
 
         return new BudgetEstimate(items, total, total - band, total + band, confidence, note);
     }
