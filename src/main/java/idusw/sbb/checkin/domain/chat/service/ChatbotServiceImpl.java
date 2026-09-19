@@ -59,6 +59,8 @@ public class ChatbotServiceImpl implements ChatbotService {
     private final RelatedTourService relatedTourService;
     private final OriginSearchService originSearchService;
     private final ObjectMapper objectMapper;
+    /* 날씨는 실시간 화면과 같은 값을 쓴다. 고치지 않고 부르기만 한다 */
+    private final idusw.sbb.checkin.domain.live.LiveService liveService;
 
     /* 프롬프트에 넣는 현재 시각의 기준. 시험에서 바꿔 끼운다 */
     private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
@@ -67,7 +69,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     private static final long RELATED_WAIT_MS = 4000;
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
-    private final ChatClient claudeClient;    // Claude (메인)  ★ NEW
+    private final ChatClient claudeClient;    // Claude (메인)
     private final ChatClient primaryClient;    // Groq (기존 메인 / 현재는 폴백)
     private final ChatClient fallbackClient;   // Gemini (기존 폴백)
 
@@ -78,6 +80,7 @@ public class ChatbotServiceImpl implements ChatbotService {
             RelatedTourService relatedTourService,
             OriginSearchService originSearchService,
             ObjectMapper objectMapper,
+            idusw.sbb.checkin.domain.live.LiveService liveService,
 
             // ===== // 클로드 API 사용할 때 (Anthropic 정식 SDK) =====
             // build.gradle 의 spring-ai-starter-model-anthropic 가 자동 생성하는 빈.
@@ -104,6 +107,7 @@ public class ChatbotServiceImpl implements ChatbotService {
         this.relatedTourService = relatedTourService;
         this.originSearchService = originSearchService;
         this.objectMapper      = objectMapper;
+        this.liveService       = liveService;
 
         // ===== // 클로드 API 사용할 때 =====
         this.claudeClient   = ChatClient.builder(claudeModel).build();
@@ -171,7 +175,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                    해외 도시·국가를 **실제 여행 목적지**로 언급하는 경우에만 트리거하세요.
                  - 트리거 시 이 문장만 답하세요: "본 서비스는 국내 전용입니다. 국내 도시를 입력해 주세요"
 
-                 ★절대 트리거 금지 예외 목록★ (아래 경우는 해외 여행지 언급이 아닙니다):
+                 절대 트리거 금지 예외 목록 (아래 경우는 해외 여행지 언급이 아닙니다):
                  ① 음식·식당·요리 관련: "중국집", "일본식 라멘", "베트남 쌀국수", "중국 음식", "일식당",
                     "태국 음식", "인도 카레", "미국식 버거", "이탈리안 레스토랑" 등 음식 종류 표현
                  ② 국내 상호명·브랜드: "파리바게뜨", "뉴욕 야구단", "런던 베이글", "싱가포르 치킨라이스집" 등
@@ -242,7 +246,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                             사용자가 특정 조건의 변경을 요청하면 답변 텍스트 맨 마지막에 반드시 아래 형식의 태그를 출력하세요. 화면 UI를 업데이트하기 위한 용도입니다.
                             형식: [UPDATE:항목코드:새로운값]
 
-                            ★ 항목코드 종류와 규칙 (반드시 준수):
+                            항목코드 종류와 규칙 (반드시 준수):
                             - DEST   : 여행지 (예: 제주)
                             - DATE   : 날짜 (예: 2024-07-01 ~ 2024-07-03)
                             - COMP   : 동행자 유형. 반드시 다음 중 하나만 사용 → 혼자 / 커플 / 가족 / 친구. 절대로 숫자나 인원수를 포함하지 마세요.
@@ -255,13 +259,13 @@ public class ChatbotServiceImpl implements ChatbotService {
                                        예) 현재 [오션뷰]에 수영장 추가 → [UPDATE:ACCOPTS:오션뷰,수영장]
                             - STYLE  : 여행 스타일 (다중 선택). 추가/제거 요청 시 기존 선택값을 포함한 변경 후 전체 목록을 쉼표로 구분하여 반환.
                                        예) 현재 [가성비]에 힐링 추가 → [UPDATE:STYLE:가성비,힐링]
-                                       ★ 비건, 해산물, 알러지 등 식이 정보는 절대 STYLE에 넣지 마세요. 반드시 DIET를 사용하세요.
+                                       비건, 해산물, 알러지 등 식이 정보는 절대 STYLE에 넣지 마세요. 반드시 DIET를 사용하세요.
                             - DIET   : 식이 정보 (다중 선택). 비건·해산물·알러지 등 음식/식이 관련 변경 시 반드시 이 코드를 사용. 전체 목록을 쉼표로 구분하여 반환.
                                        예) 현재 [해산물 선호]에 비건 추가 → [UPDATE:DIET:해산물 선호,비건]
                             - DENSITY: 일정 밀도 (예: 여유롭게)
                             - PET    : 반려동물 (동반 또는 미동반)
 
-                            ★ 핵심 규칙:
+                            핵심 규칙:
                             1. 사용자가 동행자 유형을 바꾸면 → COMP와 PEOPLE을 반드시 둘 다 출력하세요.
                                예) "혼자로 바꿔줘" → [UPDATE:COMP:혼자][UPDATE:PEOPLE:1]
                                예) "3명이서 친구끼리" → [UPDATE:COMP:친구][UPDATE:PEOPLE:3]
@@ -307,13 +311,13 @@ public class ChatbotServiceImpl implements ChatbotService {
         //   open api 방식을 쓰는 경우에도 claudeClient 가 OpenAI 호환 빈으로
         //   주입되어 있으므로 이 블록을 그대로 사용하면 된다.
         try {
-            System.out.println("🤖 Claude 챗봇 응답 생성 중...");
+            System.out.println("Claude 챗봇 응답 생성 중");
             aiReply = claudeClient.prompt()
                     .messages(promptMessages)
                     .call()
                     .content();
         } catch (Exception e) {
-            System.out.println("⚠️ Claude 호출 실패, 기존 엔진(Groq→Gemini)으로 폴백: " + e.getMessage());
+            System.out.println("Claude 호출 실패, 기존 엔진(Groq→Gemini)으로 폴백: " + e.getMessage());
             aiReply = null;
         }
         // ===== // 클로드 API 사용할 때 끝 =====
@@ -383,8 +387,18 @@ public class ChatbotServiceImpl implements ChatbotService {
         } catch (Exception e) {
             related = null;
         }
+
+        /* 날씨 — 여행 중이면 오늘, 출발 전이면 첫날. 못 받으면 「받지 못함」으로 적는다 */
+        java.util.Map<String, Object> weather = null;
+        if (phase != TripContextPrompt.Phase.AFTER) {
+            try {
+                weather = liveService.snapshot(plan.getId(), lat, lng, null).weather();
+            } catch (Exception e) {
+                weather = null;
+            }
+        }
         return TripContextPrompt.build(now, plan.getDestination(), plan.getStartDate(), plan.getEndDate(),
-                all, lat, lng, related);
+                all, lat, lng, related, weather);
     }
 
     /* 좌표의 시군구가 여행지와 같은 시도일 때만 쓴다. 집에서 GPS 를 켠 채 물으면 여행지로 둔다 */
