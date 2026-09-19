@@ -2442,7 +2442,7 @@
     /* 진행 방향 갈매기. 전에는 구간 가운데 하나만 찍어서 긴 구간에서는
        어느 쪽으로 가는지 보이지 않았다. 이제 선을 따라가며 일정 간격으로 찍는다.
        짧은 구간에는 하나만 — 촘촘히 찍으면 선이 지저분해진다. */
-    var MP_CHEV_STEP = 86;     /* 갈매기 사이 거리(px) */
+    var MP_CHEV_STEP = 62;     /* 갈매기 사이 거리(px) */
     var MP_CHEV_EDGE = 26;     /* 핀 근처에는 찍지 않는다 */
 
     /* 그날 중심에서 멀리 떨어진 장소에 붙이는 표시.
@@ -2500,7 +2500,7 @@
         for (var d = MP_CHEV_EDGE; d <= total - MP_CHEV_EDGE; d += MP_CHEV_STEP) marks.push(d);
       }
 
-      var out = '', s = 5.5, off = Math.PI * 0.78;
+      var out = '', s = 7.5, off = Math.PI * 0.74;
       for (var m = 0; m < marks.length; m++) {
         var q = _mpChevronAt(live, marks[m]);
         if (!q) continue;
@@ -2545,10 +2545,14 @@
       (window._kakaoPolylines || []).forEach(function (h) {
         if (h && h.line && typeof h.line._mpOn === 'boolean') state[h.day] = h.line._mpOn;
       });
-      Array.prototype.forEach.call(svg.querySelectorAll('g[data-day]'), function (g) {
-        var on = state[g.getAttribute('data-day')];
-        g.style.display = (on === false) ? 'none' : '';
-      });
+      /* 선 무리와 이름을 같이 켜고 끈다. 이름은 한 층에 모아 그리고
+         낱개마다 일차를 달아 두었다 — 무리로 묶으면 그리는 순서가 꼬여
+         어떤 날 이름이 다른 날 선 아래로 들어간다. */
+      Array.prototype.forEach.call(svg.querySelectorAll('g[data-day], text[data-day]'),
+        function (el) {
+          var on = state[el.getAttribute('data-day')];
+          el.style.display = (on === false) ? 'none' : '';
+        });
     }
 
     // 지도가 움직이면 경로도 따라와야 한다.
@@ -2618,6 +2622,26 @@
         if (!lines) return;
         out += '<g data-day="' + route.day + '">' + cases + lines + chevs + '</g>';
       });
+
+      /* 장소 이름을 이 층에 같이 그린다.
+         경로 SVG 가 지도 전체 위에 얹히는 층이라, 카카오 오버레이로 그린 이름은
+         무조건 선 아래로 깔린다. 오버레이의 z-index 로는 넘을 수 없는 경계다.
+         그래서 이름도 여기서 그리고, 오버레이 쪽 이름은 CSS 로 감춘다.
+         선 -> 갈매기 -> 이름 순서라 이름이 늘 맨 위에 온다. */
+      var lbl = '';
+      (DAY_ROUTES || []).forEach(function (route) {
+        (route.keys || []).forEach(function (k) {
+          var pin = pinByKey[k];
+          if (!pin || !pin.label) return;
+          var q = pr.px(pin.lat, pin.lng);
+          if (!q) return;
+          var x = q[0] + 19, y = q[1] + 4;
+          var s = _mpEsc(pin.label);
+          lbl += '<text class="mp-svg-lbl" data-day="' + route.day + '" '
+               + 'x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '">' + s + '</text>';
+        });
+      });
+      if (lbl) out += '<g class="mp-lbl-layer">' + lbl + '</g>';
 
       svg.innerHTML = out;
       _mpApplyRouteVisibility();
