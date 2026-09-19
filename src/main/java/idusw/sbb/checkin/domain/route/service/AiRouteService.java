@@ -703,10 +703,30 @@ public class AiRouteService {
                 }
                 if (stops.size() < 2) continue;
 
+                /* 첫날 첫 구간은 사용자가 정한 출발지에서 시작한다.
+                   전에는 그날 첫 장소를 출발지로 삼아서, 「부산역에서 출발」이라고
+                   적어 놓고 첫 이동시간이 0이 됐다. 집에서 첫 장소까지 가는 시간이
+                   빠지면 「몇 시에 나가면 되는가」를 말할 수 없다.
+                   내비게이션도 그 자리에서 시작해야 한다. */
+                boolean firstDay = (day == root.get(0));
+                double[] departXY = firstDay ? departureXY(plan) : null;
+
                 com.fasterxml.jackson.databind.node.ObjectNode origin = stops.get(0);
+                int from = 1;
+                String originName = origin.path("name").asText("");
+                double originLat = origin.path("lat").asDouble();
+                double originLng = origin.path("lng").asDouble();
+                if (departXY != null) {
+                    originName = plan.getForm() != null && plan.getForm().getDeparture() != null
+                            ? plan.getForm().getDeparture() : "출발지";
+                    originLat = departXY[0];
+                    originLng = departXY[1];
+                    from = 0;              /* 첫 장소도 도착지가 된다 */
+                }
+
                 java.util.List<idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop> rest =
-                        new java.util.ArrayList<>(stops.size() - 1);
-                for (int i = 1; i < stops.size(); i++) {
+                        new java.util.ArrayList<>(stops.size());
+                for (int i = from; i < stops.size(); i++) {
                     com.fasterxml.jackson.databind.node.ObjectNode o = stops.get(i);
                     rest.add(new idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop(
                             o.path("name").asText(""),
@@ -716,17 +736,17 @@ public class AiRouteService {
                 }
 
                 idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan chosen =
-                        measure(origin, rest, primaryMode);
+                        measure(originName, originLat, originLng, rest, primaryMode);
 
                 /* 고른 수단으로 한 구간도 못 쟀으면 자차로 한 번 더 본다 */
                 if (!hasMeasuredLeg(chosen) && !"CAR".equals(primaryMode)) {
-                    chosen = measure(origin, rest, "CAR");
+                    chosen = measure(originName, originLat, originLng, rest, "CAR");
                 }
                 if (!hasMeasuredLeg(chosen)) continue;   /* 못 쟀다 — 칸을 만들지 않는다 */
 
-                for (int i = 1; i < stops.size(); i++) {
+                for (int i = from; i < stops.size(); i++) {
                     com.fasterxml.jackson.databind.node.ObjectNode target = stops.get(i);
-                    idusw.sbb.checkin.domain.route.tmap.dto.TravelLeg leg = legAt(chosen, i - 1);
+                    idusw.sbb.checkin.domain.route.tmap.dto.TravelLeg leg = legAt(chosen, i - from);
                     if (leg == null || leg.minutes() == null) continue;
 
                     target.put("legMode", leg.mode());
@@ -763,16 +783,30 @@ public class AiRouteService {
         return "CAR";
     }
 
+    /**
+     * 사용자가 정한 출발지의 좌표. 없거나 못 찾으면 null 을 준다 —
+     * 그때는 그날 첫 장소에서 시작한다. 지어내지 않는다.
+     */
+    private double[] departureXY(TravelPlan plan) {
+        PlanInputForm form = plan.getForm();
+        String depart = form != null ? form.getDeparture() : null;
+        if (depart == null || depart.isBlank()) return null;
+        try {
+            return geocode(depart.trim());
+        } catch (Exception e) {
+            log.warn("[동선] 출발지 좌표를 찾지 못했습니다: {}", e.getMessage());
+            return null;
+        }
+    }
+
     /** 한 수단으로 하루치 구간을 잰다. 실패하면 null 을 준다 — 예외를 위로 올리지 않는다. */
     private idusw.sbb.checkin.domain.route.tmap.dto.TravelPlan measure(
-            com.fasterxml.jackson.databind.node.ObjectNode origin,
+            String originName, double originLat, double originLng,
             java.util.List<idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest.Stop> stops,
             String mode) {
         try {
             return travelTimeService.plan(new idusw.sbb.checkin.domain.route.tmap.dto.TravelPlanRequest(
-                    origin.path("name").asText(""),
-                    origin.path("lat").asDouble(),
-                    origin.path("lng").asDouble(),
+                    originName, originLat, originLng,
                     mode, null, stops));
         } catch (Exception e) {
             log.warn("[동선] {} 이동시간을 재지 못했습니다: {}", mode, e.getMessage());
@@ -1598,13 +1632,17 @@ public class AiRouteService {
                             if (r != null && r[0] > 0) roadDist = r[0]; // r[0]=도로거리(m)
                         }
                         if (roadDist > FAR_LIMIT) {
-                            if (isUserReq) {           // 사용자요청 → 삭제 않고 알림
-                                over50.add(nm);
-                                kept.add(s);
-                                continue;
-                            }
-                            System.out.println("🗑️ [삭제-먼장소 " + Math.round(roadDist/1000) + "km(도로)] " + nm);
-                            continue;                  // AI 장소 → 삭제
+                            /* 전에는 사용자가 직접 넣은 곳만 남기고 나머지는 말없이 지웠다.
+                               그런데 지우면 사용자는 왜 사라졌는지 모른다. 멀다는 것과
+                               가지 말라는 것은 다른 얘기다 — 차로 한 시간을 감수하고
+                               갈 만한 곳이 있다. 이 제품은 늘 갈래를 주지 하나를 강요하지 않는다.
+                               그래서 지우지 않고 알린다. 화면이 「멉니다, 그래도 갈까요」를 묻는다. */
+                            over50.add(nm);
+                            s.put("farKm", Math.round(roadDist / 1000.0));
+                            kept.add(s);
+                            log.info("[동선] 먼 장소를 남기고 알립니다 — {} ({}km 도로)",
+                                    nm, Math.round(roadDist / 1000.0));
+                            continue;
                         }
                     }
                     // (3) 밀도별 개수 상한 (stay·사용자요청은 카운트 예외로 항상 보존)
