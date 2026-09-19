@@ -59,6 +59,19 @@ public class JudgeSeedInitializer implements CommandLineRunner {
             TravelPlan plan = existing;
             plan.setStartDate(LocalDate.now());
             plan.setEndDate(LocalDate.now().plusDays(2));
+
+            /* 날짜만 고치고 끝내면 안 된다. 이 여행이 경로 없이 한 번 만들어진 DB 는
+               영원히 빈 채로 남는다. 실제로 그랬다 — 개발 DB 에는 3일차 17장소가
+               들어 있는데 운영 DB 에는 0일차 0장소였다. 심사위원이 로그인해서
+               그 여행을 열면 빈 화면을 본다.
+               비어 있으면 채운다. 들어 있으면 손대지 않는다 — 심사위원이 이것저것
+               눌러 본 결과를 서버가 껐다 켤 때마다 되돌리면 안 된다. */
+            if (!idusw.sbb.checkin.domain.route.RouteJson.usable(plan.getRouteJson())) {
+                plan.setRouteJson(ROUTE_JSON);
+                plan.setStatus("FIXED");
+                log.info("[심사시드] openapi 여행에 경로가 없어 채웠습니다.");
+            }
+
             plan.setUpdatedAt(LocalDateTime.now());
             travelPlanRepository.save(plan);
             log.info("[심사시드] openapi 여행 날짜를 오늘 기준으로 갱신했습니다.");
