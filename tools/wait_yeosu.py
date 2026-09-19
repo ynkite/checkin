@@ -5,7 +5,7 @@
 429(너무 많음)까지 겹쳤다. 공용 서버라 기다리는 것 말고 방법이 없다.
 """
 import subprocess, sys, os, time
-for i, wait in enumerate((600, 900, 1200)):
+for i, wait in enumerate((900, 1500, 1800)):
     print('%d초 쉰다' % wait, flush=True)
     time.sleep(wait)
     r = subprocess.run([sys.executable, 'massing.py', 'yeosu'],
