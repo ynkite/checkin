@@ -79,10 +79,13 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
         TravelPlan plan = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
                 .filter(p -> JudgeSeedInitializer.SEED_TITLE.equals(p.getTitle()))
                 .findFirst().orElse(null);
-        if (plan == null) return;                                              // 심사 시드가 아직 없다
-        if (planInputFormRepository.findByPlanId(plan.getId()).isPresent()) return;   // 손으로 넣은 폼을 덮지 않는다
+        if (plan == null) return;                    // 심사 시드가 아직 없다
+        if (plan.getForm() != null) return;          // 이미 연결돼 있다 (손으로 넣은 폼을 덮지 않는다)
 
-        planInputFormRepository.save(PlanInputForm.builder()
+        // 폼 행만 있고 연결이 끊긴 경우가 있으면 그걸 다시 쓴다 — 두 벌을 만들면
+        // findByPlanId 가 Optional 이라 나중에 터진다.
+        PlanInputForm form = planInputFormRepository.findByPlanId(plan.getId())
+                .orElseGet(() -> planInputFormRepository.save(PlanInputForm.builder()
                 .plan(plan).user(judge)
                 .departure("서울")
                 .transportType("PUBLIC")
@@ -94,7 +97,12 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
                 .scheduleDensity("RELAXED")
                 .accommodationOptions("[\"바베큐\",\"레이트 체크아웃\"]")   // 두 항목이 추정으로 잡히는 근거
                 .budget(1_200_000L)
-                .build());
+                .build()));
+
+        // 순환 FK 다. 폼만 저장하면 travel_plans.form_id 가 비어 있어 plan.getForm() 이 null 이고,
+        // BudgetEstimator 는 폼이 없는 것과 똑같이 동작한다 — 이 줄이 없으면 위 저장이 헛수고다.
+        plan.linkInputForm(form);
+        travelPlanRepository.save(plan);
         log.info("[근거표시드] 심사 시드 여행에 입력 폼을 붙였습니다 (4명 · 바베큐 · 레이트 체크아웃).");
     }
 
