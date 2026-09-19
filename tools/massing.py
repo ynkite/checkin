@@ -805,9 +805,52 @@ def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w
         top = min((T(scr(p, h)) for p in pts), key=lambda q: q[1])
         anchors.append(dict(name=mk_['name'], note=mk_.get('note', ''), kind=mk_.get('kind', 'bldg'),
                             x=top[0] / W * 100, y=top[1] / H * 100, h=round(h), dy=mk_.get('dy', 0)))
+    # ── 좌표 → 화면 위치 변환(fit) ──────────────────────────────
+    #   화면이 이 모형 위에 핀을 얹으려면 위경도를 백분율 좌표로 바꿀 수 있어야 한다.
+    #   축측투영은 평면의 어파인 사상이라 세 점이면 정확히 풀린다.
+    #   손으로 식을 세우면 틀리기 쉬우니, 실제로 세 점을 투영해서 푼다.
+    #
+    #   이게 없으면 화면(_mvOpen)이 그 장면을 통째로 건너뛴다.
+    #   실제로 그랬다 — 모형이 열다섯 장 있는데 bbox·fit 을 가진 것은
+    #   해운대 하나뿐이라 나머지는 있어도 못 썼다.
+    def _pct(lat_, lon_):
+        q = T(scr(plan(lat_, lon_), 0.0))
+        return (q[0] / W * 100.0, q[1] / H * 100.0)
+
+    _p1 = (s, w); _p2 = (n, w); _p3 = (s, e)          # 남서 · 북서 · 남동
+    _q1 = _pct(*_p1); _q2 = _pct(*_p2); _q3 = _pct(*_p3)
+
+    def _solve(v1, v2, v3):
+        # v = a*lon + b*lat + c 를 세 점으로 푼다 (크라메르)
+        (la1, lo1), (la2, lo2), (la3, lo3) = _p1, _p2, _p3
+        det = (lo1 * (la2 - la3) - la1 * (lo2 - lo3) + (lo2 * la3 - lo3 * la2))
+        if abs(det) < 1e-12:
+            raise SystemExit('fit: 세 점이 한 직선 위에 있다 — bbox 를 확인하라')
+        a = (v1 * (la2 - la3) - la1 * (v2 - v3) + (v2 * la3 - v3 * la2)) / det
+        b = (lo1 * (v2 - v3) - v1 * (lo2 - lo3) + (lo2 * v3 - lo3 * v2)) / det
+        c = (lo1 * (la2 * v3 - la3 * v2) - la1 * (lo2 * v3 - lo3 * v2)
+             + v1 * (lo2 * la3 - lo3 * la2)) / det
+        return round(a, 6), round(b, 6), round(c, 6)
+
+    _a, _b, _c = _solve(_q1[0], _q2[0], _q3[0])
+    _d, _e, _f = _solve(_q1[1], _q2[1], _q3[1])
+
+    # 푼 값이 맞는지 그 자리에서 확인한다. 어긋나면 만들다 만 모형을 내보내지 않는다.
+    for (_la, _lo), _q in ((_p1, _q1), (_p2, _q2), (_p3, _q3)):
+        _x = _a * _lo + _b * _la + _c
+        _y = _d * _lo + _e * _la + _f
+        if abs(_x - _q[0]) > 0.01 or abs(_y - _q[1]) > 0.01:
+            raise SystemExit('fit 검산 실패: %s' % name)
+
     json.dump(dict(w=round(W), h=round(H), ar=round(W / H, 4), anchors=anchors,
-                   route=rpins, route2=rpins2),
+                   route=rpins, route2=rpins2,
+                   bbox=dict(s=s, w=w, n=n, e=e),
+                   fit=dict(a=_a, b=_b, c=_c, d=_d, e=_e, f=_f),
+                   note='fit 은 bbox 세 귀퉁이를 실제로 투영해 푼 어파인이다. '
+                        '축측투영은 평면의 어파인 사상이라 세 점이면 정확하다. '
+                        'bbox 는 이 장면을 만든 범위다 — 밖의 좌표는 화면을 벗어난다.'),
               open('mass_%s.json' % name, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    print('   fit  a=%.4f b=%.4f c=%.2f / d=%.4f e=%.4f f=%.2f' % (_a, _b, _c, _d, _e, _f))
 
     import re as _re
     nodes = len(_re.findall(r'<\w+', svg))
@@ -827,5 +870,65 @@ HAEUNDAE_MARKS = [
     dict(name='해운대해수욕장', note='집중률 142', lat=35.15760, lon=129.15760, ground=True, kind='hot', dy=-46),
 ]
 
+# ── 장면 표 ─────────────────────────────────────────────────
+#   이름 -> (bbox(남,서,북,동), 회전, 픽셀/미터)
+#
+#   화면에 띄우려면 mass_<이름>.svg 와 .json 이 둘 다 있어야 하고,
+#   json 에 bbox·fit 이 들어 있어야 한다. 그 둘은 이 스크립트가 같이 만든다.
+#   여기 없는 지역은 bbox 를 재서 한 줄 더하면 된다.
+#
+#   bbox 를 정하는 요령 — 동선의 정거장이 다 들어가되 너무 넓히지 않는다.
+#   넓히면 Overpass 가 시간에서 막히고, 건물이 작아져 모형처럼 안 보인다.
+#   해운대가 0.012 x 0.0225 다. 그 정도를 기준으로 잡는다.
+#
+#   네 번째 값은 건물 최소 넓이(m2)다. 없으면 26.
+#   도심처럼 건물이 빽빽한 곳은 이 값을 올려 작은 것을 걸러낸다.
+#   안 걸러내면 파일이 2MB 를 넘고, 그러면 모형이 매 프레임 다시 그려지며
+#   화면이 버벅인다. 경복궁이 4,073동 2.6MB 였다.
+#
+#   ★ 랜드마크를 bbox 한가운데 두어라. 축측투영이라 회전이 들어가서,
+#     귀퉁이에 가까운 좌표는 화면 밖(0~100 밖)으로 나간다.
+#     실제로 성산(119%)과 태종대(-8%)가 그렇게 빗나갔다.
+#     만든 뒤 반드시 확인해라 —
+#       x = a*lon + b*lat + c,  y = d*lon + e*lat + f  가 0~100 안에 들어와야 한다.
+SCENES = {
+    'haeundae':     ((35.1505, 129.1440, 35.1625, 129.1665), 16, 0.74),
+    'gwangalli':    ((35.1470, 129.1080, 35.1590, 129.1305), 16, 0.74),
+    'gamcheon':     ((35.0920, 128.9990, 35.1040, 129.0215), 16, 0.74),
+    'huinnyeoul':   ((35.0730, 129.0330, 35.0850, 129.0555), 16, 0.74),
+    'nampo':        ((35.0930, 129.0180, 35.1050, 129.0405), 16, 0.74),
+    'taejongdae':   ((35.0472, 129.0758, 35.0592, 129.0983), 16, 0.74),   # 태종대 35.0532,129.0871
+    'gyeongbokgung':((37.5740, 126.9660, 37.5860, 126.9885), 16, 0.74, 95),
+    'bukchon':      ((37.5770, 126.9790, 37.5890, 127.0015), 16, 0.74, 70),
+    'namsan':       ((37.5450, 126.9820, 37.5570, 127.0045), 16, 0.74),
+    'bulguksa':     ((35.7840, 129.3260, 35.7960, 129.3485), 16, 0.74),
+    'cheomseongdae':((35.8290, 129.2130, 35.8410, 129.2355), 16, 0.74),
+    'gyeongpo':     ((37.7900, 128.8890, 37.8020, 128.9115), 16, 0.74),
+    'jeongdongjin': ((37.6850, 129.0270, 37.6970, 129.0495), 16, 0.74),
+    'hyeopjae':     ((33.3880, 126.2330, 33.4000, 126.2555), 16, 0.74),
+    'seongsan':     ((33.4520, 126.9312, 33.4640, 126.9537), 16, 0.74),   # 성산일출봉 33.4580,126.9425
+}
+
+MARKS = {'haeundae': HAEUNDAE_MARKS}
+
+
 if __name__ == '__main__':
-    build('haeundae', (35.1505, 129.1440, 35.1625, 129.1665), 16, 0.74, marks=HAEUNDAE_MARKS)
+    import sys
+    want = sys.argv[1:] or ['haeundae']
+    if want == ['all']:
+        want = list(SCENES)
+
+    for nm in want:
+        if nm not in SCENES:
+            print('모르는 장면: %s  (아는 것: %s)' % (nm, ' '.join(SCENES)))
+            continue
+        cfg = SCENES[nm]
+        bbox, rot, ppm = cfg[0], cfg[1], cfg[2]
+        min_area = cfg[3] if len(cfg) > 3 else 26.0
+        print('== %s %s  최소넓이=%s' % (nm, bbox, min_area))
+        try:
+            build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=min_area)
+        except SystemExit as e:
+            print('   건너뜀: %s' % e)
+        except Exception as e:
+            print('   실패: %s: %s' % (type(e).__name__, e))
