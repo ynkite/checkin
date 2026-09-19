@@ -955,8 +955,11 @@
 }
 .mp-float > *{ pointer-events:auto }
 .mp-float-l{ left:22px; top:78px; width:288px }
+/* 오른쪽 62px — 도구 막대(.mp-tools)와 같은 선이다.
+   22px 로 두면 카카오 확대축소 단추(오른쪽 끝 32px 폭)와 13px 겹친다.
+   화면을 찍어 재 보고 알았다 — 단추가 판 밑에 깔려 눌리지 않았다. */
 .mp-float-r{
-  right:22px; top:78px; width:344px;
+  right:62px; top:78px; width:344px;
   max-height:calc(100% - 190px); overflow-y:auto;
   scrollbar-width:thin;
 }
