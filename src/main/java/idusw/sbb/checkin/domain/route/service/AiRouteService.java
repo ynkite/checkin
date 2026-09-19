@@ -55,6 +55,7 @@ public class AiRouteService {
     private final idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService;     // TMAP 구간 이동시간 — 저장 직전에 붙인다
     private final idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository;
     private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService; // 관광공사 반려동물·무장애 — 후보를 모을 때 쓴다
+    private final idusw.sbb.checkin.domain.route.tmap.NaviService naviService;                    // TMAP 경유지 순서 최적화 — 한 방향 정렬에 쓴다
     private final ObjectMapper objectMapper;
 
     // ★카카오 거리 계산용
@@ -87,6 +88,7 @@ public class AiRouteService {
             idusw.sbb.checkin.domain.route.tmap.TravelTimeService travelTimeService,
             idusw.sbb.checkin.domain.place.repository.PlaceRepository placeRepository,
             idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService,
+            idusw.sbb.checkin.domain.route.tmap.NaviService naviService,
             ObjectMapper objectMapper,
             org.springframework.web.client.RestTemplate restTemplate,
 
@@ -113,6 +115,7 @@ public class AiRouteService {
         this.travelTimeService = travelTimeService;
         this.placeRepository = placeRepository;
         this.tourAreaInfoService = tourAreaInfoService;
+        this.naviService = naviService;
         this.objectMapper = objectMapper;
         this.restTemplate = restTemplate;
 
@@ -1539,6 +1542,163 @@ public class AiRouteService {
         }
     }
 
+    /**
+     * TMAP 경유지 순서 최적화로 하루의 방문 순서를 다시 잡는다 (작업지시 3번).
+     *
+     * <p><b>왜 필요한가</b> — 전에는 직선거리(haversine)로 순서를 정했다. 직선으로 가까운 곳이
+     * 도로로도 가깝지는 않다. 강 건너편, 산 너머, 일방통행 안쪽이 전부 「가깝다」로 읽힌다.
+     * 그래서 동 → 서 → 동 으로 되돌아가는 동선이 나왔다.
+     *
+     * <p><b>하루의 앵커</b> — 첫 자리와 끝 자리는 그대로 둔다. 대개 숙소이고, 「숙소에서 출발해
+     * 숙소로 돌아온다」가 작업지시가 말한 한 방향 흐름이다. 그 사이만 최적화한다.
+     *
+     * <p><b>자리의 성격은 지킨다.</b> 최적 순서를 그대로 쓰면 12:00 에 카페가, 13:30 에 맛집이
+     * 오는 날이 생긴다. 그래서 순서는 최적 경로에서 가져오되 <b>같은 type 끼리만</b> 자리를 바꾼다.
+     * 동쪽 식당이 점심, 서쪽 식당이 저녁이던 것이 뒤집히는 정도인데, 되돌아가는 구간은 그게 만든다.
+     * 끼니 라벨은 {@code syncMealLabelByTime} 이 최종 시각을 보고 다시 붙이므로 어긋나지 않는다.
+     *
+     * <p>사용자가 직접 요청한 장소는 자리를 고정한다.
+     *
+     * @return 재정렬된 JSON. 최적화를 못 쓴 날만 있으면 {@code null} — 호출부가 기존 정렬로 간다
+     */
+    private String reorderByTmapOptimize(String json, java.util.Set<String> userRequested) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return null;
+
+            boolean changedAny = false;
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> spots = new java.util.ArrayList<>();
+                for (JsonNode pl : placesNode) {
+                    if (pl.has("transit") || !pl.has("name")) continue;
+                    if (!(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                    if (!o.hasNonNull("lat") || !o.hasNonNull("lng")) { spots.clear(); break; }  // 좌표가 빠지면 이 날은 손대지 않는다
+                    spots.add(o);
+                }
+                if (spots.size() < 4) continue;   // 앵커 둘 + 옮길 것 둘은 있어야 의미가 있다
+
+                var start = spots.get(0);
+                var end   = spots.get(spots.size() - 1);
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> mid =
+                        new java.util.ArrayList<>(spots.subList(1, spots.size() - 1));
+
+                // 옮길 수 있는 것만 경유지로 넘긴다. 사용자 요청 장소는 자리를 지킨다
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> movable = new java.util.ArrayList<>();
+                for (var m : mid) if (!userRequested.contains(m.path("name").asText(""))) movable.add(m);
+                if (movable.size() < 2) continue;
+                if (movable.size() > 10) {         // 티맵 제한
+                    log.info("[한방향] 경유지 {}곳 — 티맵 10곳 제한을 넘어 이 날은 건너뛴다", movable.size());
+                    continue;
+                }
+
+                java.util.List<java.util.Map<String, Object>> via = new java.util.ArrayList<>();
+                for (int i = 0; i < movable.size(); i++) {
+                    java.util.Map<String, Object> w = new java.util.LinkedHashMap<>();
+                    w.put("id", String.valueOf(i));
+                    w.put("name", movable.get(i).path("name").asText(""));
+                    w.put("lat", movable.get(i).path("lat").asDouble());
+                    w.put("lng", movable.get(i).path("lng").asDouble());
+                    via.add(w);
+                }
+
+                var opt = naviService.optimize(
+                        start.path("lng").asDouble(), start.path("lat").asDouble(),
+                        end.path("lng").asDouble(),   end.path("lat").asDouble(),
+                        start.path("name").asText(""), end.path("name").asText(""), via);
+
+                if (!opt.ready() || opt.order().size() != movable.size()) {
+                    log.info("[한방향] 티맵 최적화를 못 썼다 — {}", opt.note());
+                    continue;
+                }
+
+                // 최적 방문 순서대로 줄을 세운다
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> optimized = new java.util.ArrayList<>();
+                for (String id : opt.order()) {
+                    int idx;
+                    try { idx = Integer.parseInt(id); } catch (NumberFormatException e) { optimized.clear(); break; }
+                    if (idx < 0 || idx >= movable.size()) { optimized.clear(); break; }
+                    optimized.add(movable.get(idx));
+                }
+                if (optimized.size() != movable.size()) continue;   // 응답이 이상하면 이 날은 손대지 않는다
+
+                var rebuiltMid = assignByType(mid, optimized, userRequested);
+
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> result = new java.util.ArrayList<>();
+                result.add(start);
+                result.addAll(rebuiltMid);
+                result.add(end);
+
+                boolean moved = false;
+                for (int i = 0; i < result.size(); i++) if (result.get(i) != spots.get(i)) moved = true;
+                if (!moved) continue;
+
+                /* 시각은 장소가 아니라 「그 날의 몇 번째 자리」에 속한다 */
+                java.util.List<String> slotTimes = new java.util.ArrayList<>();
+                for (var sp : spots) slotTimes.add(sp.path("time").asText(""));
+                for (int k = 0; k < result.size() && k < slotTimes.size(); k++) {
+                    String t = slotTimes.get(k);
+                    if (!t.isBlank()) result.get(k).put("time", t);
+                }
+
+                com.fasterxml.jackson.databind.node.ArrayNode rebuilt = objectMapper.createArrayNode();
+                for (int k = 0; k < result.size(); k++) {
+                    if (k > 0) {
+                        com.fasterxml.jackson.databind.node.ObjectNode t = objectMapper.createObjectNode();
+                        t.put("transit", "이동");
+                        rebuilt.add(t);
+                    }
+                    rebuilt.add(result.get(k));
+                }
+                ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode).set("places", rebuilt);
+                changedAny = true;
+                System.out.println("🧭 [한방향] " + dayNode.path("label").asText("")
+                        + " — 티맵 실측 " + (opt.totalMeters() / 1000) + "km / "
+                        + (opt.totalSeconds() / 60) + "분 순서로 재정렬");
+            }
+            return changedAny ? objectMapper.writeValueAsString(root) : null;
+
+        } catch (Exception e) {
+            log.warn("[한방향] 티맵 재정렬 실패 — 기존 정렬로 간다: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 최적 방문 순서를 <b>자리의 성격을 지키며</b> 하루에 끼워 넣는다.
+     *
+     * <p>최적 순서를 그대로 쓰면 12:00 에 카페가, 13:30 에 맛집이 오는 날이 생긴다. 자리(=시각)는
+     * 그대로 두고 <b>같은 {@code type} 끼리만</b> 바꾼다. 동쪽 식당이 점심, 서쪽 식당이 저녁이던 것이
+     * 뒤집히는 정도인데, 되돌아가는 구간은 대개 그게 만든다.
+     *
+     * <p>사용자가 직접 요청한 장소는 자리를 지킨다. 같은 성격이 동나면 순서대로 채운다.
+     */
+    static java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> assignByType(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> slots,
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> optimized,
+            java.util.Set<String> userRequested) {
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> out = new java.util.ArrayList<>();
+        java.util.Set<com.fasterxml.jackson.databind.node.ObjectNode> taken =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
+        for (var slot : slots) {
+            if (userRequested.contains(slot.path("name").asText(""))) { out.add(slot); continue; }
+            String type = slot.path("type").asText("");
+            com.fasterxml.jackson.databind.node.ObjectNode pick = null;
+            for (var o : optimized)
+                if (!taken.contains(o) && type.equals(o.path("type").asText(""))) { pick = o; break; }
+            if (pick == null)
+                for (var o : optimized) if (!taken.contains(o)) { pick = o; break; }
+            if (pick == null) { out.add(slot); continue; }
+            taken.add(pick);
+            out.add(pick);
+        }
+        return out;
+    }
+
     /** 두 좌표[위도,경도] 간 직선거리(m). null이면 큰 값(맨 뒤로 밀림). */
     private double haversine(double[] a, double[] b) {
         if (a == null || b == null) return Double.MAX_VALUE / 2;
@@ -1749,7 +1909,13 @@ public class AiRouteService {
             }
         }
 
-        String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        /* 1-1) TMAP 경유지 순서 최적화가 먼저다. 직선거리로 순서를 정하면 강 건너편·산 너머가
+               「가깝다」로 읽힌다 — 작업지시가 「직선거리로 판단하지 않는다」고 못박은 자리다.
+               못 쓸 때(키 없음·10곳 초과·응답 실패)에만 기존 그리디로 내려간다 */
+        String reordered = reorderByTmapOptimize(json, userRequested);
+        if (reordered == null) {
+            reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
+        }
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);
             json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
@@ -1767,9 +1933,9 @@ public class AiRouteService {
         // 사용자가 직접 요청한 장소(교체 금지) 이름 모음
         java.util.Set<String> userRequested = extractUserRequestedNames(form);
 
-        // ★0) LLM 없이 코드로 먼저 동선 순서를 최적화(시간대 보존 정렬).
-        //    끼니/숙소/사용자요청 장소는 고정하고 tour·cafe만 끼니 사이에서 거리순 정렬.
-        //    카카오 길찾기 호출 없이 직선거리만 쓰므로 빠르고 토큰 0.
+        /* ★0) 순서는 finalizeRoute 에서 이미 티맵으로 잡았다. 여기서 또 부르면 같은 날에
+               티맵 호출이 두 번 나간다. 이 함수는 50km 검사가 일이라, 순서는 직선거리
+               미세 정렬로 충분하다 */
         String reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
         if (!reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);   // 내부 카카오 보정이 transit 숫자 채움
