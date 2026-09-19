@@ -2918,6 +2918,8 @@ public class AiRouteService {
         if (c.contains("사찰") || c.contains("종교") || c.contains("절"))        return "사찰";
         if (c.contains("공원") || c.contains("유원지") || c.contains("수목원"))   return "공원";
         if (c.contains("전망"))                                                return "전망대";
+        /* 해운대 후보 15곳 중 3곳이 테마거리였다 — 해리단길·달맞이길·영화의거리. 겹칠 일이 잦다 */
+        if (c.contains("테마거리") || c.contains("거리"))                        return "거리";
         if (c.contains("테마파크") || c.contains("놀이"))                        return "테마파크";
         return null;
     }
@@ -2932,7 +2934,7 @@ public class AiRouteService {
      * (3일에 7곳, 11시에 일정 종료). 성격이 겹치지 않는 안 쓴 후보로 갈아 끼우고,
      * 갈아 낄 것이 없으면 그냥 둔다 — 억지로 비우는 것보다 낫다.
      */
-    private void dedupeDayCategories(
+    static void dedupeDayCategories(
             JsonNode route,
             java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName,
             java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates) {
