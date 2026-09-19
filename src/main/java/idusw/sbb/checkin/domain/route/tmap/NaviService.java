@@ -78,10 +78,12 @@ public class NaviService {
                 for (JsonNode c : geom.path("coordinates"))
                     line.add(new double[]{ c.get(1).asDouble(), c.get(0).asDouble() });
             } else if ("Point".equals(type)) {
-                // 경유지 Point 는 viaPointId 를 달고 방문 순서대로 온다
+                /* 경유지 Point 는 viaPointId 를 달고 방문 순서대로 온다. 한 경유지가 도착·출발
+                   두 점으로 나뉘어 와서 id 가 두 번씩 찍힌다(실호출로 확인 — v0,v0,v2,v2,v1,v1).
+                   그대로 두면 「경유지 3곳인데 순서가 6개」가 되어 호출부가 응답을 버린다 */
                 JsonNode vid = props.path("viaPointId");
-                if (!vid.isMissingNode() && !vid.asText("").isBlank())
-                    order.add(vid.asText());
+                String id = vid.isMissingNode() ? "" : vid.asText("");
+                if (!id.isBlank() && !order.contains(id)) order.add(id);
             }
         }
         if (line.isEmpty()) return null;

@@ -1594,10 +1594,14 @@ public class AiRouteService {
                     continue;
                 }
 
+                /* id 를 "0" 으로 주면 티맵이 빈 값으로 읽고 「필수 파라메터가 없습니다」(9401) 를 낸다.
+                   실호출로 확인했다 — 같은 본문에서 id 만 "0" 이면 400, "t0" 이면 200 이다 */
+                java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byVia = new java.util.HashMap<>();
                 java.util.List<java.util.Map<String, Object>> via = new java.util.ArrayList<>();
                 for (int i = 0; i < movable.size(); i++) {
                     java.util.Map<String, Object> w = new java.util.LinkedHashMap<>();
-                    w.put("id", String.valueOf(i));
+                    w.put("id", "v" + i);
+                    byVia.put("v" + i, movable.get(i));
                     w.put("name", movable.get(i).path("name").asText(""));
                     w.put("lat", movable.get(i).path("lat").asDouble());
                     w.put("lng", movable.get(i).path("lng").asDouble());
@@ -1617,10 +1621,9 @@ public class AiRouteService {
                 // 최적 방문 순서대로 줄을 세운다
                 java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> optimized = new java.util.ArrayList<>();
                 for (String id : opt.order()) {
-                    int idx;
-                    try { idx = Integer.parseInt(id); } catch (NumberFormatException e) { optimized.clear(); break; }
-                    if (idx < 0 || idx >= movable.size()) { optimized.clear(); break; }
-                    optimized.add(movable.get(idx));
+                    var o = byVia.get(id);
+                    if (o == null) { optimized.clear(); break; }
+                    optimized.add(o);
                 }
                 if (optimized.size() != movable.size()) continue;   // 응답이 이상하면 이 날은 손대지 않는다
 
