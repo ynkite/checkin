@@ -120,4 +120,32 @@ public class AdminController {
         adminService.deleteCuration(adminDetails.getUserId(), curationId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
+
+    // 게시글 목록 - GET /api/admin/posts?status=ACTIVE|HIDDEN&keyword=&page=&size=
+    @GetMapping("/posts")
+    public ResponseEntity<ApiResponse<Page<AdminPostListResponseDto>>> getPosts(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getPosts(status, keyword, pageable)));
+    }
+
+    // 게시글 숨기기 - PATCH /api/admin/posts/{postId}/hide  {"reason": "..."}
+    @PatchMapping("/posts/{postId}/hide")
+    public ResponseEntity<ApiResponse<Void>> hidePost(
+            @AuthenticationPrincipal CustomUserDetails adminDetails,
+            @PathVariable Long postId,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        adminService.hidePost(adminDetails.getUserId(), postId, body != null ? body.get("reason") : null);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // 숨긴 글 다시 보이기 - PATCH /api/admin/posts/{postId}/unhide
+    @PatchMapping("/posts/{postId}/unhide")
+    public ResponseEntity<ApiResponse<Void>> unhidePost(
+            @AuthenticationPrincipal CustomUserDetails adminDetails,
+            @PathVariable Long postId) {
+        adminService.unhidePost(adminDetails.getUserId(), postId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

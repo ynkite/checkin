@@ -1,0 +1,7 @@
+.git
+.gradle
+build
+osm_cache
+uploads
+docs-private
+*.md

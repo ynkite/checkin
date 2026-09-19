@@ -138,6 +138,92 @@
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
     }
+
+    /* ── 이 지역 여행 정보 (관광공사) ─────────────────────────────
+       지도를 열면 거점 관광지 · 반려동물 동반 · 무장애 여행을 한 번에 묻는다.
+       칩을 켠 사람만 부르면 호출 기록이 남지 않는다.
+       값이 없을 때 — 못 받았으면 「확인되지 않았습니다」, 받았는데 0건이면 「자료에 없습니다」.
+       무장애 상세가 없다고 「편의시설 없음」으로 쓰지 않는다. 갈 수 있는 곳을 못 가게 만든다. */
+    let _mpAreaKey = null;
+    async function _mpLoadAreaInfo() {
+      const box = document.getElementById('mpAreaInfo');
+      if (!box) return;
+      let dest = window._mpTripDest || '';
+      if (!dest) {
+        try {
+          const d = JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}');
+          dest = [d['dest-prov'], d['dest-city']].filter(v => v && v !== '전체').join(' ');
+        } catch (e) {}
+      }
+      if (!dest) return;
+      /* 첫날 첫 장소 좌표로 시군구를 바로잡는다(「부산」만으로는 중구가 잡힌다) */
+      let lat = null, lng = null;
+      (typeof MAP_ITINERARY !== 'undefined' && Array.isArray(MAP_ITINERARY) ? MAP_ITINERARY : []).some(d =>
+        (d.places || []).some(p => {
+          if (!p.transit && p.lat && p.lng) { lat = p.lat; lng = p.lng; return true; }
+          return false;
+        }));
+      const key = dest + '|' + lat + '|' + lng;
+      if (key === _mpAreaKey) return;
+      _mpAreaKey = key;
+
+      let data = null;
+      try {
+        const qs = new URLSearchParams({ destination: dest });
+        if (lat != null) { qs.set('lat', lat); qs.set('lng', lng); }
+        const res = await fetch('/api/tour/area-info?' + qs.toString());
+        const json = res.ok ? await res.json() : null;
+        data = json && json.success ? json.data : null;
+      } catch (e) {}
+      if (_mpAreaKey !== key) return;
+      if (!data || !data.areaName) { box.hidden = true; return; }
+
+      const inRoute = new Set();
+      (Array.isArray(MAP_ITINERARY) ? MAP_ITINERARY : []).forEach(d =>
+        (d.places || []).forEach(p => { if (p.name) inRoute.add(p.name.replace(/\s/g, '')); }));
+      const small = 'font-size:11px;color:var(--text3)';
+      const count = s => s.count >= 50 ? '50곳 넘게' : s.count + '곳';
+      let html = `<div style="font-size:13px;font-weight:800;margin-bottom:8px">${_mpEsc(data.areaName)} 여행 정보
+        <span style="${small};font-weight:400"> · 한국관광공사</span></div>`;
+
+      /* 거점 관광지 — 못 받으면 줄을 감춘다. 순위를 지어내지 않는다 */
+      if (data.hubs && data.hubs.status === 'OK' && data.hubs.items.length) {
+        const ym = data.baseYm ? data.baseYm.slice(0, 4) + '년 ' + Number(data.baseYm.slice(4)) + '월' : '';
+        html += `<div style="${small};margin-bottom:4px">이 지역에서 많이 가는 곳${ym ? ' · ' + ym + ' 통계' : ''}</div>
+          <ol style="margin:0 0 10px;padding-left:18px;font-size:13px;line-height:1.7">` +
+          data.hubs.items.map(h => {
+            const mine = inRoute.has((h.name || '').replace(/\s/g, ''));
+            return `<li>${_mpEsc(h.name)}${mine ? ` <span style="${small}">일정에 있음</span>` : ''}</li>`;
+          }).join('') + '</ol>';
+      }
+
+      const facts = (p, miss) => (p.facts && p.facts.length)
+        ? p.facts.map(f => `<div style="${small};white-space:pre-line">${_mpEsc(f.label)} · ${_mpEsc(f.text)}</div>`).join('')
+        : `<div style="${small}">${miss}</div>`;
+      const section = (s, title, noneMsg, missMsg, itemMiss) => {
+        if (!s || s.status === 'NO_AREA') return '';
+        if (s.status === 'UNAVAILABLE') return `<div style="${small};margin:6px 0">${missMsg}</div>`;
+        if (s.status === 'NONE') return `<div style="${small};margin:6px 0">${noneMsg}</div>`;
+        return `<details style="margin:6px 0"><summary style="cursor:pointer;font-size:13px">${title} · ${count(s)}</summary>
+          <ul style="margin:6px 0 0;padding-left:16px;font-size:13px;line-height:1.5">` +
+          s.items.map(p => `<li style="margin-bottom:6px"><b>${_mpEsc(p.name)}</b>
+            ${p.address ? `<div style="${small}">${_mpEsc(p.address)}</div>` : ''}${facts(p, itemMiss)}</li>`).join('') +
+          `</ul>${s.count > s.items.length ? `<div style="${small}">앞의 ${s.items.length}곳만 보여 드립니다.</div>` : ''}</details>`;
+      };
+      html += section(data.pet, '반려동물과 갈 수 있는 곳',
+        '관광공사 자료에 이 지역 반려동물 동반 장소가 올라와 있지 않습니다. 갈 수 없다는 뜻은 아닙니다.',
+        '이 지역 반려동물 동반 정보가 확인되지 않았습니다.',
+        '동반 조건이 확인되지 않았습니다.');
+      html += section(data.barrierFree, '휠체어·유아차로 가기 좋은 곳',
+        '관광공사 자료에 이 지역 무장애 여행지가 올라와 있지 않습니다. 편의시설이 없다는 뜻은 아닙니다.',
+        '무장애 편의 정보가 확인되지 않았습니다.',
+        '무장애 편의 정보가 확인되지 않았습니다.');
+
+      box.innerHTML = html;
+      box.hidden = false;
+    }
+    window._mpLoadAreaInfo = _mpLoadAreaInfo;
+
     // 작은따옴표 안에 들어가는 JS 문자열 — 먼저 JS 로 escape 하고, 속성값이므로 HTML 로 한 번 더.
     function _mpQ(s) {
       return String(s == null ? '' : s)
@@ -1434,6 +1520,8 @@
 
           // ── 이하 재민님의 오리지널 순정 코드 100% 보존 및 화면 주입 버그 완전 정정 ──
           const t = r.data;
+          window._mpTripDest = t.destination || '';
+          if (typeof _mpLoadAreaInfo === 'function') _mpLoadAreaInfo();
           if (titleEl) titleEl.textContent = t.title || '여행 플랜';
           if (t.startDate) {
             window._mpTripStart = t.startDate;
@@ -1557,6 +1645,7 @@
       // 3. AI 데이터를 받았을 때
       if (routeData && routeData.length > 0) {
         MAP_ITINERARY = routeData; // 전역 스코프에 데이터 주입
+        if (typeof _mpLoadAreaInfo === 'function') _mpLoadAreaInfo();
 
         // [기능 추가]: AI가 만든 코스 기간에 맞춰 Day 탭 일수 동적 매핑 생성
         //    탭에 그날의 기준 장소(첫 장소 ~ 마지막 장소)를 같이 보여준다.
@@ -2331,32 +2420,59 @@
     }
 
     // 구간 가운데에 진행 방향 갈매기 하나. 화살표를 수백 개 찍던 것을 대신한다.
-    function _mpChevron(pts) {
+    /* 진행 방향 갈매기. 전에는 구간 가운데 하나만 찍어서 긴 구간에서는
+       어느 쪽으로 가는지 보이지 않았다. 이제 선을 따라가며 일정 간격으로 찍는다.
+       짧은 구간에는 하나만 — 촘촘히 찍으면 선이 지저분해진다. */
+    var MP_CHEV_STEP = 86;     /* 갈매기 사이 거리(px) */
+    var MP_CHEV_EDGE = 26;     /* 핀 근처에는 찍지 않는다 */
+
+    function _mpChevronAt(pts, want) {
+      /* 폴리라인을 따라 want px 지점의 좌표와 방향 */
+      var acc = 0;
+      for (var k = 1; k < pts.length; k++) {
+        var a = pts[k - 1], b = pts[k];
+        var dx = b[0] - a[0], dy = b[1] - a[1];
+        var len = Math.sqrt(dx * dx + dy * dy);
+        if (len < 0.01) continue;
+        if (acc + len >= want) {
+          var r = (want - acc) / len;
+          return { x: a[0] + dx * r, y: a[1] + dy * r, ang: Math.atan2(dy, dx) };
+        }
+        acc += len;
+      }
+      return null;
+    }
+
+    function _mpChevrons(pts) {
       var live = [];
       for (var k = 0; k < pts.length; k++) if (pts[k]) live.push(pts[k]);
       if (live.length < 2) return '';
 
-      // 가운데에서 시작해, 방향이 흔들리지 않을 만큼(14px) 벌어질 때까지 양옆으로 넓힌다.
-      var mid = Math.floor(live.length / 2);
-      var i = Math.max(0, mid - 1), j = Math.min(live.length - 1, mid);
-      var dx, dy, len;
-      while (true) {
-        dx = live[j][0] - live[i][0];
-        dy = live[j][1] - live[i][1];
-        len = Math.sqrt(dx * dx + dy * dy);
-        if (len >= 14) break;
-        if (i === 0 && j === live.length - 1) return '';
-        if (i > 0) i--;
-        if (j < live.length - 1) j++;
+      var total = 0;
+      for (var i = 1; i < live.length; i++) {
+        var dx = live[i][0] - live[i - 1][0], dy = live[i][1] - live[i - 1][1];
+        total += Math.sqrt(dx * dx + dy * dy);
+      }
+      if (total < 18) return '';
+
+      var marks = [];
+      if (total <= MP_CHEV_EDGE * 2 + MP_CHEV_STEP) {
+        marks.push(total / 2);
+      } else {
+        for (var d = MP_CHEV_EDGE; d <= total - MP_CHEV_EDGE; d += MP_CHEV_STEP) marks.push(d);
       }
 
-      var ang = Math.atan2(dy, dx), s = 5.5, off = Math.PI * 0.78;
-      var cx = (live[i][0] + live[j][0]) / 2, cy = (live[i][1] + live[j][1]) / 2;
-      var lx = cx + Math.cos(ang - off) * s, ly = cy + Math.sin(ang - off) * s;
-      var rx = cx + Math.cos(ang + off) * s, ry = cy + Math.sin(ang + off) * s;
-      return 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1)
-              + 'L' + cx.toFixed(1) + ' ' + cy.toFixed(1)
-              + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1);
+      var out = '', s = 5.5, off = Math.PI * 0.78;
+      for (var m = 0; m < marks.length; m++) {
+        var q = _mpChevronAt(live, marks[m]);
+        if (!q) continue;
+        var lx = q.x + Math.cos(q.ang - off) * s, ly = q.y + Math.sin(q.ang - off) * s;
+        var rx = q.x + Math.cos(q.ang + off) * s, ry = q.y + Math.sin(q.ang + off) * s;
+        out += 'M' + lx.toFixed(1) + ' ' + ly.toFixed(1)
+             + 'L' + q.x.toFixed(1) + ' ' + q.y.toFixed(1)
+             + 'L' + rx.toFixed(1) + ' ' + ry.toFixed(1);
+      }
+      return out;
     }
 
     // 「지금 여기」 — 앰버 링 + 사람. 오늘 일정이 진행 중일 때만 만든다.
@@ -2453,9 +2569,12 @@
           var d = _mpPathD(pts);
           if (!d) return;
           var st = _mpSegState(liveIdx, i, segs.length);
+          /* 지도 타일 위에서 선이 묻히지 않게 흰 테두리를 먼저 깐다.
+             전에는 지금 구간에만 깔아서 예정 구간이 배경에 섞여 끊겨 보였다. */
           if (st === 'live') cases += '<path class="mp-rt mp-rt-case" d="' + d + '"/>';
+          else if (st === 'next') cases += '<path class="mp-rt mp-rt-next-case" d="' + d + '"/>';
           lines += '<path class="mp-rt mp-rt-' + st + '" d="' + d + '"/>';
-          var cd = _mpChevron(pts);
+          var cd = _mpChevrons(pts);
           if (cd) chevs += '<path class="mp-chev' + (st === 'live' ? ' mp-chev-live' : '') + '" d="' + cd + '"/>';
         });
         if (!lines) return;
@@ -3584,6 +3703,8 @@
         </div>
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
+        <!-- 이 지역 여행 정보 — 관광공사 거점 관광지 · 반려동물 동반 · 무장애. _mpLoadAreaInfo() 가 채운다 -->
+        <div id="mpAreaInfo" hidden style="padding:14px 16px;border-top:1px solid var(--border2);word-break:keep-all"></div>
       </div>
       <!-- MAP RIGHT -->
       <div class="map-right" id="mapRightArea">

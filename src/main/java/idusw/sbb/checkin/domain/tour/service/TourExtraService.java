@@ -33,15 +33,18 @@ public class TourExtraService {
 
     private final TourApiClient client;
 
+    /* 오퍼레이션 이름은 areaBasedList2 다. areaBasedList·areaBasedList1 은
+       「NO_OPENAPI_SERVICE_ERROR — 서비스가 없거나 폐기됨」이 온다 (2026-09-19 실호출로 확인) */
+
     /** 무장애 여행 — 휠체어·유아차가 다닐 수 있는 곳 */
     public List<Map<String, Object>> barrierFree(String areaCode, int rows) {
-        return simple("KorWithService2", "areaBasedList1",
+        return simple("KorWithService2", "areaBasedList2",
                 base(areaCode, rows), "무장애");
     }
 
     /** 반려동물 동반 가능한 곳 */
     public List<Map<String, Object>> petFriendly(String areaCode, int rows) {
-        return simple("KorPetTourService2", "areaBasedList",
+        return simple("KorPetTourService2", "areaBasedList2",
                 base(areaCode, rows), "반려동물");
     }
 

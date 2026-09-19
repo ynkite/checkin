@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class PostService {
 
-    private static final List<String> STATUS_VISIBLE = List.of("ACTIVE", "HIDDEN");
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final PostCommentRepository postCommentRepository;
@@ -70,18 +69,21 @@ public class PostService {
 
     // 커뮤니티 - 게시글 목록 조회
     public Page<PostListResponseDto> getPosts(Pageable pageable, String category, String sort) {
+        return getPosts(pageable, category, sort, null, false);
+    }
+
+    // 숨긴 글은 관리자와 작성자에게만 내려간다. 예전에는 전부 내려 보내고 화면이 걸렀다
+    public Page<PostListResponseDto> getPosts(Pageable pageable, String category, String sort,
+                                              Long viewerId, boolean admin) {
         Page<Post> posts;
+        String categoryCode = (category == null || category.isBlank() || category.equalsIgnoreCase("all"))
+                ? null : toCategoryCode(category);
 
         if ("scrap".equals(sort)) {
             // Post 엔티티에 scrapCount 컬럼이 없어 DB 정렬이 불가능 → 실제 스크랩 수를 집계해 메모리에서 정렬
-            posts = getPostsSortedByScrapCount(pageable, category);
-        } else if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
-            posts = postRepository.findByStatusInOrderByCreatedAtDesc(STATUS_VISIBLE, pageable);
+            posts = getPostsSortedByScrapCount(pageable, categoryCode, viewerId, admin);
         } else {
-            // 카테고리별 조회도 ACTIVE + HIDDEN 포함 (관리자/작성자가 숨김 글 볼 수 있도록)
-            String categoryCode = toCategoryCode(category);
-            posts = postRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(
-                    STATUS_VISIBLE, categoryCode, pageable);
+            posts = postRepository.findVisible(viewerId, admin, categoryCode, pageable);
         }
 
         return posts.map(post -> {
@@ -93,15 +95,8 @@ public class PostService {
     }
 
     // 스크랩 수("담긴순"/"스크랩순") 기준 정렬 — 실제 PostScrap 카운트로 메모리에서 정렬 후 직접 페이징
-    private Page<Post> getPostsSortedByScrapCount(Pageable pageable, String category) {
-        List<Post> all;
-        if (category == null || category.isBlank() || category.equalsIgnoreCase("all")) {
-            all = postRepository.findByStatusInOrderByCreatedAtDesc(STATUS_VISIBLE, Pageable.unpaged()).getContent();
-        } else {
-            String categoryCode = toCategoryCode(category);
-            all = postRepository.findByStatusInAndCategoryOrderByCreatedAtDesc(
-                    STATUS_VISIBLE, categoryCode, Pageable.unpaged()).getContent();
-        }
+    private Page<Post> getPostsSortedByScrapCount(Pageable pageable, String categoryCode, Long viewerId, boolean admin) {
+        List<Post> all = postRepository.findVisible(viewerId, admin, categoryCode, Pageable.unpaged()).getContent();
 
         List<Post> sorted = all.stream()
                 .sorted((a, b) -> Long.compare(
@@ -190,8 +185,19 @@ public class PostService {
     // 커뮤니티 - 게시글 상세 조회
     @Transactional
     public PostDetailResponseDto getPost(Long userId, Long postId) {
+        return getPost(userId, postId, false);
+    }
+
+    // 숨긴 글은 관리자와 작성자만 연다. 다른 사람에게는 없는 글과 같게 답한다
+    @Transactional
+    public PostDetailResponseDto getPost(Long userId, Long postId, boolean admin) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다."));
+        boolean owner = userId != null && post.getUser() != null && userId.equals(post.getUser().getId());
+        if ("DELETED".equals(post.getStatus())
+                || ("HIDDEN".equals(post.getStatus()) && !admin && !owner)) {
+            throw new IllegalArgumentException("게시글을 찾을 수 없습니다.");
+        }
 
         post.increaseViewCount();
 

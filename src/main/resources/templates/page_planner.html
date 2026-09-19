@@ -120,39 +120,131 @@
                 if (cs && gu && [...cs.options].some(o => o.value === gu || o.text === gu)) cs.value = gu;
             }
 
+            /* 최근 출발지. 이 브라우저에만 남는 편의 기능이라 localStorage 에 둔다. 좌표가 있는 것만 */
+            const RECENT_KEY = 'plannerRecentOrigins';
+            function recent() {
+                try {
+                    return (JSON.parse(localStorage.getItem(RECENT_KEY) || '[]') || [])
+                        .filter(o => o && o.name && o.lat != null && o.lng != null);
+                } catch (e) { return []; }
+            }
+            function remember(o) {
+                if (!o || !o.name || o.lat == null || o.lng == null) return;
+                try {
+                    const rest = recent().filter(r => !(r.name === o.name && (r.address || '') === (o.address || '')));
+                    const one = { name: o.name, lat: o.lat, lng: o.lng, address: o.address || '', category: o.category || '' };
+                    localStorage.setItem(RECENT_KEY, JSON.stringify([one].concat(rest).slice(0, 5)));
+                } catch (e) {}
+            }
+
             function pick(p, from) {
                 picked = true;
                 input.value = p.name;
                 closeList();
-                store({ name: p.name, lat: p.lat, lng: p.lng, from: from || 'search', address: p.address || '' });
+                const o = { name: p.name, lat: p.lat, lng: p.lng, from: from || 'search',
+                            address: p.address || '', category: p.category || '' };
+                store(o);
+                if (from !== 'gps') remember(o);
+                /* 고른 주소의 앞 두 칸(「부산 동구」)으로 위 도/시·시/군/구를 맞춘다 */
+                if (from === 'search' || from === 'recent') {
+                    const parts = (p.address || '').split(' ');
+                    if (parts.length >= 2) fillArea(parts[0], parts[1]);
+                }
                 say(p.address && p.address !== p.name ? p.address : '');
             }
             window._plannerPickOrigin = pick;
 
-            async function search(q) {
-                const my = ++seq;
-                let arr = [];
-                try {
-                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
-                    const json = await res.json();
-                    arr = (json && json.success && json.data) || [];
-                } catch (e) {}
-                if (my !== seq || picked) return;          /* 그 사이 더 친 글자가 있다 */
-                if (!arr.length) { closeList(); say('찾지 못했습니다'); return; }
-                say('');
+            /* 목록 그리기. 같은 이름이 여럿이어도 업종과 도로명·지번으로 가를 수 있게 한다 */
+            let active = -1, shown = [];
+            function render(arr, head) {
+                shown = arr; active = -1;
                 list.hidden = false;
                 list.innerHTML = '';
-                arr.forEach(function (p) {
+                list.setAttribute('role', 'listbox');
+                if (head) {
+                    const h = document.createElement('div');
+                    h.textContent = head;
+                    h.style.cssText = 'padding:6px 12px;font-size:11px;color:var(--text3)';
+                    list.appendChild(h);
+                }
+                arr.forEach(function (p, i) {
                     const b = document.createElement('button');
                     b.type = 'button';
                     b.className = 'og-item';
-                    const nm = document.createElement('b');    nm.textContent = p.name;
-                    const ad = document.createElement('span'); ad.textContent = p.address || '';
+                    b.setAttribute('role', 'option');
+                    b.dataset.i = String(i);
+                    const nm = document.createElement('b'); nm.textContent = p.name;
+                    if (p.category) {
+                        const cat = document.createElement('small');
+                        cat.textContent = ' · ' + p.category;
+                        cat.style.cssText = 'font-weight:400;color:var(--text3)';
+                        nm.appendChild(cat);
+                    }
+                    const ad = document.createElement('span');
+                    ad.textContent = p.jibun && p.road && p.jibun !== p.road
+                        ? p.road + ' (지번 ' + p.jibun + ')' : (p.address || '');
                     b.append(nm, ad);
                     /* blur 보다 먼저 잡아야 목록이 닫히기 전에 고른다 */
-                    b.addEventListener('mousedown', function (e) { e.preventDefault(); pick(p, 'search'); });
+                    b.addEventListener('mousedown', function (e) { e.preventDefault(); pick(p, head ? 'recent' : 'search'); });
                     list.appendChild(b);
                 });
+            }
+            function highlight(i) {
+                const items = list.querySelectorAll('.og-item');
+                if (!items.length) return;
+                active = (i + items.length) % items.length;
+                items.forEach((el, k) => {
+                    const on = k === active;
+                    el.setAttribute('aria-selected', on ? 'true' : 'false');
+                    el.style.outline = on ? '2px solid var(--num)' : '';
+                    if (on) el.scrollIntoView({ block: 'nearest' });
+                });
+            }
+
+            /* 카카오 키워드 → 비면 주소 검색(서버). 카카오를 못 부른 때만 TMAP 으로 한 번 더.
+               「못 찾음」과 「검색을 못 함」을 다르게 말한다 */
+            async function lookup(q) {
+                let status = 'UNAVAILABLE', arr = [];
+                try {
+                    const res = await fetch('/api/tour/origin-search?q=' + encodeURIComponent(q));
+                    const json = await res.json();
+                    if (json && json.success && json.data) {
+                        status = json.data.status;
+                        arr = (json.data.items || []).map(p => ({
+                            name: p.name, category: p.category || '',
+                            road: p.roadAddress || '', jibun: p.address || '',
+                            address: p.roadAddress || p.address || '',
+                            lat: p.lat, lng: p.lng
+                        }));
+                    }
+                } catch (e) {}
+                if (status === 'UNAVAILABLE') {
+                    try {
+                        const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=5');
+                        const json = await res.json();
+                        const t = (json && json.success && json.data) || [];
+                        if (t.length) {
+                            status = 'OK';
+                            arr = t.map(p => ({ name: p.name, category: '', address: p.address || '', lat: p.lat, lng: p.lng }));
+                        }
+                    } catch (e) {}
+                }
+                return { status: arr.length ? 'OK' : status, arr: arr };
+            }
+
+            function sayMiss(status) {
+                say(status === 'NONE'
+                    ? '맞는 곳을 찾지 못했습니다. 역·건물 이름이나 도로명 주소로 다시 찾아보세요'
+                    : '지금은 장소 검색이 되지 않습니다. 적은 이름은 남기고 이동시간은 도/시 기준으로 잽니다');
+            }
+
+            async function search(q) {
+                const my = ++seq;
+                const r = await lookup(q);
+                if (my !== seq || picked) return;          /* 그 사이 더 친 글자가 있다 */
+                if (r.status !== 'OK') { closeList(); sayMiss(r.status); return; }
+                say('');
+                render(r.arr);
             }
 
             /* 목록에서 고르지 않고 친 글자 그대로 둔 경우. 이름은 친 그대로 두고
@@ -163,19 +255,22 @@
                 closeList();
                 store({ name: q, lat: null, lng: null, from: 'typed' });
                 const my = ++seq;
-                try {
-                    const res = await fetch('/api/route/origin?q=' + encodeURIComponent(q) + '&count=1');
-                    const json = await res.json();
-                    const top = (json && json.success && json.data && json.data[0]) || null;
-                    if (my !== seq || input.value.trim() !== q) return;
-                    if (top && top.lat) {
-                        store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
-                        say(top.address || '');
-                    } else {
-                        say('위치를 못 찾아 이동시간은 도/시 기준으로 잽니다');
-                    }
-                } catch (e) {}
+                const r = await lookup(q);
+                if (my !== seq || input.value.trim() !== q) return;
+                const top = r.status === 'OK' ? r.arr[0] : null;
+                if (top && top.lat) {
+                    store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
+                    say('가장 비슷한 곳으로 잽니다 — ' + top.name + (top.address ? ', ' + top.address : ''));
+                } else {
+                    sayMiss(r.status);
+                }
             }
+
+            input.addEventListener('focus', function () {
+                if (this.value.trim()) return;
+                const rs = recent();
+                if (rs.length) render(rs, '최근 출발지');
+            });
 
             input.addEventListener('input', function () {
                 picked = false;
@@ -190,9 +285,20 @@
 
             input.addEventListener('keydown', function (e) {
                 if (e.key === 'Escape') { closeList(); return; }
+                if (!list.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault();
+                    highlight(active + (e.key === 'ArrowDown' ? 1 : -1));
+                    return;
+                }
                 if (e.key !== 'Enter') return;
                 e.preventDefault();
                 clearTimeout(timer);
+                /* 방향키로 고른 줄이 있으면 그것, 없으면 친 글자 그대로 */
+                if (!list.hidden && active >= 0 && shown[active]) {
+                    const isRecent = !!list.querySelector('div');
+                    pick(shown[active], isRecent ? 'recent' : 'search');
+                    return;
+                }
                 commitTyped();
             });
 
@@ -858,48 +964,164 @@
             toast('비웠습니다. 처음부터 다시 고르면 됩니다.');
         }
 
-        // ── 생성/보정 로딩 스피너 오버레이 (반투명 배경 + 회전 + 취소) ──
+        /* ── 일정 만드는 중 표시 ─────────────────────────────────
+           전에는 화면 전체를 덮었다. 30초 동안 아무것도 못 하고 얼마나 됐는지도 안 보였다.
+           이제 아래쪽에 작은 줄 하나만 띄운다. 다른 화면으로 가도 따라다닌다.
+           퍼센트는 서버(/routes/progress)가 준 값만 쓴다. 남은 시간은 알 수 없어 적지 않는다. */
+        const GEN_KEY = 'genInFlight';      // { tripId, at } — 새로고침해도 이어 보려고 둔다
+        const GEN_POLL_MS = 1500;
+        const GEN_STALE_MS = 10 * 60 * 1000; // 서버도 10분 뒤 진행 기록을 지운다
+        let _genPollTimer = null;
+
+        function _genBar() {
+            let bar = document.getElementById('genLoadOverlay');
+            if (bar) return bar;
+            if (!document.getElementById('genLoadStyle')) {
+                const st = document.createElement('style');
+                st.id = 'genLoadStyle';
+                st.textContent =
+                    '#genLoadOverlay{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:100000;'
+                    + 'width:min(440px,calc(100vw - 32px));display:none;flex-direction:column;gap:8px;padding:12px 14px;'
+                    + 'border-radius:12px;background:var(--panel);color:var(--ink);border:1px solid var(--border2);'
+                    + 'box-shadow:0 2px 0 var(--border2),0 6px 0 var(--ui-plate);word-break:keep-all}'
+                    + '#genLoadOverlay .gl-row{display:flex;align-items:center;gap:10px}'
+                    + '#genLoadOverlay .gl-txt{flex:1;font-size:13px;font-weight:700}'
+                    + '#genLoadOverlay .gl-pct{font-size:13px;font-weight:800;color:var(--num);font-variant-numeric:tabular-nums}'
+                    + '#genLoadOverlay .gl-track{height:6px;border-radius:3px;background:var(--ui-plate);overflow:hidden}'
+                    + '#genLoadOverlay .gl-fill{height:100%;width:0;background:var(--num);transition:width .4s}'
+                    + '#genLoadOverlay .gl-sub{font-size:12px;color:var(--text3)}'
+                    + '#genLoadOverlay button{padding:6px 12px;border-radius:8px;border:1px solid var(--border2);'
+                    + 'background:var(--surface);color:var(--ink);font-size:12px;font-weight:700;cursor:pointer}';
+                document.head.appendChild(st);
+            }
+            bar = document.createElement('div');
+            bar.id = 'genLoadOverlay';
+            bar.setAttribute('role', 'status');
+            bar.setAttribute('aria-live', 'polite');
+            bar.innerHTML =
+                '<div class="gl-row"><span class="gl-txt" id="genLoadTxt"></span><span class="gl-pct" id="genLoadPct"></span>'
+                + '<button type="button" id="genLoadCancel" onclick="_cancelGenLoading()">그만 보기</button></div>'
+                + '<div class="gl-track" id="genLoadTrack" hidden><div class="gl-fill" id="genLoadFill"></div></div>'
+                + '<div class="gl-sub" id="genLoadSub">다른 화면을 봐도 됩니다. 다 되면 여기에 알려 드립니다.</div>';
+            document.body.appendChild(bar);
+            return bar;
+        }
+
         function _showGenLoading(text) {
             window._genCancelled = false;
-            let ov = document.getElementById('genLoadOverlay');
-            if (!ov) {
-                if (!document.getElementById('genLoadStyle')) {
-                    const st = document.createElement('style');
-                    st.id = 'genLoadStyle';
-                    st.textContent =
-                        '@keyframes genSpin{to{transform:rotate(360deg)}}'
-                        + '#genLoadOverlay{position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;'
-                        + 'align-items:center;justify-content:center;gap:18px;background:rgba(26,34,56,.55);backdrop-filter:blur(3px)}'
-                        + '#genLoadOverlay .gl-ring{width:54px;height:54px;border:5px solid rgba(255,255,255,.25);'
-                        + 'border-top-color:var(--terra);border-radius:50%;animation:genSpin .8s linear infinite}'
-                        + '#genLoadOverlay .gl-txt{color:var(--panel);font-size:14px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.35)}'
-                        + '#genLoadOverlay .gl-cancel{margin-top:6px;padding:8px 20px;border-radius:10px;border:1px solid rgba(255,255,255,.5);'
-                        + 'background:rgba(255,255,255,.12);color:var(--panel);font-size:13px;font-weight:700;cursor:pointer}'
-                        + '#genLoadOverlay .gl-cancel:hover{background:rgba(255,255,255,.22)}';
-                    document.head.appendChild(st);
-                }
-                ov = document.createElement('div');
-                ov.id = 'genLoadOverlay';
-                ov.innerHTML = '<div class="gl-ring"></div><div class="gl-txt" id="genLoadTxt"></div>'
-                    + '<button class="gl-cancel" id="genLoadCancel" onclick="_cancelGenLoading()">취소</button>';
-                document.body.appendChild(ov);
-            }
-            ov.style.display = 'flex';
+            const bar = _genBar();
+            bar.style.display = 'flex';
             const t = document.getElementById('genLoadTxt');
-            if (t) t.textContent = text || '일정을 만드는 중입니다…';
+            if (t) t.textContent = text || '일정을 만드는 중입니다';
+            const c = document.getElementById('genLoadCancel');
+            if (c) { c.textContent = '그만 보기'; c.onclick = _cancelGenLoading; }
         }
         function _hideGenLoading() {
-            const ov = document.getElementById('genLoadOverlay');
-            if (ov) ov.style.display = 'none';
+            const bar = document.getElementById('genLoadOverlay');
+            if (bar) bar.style.display = 'none';
         }
-        // 취소: 진행 중인 생성/보정을 무시 플래그로 중단하고 버튼·오버레이 원상복구
+        function _genSetPercent(p, message) {
+            _genBar();
+            const track = document.getElementById('genLoadTrack');
+            const fill = document.getElementById('genLoadFill');
+            const pct = document.getElementById('genLoadPct');
+            const txt = document.getElementById('genLoadTxt');
+            if (typeof p === 'number') {
+                if (track) track.hidden = false;
+                if (fill) fill.style.width = Math.max(0, Math.min(100, p)) + '%';
+                if (pct) pct.textContent = p + '% 완료';
+            }
+            if (message && txt) txt.textContent = message;
+        }
+
+        /* 서버 진행을 1.5초마다 묻는다. 끝나거나 실패하면 멈춘다 */
+        function _genWatch(tripId, onEnd) {
+            clearInterval(_genPollTimer);
+            const tick = async () => {
+                let pr = null;
+                try {
+                    const r = await api.get(`/api/trips/${tripId}/routes/progress`);
+                    pr = r && r.success ? r.data : null;
+                } catch (e) {}
+                if (!pr || !pr.known) return;              // 아직 기록 전이거나 못 물었다 — 숫자를 지어내지 않는다
+                _genSetPercent(pr.percent, pr.message);
+                if (pr.done || pr.failed) {
+                    clearInterval(_genPollTimer);
+                    _genPollTimer = null;
+                    if (onEnd) onEnd(pr);
+                }
+            };
+            tick();
+            _genPollTimer = setInterval(tick, GEN_POLL_MS);
+        }
+        function _genStopWatch() { clearInterval(_genPollTimer); _genPollTimer = null; }
+
+        function _genMark(tripId) {
+            try { sessionStorage.setItem(GEN_KEY, JSON.stringify({ tripId: tripId, at: Date.now() })); } catch (e) {}
+        }
+        function _genUnmark() { try { sessionStorage.removeItem(GEN_KEY); } catch (e) {} }
+        function _genMarked() {
+            try {
+                const m = JSON.parse(sessionStorage.getItem(GEN_KEY) || 'null');
+                return m && m.tripId && (Date.now() - m.at) < GEN_STALE_MS ? m : null;
+            } catch (e) { return null; }
+        }
+
+        /* 실패는 조용히 비우지 않는다. 이유를 줄에 남기고 3단계에 머문다 */
+        function _genShowFailure(reason) {
+            _genStopWatch();
+            _genUnmark();
+            _showGenLoading('일정을 만들지 못했습니다');
+            const sub = document.getElementById('genLoadSub');
+            if (sub) sub.textContent = reason || '입력 내용을 확인하고 다시 눌러 주세요.';
+            const track = document.getElementById('genLoadTrack');
+            if (track) track.hidden = true;
+            const pct = document.getElementById('genLoadPct');
+            if (pct) pct.textContent = '';
+            const c = document.getElementById('genLoadCancel');
+            if (c) { c.textContent = '닫기'; c.onclick = _hideGenLoading; }
+        }
+
+        // 그만 보기: 화면에서만 멈춘다. 서버는 이미 만들고 있어 끝까지 간다 — 그렇다고 말한다
         function _cancelGenLoading() {
             window._genCancelled = true;
+            _genStopWatch();
             _hideGenLoading();
             const btn = document.querySelector('#sp-3 .btn-gen');
             if (btn) { btn.innerHTML = '일정 만들기 → 동선 다듬기'; btn.disabled = false; }
-            toast('일정 생성을 취소했습니다.');
+            toast('화면에서 기다리기를 멈췄습니다. 서버에서 만들던 일정은 끝까지 만들어지고, 다 되면 지도에서 볼 수 있습니다.');
         }
+
+        /* 새로고침으로 기다리던 화면이 사라진 경우 — 기록이 남아 있으면 진행을 이어서 보여 준다.
+           다 되면 저장된 경로를 읽어 「지도에서 보기」를 띄운다(바로 넘기지 않는다) */
+        function _genResume() {
+            const m = _genMarked();
+            if (!m || _genPollTimer || window._genInFlightTrip) return;
+            if (typeof api === 'undefined') { setTimeout(_genResume, 300); return; }
+            _showGenLoading('일정을 만드는 중입니다');
+            _genWatch(m.tripId, async (pr) => {
+                _genUnmark();
+                if (pr.failed) { _genShowFailure(pr.detail || pr.message); return; }
+                let route = null;
+                try {
+                    const r = await api.get(`/api/trips/${m.tripId}/routes?t=${Date.now()}`);
+                    const raw = r && r.success ? r.data : null;
+                    route = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                } catch (e) {}
+                if (!route || !_routeUsable(route)) { _genShowFailure('만든 일정을 읽어 오지 못했습니다. 다시 눌러 주세요.'); return; }
+                _showGenLoading('일정이 다 만들어졌습니다');
+                _genSetPercent(100, '일정이 다 만들어졌습니다');
+                const sub = document.getElementById('genLoadSub');
+                if (sub) sub.textContent = '지도에서 확인해 보세요.';
+                const c = document.getElementById('genLoadCancel');
+                if (c) {
+                    c.textContent = '지도에서 보기';
+                    c.onclick = () => { _hideGenLoading(); window._currentTripId = m.tripId; _finalizePlannerRoute(route, null); };
+                }
+            });
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _genResume);
+        else setTimeout(_genResume, 0);
 
         /* ─────────────────────────────────────────────────────────
          * AI 일정 생성 요청
@@ -912,14 +1134,43 @@
             // [예산 보존] 생성 중 예산칸이 비워지는 문제 방지용 스냅샷
             window._budgetSnapshot = (document.getElementById('s1-budget')?.value || '').trim();
 
-            // 1. 버튼 비활성화 + 반투명 로딩 오버레이 표시
+            /* 같은 플랜을 또 누르면 막는다. 이 화면에서 기다리는 중이거나(새로고침 전 포함),
+               서버가 아직 만들고 있다고 답하면 두 번째 요청을 보내지 않는다 */
+            if (window._genInFlightTrip === tripId) { toast('이 플랜은 지금 만드는 중입니다. 아래 표시에서 진행을 볼 수 있습니다.'); return; }
+            const marked = _genMarked();
+            if (marked && String(marked.tripId) === String(tripId)) {
+                try {
+                    const pr = await api.get(`/api/trips/${tripId}/routes/progress`);
+                    const d = pr && pr.success ? pr.data : null;
+                    if (d && d.known && !d.done && !d.failed) {
+                        toast('이 플랜은 지금 만드는 중입니다. 아래 표시에서 진행을 볼 수 있습니다.');
+                        _genResume();
+                        return;
+                    }
+                } catch (e) {}
+                _genUnmark();
+            }
+
+            // 1. 버튼 비활성화 + 아래쪽 진행 표시 (화면은 덮지 않는다)
             btn.innerHTML = '일정을 만드는 중입니다…';
             btn.disabled = true;
-            _showGenLoading('일정을 만드는 중입니다…');
+            window._genInFlightTrip = tripId;
+            _genMark(tripId);
+            _showGenLoading('일정을 만드는 중입니다');
+            _genWatch(tripId);
 
             try {
                 const res = await api.post(`/api/trips/${tripId}/routes/generate`);
+                window._genInFlightTrip = null;
+                _genStopWatch();
+                _genUnmark();
+                if (window._genCancelled) {
+                    /* 그만 보기를 눌렀어도 서버는 끝까지 만들었다. 결과가 있으면 알려만 준다 */
+                    if (res && res.success) toast('일정이 다 만들어졌습니다. 지도 화면에서 볼 수 있습니다.');
+                    return;
+                }
                 if (res.success && res.data) {
+                    _genSetPercent(100, '다 됐습니다. 동선을 점검하는 중입니다');
                     // 방법1: data가 {route, over50} 객체. route는 기존처럼 JSON 문자열
                     let cleanJson = res.data.route;
                     const over50 = res.data.over50 || [];
@@ -960,15 +1211,15 @@
                     }
 
                 } else {
-                    _hideGenLoading();
-                    toast('' + (res.message || '일정을 만들지 못했습니다. 입력 내용을 확인하고 다시 눌러 주세요.'));
+                    /* 왜 실패했는지 줄에 남기고 3단계에 머문다 */
+                    _genShowFailure(res.message || '입력 내용을 확인하고 다시 눌러 주세요.');
                     // 실패 시 버튼 즉시 원상복구
                     btn.innerHTML = '일정 만들기 → 동선 다듬기';
                     btn.disabled = false;
                 }
             } catch (e) {
-                _hideGenLoading();
-                toast('연결이 끊겼습니다. 잠시 뒤에 다시 눌러 주세요.');
+                window._genInFlightTrip = null;
+                _genShowFailure('서버와 연결이 끊겼습니다. 서버에서는 계속 만들고 있을 수 있으니 잠시 뒤에 다시 열어 보세요.');
                 // 에러 발생 시 버튼 즉시 원상복구
                 btn.innerHTML = '일정 만들기 → 동선 다듬기';
                 btn.disabled = false;
@@ -1268,13 +1519,20 @@
                 if (d.places) {
                     d.places.forEach(p => {
                         if (!p.transit && p.name) {
+                            /* 서버가 이미 카카오로 찾아 둔 좌표를 그대로 쓴다.
+                               전에는 lat·lng 를 null 로 두고 브라우저에서 전부 다시 찾았다.
+                               그 검색이 실패하면 멀쩡한 장소까지 「가짜」로 몰려 삭제됐고,
+                               일정이 통째로 비어 4단계가 빈 화면이 됐다. */
+                            const hasCoord = (typeof p.lat === 'number' && typeof p.lng === 'number')
+                                          || (!isNaN(parseFloat(p.lat)) && !isNaN(parseFloat(p.lng)));
                             allPins.push({
                                 day: d.day,
                                 type: p.type,
                                 label: p.name,
-                                lat: null,
-                                lng: null,
-                                isFound: false,
+                                lat: hasCoord ? parseFloat(p.lat) : null,
+                                lng: hasCoord ? parseFloat(p.lng) : null,
+                                isFound: hasCoord,
+                                fromServer: hasCoord,
                                 category: p.category
                             });
                         }
@@ -1366,6 +1624,10 @@
             // 비동기 카카오 검색 기동 루프
             function _startPinSearchLoop() {
                 allPins.forEach(pin => {
+                    /* 서버가 준 좌표가 있으면 다시 찾지 않는다. 검색 한도도 아끼고,
+                       브라우저 검색이 실패해도 멀쩡한 장소가 삭제되지 않는다. */
+                    if (pin.fromServer) { finalizeSearch(); return; }
+
                     const searchQuery = destRegion ? (destRegion + ' ' + pin.label) : pin.label;
 
                     // 검색 결과 중 '여행지 반경 안'에 있는 첫 후보를 채택. 없으면 미발견 처리.
@@ -1502,6 +1764,13 @@
                                         if (nextJson.includes('[')) nextJson = nextJson.substring(nextJson.indexOf('['), nextJson.lastIndexOf(']') + 1);
 
                                         const cleanData = JSON.parse(nextJson);
+                                        /* 교체 응답이 비어 오면 쓰지 않는다. 전에는 검사 없이
+                                           세션에 넣어서 있던 일정이 통째로 날아갔다. */
+                                        if (!_routeUsable(cleanData)) {
+                                            console.warn('[플래너] 교체 응답이 비어 있어 직전 일정을 지킵니다.');
+                                            _finalizePlannerRoute(routeData, btn);
+                                            return;
+                                        }
                                         sessionStorage.setItem('ai_generated_route', nextJson);
 
                                         // 보정 데이터를 들고 다음 회차 연쇄 필터링 재진입 (재검사 기동)
@@ -1540,6 +1809,14 @@
                             console.warn('2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
                             toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
                             const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
+                            /* 빼고 나니 아무것도 안 남으면 빼지 않는다.
+                               잘못된 장소가 남는 편이 빈 화면보다 낫다. */
+                            if (!_routeUsable(cleanedReordered)) {
+                                console.warn('[플래너] 제외하고 나니 남는 일정이 없어 원래 일정을 그대로 씁니다.');
+                                toast('확인이 안 된 장소가 있지만 일정은 그대로 두었습니다.');
+                                _finalizePlannerRoute(routeData, btn);
+                                return;
+                            }
                             sessionStorage.setItem('ai_generated_route', JSON.stringify(cleanedReordered));
                             _finalizePlannerRoute(cleanedReordered, btn);
                         } else {
@@ -1655,6 +1932,15 @@
             }
         }
 
+        /* 쓸 만한 동선인가 — 서버의 RouteJson.usable 과 같은 기준이다.
+           둘이 다른 기준을 쓰면 「서버는 됐다는데 화면은 빈다」가 또 난다.
+           배열이고, 하루라도 있고, 이름 있는 들를 곳이 하나라도 있어야 한다. */
+        function _routeUsable(route) {
+            if (!Array.isArray(route) || route.length === 0) return false;
+            return route.some(d => Array.isArray(d && d.places)
+                && d.places.some(p => p && !p.transit && p.name && String(p.name).trim()));
+        }
+
         function _finalizePlannerRoute(routeData, btn) {
             _hideGenLoading();
             // [예산 복구] 생성 과정에서 예산칸이 비워졌다면 스냅샷 값으로 되돌린다.
@@ -1671,6 +1957,18 @@
 
             if (!routeData) {
                 toast('일정 데이터를 불러오지 못했습니다.');
+                return;
+            }
+
+            /* 빈 경로는 저장하지 않는다. 전에는 이걸 그대로 넣어서 지도 화면이
+               「세션에 든 경로에 들를 곳이 없습니다」로 끝났다. 있던 일정까지 덮어썼다. */
+            if (!_routeUsable(routeData)) {
+                const kept = sessionStorage.getItem('ai_generated_route');
+                console.warn('[플래너] 만들어진 일정이 비어 있습니다. 세션을 덮어쓰지 않습니다.', routeData);
+                toast(kept ? '일정을 다듬지 못했습니다. 직전 일정을 그대로 씁니다.'
+                           : '일정을 만들지 못했습니다. 조건을 조금 바꿔 다시 해 보세요.');
+                if (!kept) return;
+                go('map');
                 return;
             }
 
@@ -1751,8 +2049,9 @@
                         <div class="og-wrap">
                             <div class="og-row">
                                 <input class="form-input og-input" id="s1-origin" type="text"
-                                       autocomplete="off" placeholder="부산역, 해운대구 우동 1418"
-                                       aria-label="출발지" aria-describedby="s1-origin-hint">
+                                       autocomplete="off" placeholder="출발지 검색 — 역·건물 이름이나 주소"
+                                       aria-label="출발지 검색" aria-describedby="s1-origin-hint"
+                                       aria-autocomplete="list" aria-controls="s1-origin-list" role="combobox">
                                 <button type="button" class="og-gps" id="s1-origin-gps">지금 위치</button>
                                 <div class="og-list" id="s1-origin-list" hidden></div>
                             </div>
@@ -2150,23 +2449,22 @@
                 <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
                 <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
                     <div style="font-size:13px;color:var(--text2);line-height:1.8">
-                        날씨 예보 서비스는 <strong>오늘로부터 최대 14일 이내</strong> 기간만 제공합니다.<br>
-                        출발일이 14일 뒤라 아직 예보가 없습니다.<br>
-                        여행 날짜가 가까워지면 다시 확인해 주세요.<br>
-                        더 먼 날짜는 아래 날씨 검색에서 확인해 주세요.
+                        여기서는 오늘부터 <strong>7일 치</strong> 기상청 예보만 보여 드립니다.<br>
+                        출발일이 2주 넘게 남아 아직 보여 드릴 예보가 없습니다.<br>
+                        여행이 가까워지면 다시 열어 보세요. 먼 날짜는 아래 링크에서 확인할 수 있습니다.
                     </div>
                 </div>
             </div>
 
             <!-- 날씨 그리드 (데이터 있는 경우) -->
             <div id="wp-data-wrap">
-                <p class="wp-note">기상청 예보는 출발일 기준 <strong>이레</strong>까지입니다.
-                    그보다 뒤는 아래 링크에서 보세요.</p>
+                <p class="wp-note">기상청 예보는 오늘부터 <strong>7일 치</strong>만 나옵니다.
+                    그보다 뒤 날짜는 아래 링크에서 확인해 주세요.</p>
                 <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
                 <div id="wp-alert" style="display:none;margin-top:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:8px;padding:10px;font-size:12px;color:var(--tile)"></div>
             </div>
 
-            <!-- 이레 뒤를 보러 나가는 곳.
+            <!-- 7일 뒤를 보러 나가는 곳.
                  전에는 네이버 초록·구글 파랑으로 채운 큰 버튼 두 개였다.
                  남의 브랜드 색을 우리 화면에서 제일 진한 면으로 쓰고 있었고,
                  아이콘은 그쪽 파비콘을 직접 가져다 쓰느라 뜨지도 않았다. -->

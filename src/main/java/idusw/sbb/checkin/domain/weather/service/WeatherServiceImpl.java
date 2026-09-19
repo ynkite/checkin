@@ -242,33 +242,57 @@ public class WeatherServiceImpl implements WeatherService {
         Map<String, Integer> tmn = new HashMap<>(), tmx = new HashMap<>();
         Map<String, Integer> popMax = new HashMap<>(), skyNoon = new HashMap<>();
         Map<String, Boolean> rain = new HashMap<>();
+        /* 시간별 기온·하늘. TMN·TMX 가 없는 날(=오늘)을 여기서 메운다 */
+        Map<String, Integer> tmpMin = new HashMap<>(), tmpMax = new HashMap<>();
+        Map<String, Integer> skyAny = new HashMap<>();
+        Set<String> dates = new LinkedHashSet<>();
 
         for (JsonNode it : items) {
             String date = it.path("fcstDate").asText();
             String time = it.path("fcstTime").asText();
             String cat  = it.path("category").asText();
             String val  = it.path("fcstValue").asText();
+            dates.add(date);
             switch (cat) {
                 case "TMN" -> tmn.put(date, parseIntSafe(val));
                 case "TMX" -> tmx.put(date, parseIntSafe(val));
+                case "TMP" -> {
+                    int v = parseIntSafe(val);
+                    tmpMin.merge(date, v, Math::min);
+                    tmpMax.merge(date, v, Math::max);
+                }
                 case "POP" -> popMax.merge(date, parseIntSafe(val), Math::max);
-                case "SKY" -> { if ("1200".equals(time)) skyNoon.put(date, parseIntSafe(val)); }
+                case "SKY" -> {
+                    if ("1200".equals(time)) skyNoon.put(date, parseIntSafe(val));
+                    skyAny.putIfAbsent(date, parseIntSafe(val));
+                }
                 case "PTY" -> { if (parseIntSafe(val) > 0) rain.put(date, true); }
                 default -> {}
             }
         }
 
+        /* 전에는 TMX 가 있는 날만 담았다. 기상청은 오늘 TMX·TMN 을 발표시각이
+           지나면 더 내려주지 않는다 — 그래서 하루 중 제일 중요한 「오늘」이
+           통째로 빠지고 평년값으로 떨어졌다. 실측으로 확인했다.
+           이제 응답에 나온 모든 날짜를 담고, 없는 값은 비워 둔다.
+           TMN·TMX 가 없는 날은 남은 시간의 시간별 기온(TMP)으로 메운다 —
+           지어낸 값이 아니라 같은 예보 안에 있는 값이다. */
         Map<String, DayWeather> out = new LinkedHashMap<>();
-        for (String date : tmx.keySet()) {
+        for (String date : dates) {
             long ahead = ChronoUnit.DAYS.between(LocalDate.now(), LocalDate.parse(date, YMD));
-            int pop = popMax.getOrDefault(date, 0);
+            Integer pop = popMax.get(date);
+            Integer lo = tmn.containsKey(date) ? tmn.get(date) : tmpMin.get(date);
+            Integer hi = tmx.containsKey(date) ? tmx.get(date) : tmpMax.get(date);
+            Integer skyCode = skyNoon.containsKey(date) ? skyNoon.get(date) : skyAny.get(date);
+            if (lo == null && hi == null && pop == null && skyCode == null) continue;
+
             out.put(date, DayWeather.builder()
                     .date(date).source(sourceFor(ahead))
-                    .tempMin(tmn.getOrDefault(date, tmx.get(date)))
-                    .tempMax(tmx.get(date))
+                    .tempMin(lo)
+                    .tempMax(hi)
                     .rainProb(pop)
-                    .sky(skyText(skyNoon.getOrDefault(date, 1)))
-                    .rainExpected(rain.getOrDefault(date, false) || pop >= 60)
+                    .sky(skyCode != null ? skyText(skyCode) : null)
+                    .rainExpected(rain.getOrDefault(date, false) || (pop != null && pop >= 60))
                     .build());
         }
         return out;

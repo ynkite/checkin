@@ -33,6 +33,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final OAuth2FailureHandler oAuth2FailureHandler;
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
 
     //비밀번호 암호화 도구 등록
     @Bean
@@ -74,6 +75,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/error",
+                                "/privacy",                         //개인정보 처리방침. 로그인 전에 읽을 수 있어야 한다
                                 "/api/auth/signup",                 //회원가입
                                 "/api/auth/login",                  //로그인
                                 "/api/auth/check-username",         //아이디 중복 확인
@@ -101,6 +103,7 @@ public class SecurityConfig {
                                 "/api/crowd/**",                    //날짜별 혼잡도 예측
                                 "/api/budget/estimate",             //성수기·축제 반영 예산 산출
                                 "/api/budget/festivals",            //여행 기간에 열리는 축제
+                                "/api/budget/festivals/status",     //축제 확인여부(FOUND/NONE/UNKNOWN)
                                 "/api/budget/season",               //성수기 판정
                                 "/oauth2/authorization/**",         //소셜 로그인 요청
                                 "/login/oauth2/code/**"             //소셜 로그인 콜백
@@ -139,6 +142,10 @@ public class SecurityConfig {
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
                 )
+
+                // 로그인 안 된 /api 요청은 로그인 화면(302 → HTML) 대신 401 JSON. 화면 요청은 그대로 로그인 화면
+                .exceptionHandling(e -> e.defaultAuthenticationEntryPointFor(
+                        apiAuthenticationEntryPoint, ApiAuthenticationEntryPoint.API_REQUEST))
 
                 // Spring Security의 기본 인증 필터가 동작하기 전에, 커스텀 JWT 필터가 먼저 토큰을 검증하도록 설정
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

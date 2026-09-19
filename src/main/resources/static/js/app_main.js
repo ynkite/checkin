@@ -2935,6 +2935,16 @@ function switchMapTab(tab, btn) {
     if (mv) mv.style.display = tab === 'map' ? 'block' : 'none';
     if (bv) bv.style.display = tab === 'budget' ? 'block' : 'none';
     if (dv) dv.style.display = tab === 'model' ? 'block' : 'none';
+    /* 지도 위에 떠 있는 판들(전체 여행 예산 · 출발 · 비 소식 · 붐빔 · 그날 동선)은
+       지도와 모형 위에 얹히라고 만든 것이다. 예산 탭에서는 얹힐 지도가 없어서
+       허공에 뜬 채 예산 화면을 가린다. 지도·모형일 때만 보인다. */
+    var overlay = (tab === 'map' || tab === 'model');
+    document.querySelectorAll('.mp-float').forEach(function (el) {
+        el.style.display = overlay ? '' : 'none';
+    });
+    var rail = document.getElementById('mpRail');
+    if (rail) rail.style.display = overlay ? '' : 'none';
+
     if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
     if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
     if (tab === 'map' && window._kakaoMap) {
