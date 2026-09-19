@@ -1166,3 +1166,12 @@
 .mp-mode-off{ cursor:default; opacity:.5 }
 .mp-mode-off:hover{ background:var(--ui-plate) }
 .mp-mode-off span{ font-family:inherit; font-size:11.5px; font-weight:400; color:var(--ink-3) }
+
+/* 그날 중심에서 먼 장소. 지우지 않고 알리기로 했으니 눈에 띄어야 하되
+   경고처럼 보이면 안 된다 — 가지 말라는 뜻이 아니라 「멀다」는 사실이다. */
+.mp-fartag{
+  display:inline-block; margin-left:6px; padding:1px 6px;
+  font-size:11px; font-weight:600; line-height:1.5;
+  color:var(--ink-2); background:var(--panel-2);   /* --num 은 이 배경에서 대비 4.08 이라 못 쓴다 */
+  border-radius:999px; white-space:nowrap; word-break:keep-all;
+}

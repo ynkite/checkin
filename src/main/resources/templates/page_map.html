@@ -348,9 +348,28 @@
      *  자리에 핀이 선다.
      * ════════════════════════════════════════════════════════ */
 
+    /* 모형 장면. json 에 bbox·fit 이 있어야 핀을 얹을 수 있다 —
+       없으면 _mvOpen 이 그 장면을 건너뛴다.
+       전에는 해운대 하나만 등록돼 있어서 다른 지역은 모형이 아예 안 떴다.
+       장면은 tools/massing.py 가 OSM 건물 데이터로 만든다.
+       새 지역을 늘리려면 그 스크립트의 SCENES 에 bbox 한 줄을 더하고
+       만든 svg·json 을 static/img/ 로 옮긴 뒤 여기에 등록한다. */
     var MV_SCENES = [
-      { key: 'haeundae', label: '부산 해운대',
-        svg: '/img/mass_haeundae.svg', json: '/img/mass_haeundae.json' }
+      { key: 'haeundae',      label: '부산 해운대',   svg: '/img/mass_haeundae.svg',      json: '/img/mass_haeundae.json' },
+      { key: 'gwangalli',     label: '부산 광안리',   svg: '/img/mass_gwangalli.svg',     json: '/img/mass_gwangalli.json' },
+      { key: 'gamcheon',      label: '부산 감천문화마을', svg: '/img/mass_gamcheon.svg',  json: '/img/mass_gamcheon.json' },
+      { key: 'huinnyeoul',    label: '부산 흰여울문화마을', svg: '/img/mass_huinnyeoul.svg', json: '/img/mass_huinnyeoul.json' },
+      { key: 'nampo',         label: '부산 남포동',   svg: '/img/mass_nampo.svg',         json: '/img/mass_nampo.json' },
+      { key: 'taejongdae',    label: '부산 태종대',   svg: '/img/mass_taejongdae.svg',    json: '/img/mass_taejongdae.json' },
+      { key: 'gyeongbokgung', label: '서울 경복궁',   svg: '/img/mass_gyeongbokgung.svg', json: '/img/mass_gyeongbokgung.json' },
+      { key: 'bukchon',       label: '서울 북촌',     svg: '/img/mass_bukchon.svg',       json: '/img/mass_bukchon.json' },
+      { key: 'namsan',        label: '서울 남산',     svg: '/img/mass_namsan.svg',        json: '/img/mass_namsan.json' },
+      { key: 'bulguksa',      label: '경주 불국사',   svg: '/img/mass_bulguksa.svg',      json: '/img/mass_bulguksa.json' },
+      { key: 'cheomseongdae', label: '경주 첨성대',   svg: '/img/mass_cheomseongdae.svg', json: '/img/mass_cheomseongdae.json' },
+      { key: 'gyeongpo',      label: '강릉 경포',     svg: '/img/mass_gyeongpo.svg',      json: '/img/mass_gyeongpo.json' },
+      { key: 'jeongdongjin',  label: '강릉 정동진',   svg: '/img/mass_jeongdongjin.svg',  json: '/img/mass_jeongdongjin.json' },
+      { key: 'hyeopjae',      label: '제주 협재',     svg: '/img/mass_hyeopjae.svg',      json: '/img/mass_hyeopjae.json' },
+      { key: 'seongsan',      label: '제주 성산',     svg: '/img/mass_seongsan.svg',      json: '/img/mass_seongsan.json' }
     ];
     var _mvLoaded = null;      /* {key, meta} */
 
@@ -1796,7 +1815,7 @@
             <span class="mp-ord">${ord}</span>
             <div class="pr-info">
               ${p.time ? `<div class="mp-time">${_mpEsc(p.time)}</div>` : ''}
-              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}</div>
+              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}${_mpFarBadge(p)}</div>
               ${p.sub ? `<div class="pr-sub">${_mpEsc(p.sub)}</div>` : ''}
               ${stars ? `<div class="pr-stars">${_mpEsc(stars)}</div>` : ''}
             </div>
@@ -2425,6 +2444,25 @@
        짧은 구간에는 하나만 — 촘촘히 찍으면 선이 지저분해진다. */
     var MP_CHEV_STEP = 86;     /* 갈매기 사이 거리(px) */
     var MP_CHEV_EDGE = 26;     /* 핀 근처에는 찍지 않는다 */
+
+    /* 그날 중심에서 멀리 떨어진 장소에 붙이는 표시.
+       전에는 서버가 이런 장소를 말없이 지웠다. 이제 남기고 알린다 —
+       멀다는 것과 가지 말라는 것은 다르다. 고르는 쪽이 정한다.
+
+       시간을 받았으면 시간을 먼저 쓴다. 40km 라도 고속도로면 30분이고
+       산길이면 한 시간 반이라, 거리만으로는 판단이 안 된다.
+       못 받았으면 거리만 쓴다. 지어내지 않는다. */
+    function _mpFarBadge(p) {
+      var km = p && p.farKm;
+      if (!km) return '';
+      var min = p.farMinutes;
+      var txt = min ? ('차로 ' + (min >= 60
+                  ? Math.floor(min / 60) + '시간' + (min % 60 ? ' ' + (min % 60) + '분' : '')
+                  : min + '분'))
+                    : (km + 'km');
+      var title = min ? (km + 'km · 차로 ' + min + '분') : (km + 'km · 주행 시간을 받지 못했습니다');
+      return '<b class="mp-fartag" title="' + _mpEsc(title) + '">' + _mpEsc(txt) + '</b>';
+    }
 
     function _mpChevronAt(pts, want) {
       /* 폴리라인을 따라 want px 지점의 좌표와 방향 */
