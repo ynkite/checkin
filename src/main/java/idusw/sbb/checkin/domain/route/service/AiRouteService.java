@@ -1471,6 +1471,12 @@ public class AiRouteService {
                     return "stay".equals(t) || "food".equals(t) || userRequested.contains(nm);
                 };
 
+                /* 자리마다 붙어 있던 시각을 따로 떼어 둔다. 장소만 옮기고 시각을 안 옮기면
+                   10:30 다음에 09:00 이 오는 동선이 나온다 — 실제로 5번 중 3번 그랬다.
+                   시각은 장소가 아니라 「그 날의 몇 번째 자리」에 속한다 */
+                java.util.List<String> slotTimes = new java.util.ArrayList<>();
+                for (JsonNode sp : spots) slotTimes.add(sp.path("time").asText(""));
+
                 java.util.List<JsonNode> result = new java.util.ArrayList<>();
                 int i = 0;
                 while (i < n) {
@@ -1504,6 +1510,14 @@ public class AiRouteService {
                         for (int idx : flex) result.add(spots.get(idx));
                     }
                     i = j;
+                }
+
+                // 떼어 둔 시각을 자리 순서대로 도로 붙인다 (고정점은 제자리라 자기 시각을 그대로 받는다)
+                for (int k = 0; k < result.size() && k < slotTimes.size(); k++) {
+                    String t = slotTimes.get(k);
+                    if (!t.isBlank() && result.get(k) instanceof com.fasterxml.jackson.databind.node.ObjectNode o) {
+                        o.put("time", t);
+                    }
                 }
 
                 // 정렬된 장소 사이에 transit "이동" 재삽입(거리·시간은 카카오 보정이 채움)
@@ -2883,6 +2897,106 @@ public class AiRouteService {
         }
     }
 
+    /**
+     * 카카오 업종 문자열 → 거친 성격 한 단어.
+     *
+     * <p>「여행 &gt; 관광,명소 &gt; 해수욕장」과 「여행 &gt; 관광,명소 &gt; 해변」은 사람 눈에 같은 곳이다.
+     * type(tour/cafe/food)만으로는 이게 안 갈린다 — 해운대와 광안리가 둘 다 tour 다.
+     * 못 알아보는 업종은 {@code null} 이다. <b>모르는 것을 한 덩어리로 묶지 않는다</b> —
+     * 묶으면 서로 무관한 두 곳이 「겹친다」고 잘못 걸린다.
+     */
+    static String categoryBucket(String kakaoCategory) {
+        if (kakaoCategory == null || kakaoCategory.isBlank()) return null;
+        /* 맨 끝 마디만 본다. 전체 문자열로 「산」을 찾으면 「서비스,산업 > 미용」이 산이 된다 */
+        String c = kakaoCategory.substring(kakaoCategory.lastIndexOf('>') + 1).trim();
+        if (c.contains("해수욕장") || c.contains("해변") || c.contains("해안")) return "해변";
+        if (c.equals("산") || c.contains("등산") || c.contains("산악"))          return "산";
+        if (c.contains("계곡") || c.contains("폭포") || c.contains("호수"))      return "물가";
+        if (c.contains("시장"))                                                return "시장";
+        if (c.contains("박물관") || c.contains("미술관") || c.contains("전시")
+                || c.contains("기념관") || c.contains("과학관"))                return "전시";
+        if (c.contains("사찰") || c.contains("종교") || c.contains("절"))        return "사찰";
+        if (c.contains("공원") || c.contains("유원지") || c.contains("수목원"))   return "공원";
+        if (c.contains("전망"))                                                return "전망대";
+        if (c.contains("테마파크") || c.contains("놀이"))                        return "테마파크";
+        return null;
+    }
+
+    /**
+     * 같은 날 같은 성격이 두 번 들어가지 않게 한다 (작업지시 2번).
+     *
+     * <p>기존 규칙은 <b>동일 상호명</b>만 막았다. 해운대와 광안리는 이름이 달라 그대로 통과한다.
+     * 실제로 광주에서 「월산공원」과 「월산근린공원 무장애나눔길」이 한 날에 같이 들어왔다.
+     *
+     * <p><b>지우지 않고 바꾼다.</b> 지우면 하루가 비는데, 엔진 경로에서 그 꼴을 봤다
+     * (3일에 7곳, 11시에 일정 종료). 성격이 겹치지 않는 안 쓴 후보로 갈아 끼우고,
+     * 갈아 낄 것이 없으면 그냥 둔다 — 억지로 비우는 것보다 낫다.
+     */
+    private void dedupeDayCategories(
+            JsonNode route,
+            java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName,
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates) {
+
+        // 동선에 이미 쓴 이름 — 갈아 끼울 때 다른 날과도 겹치면 안 된다
+        java.util.Set<String> usedNames = new java.util.HashSet<>();
+        for (JsonNode day : route)
+            for (JsonNode pl : day.path("places"))
+                if (!pl.has("transit")) usedNames.add(pl.path("name").asText(""));
+
+        java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool =
+                candidates.getOrDefault("tour", java.util.List.of());
+        int swapped = 0, left = 0;
+
+        for (JsonNode day : route) {
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (JsonNode pl : day.path("places")) {
+                if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                if (!"tour".equals(o.path("type").asText(""))) continue;   // 끼니·숙소는 하루에 여러 번이 정상이다
+
+                var cand = byName.get(o.path("name").asText(""));
+                String bucket = cand == null ? null : categoryBucket(cand.path("category").asText(""));
+                if (bucket == null) continue;                              // 성격을 모르면 판단하지 않는다
+                if (seen.add(bucket)) continue;                            // 처음 나온 성격 — 통과
+
+                var alt = pickOtherBucket(pool, usedNames, seen);
+                if (alt == null) {
+                    left++;
+                    log.warn("[성격중복] {} ({}) — 갈아 낄 후보가 없어 그대로 둔다",
+                            o.path("name").asText(""), bucket);
+                    continue;
+                }
+                String before = o.path("name").asText("");
+                usedNames.remove(before);
+                usedNames.add(alt.path("name").asText(""));
+                o.put("name", alt.path("name").asText(""));
+                o.put("sub", alt.path("sub").asText(o.path("sub").asText("")));
+                o.remove("lat"); o.remove("lng"); o.remove("isFound");      // 좌표는 뒤에서 다시 박힌다
+                copyFlags(alt, o);
+                seen.add(categoryBucket(alt.path("category").asText("")));
+                swapped++;
+                System.out.println("🔁 [성격중복] " + before + " (" + bucket + ") → " + alt.path("name").asText(""));
+            }
+        }
+        if (swapped > 0 || left > 0) {
+            System.out.println("🔁 [성격중복] 교체 " + swapped + "곳 · 그대로 둠 " + left + "곳");
+        }
+    }
+
+    /** 아직 안 쓴 tour 후보 중 그 날에 없는 성격인 것 하나. 없으면 null. */
+    private static com.fasterxml.jackson.databind.node.ObjectNode pickOtherBucket(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
+            java.util.Set<String> usedNames, java.util.Set<String> seen) {
+
+        for (var c : pool) {
+            String nm = c.path("name").asText("");
+            if (nm.isBlank() || usedNames.contains(nm)) continue;
+            String b = categoryBucket(c.path("category").asText(""));
+            if (b == null || seen.contains(b)) continue;
+            return c;
+        }
+        return null;
+    }
+
     /** 후보에 있는 표시만 옮긴다. 없는 것은 안 붙인다 — false 를 박으면 「확인 안 됨」이 「아님」이 된다. */
     static void copyFlags(com.fasterxml.jackson.databind.node.ObjectNode from,
                           com.fasterxml.jackson.databind.node.ObjectNode to) {
@@ -3158,6 +3272,8 @@ public class AiRouteService {
            카카오가 좌표를 못 잡으면 finalizeRoute 가 「좌표없음」으로 이미 버린다. 좌표가 잡히는
            실존 장소라면 지우는 쪽이 더 손해다. 대신 몇 개인지는 남긴다. 이 수가 0 이 아니면
            환각 차단이 프롬프트 부탁에만 기대고 있다는 뜻이다 */
+        dedupeDayCategories(route, byName, candidates);
+
         if (offCandidate.isEmpty()) {
             System.out.println("✅ [후보검증] " + total + "곳 전부 카카오 후보에서 나왔다");
         } else {
