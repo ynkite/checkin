@@ -1815,7 +1815,7 @@
             <span class="mp-ord">${ord}</span>
             <div class="pr-info">
               ${p.time ? `<div class="mp-time">${_mpEsc(p.time)}</div>` : ''}
-              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}</div>
+              <div class="pr-name">${_mpEsc(p.name)}${isNow ? '<b class="mp-nowtag">지금</b>' : ''}${p.type === 'stay' ? '' : _mpCrowdBadge(p.name)}${_mpFarBadge(p)}</div>
               ${p.sub ? `<div class="pr-sub">${_mpEsc(p.sub)}</div>` : ''}
               ${stars ? `<div class="pr-stars">${_mpEsc(stars)}</div>` : ''}
             </div>
@@ -2444,6 +2444,25 @@
        짧은 구간에는 하나만 — 촘촘히 찍으면 선이 지저분해진다. */
     var MP_CHEV_STEP = 86;     /* 갈매기 사이 거리(px) */
     var MP_CHEV_EDGE = 26;     /* 핀 근처에는 찍지 않는다 */
+
+    /* 그날 중심에서 멀리 떨어진 장소에 붙이는 표시.
+       전에는 서버가 이런 장소를 말없이 지웠다. 이제 남기고 알린다 —
+       멀다는 것과 가지 말라는 것은 다르다. 고르는 쪽이 정한다.
+
+       시간을 받았으면 시간을 먼저 쓴다. 40km 라도 고속도로면 30분이고
+       산길이면 한 시간 반이라, 거리만으로는 판단이 안 된다.
+       못 받았으면 거리만 쓴다. 지어내지 않는다. */
+    function _mpFarBadge(p) {
+      var km = p && p.farKm;
+      if (!km) return '';
+      var min = p.farMinutes;
+      var txt = min ? ('차로 ' + (min >= 60
+                  ? Math.floor(min / 60) + '시간' + (min % 60 ? ' ' + (min % 60) + '분' : '')
+                  : min + '분'))
+                    : (km + 'km');
+      var title = min ? (km + 'km · 차로 ' + min + '분') : (km + 'km · 주행 시간을 받지 못했습니다');
+      return '<b class="mp-fartag" title="' + _mpEsc(title) + '">' + _mpEsc(txt) + '</b>';
+    }
 
     function _mpChevronAt(pts, want) {
       /* 폴리라인을 따라 want px 지점의 좌표와 방향 */

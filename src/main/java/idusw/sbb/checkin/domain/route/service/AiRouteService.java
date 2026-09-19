@@ -1627,9 +1627,13 @@ public class AiRouteService {
                     if (center != null && !isStay) {
                         double straight = haversine(center, c);
                         double roadDist = straight;
+                        long farMin = -1;                          // 주행 시간(분). 못 받으면 -1
                         if (straight > 20_000) {
-                            long[] r = carDirections(center, c);   // [위도,경도] 순서 그대로
-                            if (r != null && r[0] > 0) roadDist = r[0]; // r[0]=도로거리(m)
+                            long[] r = carDirections(center, c);   // [도로거리(m), 소요(초), 통행료]
+                            if (r != null && r[0] > 0) {
+                                roadDist = r[0];
+                                if (r[1] > 0) farMin = Math.round(r[1] / 60.0);
+                            }
                         }
                         if (roadDist > FAR_LIMIT) {
                             /* 전에는 사용자가 직접 넣은 곳만 남기고 나머지는 말없이 지웠다.
@@ -1639,9 +1643,14 @@ public class AiRouteService {
                                그래서 지우지 않고 알린다. 화면이 「멉니다, 그래도 갈까요」를 묻는다. */
                             over50.add(nm);
                             s.put("farKm", Math.round(roadDist / 1000.0));
+                            /* 거리만 주면 사용자가 판단하지 못한다. 40km 라도 고속도로면
+                               30분이고 산길이면 한 시간 반이다. 시간을 받았을 때만 적는다 —
+                               못 받았으면 비워 둔다. 지어내지 않는다. */
+                            if (farMin > 0) s.put("farMinutes", farMin);
                             kept.add(s);
-                            log.info("[동선] 먼 장소를 남기고 알립니다 — {} ({}km 도로)",
-                                    nm, Math.round(roadDist / 1000.0));
+                            log.info("[동선] 먼 장소를 남기고 알립니다 — {} ({}km 도로{})",
+                                    nm, Math.round(roadDist / 1000.0),
+                                    farMin > 0 ? ", 차로 " + farMin + "분" : ", 시간 못 받음");
                             continue;
                         }
                     }
