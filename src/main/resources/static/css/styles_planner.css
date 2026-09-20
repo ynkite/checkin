@@ -318,3 +318,24 @@
 @media (max-width:480px){
   #page-planner .planner-wrap{ padding-left:16px; padding-right:16px }
 }
+
+/* ── 손가락으로 누르는 기기 ─────────────────────────────────
+   폭 480 아래에만 깔아 두면 아이패드에서 그대로 작다.
+   여백(planner-wrap)은 휴대폰에서만 줄이므로 여기 넣지 않는다 */
+@media (max-width:1024px), (pointer: coarse){
+  :where(#page-planner) :where(button, summary, [role="button"], select, textarea,
+                               input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  :where(#page-planner) :where(button, [role="button"]):not(.cal-cell){ min-width:44px }
+  #page-planner .chip,
+  #page-planner .cal-pre,
+  #page-planner .btn-load-pref{
+    display:inline-flex; align-items:center; justify-content:center; padding-block:0;
+  }
+  #page-planner .cal-cell{ min-height:44px; min-width:0 }
+  #page-planner .cal-prev,
+  #page-planner .cal-next{ min-width:44px }
+  .og-row .og-input,
+  .og-row .og-gps{ min-height:calc(var(--u) * 5.5) }
+}

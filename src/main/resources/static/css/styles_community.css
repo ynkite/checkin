@@ -1447,3 +1447,43 @@
         justify-content: center;
     }
 }
+
+/* =========================================================
+ * 손가락으로 누르는 기기 — 폭이 아니라 기기로 가른다
+ * 아이패드 768px 에서 「후기 작성」이 34px, 탭이 31px 로 그대로였다.
+ * 480px 아래에만 깔아 둬서 그렇다. 아이패드는 휴대폰이 아니지만 손으로 누른다.
+ * (pointer: coarse) 가 「손가락으로 누르는 기기냐」를 직접 묻는 조건이다.
+ * 1024 까지는 폭으로도 같이 건다 — 마우스가 달린 작은 창도 손해 볼 것이 없다.
+ * ========================================================= */
+@media (max-width: 1024px), (pointer: coarse) {
+    :where(#page-community, #page-review)
+    :where(button, summary, [role="button"], [onclick], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"])) {
+        min-height: 44px;
+    }
+
+    :where(#page-community, #page-review)
+    :where(button, [role="button"], [onclick]) {
+        min-width: 44px;
+    }
+
+    #page-community .comm-tab,
+    #page-community .community-v2-page-btn,
+    #page-review .review-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-block: 0;
+    }
+
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, summary, [role="button"], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"]):not([type="file"])) {
+        min-height: 44px;
+    }
+
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, [role="button"]) {
+        min-width: 44px;
+    }
+}
