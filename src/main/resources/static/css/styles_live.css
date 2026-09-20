@@ -371,3 +371,15 @@ body:has(#page-live.active) .lnb{ display:none }
   border-radius:var(--r-pill); font-family:inherit; font-size:14px; font-weight:600;
   color:var(--panel); background:var(--ink);
 }
+
+/* 눌러서 말하기가 기본이다 — 어디서나 되는 길이라 이쪽을 크게 둔다.
+   「계속 듣기」는 되는 기기에서만 권하므로 옆에 조용히 둔다 */
+.rl-voicebtn-main{ background:var(--ink); color:var(--panel); box-shadow:none }
+.rl-voicebtn-main::before{ background:var(--panel) }
+.rl-voicebtn-main:hover{ box-shadow:none }
+.rl-voicebtn-main.on{ background:var(--sig); color:var(--on-sig) }
+.rl-voicebtn-main.on::before{
+  background:var(--on-sig);
+  animation:rv-breathe 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce){ .rl-voicebtn-main.on::before{ animation:none } }
