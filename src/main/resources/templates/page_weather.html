@@ -131,8 +131,11 @@
                 var first = ymd(list[0].date);
                 var last = ymd(list[list.length - 1].date);
                 title.textContent = region + ' · ' + md(first) + ' ~ ' + md(last);
-                box.style.gridTemplateColumns =
-                    'repeat(' + Math.min(7, list.length) + ', minmax(0, 1fr))';
+                /* 칸 수를 여기서 직접 박으면 인라인이라 좁은 화면 규칙을 전부 이긴다.
+                   320px 에서 일곱 칸이 그대로 남아 한 칸이 35px 이 됐고,
+                   「09/22 화」가 두 줄로 쪼개지면서 아래 줄까지 층이 어긋났다.
+                   몇 날인지만 넘기고, 좁을 때 몇 칸으로 접을지는 CSS 가 정한다. */
+                box.style.setProperty('--wx-cols', Math.min(7, list.length));
 
                 var wet = [];
                 var midSeen = false;

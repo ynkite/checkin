@@ -125,7 +125,8 @@
    가로 스크롤은 뒤에 뭐가 더 있는지 안 보인다. */
 .wx-days {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  /* --wx-cols 는 화면이 넘긴다(며칠 치인가). 좁을 때 몇 칸으로 접을지는 아래 규칙이 정한다 */
+  grid-template-columns: repeat(var(--wx-cols, 7), minmax(0, 1fr));
   gap: 2px;
 }
 
