@@ -1,160 +1,165 @@
 {
-  "w": 1560,
-  "h": 1123,
-  "ar": 1.3892,
-  "route": [
-    {
-      "no": 1,
-      "name": "해운대 해수욕장",
-      "note": "11:20",
-      "kind": "hot",
-      "x": 80.0,
-      "y": 26.0,
-      "lat": 35.15852,
-      "lng": 129.15985,
-      "crowd": 95,
-      "scene": "hero",
-      "cat": "해변",
-      "sx": 37.0,
-      "sy": 47.0
-    },
-    {
-      "no": 2,
-      "name": "남포동 BIFF광장",
-      "note": "14:10",
-      "kind": "stop",
-      "x": 26.0,
-      "y": 66.0,
-      "lat": 35.09887,
-      "lng": 129.02905,
-      "crowd": 72,
-      "scene": "nampo",
-      "cat": "도심·먹거리",
-      "away": "18km · 차로 35분",
-      "sx": 50.0,
-      "sy": 48.0,
-      "dist": "18km · 차로 35분"
-    },
-    {
-      "no": 3,
-      "name": "감천문화마을",
-      "note": "17:00",
-      "kind": "stop",
-      "x": 13.0,
-      "y": 78.0,
-      "lat": 35.09741,
-      "lng": 129.01056,
-      "crowd": 61,
-      "scene": "gamcheon",
-      "cat": "마을·골목",
-      "away": "2.6km · 차로 11분",
-      "sx": 50.0,
-      "sy": 48.0,
-      "dist": "2.6km · 차로 11분"
-    }
-  ],
-  "alt": {
-    "name": "광안리해수욕장",
+ "w": 1560,
+ "h": 1123,
+ "ar": 1.3892,
+ "route": [
+  {
+   "no": 1,
+   "name": "해운대 해수욕장",
+   "note": "11:20",
+   "kind": "hot",
+   "x": 80.0,
+   "y": 26.0,
+   "lat": 35.15852,
+   "lng": 129.15985,
+   "crowd": 95,
+   "scene": "hero",
+   "cat": "해변",
+   "sx": 37.0,
+   "sy": 47.0
+  },
+  {
+   "no": 2,
+   "name": "광안리 해수욕장",
+   "note": "13:20",
+   "kind": "stop",
+   "x": 67.0,
+   "y": 34.0,
+   "lat": 35.15319,
+   "lng": 129.11898,
+   "crowd": 62,
+   "scene": "gwangalli",
+   "cat": "해변·야경",
+   "away": "해운대에서 4.2km · 차로 15분",
+   "sx": 50.0,
+   "sy": 48.0,
+   "dist": "해운대에서 4.2km · 차로 15분"
+  },
+  {
+   "no": 3,
+   "name": "남포동 BIFF광장",
+   "note": "16:00",
+   "kind": "stop",
+   "x": 26.0,
+   "y": 66.0,
+   "lat": 35.09887,
+   "lng": 129.02905,
+   "crowd": 72,
+   "scene": "nampo",
+   "cat": "도심·먹거리",
+   "away": "광안리에서 13km · 차로 30분",
+   "sx": 50.0,
+   "sy": 48.0,
+   "dist": "광안리에서 13km · 차로 30분"
+  },
+  {
+   "no": 4,
+   "name": "감천문화마을",
+   "note": "18:30",
+   "kind": "stop",
+   "x": 13.0,
+   "y": 78.0,
+   "lat": 35.09741,
+   "lng": 129.01056,
+   "crowd": 61,
+   "scene": "gamcheon",
+   "cat": "마을·골목",
+   "away": "2.6km · 차로 11분",
+   "sx": 50.0,
+   "sy": 48.0,
+   "dist": "2.6km · 차로 11분"
+  }
+ ],
+ "alt": null,
+ "scenes": {
+  "hero": {
+   "svg": "/img/mass_hero.svg",
+   "ar": 1.3892,
+   "label": "해운대"
+  },
+  "nampo": {
+   "svg": "/img/mass_nampo.svg",
+   "ar": 1.5625,
+   "label": "남포동"
+  },
+  "gamcheon": {
+   "svg": "/img/mass_gamcheon.svg",
+   "ar": 1.9005,
+   "label": "감천문화마을"
+  },
+  "gwangalli": {
+   "svg": "/img/mass_gwangalli.svg",
+   "ar": 1.7246,
+   "label": "광안리"
+  },
+  "dongbaek": {
+   "svg": "/img/mass_dongbaek.svg",
+   "ar": 1.5179,
+   "label": "동백섬 산책로"
+  }
+ },
+ "fixes": [
+  {
+   "key": "traffic",
+   "label": "길이 막혀서",
+   "why": "남포동으로 가는 길이 막혔다면",
+   "how": "감천을 먼저 보고 남포동으로 갑니다",
+   "gain": "방문 순서 변경",
+   "cost": "가는 곳은 그대로",
+   "kind": "reorder",
+   "order": [
+    0,
+    1,
+    3,
+    2
+   ],
+   "example": true
+  },
+  {
+   "key": "crowd",
+   "label": "사람이 몰려서",
+   "why": "해운대에 사람이 몰렸다면",
+   "how": "해변 인파를 피해 바로 옆 동백섬 산책로와 혼잡도를 비교합니다",
+   "gain": "해운대 → 동백섬 산책로",
+   "cost": "바다는 두고 걷는 구간으로 바꿉니다",
+   "kind": "swap",
+   "at": 0,
+   "to": {
+    "name": "동백섬 산책로",
     "note": "11:40",
-    "cat": "해변",
-    "lat": 35.15319,
-    "lng": 129.11898,
-    "crowd": 62,
-    "scene": "gwangalli",
-    "x": 67.0,
-    "y": 34.0,
+    "cat": "섬·산책로",
+    "lat": 35.1539081129,
+    "lng": 129.1521170882,
+    "crowd": 54,
+    "scene": "dongbaek",
+    "x": 73.0,
+    "y": 31.0,
     "sx": 50.0,
     "sy": 48.0,
-    "dist": "해운대에서 4.2km"
+    "dist": "해운대에서 1.1km · 차로 6분",
+    "coordinateSource": "동백공원 공개 관광 데이터 조회 2026-09-21"
+   },
+   "example": true
   },
-  "scenes": {
-    "hero": {
-      "svg": "/img/mass_hero.svg",
-      "ar": 1.3892,
-      "label": "해운대"
-    },
-    "nampo": {
-      "svg": "/img/mass_nampo.svg",
-      "ar": 1.5625,
-      "label": "남포동"
-    },
-    "gamcheon": {
-      "svg": "/img/mass_gamcheon.svg",
-      "ar": 1.9005,
-      "label": "감천문화마을"
-    },
-    "gwangalli": {
-      "svg": "/img/mass_gwangalli.svg",
-      "ar": 1.7246,
-      "label": "광안리"
-    },
-    "dongbaek": {
-      "svg": "/img/mass_dongbaek.svg",
-      "ar": 1.5179,
-      "label": "동백섬 산책로"
-    }
-  },
-  "fixes": [
-    {
-      "key": "traffic",
-      "label": "길이 막혀서",
-      "why": "남포동으로 가는 길이 막혔다면",
-      "how": "감천을 먼저 보고 남포동으로 갑니다",
-      "gain": "방문 순서 변경",
-      "cost": "가는 곳은 그대로",
-      "kind": "reorder",
-      "order": [
-        0,
-        2,
-        1
-      ],
-      "example": true
-    },
-    {
-      "key": "crowd",
-      "label": "사람이 몰려서",
-      "why": "해운대에 사람이 몰렸다면",
-      "how": "해변 인파를 피해 바로 옆 동백섬 산책로와 혼잡도를 비교합니다",
-      "gain": "해운대 → 동백섬 산책로",
-      "cost": "바다는 두고 걷는 구간으로 바꿉니다",
-      "kind": "swap",
-      "at": 0,
-      "to": {
-        "name": "동백섬 산책로",
-        "note": "11:40",
-        "cat": "섬·산책로",
-        "lat": 35.1539081129,
-        "lng": 129.1521170882,
-        "crowd": 54,
-        "scene": "dongbaek",
-        "x": 73.0,
-        "y": 31.0,
-        "sx": 50.0,
-        "sy": 48.0,
-        "dist": "해운대에서 1.1km · 차로 6분",
-        "coordinateSource": "동백공원 공개 관광 데이터 조회 2026-09-21"
-      },
-      "example": true
-    },
-    {
-      "key": "rain",
-      "label": "비가 와서",
-      "why": "비가 오면 감천의 야외 골목을 걷기 어려워요",
-      "how": "부산근현대역사관에서 실내 전시를 봅니다",
-      "gain": "야외 → 실내",
-      "cost": "전시 관람으로 변경",
-      "kind": "swap",
-      "at": 2,
-      "to": {
-        "name": "부산근현대역사관",
-        "note": "17:10",
-        "cat": "실내·전시",
-        "lat": 35.10266,
-        "lng": 129.03122,
-        "coordinateSource": "카카오 로컬 검색 · 기존 조회 기록 2026-09-18",
-        "coordinateRechecked": false
-      },
-      "example": true
-    }
-  ]
+  {
+   "key": "rain",
+   "label": "비가 와서",
+   "why": "비가 오면 감천의 야외 골목을 걷기 어려워요",
+   "how": "부산근현대역사관에서 실내 전시를 봅니다",
+   "gain": "야외 → 실내",
+   "cost": "전시 관람으로 변경",
+   "kind": "swap",
+   "at": 3,
+   "to": {
+    "name": "부산근현대역사관",
+    "note": "17:10",
+    "cat": "실내·전시",
+    "lat": 35.10266,
+    "lng": 129.03122,
+    "coordinateSource": "카카오 로컬 검색 · 기존 조회 기록 2026-09-18",
+    "coordinateRechecked": false
+   },
+   "example": true
+  }
+ ]
 }

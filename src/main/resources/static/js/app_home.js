@@ -32,7 +32,11 @@
     if (!hero || !S) return;
     var route = [], fixes = [], alt, epoch = 0, timer, resolveWait, playing = false, introducing = false;
     var current = -1, touched = false;
-    function render(r,order,hot) { S.render(r,alt,{order:order || [0,1,2],hot:hot || 0}); }
+    /* 기본 순서를 [0,1,2] 로 박아 두었더니 동선을 네 곳으로 늘리자
+       마지막 한 곳이 안 그려졌다. 들어온 만큼 센다. */
+    function render(r,order,hot) {
+      S.render(r,alt,{order:order || (r || []).map(function (_,i) { return i; }),hot:hot || 0});
+    }
     function setPlay(on) {
       playing = on;
       $('ck_play').classList.toggle('ck-paused',!on);
