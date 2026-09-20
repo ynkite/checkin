@@ -103,6 +103,24 @@
   overflow-x:auto; scrollbar-width:none;
 }
 .day-tabs::-webkit-scrollbar{ display:none }
+/* 왼쪽 판이 363px 인데 탭 넉 장이 542px 이다. 3일차가 아예 안 보였다.
+   막대를 숨겨 놔서 더 있다는 낌새조차 없었다. 레일과 같은 규칙으로
+   넘치는 쪽을 흐리게 한다. 여기는 길 찾는 자리라 더 넓게 준다. */
+.day-tabs{ --fade:26px }
+.day-tabs.ov-r{
+  -webkit-mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+          mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+}
+.day-tabs.ov-l{
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade));
+          mask-image:linear-gradient(to right, transparent, #000 var(--fade));
+}
+.day-tabs.ov-l.ov-r{
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade),
+                     #000 calc(100% - var(--fade)), transparent);
+          mask-image:linear-gradient(to right, transparent, #000 var(--fade),
+                     #000 calc(100% - var(--fade)), transparent);
+}
 .day-tab{
   flex:0 0 auto; max-width:150px; min-width:0;
   display:flex; flex-direction:column; align-items:flex-start; gap:2px;
@@ -871,9 +889,12 @@
   stroke-dasharray:7 6; vector-effect:non-scaling-stroke;
 }
 
+/* 왼쪽 아래에 따로 떠 있었다. 그 자리가 하단 레일 자리라 레일 밑에 깔려
+   반쯤만 보였다. 화면을 찍어 보고 알았다.
+   낱개로 얹지 않고 왼쪽 기둥 안에 넣는다 — 이 파일 위쪽 「떠 있는 판」
+   설명과 같은 규칙이다. 기둥이 알아서 쌓아 주니 다시는 안 겹친다. */
 .mv-legend{
-  position:absolute; left:16px; bottom:16px; z-index:5;
-  max-width:min(420px, calc(100% - 32px));
+  position:static; width:100%;
   padding:11px 14px 12px; border-radius:12px;
   background:var(--void-veil-2); box-shadow:var(--lift2);
   word-break:keep-all;
@@ -896,9 +917,12 @@
 /* ── 30일 예상 혼잡도 ───────────────────────────────────────
    막대 하나가 하루다. 색은 다섯 단계, 높이는 집중률.
    「언제 가면 되는가」가 한눈에 보여야 한다 — 그게 이 제품이 하는 말이다. */
+/* right:16 top:16 으로 혼자 떠 있었다. 도구 막대(.mp-tools)가 right:62 top:20
+   에 z-index 15 로 앉는 자리다. 그래서 제목과 「혼잡도」 라벨이 단추 밑에
+   깔려 안 읽혔다 — 판이 없어진 게 아니라 가려진 것이라 더 나빴다.
+   오른쪽 기둥 안으로 넣는다. 바로 위 붐빔 판과 같은 이야기이기도 하다. */
 .mv-fc{
-  position:absolute; right:16px; top:16px; z-index:5;
-  width:min(360px, calc(100% - 32px));
+  position:static; width:100%;
   padding:14px 16px 13px; border-radius:14px;
   background:var(--void-veil-2); box-shadow:var(--lift);
   word-break:keep-all;
@@ -933,7 +957,7 @@
 .mv-fc-note b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
 
 @media (max-width:900px){
-  .mv-fc{ right:12px; top:12px; width:min(300px, calc(100% - 24px)); padding:11px 13px }
+  .mv-fc{ padding:11px 13px }
   .mv-fc-bars{ height:36px }
 }
 
@@ -1042,6 +1066,18 @@
 .mp-mo-lg .mp-mo-transit{ color:var(--ink-2); background:none }
 .mp-mo-none{ margin:8px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-3) }
 
+/* ── 모형 탭에서는 돈 판을 한 줄로 줄인다 ───────────────────
+   모형은 화면을 꽉 채운 그림이다. 288x162 짜리 판이 왼쪽 위를
+   통째로 덮으면 무엇을 보여 주려고 만든 화면인지 알 수 없다.
+   지도는 남는 데가 많아 그대로 둔다 — 덮이는 것의 값이 다르다.
+   지우지는 않는다. 총액은 어느 화면에서든 보여야 한다. */
+.mv-on .mp-float-l{ width:228px }
+.mv-on .mp-money{ padding:11px 14px 12px }
+.mv-on .mp-mo-n{ font-size:21px }
+.mv-on .mp-mo-lg,
+.mv-on .mp-mo-none{ display:none }
+.mv-on .mp-mo-bar{ margin-bottom:0 }
+
 /* ── 떠 있는 판으로서의 출발 · 지금 상황 ────────────────────
    기둥 안에 들어가면서 여백과 바탕만 바뀐다. 안의 글자 규칙은 그대로다. */
 .mp-float .mp-depart{
@@ -1076,6 +1112,32 @@
   scroll-behavior:smooth;
 }
 .mp-strip::-webkit-scrollbar{ display:none }
+
+/* 넘치는 쪽을 흐리게 ─────────────────────────────────────────
+   칸 폭이 고정이라 여섯 곳이 넘으면 옆으로 흘러 잘린다(위 설명).
+   그런데 잘린 자리가 칼로 벤 듯 뚝 끊겨서, 옆으로 밀면 더 있다는
+   뜻이 아니라 화면이 깨진 것처럼 보였다. 실제로 그날 마지막 장소
+   (숙소)가 통째로 밖에 있었는데 아무 표시가 없었다.
+   막대를 도로 꺼내면 이 톤에 안 맞는다. 끝을 흐리게 만든다 —
+   흐린 쪽이 「이쪽에 더 있다」다. 넘칠 때만 붙인다.
+
+   아래 #000 은 색이 아니라 「여기는 안 지운다」는 표시다(mask 는 밝기만 읽는다).
+   토큰을 넣으면 오히려 틀린다 — 색이 옅어지는 만큼 화면이 지워진다. */
+.mp-strip{ --fade:18px }
+.mp-strip.ov-r{
+  -webkit-mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+          mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+}
+.mp-strip.ov-l{
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade));
+          mask-image:linear-gradient(to right, transparent, #000 var(--fade));
+}
+.mp-strip.ov-l.ov-r{
+  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade),
+                     #000 calc(100% - var(--fade)), transparent);
+          mask-image:linear-gradient(to right, transparent, #000 var(--fade),
+                     #000 calc(100% - var(--fade)), transparent);
+}
 
 /* 칸 폭은 고정이다. 폭에 맞춰 똑같이 나누면 다섯 곳이 넘어갈 때
    전부 좁아져 이름이 다 잘린다. 남으면 옆으로 흘러 잘리게 둔다 —

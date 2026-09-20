@@ -248,9 +248,21 @@
     var _mpQuiet = [];           /* 그 날 한적한 곳 */
     var _mpTimeline = null;      /* 가장 붐비는 곳의 날짜별 흐름 */
 
+    /* 이 여행이 어느 지역인가.
+       전에는 window._stayBookingInfo 하나만 봤다. 그런데 그 값은 숙소
+       딥링크를 만들려고 /api/trips/{id}/input-form 응답 안에서 채워진다 —
+       일정 목록보다 늦게 온다. 그래서 목록이 먼저 도착하면 여행지를 모른 채
+       혼잡도를 불렀고, 모르면 「서울」로 갈음했다.
+       부산 여행인데 서울 혼잡도를 물어본 것이다. 서울에는 자갈치 시장이
+       없으니 「예측 대상이 아닙니다」가 돌아왔고, 붐빔 판도 30일 예보도
+       통째로 뜨지 않았다. 화면에는 아무 말도 안 나와서 기능이 없는 것처럼
+       보였다. 실제로 내 여행 목록에서 연 모든 여행이 그랬다.
+       여행 상세가 오자마자 세우는 _mpTripDest 를 먼저 본다.
+       그래도 모르면 빈 값을 준다 — 모르는 것을 서울이라고 하지 않는다. */
     function _mpRegion() {
-      var d = (window._stayBookingInfo && window._stayBookingInfo.dest) || '';
-      return d || '서울';
+      return window._mpTripDest
+          || (window._stayBookingInfo && window._stayBookingInfo.dest)
+          || '';
     }
 
     /* 일차를 YYYY-MM-DD 로. _mpDayDate 가 Date 를 돌리므로 그것을 바꾼다 —
@@ -262,6 +274,25 @@
              + '-' + String(d.getDate()).padStart(2, '0');
     }
 
+    /* 여행지 이름이 늦게 도착했을 때 혼잡도를 다시 부른다.
+       일정 목록과 여행 상세가 서로 다른 요청으로 오고, 어느 쪽이 먼저
+       올지 정해져 있지 않다. 먼저 온 쪽이 나중 것을 깨운다.
+       이미 받아 둔 값이 있으면 다시 부르지 않는다. */
+    function _mpCrowdRetry() {
+      if (!Array.isArray(window.MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      if (!_mpRegion()) return;
+      if (Object.keys(_mpCrowd || {}).length) return;
+      _mpLoadCrowd(MAP_ITINERARY[0]).then(function () {
+        if (typeof _mpPaintBadges === 'function') _mpPaintBadges();
+        if (typeof _mpCrowdPanel === 'function') _mpCrowdPanel();
+        var mt = document.getElementById('mapTabModel');
+        if (mt && mt.classList.contains('on') && typeof _mvForecast === 'function') {
+          _mvForecast(_mvStops());
+        }
+      });
+    }
+    window._mpCrowdRetry = _mpCrowdRetry;
+
     /* 하루치 혼잡도를 한 번에 받는다. 장소마다 부르면 같은 응답을 여러 번 받는다. */
     async function _mpLoadCrowd(day) {
       _mpCrowd = {}; _mpCrowdWhy = ''; _mpQuiet = []; _mpTimeline = null;
@@ -272,6 +303,9 @@
       if (!names.length) return;
 
       var region = _mpRegion();
+      /* 여행지를 모르면 묻지 않는다. 엉뚱한 지역 숫자를 받느니 비워 둔다.
+         여행 상세가 도착하면 _mpCrowdRetry 가 다시 부른다. */
+      if (!region) return;
       var date = _mpDayIso(day.day);
       var q = '/api/crowd/day?region=' + encodeURIComponent(region) +
               '&places=' + encodeURIComponent(names.join(','));
@@ -1554,6 +1588,8 @@
           // ── 이하 재민님의 오리지널 순정 코드 100% 보존 및 화면 주입 버그 완전 정정 ──
           const t = r.data;
           window._mpTripDest = t.destination || '';
+          /* 목록이 먼저 도착해 여행지를 모른 채 넘어갔으면 여기서 깨운다 */
+          if (typeof _mpCrowdRetry === 'function') _mpCrowdRetry();
           if (typeof _mpLoadAreaInfo === 'function') _mpLoadAreaInfo();
           if (titleEl) titleEl.textContent = t.title || '여행 플랜';
           if (t.startDate) {
@@ -1697,6 +1733,7 @@
                 + (d.anchor ? `<span class="dt-an">${_mpEsc(d.anchor)}</span>` : '')
                 + `</button>`
         ).join('');
+        _mpWatchOverflow(document.querySelector('.day-tabs'));
 
         const catSums = { stay: 0, food: 0, transit: 0, tour: 0 };
         let realTotalBudget = 0;
@@ -1957,6 +1994,7 @@
         document.querySelector('.day-tabs').innerHTML = MAP_DAYS.map(d =>
                 `<button class="day-tab${d.default?' on':''}" id="dtab-${d.key}" onclick="showDay('${d.key}',this)">`
                 + `<span class="dt-n">${_mpEsc(d.label)}</span></button>`).join('');
+        _mpWatchOverflow(document.querySelector('.day-tabs'));
         /* 일정이 없어도 지도는 뜬다. 여행지 위치만 잡아 준다. */
         if (typeof initKakaoMap === 'function') initKakaoMap();
 
@@ -2772,6 +2810,38 @@
 
     var _MP_DAY = 'all';        /* 지금 보고 있는 일차. showDay 가 적는다 */
 
+    /* 옆으로 넘치는 줄의 끝을 흐리게 한다 — 「이쪽에 더 있다」.
+       한쪽 끝에 닿으면 그쪽 흐림은 뗀다. 안 그러면 끝까지 갔는데도
+       더 있는 것처럼 보인다. 붙이고 나서 스크롤·크기변경에도 다시 잰다. */
+    function _mpMarkOverflow(el) {
+      if (!el) return;
+      var over = el.scrollWidth - el.clientWidth;
+      if (over <= 1) { el.classList.remove('ov-l', 'ov-r'); return; }
+      el.classList.toggle('ov-l', el.scrollLeft > 2);
+      el.classList.toggle('ov-r', el.scrollLeft < over - 2);
+    }
+
+    function _mpWatchOverflow(el) {
+      if (!el || el._ovWatched) { _mpMarkOverflow(el); return; }
+      el._ovWatched = true;
+      el.addEventListener('scroll', function () { _mpMarkOverflow(el); }, { passive: true });
+      /* 마우스 휠은 세로로만 구른다. 옆으로 흐르는 줄 위에서 굴리면
+         아무 일도 안 일어나서, 밖에 있는 칸에 손이 닿지 않았다.
+         가로 성분이 없을 때만 세로 굴림을 가로로 옮긴다 — 터치패드로
+         옆으로 쓸면 원래 동작을 그대로 둬야 한다. */
+      el.addEventListener('wheel', function (e) {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+        if (el.scrollWidth - el.clientWidth <= 1) return;
+        el.scrollLeft += e.deltaY;
+        e.preventDefault();
+      }, { passive: false });
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () { _mpMarkOverflow(el); }).observe(el);
+      }
+      _mpMarkOverflow(el);
+    }
+    window._mpWatchOverflow = _mpWatchOverflow;
+
     function _mpRailDay() {
       if (_MP_DAY !== 'all') return Number(_MP_DAY);
       /* 전체를 보고 있으면 오늘에 해당하는 일차, 없으면 첫날 */
@@ -2843,6 +2913,7 @@
         strip.scrollLeft = Math.max(
           0, here.offsetLeft - (strip.clientWidth - here.offsetWidth) / 2);
       }
+      _mpWatchOverflow(strip);
     }
 
     /* 레일에서 고르면 왼쪽 목록의 같은 줄을 연다. 두 곳이 따로 놀면
@@ -3796,9 +3867,6 @@
           <div class="ck-frame" id="mv_frame"></div>
           <div class="ck-pins" id="mv_pins"></div>
           <div class="mv-none" id="mv_none" hidden></div>
-          <!-- 30일 예상 혼잡도. 「언제 가면 되는가」가 한눈에 보여야 한다 -->
-          <div class="mv-fc" id="mv_fc" hidden></div>
-          <div class="mv-legend" id="mv_legend" hidden></div>
         </div>
 
         <!-- Budget view -->
@@ -3845,6 +3913,8 @@
           <div class="mp-money" id="mpMoney" hidden></div>
           <!-- 출발 — _mpLoadTravel() 이 채운다 -->
           <div class="mp-depart" id="mpDepart" hidden></div>
+          <!-- 어느 장면인지 — 모형 탭에서만. 기둥 안에 넣는 이유는 아래 참고 -->
+          <div class="mv-legend" id="mv_legend" hidden></div>
         </div>
 
         <div class="mp-float mp-float-r">
@@ -3855,6 +3925,9 @@
           </div>
           <!-- 지금 상황 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
           <div class="mp-alert" id="mpAlert" hidden></div>
+          <!-- 30일 예상 혼잡도. 「언제 가면 되는가」가 한눈에 보여야 한다.
+               모형 탭에서만 뜬다 — 바로 위 붐빔 판과 같은 이야기라 붙여 둔다 -->
+          <div class="mv-fc" id="mv_fc" hidden></div>
         </div>
         <!-- 그날 동선 한 줄 — _mpRail() 이 채운다 -->
         <div class="mp-rail" id="mpRail" hidden></div>
