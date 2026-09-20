@@ -179,7 +179,11 @@
           if (want && list.some(function (t) { return t.tripId === want; })) rlOpen(want);
 
         } catch (e) {
-          box.innerHTML = '<p class="rl-empty-2">여행 목록을 불러오지 못했습니다.</p>';
+          box.innerHTML = '<div class="rl-empty">' +
+            '<p class="rl-empty-1">여행 목록을 불러오지 못했습니다.</p>' +
+            '<p class="rl-empty-2">연결을 확인하고 다시 불러와 주세요.</p>' +
+            '<button type="button" class="rl-go" onclick="goRefresh(&#39;live&#39;)">다시 불러오기</button>' +
+          '</div>';
         }
       }
 

@@ -155,6 +155,46 @@
   .st-form .ck-fr{ gap:var(--u) calc(var(--u)*2) }
   .ck-home .st-form-lead{ margin-bottom:var(--u) }
 }
+@media (min-width:1101px) and (max-height:599px){
+  .ck-home .ck-stage{
+    padding-top:var(--u);
+    gap:var(--u) calc(var(--u)*4);
+  }
+  .ck-home .st-h1{
+    font-size:clamp(31px,3vw,42px);
+    line-height:1.08;
+  }
+  .ck-home .st-head .fl-eye{ margin-bottom:var(--u) }
+  .ck-home .st-head .fl-sub{
+    margin-top:var(--u);
+    line-height:1.55;
+  }
+  .ck-home #st_stops{
+    gap:calc(var(--u)/2);
+    padding:calc(var(--u)/2) 0;
+  }
+  .ck-home #st_stops .fl-pill{
+    padding:calc(var(--u)/2) var(--u);
+    font-size:var(--home-meta);
+  }
+  .ck-home #st_path{
+    line-height:1.45;
+    margin-bottom:var(--u);
+  }
+  .st-form{ padding:calc(var(--u)*1.5) calc(var(--u)*2) }
+  .ck-home .st-form-lead{
+    margin:calc(var(--u)/2) 0 var(--u);
+    line-height:1.45;
+  }
+  .st-form .ck-bar{ gap:var(--u) }
+  .st-form .ck-fr{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:var(--u) calc(var(--u)*2);
+  }
+  .st-form .ck-fld:nth-child(n){ grid-area:auto }
+  .ck-home .ck-fld label{ margin-bottom:calc(var(--u)/2) }
+  .ck-home .ck-go{ min-height:var(--home-target) }
+}
 [data-motion="lite"] .ck-stage .ck-frame{ transition-duration:.45s }
 @media (prefers-reduced-motion:reduce){
   .ck-stage .ck-frame,.st-viewport::after{ transition:none }

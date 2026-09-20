@@ -68,14 +68,14 @@ nav .nav-right{ display:flex; align-items:center; gap:14px; min-width:0 }
 nav .btn-nav-ghost,
 nav .nav-user{
   padding:0; border:0; background:none; cursor:pointer;
-  font-family:inherit; font-size:13.5px; font-weight:500; letter-spacing:var(--tracking-tight);
+  font-family:inherit; font-size:var(--home-meta); font-weight:500; letter-spacing:var(--tracking-tight);
   color:var(--ink-3); transition:color .15s;
 }
 nav .btn-nav-ghost:hover{ color:var(--ink) }
 nav .btn-nav-primary{
   padding:9px 18px 10px; border:0; border-radius:99px; cursor:pointer;
   background:var(--ink); color:var(--panel);
-  font-family:inherit; font-size:13.5px; font-weight:700; letter-spacing:-.025em;
+  font-family:inherit; font-size:var(--home-meta); font-weight:700; letter-spacing:var(--tracking-tight);
   transition:filter .15s;
 }
 nav .btn-nav-primary:hover{ background:var(--ui-d) }
