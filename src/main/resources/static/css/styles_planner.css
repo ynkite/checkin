@@ -246,6 +246,11 @@
 }
 .og-row .og-input,
 .og-row .og-gps{ min-height:calc(var(--u) * 5) }
+/* 휴대폰에서는 손가락 칸. 40px 는 「지금 위치」와 입력 칸이 같이 눌린다 */
+@media (max-width:480px){
+  .og-row .og-input,
+  .og-row .og-gps{ min-height:calc(var(--u) * 5.5) }
+}
 .og-gps:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
 .og-gps:disabled{ cursor:default; color:var(--ink-3) }
 .og-hint:empty{ display:none }
@@ -279,3 +284,37 @@
 }
 #page-planner .wp-note strong{ font-weight:600; color:var(--ink-2) }
 
+
+/* ── 손가락 크기 ────────────────────────────────────────────
+   플래너는 앉아서 쓰는 화면이지만 휴대폰으로도 만든다.
+   재 보니 도/시 select 가 40px, 취향 칩이 33px, 달력 화살표가 30px 이었다.
+   하나씩 세어 고치면 다음에 새로 만든 단추가 또 빠진다. 바닥을 깐다.
+   :where() 라 특정도가 0 이다 — 더 크게 잡아 둔 것은 그대로 이긴다.
+   글자는 키우지 않는다. 누를 자리만 넓힌다 */
+@media (max-width:480px){
+  :where(#page-planner) :where(button, summary, [role="button"], select, textarea,
+                               input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  /* 늘어난 만큼 위로 쏠리지 않게 */
+  #page-planner .chip,
+  #page-planner .cal-pre,
+  #page-planner .btn-load-pref{
+    display:inline-flex; align-items:center; justify-content:center; padding-block:0;
+  }
+  /* 가로도 좁으면 못 맞힌다. 달력만 뺀다 — 일곱 칸이라 320px 화면에서
+     44 를 강제하면 한 주가 화면을 넘어간다(7 x 44 = 308 > 288) */
+  :where(#page-planner) :where(button, [role="button"]):not(.cal-cell){ min-width:44px }
+  #page-planner .cal-cell{ min-height:44px; min-width:0 }
+  #page-planner .cal-prev,
+  #page-planner .cal-next{ min-width:44px }
+}
+
+/* ── 휴대폰 여백 ────────────────────────────────────────────
+   .planner-wrap 이 좌우 56px 씩 먹는다(styles_main.css). 320px 화면에서
+   본문이 208px 밖에 안 남아 달력 한 칸이 18px 까지 좁아졌다 —
+   손가락으로 못 맞힌다. 커뮤니티·마이페이지는 같은 폭에서 288px 다.
+   여기만 유독 좁았다. */
+@media (max-width:480px){
+  #page-planner .planner-wrap{ padding-left:16px; padding-right:16px }
+}

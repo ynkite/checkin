@@ -5294,3 +5294,40 @@ window._handleWriteImageSelect = function(input) {
         if (typeof goPlanStep === 'function') goPlanStep(1);
     };
 })();
+
+/* ════════════════════════════════════════════════════════════
+ *  탭 줄이 넘칠 때 — 320px 에서 「카페」가 화면 밖에 있었다.
+ *  밀면 나오지만 막대가 안 보여 있는 줄을 모른다.
+ *  넘치는 쪽 끝을 흐리게 하고 휠을 가로로 돌린다.
+ *  지도가 쓰던 것을 그대로 부른다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
+ * ════════════════════════════════════════════════════════════ */
+(function () {
+    'use strict';
+
+    function watch() {
+        var el = document.querySelector('#page-community .comm-tabs');
+        if (!el) return;
+        if (typeof window._mpWatchOverflow === 'function') {
+            window._mpWatchOverflow(el);
+        }
+    }
+
+    /* 화면이 숨어 있을 때 재면 폭이 0 이라 「넘치지 않는다」로 잡힌다.
+       커뮤니티가 켜지는 순간에 다시 잰다. */
+    function watchWhenShown() {
+        var page = document.getElementById('page-community');
+        if (!page) return;
+        if (page.classList.contains('active')) watch();
+        if (!window.MutationObserver) return;
+        new MutationObserver(function () {
+            if (page.classList.contains('active')) watch();
+        }).observe(page, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', watchWhenShown);
+    } else {
+        watchWhenShown();
+    }
+    window.addEventListener('resize', watch);
+})();

@@ -603,3 +603,24 @@ table {
         flex: 1 1 100%;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   8. 로그인·가입의 손가락 크기
+   재 보니 입력 칸이 39px, 소셜 단추가 21px, 「회원가입」 글줄이 20px 이었다.
+   휴대폰에서 계정을 만드는 사람이 제일 먼저 만나는 화면이다.
+   :where() 라 특정도가 0 이다 — 더 크게 잡아 둔 것은 그대로 이긴다
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width:480px){
+  :where(#page-login, #page-signup, #page-signup-social)
+  :where(button, summary, [role="button"], select, textarea,
+         input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  :where(#page-login, #page-signup, #page-signup-social) :where(button, [role="button"]){ min-width:44px }
+  #page-login .btn-social,
+  #page-signup .btn-social,
+  #page-login .auth-link,
+  #page-signup .auth-link{
+    display:inline-flex; align-items:center; justify-content:center; padding-block:0;
+  }
+}
