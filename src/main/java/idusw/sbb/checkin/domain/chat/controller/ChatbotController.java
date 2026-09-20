@@ -49,7 +49,8 @@ public class ChatbotController {
                 request.getSessionId(),
                 request.getMessage(),
                 validPos ? request.getLat() : null,
-                validPos ? request.getLng() : null
+                validPos ? request.getLng() : null,
+                Boolean.TRUE.equals(request.getBrief())
         );
 
         // reply 는 주행 화면 음성 안내가 읽는 이름이다. response 와 같은 값이다
