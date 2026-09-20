@@ -65,6 +65,18 @@
     } catch (e) { /* 음성 안 되면 화면 텍스트로만 */ }
   }
 
+  /* 소리를 깨운다 — iOS 는 사용자가 누른 그 순간의 speak() 만 허용한다.
+     나중에 「200미터 앞 우회전」을 읽으려 하면 이미 늦어서 씹힌다.
+     빈 소리를 한 번 내보내 그 자리에서 오디오를 열어 둔다. */
+  function wakeAudio() {
+    try {
+      if (!('speechSynthesis' in window)) return;
+      var u = new SpeechSynthesisUtterance(' ');
+      u.lang = 'ko-KR'; u.volume = 0;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* 안 되면 그냥 넘어간다. 화면 글자는 그대로 나온다 */ }
+  }
+
   /* ── Wake Lock — 화면 꺼지면 추적 멈춘다 ── */
   function acquireWake() {
     if (!('wakeLock' in navigator)) return;
@@ -186,6 +198,8 @@
       + String.fromCharCode(10) + String.fromCharCode(10)
       + '시작할까요?';
     if (!window.confirm(NOTICE)) return;
+
+    wakeAudio();   /* 아이폰은 누른 그 순간에 한 번 울려 둬야 뒤 안내가 나온다 */
 
     st = { dest: dest, pos: null, route: null, offStreak: 0, guideIdx: 0, spoken: {}, wake: null, watchId: null };
     ensureOverlay();

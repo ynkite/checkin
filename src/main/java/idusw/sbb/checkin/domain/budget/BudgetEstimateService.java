@@ -76,35 +76,40 @@ public class BudgetEstimateService {
             if (rate != null && rate.amount() > 0) {
                 /* 요금표에서 온 값이다. 성수기를 또 곱하지 않는다 */
                 long amount = rate.amount() * nights;
-                items.add(new BudgetEstimate.Item("LODGING",
-                        nights + "박 숙박", amount,
-                        rate.basis() + " · " + rate.season(), rate.estimated(), null));
+                items.add(rate.estimated()
+                        ? BudgetEstimate.Item.estimated("LODGING", nights + "박 숙박", amount,
+                                rate.basis() + " · " + rate.season(), null)
+                        : BudgetEstimate.Item.confirmed("LODGING", nights + "박 숙박", amount,
+                                rate.basis() + " · " + rate.season(), null));
                 if (rate.estimated()) guessed++; else real++;
             } else {
                 double m = seasonLodgingMultiplier(season, weekend);
                 long amount = Math.round(lodgingFallback * m) * nights * rooms(people);
-                items.add(new BudgetEstimate.Item("LODGING",
-                        nights + "박 숙박", amount,
+                items.add(BudgetEstimate.Item.estimated("LODGING", nights + "박 숙박", amount,
                         "요금표가 없어 1박 " + won(lodgingFallback) + " 가정 · 방 " + rooms(people) + "개"
                                 + (m > 1.0 ? " · " + season.label()
                                     + (weekend ? " 주말" : "") + " " + x(m) : ""),
-                        true, m > 1.0 ? season.label() : null));
+                        m > 1.0 ? season.label() : null));
                 guessed++;
                 if (req.lodgingContentId() == null || req.lodgingContentId().isBlank()) {
                     notes.add("숙소를 고르면 관광공사 공개 요금표로 숙박비가 확정됩니다.");
                 }
             }
+        } else {
+            /* 빼지 않고 「해당없음」으로 남긴다. 빠진 것과 없는 것은 다르다 —
+               당일치기의 숙박비는 「0원으로 추정」이 아니라 「이 여행에 없는 항목」이다 */
+            items.add(BudgetEstimate.Item.none("LODGING", "숙박", "당일치기라 숙박이 없습니다"));
         }
 
         /* ── 식비 ─────────────────────────────────────────── */
         long meal = Math.round(mealPerPerson * season.foodMultiplier());
         long foodTotal = meal * mealsPerDay * days * people;
-        items.add(new BudgetEstimate.Item("FOOD",
+        items.add(BudgetEstimate.Item.estimated("FOOD",
                 days + "일 식비", foodTotal,
                 "1인 1끼 " + won(meal) + " · 하루 " + mealsPerDay + "끼 가정"
                         + (season.foodMultiplier() > 1.0
                             ? " · " + season.label() + " " + x(season.foodMultiplier()) : ""),
-                true, season.foodMultiplier() > 1.0 ? season.label() : null));
+                 season.foodMultiplier() > 1.0 ? season.label() : null));
         guessed++;
 
         /* ── 이동 ─────────────────────────────────────────── */
@@ -114,38 +119,40 @@ public class BudgetEstimateService {
         if ("TRANSIT".equals(transport)) {
             if (req.transitFare() != null && req.transitFare() > 0) {
                 long amount = (long) req.transitFare() * people;
-                items.add(new BudgetEstimate.Item("TRANSPORT", "대중교통", amount,
-                        "티맵 대중교통 요금 합 · " + people + "명", false, null));
+                items.add(BudgetEstimate.Item.confirmed("TRANSPORT", "대중교통", amount,
+                        "티맵 대중교통 요금 합 · " + people + "명", null));
                 real++;
             } else {
                 int legs = Math.max(1, (req.stops() == null ? days : req.stops().size()));
                 long amount = transitPerLeg * legs * people;
-                items.add(new BudgetEstimate.Item("TRANSPORT", "대중교통", amount,
+                items.add(BudgetEstimate.Item.estimated("TRANSPORT", "대중교통", amount,
                         "구간 " + legs + "번 × " + won(transitPerLeg) + " 가정 · " + people + "명",
-                        true, null));
+                        null));
                 guessed++;
                 notes.add("출발지를 넣으면 티맵으로 실제 요금을 계산합니다.");
             }
         } else if ("RENTAL".equals(transport)) {
             long car = Math.round(rentalPerDay * season.carMultiplier()) * days;
             long fuel = (long) km * fuelPerKm;
-            items.add(new BudgetEstimate.Item("TRANSPORT", "렌터카 " + days + "일", car,
+            items.add(BudgetEstimate.Item.estimated("TRANSPORT", "렌터카 " + days + "일", car,
                     "1일 " + won(rentalPerDay) + " 가정"
                             + (season.carMultiplier() > 1.0
                                 ? " · " + season.label() + " " + x(season.carMultiplier()) : ""),
-                    true, season.carMultiplier() > 1.0 ? season.label() : null));
-            items.add(new BudgetEstimate.Item("TRANSPORT", "유류비", fuel,
-                    km + "km × " + won(fuelPerKm) + "/km"
-                            + (meters ? " (티맵 실측 거리)" : " (하루 " + kmPerDayAssumed + "km 가정)"),
-                    !meters, null));
+                    season.carMultiplier() > 1.0 ? season.label() : null));
+            items.add(meters
+                    ? BudgetEstimate.Item.confirmed("TRANSPORT", "유류비", fuel,
+                            km + "km × " + won(fuelPerKm) + "/km (티맵 실측 거리)", null)
+                    : BudgetEstimate.Item.estimated("TRANSPORT", "유류비", fuel,
+                            km + "km × " + won(fuelPerKm) + "/km (하루 " + kmPerDayAssumed + "km 가정)", null));
             guessed++;
             if (meters) real++; else guessed++;
         } else {
             long fuel = (long) km * fuelPerKm;
-            items.add(new BudgetEstimate.Item("TRANSPORT", "유류비", fuel,
-                    km + "km × " + won(fuelPerKm) + "/km"
-                            + (meters ? " (티맵 실측 거리)" : " (하루 " + kmPerDayAssumed + "km 가정)"),
-                    !meters, null));
+            items.add(meters
+                    ? BudgetEstimate.Item.confirmed("TRANSPORT", "유류비", fuel,
+                            km + "km × " + won(fuelPerKm) + "/km (티맵 실측 거리)", null)
+                    : BudgetEstimate.Item.estimated("TRANSPORT", "유류비", fuel,
+                            km + "km × " + won(fuelPerKm) + "/km (하루 " + kmPerDayAssumed + "km 가정)", null));
             if (meters) real++; else guessed++;
             if (!meters) notes.add("출발지를 넣으면 티맵 실측 거리로 유류비를 다시 냅니다.");
         }
@@ -154,10 +161,11 @@ public class BudgetEstimateService {
         int places = req.stops() == null ? 0 : req.stops().size();
         if (places > 0) {
             long amount = admissionPerPlace * places * people;
-            items.add(new BudgetEstimate.Item("TOUR", "입장료 " + places + "곳", amount,
-                    "1인 1곳 " + won(admissionPerPlace) + " 가정 · 무료인 곳은 빠집니다",
-                    true, null));
+            items.add(BudgetEstimate.Item.estimated("TOUR", "입장료 " + places + "곳", amount,
+                    "1인 1곳 " + won(admissionPerPlace) + " 가정 · 무료인 곳은 빠집니다", null));
             guessed++;
+        } else {
+            items.add(BudgetEstimate.Item.none("TOUR", "입장료", "들를 곳이 아직 없습니다"));
         }
 
         /* ── 축제 ─────────────────────────────────────────── */
@@ -170,10 +178,15 @@ public class BudgetEstimateService {
                 log.warn("[budget] 축제 조회 실패: {}", e.getMessage());
             }
         }
+        /* 축제는 금액에 넣지 않는다 (팀 결정). 관광공사 searchFestival2 에 2026년 축제가
+           거의 안 올라와 있어서, 계수를 넣어도 대부분 동작하지 않고 엔진만 복잡해진다.
+           그렇다고 아무 말도 안 하면 「축제를 반영한 값」으로 읽힌다. 문구로만 적는다.
+           ★여기에 배수를 곱하지 말 것 — 곱하려면 팀 결정을 먼저 뒤집어야 한다 */
         if (!festivals.isEmpty()) {
             notes.add("여행 기간에 " + festivals.get(0).title()
                     + (festivals.size() > 1 ? " 등 축제 " + festivals.size() + "개" : "")
                     + "가 열립니다. 숙소가 빨리 찹니다.");
+            notes.add("축제는 위 금액에 넣지 않았습니다. 숙소·교통이 더 들 수 있습니다.");
         }
         if (area == null) {
             notes.add("지역을 못 알아봐서 숙박·축제는 지역 자료 없이 냈습니다.");

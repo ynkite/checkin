@@ -198,7 +198,7 @@ class DayPlannerTest {
         assertThat(DailyCategoryBudget.of(ScheduleDensity.RELAXED))
                 .isEqualTo(new DailyCategoryBudget(3, 1, 1));
         assertThat(DailyCategoryBudget.of(ScheduleDensity.of("빼곡하게")))
-                .isEqualTo(new DailyCategoryBudget(3, 1, 2));
+                .isEqualTo(new DailyCategoryBudget(3, 2, 3));
     }
 
     @Test

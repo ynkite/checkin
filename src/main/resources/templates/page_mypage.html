@@ -8,6 +8,138 @@
    * 기능:   마이페이지 (프로필 조회/수정, 보안이력)
    =================================================== -->
   <script>
+    /* ── 알림·캘린더 ──────────────────────────────────────────
+     * 푸시 구독은 app_push.js 가, 구독 주소는 /api/me/calendar/* 가 한다.
+     * 여기서는 그 둘을 화면에 붙이기만 한다.
+     *
+     * 안 되는 기기에서는 왜 안 되는지 적는다. 버튼만 두고 조용히 실패하면
+     * 사용자는 알림이 오는 줄 알고 기다린다.
+     */
+    (function () {
+      'use strict';
+
+      function tk() {
+        return localStorage.getItem('accessToken') || sessionStorage.getItem('accessToken');
+      }
+      function hd() {
+        var h = { 'Content-Type': 'application/json' };
+        var t = tk();
+        if (t) h.Authorization = 'Bearer ' + t;
+        return h;
+      }
+      function say(id, text) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+      function note(msg) {
+        if (typeof toast === 'function') toast(msg); else say('myPushNote', msg);
+      }
+
+      var icsHttpUrl = '';
+
+      window.myNotifyLoad = function () {
+        myPushPaint();
+        myIcsLoad();
+      };
+
+      /* ── 푸시 ── */
+      function myPushPaint() {
+        var on = document.getElementById('myPushOn');
+        var off = document.getElementById('myPushOff');
+        if (!tk()) {
+          say('myPushNote', '로그인하면 알림을 켤 수 있습니다.');
+          if (on) on.disabled = true;
+          return;
+        }
+        if (typeof window.pushStatus !== 'function') {
+          say('myPushNote', '이 브라우저는 알림을 지원하지 않습니다.');
+          if (on) on.disabled = true;
+          return;
+        }
+        window.pushStatus().then(function (s) {
+          if (s.note) {                       /* 아이폰인데 홈 화면이 아닌 경우 등 */
+            say('myPushNote', s.note);
+            if (on) on.disabled = true;
+            return;
+          }
+          say('myPushNote', s.on ? '알림이 켜져 있습니다.' : '알림이 꺼져 있습니다.');
+          if (on) { on.hidden = !!s.on; on.disabled = false; }
+          if (off) off.hidden = !s.on;
+        });
+      }
+
+      window.myPushOn = function () {
+        if (typeof window.pushEnable !== 'function') return;
+        say('myPushNote', '켜는 중');
+        window.pushEnable().then(function (r) {
+          note(r.note);
+          myPushPaint();
+        });
+      };
+
+      window.myPushOff = function () {
+        if (typeof window.pushDisable !== 'function') return;
+        window.pushDisable().then(function (r) {
+          note(r.note);
+          myPushPaint();
+        });
+      };
+
+      /* ── 캘린더 구독 주소 ── */
+      function paintIcs(d) {
+        icsHttpUrl = (d && d.httpUrl) || '';
+        say('myIcsUrl', icsHttpUrl || '주소가 없습니다. 「주소 새로 만들기」를 누르세요.');
+        var a = document.getElementById('myIcsSubscribe');
+        if (a) {
+          if (d && d.subscribeUrl) { a.href = d.subscribeUrl; a.hidden = false; }
+          else { a.hidden = true; }
+        }
+      }
+
+      function myIcsLoad() {
+        if (!tk()) { say('myIcsUrl', '로그인하면 구독 주소가 나옵니다.'); return; }
+        fetch('/api/me/calendar/subscription', { headers: hd() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { paintIcs(j && j.success ? j.data : null); })
+          .catch(function () { say('myIcsUrl', '주소를 불러오지 못했습니다.'); });
+      }
+
+      window.myIcsCopy = function () {
+        if (!icsHttpUrl) { note('복사할 주소가 없습니다.'); return; }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(icsHttpUrl)
+            .then(function () { note('주소를 복사했습니다.'); })
+            .catch(function () { note('복사하지 못했습니다. 주소를 길게 눌러 복사해 주세요.'); });
+        } else {
+          note('복사하지 못했습니다. 주소를 길게 눌러 복사해 주세요.');
+        }
+      };
+
+      window.myIcsRegenerate = function () {
+        if (!confirm('주소를 새로 만들면 지금 주소로는 더 이상 볼 수 없습니다. 계속할까요?')) return;
+        fetch('/api/me/calendar/subscription/regenerate', { method: 'POST', headers: hd() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.success) { paintIcs(j.data); note('주소를 새로 만들었습니다.'); }
+            else note((j && j.message) || '새로 만들지 못했습니다.');
+          })
+          .catch(function () { note('새로 만들지 못했습니다.'); });
+      };
+
+      window.myIcsRevoke = function () {
+        if (!confirm('주소를 없애면 캘린더에서 일정이 더 이상 갱신되지 않습니다. 계속할까요?')) return;
+        fetch('/api/me/calendar/subscription', { method: 'DELETE', headers: hd() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            if (j && j.success) { paintIcs(null); note('주소를 없앴습니다.'); }
+            else note((j && j.message) || '없애지 못했습니다.');
+          })
+          .catch(function () { note('없애지 못했습니다.'); });
+      };
+    })();
+  </script>
+
+  <script>
     /* ============================================================
      * [임시 하드코딩 데이터]
      * 나중에 백엔드 API 및 실데이터 통신이 연결되면 이 블록을 통째로 지워주세요!
@@ -239,6 +371,7 @@
           <button class="my-menu" onclick="showMySection('scrap-route',this)">스크랩한 여행 경로</button>
           <button class="my-menu" onclick="showMySection('ledger',this)">가계부</button>
           <div class="my-menu-sep my-menu-settings">설정</div>
+          <button class="my-menu" onclick="showMySection('notify',this); myNotifyLoad()">알림·캘린더</button>
           <button class="my-menu" onclick="showMySection('info',this)">회원정보 수정</button>
           <button class="my-menu" onclick="showMySection('withdraw',this)">회원 탈퇴</button>
         </div>
@@ -248,6 +381,64 @@
         <div id="my-trips">
           <h3 class="my-sec-ttl">내 여행 기록</h3>
           <div id="my-trips-list"></div>
+        </div>
+
+        <style>
+          /* 알림·캘린더 판. 색·모서리는 tokens.css 변수만 쓴다 */
+          #my-notify .my-card{
+            margin-bottom:14px; padding:18px 20px 20px;
+            border-radius:var(--r-panel); background:var(--panel);
+            box-shadow:inset 0 0 0 1px var(--ui-line);
+            word-break:keep-all; overflow-wrap:break-word;
+          }
+          #my-notify .my-card-ttl{ margin:0; font-size:16px; font-weight:600; color:var(--ink) }
+          #my-notify .my-card-sub{ margin:6px 0 0; font-size:13.5px; line-height:1.66; color:var(--ink-2) }
+          #my-notify .my-card-url{
+            margin:12px 0 0; padding:10px 12px; border-radius:10px;
+            background:var(--ui-plate); color:var(--ink-2);
+            font-family:var(--fig); font-size:12.5px; word-break:break-all;
+          }
+          #my-notify .my-card-btns{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px }
+          #my-notify .my-btn{
+            min-height:44px; padding:11px 18px; border:0; border-radius:var(--r-pill);
+            cursor:pointer; background:var(--ink); color:var(--panel);
+            font-family:inherit; font-size:13.5px; font-weight:600;
+            text-decoration:none; display:inline-flex; align-items:center;
+          }
+          #my-notify .my-btn[disabled]{ opacity:.45; cursor:default }
+          #my-notify .my-btn-ghost{ background:var(--ui-plate); color:var(--ink-2) }
+          #my-notify .my-btn-ghost:hover{ color:var(--ink) }
+          #my-notify .my-card-hint{ margin:12px 0 0; font-size:12px; line-height:1.6; color:var(--ink-3) }
+        </style>
+
+        <div id="my-notify" style="display:none">
+          <h3 class="my-sec-ttl">알림·캘린더</h3>
+
+          <div class="my-card">
+            <p class="my-card-ttl">바뀐 일정 알림</p>
+            <p class="my-card-sub" id="myPushNote">확인하는 중</p>
+            <div class="my-card-btns">
+              <button type="button" class="my-btn" id="myPushOn" onclick="myPushOn()">알림 켜기</button>
+              <button type="button" class="my-btn my-btn-ghost" id="myPushOff" onclick="myPushOff()" hidden>알림 끄기</button>
+            </div>
+            <p class="my-card-hint">붐빔·비 예보로 일정이 바뀔 때 바로 알려 드립니다.
+              아이폰은 홈 화면에 추가한 뒤에 켤 수 있습니다.</p>
+          </div>
+
+          <div class="my-card">
+            <p class="my-card-ttl">캘린더에 넣기</p>
+            <p class="my-card-sub">구독해 두면 일정이 바뀔 때 캘린더도 따라 바뀝니다.
+              아이폰·구글·아웃룩에서 모두 열립니다.</p>
+            <p class="my-card-url" id="myIcsUrl">주소를 불러오는 중</p>
+            <div class="my-card-btns">
+              <a class="my-btn" id="myIcsSubscribe" href="#" hidden>캘린더에 추가</a>
+              <button type="button" class="my-btn my-btn-ghost" onclick="myIcsCopy()">주소 복사</button>
+              <button type="button" class="my-btn my-btn-ghost" onclick="myIcsRegenerate()">주소 새로 만들기</button>
+              <button type="button" class="my-btn my-btn-ghost" onclick="myIcsRevoke()">주소 없애기</button>
+            </div>
+            <p class="my-card-hint">이 주소를 아는 사람은 일정을 볼 수 있습니다.
+              남에게 넘어갔다면 새로 만들면 옛 주소는 막힙니다.</p>
+          </div>
         </div>
 
         <div id="my-invited" style="display:none">
