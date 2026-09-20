@@ -163,15 +163,36 @@ public class CrowdService {
         return s.replaceAll("[\\s()\\[\\]·,.-]", "");
     }
 
+    /**
+     * 한쪽이 다른 쪽을 품고 있으면 같은 곳으로 봤는데, 그것만으로는 모자랐다.
+     *
+     * <p>집중률 목록에 「마린시티」가 있다. 메인 화면의 카페 이름이
+     * 「시드니앤솔트 마린시티점」이라, 품고 있다는 이유로 카페에
+     * <b>집중률 62.51 「보통」이 붙었다.</b> 집중률 대상이 아닌 곳에
+     * 진짜처럼 보이는 숫자가 붙는 것이라 없는 것보다 나쁘다.
+     *
+     * <p>짧은 쪽이 긴 쪽의 절반쯤은 되어야 같은 곳으로 본다. 실제로 맞춰야 하는 것들 —
+     * <pre>
+     *   스파랜드센텀   / 스파랜드센텀시티        7/9  = .78  같은 곳이 맞다
+     *   부산아쿠아리움  / SEALIFE부산아쿠아리움  7/15 = .47  같은 곳이 맞다
+     *   마린시티     / 시드니앤솔트마린시티점    4/11 = .36  다른 곳이다
+     * </pre>
+     */
     public static boolean matches(String a, String b) {
         if (a.isEmpty() || b.isEmpty()) return false;
-        return a.equals(b) || a.contains(b) || b.contains(a);
+        if (a.equals(b)) return true;
+        String longer  = a.length() >= b.length() ? a : b;
+        String shorter = a.length() >= b.length() ? b : a;
+        if (!longer.contains(shorter)) return false;
+        return shorter.length() * 20 >= longer.length() * 9;   /* 45% */
     }
 
     public static void main(String[] args) {
         assert matches(norm("해운대해수욕장"), norm("해운대 해수욕장")) : "공백만 다르면 같다";
         assert matches(norm("SEA LIFE 부산아쿠아리움"), norm("부산아쿠아리움")) : "품으면 같다";
         assert !matches(norm("동백섬"), norm("광안리")) : "다른 곳";
+        assert matches(norm("스파랜드 센텀"), norm("스파랜드 센텀시티")) : "같은 곳";
+        assert !matches(norm("마린시티"), norm("시드니앤솔트 마린시티점")) : "품어도 다른 곳";
         assert !matches(norm(""), norm("미포")) : "빈 이름은 안 맞는다";
         System.out.println("OK 장소 이름 맞추기");
     }

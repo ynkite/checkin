@@ -65,7 +65,7 @@
   --home-dark:#101620;
   --home-dark-hover:#253040;
   --home-dark-line:#46505E;
-  --home-wash:rgba(25,40,65,.36);
+  --home-wash:rgba(25,40,65,.20);
   --home-rain:rgba(255,255,255,.76);
   --home-wet:rgba(213,231,245,.28);
   --home-rain-tile:96px;
@@ -76,20 +76,20 @@
      기울기는 등각 장면에 맞춰 살짝 눕혔다. */
   --home-rain-lines:repeating-linear-gradient(101deg,
      transparent 0 7px,
-     rgba(255,255,255,.62) 7px 7.9px,
+     rgba(255,255,255,.34) 7px 7.9px,
      transparent 7.9px 19px,
-     rgba(255,255,255,.40) 19px 19.7px,
+     rgba(255,255,255,.22) 19px 19.7px,
      transparent 19.7px 28px,
-     rgba(255,255,255,.72) 28px 29.1px,
+     rgba(255,255,255,.40) 28px 29.1px,
      transparent 29.1px 44px,
-     rgba(255,255,255,.34) 44px 44.6px,
+     rgba(255,255,255,.18) 44px 44.6px,
      transparent 44.6px 57px);
   /* 가까이 떨어지는 층. 굵고 성글고 빠르다 */
   --home-rain-near:repeating-linear-gradient(98deg,
      transparent 0 26px,
-     rgba(255,255,255,.58) 26px 27.6px,
+     rgba(255,255,255,.32) 26px 27.6px,
      transparent 27.6px 71px,
-     rgba(255,255,255,.44) 71px 72.4px,
+     rgba(255,255,255,.24) 71px 72.4px,
      transparent 72.4px 108px);
   --home-width:1440px;
   --home-reading:1200px;
