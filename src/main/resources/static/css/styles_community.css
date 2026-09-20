@@ -1487,3 +1487,23 @@
         min-width: 44px;
     }
 }
+
+/* =========================================================
+ * 아주 좁은 화면 — 탭을 두 줄로 접는다
+ * 폴드 280px 에서는 넘침이 69px 이라 마지막 「카페」가 아예 안 보였다.
+ * 흐림이 있어도 한 글자도 안 보이면 더 있다는 것을 알 수 없다.
+ * 줄여서 글자를 버리기보다 한 줄 더 쓴다 — 다섯 갈래가 다 보이는 편이 낫다.
+ * ========================================================= */
+@media (max-width: 360px) {
+    #page-community .comm-tabs {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        row-gap: 4px;
+    }
+    /* 두 줄이 되면 넘치지 않으니 흐림도 필요 없다 */
+    #page-community .comm-tabs.ov-l,
+    #page-community .comm-tabs.ov-r {
+        -webkit-mask-image: none;
+                mask-image: none;
+    }
+}
