@@ -3590,7 +3590,7 @@
               `<div class="q-item">
           <div class="q-itop">
             <div class="q-place">${_mpEsc(q.place)}</div>
-            <button class="q-rm" onclick="rmQ(${i})">✕</button>
+            <button class="q-rm" onclick="rmQ(${i})">×</button>
           </div>
           <input class="q-inp" type="text" value="${_mpEsc(q.req)}" oninput="updateQueueReq(${i}, this.value)"
                  placeholder="예: 바다가 보이는 조용한 카페로">
@@ -4127,7 +4127,7 @@
               <div class="modal-ttl" id="mpPlace">장소명</div>
               <div style="font-size:12px;color:var(--text3);margin-top:2px" id="mpType"></div>
             </div>
-            <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">✕</button>
+            <button class="modal-x" onclick="document.getElementById('mapPlaceModal').classList.remove('open')">×</button>
           </div>
           <div class="modal-bd">
             <div id="mpNavi"></div>
@@ -4148,7 +4148,7 @@
               <div class="modal-ttl" id="rdPlace"></div>
               <div id="rdType" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
             </div>
-            <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">✕</button>
+            <button class="modal-x" onclick="document.getElementById('reviewDetailModal').classList.remove('open')">×</button>
           </div>
           <div class="modal-bd">
             <div id="rdStars" style="font-size:15px;margin-bottom:10px"></div>
@@ -4166,7 +4166,7 @@
               <div class="modal-ttl">플랜 공유</div>
               <div style="font-size:12.5px;color:var(--ink-3);margin-top:3px">함께 고칠 사람을 초대하거나 보기 전용 링크를 보냅니다.</div>
             </div>
-            <button class="modal-x" onclick="document.getElementById('shareModal').classList.remove('open')">✕</button>
+            <button class="modal-x" onclick="document.getElementById('shareModal').classList.remove('open')">×</button>
           </div>
           <div class="modal-bd">
 
@@ -4213,7 +4213,7 @@
       <!-- 지도 화면 전용 날씨 및 대체 일정 팝업 -->
       <div class="overlay" id="mapWeatherPopup" onclick="if(event.target===this)this.classList.remove('open')">
         <div class="modal" style="width:700px;max-width:95vw;padding:22px 24px 24px">
-          <button class="modal-x" onclick="document.getElementById('mapWeatherPopup').classList.remove('open')">✕</button>
+          <button class="modal-x" onclick="document.getElementById('mapWeatherPopup').classList.remove('open')">×</button>
           <div style="padding:4px 0 16px">
             <div class="mp-bg-eyebrow">여행 날씨</div>
             <div class="mp-mttl" id="mwp-title">여행 날씨 예보</div>
