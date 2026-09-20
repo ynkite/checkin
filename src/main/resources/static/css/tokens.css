@@ -70,7 +70,9 @@
   --home-wet:rgba(213,231,245,.28);
   --home-rain-tile:96px;
   --home-rain-shift:192px;
-  --home-rain-lines:linear-gradient(108deg,transparent 47%,rgba(255,255,255,.76) 48%,rgba(255,255,255,.76) 49%,transparent 50%);
+  --home-rain-lines:linear-gradient(108deg,transparent 43%,rgba(255,255,255,.76) 44%,rgba(255,255,255,.76) 46%,transparent 47%,transparent 72%,rgba(255,255,255,.62) 73%,rgba(255,255,255,.62) 74%,transparent 75%);
+  /* 가까이 떨어지는 층. 굵고 성글다 — 가까울수록 굵어 보이고 수는 적어 보인다 */
+  --home-rain-near:linear-gradient(104deg,transparent 40%,rgba(255,255,255,.62) 41%,rgba(255,255,255,.62) 44%,transparent 45%);
   --home-width:1440px;
   --home-reading:1200px;
   --home-form-pad:24px;
