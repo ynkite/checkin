@@ -1013,11 +1013,29 @@ if __name__ == '__main__':
         bbox, rot, ppm = cfg[0], cfg[1], cfg[2]
         min_area = cfg[3] if len(cfg) > 3 else 26.0
         frame_bbox = bool(cfg[4]) if len(cfg) > 4 else False
+        if len(sys.argv) > 2 and want == [nm]:
+            min_area = float(sys.argv[2])      # 크게 나왔을 때 다시 굽는 용도
         print('== %s %s  최소넓이=%s  테두리=%s'
               % (nm, bbox, min_area, 'bbox' if frame_bbox else '그린 것'))
         try:
             build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=min_area,
                   frame_bbox=frame_bbox)
+            # 너무 크면 작은 건물을 걷어내고 다시 굽는다.
+            #
+            # 도심 시군구는 건물이 촘촘해서 그대로 두면 1~2MB 가 나온다.
+            # 여행 중에 길에서 휴대폰으로 여는 화면이다 — 2MB 를 받게 하면 안 된다.
+            # 걷어내는 것은 창고·주차장 같은 작은 것부터라, 동네 생김새는 남는다.
+            #
+            # OSM 응답은 osm_cache 에 있으니 다시 구워도 Overpass 를 또 부르지 않는다.
+            # 공짜로 줄일 수 있다.
+            for limit in (60.0, 140.0, 320.0):
+                f = 'mass_%s.svg' % nm
+                if not os.path.exists(f) or os.path.getsize(f) <= 700 * 1024:
+                    break
+                print('   %dKB 라 작은 건물을 걷어내고 다시 굽는다 (최소넓이 %s)'
+                      % (os.path.getsize(f) // 1024, limit))
+                build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=limit,
+                      frame_bbox=frame_bbox)
         except SystemExit as e:
             print('   건너뜀: %s' % e)
         except Exception as e:
