@@ -200,3 +200,18 @@
         border-radius: 4px;
     }
 }
+/* ── 손가락 크기 ────────────────────────────────────────────
+   메인은 재설계가 따로 돌고 있어 화면 파일은 건드리지 않는다.
+   여기서 바닥만 깐다 — :where() 라 특정도가 0 이고, 재설계가 적어 둘 값이
+   그대로 이긴다. 재 보니 알약이 36px, 무대 단추가 29px 이었다 */
+@media (max-width:480px){
+  :where(#page-main) :where(button, summary, [role="button"], select, textarea,
+                            input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  /* 무대 조작은 아이콘만 있는 정사각형이다. 가로도 같이 넓힌다 */
+  #page-main #st_v_in,
+  #page-main #st_v_out,
+  #page-main #st_v_reset,
+  #page-main #ck_playbtn{ min-width:44px }
+}

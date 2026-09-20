@@ -30,3 +30,18 @@
         align-items: flex-start;
     }
 }
+
+/* ── 손가락 크기 ────────────────────────────────────────────
+   「PDF」·「Excel」이 32px, 「다른 여행 선택」이 28px 이었다.
+   :where() 라 특정도가 0 이다 — 더 크게 잡아 둔 것은 그대로 이긴다 */
+@media (max-width:480px){
+  :where(#page-ledger) :where(button, summary, [role="button"], select, textarea,
+                              input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  :where(#page-ledger) :where(button, [role="button"]){ min-width:44px }
+  #page-ledger .btn-export-header,
+  #page-ledger .ledger-back-btn{
+    display:inline-flex; align-items:center; justify-content:center; padding-block:0;
+  }
+}
