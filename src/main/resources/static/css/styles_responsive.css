@@ -89,6 +89,7 @@ table {
         padding: 10px 14px;
         row-gap: 8px;
         align-items: center;
+        min-width: 0;
     }
 
     /* 로고는 항상 보이고 좌측 정렬 */
@@ -116,6 +117,7 @@ table {
         flex-direction: column;
         align-items: stretch;
         gap: 2px;
+        min-width: 0;
         overflow: visible;
         max-height: 0;
         opacity: 0;
@@ -127,6 +129,7 @@ table {
     .nav-btns {
         order: 2;
         flex-basis: auto;
+        min-width: 0;
         flex-wrap: nowrap;
         gap: 4px;
         max-height: none;
@@ -204,7 +207,7 @@ table {
     body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
     /* 5) 스텝 영역은 가로 스크롤 없이 내용에 맞게 (줄바꿈만 방지) */
     body:has(#navPlannerSteps[style*="flex"]) .nav-links {
-        overflow-x: visible;
+        overflow-x: auto;
         flex-wrap: nowrap;
     }
 
@@ -418,6 +421,8 @@ table {
     /* --- 6-5. 탭 버튼 --- */
     .bnav-item {
         flex: 1;
+        min-width: 0;
+        min-height: 56px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -499,10 +504,7 @@ table {
     }
 
     /* --- 6-7. 비로그인 시 마이페이지 탭 → 로그인 아이콘 --- */
-    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { font-size: 0; }
-    /* 열쇠 이모지를 쓰고 있었다. 기기마다 다르게 그려지고 UI 문구 규칙에도 어긋난다.
-       글자 하나로 바꾼다 — 바로 아래 라벨이 「로그인」이라 뜻은 그대로다 */
-    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "로"; font-size: 17px; font-weight: 700; }
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { opacity: .72; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl::before   { content: "로그인"; font-size: 10px; font-weight: 500; }
 }

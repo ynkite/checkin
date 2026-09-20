@@ -167,7 +167,7 @@ nav {
     background: none;
     border: none;
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap
 }
 
@@ -294,7 +294,7 @@ nav {
     max-height: 90vh;
     overflow-y: auto;
     transform: translateY(20px) scale(.97);
-    transition: all .3s;
+    transition: transform .3s, opacity .3s;
     box-shadow: var(--lift);
 
     position: relative;
@@ -431,7 +431,7 @@ nav {
     background: var(--surface);
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
@@ -475,7 +475,7 @@ nav {
 .pw-bar {
     height: 100%;
     border-radius: 2px;
-    transition: all .3s
+    transition: background-color .3s;
 }
 
 .social-sep {
@@ -565,7 +565,7 @@ nav {
     background: var(--surface);
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .vis-chip.on {
@@ -633,7 +633,7 @@ nav {
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     display: flex;
     align-items: center;
     justify-content: center
@@ -772,7 +772,7 @@ nav {
     color: var(--panel);
     border: none;
     cursor: pointer;
-    transition: all .2s;
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
     white-space: nowrap;
     flex-shrink: 0
 }
@@ -806,7 +806,7 @@ nav {
     background: var(--surface);
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap
 }
 
@@ -827,7 +827,7 @@ nav {
     border-radius: 11px;
     padding: 11px 10px;
     border: 1px solid var(--border2);
-    transition: all .2s
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
 }
 
 .hsc-card:hover {
@@ -984,7 +984,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     pointer-events: all;
     flex-shrink: 0;
     position: relative;
@@ -1022,7 +1022,7 @@ nav {
     border-radius: 3px;
     background: rgba(var(--sh-rgb),0.2);
     cursor: pointer;
-    transition: all .3s
+    transition: background-color .3s;
 }
 
 .dot.on {
@@ -1045,7 +1045,7 @@ nav {
     padding: 18px;
 
     cursor: pointer;
-    transition: all .22s;
+    transition:color .22s, background-color .22s, border-color .22s, box-shadow .22s, transform .22s, opacity .22s;
     overflow: hidden;
 }
 
@@ -1075,7 +1075,7 @@ nav {
     margin-bottom: 11px;
     cursor: pointer;
     border: 1.5px dashed transparent;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .preview-box:hover {
@@ -1121,7 +1121,7 @@ nav {
     border: 1.5px solid var(--border);
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap;
     flex-shrink: 0
 }
@@ -1148,7 +1148,7 @@ nav {
     padding: 18px;
 
     cursor: pointer;
-    transition: all .22s;
+    transition:color .22s, background-color .22s, border-color .22s, box-shadow .22s, transform .22s, opacity .22s;
     overflow: hidden;
     /* 배너 모서리가 카드 라운딩 밖으로 깨져나가지 않도록 커팅 */
 }
@@ -1234,7 +1234,7 @@ nav {
     background: var(--surface);
     cursor: pointer;
     color: var(--text2);
-    transition: all .15s;
+    transition:color .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .15s, opacity .15s;
     white-space: nowrap;
     flex-shrink: 0
 }
@@ -1571,7 +1571,7 @@ nav {
     align-items: center;
     gap: 6px;
     margin-bottom: 1px;
-    transition: all .15s
+    transition:color .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .15s, opacity .15s;
 }
 
 /* 지금 보는 것 — 채운 알약보다 왼쪽 선 하나가 조용하고 정확하다.
@@ -1612,7 +1612,7 @@ nav {
     border-radius: 9px;
     margin-bottom: 8px;
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .trip-card:hover {
@@ -1836,7 +1836,7 @@ nav {
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    transition: all .2s;
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
     border-right: 1px solid var(--border2);
     background: var(--panel);
 }
@@ -1860,7 +1860,7 @@ nav {
     background: var(--border2);
     color: var(--text3);
     flex-shrink: 0;
-    transition: all .2s
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
 }
 
 .step-item.done .step-num,
@@ -1950,7 +1950,7 @@ nav {
     color: var(--panel);
     border: none;
     cursor: pointer;
-    transition: all .2s
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
 }
 
 .btn-next:hover {
@@ -2159,7 +2159,7 @@ nav {
     background: var(--surface);
     color: var(--sage);
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .qr-btn:hover {
@@ -2296,7 +2296,7 @@ nav {
     font-size: 13px;
     font-weight: 700;
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 /* 요약 패널 탭 */
@@ -2316,7 +2316,7 @@ nav {
     border: none;
     border-bottom: 2px solid transparent;
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     font-family: inherit
 }
 
@@ -2370,7 +2370,7 @@ nav {
     border: 1.5px solid var(--border);
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     flex-shrink: 0
 }
 
@@ -2479,7 +2479,7 @@ nav {
     color: var(--text2);
     cursor: pointer;
     border: none;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap;
     flex-shrink: 0
 }
@@ -2655,7 +2655,7 @@ nav {
     border: 1px solid var(--border2);
     margin-bottom: 3px;
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .place-row:hover {
@@ -2725,7 +2725,7 @@ nav {
     color: var(--text2);
     cursor: pointer;
     white-space: nowrap;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     flex-shrink: 0
 }
 
@@ -2827,7 +2827,7 @@ nav {
     color: var(--text2);
     flex: 1;
     text-align: center;
-    transition: all .18s;
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
     white-space: nowrap;
     min-width: 0
 }
@@ -2896,7 +2896,7 @@ nav {
     border: none;
     color: var(--text2);
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .map-subtab.on {
@@ -3361,7 +3361,7 @@ nav {
     border: none;
     color: var(--text3);
     cursor: pointer;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .comm-tab.on {
@@ -3418,7 +3418,7 @@ nav {
     padding: 16px;
     margin-bottom: 10px;
     cursor: pointer;
-    transition: all .22s
+    transition:color .22s, background-color .22s, border-color .22s, box-shadow .22s, transform .22s, opacity .22s;
 }
 
 .place-card:hover {
@@ -3535,7 +3535,7 @@ nav {
     margin-bottom: 2px;
     width: 100%;
     text-align: left;
-    transition: all .15s
+    transition:color .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .15s, opacity .15s;
 }
 
 .admin-link:hover {
@@ -3883,7 +3883,7 @@ nav {
     color: var(--sage-d);
     border: none;
     cursor: pointer;
-    transition: all .2s
+    transition:color .2s, background-color .2s, border-color .2s, box-shadow .2s, transform .2s, opacity .2s;
 }
 
 .btn-rcta:hover {
@@ -4030,7 +4030,7 @@ nav {
     cursor: pointer;
     color: var(--text3);
     border-bottom: 2px solid transparent;
-    transition: all .18s
+    transition:color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s, opacity .18s;
 }
 
 .share-tab.on {
@@ -4365,7 +4365,7 @@ nav {
     font-family: inherit;
     color: var(--text3);
     font-weight: 500;
-    transition: all .15s;
+    transition:color .15s, background-color .15s, border-color .15s, box-shadow .15s, transform .15s, opacity .15s;
     white-space: nowrap;
 }
 .nps-btn:hover { background: var(--terra-pale); color: var(--terra); }

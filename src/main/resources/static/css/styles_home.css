@@ -81,7 +81,7 @@
 .ck-flow b{ display:block; font-size:var(--t-body); line-height:1.5 }
 .ck-flow span{ display:block; font-size:var(--t-sm); color:var(--ink-2); line-height:1.7; margin-top:var(--u) }
 .ck-tabs{ display:flex; gap:calc(var(--u)*3); flex-wrap:wrap; margin:calc(var(--u)*2) 0 }
-.ck-tabs button{ min-height:var(--home-target); padding:var(--u) 0; font-size:var(--t-sm); color:var(--ink-2); border-bottom:2px solid transparent }
+.ck-tabs button{ min-width:var(--home-target); min-height:var(--home-target); padding:var(--u) 0; font-size:var(--t-sm); color:var(--ink-2); border-bottom:2px solid transparent }
 .ck-tabs button[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--ink); font-weight:700 }
 .ck-tabs-top button{ font-size:var(--t-h3) }
 .ck-attr{ display:flex; flex-direction:column; gap:var(--u); padding:calc(var(--u)*3) 0 var(--home-section); border-top:1px solid var(--ui-line); font-size:var(--home-meta); color:var(--ink-2); line-height:1.8 }

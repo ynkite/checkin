@@ -9,6 +9,17 @@
  * index.html 에서 styles_main.css 보다 뒤에 둔다.
  */
 
+#page-planner{
+  word-break:keep-all; overflow-wrap:break-word;
+}
+#page-planner, #page-planner *{ min-width:0 }
+#page-planner .planner-wrap{
+  padding-inline:clamp(14px, 5vw, 56px);
+}
+:where(#page-planner button, #page-planner [role=button], #page-planner input, #page-planner select){
+  min-width:44px; min-height:44px;
+}
+
 /* ── 머리 ─────────────────────────────────────────────────── */
 #page-planner .planner-ey{
   display:block; margin:0 0 7px;
@@ -78,6 +89,7 @@
 }
 #page-planner .form-input,
 #page-planner select.form-input{
+  width:100%;
   padding:9px 2px 10px; border:0; border-radius:0;
   border-bottom:1.5px solid var(--ui-line); background:transparent;
   font-size:17px; font-weight:600; letter-spacing:var(--tracking-tight); color:var(--ink);
@@ -146,6 +158,9 @@
   #page-planner .step-item{ flex:1 1 45% }
   #page-planner .pl-card{ padding:20px 18px 22px }
   #page-planner .planner-sub{ max-width:none }
+  #page-planner .pl-btns{ flex-wrap:wrap }
+  #page-planner .pl-btns > button{ flex:1 1 180px }
+  #page-planner .pl-btns > button[style*="margin-left:auto"]{ margin-left:0 !important }
 }
 
 /* 한 판 안의 줄 — 이름표를 왼쪽에 두고 알약을 오른쪽에 */
@@ -283,6 +298,24 @@
   word-break:keep-all;
 }
 #page-planner .wp-note strong{ font-weight:600; color:var(--ink-2) }
+#page-planner .cal-nav{ min-width:44px; min-height:44px }
+
+@media (max-width:460px){
+  #page-planner .planner-hd{ padding-bottom:16px }
+  #page-planner .step-item{ padding-right:8px; gap:7px }
+  #page-planner .step-lbl{ font-size:13px; line-height:1.35 }
+  #page-planner .pl-card{ padding:18px 14px 20px }
+  #page-planner .pl-card-ttl > div:last-child{ flex:1 1 100%; min-width:0 }
+  .og-row{ align-items:stretch; flex-wrap:wrap }
+  .og-row .og-input{ flex:1 1 100% }
+  .og-row .og-gps{ flex:1 1 auto }
+  #page-planner .btn-next,
+  #page-planner .btn-prev-step,
+  #page-planner .btn-load-pref,
+  #page-planner .weather-date-btn{
+    justify-content:center; text-align:center;
+  }
+}
 
 
 /* ── 손가락 크기 ────────────────────────────────────────────

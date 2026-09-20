@@ -131,7 +131,7 @@
         border-radius: 50%;
         background: var(--border2);
         cursor: pointer;
-        transition: all .18s;
+        transition:background-color .18s;
     }
     .mob-carousel-dots .dot.on {
         background: var(--sage);
@@ -192,7 +192,7 @@
         border-radius: 50%;
         background: var(--border2);
         cursor: pointer;
-        transition: all .18s;
+        transition:background-color .18s;
     }
     .mob-carousel-dots .dot.on {
         background: var(--sage);
