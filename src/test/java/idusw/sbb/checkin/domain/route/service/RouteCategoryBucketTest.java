@@ -46,6 +46,35 @@ class RouteCategoryBucketTest {
         assertThat(AiRouteService.categoryBucket(null)).isNull();
     }
 
+    /** 동백섬이 「해운온천」으로 갈렸다. 카카오가 주는 끝마디는 「섬」·「섬(내륙)」이다. */
+    @Test
+    void 섬끼리_같은_성격이다() {
+        assertThat(AiRouteService.categoryBucket("여행 > 관광,명소 > 섬 > 섬(내륙)"))
+                .isEqualTo(AiRouteService.categoryBucket("여행 > 관광,명소 > 섬"))
+                .isEqualTo("섬");
+    }
+
+    /** 온천·찜질방·사우나는 서로 대체가 되고 하루에 둘은 겹친다. */
+    @Test
+    void 온천과_찜질방은_같은_성격이다() {
+        assertThat(AiRouteService.categoryBucket("여행 > 관광,명소 > 온천"))
+                .isEqualTo(AiRouteService.categoryBucket("가정,생활 > 목욕탕,사우나 > 찜질방"))
+                .isEqualTo("온천");
+    }
+
+    /** 바다와 온천은 다른 성격이다 — 해운대해수욕장이 「할매탕」으로 갈린 자리다. */
+    @Test
+    void 바다는_온천이_아니다() {
+        assertThat(AiRouteService.categoryBucket("여행 > 관광,명소 > 해수욕장,해변"))
+                .isNotEqualTo(AiRouteService.categoryBucket("여행 > 관광,명소 > 온천"));
+    }
+
+    @Test
+    void 섬유는_섬이_아니다() {
+        // 부분 문자열로 판정하면 「섬유」가 섬이 된다
+        assertThat(AiRouteService.categoryBucket("제조업 > 섬유,의복")).isNotEqualTo("섬");
+    }
+
     @Test
     void 산책로를_산으로_읽지_않는다() {
         // 「해안산책로」에 '산' 이 들어 있다. 부분 문자열로 판정하면 산이 된다
