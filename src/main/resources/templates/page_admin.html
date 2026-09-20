@@ -365,7 +365,7 @@
                   const statsEl=document.querySelector('.stats-grid');
                   if(statsEl) statsEl.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3);line-height:1.7">'
                     + '<b style="color:var(--text2)">수치를 불러오지 못했습니다.</b><br>연결이 끊겼거나 서버가 답하지 않았습니다. 0 이 아니라 받지 못한 것입니다.'
-                    + '<br><button type="button" class="btn-o" style="margin-top:12px;min-height:44px" onclick="renderDynamicMockData()">다시 시도</button></div>';
+                    + '<br><button type="button" class="btn-o" style="margin-top:12px;min-height:44px;min-width:44px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center" onclick="renderDynamicMockData()">다시 시도</button></div>';
                   return;
                 }
                 const d=res.data||{};

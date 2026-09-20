@@ -228,6 +228,10 @@
 
 /* 미리 짜 둔 경로가 없거나 못 받았을 때 — 빈 판을 두지 않는다 */
 .ck-cur-empty {
+  /* 판이 flex 라 슬라이드가 없으면 통째로 0x0 으로 접힌다.
+     빈 칸이 한 줄을 온전히 차지하게 둔다 */
+  flex: 1 1 100%;
+  width: 100%;
   padding: 28px 16px;
   text-align: center;
   color: var(--ink-3);
@@ -250,4 +254,10 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* 보여 줄 경로가 없을 때의 판 — 슬라이드가 없어 접히지 않게 너비를 준다 */
+.curation-panel.ck-cur-is-empty {
+  width: 100%;
+  min-width: 100%;
 }

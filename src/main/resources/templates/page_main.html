@@ -385,6 +385,8 @@
         }, 4000); // 4000ms = 4초
       } else if (panelEl) {
         /* 보여 줄 것이 없을 때 빈 판을 두지 않는다. 막다른 길이 되기 때문이다 */
+        /* 판은 슬라이드가 없으면 통째로 0x0 으로 접힌다. 표시를 달아 너비를 준다 */
+        panelEl.classList.add('ck-cur-is-empty');
         const box = document.createElement('div');
         box.className = 'ck-cur-empty';
         box.innerHTML = _curFailed
