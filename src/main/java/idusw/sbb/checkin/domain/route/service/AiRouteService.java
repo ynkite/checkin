@@ -3406,6 +3406,12 @@ public class AiRouteService {
         if (c.contains("사찰") || c.contains("종교") || c.contains("절"))        return "사찰";
         if (c.contains("공원") || c.contains("유원지") || c.contains("수목원"))   return "공원";
         if (c.contains("전망"))                                                return "전망대";
+        /* 끝마디가 「섬」·「섬(내륙)」인 것만 잡는다. 앞마디까지 보면 「섬유」가 섬이 된다 */
+        if (c.equals("섬") || c.startsWith("섬("))                              return "섬";
+        /* 동백섬이 「해운온천」으로, 스파랜드가 「호텔사우나」로 갈린 자리다.
+           온천·찜질방·사우나는 한 성격으로 본다 — 서로 대체가 되고, 하루에 둘은 겹친다 */
+        if (c.contains("온천") || c.contains("찜질방") || c.contains("사우나")
+                || c.contains("목욕탕"))                                        return "온천";
         /* 해운대 후보 15곳 중 3곳이 테마거리였다 — 해리단길·달맞이길·영화의거리. 겹칠 일이 잦다 */
         if (c.contains("테마거리") || c.contains("거리"))                        return "거리";
         if (c.contains("테마파크") || c.contains("놀이"))                        return "테마파크";
