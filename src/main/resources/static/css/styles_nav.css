@@ -21,8 +21,11 @@ nav{
   transition:background .2s ease, border-color .2s ease, backdrop-filter .2s ease;
 }
 nav.nav-solid{
-  background:color-mix(in oklab, var(--page) 88%, transparent);
-  backdrop-filter:blur(14px);
+  /* blur 를 걷었다. 이 줄은 스크롤할 때마다 켜졌다 꺼지는데(app_home.js 의 sync),
+     backdrop-filter 는 그때마다 뒤 배경을 다시 읽는다 — 데스크톱에서는 안 보이고
+     휴대폰에서는 스크롤이 끊긴다. tokens 금지 2번(SVG filter)과 같은 이유다.
+     대신 바탕을 88% -> 96% 로 올려 글자가 읽히게 했다 */
+  background:color-mix(in oklab, var(--page) 96%, transparent);
   border-bottom-color:var(--ui-line);
 }
 

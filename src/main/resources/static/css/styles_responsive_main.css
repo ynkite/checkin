@@ -215,3 +215,13 @@
   #page-main #st_v_reset,
   #page-main #ck_playbtn{ min-width:44px }
 }
+
+/* ── 새 메인 화면 · 손가락 크기 ──────────────────────────────
+   배포에서 320·390 으로 재 보니 세 개가 작았다 —
+   「연출 다시 보기」 74x36, 무대 아래 「일정」·「장소」가 36x44(가로가 좁다).
+   화면 파일은 방금 새로 짠 것이라 건드리지 않고 여기서 바닥만 깐다.
+   :where() 라 특정도가 0 이다 — 재설계가 적어 둔 값이 더 크면 그것이 이긴다 */
+@media (max-width: 1024px), (pointer: coarse) {
+  :where(#page-main) :where(#ck_replay){ min-height: 44px }
+  :where(#page-main) :where(.ck-tabs button){ min-width: 44px }
+}
