@@ -13,7 +13,8 @@
    * API
    *   GET /api/live/trips                    열 수 있는 여행 목록
    *   GET /api/live/now?tripId=&lat=&lng=    지금 상황 한 벌
-   *   POST /api/route/travel-time/compare    자차·대중교통·도보 한 번에
+   *   POST /api/route/travel-time            자차 이동시간 (대중교통·도보는 제공하지 않는다)
+   *   GET /api/tour/visitor-trend            지역 방문자 (시도 단위 과거 실측)
    =================================================== -->
   <div class="page" id="page-live">
     <div class="rl-wrap">
@@ -41,8 +42,11 @@
         <h2 class="rl-head" id="rlHead"></h2>
 
         <div class="rl-next" id="rlNext"></div>
+
         <div class="rl-modes" id="rlModes" hidden></div>
 
+        <!-- 지역 방문자 — 시도 단위 과거 실측. 집중률(시군구 예측)과 눈금이 달라 따로 둔다 -->
+        <div class="rl-modes" id="rlVisitors" hidden></div>
         <!-- 말로 하기 — 운전 중이거나 걷는 중에는 화면을 못 본다.
              소리는 거들 뿐이고 화면이 본문이다. 들은 말도 한 말도 여기 적힌다 -->
         <div class="rl-voice-bar">
@@ -314,7 +318,9 @@
                 ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">' +
                     (c.source === 'SK' || c.source === 'SK_LIVE' ? '지금 ' : '예측 ') +
                     esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
-                : '<span class="rl-cw rl-cw-none">혼잡도 없음</span>') +
+                /* 「없음」은 한적하다는 말로 읽힌다. 예측 대상이 아닌 곳(숙소·식당),
+                   데이터가 아예 없는 지역(광주·전남), 조회 실패가 전부 여기로 온다 */
+                : '<span class="rl-cw rl-cw-none">붐빔 확인되지 않음</span>') +
               rlWeatherChip(d.weather);
           }
         }
@@ -341,6 +347,46 @@
 
         if (d.dayNo) rlDayNo = d.dayNo;
         rlModes(d);
+        rlVisitors(d);
+      }
+
+      /* ── 지역 방문자 ───────────────────────────────────
+       * 「이 지역에 원래 사람이 많은 날인가」를 본다. 집중률은 그 장소가 지금 붐비는지이고
+       * 이것은 시도 전체에 며칠 전 실제로 몇 명이 왔는지다. 눈금이 다르니 한 줄로 합치지 않는다. */
+      var rlVisitKey = null;
+      function rlVisitors(d) {
+        var box = document.getElementById('rlVisitors');
+        if (!box || !d.destination) return;
+        if (rlVisitKey === d.destination) return;   // 여행이 같으면 다시 묻지 않는다
+        rlVisitKey = d.destination;
+        box.hidden = false;
+        box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p><p class="rl-modes-note">불러오는 중</p>';
+
+        fetch('/api/tour/visitor-trend?destination=' + encodeURIComponent(d.destination), { headers: rlAuth() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var v = j && j.success ? j.data : null;
+            if (!v || v.status !== 'OK') {
+              box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p>' +
+                '<p class="rl-modes-note">' + esc((v && v.note) || '지역 방문자 통계를 받지 못했습니다.') + '</p>';
+              return;
+            }
+            var d8 = String(v.latestDate || '');
+            var when = d8.length === 8 ? (+d8.slice(4, 6)) + '월 ' + (+d8.slice(6, 8)) + '일' : d8;
+            var cmp = v.deltaPercent == null ? ''
+              : (v.deltaPercent > 0 ? ' · 같은 요일 평균보다 ' + v.deltaPercent + '% 많음'
+                 : v.deltaPercent < 0 ? ' · 같은 요일 평균보다 ' + Math.abs(v.deltaPercent) + '% 적음'
+                 : ' · 같은 요일 평균과 비슷함');
+            box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p>' +
+              '<div class="rl-mode"><span class="rl-mode-n">' + esc(v.areaName || '') + ' 외지인</span>' +
+              '<span class="rl-mode-v"><b>' + Number(v.latest).toLocaleString() + '</b>명</span></div>' +
+              '<p class="rl-modes-note">' + esc(when + (v.dayOfWeek ? '(' + v.dayOfWeek + ')' : '') + ' 실측' + cmp) + '. ' +
+              '시도 단위라 다음 장소의 붐빔과는 다른 눈금입니다.</p>';
+          })
+          .catch(function () {
+            rlVisitKey = null;
+            box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p><p class="rl-modes-note">지역 방문자 통계를 받지 못했습니다.</p>';
+          });
       }
 
       /* ── 이동수단 셋 ─────────────────────────────────
@@ -772,12 +818,25 @@
         rlRefresh();
       });
 
+      /* 연결이 돌아왔을 때. 다음 주기까지 기다리면 「연결되지 않아 새로 받지 못하고
+         있습니다」가 최대 1분 더 붙어 있다 — 이미 연결됐는데 안 됐다고 말하는 셈이다.
+         끊긴 순간도 마찬가지다. 다음 주기를 기다리지 않고 그 자리에서 말한다. */
+      window.addEventListener('online', function () {
+        if (!rlTrip) return;
+        rlRefresh();
+      });
+      window.addEventListener('offline', function () {
+        if (!rlTrip) return;
+        rlOffline = true;
+        rlFreshPaint();
+      });
+
       window.rlBack = function () {
         if (window.rlVoiceStop) window.rlVoiceStop();
         clearInterval(rlTimer); clearInterval(rlFreshTimer);
         rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
         var fr = document.getElementById('rlFresh'); if (fr) fr.hidden = true;
-        rlTrip = null; rlPos = null; rlModeKey = null;
+        rlTrip = null; rlPos = null; rlModeKey = null; rlVisitKey = null;
         document.getElementById('rlNow').hidden = true;
         document.getElementById('rlPick').hidden = false;
         rlLoadTrips();
@@ -931,11 +990,22 @@
         return String(s == null ? '' : s).replace(/[\s()\[\]·,.-]/g, '');
       }
 
+      /* 지도로 넘길 때 어느 여행인지 넘긴다.
+         지도는 window._currentTripId 와 sessionStorage.plannerDraftId 만 읽는다 —
+         전에는 쓰지도 않는 currentTripId 에 넣어서 지도가 「아직 만들어진 일정이 없습니다」로 열렸다 */
+      function rlGoMap(intent) {
+        window._currentTripId = rlTrip;
+        try {
+          sessionStorage.setItem('plannerDraftId', String(rlTrip));
+          sessionStorage.removeItem('ai_generated_route');
+          if (intent) sessionStorage.setItem('mapIntent', intent);
+        } catch (e) {}
+        go('map');
+      }
+
       window.rlDo = function (key) {
         if (key === 'map') {
-          sessionStorage.setItem('currentTripId', String(rlTrip));
-          sessionStorage.removeItem('ai_generated_route');
-          go('map');
+          rlGoMap(null);
           return;
         }
         if (key === 'navi') {
@@ -975,7 +1045,7 @@
 
       window.initLivePage = function () {
         clearInterval(rlTimer);
-        rlTrip = null; rlPos = null; rlModeKey = null;
+        rlTrip = null; rlPos = null; rlModeKey = null; rlVisitKey = null;
         var pick = document.getElementById('rlPick');
         var now = document.getElementById('rlNow');
         if (pick) pick.hidden = false;

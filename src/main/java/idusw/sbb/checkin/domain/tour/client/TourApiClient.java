@@ -79,6 +79,13 @@ public class TourApiClient {
                 .append(URLEncoder.encode(v, StandardCharsets.UTF_8)));
         String url = baseUrl + "/" + service + "/" + operation + qs;
 
+        /* 어느 화면에서 무엇이 불렸는지 남긴다 — 심사가 「활용 API별 호출건수」를 본다.
+           키는 찍지 않는다. 파라미터도 지역·기간만 남기고 나머지는 적지 않는다 */
+        log.info("[tour] 호출 {}/{} area={} sigungu={} ym={}", service, operation,
+                all.getOrDefault("areaCd", all.getOrDefault("areaCode", "-")),
+                all.getOrDefault("signguCd", all.getOrDefault("sigunguCode", "-")),
+                all.getOrDefault("baseYm", "-"));
+
         String raw = get(url, service);
         if (raw == null) return Optional.empty();   // 호출 자체 실패 → 확인 안 됨
 

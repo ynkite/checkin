@@ -383,3 +383,13 @@ body:has(#page-live.active) .lnb{ display:none }
   animation:rv-breathe 1.2s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce){ .rl-voicebtn-main.on::before{ animation:none } }
+
+/* 휴대폰에서는 44px. 걸으면서 한 손으로 누른다 —
+   「여행 바꾸기」와 「다시 받기」가 40px 이라 옆의 것이 같이 눌렸다.
+   styles_responsive_map.css 의 `#page-live button{min-height:40px}` 가
+   특이도로 이기므로 여기서도 id 를 붙인다 */
+@media (max-width:480px){
+  #page-live .rl-back,
+  #page-live .rl-again{ min-height:44px }
+  #page-live .rl-back{ padding-block:0 }
+}

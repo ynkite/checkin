@@ -1359,4 +1359,61 @@
     #page-community .post-stats { justify-content: flex-end; }
 
     #page-community .popular-tags { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* 손가락으로 누르는 칸 — 하나씩 세어 고치면 다음 주에 새것이 또 생긴다.
+       이 두 화면 안의 누를 것에 바닥을 깐다. :where() 라 특정도가 0 이고,
+       더 크게 잡아 둔 것은 그대로 이긴다. 글자는 키우지 않는다 */
+    :where(#page-community, #page-review)
+    :where(button, summary, [role="button"], [onclick], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"])) {
+        min-height: 44px;
+    }
+
+    /* 가로도 좁으면 못 맞힌다 — 「신고」·「담기」가 34~42px 이었다 */
+    :where(#page-community, #page-review)
+    :where(button, [role="button"], [onclick]) {
+        min-width: 44px;
+    }
+
+    /* 한 줄짜리는 늘어난 만큼 위로 쏠린다. 가운데로 둔다 */
+    #page-community .comm-tab,
+    #page-community .community-v2-page-btn,
+    #page-review .review-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-block: 0;
+    }
 }
+
+/* =========================================================
+ * 탭 줄이 옆으로 넘칠 때 — 320px 에서 「카페」가 잘려 있었다.
+ * 밀면 나오지만 막대가 안 보여 있는 줄을 모른다.
+ * 넘치는 쪽 끝을 흐리게 해서 「이쪽에 더 있다」를 보여 준다.
+ * 지도의 .mp-strip 과 같은 방법이다 — 켜고 끄는 것은 _mpWatchOverflow 가 한다.
+ *
+ * 아래 #000 은 색이 아니라 「여기는 안 지운다」는 표시다(mask 는 밝기만 읽는다).
+ * 토큰을 넣으면 오히려 틀린다.
+ * ========================================================= */
+#page-community .comm-tabs { --fade: 18px; }
+
+#page-community .comm-tabs.ov-r {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+            mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
+}
+
+#page-community .comm-tabs.ov-l {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade));
+            mask-image: linear-gradient(to right, transparent, #000 var(--fade));
+}
+
+#page-community .comm-tabs.ov-l.ov-r {
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--fade),
+                        #000 calc(100% - var(--fade)), transparent);
+            mask-image: linear-gradient(to right, transparent, #000 var(--fade),
+                        #000 calc(100% - var(--fade)), transparent);
+}
+
+/* 막대는 숨긴다 — 흐림이 그 일을 한다 */
+#page-community .comm-tabs::-webkit-scrollbar { display: none; }
+#page-community .comm-tabs { scrollbar-width: none; }

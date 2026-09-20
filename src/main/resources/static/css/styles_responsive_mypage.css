@@ -239,3 +239,15 @@
 
   #page-mypage .trip-card .trip-route{ order:3; }
 }
+
+/* ── 손가락 크기 ────────────────────────────────────────────
+   메뉴 줄이 31px 이었다. 목록이 촘촘해 옆 줄이 같이 눌린다.
+   :where() 로 바닥만 깐다 — 더 크게 잡아 둔 것은 그대로 이긴다 */
+@media (max-width:480px){
+  :where(#page-mypage) :where(button, summary, [role="button"], select, textarea,
+                              input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  :where(#page-mypage) :where(button, [role="button"]){ min-width:44px }
+  #page-mypage .my-menu{ display:flex; align-items:center; padding-block:0 }
+}
