@@ -155,6 +155,34 @@
         }
       }
 
+      /* 날씨.
+         서버는 이미 하늘·기온·강수확률·실내외 위험을 다 실어 보내는데
+         화면이 한 번도 안 쓰고 있었다. headline 한 줄에만 반영됐다.
+         우산을 챙길지는 「비」라는 낱말이 아니라 숫자를 봐야 정해진다.
+
+         값이 없으면 칸을 만들지 않는다. 「날씨 정보 없음」도 안 쓴다 —
+         다음 정거장 줄에 쓸모없는 회색 칸이 하나 더 붙을 뿐이다. */
+      function rlWeatherChip(w) {
+        if (!w) return '';
+        var bits = [];
+        var sky = w.label || w.sky;
+        if (sky) bits.push(sky);
+        if (w.rainProb != null) bits.push('비 ' + w.rainProb + '%');
+        if (w.tempMin != null && w.tempMax != null) {
+          bits.push(Math.round(w.tempMin) + '~' + Math.round(w.tempMax) + '도');
+        }
+        if (!bits.length) return '';
+
+        /* 평년값은 예보가 아니다. 그렇게 적는다 — 11일 뒤부터는 이 값이 온다 */
+        var normal = w.source === 'NORMAL';
+        /* 야외인데 비 소식이면 그것부터 말한다. 나머지는 참고다 */
+        var risk = w.outdoorRisk === true;
+
+        return '<span class="rl-wx' + (risk ? ' rl-wx-risk' : '') + '">' +
+          (risk ? '야외 · ' : '') + esc(bits.join(' · ')) +
+          (normal ? ' <i>평년값</i>' : '') + '</span>';
+      }
+
       /* ── 언제 받은 값인가 ─────────────────────────────
          이 화면은 「실시간」이라고 이름 붙어 있다. 그러면 화면에 있는 숫자가
          언제 것인지 말해야 한다. 안 그러면 사용자는 늘 지금 것이라고 믿는다.
@@ -249,7 +277,8 @@
                 ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">' +
                     (c.source === 'SK' || c.source === 'SK_LIVE' ? '지금 ' : '예측 ') +
                     esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
-                : '<span class="rl-cw rl-cw-none">혼잡도 없음</span>');
+                : '<span class="rl-cw rl-cw-none">혼잡도 없음</span>') +
+              rlWeatherChip(d.weather);
           }
         }
 
