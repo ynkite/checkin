@@ -1787,6 +1787,22 @@ public class AiRouteService {
         return ScheduleDensity.of(density).caps();
     }
 
+    /** 편도 이 시간을 넘으면 「다음 날로 옮기자」를 권한다 (분). 왕복이면 세 시간이다. */
+    private static final int FAR_MOVE_DAY_MIN = 90;
+
+    /**
+     * 밀도 상한을 누가 먼저 가져갈지. 큰 값이 먼저다.
+     *
+     * <p>숙소는 자리 자체가 고정이고, 사용자가 직접 요청한 곳과 먼 곳이 그 다음이다.
+     * 멀리까지 가기로 한 곳을 두고 가까운 곳을 남기면 사용자가 요청한 의미가 없다.
+     */
+    static int priority(com.fasterxml.jackson.databind.node.ObjectNode s,
+                        java.util.Set<String> userRequested, boolean isFar) {
+        if ("stay".equals(s.path("type").asText(""))) return 3;
+        if (userRequested.contains(s.path("name").asText(""))) return 2;
+        return isFar ? 1 : 0;
+    }
+
     /**
      * 코드 기반 정제. 멀거나(40km↑) 좌표없거나 밀도초과인 비고정 장소를 삭제한다.
      * (stay·food·사용자요청은 보존. food는 끼니라 개수 상한만 적용)
@@ -1840,10 +1856,31 @@ public class AiRouteService {
                     }
                 }
 
+                /* 먼 장소·사용자 요청을 먼저 훑어 자리를 잡게 한다.
+                   전에는 원래 순서대로 훑어서, 가까운 곳이 밀도 상한을 먼저 채우고 먼 곳은
+                   상한 밖(continue)으로 살아남았다. 그래서 「여유롭게」(관광지 1개)인데
+                   관광지가 2곳이 되고, 가까운 운촌당산·동백섬은 밀도초과로 잘렸다 — 거꾸로다.
+                   사용자가 요청해서 멀리까지 가는 곳이 우선이고, 줄일 것은 가까운 쪽이다 */
+                final double[] dayCenter = center;
+                java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> ordered =
+                        new java.util.ArrayList<>(spots);
+                java.util.function.Predicate<com.fasterxml.jackson.databind.node.ObjectNode> isFar = x -> {
+                    double[] c = coord.get(x);
+                    return dayCenter != null && c != null && haversine(dayCenter, c) > FAR_LIMIT;
+                };
+                ordered.sort((a, b) -> Integer.compare(
+                        priority(b, userRequested, isFar.test(b)),
+                        priority(a, userRequested, isFar.test(a))));
+
+                /* 우선순위는 「누가 상한을 차지하느냐」에만 쓴다. 살릴 것을 정한 뒤에는 원래
+                   자리 순서로 되돌린다 — 그대로 담으면 20:00 숙소가 맨 앞에 오는 하루가 된다 */
+                java.util.Set<com.fasterxml.jackson.databind.node.ObjectNode> keep =
+                        java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+
                 // 삭제 판정
                 int foodN = 0, cafeN = 0, tourN = 0;
                 java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> kept = new java.util.ArrayList<>();
-                for (var s : spots) {
+                for (var s : ordered) {
                     String type = s.path("type").asText("");
                     String nm = s.path("name").asText("");
                     boolean isStay = "stay".equals(type);
@@ -1852,7 +1889,7 @@ public class AiRouteService {
 
                     // (1) 좌표 없는 장소(가짜) — 사용자요청 아니면 삭제
                     if (c == null) {
-                        if (isUserReq) { kept.add(s); continue; }
+                        if (isUserReq) { keep.add(s); continue; }
                         System.out.println("🗑️ [삭제-좌표없음] " + nm);
                         continue;
                     }
@@ -1882,11 +1919,20 @@ public class AiRouteService {
                                30분이고 산길이면 한 시간 반이다. 시간을 받았을 때만 적는다 —
                                못 받았으면 비워 둔다. 지어내지 않는다. */
                             if (farMin > 0) s.put("farMinutes", farMin);
-                            kept.add(s);
-                            log.info("[동선] 먼 장소를 남기고 알립니다 — {} ({}km 도로{})",
+
+                            /* 편도 FAR_MOVE_DAY_MIN 을 넘으면 「다음 날로 옮기자」를 권한다.
+                               빼자고 하지 않는다 — 사용자가 직접 요청해서 먼 곳이 대부분이고,
+                               화면이 이미 「멉니다, 그래도 갈까요」를 묻는다. 거기에 「빼시겠어요」를
+                               또 얹으면 같은 질문을 두 번 하는 셈이다.
+                               왕복 세 시간이면 관광지 두 곳 분량이라, 다른 일정과 섞이면 그 날이
+                               통째로 무너진다. 그 날을 「멀리 다녀오는 날」로 만드는 쪽이 낫다. */
+                            if (farMin > FAR_MOVE_DAY_MIN) s.put("farAdvice", "MOVE_DAY");
+
+                            log.info("[동선] 먼 장소를 남기고 알립니다 — {} ({}km 도로{}{})",
                                     nm, Math.round(roadDist / 1000.0),
-                                    farMin > 0 ? ", 차로 " + farMin + "분" : ", 시간 못 받음");
-                            continue;
+                                    farMin > 0 ? ", 차로 " + farMin + "분" : ", 시간 못 받음",
+                                    farMin > FAR_MOVE_DAY_MIN ? ", 다음 날 권유" : "");
+                            /* 여기서 continue 하지 않는다. 밀도 상한도 세야 하루가 안 늘어난다 */
                         }
                     }
                     // (3) 밀도별 개수 상한 (stay·사용자요청은 카운트 예외로 항상 보존)
@@ -1895,8 +1941,11 @@ public class AiRouteService {
                         else if ("cafe".equals(type)) { if (cafeN >= caps[1]) { System.out.println("🗑️ [삭제-밀도초과 cafe] " + nm); continue; } cafeN++; }
                         else if ("tour".equals(type)) { if (tourN >= caps[2]) { System.out.println("🗑️ [삭제-밀도초과 tour] " + nm); continue; } tourN++; }
                     }
-                    kept.add(s);
+                    keep.add(s);
                 }
+
+                // 원래 자리 순서로 되돌린다
+                for (var s : spots) if (keep.contains(s)) kept.add(s);
 
                 // ★식당(food)의 sub 끼니를 배치 시간(time)에 맞춰 보정한다.
                 //   AI가 18:00에 배치했는데 sub가 "점심"으로 남는 불일치를 바로잡는다.
