@@ -197,6 +197,17 @@
   </div>
 </nav>
 
+<!-- 여행 중일 때만 뜨는 줄. refreshLiveDot() 이 켜고 끈다.
+     칸을 넣어 놓고 「찾으면 있다」로 두지 않는다 — 여행 중인 사람에게는
+     이게 지금 제일 쓸모 있는 화면이라 먼저 말을 건다. 실시간 화면에서는 숨는다 -->
+<div id="liveNowBar" class="lnb" hidden>
+  <button type="button" class="lnb-in" onclick="openLiveNow()">
+    <span class="lnb-dot" aria-hidden="true"></span>
+    <span class="lnb-txt"><b id="lnbTitle"></b><span id="lnbSub"></span></span>
+    <span class="lnb-go">지금 보기</span>
+  </button>
+</div>
+
 <!-- ===== TOAST ===== -->
 <div class="toast" id="toast"></div>
 
@@ -316,6 +327,12 @@
     </button>
     <button class="bnav-item" data-page="weather"   onclick="go('weather')">
       <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M17.2 18.4H7.6a4.4 4.4 0 0 1-.5-8.8 5.6 5.6 0 0 1 10.7 1.3 3.8 3.8 0 0 1-.6 7.5"/></svg></span><span class="bnav-lbl">날씨</span>
+    </button>
+    <!-- 실시간 — 이 제품이 하는 일이 여기 있다(관광공사 지정 과제: 실시간 동선 수정).
+         그런데 휴대폰에서는 갈 길이 아예 없었다. 위 메뉴는 접히고 여기에는 칸이 없었다.
+         칸을 넣는 데서 끝내지 않는다. 여행 중이면 점이 켜져 「지금 볼 게 있다」고 말한다 -->
+    <button class="bnav-item bnav-live" data-page="live" onclick="goRefresh('live')">
+      <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><circle cx="12" cy="12" r="3.2"/><path d="M6.3 17.7a8 8 0 0 1 0-11.4M17.7 6.3a8 8 0 0 1 0 11.4M3.2 20.8a12.4 12.4 0 0 1 0-17.6M20.8 3.2a12.4 12.4 0 0 1 0 17.6"/></svg><i class="bnav-dot" id="bnavLiveDot" hidden></i></span><span class="bnav-lbl">실시간</span>
     </button>
     <button class="bnav-item" data-page="planner"   onclick="navPlannerClick()">
       <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M3.4 13.2 21 5.6l-4.2 6.2 1.2 6.6-3.8-3.4-4.4 3.4.6-4.4z"/></svg></span><span class="bnav-lbl">플랜</span>

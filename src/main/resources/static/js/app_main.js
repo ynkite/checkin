@@ -497,7 +497,68 @@ async function _initSession(accessToken, refreshToken) {
     updateNav();
     await updateMyPageUI();
     await _loadNotifications();
+    refreshLiveDot();
 }
+
+/**
+ * 하단 탭바 「실시간」의 점. 오늘이 여행 기간 안이면 켠다.
+ *
+ * 왜 이 점이 있나 — 실시간은 여행 중에만 볼 것이 있는 화면이다. 그런데 칸만
+ * 있으면 눌러 보기 전에는 볼 게 있는지 없는지 알 수 없다. 여행 중인 사람은
+ * 휴대폰을 들고 걷는 중이고, 헛걸음을 시키면 안 된다.
+ *
+ * 켤 일이 없으면 끈다. 늘 켜져 있는 점은 아무 말도 아니게 된다.
+ * 로그인 안 했으면 부르지 않는다 — 401 을 콘솔에 쌓을 이유가 없다.
+ */
+async function refreshLiveDot() {
+    const dot = document.getElementById('bnavLiveDot');
+    const bar = document.getElementById('liveNowBar');
+    const off = () => { if (dot) dot.hidden = true; if (bar) bar.hidden = true; };
+    if (!dot && !bar) return;
+    if (!_loggedIn) { off(); return; }
+
+    let now = null;
+    try {
+        const res = await api.get('/api/live/trips');
+        const list = (res && res.success && res.data) || [];
+        now = list.find(t => t.phase === 'TODAY') || null;
+    } catch (e) {
+        /* 못 받았으면 끈다. 있는지 모르는 것을 있다고 말하지 않는다 */
+        off();
+        return;
+    }
+    if (!now) { off(); return; }
+
+    window._liveNowTripId = now.tripId;
+    if (dot) dot.hidden = false;
+    if (bar) {
+        const t = document.getElementById('lnbTitle');
+        const sub = document.getElementById('lnbSub');
+        if (t) t.textContent = now.title || now.destination || '여행';
+        if (sub) sub.textContent = _liveDayLabel(now);
+        bar.hidden = false;
+    }
+}
+window.refreshLiveDot = refreshLiveDot;
+
+/** 「3일 중 2일째」. 날짜가 이상하면 아무 말도 안 한다 — 틀린 날짜를 쓰느니 비운다 */
+function _liveDayLabel(t) {
+    const s = t.startDate ? new Date(t.startDate) : null;
+    const e = t.endDate ? new Date(t.endDate) : s;
+    if (!s || isNaN(s) || !e || isNaN(e)) return '여행 중';
+    const day = ms => Math.floor(ms / 86400000);
+    const total = day(e - s) + 1;
+    const nth = day(new Date(new Date().toDateString()) - new Date(s.toDateString())) + 1;
+    if (nth < 1 || nth > total) return '여행 중';
+    return total > 1 ? `${total}일 중 ${nth}일째` : '오늘 하루';
+}
+
+/** 진행 중인 여행을 바로 연다. 실시간 화면이 목록을 그린 뒤 이 번호를 집는다 */
+function openLiveNow() {
+    if (window._liveNowTripId) window._liveOpenTripId = window._liveNowTripId;
+    goRefresh('live');
+}
+window.openLiveNow = openLiveNow;
 
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {

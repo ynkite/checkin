@@ -433,6 +433,7 @@ table {
     body:has(#page-main.active)      .bnav-item[data-page="main"],
     body:has(#page-community.active) .bnav-item[data-page="community"],
     body:has(#page-weather.active)   .bnav-item[data-page="weather"],
+    body:has(#page-live.active)      .bnav-item[data-page="live"],
     body:has(#page-planner.active)   .bnav-item[data-page="planner"],
     body:has(#page-map.active)       .bnav-item[data-page="planner"],
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] {
@@ -441,11 +442,51 @@ table {
     body:has(#page-main.active)      .bnav-item[data-page="main"] .bnav-icon,
     body:has(#page-community.active) .bnav-item[data-page="community"] .bnav-icon,
     body:has(#page-weather.active)   .bnav-item[data-page="weather"] .bnav-icon,
+    body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-icon,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-icon {
         transform: translateY(-1px);
     }
+
+    /* --- 6-5-1. 실시간 칸을 세운다 ------------------------------------
+       칸을 하나 더 늘린 것으로는 부족하다. 여섯 칸이 똑같이 생기면
+       이 제품이 무엇을 하는 물건인지 화면이 말해 주지 않는다.
+       관광공사가 낸 과제가 「실시간 동선 수정」이고, 그게 쓰이는 자리는
+       여행 중 휴대폰이다. 아이콘을 칠한 동그라미에 담아 하나만 세운다.
+       (밝은 바탕에 --sig 로 글씨를 쓰지 않는다 — 칠은 바탕에만,
+        글씨는 --on-sig 와 --num 을 쓴다) */
+    .bnav-live .bnav-icon {
+        display: inline-flex; align-items: center; justify-content: center;
+        position: relative;
+        width: 30px; height: 30px; border-radius: 50%;
+        background: var(--sig); color: var(--on-sig);
+        box-shadow: 0 1px 0 0 var(--glass-line);
+    }
+    .bnav-live .bnav-svg { width: 17px; height: 17px }
+    .bnav-live .bnav-lbl { color: var(--num); font-weight: 700 }
+    body:has(#page-live.active) .bnav-live .bnav-icon { transform: none }
+
+    /* 여행 중일 때만 켜지는 점. 「지금 볼 게 있다」는 뜻이라
+       평소에는 꺼 둔다 — 늘 켜져 있으면 아무 말도 아니다 */
+    .bnav-dot {
+        position: absolute; top: -1px; right: -1px;
+        width: 9px; height: 9px; border-radius: 50%;
+        background: var(--tile);
+        box-shadow: 0 0 0 2px var(--surface);
+        animation: bnav-breathe 2.2s ease-in-out infinite;
+    }
+    @keyframes bnav-breathe {
+        0%, 100% { opacity: 1 }
+        50%      { opacity: .35 }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .bnav-dot { animation: none }
+    }
+
+    /* 칸이 여섯이면 「마이페이지」가 두 줄로 접힌다. 이 칸만 줄인다 */
+    .bnav-item { padding-left: 0; padding-right: 0 }
+    .bnav-lbl  { font-size: 9.5px; letter-spacing: -.02em }
 
     /* --- 6-6. 본문이 bottom nav 뒤에 가리지 않도록 하단 여백 --- */
     .page {
@@ -454,7 +495,9 @@ table {
 
     /* --- 6-7. 비로그인 시 마이페이지 탭 → 로그인 아이콘 --- */
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { font-size: 0; }
-    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "🔑"; font-size: 20px; }
+    /* 열쇠 이모지를 쓰고 있었다. 기기마다 다르게 그려지고 UI 문구 규칙에도 어긋난다.
+       글자 하나로 바꾼다 — 바로 아래 라벨이 「로그인」이라 뜻은 그대로다 */
+    body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon::before { content: "로"; font-size: 17px; font-weight: 700; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl::before   { content: "로그인"; font-size: 10px; font-weight: 500; }
 }
