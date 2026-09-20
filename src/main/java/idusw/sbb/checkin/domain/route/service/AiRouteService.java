@@ -2346,16 +2346,17 @@ public class AiRouteService {
             if (r != null) return r;
         }
 
-        String[] parts = q.split("\\s+");
-        for (int drop = 1; drop < parts.length; drop++) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = drop; i < parts.length; i++) {
-                if (sb.length() > 0) sb.append(" ");
-                sb.append(parts[i]);
-            }
-            r = geocodeOnce(sb.toString());
-            if (r != null) return r;
-        }
+        /* 전에는 여기서 앞 토큰을 하나씩 떼며 재시도했다. 그러면 마지막에 여행지 접두어가
+           통째로 사라지고, geocodeOnce 의 지역 필터는 「질의의 첫 토큰」을 지역으로 보므로
+           한 단어만 남으면 필터가 아예 꺼진다.
+
+           실제로 그랬다 — 「부산 해운대구 캔버스 블랙」이 다 실패한 끝에 「블랙」으로 검색돼
+           충북(36.99, 127.13) 좌표가 붙었다. isFound 는 true 로 찍히고, 그 좌표 때문에
+           345km 짜리 이동 구간과 ₩105,003 요금이 생기고 「먼 곳」 알림까지 떴다.
+           없는 장소를 넣지 않는다는 규칙은 지켰는데 좌표를 지어냈다.
+
+           찾지 못하면 null 을 돌려준다. 좌표 없는 장소는 finalizeRoute 가 「좌표없음」으로
+           버린다 — 엉뚱한 좌표를 붙이는 것보다 낫다. 띄어쓰기 변형까지만 시도한다 */
         return null;
     }
 
