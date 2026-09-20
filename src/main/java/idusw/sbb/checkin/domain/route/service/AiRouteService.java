@@ -3660,8 +3660,10 @@ public class AiRouteService {
 
         // ── 밀도 지침 ──
         String densityGuide;
-        if ("빡빡하게".equals(density)) {
-            densityGuide = "빡빡하게: 하루 식당 2~3개 · 카페 1~2개 · 관광지 1~3개. 아침 일찍 시작, 저녁 늦게 마무리.";
+        /* 화면이 보내는 말은 「빼곡하게」다. 여기가 「빡빡하게」를 기다리는 바람에 빼곡을 고른
+           사람의 안내문이 AI 에게 안 갔다 — 「보통」 안내를 받고 있었다 */
+        if ("빼곡하게".equals(density)) {
+            densityGuide = "빼곡하게: 하루 식당 2~3개 · 카페 1~2개 · 관광지 1~3개. 아침 일찍 시작, 저녁 늦게 마무리.";
         } else if ("여유롭게".equals(density)) {
             densityGuide = "여유롭게: 하루 식당 2~3개 · 카페 1개 · 관광지 1개. 이동 여유 확보, 느긋한 일정.";
         } else {
