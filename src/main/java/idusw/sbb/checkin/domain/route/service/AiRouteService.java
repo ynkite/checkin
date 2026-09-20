@@ -1633,7 +1633,15 @@ public class AiRouteService {
                     if (!o.hasNonNull("lat") || !o.hasNonNull("lng")) { spots.clear(); break; }  // 좌표가 빠지면 이 날은 손대지 않는다
                     spots.add(o);
                 }
-                if (spots.size() < 4) continue;   // 앵커 둘 + 옮길 것 둘은 있어야 의미가 있다
+                /* 이 아래의 건너뛰기는 전부 로그를 남긴다. 조용히 넘어가면 「티맵을 불렀는데
+                   이미 최적이었다」와 「아예 안 불렀다」가 밖에서 똑같아 보인다 — 기능이 도는지
+                   확인할 방법이 없어지고, 실제로 그래서 한참 헤맸다 */
+                String dayLabel = dayNode.path("label").asText("");
+
+                if (spots.size() < 4) {           // 앵커 둘 + 옮길 것 둘은 있어야 의미가 있다
+                    log.info("[한방향] {} — 장소 {}곳뿐이라 정렬할 것이 없다", dayLabel, spots.size());
+                    continue;
+                }
 
                 var start = spots.get(0);
                 var end   = spots.get(spots.size() - 1);
@@ -1643,9 +1651,14 @@ public class AiRouteService {
                 // 옮길 수 있는 것만 경유지로 넘긴다. 사용자 요청 장소는 자리를 지킨다
                 java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> movable = new java.util.ArrayList<>();
                 for (var m : mid) if (!userRequested.contains(m.path("name").asText(""))) movable.add(m);
-                if (movable.size() < 2) continue;
-                if (movable.size() > 10) {         // 티맵 제한
-                    log.info("[한방향] 경유지 {}곳 — 티맵 10곳 제한을 넘어 이 날은 건너뛴다", movable.size());
+                if (movable.size() < 2) {
+                    log.info("[한방향] {} — 옮길 수 있는 곳이 {}곳뿐이다 (나머지는 사용자 요청)",
+                            dayLabel, movable.size());
+                    continue;
+                }
+                if (movable.size() > TMAP_MAX_VIA) {
+                    log.info("[한방향] {} — 경유지 {}곳으로 티맵 {}곳 제한을 넘어 건너뛴다",
+                            dayLabel, movable.size(), TMAP_MAX_VIA);
                     continue;
                 }
 
@@ -1669,7 +1682,7 @@ public class AiRouteService {
                         start.path("name").asText(""), end.path("name").asText(""), via);
 
                 if (!opt.ready() || opt.order().size() != movable.size()) {
-                    log.info("[한방향] 티맵 최적화를 못 썼다 — {}", opt.note());
+                    log.info("[한방향] {} — 티맵 최적화를 못 썼다: {}", dayLabel, opt.note());
                     continue;
                 }
 
@@ -1691,7 +1704,11 @@ public class AiRouteService {
 
                 boolean moved = false;
                 for (int i = 0; i < result.size(); i++) if (result.get(i) != spots.get(i)) moved = true;
-                if (!moved) continue;
+                if (!moved) {
+                    log.info("[한방향] {} — 티맵 실측 {}km / {}분. 지금 순서가 이미 최적이라 그대로 둔다",
+                            dayLabel, opt.totalMeters() / 1000, opt.totalSeconds() / 60);
+                    continue;
+                }
 
                 /* 시각은 장소가 아니라 「그 날의 몇 번째 자리」에 속한다 */
                 java.util.List<String> slotTimes = new java.util.ArrayList<>();
@@ -1712,9 +1729,11 @@ public class AiRouteService {
                 }
                 ((com.fasterxml.jackson.databind.node.ObjectNode) dayNode).set("places", rebuilt);
                 changedAny = true;
-                System.out.println("🧭 [한방향] " + dayNode.path("label").asText("")
-                        + " — 티맵 실측 " + (opt.totalMeters() / 1000) + "km / "
-                        + (opt.totalSeconds() / 60) + "분 순서로 재정렬");
+                /* System.out 이 아니라 로거로 남긴다. 윈도우에서 System.out 은 콘솔 코드페이지
+                   (cp949)로 나가는데 logback 은 UTF-8 이라, 한 파일에 두 인코딩이 섞여 이 줄만
+                   깨져 읽혔다 — 정작 제일 봐야 하는 줄이다 */
+                log.info("[한방향] {} — 티맵 실측 {}km / {}분 순서로 재정렬",
+                        dayLabel, opt.totalMeters() / 1000, opt.totalSeconds() / 60);
             }
             return changedAny ? objectMapper.writeValueAsString(root) : null;
 
@@ -1789,6 +1808,14 @@ public class AiRouteService {
 
     /** 편도 이 시간을 넘으면 「다음 날로 옮기자」를 권한다 (분). 왕복이면 세 시간이다. */
     private static final int FAR_MOVE_DAY_MIN = 90;
+
+    /**
+     * 티맵 {@code routeOptimization10} 이 받는 경유지 수 상한. 넘으면 그 날은 정렬을 포기한다.
+     *
+     * <p>그래서 밀도 상한의 합이 이 값을 넘으면 안 된다 — 넘는 순간 빼곡한 날이 통째로
+     * 티맵을 못 타고 직선거리 그리디로 내려간다. {@code ScheduleDensityTest} 가 그 자리를 지킨다.
+     */
+    public static final int TMAP_MAX_VIA = 10;
 
     /**
      * 밀도 상한을 누가 먼저 가져갈지. 큰 값이 먼저다.
@@ -1989,8 +2016,9 @@ public class AiRouteService {
 
     /**
      * ★생성 직후 최종 정리(컨트롤러가 호출).
-     *   1) reorderWithinTimeBlocks: 한 방향(최근접 이웃) 정렬 → 지그재그 제거
-     *   2) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
+     *   1) postProcessRoute: 먼 장소(40km↑)·좌표없음·밀도초과 삭제 (AI 생성·추가 없음)
+     *   2) 한 방향 정렬 → 지그재그 제거. 티맵 실측 순서가 먼저고, 못 쓸 때만 그리디다.
+     *      ★1)이 먼저여야 한다. 지울 장소까지 세면 티맵 경유지 상한(10곳)에 헛걸린다.
      *   Claude 검증/교체는 새 장소를 지어내 환각을 유발하므로 생성 흐름에서 쓰지 않는다.
      *   @return 사용자요청인데 먼 장소(프론트 알림용 over50)
      *
@@ -2025,19 +2053,28 @@ public class AiRouteService {
             }
         }
 
-        /* 1-1) TMAP 경유지 순서 최적화가 먼저다. 직선거리로 순서를 정하면 강 건너편·산 너머가
-               「가깝다」로 읽힌다 — 작업지시가 「직선거리로 판단하지 않는다」고 못박은 자리다.
-               못 쓸 때(키 없음·10곳 초과·응답 실패)에만 기존 그리디로 내려간다 */
+        /* 1-1) 먼 장소·밀도초과 삭제가 먼저다 (내부에서 saveAiRouteToDb로 거리 재보정).
+               전에는 순서 최적화가 이 앞에 있었다. 그랬더니 티맵 routeOptimization10 의
+               경유지 상한(10곳)을 「곧 지워질 장소까지 세어서」 넘겨, 그 날을 통째로
+               건너뛰었다. 빼곡한 날일수록 동선이 길어 정렬이 제일 필요한데 바로 그 날이
+               탈락했다 — 실제로 「경유지 12곳」으로 걸러진 날의 최종 장소는 7곳이었다.
+               한 날도 못 바꾸면 reorderByTmapOptimize 가 null 을 주고, 조용히 직선거리
+               그리디로 내려간다. 작업지시가 쓰지 말라고 한 바로 그 방식이다. */
+        java.util.List<String> over50 = postProcessRoute(tripId, json, userRequested, density);
+        json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
+        if (json == null || json.isBlank()) return over50;
+
+        /* 2) 다듬은 목록으로 TMAP 경유지 순서 최적화. 직선거리로 순서를 정하면 강 건너편·산 너머가
+              「가깝다」로 읽힌다 — 작업지시가 「직선거리로 판단하지 않는다」고 못박은 자리다.
+              못 쓸 때(키 없음·10곳 초과·응답 실패)에만 기존 그리디로 내려간다 */
         String reordered = reorderByTmapOptimize(json, userRequested);
         if (reordered == null) {
             reordered = reorderWithinTimeBlocks(json, plan.getDestination(), userRequested);
         }
-        if (!reordered.equals(json)) {
+        if (reordered != null && !reordered.equals(json)) {
             saveAiRouteToDb(tripId, reordered);
-            json = isEditingConfirmed ? plan.getDraftRouteJson() : plan.getRouteJson();
         }
-        // 2) 먼 장소·밀도초과 삭제 (내부에서 saveAiRouteToDb로 거리 재보정)
-        return postProcessRoute(tripId, json, userRequested, density);
+        return over50;
     }
 
     public java.util.List<String> enforceDistanceAndGetOver50(Long tripId, String json) {
