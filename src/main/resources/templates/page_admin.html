@@ -358,7 +358,16 @@
       /* 대시보드 — DTO 실제 필드 기준 5개 카드 */
       fetch('/api/admin/dashboard',{headers})
               .then(r=>r.json())
+              /* 연결이 끊기면 여기서 잡는다. 안 잡으면 표가 그대로 멈춰 아무 말도 안 한다 */
+              .catch(()=>({__failed:true,data:null}))
               .then(res=>{
+                if(res.__failed){
+                  const statsEl=document.querySelector('.stats-grid');
+                  if(statsEl) statsEl.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3);line-height:1.7">'
+                    + '<b style="color:var(--text2)">수치를 불러오지 못했습니다.</b><br>연결이 끊겼거나 서버가 답하지 않았습니다. 0 이 아니라 받지 못한 것입니다.'
+                    + '<br><button type="button" class="btn-o" style="margin-top:12px;min-height:44px;min-width:44px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center" onclick="renderDynamicMockData()">다시 시도</button></div>';
+                  return;
+                }
                 const d=res.data||{};
                 const userStatus  =d.userStatusBreakdown  ||{active:0,suspended:0,deleted:0};
                 const reportStatus=d.reportStatusBreakdown||{pending:0,rejected:0,resolved:0};
@@ -494,6 +503,8 @@
 
       fetch(`/api/admin/users?status=${status}&page=${page}&size=${pageSize}`,{headers})
               .then(r=>r.json())
+              /* 연결이 끊기면 여기서 잡는다. 안 잡으면 표가 그대로 멈춰 아무 말도 안 한다 */
+              .catch(()=>({__failed:true,data:null}))
               .then(res=>{
                 const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
@@ -667,6 +678,8 @@
 
       fetch(`/api/admin/reports?status=${status}&page=${page}&size=20`,{headers})
               .then(r=>r.json())
+              /* 연결이 끊기면 여기서 잡는다. 안 잡으면 표가 그대로 멈춰 아무 말도 안 한다 */
+              .catch(()=>({__failed:true,data:null}))
               .then(res=>{
                 const tbody=document.getElementById('adminReportTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
@@ -795,8 +808,14 @@
       const token=localStorage.getItem('accessToken');
       fetch('/api/admin/curations?page=0&size=50',{headers:{'Authorization':'Bearer '+token}})
               .then(r=>r.json())
+              /* 연결이 끊기면 여기서 잡는다. 안 잡으면 표가 그대로 멈춰 아무 말도 안 한다 */
+              .catch(()=>({__failed:true,data:null}))
               .then(res=>{
                 const tbody=document.getElementById('curationTable'); if(!tbody) return;
+                if(res.__failed){
+                  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">불러오지 못했습니다. 없는 것이 아니라 받지 못한 것입니다.</td></tr>';
+                  return;
+                }
                 // Page<> 응답: res.data.content / 일반 배열 응답: res.data
                 const list=(res.data&&res.data.content)?res.data.content:(Array.isArray(res.data)?res.data:[]);
                 if(!list.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3)">등록된 큐레이션이 없습니다</td></tr>';return;}

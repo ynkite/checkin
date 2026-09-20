@@ -114,7 +114,9 @@
             }
 
             /* ── 7일 ─────────────────────────────────────── */
-            function drawWeek(region, list) {
+            /* failed 를 따로 받는다. 전에는 받아 왔는데 0건인 것과 아예 못 받은 것이
+               같은 문구로 나왔다 — 「못 받았다」와 「없다」는 다른 말이다 */
+            function drawWeek(region, list, failed) {
                 var title = document.getElementById('wxWeekTitle');
                 var box = document.getElementById('wxDays');
                 var note = document.getElementById('wxNote');
@@ -122,8 +124,12 @@
 
                 if (!list.length) {
                     title.textContent = region + ' 예보';
-                    box.innerHTML = '<p class="wx-o-none"><b>예보를 불러오지 못했습니다.</b>' +
-                        '잠시 뒤에 다시 열어 보세요.</p>';
+                    box.innerHTML = failed
+                        ? '<p class="wx-o-none"><b>예보를 불러오지 못했습니다.</b>' +
+                          '연결이 끊겼거나 기상청이 답하지 않았습니다. 없는 것이 아니라 받지 못한 것입니다.' +
+                          '<button type="button" class="btn-o wx-retry" onclick="wxReload()">다시 시도</button></p>'
+                        : '<p class="wx-o-none"><b>' + region + ' 예보가 아직 없습니다.</b>' +
+                          '기상청이 이 지역 예보를 내지 않았습니다. 다른 지역을 골라 보세요.</p>';
                     note.hidden = true;
                     return;
                 }
@@ -224,6 +230,9 @@
 
             var region = '서울';
 
+            /* 「다시 시도」 단추가 부른다. 화면 조각 안에 있는 함수라 창에 붙여 둔다 */
+            window.wxReload = function () { loadWeek(); };
+
             async function loadWeek() {
                 var today = new Date();
                 var to = new Date(today);
@@ -231,9 +240,9 @@
                 try {
                     var list = await get('/api/maps/weather/range?region=' +
                         encodeURIComponent(region) + '&from=' + iso(today) + '&to=' + iso(to));
-                    drawWeek(region, list || []);
+                    drawWeek(region, list || [], false);
                 } catch (e) {
-                    drawWeek(region, []);
+                    drawWeek(region, [], true);
                     console.warn('[날씨] 7일 예보 실패:', e);
                 }
             }

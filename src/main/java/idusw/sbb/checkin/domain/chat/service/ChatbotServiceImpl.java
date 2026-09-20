@@ -138,7 +138,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     // API 명세: 메시지 전송 및 기억력 유지
     @Override
     @Transactional
-    public String processMessage(Long sessionId, String message, Double lat, Double lng) {
+    public String processMessage(Long sessionId, String message, Double lat, Double lng, boolean brief) {
 
         ChatSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
@@ -288,6 +288,20 @@ public class ChatbotServiceImpl implements ChatbotService {
         } else {
             sysPrompt.append(TripContextPrompt.build(ZonedDateTime.now(clock), null, null, null,
                     List.of(), lat, lng, null));
+        }
+
+        /* 소리로 읽어 주는 답 — 길면 끝까지 못 듣는다.
+           「거기 주차 되나요」에 네 줄이 오던 것을 한두 문장으로 줄인다.
+           짧게 쓰려고 내용을 지어내지는 않는다. */
+        if (brief) {
+            sysPrompt.append("""
+
+                    [이 물음은 소리로 답합니다 - 운전 중이거나 걷는 중입니다]
+                    - 한두 문장으로 답하세요. 예순 자 안팎이면 충분합니다.
+                    - 목록·번호·줄바꿈·표를 쓰지 마세요. 읽어 주면 들리지 않습니다.
+                    - 제일 중요한 한 가지만 말하세요. 덧붙이는 설명은 빼세요.
+                    - 짧게 쓰려고 지어내지는 마세요. 모르면 「확인되지 않았습니다」라고 짧게 말하세요.
+                    """);
         }
 
         promptMessages.add(new SystemMessage(sysPrompt.toString()));
