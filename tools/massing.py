@@ -213,7 +213,7 @@ def scatter(rings, count, gap, seed, to_screen, clusters=0, spread=60.0, keep=No
 
 def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w=1600,
           frame_bbox=False,
-          crowd_on=('beach',), crowd_target=1150, tree_target=560,
+          crowd_on=('beach',), crowd_target=1150, tree_target=560, street_trees=900,
           parasols=150, cars=140, route=(), route2=(), benches=170, bushes=180,
           seed=11):
     j = fetch(bbox)
@@ -412,6 +412,13 @@ def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w
     def mk(r):
         return (r, 'p' if rng.random() < .28 else 'r', 1 if rng.random() < .42 else 2)
 
+    # OSM 에 적힌 가로수를 그대로 다 그리면 도심은 1700그루가 넘는다.
+    # 파일 무게의 절반이 여기서 나온다. 성동구가 805KB 였는데 나무가 1740그루였다.
+    # 너무 많으면 고르게 솎는다 — 몇 그루째마다 하나씩 남기므로 한쪽만 비지 않는다.
+    # 거리 풍경은 남고 무게만 준다.
+    if len(tnodes) > street_trees:
+        step = len(tnodes) / float(street_trees)
+        tnodes = [tnodes[int(i * step)] for i in range(street_trees)]
     tr = [(p, mk(rng.uniform(5.4, 7.4))) for p in tnodes]
     CELL = 45.0
     bgrid = {}
@@ -436,6 +443,7 @@ def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w
             for p, _sx, _sy in scatter([r], cnt, 22.0 if a > 20000 else 17.0,
                                        seed + 3 + int(share * 1000), lambda q: T(scr(q, 0))):
                 tr.append((p, mk(rng.uniform(5.2, 8.0))))
+
     STEP, OFF = 46.0, 7.5
     for pts, cls in roads:
         if cls not in ROAD_MID + ('secondary', 'pedestrian'):
@@ -455,6 +463,18 @@ def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w
                 side = -side
                 t += STEP
             acc = (acc + seg) % STEP
+
+    # 나무가 세 군데에서 온다 — OSM 에 적힌 것, 공원에 뿌린 것, 길가에 46m 마다
+    # 세운 것. 도심은 길이 촘촘해서 마지막 것이 제일 많다. 성동구가 1700그루였고
+    # 그게 파일 무게의 절반이었다.
+    #
+    # 한 군데씩 줄여 봤지만 소용이 없었다. 건물을 걷어내면 자리가 비어 공원 나무가
+    # 더 들어가고, 공원을 줄이면 길가 나무는 그대로다. 마지막에 총량으로 자른다.
+    # 고르게 솎으므로 한쪽만 휑해지지 않는다.
+    cap = street_trees + tree_target
+    if len(tr) > cap:
+        step = len(tr) / float(cap)
+        tr = [tr[int(i * step)] for i in range(cap)]
 
     # ── 해변 파라솔 (물가 가까이)
     shore_pts = [v for p in shore for v in p]
@@ -1013,11 +1033,32 @@ if __name__ == '__main__':
         bbox, rot, ppm = cfg[0], cfg[1], cfg[2]
         min_area = cfg[3] if len(cfg) > 3 else 26.0
         frame_bbox = bool(cfg[4]) if len(cfg) > 4 else False
+        if len(sys.argv) > 2 and want == [nm]:
+            min_area = float(sys.argv[2])      # 크게 나왔을 때 다시 굽는 용도
         print('== %s %s  최소넓이=%s  테두리=%s'
               % (nm, bbox, min_area, 'bbox' if frame_bbox else '그린 것'))
         try:
             build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=min_area,
                   frame_bbox=frame_bbox)
+            # 너무 크면 작은 건물을 걷어내고 다시 굽는다.
+            #
+            # 도심 시군구는 건물이 촘촘해서 그대로 두면 1~2MB 가 나온다.
+            # 여행 중에 길에서 휴대폰으로 여는 화면이다 — 2MB 를 받게 하면 안 된다.
+            # 걷어내는 것은 창고·주차장 같은 작은 것부터라, 동네 생김새는 남는다.
+            #
+            # OSM 응답은 osm_cache 에 있으니 다시 구워도 Overpass 를 또 부르지 않는다.
+            # 공짜로 줄일 수 있다.
+            # 건물만 걷어내면 오히려 나무가 는다 — 자리가 비어서 공원 나무가 더 들어간다.
+            # 성동구가 그랬다(955KB -> 805KB 인데 나무는 1683 -> 1740).
+            # 가로수(OSM)와 공원 나무(우리가 뿌리는 것)를 같이 줄여야 한다.
+            for limit, st, pk in ((60.0, 700, 360), (140.0, 420, 200), (320.0, 240, 110)):
+                f = 'mass_%s.svg' % nm
+                if not os.path.exists(f) or os.path.getsize(f) <= 700 * 1024:
+                    break
+                print('   %dKB 라 작은 건물과 나무를 솎고 다시 굽는다 (최소넓이 %s · 가로수 %d · 공원 %d)'
+                      % (os.path.getsize(f) // 1024, limit, st, pk))
+                build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=limit,
+                      frame_bbox=frame_bbox, street_trees=st, tree_target=pk)
         except SystemExit as e:
             print('   건너뜀: %s' % e)
         except Exception as e:

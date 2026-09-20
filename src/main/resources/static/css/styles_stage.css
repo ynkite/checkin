@@ -1,306 +1,153 @@
-/* 메인 무대. 장면·좌우 읽는 면·입력은 각각 독립된 칸을 쓴다. */
-.ck-home{ min-height:100dvh }
-.ck-home .ck-hero.ck-stage{
-  position:relative; isolation:isolate; display:grid;
-  grid-template-columns:var(--home-left) minmax(0,1fr) var(--home-right);
-  grid-template-rows:var(--home-scene) auto auto;
-  column-gap:calc(var(--u) * 3); row-gap:0;
-  height:auto; min-height:0; margin:0;
-  padding:0 var(--home-inset) calc(var(--u) * 3);
-  overflow:visible; background:var(--page);
+/* 도시 관찰창과 여행 입력은 독립된 흐름. 화면 높이로 글을 자르지 않는다. */
+.ck-home .ck-stage{
+  display:grid; grid-template-columns:minmax(0,1fr) var(--home-right);
+  grid-template-rows:auto 1fr auto auto; gap:calc(var(--u)*3) calc(var(--u)*5);
+  max-width:var(--home-width); margin:auto; padding:calc(var(--u)*4) var(--home-inset) var(--home-section);
+  isolation:isolate; position:relative;
 }
-.ck-home .ck-hero.ck-stage::before,
-.ck-home .ck-hero.ck-stage::after{ content:none }
-
-/* 도시만 자른다. 입력과 팝오버는 이 상자 밖에 있다. */
-.st-viewport{
-  grid-area:1 / 1 / 2 / -1; position:relative; min-width:0;
-  margin-inline:calc(-1 * var(--home-inset)); overflow:hidden;
-  isolation:isolate; background:var(--void);
+.ck-stage > *{ min-width:0 }
+.st-introduction{ grid-area:1 / 2; align-self:end }
+.ck-home .st-head{ padding:0; background:none; border-radius:0 }
+.ck-home .st-h1{ font-size:var(--home-title); line-height:1.14; letter-spacing:var(--tracking-tight) }
+.ck-home .st-head .fl-eye{ font-size:var(--home-meta); color:var(--ink-2); margin-bottom:calc(var(--u)*2) }
+.ck-home .st-head .fl-sub{ color:var(--ink-2); font-size:var(--t-sm); line-height:1.8; margin-top:calc(var(--u)*2) }
+.st-tour{ grid-area:1 / 1 / 3 / 2; min-width:0 }
+.st-tour-head{ display:flex; justify-content:space-between; align-items:center; gap:var(--u); padding-bottom:var(--u); font-size:var(--t-sm) }
+.st-tour-head > span{ font-weight:700 }
+.st-tour-head button{ min-height:var(--home-control); color:var(--ink-2); font-size:var(--home-meta); text-decoration:underline; text-underline-offset:calc(var(--u)/2) }
+.st-viewport{ height:var(--home-scene); position:relative; isolation:isolate; overflow:hidden; border-radius:var(--home-radius) var(--home-radius) var(--r-field) var(--r-field); background:var(--water) }
+.ck-stage .ck-scene,.ck-stage .st-bigmap{ position:absolute; inset:0; background:var(--water) }
+.ck-stage .ck-scene{ overflow:hidden; pointer-events:none }
+.ck-stage .ck-frame{
+  position:absolute; left:50%; top:50%; width:max(100%,calc(var(--home-scene)*var(--st-ar,1.3892)));
+  aspect-ratio:var(--st-ar,1.3892); transform-origin:center;
+  transform:translate(calc(-50% + var(--st-x,0px)),calc(-50% + var(--st-y,0px))) scale(var(--st-z,1));
+  transition:transform 1.1s var(--home-ease);
 }
-.ck-home .ck-stage .ck-scene,
-.ck-home .ck-stage .st-bigmap{ position:absolute; inset:0; height:auto; background:var(--void) }
-.ck-home .ck-stage .ck-scene{ overflow:hidden; pointer-events:none }
-.ck-home .ck-stage .ck-frame{
-  position:absolute; left:50%; top:50%;
-  width:max(100%, calc(var(--home-scene) * var(--st-ar, 1.3892)));
-  height:auto; aspect-ratio:var(--st-ar, 1.3892);
-  transform:translate(calc(-50% + var(--st-x, 0px)), calc(-50% + var(--st-y, 0px))) scale(var(--st-z, 1));
-  transform-origin:center; transition:transform .5s var(--home-ease);
-}
-.ck-home .ck-stage .ck-frame svg.mass{ display:block; width:100%; height:100% }
-
-/* 비는 도시 위의 얇은 막과 기존 강수 레이어로만 표현한다. */
-.st-viewport::before{
-  content:""; position:absolute; inset:0; z-index:1; pointer-events:none;
-  background:var(--home-wash); opacity:0; transition:opacity .5s ease;
-}
-[data-wx="rain"] .st-viewport::before{ opacity:1 }
-/* 190ms 뒤 장면을 바꾸는 기존 컷에 맞춘 셔터. SVG 자체는 변형하지 않는다. */
-.st-viewport::after{
-  content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
-  background:linear-gradient(105deg,var(--home-cut),transparent 32%),var(--void);
-  transform:translateX(101%); transition:transform .18s var(--home-ease);
-}
-.ck-cut .st-viewport::after{ transform:translateX(0) }
-.ck-home .ck-stage .ck-scene,
-.ck-home .ck-stage .st-bigmap{ transition:opacity .18s ease }
-.ck-home .ck-cut .ck-scene,
-.ck-home .ck-cut .st-bigmap{ opacity:0 }
-.ck-stage.st-still .crowd .cw,
-.ck-stage.st-still .wv,
-.ck-stage.st-still .cb,
-.ck-stage.st-still .ct{ animation:none !important }
-
-/* 높이는 장면 칸 안에서만 제한한다. 아래 폼 높이에 기대지 않는다. */
-.ck-home .st-tl{
-  grid-area:1 / 1; z-index:3; min-height:0; align-self:stretch;
-  display:flex; flex-direction:column; gap:calc(var(--u) * 2);
-  margin-block:var(--home-inset); padding:calc(var(--u) / 2);
-  overflow:auto; overscroll-behavior:contain;
-  scrollbar-width:thin; scrollbar-color:var(--ink-3) var(--panel);
-  scroll-padding:var(--u);
-}
-.ck-home .st-tl > *{ flex-shrink:0 }
-.ck-home .st-head{
-  padding:calc(var(--u) * 2); border-radius:0;
-  border-inline-start:calc(var(--u) / 2) solid var(--sig);
-  background:var(--panel); box-shadow:none;
-}
-.ck-home .st-head .st-h1{
-  max-width:none; font-size:var(--home-title); line-height:1.16;
-  font-weight:700; letter-spacing:var(--tracking-tight);
-}
-.ck-home .st-head .fl-eye{
-  margin-bottom:calc(var(--u) * 1.5); font-size:var(--home-meta); color:var(--ink-2);
-}
-.ck-home .st-head .fl-sub{
-  margin-top:calc(var(--u) * 1.5); font-size:var(--t-sm); line-height:1.7; color:var(--ink-2);
-}
-.ck-home .st-head .fl-path{ margin-top:var(--u); line-height:1.6 }
-.st-stops{ gap:var(--u) }
-.ck-home .st-stops .fl-pill{
-  height:auto; min-height:var(--home-control); padding:var(--u) calc(var(--u) * 1.5);
-  white-space:normal; text-align:left; font-size:var(--home-meta); box-shadow:var(--lift2);
-}
-.ck-home .st-stops .fl-pill.fl-hot{ background:var(--ink); color:var(--panel) }
-.ck-home .st-stops .fl-pill.fl-hot b{ background:var(--ink); color:var(--sig) }
-
-/* 현재 상황은 한 면, 대응은 그 안의 행이다. 세 겹의 카드로 쌓지 않는다. */
-.ck-home .st-note{
-  background:var(--home-dark); color:var(--home-on-dark);
-  border-radius:var(--r-card); padding:calc(var(--u) * 2); box-shadow:none;
-}
-.st-line{ font-size:var(--t-body); font-weight:700; line-height:1.5; word-break:keep-all }
-.ck-home .st-note .st-line em{ font-style:normal; color:var(--sig) }
-.ck-home .st-note .fl-tx{ margin-top:var(--u); color:var(--home-muted-dark); line-height:1.65 }
-.ck-home .st-note .ck-ph{ display:flex; gap:var(--u); margin-bottom:var(--u) }
-.ck-home .st-note .ck-phbtn{
-  width:var(--home-control); height:var(--home-control); margin:0;
-  background:var(--home-dark-hover); color:var(--home-on-dark);
-}
-.ck-home .st-note .ck-ph > i{
-  flex:1; height:calc(var(--u) / 4); background:var(--home-dark-line); overflow:hidden;
-}
-.ck-home .st-note .ck-ph > i b{
-  display:block; height:100%; background:var(--sig); transform:scaleX(0); transform-origin:left;
-}
-.ck-home .st-note .ck-ph > i.ck-on b{ transform:scaleX(1); transition:transform 2.5s linear }
-.ck-home .st-note .ck-ph > i.ck-done b{ transform:scaleX(1) }
-.ck-home .st-note .ck-opts{ margin-top:calc(var(--u) * 2); gap:0 }
-.ck-home .st-note .ck-opt{
-  grid-template-columns:minmax(0,1fr) auto; gap:calc(var(--u) / 2) var(--u);
-  padding:calc(var(--u) * 1.5) var(--u);
-  border-radius:0; border:0; border-top:1px solid var(--home-dark-line);
-  background:transparent; box-shadow:none; color:var(--home-on-dark);
-}
-.ck-home .st-note .ck-opt b{ font-size:var(--t-sm); color:inherit }
-.ck-home .st-note .ck-opt span{
-  grid-column:1 / -1; white-space:normal; overflow:visible;
-  color:var(--home-muted-dark); font-size:var(--home-meta); line-height:1.55;
-}
-.ck-home .st-note .ck-opt em{
-  grid-row:1; max-width:18ch; white-space:normal; color:var(--sig); font-family:var(--fig);
-}
-.ck-home .st-note .ck-opt em i{ color:var(--home-muted-dark); font-family:var(--sans) }
-.ck-home .st-note .ck-opt:hover{ background:var(--home-dark-hover) }
-.ck-home .st-note .ck-opt[aria-pressed="true"]{
-  border-radius:var(--r-field); background:var(--sig); color:var(--on-sig); border-top-color:transparent;
-}
-.ck-home .st-note .ck-opt[aria-pressed="true"] :is(span,em,em i){ color:var(--on-sig) }
-
-/* 오른쪽은 표와 지도. 내용이 늘면 표 안에서 스크롤한다. */
-.st-rail{
-  grid-area:1 / 3; z-index:3; min-height:0;
-  display:flex; flex-direction:column; gap:var(--u);
-  margin-block:calc(var(--home-inset) + var(--home-control) + var(--u));
-}
-.ck-home .st-side{
-  flex:1 1 auto; min-height:0; overflow:auto; overscroll-behavior:contain;
-  scrollbar-width:thin; background:var(--panel); border-radius:var(--r-field);
-  padding:calc(var(--u) * 2); box-shadow:none;
-}
-.st-sidehd{ display:flex; align-items:baseline; gap:calc(var(--u) * 1.5); margin-bottom:calc(var(--u) * 2) }
-.st-sidehd > span{ font-size:var(--home-meta); line-height:1.5; color:var(--ink-2) }
-.st-sidehd > span i{ display:block; font-style:normal; color:var(--ink-3) }
-.st-tabs{ display:flex; gap:var(--u); margin-bottom:calc(var(--u) * 2) }
-.st-tabs .fl-pill{ flex:1; justify-content:center; padding-inline:var(--u); font-size:var(--home-meta) }
-#st_plan .fl-row{ grid-template-columns:5ch minmax(0,1fr); gap:var(--u) }
-#st_plan .fl-row > dd{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--u) }
-#st_plan .fl-row > dd > b{ flex:1 1 100%; font-size:var(--t-sm); font-weight:600; color:var(--ink); line-height:1.5 }
-.st-cw{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--u) }
-.st-cw b{ font-family:var(--fig); font-size:var(--t-sm); font-weight:600; color:var(--ink) }
-.st-cw i{ font-style:normal; font-size:var(--home-meta); padding:calc(var(--u) / 4) var(--u); border-radius:var(--r-pill) }
-.st-cw i.cw-vhigh{ background:var(--tile); color:var(--panel) }
-.st-cw i.cw-high{ background:var(--terra-pale); color:var(--terra) }
-.st-cw i.cw-mid{ background:var(--ui-plate-2); color:var(--ink-2) }
-.st-cw i.cw-low,.st-cw i.cw-vlow{ background:var(--slate-pale); color:var(--slate) }
-.st-cwbar{ display:block; width:calc(var(--u) * 8); height:calc(var(--u) / 2); background:var(--ui-line-2); border-radius:var(--r-pill) }
-.st-cwbar i{ display:block; height:100%; background:var(--ink-3); border-radius:inherit }
-.st-cwbar i.cw-vhigh{ background:var(--tile) }
-.st-cwbar i.cw-high{ background:var(--terra) }
-.st-cwbar i.cw-low,.st-cwbar i.cw-vlow{ background:var(--slate) }
-.st-src{ margin-top:calc(var(--u) * 1.5); font-size:var(--home-meta); line-height:1.65; color:var(--ink-3) }
-.ck-home .st-mini{
-  flex:none; width:100%; padding:0; border-radius:var(--r-card);
-  background:var(--panel); box-shadow:var(--home-shadow); overflow:hidden;
-}
-.st-mini .fl-mini-map{ height:var(--home-map) }
-.st-mini .fl-mini-hd{ padding:calc(var(--u) / 2) var(--u); gap:calc(var(--u) / 2) }
-.st-mini .fl-mini-hd button{ min-height:var(--home-control); min-width:var(--home-control) }
-.st-mini .fl-mz{ display:flex; margin-inline-start:auto }
-.st-mini .fl-mz button{ background:var(--ui-plate); border-radius:var(--r-field); font-family:var(--fig) }
-.st-tools,.st-view{ position:absolute; right:var(--home-inset); z-index:4; gap:calc(var(--u) / 2) }
-.st-tools{ top:var(--home-inset) }
-.st-view{ bottom:var(--home-inset) }
-.ck-home .st-viewport .fl-tool{
-  min-height:var(--home-control); padding-inline:var(--u);
-  background:var(--panel); border-radius:var(--r-field); box-shadow:var(--lift2);
-  font-size:var(--home-meta); color:var(--ink-2);
-}
+.ck-frame > div{ position:absolute; inset:0 }
+.ck-stage .ck-frame svg.mass{ width:100%; height:100%; display:block }
+.st-viewport::after{ content:""; position:absolute; inset:0; z-index:4; pointer-events:none; background:var(--water); opacity:0; transform:translateX(100%); transition:transform .22s var(--home-ease),opacity .22s ease }
+.ck-cut .st-viewport::after{ opacity:1; transform:translateX(0) }
+.st-scene-label{ position:absolute; left:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:5; max-width:calc(100% - var(--u)*4); background:var(--panel); border-radius:var(--r-field); padding:var(--u) calc(var(--u)*1.5); font-size:var(--home-meta); color:var(--ink); pointer-events:none }
+.st-tools,.st-view{ position:absolute; display:flex; flex-wrap:nowrap; gap:calc(var(--u)/2); z-index:6; right:calc(var(--u)*2) }
+.st-tools{ top:calc(var(--u)*2) }
+.st-view{ bottom:calc(var(--u)*2) }
+.ck-home .st-viewport .fl-tool{ display:inline-flex; align-items:center; gap:calc(var(--u)/2); min-height:var(--home-target); padding:var(--u); color:var(--ink); background:var(--panel); border-radius:var(--r-field); box-shadow:var(--home-shadow); font-size:var(--home-meta); transition:transform .18s ease }
+.ck-home .st-viewport .fl-tool svg{ width:calc(var(--u)*2); height:calc(var(--u)*2); fill:none; stroke:currentColor; stroke-width:1.7 }
 .ck-home .st-viewport .fl-tool[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
+.ck-stage.st-still .crowd .cw,.ck-stage.st-still .wv,.ck-stage.st-still .cb,.ck-stage.st-still .ct{ animation-play-state:paused }
+.ck-home .st-stops{ display:flex; flex-wrap:nowrap; gap:var(--u); overflow-x:auto; scrollbar-width:thin; padding:calc(var(--u)*1.5) 0 var(--u); scroll-snap-type:x proximity }
+.ck-home .st-stops .fl-pill{ flex:0 0 auto; display:flex; align-items:center; gap:var(--u); min-height:var(--home-target); white-space:nowrap; padding:var(--u) calc(var(--u)*1.5); border-radius:var(--r-pill); box-shadow:none; background:var(--ui-plate); color:var(--ink-2); font-size:var(--t-sm); scroll-snap-align:start }
+.ck-home .st-stops .fl-pill b{ display:grid; place-items:center; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5); border-radius:50%; background:var(--panel); font-size:var(--home-meta) }
+.ck-home .st-stops .fl-hot{ background:var(--ink); color:var(--panel) }
+.ck-home .st-stops .fl-hot b{ background:var(--sig); color:var(--on-sig) }
+.ck-home #st_path{ font-size:var(--home-meta); color:var(--ink-2); line-height:1.7; margin-bottom:calc(var(--u)*2) }
 
-/* 날씨와 집중률 설명은 장면 아래 한 줄. 펼친 설명도 폼을 밀어낸다. */
-.st-meta{
-  grid-area:2 / 1 / 3 / -1; display:flex; align-items:start; justify-content:space-between;
-  flex-wrap:wrap; gap:var(--u) calc(var(--u) * 3); padding-block:var(--u);
+/* 입력 면은 제목 다음, 무대 옆. 조건이 늘면 페이지가 길어진다. */
+.st-form{ grid-area:2 / 2; align-self:start; padding:var(--home-form-pad); background:var(--ui-plate); border-radius:var(--r-panel) }
+.ck-home .st-form h2{ font-size:var(--t-h3); line-height:1.4 }
+.ck-home .st-form-lead{ font-size:var(--t-sm); color:var(--ink-2); margin:var(--u) 0 calc(var(--u)*3) }
+.st-form .ck-bar{ display:flex; flex-direction:column; gap:calc(var(--u)*2) }
+.st-form .ck-fr{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:calc(var(--u)*2) }
+.st-form .ck-fld{ min-width:0 }
+.ck-home .ck-fld label{ display:block; font-size:var(--home-meta); color:var(--ink-2); margin-bottom:var(--u) }
+.ck-home .ck-fld input,.ck-home .ck-fld select{ width:100%; min-width:0; min-height:var(--home-target); border:0; border-bottom:1px solid var(--ink-3); border-radius:0; padding:var(--u) 0; font:inherit; font-size:var(--t-sm); color:var(--ink); background:transparent }
+.st-form .ck-fld:nth-child(3){ grid-column:1 / -1; grid-row:2 }
+.st-form .ck-fld:nth-child(4){ grid-column:2; grid-row:1 }
+.st-form .ck-fld:nth-child(2){ grid-column:1 / -1; grid-row:3 }
+.ck-condbtn{ width:100%; display:flex; justify-content:space-between; align-items:center; min-height:var(--home-target); font-size:var(--t-sm); color:var(--ink-2); text-align:left }
+.ck-condbtn::after{ content:"＋"; color:var(--ink) }
+.ck-condbtn[aria-expanded="true"]::after{ content:"−" }
+.ck-home .ck-chips2{ display:none; flex-wrap:wrap; gap:var(--u) }
+.ck-home .ck-chips2.ck-open{ display:flex }
+.ck-chips2 button{ min-height:var(--home-target); padding:var(--u) calc(var(--u)*1.5); border:1px solid var(--ui-line); border-radius:var(--r-pill); font-size:var(--home-meta) }
+.ck-chips2 button[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
+.ck-home .ck-go{ min-height:calc(var(--home-target) + var(--u)); width:100%; background:var(--ink); color:var(--panel); border-radius:var(--r-field); font-size:var(--t-body); font-weight:650; padding:var(--u) calc(var(--u)*2); transition:transform .18s var(--home-ease) }
+.ck-home .ck-go:hover{ transform:translateY(calc(var(--u)/-4)) }
+.ck-note{ color:var(--ink-2); font-size:var(--home-meta); line-height:1.6 }
+.ck-note:empty{ display:none }
+
+/* 일정과 지도는 한 장의 여행 기록처럼 읽는다. 안쪽 세로 스크롤 없음. */
+.st-rail{ grid-area:3 / 1 / 4 / -1; display:grid; grid-template-columns:minmax(0,1fr) var(--home-right); gap:calc(var(--u)*5); padding-top:calc(var(--u)*3); border-top:1px solid var(--ui-line) }
+.ck-home .st-side{ padding:0; background:none; min-width:0 }
+.st-sidehd{ display:flex; align-items:center; gap:calc(var(--u)*2) }
+.st-sidehd .fl-no{ font-family:var(--fig); font-size:var(--home-number); color:var(--ink) }
+.st-sidehd .fl-no em{ font-family:var(--sans); font-size:var(--home-meta); margin-left:var(--u); font-style:normal }
+#st_when{ font-size:var(--home-meta); color:var(--ink-2) }
+.st-tabs{ display:flex; gap:calc(var(--u)*3); margin:calc(var(--u)*2) 0 }
+.ck-home .st-tabs .fl-pill{ min-height:var(--home-target); padding:var(--u) 0; background:none; box-shadow:none; border-radius:0; color:var(--ink-2); font-size:var(--t-sm); border-bottom:2px solid transparent }
+.ck-home .st-tabs .fl-pill.on{ border-color:var(--ink); color:var(--ink); font-weight:700 }
+.ck-home .st-side .fl-rows{ margin:0; display:grid; gap:var(--u) }
+.ck-home .st-side .fl-row{ display:grid; grid-template-columns:6ch minmax(0,1fr); align-items:baseline; gap:calc(var(--u)*2); padding:var(--u) 0; border-bottom:1px solid var(--ui-line-2); font-size:var(--t-sm) }
+.st-side .fl-row dt{ font-family:var(--fig); color:var(--ink-2) }
+.st-side .fl-row dd{ min-width:0; margin:0; display:flex; flex-wrap:wrap; gap:var(--u) calc(var(--u)*2) }
+.st-side .fl-row dd b{ font-weight:600 }
+.st-side .fl-row dd span,.st-side .fl-row dd small{ color:var(--ink-2); font-size:var(--home-meta) }
+.ck-home #st_crowd .fl-row{ grid-template-columns:minmax(0,1fr) minmax(0,1fr) }
+.ck-home #st_crowd dt{ font-family:var(--sans) }
+.st-cw b{ font-family:var(--fig) }
+.st-src{ font-size:var(--home-meta); line-height:1.7; color:var(--ink-2) }
+.ck-home .st-mini{ width:100%; border:1px solid var(--ui-line); border-radius:var(--r-panel); padding:0; align-self:start; box-shadow:var(--home-shadow) }
+.st-mini .fl-mini-map{ height:var(--home-map) }
+.ck-home .st-mini .fl-mini-hd{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--u); padding:var(--u) calc(var(--u)*2) }
+.st-mini .fl-mini-hd b{ font-size:var(--home-meta) }
+.st-mini .fl-mz{ margin-left:auto; display:flex; gap:calc(var(--u)/2) }
+.ck-home .st-mini button{ min-width:var(--home-target); min-height:var(--home-target); font-size:var(--home-meta); color:var(--ink-2) }
+.ck-home .fl-mp{ position:relative; transform:none; width:var(--home-pin-size); height:var(--home-pin-size); font-size:var(--home-meta); box-shadow:var(--home-shadow); transition:transform .25s ease }
+.ck-home .fl-mp.fl-now{ background:var(--ink); color:var(--panel); transform:scale(1.1) }
+.st-meta{ grid-area:4 / 1 / 5 / -1; display:flex; flex-wrap:wrap; align-items:start; gap:var(--u) calc(var(--u)*4); padding-top:var(--u); border-top:1px solid var(--ui-line) }
+.st-wx{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u); font-size:var(--home-meta); color:var(--ink-2); padding-block:var(--u); flex:1 }
+.st-wx b{ font-family:var(--fig); color:var(--ink) }
+.st-wx i{ font-style:normal; flex-basis:100% }
+.st-cwkey{ max-width:100%; flex:1 }
+.st-cwkey-t{ display:flex; flex-wrap:wrap; align-items:center; gap:var(--u); min-height:var(--home-target); width:100%; text-align:left; font-size:var(--home-meta); color:var(--ink-2) }
+.st-cwkey-t b{ color:var(--ink); font-family:var(--fig) }
+.st-cwkey-t strong{ margin-left:auto; text-decoration:underline; text-underline-offset:calc(var(--u)/2); font-weight:500 }
+.st-cwkey-b{ padding:calc(var(--u)*2) 0 }
+.st-cwrow{ display:grid; grid-template-columns:6ch 8ch minmax(0,1fr); gap:var(--u); padding:var(--u) 0; font-size:var(--home-meta); border-bottom:1px solid var(--ui-line-2) }
+.st-cwrow i{ font-style:normal; font-family:var(--fig); color:var(--ink-2) }
+.st-cwrow span,.st-cwkey-n{ color:var(--ink-2); line-height:1.7 }
+.st-cwkey-n{ margin-top:var(--u); font-size:var(--home-meta) }
+.ck-home .ck-skipin{ display:none }
+.ck-home .ck-intro .ck-skipin{ display:block; position:absolute; left:calc(var(--u)*2); top:calc(var(--u)*2); z-index:6; padding:var(--u) calc(var(--u)*1.5); min-height:var(--home-target); border-radius:var(--r-field); background:var(--panel); color:var(--ink); font-size:var(--home-meta) }
+
+@media (max-width:1050px){
+  .ck-home .ck-stage{ grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*3); padding-top:calc(var(--u)*3) }
+  .st-introduction{ grid-area:1 / 1 }
+  .st-tour{ grid-area:2 / 1 }
+  .st-form{ grid-area:3 / 1 }
+  .st-rail{ grid-area:4 / 1; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:calc(var(--u)*3) }
+  .st-meta{ grid-area:5 / 1 }
+  .st-form .ck-fr{ grid-template-columns:repeat(4,minmax(0,1fr)) }
+  .st-form .ck-fld:nth-child(n){ grid-area:auto }
 }
-.st-wx{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u); padding-block:var(--u); font-size:var(--home-meta); color:var(--ink-2) }
-.st-wx b,.st-cwkey-t b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
-.st-wx i{ font-style:normal; color:var(--ink-3) }
-.st-cwkey{ margin-inline-start:auto; max-width:100% }
-.ck-home .st-cwkey-t{
-  display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u);
-  min-height:var(--home-control); padding:var(--u) 0; text-align:left;
-  font-size:var(--home-meta); color:var(--ink-2);
-}
-.st-cwkey-t span{ color:var(--ink-3) }
-.st-cwkey-t::after{ content:"+"; font-family:var(--fig); margin-inline-start:var(--u) }
-.st-cwkey-t[aria-expanded="true"]::after{ content:"−" }
-.st-cwkey-b{ padding:calc(var(--u) * 2); background:var(--panel); border:1px solid var(--ui-line); border-radius:var(--r-field) }
-.st-cwrow{ display:grid; grid-template-columns:5ch auto minmax(0,1fr); gap:var(--u); align-items:baseline; padding-block:var(--u); font-size:var(--home-meta); color:var(--ink-2) }
-.st-cwrow i{ font-style:normal; font-family:var(--fig); color:var(--ink-3) }
-.st-cwrow b{ font-size:inherit; color:var(--ink) }
-.st-cwkey-n{ padding-top:var(--u); font-size:var(--home-meta); line-height:1.65; color:var(--ink-3) }
-
-/* 입력은 장면과 별개인 실제 행이다. 조건·오류가 늘어도 겹치지 않는다. */
-.st-form{ grid-area:3 / 1 / 4 / -1; position:relative; z-index:4; min-width:0 }
-.ck-home .st-form .ck-bar{
-  display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end;
-  gap:calc(var(--u) * 2); padding:calc(var(--u) * 2);
-  background:var(--panel); border:1px solid var(--ui-line); border-radius:var(--r-panel); box-shadow:var(--home-shadow);
-}
-.ck-home .st-form .ck-fr{ display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:calc(var(--u) * 2); min-width:0 }
-.ck-home .st-form .ck-fld label{ margin-bottom:calc(var(--u) / 2); font-size:var(--home-meta); color:var(--ink-2) }
-.ck-home .st-form .ck-fld :is(select,input){ min-height:var(--home-target); padding:var(--u); font-size:var(--t-sm); border-radius:0 }
-.ck-home .st-form .ck-go{ grid-area:1 / 3; min-height:var(--home-target); padding:var(--u) calc(var(--u) * 3); border-radius:var(--r-field); font-size:var(--t-sm) }
-.ck-home .st-form .ck-condbtn{ min-height:var(--home-target); padding:var(--u) calc(var(--u) * 2); border-radius:var(--r-field); font-size:var(--t-sm) }
-.ck-home .st-form .ck-cond:has(.ck-open){ grid-column:1 / -1; grid-row:2 }
-.ck-home .st-form .ck-chips2.ck-open{ margin-top:var(--u); gap:var(--u) }
-.ck-home .st-form .ck-chips2 button{ min-height:var(--home-control) }
-.ck-home .st-form .ck-note{ grid-column:1 / -1; margin:0; color:var(--ink-2) }
-.ck-home .st-form .ck-note:empty{ display:none }
-
-/* 기존 hidden 상태를 grid/flex 표시 규칙보다 우선한다. */
-.ck-home .ck-stage [hidden]{ display:none }
-.ck-home .ck-stage button:active{ transform:translateY(1px) }
-.ck-home .ck-stage button:focus-visible,
-.ck-home .st-tl:focus-visible,
-.ck-home .st-side:focus-visible{ outline:2px solid var(--sig-deep); outline-offset:calc(var(--u) / 2) }
-
-/* 제목과 입력은 연출 중에도 읽힌다. 주변 정보만 물려 둔다. */
-.ck-home .ck-intro :is(.st-note,.st-stops,.st-rail){ opacity:.16; transition:opacity .35s ease }
-.ck-home :is(.st-note,.st-stops,.st-rail){ transition:opacity .35s ease }
-
-@media (max-width:1180px){
-  .ck-home .ck-hero.ck-stage{
-    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-    grid-template-rows:auto var(--home-scene-small); gap:calc(var(--u) * 2);
-    padding-top:calc(var(--u) * 3);
-  }
-  .ck-home .st-tl{ display:contents }
-  .ck-home .st-head{ grid-area:1 / 1 / 2 / -1; padding:0; border:0; background:none }
-  .ck-home .st-head .st-h1{ font-size:var(--home-title) }
-  .ck-home .st-head .fl-eye{ margin-bottom:var(--u) }
-  .ck-home .st-head .fl-sub{ margin-top:var(--u); max-width:52ch }
-  .ck-home .st-head .fl-path{ display:none }
-  .st-viewport{ grid-area:2 / 1 / 3 / -1 }
-  .ck-home .ck-stage .ck-frame{ width:max(100%, calc(var(--home-scene-small) * var(--st-ar, 1.3892))) }
-  .st-tools{ top:auto; bottom:var(--u); left:var(--home-inset); right:auto }
-  .st-view{ bottom:var(--u) }
-  .st-form{ grid-area:4 / 1 / 5 / -1 }
-  .st-stops{ grid-area:5 / 1 / 6 / -1 }
-  .ck-home .st-note{ grid-area:6 / 1; align-self:start }
-  .st-rail{ grid-area:6 / 2; margin:0; min-height:0 }
-  .ck-home .st-side{ flex:none; overflow:visible }
-  .st-meta{ grid-area:7 / 1 / 8 / -1; padding:0 }
-  .ck-home .st-form .ck-bar{ grid-template-columns:minmax(0,1fr) auto }
-  .ck-home .st-form .ck-fr{ grid-column:1 / -1 }
-  .ck-home .st-form .ck-cond:has(.ck-open){ grid-column:1; grid-row:auto }
-  .ck-home .st-form .ck-go{ grid-area:auto / 2; align-self:start }
-}
-@media (max-width:760px){
-  .ck-home .ck-hero.ck-stage{ grid-template-columns:minmax(0,1fr); padding-top:calc(var(--u) * 2) }
-  .ck-home .st-head .fl-sub{ max-width:36ch }
-  .ck-home .st-head .st-h1{ max-width:none }
-  .ck-home .st-form .ck-bar{ gap:var(--u); padding:calc(var(--u) * 1.5) }
-  .ck-home .st-form .ck-fr{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--u) calc(var(--u) * 2) }
-  .ck-home .st-form .ck-go{ width:auto; padding-inline:calc(var(--u) * 2) }
-  .ck-home .st-form .ck-condbtn{ padding-inline:var(--u) }
-  .st-tools{ gap:calc(var(--u) / 2) }
-  .st-view{ top:var(--u); bottom:auto; gap:calc(var(--u) / 2) }
-  .ck-home .st-note{ grid-area:6 / 1 }
-  .st-rail{ grid-area:7 / 1 }
-  .st-meta{ grid-area:8 / 1; gap:0 }
-  .st-cwkey{ width:100%; margin:0 }
-  .st-cwkey-t{ width:100% }
-  .st-cwkey-t::after{ margin-inline-start:auto }
-  .st-cwrow{ grid-template-columns:5ch auto; gap:calc(var(--u) / 2) var(--u) }
+@media (max-width:600px){
+  .st-viewport{ height:var(--home-scene-small); border-radius:var(--r-panel) }
+  .ck-stage .ck-frame{ width:max(100%,calc(var(--home-scene-small)*var(--st-ar,1.3892))) }
+  .st-tools{ top:var(--u); left:var(--u); right:auto }
+  .st-view{ bottom:var(--u); right:var(--u) }
+  .st-scene-label{ bottom:calc(var(--home-target) + var(--u)*2); left:var(--u); max-width:calc(100% - var(--u)*2) }
+  .ck-home .ck-intro .ck-skipin{ top:calc(var(--home-target) + var(--u)*2); left:var(--u) }
+  .st-form{ padding:calc(var(--u)*2) }
+  .st-form .ck-fr{ grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .st-form .ck-fld:nth-child(3){ grid-column:1 / -1; grid-row:2 }
+  .st-form .ck-fld:nth-child(2){ grid-column:1 / -1; grid-row:3 }
+  .st-form .ck-fld:nth-child(4){ grid-column:2; grid-row:1 }
+  .st-rail{ grid-template-columns:minmax(0,1fr) }
+  .st-meta{ flex-direction:column }
+  .st-cwkey{ width:100% }
+  .st-cwrow{ grid-template-columns:6ch minmax(0,1fr) }
   .st-cwrow span{ grid-column:1 / -1 }
-  .st-mini .fl-mini-map{ height:calc(var(--home-map) + var(--u) * 6) }
-  .ck-home .ck-intro :is(.st-note,.st-stops,.st-rail){ opacity:1 }
 }
-@media (min-width:1181px) and (max-height:800px){
-  .ck-home .st-tl{ gap:var(--u) }
-  .ck-home .st-head{ padding:calc(var(--u) * 1.5) }
-  .ck-home .st-head .st-h1{ font-size:calc(var(--u) * 4.5) }
-  .ck-home .st-note{ padding:calc(var(--u) * 1.5) }
-  .ck-home .st-note .ck-opt{ padding-block:var(--u) }
-  .ck-home .st-side{ padding:calc(var(--u) * 1.5) }
-  .st-side .fl-no{ font-size:calc(var(--u) * 4) }
-  .st-sidehd,.st-tabs{ margin-bottom:var(--u) }
-  .st-side .fl-rows{ gap:var(--u); margin-top:0 }
-  #st_plan .fl-row > dd{ gap:calc(var(--u) / 2) }
-  .st-mini .fl-mini-map{ height:calc(var(--home-map) - var(--u) * 4) }
+@media (min-width:1051px) and (max-height:700px){
+  .ck-home .ck-stage{ padding-top:calc(var(--u)*2); gap:calc(var(--u)*2) calc(var(--u)*4) }
+  .st-form{ padding:calc(var(--u)*2) }
+  .st-form .ck-bar{ gap:var(--u) }
+  .st-form .ck-fr{ gap:var(--u) calc(var(--u)*2) }
+  .ck-home .st-form-lead{ margin-bottom:var(--u) }
 }
-[data-motion="lite"] .st-viewport::after{ transition-duration:.16s }
-[data-motion="lite"] .ck-home .ck-stage .ck-frame{ transition-duration:.25s }
+[data-motion="lite"] .ck-stage .ck-frame{ transition-duration:.45s }
 @media (prefers-reduced-motion:reduce){
-  .st-viewport::before,.st-viewport::after,
-  .ck-home .ck-stage .ck-frame,
-  .ck-home .ck-stage .ck-scene,
-  .ck-home .ck-stage .st-bigmap,
-  .ck-home .st-note .ck-ph > i.ck-on b,
-  .ck-home :is(.st-note,.st-stops,.st-rail){ transition:none }
+  .ck-stage .ck-frame,.st-viewport::after{ transition:none }
   .st-viewport::after{ content:none }
 }

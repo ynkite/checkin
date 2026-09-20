@@ -854,7 +854,7 @@ nav {
 }
 
 /* ── curation slider ── */
-.curation-panel {
+.curation-panel:not(.ck-home .curation-panel) {
     border-radius: 20px;
     height: 100%;
     min-height: 300px;
@@ -961,7 +961,7 @@ nav {
     margin-right: -5px;
 }
 
-.slide-arr {
+.slide-arr:not(.ck-home .slide-arr) {
     background: transparent !important;
     /* 원형 배경 강제 투명 */
     border: none !important;
@@ -992,7 +992,7 @@ nav {
     /* 글자보다 무조건 위에 뜨도록 */
 }
 
-.slide-arr:hover {
+.slide-arr:not(.ck-home .slide-arr):hover {
     background: transparent !important;
     transform: scale(1.15);
 
@@ -4390,13 +4390,13 @@ nav {
 
 
 /* ✨ 큐레이션 슬라이드 스르륵 넘어가는 애니메이션 효과 */
-.curation-panel {
+.curation-panel:not(.ck-home .curation-panel) {
     position: relative;
     overflow: hidden;
 }
 
 /* 슬라이드 전환: 모션(페이드·슬라이드) 제거 → 잔상 없이 즉시 전환 */
-.curation-panel .slide {
+.curation-panel:not(.ck-home .curation-panel) .slide {
     display: none !important;
     position: absolute !important;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -4407,7 +4407,7 @@ nav {
     z-index: 0;
 }
 
-.curation-panel .slide.on {
+.curation-panel:not(.ck-home .curation-panel) .slide.on {
     display: flex !important;
     position: absolute !important;
     opacity: 1;
