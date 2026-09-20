@@ -1227,12 +1227,19 @@ function _renderMyTrips(trips = null, page = 1) {
         });
 
     } else {
+        /* 이 목록은 저장을 끝낸 여행만 받는다. 만들다 만 것이 있는데
+           「아직 만든 여행이 없습니다」라고 하면 화면이 거짓말을 한다 */
         html += window._myTripsFailed
             ? _myEmptyBox({ fail: true, retry: 'initMyPageData()' })
-            : _myEmptyBox({
-                msg: '아직 만든 여행이 없습니다.',
-                sub: '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.',
-                btn: '경로 만들기', act: 'goNewPlanner()' });
+            : (typeof _hasPlannerDraft === 'function' && _hasPlannerDraft())
+                ? _myEmptyBox({
+                    msg: '만들던 여행이 아직 저장 전입니다.',
+                    sub: '경로를 끝까지 만들어 저장하면 여기에 올라옵니다.',
+                    btn: '만들던 곳으로', act: 'goResumePlanner()' })
+                : _myEmptyBox({
+                    msg: '아직 저장한 여행이 없습니다.',
+                    sub: '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.',
+                    btn: '경로 만들기', act: 'goNewPlanner()' });
     }
 
     te.innerHTML = html;
