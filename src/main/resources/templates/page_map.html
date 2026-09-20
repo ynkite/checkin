@@ -426,6 +426,20 @@
        장면은 tools/massing.py 가 OSM 건물 데이터로 만든다.
        새 지역을 늘리려면 그 스크립트의 SCENES 에 bbox 한 줄을 더하고
        만든 svg·json 을 static/img/ 로 옮긴 뒤 여기에 등록한다. */
+    /* 장면 목록을 한 번만 받는다. 실패하면 아래 손으로 적은 것으로 돌아간다 */
+    var _mvIndexCache = null;
+    async function _mvIndex() {
+      if (_mvIndexCache) return _mvIndexCache;
+      try {
+        var r = await fetch('/img/mass_index.json');
+        if (r.ok) {
+          var j = await r.json();
+          if (Array.isArray(j) && j.length) return (_mvIndexCache = j);
+        }
+      } catch (e) { /* 아래로 */ }
+      return (_mvIndexCache = MV_SCENES);
+    }
+
     var MV_SCENES = [
       { key: 'haeundae',      label: '부산 해운대',   svg: '/img/mass_haeundae.svg',      json: '/img/mass_haeundae.json' },
       { key: 'gwangalli',     label: '부산 광안리',   svg: '/img/mass_gwangalli.svg',     json: '/img/mass_gwangalli.json' },
@@ -490,10 +504,17 @@
 
          이제 제일 많이 담는 장면을 쓰고, 못 담은 곳은 범례에서 밝힌다.
          한 곳만 걸리는 장면은 쓰지 않는다 — 스쳐 지나간 것을 그 동네라고 할 수 없다. */
+      /* 장면 목록. 전에는 이 파일 안에 열여덟 개를 적어 두고 장면마다 json 을
+         따로 받아 bbox 를 봤다. 이제 전국 시군구까지 이백 개가 넘는다 —
+         그렇게 하면 화면을 한 번 열 때 요청이 이백 번 나간다.
+         목록 하나에 bbox 와 fit 을 미리 담아 둔다(tools/make_index.py).
+         못 받으면 아래 손으로 적은 목록으로 돌아간다 — 있던 것이 사라지면 안 된다. */
+      var scenes = await _mvIndex();
+
       var pick = null;
-      for (var i = 0; i < MV_SCENES.length; i++) {
-        var sc = MV_SCENES[i];
-        var meta = sc.meta || (sc.meta = await _mvMeta(sc));
+      for (var i = 0; i < scenes.length; i++) {
+        var sc = scenes[i];
+        var meta = sc.bbox && sc.fit ? sc : (sc.meta || (sc.meta = await _mvMeta(sc)));
         if (!meta || !meta.bbox || !meta.fit) continue;
         /* 화면에 실제로 들어오는지로 센다. bbox 는 장면을 만든 범위일 뿐이라
            경계 바로 밖의 좌표도 모형 위에는 멀쩡히 얹힌다 — 미포가 그렇다. */
@@ -508,8 +529,10 @@
       }
 
       if (!pick) {
+        /* 목록이 이백 개가 넘으면 다 적을 수 없다. 몇 곳만 보여 준다 */
+        var few = scenes.slice(0, 8).map(function (s) { return s.label; }).join(' · ');
         _mvSayNone('이 지역은 아직 3D 모형이 없습니다.',
-                   MV_SCENES.map(function (s) { return s.label; }).join(' · '));
+                   few + (scenes.length > 8 ? ' 등 ' + scenes.length + '곳' : ''));
         return;
       }
 
@@ -660,6 +683,37 @@
         return { p: p, x: q.x, y: q.y,
                  ok: q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104 };
       }).filter(function (q) { return q.ok; });
+
+      /* 번호가 서로 가려지지 않게 살짝 떼어 놓는다.
+         장면 하나는 1.3km x 2km 인데 하루 동선이 그 안에 몰리면 동그라미가
+         겹쳐서 뒤엣것이 안 보인다. 대구를 열었을 때 2·3·6·7·9·10 이 뭉쳤다.
+
+         자리를 옮기는 것이라 마음에 걸리지만, 번호가 안 보이면 순서를 못 읽는다.
+         미는 거리는 동그라미 하나 지름만큼이고, 동선 선은 옮긴 자리를 따라가므로
+         선과 번호가 어긋나지도 않는다. 지도 탭에서는 이름을 지웠는데
+         여기서는 번호가 곧 내용이라 지울 수가 없다. */
+      (function spread() {
+        var frame = document.getElementById('mv_frame');
+        var W = (frame && frame.clientWidth) || 900;
+        var d = 34 / W * 100;              /* 동그라미 지름을 % 로 */
+        if (!(d > 0)) return;
+        for (var i = 1; i < pts.length; i++) {
+          for (var pass = 0; pass < 12; pass++) {
+            var hit = null;
+            for (var j = 0; j < i; j++) {
+              var dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
+              if (dx * dx + dy * dy < d * d) { hit = { dx: dx, dy: dy }; break; }
+            }
+            if (!hit) break;
+            var len = Math.sqrt(hit.dx * hit.dx + hit.dy * hit.dy) || 0.001;
+            /* 완전히 겹쳐 방향이 없으면 시계 방향으로 흩는다 */
+            var ux = len < 0.01 ? Math.cos(i * 1.7) : hit.dx / len;
+            var uy = len < 0.01 ? Math.sin(i * 1.7) : hit.dy / len;
+            pts[i].x += ux * d * 0.55;
+            pts[i].y += uy * d * 0.55;
+          }
+        }
+      })();
 
       /* 동선 — 정거장을 순서대로 잇는다 */
       var line = '';

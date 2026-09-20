@@ -1,0 +1,44 @@
+# -*- coding: utf-8 -*-
+"""전국 시군구를 굽는다. 오래 걸리므로 이어서 할 수 있게 만든다.
+
+Overpass 는 공용 서버라 잇달아 부르면 429·504 를 준다.
+이미 구운 것은 건너뛴다 — 중간에 끊겨도 다시 돌리면 이어서 한다.
+실패한 것은 bake_fail.txt 에 남긴다. 「전부 됐다」고 말하지 않기 위해서다.
+"""
+import io, os, subprocess, sys, time, json, importlib.util
+
+here = os.path.dirname(os.path.abspath(__file__))
+spec = importlib.util.spec_from_file_location('m', os.path.join(here, 'massing.py'))
+m = importlib.util.module_from_spec(spec); sys.modules['m'] = m; spec.loader.exec_module(m)
+
+keys = [k for k in m.SCENES if k.startswith('sig_')]
+todo = [k for k in keys if not os.path.exists(os.path.join(here, 'mass_%s.json' % k))]
+print('전체 %d · 이미 있음 %d · 할 것 %d' % (len(keys), len(keys)-len(todo), len(todo)), flush=True)
+
+GAP = 22          # 장면 사이 쉬는 시간. 75 는 너무 길다 — 251개면 5시간이 여기서만 간다
+fails = []
+t0 = time.time()
+for i, k in enumerate(todo):
+    ok = False
+    for attempt, wait in enumerate((0, 45, 120)):
+        if wait: time.sleep(wait)
+        r = subprocess.run([sys.executable, 'massing.py', k], cwd=here,
+                           capture_output=True, text=True, encoding='utf-8', errors='replace',
+                           env=dict(os.environ, PYTHONIOENCODING='utf-8'))
+        out = (r.stdout or '') + (r.stderr or '')
+        if os.path.exists(os.path.join(here, 'mass_%s.json' % k)) and '실패' not in out:
+            ok = True; break
+    name = m.SIGUNGU_NAME.get(k, k)
+    if not ok:
+        fails.append('%s %s' % (k, name))
+        io.open(os.path.join(here,'bake_fail.txt'),'w',encoding='utf-8').write('\n'.join(fails))
+    done = i + 1
+    if done % 5 == 0 or not ok:
+        el = time.time() - t0
+        left = (el / done) * (len(todo) - done)
+        print('%3d/%d  %-14s %s · 남은 시간 약 %d분 · 실패 %d'
+              % (done, len(todo), name, '됨' if ok else '실패', left/60, len(fails)), flush=True)
+    time.sleep(GAP)
+
+print('끝 — 실패 %d개' % len(fails), flush=True)
+if fails: print('\n'.join(fails), flush=True)
