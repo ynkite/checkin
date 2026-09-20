@@ -796,6 +796,19 @@
         rlRefresh();
       });
 
+      /* 연결이 돌아왔을 때. 다음 주기까지 기다리면 「연결되지 않아 새로 받지 못하고
+         있습니다」가 최대 1분 더 붙어 있다 — 이미 연결됐는데 안 됐다고 말하는 셈이다.
+         끊긴 순간도 마찬가지다. 다음 주기를 기다리지 않고 그 자리에서 말한다. */
+      window.addEventListener('online', function () {
+        if (!rlTrip) return;
+        rlRefresh();
+      });
+      window.addEventListener('offline', function () {
+        if (!rlTrip) return;
+        rlOffline = true;
+        rlFreshPaint();
+      });
+
       window.rlBack = function () {
         clearInterval(rlTimer); clearInterval(rlFreshTimer);
         rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
