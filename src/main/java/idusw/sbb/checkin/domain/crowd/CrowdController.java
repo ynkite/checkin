@@ -56,12 +56,32 @@ public class CrowdController {
                         date != null ? date : LocalDate.now())));
     }
 
+    /** 이 지역에 집중률 자료가 있는가. 화면이 「없음」과 「대상 아님」을 가르는 데 쓴다 */
+    static final String NO_COVERAGE = "이 지역은 관광공사 집중률 예측 대상이 아닙니다.";
+
+    public record Coverage(String region, String areaCd, boolean covered, String note) {}
+
+    @GetMapping("/coverage")
+    public ResponseEntity<ApiResponse<Coverage>> coverage(@RequestParam String region) {
+        AreaCode.Area a = AreaCode.find(region);
+        if (a == null) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    new Coverage(region, null, false, "지역 이름을 알아보지 못했습니다.")));
+        }
+        boolean ok = AreaCode.hasCrowdData(a);
+        return ResponseEntity.ok(ApiResponse.success(new Coverage(
+                region, a.areaCd(), ok,
+                ok ? "집중률 예측을 받을 수 있는 지역입니다." : NO_COVERAGE)));
+    }
+
     @GetMapping("/timeline")
     public ResponseEntity<ApiResponse<List<CrowdForecast>>> timeline(
             @RequestParam String region, @RequestParam String place) {
         AreaCode.Area a = AreaCode.find(region);
         if (a == null || !AreaCode.hasCrowdData(a)) {
-            return ResponseEntity.ok(ApiResponse.success(List.of()));
+            /* 빈 배열만 주면 「그 장소가 대상이 아님」과 구별이 안 된다.
+               광주(29)·전남(46)은 집중률 자료가 아예 없다 — 0(한적)으로 두면 거짓이다 */
+            return ResponseEntity.ok(ApiResponse.success(NO_COVERAGE, List.of()));
         }
         return ResponseEntity.ok(ApiResponse.success(
                 crowdService.timeline(a.areaCd(), a.signguCd(), place)));
@@ -74,7 +94,7 @@ public class CrowdController {
             @RequestParam(defaultValue = "6") int limit) {
         AreaCode.Area a = AreaCode.find(region);
         if (a == null || !AreaCode.hasCrowdData(a)) {
-            return ResponseEntity.ok(ApiResponse.success(List.of()));
+            return ResponseEntity.ok(ApiResponse.success(NO_COVERAGE, List.of()));
         }
         return ResponseEntity.ok(ApiResponse.success(
                 crowdService.quietest(a.areaCd(), a.signguCd(),
