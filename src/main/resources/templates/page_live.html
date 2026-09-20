@@ -46,7 +46,12 @@
         <!-- 말로 하기 — 운전 중이거나 걷는 중에는 화면을 못 본다.
              소리는 거들 뿐이고 화면이 본문이다. 들은 말도 한 말도 여기 적힌다 -->
         <div class="rl-voice-bar">
-          <button type="button" class="rl-voicebtn" id="rlVoiceBtn" onclick="rlVoiceToggle()">말로 하기</button>
+          <!-- 어디서나 되는 길. 누른 것이 곧 부른 것이라 부르는 말이 필요 없다 -->
+          <button type="button" class="rl-voicebtn rl-voicebtn-main" id="rlVoicePushBtn"
+                  onclick="rlVoicePush()">눌러서 말하기</button>
+          <!-- 되는 기기에서만. 아이폰은 중간에 끊길 수 있다고 미리 말해 준다 -->
+          <button type="button" class="rl-voicebtn" id="rlVoiceBtn"
+                  onclick="rlVoiceToggle()">계속 듣기</button>
           <span class="rv-state" id="rlVoiceState"></span>
         </div>
         <div class="rl-voice" id="rlVoice" hidden>
