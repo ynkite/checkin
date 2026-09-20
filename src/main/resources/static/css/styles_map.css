@@ -18,7 +18,9 @@
 
 .map-wrap{
   display:grid; grid-template-columns:364px minmax(0,1fr);
+  /* 100vh 는 휴대폰 주소창 높이를 빼 주지 않아 아래가 잘린다. dvh 는 따라간다 */
   height:calc(100vh - var(--nav-h, 60px));
+  height:calc(100dvh - var(--nav-h, 60px));
   background:var(--page); color:var(--ink);
   word-break:keep-all; overflow-wrap:break-word;
 }

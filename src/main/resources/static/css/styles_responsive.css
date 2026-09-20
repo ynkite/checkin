@@ -107,6 +107,11 @@ table {
     /* 메뉴 링크: 기본 숨김 유지 (플래너 단계만 선택적으로 표시) */
     .nav-links {
         order: 3;
+        /* flex 자식은 min-width 가 auto 라서 「내용보다 작아질 수 없다」가 기본이다.
+           여기서 문제가 난 적은 아직 없다 — 280px 에서 nav 가 부푼 일이 있었는데
+           원인은 이쪽이 아니라 실시간 화면의 여행 카드였다(styles_live.css 참고).
+           그래도 0 으로 둔다. 플래너 단계 막대가 들어오면 같은 일이 날 자리다. */
+        min-width: 0;
         flex-basis: 100%;
         flex-direction: column;
         align-items: stretch;

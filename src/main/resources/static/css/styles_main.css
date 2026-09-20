@@ -226,9 +226,14 @@ nav {
 }
 
 /* PAGES */
+/* 100vh 는 아이폰·안드로이드에서 주소창 높이를 빼 주지 않는다. 화면보다 크게
+   잡혀서 아래가 잘리거나 쓸데없는 스크롤이 생긴다. 100dvh 는 주소창이 접히고
+   펴지는 대로 따라간다. 모르는 브라우저를 위해 100vh 를 먼저 적어 둔다 —
+   뒤에 오는 것을 아는 브라우저만 덮어쓴다. */
 .page {
     display: none;
     min-height: 100vh;
+    min-height: 100dvh;
     padding-top: 60px
 }
 
@@ -1298,6 +1303,7 @@ nav {
 /* AUTH */
 .auth-wrap {
     min-height: calc(100vh - (var(--pad-page) * 2));
+    min-height: calc(100dvh - (var(--pad-page) * 2));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2412,6 +2418,7 @@ nav {
     display: grid;
     grid-template-columns: 310px 1fr;
     height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
     padding-right: 0
 }
 
@@ -3493,6 +3500,7 @@ nav {
     display: grid;
     grid-template-columns: 190px 1fr;
     min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
     padding-right: 0
 }
 

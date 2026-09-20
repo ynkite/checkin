@@ -131,11 +131,9 @@
                 var first = ymd(list[0].date);
                 var last = ymd(list[list.length - 1].date);
                 title.textContent = region + ' · ' + md(first) + ' ~ ' + md(last);
-                /* 칸 수를 여기서 직접 박으면 인라인이라 좁은 화면 규칙을 전부 이긴다.
-                   320px 에서 일곱 칸이 그대로 남아 한 칸이 35px 이 됐고,
-                   「09/22 화」가 두 줄로 쪼개지면서 아래 줄까지 층이 어긋났다.
-                   몇 날인지만 넘기고, 좁을 때 몇 칸으로 접을지는 CSS 가 정한다. */
-                box.style.setProperty('--wx-cols', Math.min(7, list.length));
+                /* 칸 수를 여기서 정하지 않는다. 인라인 style 은 CSS 를 다 이겨서,
+                   좁은 화면에서 접는 규칙이 한 번도 먹은 적이 없었다.
+                   styles_weather.css 가 폭을 보고 알아서 나눈다(auto-fit). */
 
                 var wet = [];
                 var midSeen = false;

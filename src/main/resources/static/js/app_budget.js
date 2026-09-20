@@ -661,7 +661,17 @@ async function _loadMapBudget() {
         if (cats.length === 0) {
     itemsEl.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px 0;text-align:center">예상 비용을 불러오지 못했습니다.</div>';
         } else {
-            itemsEl.innerHTML = cats.map(c => {
+            /* 막대가 두 줄인데 어느 쪽이 어느 쪽인지 화면이 말하지 않았다.
+               title= 로만 달아 뒀는데 휴대폰에는 마우스를 올릴 수가 없다.
+               실제 지출이 하나라도 있을 때만 붙인다 — 한 줄뿐이면 설명할 것이 없다. */
+            const guide = hasAct ? `
+          <div style="display:flex;gap:14px;align-items:center;font-size:11px;color:var(--text3);margin:0 0 12px">
+            <span style="display:inline-flex;align-items:center;gap:5px">
+              <i style="width:14px;height:5px;border-radius:4px;background:var(--ink-3);opacity:.4;display:inline-block"></i>예상</span>
+            <span style="display:inline-flex;align-items:center;gap:5px">
+              <i style="width:14px;height:5px;border-radius:4px;background:var(--ink-3);display:inline-block"></i>실제</span>
+          </div>` : '';
+            itemsEl.innerHTML = guide + cats.map(c => {
                 const info   = _CATEGORY_MAP[c.category] || { label: c.category, color: 'var(--ink-3)' };
                 const estW   = Math.round((c.estimatedAmount || 0) / maxAmt * 100) + '%';
                 const actW   = Math.round((c.actualAmount   || 0) / maxAmt * 100) + '%';
