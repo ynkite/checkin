@@ -70,9 +70,27 @@
   --home-wet:rgba(213,231,245,.28);
   --home-rain-tile:96px;
   --home-rain-shift:192px;
-  --home-rain-lines:linear-gradient(108deg,transparent 43%,rgba(255,255,255,.76) 44%,rgba(255,255,255,.76) 46%,transparent 47%,transparent 72%,rgba(255,255,255,.62) 73%,rgba(255,255,255,.62) 74%,transparent 75%);
-  /* 가까이 떨어지는 층. 굵고 성글다 — 가까울수록 굵어 보이고 수는 적어 보인다 */
-  --home-rain-near:linear-gradient(104deg,transparent 40%,rgba(255,255,255,.62) 41%,rgba(255,255,255,.62) 44%,transparent 45%);
+  /* 빗줄기. 타일 하나에 굵기와 진하기가 다른 줄을 여러 개 넣는다.
+     한 줄만 넣고 타일을 밀면 같은 간격으로 반복되는 것이 눈에 보인다 —
+     비가 아니라 무늬로 읽힌다. 간격을 고르지 않게 두는 것이 핵심이다.
+     기울기는 등각 장면에 맞춰 살짝 눕혔다. */
+  --home-rain-lines:repeating-linear-gradient(101deg,
+     transparent 0 7px,
+     rgba(255,255,255,.62) 7px 7.9px,
+     transparent 7.9px 19px,
+     rgba(255,255,255,.40) 19px 19.7px,
+     transparent 19.7px 28px,
+     rgba(255,255,255,.72) 28px 29.1px,
+     transparent 29.1px 44px,
+     rgba(255,255,255,.34) 44px 44.6px,
+     transparent 44.6px 57px);
+  /* 가까이 떨어지는 층. 굵고 성글고 빠르다 */
+  --home-rain-near:repeating-linear-gradient(98deg,
+     transparent 0 26px,
+     rgba(255,255,255,.58) 26px 27.6px,
+     transparent 27.6px 71px,
+     rgba(255,255,255,.44) 71px 72.4px,
+     transparent 72.4px 108px);
   --home-width:1440px;
   --home-reading:1200px;
   --home-form-pad:24px;

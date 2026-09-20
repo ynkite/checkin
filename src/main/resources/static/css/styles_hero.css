@@ -66,28 +66,58 @@
 .ck-home .ck-wx::after{
   content:""; position:absolute; inset:calc(var(--home-rain-shift)*-1);
   background-image:var(--home-rain-near);
-  background-size:calc(var(--home-rain-tile)*.62) calc(var(--home-rain-tile)*.62);
-  animation:ck-rain-fall .42s linear infinite; animation-play-state:paused;
+  background-size:calc(var(--home-rain-tile)*1.35) calc(var(--home-rain-tile)*1.35);
+  animation:ck-rain-fall .27s linear infinite; animation-play-state:paused;
   opacity:0;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 78%,transparent 96%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 78%,transparent 96%);
 }
 .ck-home .ck-wx.is-raining::after{ opacity:.5; animation-play-state:running }
-.ck-home .ck-wx > i{ position:absolute; inset:calc(var(--home-rain-shift)*-1); background-image:var(--home-rain-lines); background-size:var(--home-rain-tile) var(--home-rain-tile); animation:ck-rain-fall .75s linear infinite; animation-play-state:paused; opacity:.8 }
-.ck-home .ck-wx .ck-rain-back{ background-size:calc(var(--home-rain-tile)*2) calc(var(--home-rain-tile)*2); animation-name:ck-rain-distant; animation-duration:1.3s; opacity:.38 }
+/* 빗줄기 층. 위아래 끝을 흐리게 잘라 준다 — 안 그러면 판 모서리에서
+   줄이 뚝 끊겨 「붙여 놓은 그림」으로 보인다 */
+.ck-home .ck-wx > i{
+  position:absolute; inset:calc(var(--home-rain-shift)*-1);
+  background-image:var(--home-rain-lines);
+  background-size:var(--home-rain-tile) var(--home-rain-tile);
+  animation:ck-rain-fall .46s linear infinite; animation-play-state:paused;
+  opacity:.72;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14%,#000 86%,transparent 100%);
+  mask-image:linear-gradient(to bottom,transparent 0,#000 14%,#000 86%,transparent 100%);
+}
+/* 멀리 있는 비. 작고 느리고 옅다. 가까운 층과 속도가 달라야 깊이가 생긴다 */
+.ck-home .ck-wx .ck-rain-back{
+  background-size:calc(var(--home-rain-tile)*.55) calc(var(--home-rain-tile)*.55);
+  animation-name:ck-rain-distant; animation-duration:.95s; opacity:.30;
+}
 .ck-home .ck-wx.is-raining,.ck-home .ck-wx.is-clearing{ opacity:1 }
 .ck-home .ck-wx.is-raining > i,.ck-home .ck-wx.is-clearing > i{ animation-play-state:running }
 .ck-home .ck-wx.is-clearing{ opacity:0 }
 .ck-home .ck-wx.is-cloudy{ opacity:.4 }
 .ck-home .ck-wx.is-snow{ opacity:.55; background:var(--home-wet) }
-.ck-splashes{ position:absolute; inset:55% 0 0; opacity:0 }
+/* 빗방울이 떨어져 번지는 자리. 모형의 땅이 화면 아래쪽 절반보다 넓게 깔려 있어
+   35% 부터 잡는다. 지붕에 맞는 것도 이 안에 들어온다 */
+.ck-splashes{ position:absolute; inset:35% 0 0; opacity:0 }
 .is-raining .ck-splashes{ opacity:1 }
-.ck-splashes > i{ position:absolute; width:calc(var(--u)*2); height:var(--u); border:1px solid var(--home-rain); border-radius:50%; opacity:0; animation:ck-splash 1.9s linear infinite; animation-play-state:paused }
+/* 고리 하나만 있으면 「도형이 커졌다 사라진다」로 보인다.
+   ::after 로 반 박자 늦은 두 번째 고리를 겹쳐 물결처럼 만든다 */
+.ck-splashes > i{
+  position:absolute; width:calc(var(--u)*1.6); height:calc(var(--u)*.8);
+  border:1px solid var(--home-rain); border-radius:50%;
+  opacity:0; animation:ck-splash 1.25s linear infinite; animation-play-state:paused;
+}
+.ck-splashes > i::after{
+  content:""; position:absolute; inset:-1px;
+  border:1px solid var(--home-rain); border-radius:50%;
+  opacity:0; animation:ck-splash 1.25s linear infinite; animation-delay:.22s;
+  animation-play-state:inherit;
+}
 .is-raining .ck-splashes > i{ animation-play-state:running }
-.ck-splashes > i:nth-child(1){ left:18%; top:30%; animation-delay:-.3s }
-.ck-splashes > i:nth-child(2){ left:36%; top:50%; animation-delay:-1.1s }
-.ck-splashes > i:nth-child(3){ left:55%; top:15%; animation-delay:-.8s }
-.ck-splashes > i:nth-child(4){ left:72%; top:70%; animation-delay:-1.6s }
-.ck-splashes > i:nth-child(5){ left:82%; top:24%; animation-delay:-.5s }
-.ck-splashes > i:nth-child(6){ left:43%; top:82%; animation-delay:-1.4s }
+.ck-splashes > i:nth-child(1){ left:14%; top:22%; animation-delay:-.31s }
+.ck-splashes > i:nth-child(2){ left:33%; top:58%; animation-delay:-.87s }
+.ck-splashes > i:nth-child(3){ left:51%; top:11%; animation-delay:-.52s }
+.ck-splashes > i:nth-child(4){ left:69%; top:73%; animation-delay:-1.09s }
+.ck-splashes > i:nth-child(5){ left:84%; top:31%; animation-delay:-.18s }
+.ck-splashes > i:nth-child(6){ left:42%; top:88%; animation-delay:-.68s }
 @keyframes ck-rain-fall{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(0,var(--home-rain-shift),0) } }
 @keyframes ck-rain-distant{ from{ transform:rotate(-8deg) translate3d(0,0,0) } to{ transform:rotate(-8deg) translate3d(0,var(--home-rain-shift),0) } }
 /* 빗방울이 떨어진 자리. 전에는 한 바퀴의 65%를 아무것도 없이 보냈다 —
