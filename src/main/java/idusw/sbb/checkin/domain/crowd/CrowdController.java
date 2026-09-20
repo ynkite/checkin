@@ -48,12 +48,24 @@ public class CrowdController {
         if (!AreaCode.hasCrowdData(a)) {
             return ResponseEntity.ok(ApiResponse.success(names.stream()
                     .map(n -> CrowdForecast.unknown(n, null,
-                            a.sido() + "은 관광공사 집중률 예측 대상이 아닙니다"))
+                            topicParticle(a.sido()) + " 관광공사 집중률 예측 대상이 아닙니다"))
                     .toList()));
         }
         return ResponseEntity.ok(ApiResponse.success(
                 crowdService.forecast(a.areaCd(), a.signguCd(), names,
                         date != null ? date : LocalDate.now())));
+    }
+
+    /**
+     * 「광주은」이라고 나가던 것. 받침이 있으면 은, 없으면 는을 붙인다.
+     * 한글 음절은 0xAC00 부터 28개씩 한 벌이고, 그 안의 자리가 종성이다.
+     */
+    static String topicParticle(String word) {
+        if (word == null || word.isBlank()) return "이 지역은";
+        char last = word.charAt(word.length() - 1);
+        boolean hangul = last >= 0xAC00 && last <= 0xD7A3;
+        boolean jong = hangul && (last - 0xAC00) % 28 != 0;
+        return word + (jong ? "은" : "는");
     }
 
     /** 이 지역에 집중률 자료가 있는가. 화면이 「없음」과 「대상 아님」을 가르는 데 쓴다 */

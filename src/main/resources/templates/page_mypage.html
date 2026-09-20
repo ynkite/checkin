@@ -186,9 +186,15 @@
         return;
       }
       if (!trips.length) {
-        box.innerHTML = '<p class="my-none"><b>아직 만든 여행이 없습니다.</b>' +
-          '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.' +
-          '<button type="button" class="btn-f my-none-go" onclick="goNewPlanner()">경로 만들기</button></p>';
+        /* 목록에는 저장을 끝낸 여행만 온다. 만들다 만 것을 「없다」고 하면 거짓말이다 */
+        const mid = (typeof _hasPlannerDraft === 'function') && _hasPlannerDraft();
+        box.innerHTML = mid
+          ? '<p class="my-none"><b>만들던 여행이 아직 저장 전입니다.</b>' +
+            '경로를 끝까지 만들어 저장하면 여기에 올라옵니다.' +
+            '<button type="button" class="btn-f my-none-go" onclick="goResumePlanner()">만들던 곳으로</button></p>'
+          : '<p class="my-none"><b>아직 저장한 여행이 없습니다.</b>' +
+            '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.' +
+            '<button type="button" class="btn-f my-none-go" onclick="goNewPlanner()">경로 만들기</button></p>';
       }
       /* 여행이 있으면 건드리지 않는다 — _renderMyTrips() 가 그린다 */
     }

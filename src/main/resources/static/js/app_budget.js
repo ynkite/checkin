@@ -105,12 +105,19 @@ function _populateLedgerTripCards() {
     const container = document.getElementById('ledger-trip-cards');
     if (!container) return;
     if (!_myTrips || !_myTrips.length) {
-        /* 안내만 두면 여기서 막힌다. 갈 곳을 같이 준다. */
+        /* 이 목록에는 저장을 끝낸 여행만 올라온다(서버가 FIXED 만 내려준다).
+           만들다 만 여행이 있는데 「아직 만든 여행이 없습니다」라고 하면 거짓말이다.
+           안내만 두면 여기서 막히므로 갈 곳을 같이 준다. */
+        var mid = (typeof _hasPlannerDraft === 'function') && _hasPlannerDraft();
         container.innerHTML =
             '<div class="lg-empty">' +
-            '<p>아직 만든 여행이 없습니다.</p>' +
-            '<p class="lg-empty-sub">경로를 만들면 숙박비와 이동비가 여기에 쌓입니다.</p>' +
-            '<button type="button" class="btn-f" onclick="goNewPlanner()">경로 만들기</button>' +
+            (mid
+                ? '<p>만들던 여행이 아직 저장 전입니다.</p>' +
+                  '<p class="lg-empty-sub">경로를 끝까지 만들어 저장하면 숙박비와 이동비가 여기에 쌓입니다.</p>' +
+                  '<button type="button" class="btn-f" onclick="goResumePlanner()">만들던 곳으로</button>'
+                : '<p>아직 저장한 여행이 없습니다.</p>' +
+                  '<p class="lg-empty-sub">경로를 만들어 저장하면 숙박비와 이동비가 여기에 쌓입니다.</p>' +
+                  '<button type="button" class="btn-f" onclick="goNewPlanner()">경로 만들기</button>') +
             '</div>';
         _drawLedgerCardPager(0);
         /* 고를 것이 없으면 버튼을 켜 두지 않는다 */
