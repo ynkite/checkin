@@ -49,6 +49,7 @@
 .rl-trip-t{
   font-size:16.5px; font-weight:600; letter-spacing:var(--tracking-tight);
   color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  min-width:0;   /* 격자 칸이 줄어들 수 있게. 없으면 제목이 칸을 밀어낸다 */
 }
 .rl-trip-d{
   font-family:var(--fig); font-size:12px; color:var(--ink-3);
@@ -392,4 +393,18 @@ body:has(#page-live.active) .lnb{ display:none }
   #page-live .rl-back,
   #page-live .rl-again{ min-height:44px }
   #page-live .rl-back{ padding-block:0 }
+}
+
+
+/* ── 아주 좁은 화면 (갤럭시 폴드 접은 상태 280px) ─────────────
+   여행 카드가 「띠 · 제목 · 날짜」 세 칸을 한 줄에 놓는다. 띠와 날짜는
+   줄일 수 없는 글자라(「2026-10-11 ~ 2026-10-12」) 236px 칸에 283px 이 들어갔다.
+   카드 하나가 화면을 25px 밀어내서 문서 전체에 가로 스크롤이 생겼고,
+   화면 위쪽 nav 까지 그 폭으로 늘어났다 — 눈에는 nav 가 깨진 것처럼 보였다.
+   원인은 여기였다.
+
+   날짜를 아랫줄로 내린다. 세로로 한 줄 길어지지만 가로로 넘치는 것보다 낫다. */
+@media (max-width:360px){
+  .rl-trip{ grid-template-columns:auto 1fr; row-gap:5px; padding:16px }
+  .rl-trip-d{ grid-column:1 / -1; white-space:normal }
 }
