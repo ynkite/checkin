@@ -244,8 +244,11 @@
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
                         '<p class="rl-modes-note">재는 중</p>';
 
-        /* 자차만 잰다. 대중교통·도보는 이 계정에 TMAP 상품이 안 열려 있어 403 이 오고,
-           키가 그날 통째로 멈춰 자차까지 못 쓰게 된다(/travel-time/compare 는 셋을 다 부른다) */
+        /* 자차만 잰다. 대중교통 길찾기와 보행자 길찾기는 TMAP 과 별개 상품이라
+           앱키를 따로 받아야 하는데, 사지 않기로 정했다 (2026-09-20).
+           그래서 있지도 않은 값을 기다리지 않는다.
+           (전에는 403 이 키를 통째로 껐는데 그건 KeyRing 쪽에서 고쳐졌다.
+            지금은 compare 도 잴 수 있는 것만 부른다.) */
         fetch('/api/route/travel-time', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -289,7 +292,7 @@
           '</div>';
         }).join('');
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows +
-          '<p class="rl-modes-note">대중교통·도보 시간은 이 화면에서 재지 않습니다.</p>';
+          '<p class="rl-modes-note">대중교통과 도보 시간은 제공하지 않습니다. 자차만 실제로 잽니다.</p>';
       }
 
       /* 콘솔에서 부르는 점검 — 좌표 뭉개기와 같은 구간 건너뛰기 */
