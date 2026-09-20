@@ -55,6 +55,12 @@ public class LiveService {
         LocalDate today = LocalDate.now();
         List<Map<String, Object>> out = new ArrayList<>();
         for (TravelPlan p : planRepository.findByUserIdOrderByCreatedAtDesc(userId)) {
+            /* 「내 여행」과 같은 기준으로 거른다. 거기는 FIXED 만 보여 준다.
+               여기만 DRAFT 까지 보여 주면, 만들다 만 일정이 실시간 목록에는
+               떠 있는데 「내 여행」에서는 안 보인다. 지우러 갈 데가 없어진다.
+               두 화면이 같은 여행을 두고 다른 말을 하면 그게 더 큰 문제다.
+               초대받아 저장한 것(INVITED)은 경로가 없어서 아래에서 걸린다. */
+            if (!"FIXED".equals(p.getStatus())) continue;
             if (p.getStartDate() == null) continue;
             LocalDate end = p.getEndDate() != null ? p.getEndDate() : p.getStartDate();
             if (end.plusDays(2).isBefore(today)) continue;          /* 지난 여행 */
