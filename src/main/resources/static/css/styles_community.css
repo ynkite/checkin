@@ -1395,7 +1395,9 @@
  * 아래 #000 은 색이 아니라 「여기는 안 지운다」는 표시다(mask 는 밝기만 읽는다).
  * 토큰을 넣으면 오히려 틀린다.
  * ========================================================= */
-#page-community .comm-tabs { --fade: 18px; }
+/* 지도 날짜 줄(.day-tabs)과 같은 26px. 18px 은 마지막 탭이 반만 보이는 폭이라
+   흐림인지 그냥 잘린 것인지 구별이 안 됐다 */
+#page-community .comm-tabs { --fade: 26px; }
 
 #page-community .comm-tabs.ov-r {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
