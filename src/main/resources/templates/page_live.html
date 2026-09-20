@@ -505,9 +505,40 @@
         });
         var j = await r.json().catch(function () { return null; });
         if (!j || !j.success || !j.data) {
-          throw new Error((j && j.message) || '지금은 확인하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
+          /* 429 는 「고장」이 아니라 「오늘 다 썼다」다. 둘을 같은 말로 쓰면 안 된다 —
+             고장인 줄 알면 새로 고치며 계속 누른다. 서버가 보낸 말을 그대로 쓴다. */
+          var e = new Error((j && j.message) ||
+            (r.status === 429 ? '오늘 확인은 다 썼습니다. 내일 다시 확인할 수 있습니다.'
+                              : '지금은 확인하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.'));
+          e.spent = (r.status === 429);
+          throw e;
         }
+        /* 「남은 확인 2번」이 message 로 온다. 단추에 적어 준다 —
+           세 번뿐이라는 것을 다 쓴 뒤에 아는 것과 미리 아는 것은 다르다. */
+        rlLeftLabel(j.message);
         return j.data;
+      }
+
+      /* 단추에 남은 횟수를 적는다. 다 쓰면 단추를 감추지 않고 왜 못 누르는지 남긴다 —
+         사라진 단추는 고장으로 보이고, 사용자는 자기가 뭘 잘못했는지 찾는다. */
+      function rlLeftLabel(msg) {
+        var btn = document.getElementById('rlCheckBtn');
+        if (!btn) return;
+        var n = /(\d+)/.exec(String(msg || ''));
+        var sub = btn.querySelector('span');
+        if (!sub) return;
+        if (n) {
+          sub.textContent = Number(n[1]) > 0
+            ? '다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다 · 오늘 ' + n[1] + '번 남음'
+            : '오늘 확인을 다 썼습니다. 내일 다시 확인할 수 있습니다';
+          btn.disabled = Number(n[1]) <= 0 ? false : false;   /* 막지 않는다. 눌러도 이유를 말해 준다 */
+        }
+      }
+
+      function rlSpentLabel() {
+        var btn = document.getElementById('rlCheckBtn');
+        var sub = btn && btn.querySelector('span');
+        if (sub) sub.textContent = '오늘 확인을 다 썼습니다. 내일 다시 확인할 수 있습니다';
       }
 
       window.rlCheck = async function () {
@@ -519,6 +550,8 @@
         try {
           rlPaintCheck(await rlFetchCheck());
         } catch (e) {
+          /* 다 쓴 것은 고장이 아니다. 단추에도 남겨 다시 누르지 않게 한다 */
+          if (e && e.spent) rlSpentLabel();
           if (box) box.innerHTML = '<p class="rl-modes-note">' +
             esc(e && e.message && !/fetch/i.test(e.message) ? e.message : '연결이 끊겨 확인하지 못했습니다.') + '</p>';
         } finally {
