@@ -4027,7 +4027,31 @@ public class AiRouteService {
                     return false;
                 });
             }
+
+            /* 여기까지는 「후보들끼리 뭉치는 중심」만 본다. 그래서 후보가 통째로
+               다른 지역이면 아무것도 안 걸린다. 실제로 부산으로 만든 여행에
+               마루해물라면 제주공항점 · 더비치펜션 · 용두네해장국이 들어왔고,
+               3D 모형도 「제주 제주시」가 떴다. 전부 제주라 중앙값도 제주였다.
+
+               개별 장소를 반경으로 자르지는 않는다(§9). 대신 결과 전체가
+               엉뚱한 지역인지만 본다. 이건 이상치 문제가 아니라 만들기 자체가
+               틀린 것이라, 걸러서 될 일이 아니고 저장하면 안 되는 일이다. */
+            double[] want = geocodeCached(destination, geoCache);
+            if (want != null) {
+                double off = haversine(want, center);
+                if (off > WRONG_REGION_DIST) {
+                    log.error("[동선 조립] 후보가 통째로 다른 지역이다. 여행지={} 후보중심이 {}km 떨어져 있다",
+                            destination, Math.round(off / 1000.0));
+                    throw new IllegalStateException(
+                            "여행지와 다른 지역의 장소만 나왔습니다 (" + destination + " 에서 "
+                            + Math.round(off / 1000.0) + "km). 다시 만들어 주세요.");
+                }
+            }
         }
         return result;
     }
+
+    /** 결과 전체가 이만큼 떨어져 있으면 이상치가 아니라 만들기가 틀린 것이다.
+        시도 하나를 가로지르는 거리가 보통 100km 안쪽이라 넉넉히 잡았다. */
+    private static final double WRONG_REGION_DIST = 150_000.0;
 }

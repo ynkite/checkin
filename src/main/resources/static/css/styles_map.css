@@ -102,29 +102,18 @@
 .day-tabs{
   display:flex; gap:7px; padding:13px 22px; flex-shrink:0;
   border-bottom:1px solid var(--ui-line);
-  overflow-x:auto; scrollbar-width:none;
+  /* 가로로 밀어 보게 두었더니 「1일차 마루해물라면 ~ 더비치펜션」처럼 긴 것이
+     오른쪽에서 잘렸다. 흐리게 처리해 둬서 더 있다는 것은 알 수 있었지만,
+     며칠짜리 여행인지 한눈에 안 보이는 것이 더 큰 문제였다.
+     줄을 바꿔 다 보여 준다. 세로로 한 줄 길어지는 편이 낫다. */
+  flex-wrap:wrap; overflow-x:visible; scrollbar-width:none;
 }
 .day-tabs::-webkit-scrollbar{ display:none }
-/* 왼쪽 판이 363px 인데 탭 넉 장이 542px 이다. 3일차가 아예 안 보였다.
-   막대를 숨겨 놔서 더 있다는 낌새조차 없었다. 레일과 같은 규칙으로
-   넘치는 쪽을 흐리게 한다. 여기는 길 찾는 자리라 더 넓게 준다. */
-.day-tabs{ --fade:26px }
-.day-tabs.ov-r{
-  -webkit-mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
-          mask-image:linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
-}
-.day-tabs.ov-l{
-  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade));
-          mask-image:linear-gradient(to right, transparent, #000 var(--fade));
-}
-.day-tabs.ov-l.ov-r{
-  -webkit-mask-image:linear-gradient(to right, transparent, #000 var(--fade),
-                     #000 calc(100% - var(--fade)), transparent);
-          mask-image:linear-gradient(to right, transparent, #000 var(--fade),
-                     #000 calc(100% - var(--fade)), transparent);
-}
+/* 넘치는 쪽을 흐리게 하던 것은 걷었다. 이제 줄을 바꿔 다 보여 주므로
+   가릴 것이 없다. ov-l / ov-r 클래스는 JS 가 아직 붙이지만 아무 일도 안 한다. */
 .day-tab{
-  flex:0 0 auto; max-width:150px; min-width:0;
+  /* 한 줄에 둘씩 놓고 남는 폭을 나눠 가진다. 글자가 길어도 잘리지 않는다 */
+  flex:1 1 calc(50% - 4px); min-width:0; max-width:none;
   display:flex; flex-direction:column; align-items:flex-start; gap:2px;
   padding:9px 14px 10px; border:0; border-radius:12px; cursor:pointer;
   font-family:inherit; text-align:left; background:transparent;
@@ -136,7 +125,7 @@
 }
 .day-tab .dt-an{
   font-size:11px; color:var(--ink-3); letter-spacing:-.01em;
-  max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  max-width:100%; word-break:keep-all; line-height:1.45;
 }
 .day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
 .day-tab.on{ background:var(--ink); box-shadow:none }
@@ -1300,3 +1289,24 @@
 }
 #mapRouteLayer g[data-day="1"] .mp-svg-lbl,
 #mapRouteLayer g[data-day="2"] .mp-svg-lbl{ fill:var(--ink) }
+
+/* ── 모형 조작 ─────────────────────────────────────────────
+   전에는 열 때 잡아 준 자리에서 꼼짝도 못 했다. 전국 251곳을 구워 놓고
+   한 자리만 보여 주는 것은 아깝다. 끌고 당기고 밀 수 있게 한다. */
+.mv-view{
+  position:absolute; right:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:7;
+  display:flex; gap:calc(var(--u)/2);
+}
+.mv-vb{
+  min-width:44px; min-height:44px; padding:0 calc(var(--u)*1.5);
+  border:0; border-radius:var(--r-field); cursor:pointer;
+  background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
+  font-family:inherit; font-size:15px; font-weight:700; line-height:1;
+}
+.mv-vb-t{ font-size:12px; font-weight:600 }
+.mv-vb:hover{ background:var(--ui-plate) }
+#modelView{ cursor:grab; touch-action:none }
+#modelView.mv-grab{ cursor:grabbing }
+/* 단추 위에서는 끌기 손 모양이 나오면 안 된다 */
+.mv-view, .mv-vb{ cursor:default }
+.mv-vb{ cursor:pointer }
