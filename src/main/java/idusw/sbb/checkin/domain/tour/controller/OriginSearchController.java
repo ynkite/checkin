@@ -20,12 +20,23 @@ public class OriginSearchController {
 
     private final OriginSearchService originSearchService;
     private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService;
+    private final idusw.sbb.checkin.domain.tour.service.VisitorTrendService visitorTrendService;
 
     /**
      * 지도 화면 「이 지역 여행 정보」 — 거점 관광지 · 반려동물 동반 · 무장애를 한 번에.
      * 여행 번호가 아니라 여행지 이름과 좌표를 받는다. 비공개 여행의 목적지를 내주지 않기 위해서다.
      * 예: /api/tour/area-info?destination=경주&lat=35.83&lng=129.21
      */
+    /**
+     * 지역 방문자 — 시도 단위 · 과거 실측. 집중률(시군구·예측)과 눈금이 달라 화면에서 나란히 두되 섞지 않는다.
+     * 예: /api/tour/visitor-trend?destination=부산
+     */
+    @GetMapping("/visitor-trend")
+    public ResponseEntity<ApiResponse<idusw.sbb.checkin.domain.tour.service.VisitorTrendService.Trend>> visitorTrend(
+            @RequestParam String destination) {
+        return ResponseEntity.ok(ApiResponse.success(visitorTrendService.summary(destination.trim())));
+    }
+
     @GetMapping("/area-info")
     public ResponseEntity<ApiResponse<idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.AreaInfo>> areaInfo(
             @RequestParam String destination,

@@ -41,6 +41,9 @@
         <div class="rl-next" id="rlNext"></div>
         <div class="rl-modes" id="rlModes" hidden></div>
 
+        <!-- 지역 방문자 — 시도 단위 과거 실측. 집중률(시군구 예측)과 눈금이 달라 따로 둔다 -->
+        <div class="rl-modes" id="rlVisitors" hidden></div>
+
         <!-- 장소 확인하기 — 다음 정거장의 지금(또는 그날) 상황을 확인하고 갈래를 준다 -->
         <div class="rl-acts" style="grid-template-columns:1fr">
           <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
@@ -211,6 +214,46 @@
         }
 
         rlModes(d);
+        rlVisitors(d);
+      }
+
+      /* ── 지역 방문자 ───────────────────────────────────
+       * 「이 지역에 원래 사람이 많은 날인가」를 본다. 집중률은 그 장소가 지금 붐비는지이고
+       * 이것은 시도 전체에 며칠 전 실제로 몇 명이 왔는지다. 눈금이 다르니 한 줄로 합치지 않는다. */
+      var rlVisitKey = null;
+      function rlVisitors(d) {
+        var box = document.getElementById('rlVisitors');
+        if (!box || !d.destination) return;
+        if (rlVisitKey === d.destination) return;   // 여행이 같으면 다시 묻지 않는다
+        rlVisitKey = d.destination;
+        box.hidden = false;
+        box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p><p class="rl-modes-note">불러오는 중</p>';
+
+        fetch('/api/tour/visitor-trend?destination=' + encodeURIComponent(d.destination), { headers: rlAuth() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) {
+            var v = j && j.success ? j.data : null;
+            if (!v || v.status !== 'OK') {
+              box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p>' +
+                '<p class="rl-modes-note">' + esc((v && v.note) || '지역 방문자 통계를 받지 못했습니다.') + '</p>';
+              return;
+            }
+            var d8 = String(v.latestDate || '');
+            var when = d8.length === 8 ? (+d8.slice(4, 6)) + '월 ' + (+d8.slice(6, 8)) + '일' : d8;
+            var cmp = v.deltaPercent == null ? ''
+              : (v.deltaPercent > 0 ? ' · 같은 요일 평균보다 ' + v.deltaPercent + '% 많음'
+                 : v.deltaPercent < 0 ? ' · 같은 요일 평균보다 ' + Math.abs(v.deltaPercent) + '% 적음'
+                 : ' · 같은 요일 평균과 비슷함');
+            box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p>' +
+              '<div class="rl-mode"><span class="rl-mode-n">' + esc(v.areaName || '') + ' 외지인</span>' +
+              '<span class="rl-mode-v"><b>' + Number(v.latest).toLocaleString() + '</b>명</span></div>' +
+              '<p class="rl-modes-note">' + esc(when + (v.dayOfWeek ? '(' + v.dayOfWeek + ')' : '') + ' 실측' + cmp) + '. ' +
+              '시도 단위라 다음 장소의 붐빔과는 다른 눈금입니다.</p>';
+          })
+          .catch(function () {
+            rlVisitKey = null;
+            box.innerHTML = '<p class="rl-modes-lb">지역 방문자</p><p class="rl-modes-note">지역 방문자 통계를 받지 못했습니다.</p>';
+          });
       }
 
       /* ── 이동수단 셋 ─────────────────────────────────
@@ -619,7 +662,7 @@
 
       window.rlBack = function () {
         clearInterval(rlTimer);
-        rlTrip = null; rlPos = null; rlModeKey = null;
+        rlTrip = null; rlPos = null; rlModeKey = null; rlVisitKey = null;
         document.getElementById('rlNow').hidden = true;
         document.getElementById('rlPick').hidden = false;
         rlLoadTrips();
@@ -663,7 +706,7 @@
 
       window.initLivePage = function () {
         clearInterval(rlTimer);
-        rlTrip = null; rlPos = null; rlModeKey = null;
+        rlTrip = null; rlPos = null; rlModeKey = null; rlVisitKey = null;
         var pick = document.getElementById('rlPick');
         var now = document.getElementById('rlNow');
         if (pick) pick.hidden = false;
