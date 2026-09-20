@@ -2741,16 +2741,35 @@ window._handleWriteImageSelect = function(input) {
         box.innerHTML = html.join('');
     }
 
+    /*
+     * 장소 이름으로 좌표를 찾는다. 저장된 동선에 좌표가 없는 플랜이 있어서다.
+     *
+     * 이름만 넣고 찾으면 전국에서 같은 이름을 고른다 — 제주 여행인데 「카페 봄날」이
+     * 광주에 찍히고 「연리지가든」이 남해에 찍혔다. 지도가 남해안 전체로 벌어졌다.
+     * 여행지를 앞에 붙여 먼저 찾고, 그래도 없으면 이름만으로 한 번 더 찾는다.
+     */
+    function previewTripRegion() {
+        const p = window._currentPostDetail || {};
+        const r = p.planDestination || p.destination || p.region || '';
+        return String(r).trim().split(/\s+/)[0] || '';
+    }
+
     function searchPlaceByName(place, callback) {
         if (place.coord) { callback(place.coord); return; }
         if (!kakao?.maps?.services?.Places) { callback(null); return; }
-        new kakao.maps.services.Places().keywordSearch(place.name, function (data, status) {
+
+        const ps = new kakao.maps.services.Places();
+        const ask = (query, orElse) => ps.keywordSearch(query, function (data, status) {
             if (status === kakao.maps.services.Status.OK && data?.length) {
                 callback({ lat: Number(data[0].y), lng: Number(data[0].x) });
             } else {
-                callback(null);
+                orElse();
             }
         });
+
+        const region = previewTripRegion();
+        if (region) ask(region + ' ' + place.name, () => ask(place.name, () => callback(null)));
+        else ask(place.name, () => callback(null));
     }
 
     function renderActualKakaoMap(routeData) {
@@ -2768,7 +2787,9 @@ window._handleWriteImageSelect = function(input) {
             const placedByDay = {};
             let resolvedCount = 0;
 
-            places.forEach(place => {
+            const placed = [];
+
+            places.forEach((place, seq) => {
                 searchPlaceByName(place, function (coord) {
                     resolvedCount++;
                     if (coord) {
@@ -2776,13 +2797,16 @@ window._handleWriteImageSelect = function(input) {
                         bounds.extend(position);
                         if (!placedByDay[place.day]) placedByDay[place.day] = [];
                         placedByDay[place.day].push({ ...place, position });
+                        placed.push({ place, position, no: seq + 1 });
 
+                        /* 핀 안에는 들르는 순서를 쓴다.
+                           전에는 place.icon 을 썼는데, 아이콘이 없는 장소에서는 「곳」이라는
+                           글자가 그대로 찍혔다. 아이콘이 있는 장소는 그림문자가 찍혔다. */
                         new kakao.maps.CustomOverlay({
-                            map, position, xAnchor: 0, yAnchor: 0,
+                            map, position, xAnchor: 0, yAnchor: 0, zIndex: 2,
                             content: `
-                                <div style="cursor:pointer;position:relative;width:0;height:0;">
-                                    <div style="position:absolute;left:-18px;top:-18px;width:36px;height:36px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid var(--panel);z-index:2;">${escapeHtml(place.icon || '곳')}</div>
-                                    <div style="position:absolute;top:20px;left:0;transform:translateX(-50%);background:var(--panel);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08);z-index:1;">${escapeHtml(place.name)}</div>
+                                <div style="position:relative;width:0;height:0;">
+                                    <div style="position:absolute;left:-15px;top:-15px;width:30px;height:30px;box-sizing:border-box;border-radius:50%;background:${getPinColor(place.type)};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--panel);box-shadow:0 2px 8px rgba(0,0,0,.3);border:2.5px solid var(--panel);">${seq + 1}</div>
                                 </div>`
                         });
                     }
@@ -2794,14 +2818,62 @@ window._handleWriteImageSelect = function(input) {
                             new kakao.maps.Polyline({ map, path, strokeWeight: 5, strokeColor: getDayColor(day), strokeOpacity: 0.65, strokeStyle: 'solid' });
                         });
 
-                        if (Object.keys(placedByDay).length > 0) {
+                        if (placed.length > 0) {
                             map.setBounds(bounds);
-                            setTimeout(() => { map.relayout(); map.setBounds(bounds); }, 150);
+                            setTimeout(() => {
+                                map.relayout();
+                                map.setBounds(bounds);
+                                setTimeout(() => drawPlaceLabels(map, placed), 200);
+                            }, 150);
                         } else {
                             container.innerHTML = `<div class="cpp-map-loading">지도에 표시할 장소를 찾지 못했습니다.</div>`;
                         }
                     }
                 });
+            });
+        });
+    }
+
+    /*
+     * ── 이름표 — 겹치면 접는다 ─────────────────────────────
+     * 작은 판에 일곱 곳을 찍으면 이름이 서로 올라탄다. 320px 에서 재 보니
+     * 열두 개 중 스물여덟 쌍이 겹쳤다. 글자가 겹치면 둘 다 못 읽는다.
+     * 지도 화면(page_map.html 의 bumps)과 같은 방법 — 먼저 자리 잡은 것을
+     * 남기고, 그 자리를 침범하는 이름은 아예 안 그린다. 핀 번호는 그대로 남는다.
+     */
+    function drawPlaceLabels(map, placed) {
+        let proj;
+        try { proj = map.getProjection(); } catch (e) { proj = null; }
+        if (!proj || typeof proj.containerPointFromCoords !== 'function') return;
+
+        const LH = 18;               // 이름표 한 줄 높이
+        const taken = [];
+        const bumps = (x, y, w, h) => taken.some(t =>
+            x < t.x + t.w && x + w > t.x && y < t.y + t.h && y + h > t.y);
+
+        /* 핀 자리부터 채워 둔다. 이름표가 핀에 깔리면 앞글자가 잘려 읽을 수 없다 */
+        const points = [];
+        placed.forEach(p => {
+            let pt;
+            try { pt = proj.containerPointFromCoords(p.position); } catch (e) { pt = null; }
+            points.push(pt);
+            if (pt) taken.push({ x: pt.x - 16, y: pt.y - 16, w: 32, h: 32 });
+        });
+
+        placed.forEach(({ place, position }, i) => {
+            const pt = points[i];
+            if (!pt) return;
+
+            /* 한글은 글자당 대략 글자크기만큼 넓다. 그려 보기 전에는 못 재니 어림한다 */
+            const w = Math.min(place.name.length, 10) * 11 + 12;
+            const x = pt.x - w / 2;
+            const y = pt.y + 18;
+            if (bumps(x, y, w, LH)) return;
+            taken.push({ x, y, w, h: LH });
+
+            new kakao.maps.CustomOverlay({
+                map, position, xAnchor: 0.5, yAnchor: -0.6, zIndex: 1,
+                content: `<div style="background:var(--panel);border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.3);white-space:nowrap;border:1px solid rgba(0,0,0,.08)">${escapeHtml(place.name)}</div>`
             });
         });
     }
@@ -4608,7 +4680,7 @@ window._handleWriteImageSelect = function(input) {
         overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
 
         overlay.innerHTML = `
-            <div style="width:720px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
+            <div style="width:720px;max-width:100%;max-height:90vh;max-height:90dvh;overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
                     <h2 style="margin:0;font-size:20px;font-weight:800;color:var(--text1)">후기 수정</h2>
                     <button type="button" id="communityEditCloseBtn" style="border:none;background:transparent;font-size:28px;cursor:pointer;color:var(--text3)">×</button>
