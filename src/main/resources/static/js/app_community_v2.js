@@ -2727,14 +2727,29 @@ window._handleWriteImageSelect = function(input) {
     function renderPreviewList(routeData) {
         const box = document.getElementById('cpp-places');
         if (!box) return;
+
+        /* 연결된 일정에 경로가 저장돼 있지 않은 글이 있다. 빈 칸으로 두면
+           불러오지 못한 것인지 원래 없는 것인지 알 수 없다 — 그대로 말한다 */
+        const hasPlace = (routeData || []).some(d => (d.places || []).some(p => !p.transit && p.name));
+        if (!hasPlace) {
+            box.innerHTML = '<div style="padding:24px 4px;color:var(--text3);font-size:13.5px;line-height:1.7;word-break:keep-all">' +
+                '<p style="margin:0 0 4px;color:var(--text2);font-weight:600">이 글에 연결된 일정에는 아직 경로가 없습니다.</p>' +
+                '<p style="margin:0">글쓴이가 경로를 저장하면 여기에 장소가 순서대로 나타납니다.</p></div>';
+            return;
+        }
+
         const html = [];
+        let seq = 0;
         routeData.forEach(day => {
             html.push(`<div class="cpp-day-title">${escapeHtml(day.label || `Day ${day.day}`)}</div>`);
             (day.places || []).forEach(p => {
                 if (p.transit) { html.push(`<div class="cpp-transit-row">${escapeHtml(p.transit)}</div>`); return; }
+                seq += 1;
+                /* 지도 핀과 같은 번호를 쓴다. 전에는 place.icon 을 썼는데
+                   아이콘이 없으면 「곳」이라는 글자가, 있으면 그림문자가 찍혔다 */
                 html.push(`
                     <div class="cpp-place-row">
-                        <span>${escapeHtml(p.icon || '곳')}</span>
+                        <span class="cpp-place-no">${seq}</span>
                         <strong>${escapeHtml(p.name || '장소')}</strong>
                         <em>${escapeHtml(p.time || p.sub || '플랜 장소')}</em>
                     </div>
@@ -2780,7 +2795,10 @@ window._handleWriteImageSelect = function(input) {
         if (!container) return;
         const places = getAllPlaces(routeData);
 
-        if (!places.length) { container.innerHTML = `<div class="cpp-map-loading">표시할 장소가 없습니다.</div>`; return; }
+        if (!places.length) {
+            container.innerHTML = `<div class="cpp-map-loading">연결된 일정에 아직 경로가 없어 지도에 찍을 곳이 없습니다.</div>`;
+            return;
+        }
         if (typeof kakao === 'undefined' || !kakao.maps) { container.innerHTML = `<div class="cpp-map-loading">Kakao 지도 SDK를 불러오지 못했습니다.</div>`; return; }
 
         kakao.maps.load(function () {
