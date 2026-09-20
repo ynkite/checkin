@@ -2724,7 +2724,38 @@
          무조건 선 아래로 깔린다. 오버레이의 z-index 로는 넘을 수 없는 경계다.
          그래서 이름도 여기서 그리고, 오버레이 쪽 이름은 CSS 로 감춘다.
          선 -> 갈매기 -> 이름 순서라 이름이 늘 맨 위에 온다. */
+      /* 이름이 겹치면 셋 다 못 읽는다.
+         하루 동선은 도시 하나를 가로지르는데(부산 하루가 20km) 휴대폰에서는
+         지도 칸이 371px 다. 핀이 한데 뭉쳐서 「감천문화마을」과 「자갈치 시장」이
+         「감천 자갈치 시장」으로 읽혔다. 카카오 지도가 붙자마자 눈에 띄었다.
+
+         겹치는 것은 지운다. 이름 하나를 잃는 것보다 셋을 못 읽는 게 나쁘다.
+         지운 자리에도 번호 붙은 핀은 그대로 남고, 아래 목록에 이름이 있다.
+
+         먼저 놓는 쪽이 이긴다 — 하루 순서대로 도니 앞선 정거장이 남는다.
+         「지금」 칸은 따로 없다. 순서가 곧 맥락이라 앞이 남는 편이 읽기 쉽다. */
       var lbl = '';
+      var taken = [];                       /* 이미 자리 잡은 이름들의 네모 */
+      var LH = 15;                          /* 글자 높이. styles_map.css 의 .mp-svg-lbl 과 맞춘다 */
+
+      /* 지도가 제 것을 그려 놓은 자리도 미리 막아 둔다.
+         이름끼리만 안 겹치게 해 놓으면, 「지금 여기」 표식이나 카카오 확대 막대
+         위에 이름이 올라앉는다. 실제로 「광안리 해수욕장」이 그랬다. */
+      var W0 = svg.clientWidth || 0;
+      if (W0 > 0) taken.push({ x: W0 - 46, y: 0, w: 60 });   /* 오른쪽 확대 막대 */
+      if (herePin) {
+        var hq = pr.px(herePin.lat, herePin.lng);
+        if (hq) taken.push({ x: hq[0] - 26, y: hq[1] - 26, w: 118 });  /* 「지금 여기」 */
+      }
+
+      function bumps(x, y, w) {
+        for (var i = 0; i < taken.length; i++) {
+          var t = taken[i];
+          if (x < t.x + t.w && x + w > t.x && y < t.y + LH && y + LH > t.y) return true;
+        }
+        return false;
+      }
+
       (DAY_ROUTES || []).forEach(function (route) {
         (route.keys || []).forEach(function (k) {
           var pin = pinByKey[k];
@@ -2732,6 +2763,11 @@
           var q = pr.px(pin.lat, pin.lng);
           if (!q) return;
           var x = q[0] + 19, y = q[1] + 4;
+          /* 한글은 글자당 대략 글자크기만큼 넓다. 재려면 그려 봐야 해서 어림한다 —
+             어림이 조금 넉넉한 편이 겹치는 것보다 낫다 */
+          var w = pin.label.length * 12 + 6;
+          if (bumps(x, y - LH + 4, w)) return;
+          taken.push({ x: x, y: y - LH + 4, w: w });
           var s = _mpEsc(pin.label);
           lbl += '<text class="mp-svg-lbl" data-day="' + route.day + '" '
                + 'x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '">' + s + '</text>';
