@@ -252,6 +252,7 @@
     width: 640px;
     max-width: 100%;
     max-height: 90vh;
+    max-height: 90dvh;   /* 주소창·키보드가 차지하는 만큼 빼 준다. 아는 기기만 쓴다 */
     overflow-y: auto;
     background: var(--surface);
     border-radius: 22px;

@@ -4680,7 +4680,7 @@ window._handleWriteImageSelect = function(input) {
         overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
 
         overlay.innerHTML = `
-            <div style="width:720px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
+            <div style="width:720px;max-width:100%;max-height:90vh;max-height:90dvh;overflow:auto;background:var(--panel);border-radius:22px;padding:26px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.25);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
                     <h2 style="margin:0;font-size:20px;font-weight:800;color:var(--text1)">후기 수정</h2>
                     <button type="button" id="communityEditCloseBtn" style="border:none;background:transparent;font-size:28px;cursor:pointer;color:var(--text3)">×</button>
