@@ -1417,3 +1417,31 @@
 /* 막대는 숨긴다 — 흐림이 그 일을 한다 */
 #page-community .comm-tabs::-webkit-scrollbar { display: none; }
 #page-community .comm-tabs { scrollbar-width: none; }
+
+/* =========================================================
+ * 판(모달) 안의 누를 자리 — 휴대폰
+ * 후기 작성 판은 #page-community 밖에 있어서 화면 단위로 깐 바닥이 닿지 않았다.
+ * 재 보니 「등록하기」가 96x34, 「취소」가 58x34, 굵게·기울임이 27x22 였다.
+ * 키보드가 올라오면 판이 반으로 접히는데 그 안에서 이 크기는 못 맞힌다.
+ * ========================================================= */
+@media (max-width: 480px) {
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, summary, [role="button"], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"]):not([type="file"])) {
+        min-height: 44px;
+    }
+
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, [role="button"]) {
+        min-width: 44px;
+    }
+
+    /* 늘어난 만큼 위로 쏠리지 않게 */
+    #writeModal .btn-o,
+    #writeModal .btn-f,
+    #writeModal .btn-prev-step {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
