@@ -974,8 +974,13 @@ async function updateMyPageUI() {
         _renderMyLikedPosts(),
     ]);
 
-    _myTrips = (tripsRes.success && tripsRes.data) ? tripsRes.data : [];
-    const invitedList = (invitedRes.success && invitedRes.data) ? invitedRes.data : [];
+    /* 못 받은 것과 없는 것은 다르다. 전에는 둘 다 빈 배열이 되어
+       서버가 답을 못 줘도 「여행 기록이 없습니다」로 나왔다 */
+    window._myTripsFailed   = !(tripsRes   && tripsRes.success   !== false && Array.isArray(tripsRes.data));
+    window._myInvitedFailed = !(invitedRes && invitedRes.success !== false && Array.isArray(invitedRes.data));
+
+    _myTrips = window._myTripsFailed ? [] : tripsRes.data;
+    const invitedList = window._myInvitedFailed ? [] : invitedRes.data;
 
     _renderMyTrips(_myTrips);
     _renderMyInvitedTrips(invitedList); // DB 데이터로 렌더러 기동
@@ -1091,7 +1096,11 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
 
     } else {
         html += `</div>`;
-        html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">초대받은 일정이 없습니다.</div>';
+        html += window._myInvitedFailed
+            ? _myEmptyBox({ fail: true, retry: 'initMyPageData()' })
+            : _myEmptyBox({
+                msg: '초대받은 일정이 없습니다.',
+                sub: '같이 가는 사람이 일정에 초대하면 여기에 나타납니다.' });
     }
 
     container.innerHTML = html;
@@ -1218,7 +1227,12 @@ function _renderMyTrips(trips = null, page = 1) {
         });
 
     } else {
-        html += '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">여행 기록이 없습니다.</div>';
+        html += window._myTripsFailed
+            ? _myEmptyBox({ fail: true, retry: 'initMyPageData()' })
+            : _myEmptyBox({
+                msg: '아직 만든 여행이 없습니다.',
+                sub: '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.',
+                btn: '경로 만들기', act: 'goNewPlanner()' });
     }
 
     te.innerHTML = html;
@@ -1295,15 +1309,45 @@ function openMyTrip(tripId) {
     }, 50);
 }
 
+
+/* ── 빈 칸 한 판 ─────────────────────────────────────────────
+ * 「없다」와 「못 받았다」는 다른 말이다. 전에는 서버가 답을 못 줘도
+ * 목록이 빈 배열이 되어 「작성한 후기가 없습니다」로 나왔다 — 있는데 없다고 한 셈이다.
+ * 그리고 빈 칸에서 끝내지 않는다. 다음에 할 일을 같이 둔다.
+ */
+function _myEmptyBox(opt) {
+    var o = opt || {};
+    var wrap = 'padding:28px 16px;text-align:center;color:var(--text3);font-size:13.5px;line-height:1.7;word-break:keep-all';
+    if (o.fail) {
+        return '<div style="' + wrap + '">' +
+            '<p style="margin:0 0 4px;color:var(--text2);font-weight:600">불러오지 못했습니다.</p>' +
+            '<p style="margin:0">연결이 끊겼거나 서버가 답하지 않았습니다. 없는 것이 아니라 받지 못한 것입니다.</p>' +
+            (o.retry ? '<button class="btn-o" style="margin-top:12px" onclick="' + o.retry + '">다시 시도</button>' : '') +
+            '</div>';
+    }
+    return '<div style="' + wrap + '">' +
+        '<p style="margin:0 0 4px;color:var(--text2);font-weight:600">' + (o.msg || '아직 아무것도 없습니다.') + '</p>' +
+        (o.sub ? '<p style="margin:0">' + o.sub + '</p>' : '') +
+        (o.btn ? '<button class="btn-f" style="margin-top:14px" onclick="' + o.act + '">' + o.btn + '</button>' : '') +
+        '</div>';
+}
+
 /** [v2] GET /api/users/me/posts → 작성한 후기 */
 async function _renderMyReviews() {
     const listEl = document.getElementById('my-reviews-list');
     if (!listEl) return;
     listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">후기를 불러오는 중...</div>';
     const res = await apiCall('/api/users/me/posts');
-    const posts = res.data ?? [];
+    if (!res || res.success === false || !Array.isArray(res.data)) {
+        listEl.innerHTML = _myEmptyBox({ fail: true, retry: '_renderMyReviews()' });
+        return;
+    }
+    const posts = res.data;
     if (posts.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">작성한 후기가 없습니다.</p>';
+        listEl.innerHTML = _myEmptyBox({
+            msg: '아직 쓴 후기가 없습니다.',
+            sub: '다녀온 곳을 적어 두면 다음 사람이 고를 때 도움이 됩니다.',
+            btn: '후기 쓰기', act: "goRefresh('community')" });
         return;
     }
     listEl.innerHTML = posts.map(r => `
@@ -1350,9 +1394,16 @@ async function _renderMyLikedPosts() {
     if (!listEl) return;
     listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">불러오는 중...</div>';
     const res = await apiCall('/api/users/me/liked-posts');
-    const liked = res.data ?? [];
+    if (!res || res.success === false || !Array.isArray(res.data)) {
+        listEl.innerHTML = _myEmptyBox({ fail: true, retry: '_renderMyLikedPosts()' });
+        return;
+    }
+    const liked = res.data;
     if (liked.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);font-size:13px">좋아요한 후기가 없습니다.</p>';
+        listEl.innerHTML = _myEmptyBox({
+            msg: '좋아요한 후기가 없습니다.',
+            sub: '마음에 드는 후기에 좋아요를 누르면 여기에 모입니다.',
+            btn: '커뮤니티 둘러보기', act: "goRefresh('community')" });
         return;
     }
     listEl.innerHTML = liked.map(r => `

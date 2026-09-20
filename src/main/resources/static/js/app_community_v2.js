@@ -1396,7 +1396,7 @@
                 </div>`;
 
             }).join('')
-            : `<div style="padding:12px 0;color:var(--text3);font-size:13px">아직 댓글이 없습니다.</div>`;
+            : `<div style="padding:12px 0;color:var(--text3);font-size:13px">아직 댓글이 없습니다. 첫 댓글을 남겨 보세요.</div>`;
 
         box.innerHTML = `
             <h3>댓글</h3>
@@ -2186,7 +2186,10 @@ window._handleWriteImageSelect = function(input) {
         if (reset) tabEl.innerHTML = '';
 
         if (!posts || !posts.length) {
-            tabEl.innerHTML += `<div style="padding:40px 20px;text-align:center;color:var(--text3);font-size:14px">게시글이 없습니다.</div>`;
+            tabEl.innerHTML += commEmptyBox({
+                msg: '아직 이 갈래에 올라온 글이 없습니다.',
+                sub: '먼저 다녀오셨다면 첫 글이 됩니다.',
+                btn: '첫 글 쓰기', act: 'checkAndOpenWrite()' });
             return;
         }
 
@@ -2878,6 +2881,21 @@ window._handleWriteImageSelect = function(input) {
         });
     }
 
+
+    /* ── 빈 칸 한 판 ───────────────────────────────────────────
+     * 「없다」로 끝내지 않는다. 막다른 길이 되기 때문이다.
+     * 검색해서 안 나온 것과 아직 아무도 안 쓴 것도 다른 말이다.
+     */
+    function commEmptyBox(opt) {
+        var o = opt || {};
+        var wrap = 'padding:36px 20px;text-align:center;color:var(--text3);font-size:13.5px;line-height:1.7;word-break:keep-all';
+        return '<div class="comm-empty" style="' + wrap + '">' +
+            '<p style="margin:0 0 4px;color:var(--text2);font-weight:600">' + escapeHtml(o.msg || '아직 아무것도 없습니다.') + '</p>' +
+            (o.sub ? '<p style="margin:0">' + escapeHtml(o.sub) + '</p>' : '') +
+            (o.btn ? '<button class="btn-f" style="margin-top:14px" onclick="' + o.act + '">' + escapeHtml(o.btn) + '</button>' : '') +
+            '</div>';
+    }
+
     function extractPreviewScrapList(res) {
         if (Array.isArray(res)) return res;
         if (Array.isArray(res?.data)) return res.data;
@@ -3523,7 +3541,10 @@ window._handleWriteImageSelect = function(input) {
                 _renderPostList(pageItems, true);
             }
         } else {
-            tabEl.innerHTML = '<div class="comm-empty" style="padding:40px 20px;text-align:center;color:var(--text3);font-size:14px">검색 결과가 없습니다.</div>';
+            tabEl.innerHTML = commEmptyBox({
+                msg: '찾으시는 글이 없습니다.',
+                sub: '다른 말로 찾거나, 검색어를 지우고 전체를 볼 수 있습니다.',
+                btn: '검색어 지우기', act: 'commClearSearch()' });
         }
 
         renderRouteSearchPager(totalPages, page);
@@ -3657,7 +3678,10 @@ window._handleWriteImageSelect = function(input) {
         const pageItems = _lastPlaceItems.slice(start, start + PAGE_SIZE);
 
         if (!pageItems.length) {
-            tabEl.innerHTML = '<div class="comm-empty" style="padding:40px 20px;text-align:center;color:var(--text3);font-size:14px">검색 결과가 없습니다.</div>';
+            tabEl.innerHTML = commEmptyBox({
+                msg: '찾으시는 글이 없습니다.',
+                sub: '다른 말로 찾거나, 검색어를 지우고 전체를 볼 수 있습니다.',
+                btn: '검색어 지우기', act: 'commClearSearch()' });
             return;
         }
 
@@ -3779,6 +3803,13 @@ window._handleWriteImageSelect = function(input) {
 
     function installCommunityV2SearchAndSort() {
         window.doSearch = communityV2Search;
+
+        /* 빈 칸에서 빠져나갈 길. 검색어를 지우고 전체를 다시 보여 준다 */
+        window.commClearSearch = function () {
+            var inp = document.getElementById('searchInp');
+            if (inp) { inp.value = ''; inp.dispatchEvent(new Event('input', { bubbles: true })); }
+            communityV2Search();
+        };
 
         const searchBtn = document.querySelector('.btn-search');
         if (searchBtn) searchBtn.onclick = function (e) { if (e) e.preventDefault(); communityV2Search(); };
@@ -4364,9 +4395,16 @@ window._handleWriteImageSelect = function(input) {
             .replace(/\r?\n/g, ' ');
     }
 
+    /* 빈 칸에서 끝내지 않는다. 다음에 할 일을 같이 둔다 —
+       「없습니다」로 끝나면 거기가 막다른 길이 된다.
+       글자만 주면 예전처럼 한 줄로 나오고, 객체를 주면 안내와 단추가 붙는다 */
     function emptyMyPageMessage(message) {
-        return '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">' +
-            escapeHtml(message) +
+        var o = (message && typeof message === 'object') ? message : { msg: message };
+        var wrap = 'padding:28px 16px;text-align:center;color:var(--text3);font-size:13.5px;line-height:1.7;word-break:keep-all';
+        return '<div style="' + wrap + '">' +
+            '<p style="margin:0 0 4px;color:var(--text2);font-weight:600">' + escapeHtml(o.msg || '아직 아무것도 없습니다.') + '</p>' +
+            (o.sub ? '<p style="margin:0">' + escapeHtml(o.sub) + '</p>' : '') +
+            (o.btn ? '<button class="btn-f" style="margin-top:14px" onclick="' + o.act + '">' + escapeHtml(o.btn) + '</button>' : '') +
             '</div>';
     }
 
@@ -4516,7 +4554,9 @@ window._handleWriteImageSelect = function(input) {
             listEl,
             'reviews',
             posts,
-            '작성한 후기가 없습니다.',
+            { msg: '아직 쓴 후기가 없습니다.',
+              sub: '다녀온 곳을 적어 두면 다음 사람이 고를 때 도움이 됩니다.',
+              btn: '후기 쓰기', act: 'checkAndOpenWrite()' },
             renderMyReviewCard,
             window._renderMyReviews,
             page
@@ -4542,7 +4582,9 @@ window._handleWriteImageSelect = function(input) {
             listEl,
             'likes',
             liked,
-            '좋아요한 후기가 없습니다.',
+            { msg: '좋아요한 후기가 없습니다.',
+              sub: '마음에 드는 후기에 좋아요를 누르면 여기에 모입니다.',
+              btn: '커뮤니티 둘러보기', act: "goRefresh('community')" },
             renderMyLikedReviewCard,
             window._renderMyLikedPosts,
             page
@@ -5107,7 +5149,10 @@ window._handleWriteImageSelect = function(input) {
 
         const res = await api.get('/api/scraps');
         if (!res || !res.success || !Array.isArray(res.data)) {
-            el.innerHTML = emptyMyPageMessage('스크랩한 장소가 없습니다.');
+            el.innerHTML = emptyMyPageMessage({
+                msg: '스크랩한 장소가 없습니다.',
+                sub: '후기에서 「담기」를 누르면 여기에 모입니다.',
+                btn: '커뮤니티 둘러보기', act: "goRefresh('community')" });
             return;
         }
 
@@ -5289,7 +5334,9 @@ window._handleWriteImageSelect = function(input) {
             listEl,
             'scrap-route',
             list,
-            '스크랩한 여행 경로가 없습니다.',
+            { msg: '스크랩한 여행 경로가 없습니다.',
+              sub: '다른 사람이 올린 경로를 담아 두면 여기에서 바로 꺼내 쓸 수 있습니다.',
+              btn: '여행 경로 둘러보기', act: "goRefresh('community')" },
             renderMyRouteScrapCard,
             window.loadMyRouteScrap,
             page

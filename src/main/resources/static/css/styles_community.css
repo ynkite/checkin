@@ -1271,6 +1271,13 @@
 
 #page-community .comm-empty b { color: var(--ink); font-size: var(--t-body); }
 
+/* 빈 칸에서 끝내지 않는다 — 다음에 할 일을 하나 둔다.
+   격자라 단추가 가로로 늘어나므로 제 너비만 쓰게 한다 */
+#page-community .comm-empty-go {
+    justify-self: start;
+    margin-top: calc(var(--u) * 1.5);
+}
+
 #page-community .popular-tags {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
