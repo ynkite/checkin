@@ -132,8 +132,11 @@
   /* 하나씩 세어 고치다가 그만뒀다. 열일곱 개를 고치면 다음 주에 열여덟 번째가
      생긴다. 이 두 화면 안의 누를 것은 전부 40 이상으로 둔다 —
      새로 만드는 단추도 자동으로 따라온다. */
-  #page-map button, #page-map summary, #page-map [role="button"],
-  #page-live button, #page-live summary, #page-live [role="button"]{
+  /* :where() 는 특정도가 0 이다. 그냥 #page-map button 으로 쓰면 이 규칙이
+     .rl-voicebtn{min-height:44px} 을 이겨서, 더 크게 잡아 둔 단추를 40 으로
+     끌어내린다. 바닥을 깔려고 만든 규칙이 천장이 되는 셈이다 — 실제로 그랬다.
+     특정도를 0 으로 두면 각자 적어 둔 값이 그대로 이긴다. */
+  :where(#page-map, #page-live) :where(button, summary, [role="button"]){
     min-height:40px;
   }
   /* summary 와 여러 줄 단추는 세로 가운데로. 안 그러면 늘어난 만큼 위로 쏠린다 */
