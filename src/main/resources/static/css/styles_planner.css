@@ -24,7 +24,7 @@
 /* ── 머리 ─────────────────────────────────────────────────── */
 #page-planner .planner-ey{
   display:block; margin:0 0 7px;
-  font-variant-numeric:tabular-nums; font-size:11.5px; font-weight:500;
+  font-variant-numeric:tabular-nums; font-size:var(--t-xs); font-weight:500;
   letter-spacing:.005em; color:var(--ink-3);
 }
 #page-planner .planner-ttl{
@@ -32,7 +32,7 @@
   letter-spacing:var(--tracking-tight); line-height:1.15;
 }
 #page-planner .planner-sub{
-  margin:9px 0 0; font-size:14.5px; line-height:1.7; color:var(--ink-2);
+  margin:9px 0 0; font-size:var(--t-sm); line-height:1.7; color:var(--ink-2);
   max-width:46ch; word-break:keep-all;
 }
 
@@ -89,7 +89,7 @@
   color:var(--ink-3); margin-bottom:6px;
 }
 #page-planner .form-hint{
-  font-style:normal; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  font-style:normal; font-size:var(--t-xs); font-weight:500; color:var(--ink-3);
   opacity:.85;
 }
 #page-planner .form-input,
@@ -202,7 +202,7 @@
   padding:8px 15px 9px; border-radius:99px; border:0; cursor:pointer;
   background:var(--panel); color:var(--ink-2);
   box-shadow:inset 0 0 0 1px var(--ui-line);
-  font-family:inherit; font-size:13.5px; font-weight:600; letter-spacing:var(--tracking-tight);
+  font-family:inherit; font-size:var(--home-meta); font-weight:600; letter-spacing:var(--tracking-tight);
   transition:color .15s, box-shadow .15s, background .15s;
 }
 #page-planner .chip:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
@@ -233,7 +233,7 @@
   display:flex; flex-direction:column; gap:3px; align-items:flex-start;
 }
 #page-planner .pl-row-note{
-  font-style:normal; font-size:11.5px; font-weight:500; color:var(--ink-3);
+  font-style:normal; font-size:var(--t-xs); font-weight:500; color:var(--ink-3);
   line-height:1.35; word-break:keep-all;
 }
 
@@ -275,7 +275,7 @@
 .og-gps:disabled{ cursor:default; color:var(--ink-3) }
 .og-hint:empty{ display:none }
 .og-hint{
-  margin:6px 0 0; font-size:11.5px; line-height:1.5;
+  margin:6px 0 0; font-size:var(--t-xs); line-height:1.5;
   color:var(--ink-3); word-break:keep-all;
 }
 .og-list{
@@ -291,8 +291,8 @@
 }
 .og-item + .og-item{ box-shadow:inset 0 1px 0 var(--ui-line-2) }
 .og-item:hover{ background:var(--ui-plate) }
-.og-item b{ display:block; font-size:13.5px; font-weight:600; color:var(--ink) }
-.og-item span{ display:block; margin-top:2px; font-size:11.5px; color:var(--ink-3) }
+.og-item b{ display:block; font-size:var(--home-meta); font-weight:600; color:var(--ink) }
+.og-item span{ display:block; margin-top:2px; font-size:var(--t-xs); color:var(--ink-3) }
 
 /* 대화와 요약 — 입력 흐름 뒤에 붙는 작업면이라 더 단단한 판으로 정리한다. */
 #page-planner .chat-layout{
@@ -315,7 +315,7 @@
 #page-planner .cav.user{ background:var(--num); color:var(--panel) }
 #page-planner .chat-info-bar{
   padding:10px 18px; background:var(--ui-plate); color:var(--ink-2);
-  border-bottom:1px solid var(--ui-line); font-size:12.5px;
+  border-bottom:1px solid var(--ui-line); font-size:var(--home-meta);
 }
 #page-planner .chat-msgs{
   min-height:clamp(360px, 52dvh, 560px); padding:18px;
@@ -323,7 +323,7 @@
 }
 #page-planner .cmsg{ max-width:min(560px, 90%) }
 #page-planner .cbubble{
-  padding:10px 13px; border-radius:8px; font-size:13.5px; line-height:1.68;
+  padding:10px 13px; border-radius:8px; font-size:var(--home-meta); line-height:1.68;
 }
 #page-planner .cbubble.bot{
   background:var(--panel); color:var(--ink);
@@ -351,7 +351,7 @@
 #page-planner .asc{ position:sticky; top:calc(var(--nav-h, 72px) + 14px) }
 #page-planner .asc-hd{ background:var(--ink); padding:14px 16px }
 #page-planner .asc-ttl{ font-size:14px; color:var(--panel) }
-#page-planner .asc-sub{ font-size:11.5px; color:var(--home-muted-dark) }
+#page-planner .asc-sub{ font-size:var(--t-xs); color:var(--home-muted-dark) }
 #page-planner .asc-tabs{ background:var(--panel); border-bottom:1px solid var(--ui-line) }
 #page-planner .asc-tab{
   min-height:44px; color:var(--ink-2); transition:color .15s, background-color .15s;
@@ -364,7 +364,7 @@
   display:grid; grid-template-columns:7ch minmax(0,1fr) minmax(32px,auto);
   gap:10px; align-items:center; padding:11px 14px;
 }
-#page-planner .asc-label{ font-size:11.5px; color:var(--ink-3) }
+#page-planner .asc-label{ font-size:var(--t-xs); color:var(--ink-3) }
 #page-planner .asc-val{
   min-width:0; text-align:left; font-size:13px; color:var(--ink);
   overflow-wrap:anywhere;
@@ -375,7 +375,7 @@
 }
 #page-planner .asc-del:hover{ color:var(--tile); background:var(--tile-pale) }
 #page-planner .asc-note{
-  padding:24px 16px; color:var(--ink-3); font-size:12.5px; line-height:1.6;
+  padding:24px 16px; color:var(--ink-3); font-size:var(--home-meta); line-height:1.6;
   text-align:center; border-top:0;
 }
 #page-planner .btn-gen{
@@ -396,7 +396,7 @@
    전에는 남의 브랜드 색(네이버 초록·구글 파랑)으로 채운 큰 버튼
    두 개였다. 우리 화면에서 제일 진한 면이 남의 색이면 안 된다. */
 #page-planner .wp-note{
-  margin:0 0 12px; font-size:11.5px; line-height:1.6; color:var(--ink-3);
+  margin:0 0 12px; font-size:var(--t-xs); line-height:1.6; color:var(--ink-3);
   word-break:keep-all;
 }
 #page-planner .wp-note strong{ font-weight:600; color:var(--ink-2) }
