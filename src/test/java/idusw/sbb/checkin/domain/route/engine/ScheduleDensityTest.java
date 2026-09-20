@@ -1,5 +1,6 @@
 package idusw.sbb.checkin.domain.route.engine;
 
+import idusw.sbb.checkin.domain.route.service.AiRouteService;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,5 +58,20 @@ class ScheduleDensityTest {
         assertThat(relaxed.foodCap()).isEqualTo(3);
         assertThat(relaxed.cafeCap()).isEqualTo(1);
         assertThat(relaxed.tourCap()).isEqualTo(1);
+    }
+
+    /**
+     * 상한의 합이 티맵 경유지 한도를 넘으면 그 밀도의 하루는 순서 최적화를 통째로 못 탄다 —
+     * 조용히 직선거리 그리디로 내려가고, 화면에는 되돌아가는 동선이 그대로 남는다.
+     * 한 번 그렇게 샌 적이 있어서 여기서 막는다. 상한을 올릴 때 이 테스트가 먼저 깨져야 한다.
+     */
+    @Test
+    void 어느_밀도든_상한_합이_티맵_경유지_한도를_넘지_않는다() {
+        for (ScheduleDensity d : ScheduleDensity.values()) {
+            int[] caps = d.caps();
+            assertThat(caps[0] + caps[1] + caps[2])
+                    .as("%s 상한 합", d)
+                    .isLessThanOrEqualTo(AiRouteService.TMAP_MAX_VIA);
+        }
     }
 }
