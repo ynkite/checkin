@@ -13,7 +13,8 @@
    * API
    *   GET /api/live/trips                    열 수 있는 여행 목록
    *   GET /api/live/now?tripId=&lat=&lng=    지금 상황 한 벌
-   *   POST /api/route/travel-time/compare    자차·대중교통·도보 한 번에
+   *   POST /api/route/travel-time            자차 이동시간 (대중교통·도보는 제공하지 않는다)
+   *   GET /api/tour/visitor-trend            지역 방문자 (시도 단위 과거 실측)
    =================================================== -->
   <div class="page" id="page-live">
     <div class="rl-wrap">
@@ -36,6 +37,8 @@
         <button type="button" class="rl-back" onclick="rlBack()">여행 바꾸기</button>
 
         <p class="rl-when" id="rlWhen"></p>
+        <!-- 언제 받은 값인가. 실시간이라고 말하는 화면은 이걸 말해야 한다 -->
+        <p class="rl-fresh" id="rlFresh" role="status" aria-live="polite" hidden></p>
         <h2 class="rl-head" id="rlHead"></h2>
 
         <div class="rl-next" id="rlNext"></div>
@@ -54,6 +57,9 @@
              style="margin:10px 0 14px;padding:14px 16px;border:1px solid var(--border2);border-radius:12px;background:var(--panel);word-break:keep-all"></div>
 
         <div class="rl-acts" id="rlActs"></div>
+
+        <!-- 「다른 곳으로」가 고른 후보. 고르는 것은 사용자다 -->
+        <div class="rl-alt" id="rlAlt" hidden role="group" aria-label="다른 곳 후보"></div>
 
         <div class="rl-rail" id="rlRail"></div>
 
@@ -78,6 +84,7 @@
       /* 다음 정거장. rlPaint 가 채우고 「길 안내」가 읽는다.
          좌표가 없으면 null 로 둔다 — 좌표 없이 안내를 시작하면 바로 막힌다. */
       var rlNextStop = null;
+      var rlDayNo = 1;          /* 바꾸기 API 가 몇 일차인지 물어본다 */
 
       /* 로그인 토큰. 이 프로젝트는 전역 fetch 래퍼가 없어서 부르는 쪽이 직접 붙인다 —
          안 붙이면 내 여행 목록이 비어서 「열 여행이 없습니다」가 뜬다 */
@@ -136,9 +143,57 @@
             '</button>';
           }).join('');
 
+          /* 홈의 「지금 보기」로 들어왔으면 그 여행을 바로 연다.
+             여행이 하나뿐인데 고르라고 또 물으면 한 번 더 누르게 만든다.
+             goRefresh 가 새로고침을 하므로 window 가 아니라 sessionStorage 로 온다.
+             한 번 쓰고 지운다 — 다음에 실시간을 그냥 열면 목록부터 보여야 한다. */
+          var want = null;
+          try {
+            want = Number(sessionStorage.getItem('liveOpenTripId')) || null;
+            sessionStorage.removeItem('liveOpenTripId');
+          } catch (e) {}
+          if (want && list.some(function (t) { return t.tripId === want; })) rlOpen(want);
+
         } catch (e) {
           box.innerHTML = '<p class="rl-empty-2">여행 목록을 불러오지 못했습니다.</p>';
         }
+      }
+
+      /* ── 언제 받은 값인가 ─────────────────────────────
+         이 화면은 「실시간」이라고 이름 붙어 있다. 그러면 화면에 있는 숫자가
+         언제 것인지 말해야 한다. 안 그러면 사용자는 늘 지금 것이라고 믿는다.
+
+         전에는 rlRefresh 의 catch 가 실패를 통째로 삼켰다. 지하철에 들어가
+         연결이 끊겨도 화면은 그대로였다. 70초를 기다려도 글자 하나 안 바뀌었다.
+         그 사이 붐빔은 바뀌어 있을 수 있는데 화면은 아무 말도 안 했다.
+         옛 값을 지금 값인 척 보여 주는 것이 빈칸보다 나쁘다. */
+      var rlSnapAt = 0;        /* 마지막으로 받아 낸 시각 */
+      var rlOffline = false;   /* 직전 시도가 실패했나 */
+      var rlGeoDenied = false; /* 위치를 못 받았나 */
+      var rlFreshTimer = null;
+
+      function rlFreshPaint() {
+        var el = document.getElementById('rlFresh');
+        if (!el) return;
+        var bits = [];
+
+        if (rlSnapAt) {
+          var min = Math.floor((Date.now() - rlSnapAt) / 60000);
+          bits.push(min < 1 ? '방금 받은 값입니다' : min + '분 전에 받은 값입니다');
+        }
+        if (rlOffline) {
+          bits.push('지금은 연결되지 않아 새로 받지 못하고 있습니다');
+        }
+        /* 위치는 없어도 화면이 돈다. 그래도 무엇이 빠지는지는 말해 준다 */
+        if (rlGeoDenied) {
+          bits.push('위치를 몰라 시각만으로 어디쯤인지 가늠합니다');
+        }
+
+        if (!bits.length) { el.hidden = true; return; }
+        el.hidden = false;
+        el.classList.toggle('rl-fresh-off', rlOffline);
+        el.innerHTML = esc(bits.join(' · ')) +
+          ' <button type="button" class="rl-again" onclick="rlAgain()">다시 받기</button>';
       }
 
       /* ── 지금 상황 ───────────────────────────────────── */
@@ -151,9 +206,18 @@
           var r = await fetch(q, { headers: rlAuth() });
           var j = await r.json();
           var d = (j && j.success && j.data) || null;
-          if (d) rlPaint(d);
-        } catch (e) { /* 다음 주기에 다시 받는다 */ }
+          if (!d) throw new Error('빈 응답');
+          rlPaint(d);
+          rlSnapAt = Date.now();
+          rlOffline = false;
+        } catch (e) {
+          /* 삼키지 않는다. 화면이 옛 값을 들고 있다는 사실을 화면이 말한다 */
+          rlOffline = true;
+        }
+        rlFreshPaint();
       }
+
+      window.rlAgain = function () { rlRefresh(); };
 
       function rlPaint(d) {
         rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
@@ -213,6 +277,7 @@
           }).join('');
         }
 
+        if (d.dayNo) rlDayNo = d.dayNo;
         rlModes(d);
         rlVisitors(d);
       }
@@ -287,8 +352,11 @@
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
                         '<p class="rl-modes-note">재는 중</p>';
 
-        /* 자차만 잰다. 대중교통·도보는 이 계정에 TMAP 상품이 안 열려 있어 403 이 오고,
-           키가 그날 통째로 멈춰 자차까지 못 쓰게 된다(/travel-time/compare 는 셋을 다 부른다) */
+        /* 자차만 잰다. 대중교통 길찾기와 보행자 길찾기는 TMAP 과 별개 상품이라
+           앱키를 따로 받아야 하는데, 사지 않기로 정했다 (2026-09-20).
+           그래서 있지도 않은 값을 기다리지 않는다.
+           (전에는 403 이 키를 통째로 껐는데 그건 KeyRing 쪽에서 고쳐졌다.
+            지금은 compare 도 잴 수 있는 것만 부른다.) */
         fetch('/api/route/travel-time', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -332,7 +400,7 @@
           '</div>';
         }).join('');
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows +
-          '<p class="rl-modes-note">대중교통·도보 시간은 이 화면에서 재지 않습니다.</p>';
+          '<p class="rl-modes-note">대중교통과 도보 시간은 제공하지 않습니다. 자차만 실제로 잽니다.</p>';
       }
 
       /* 콘솔에서 부르는 점검 — 좌표 뭉개기와 같은 구간 건너뛰기 */
@@ -647,26 +715,198 @@
         document.getElementById('rlNow').hidden = false;
 
         /* 위치는 있으면 쓴다. 막아도 시각으로 가르므로 화면은 돌아간다 */
+        rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(function (p) {
             rlPos = [p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)];
+            rlGeoDenied = false;
             rlRefresh();
-          }, function () { /* 조용히 넘어간다 */ }, { timeout: 8000, maximumAge: 30000 });
+          }, function () {
+            /* 막아도 화면은 돈다. 다만 무엇이 빠지는지 말해 준다 —
+               전에는 아무 말도 없어서 위치를 준 사람과 화면이 똑같아 보였다 */
+            rlGeoDenied = true;
+            rlFreshPaint();
+          }, { timeout: 8000, maximumAge: 30000 });
+        } else {
+          rlGeoDenied = true;
         }
         rlRefresh();
 
         /* 1분마다 다시 묻는다. 더 자주 물어도 집중률은 하루 단위라 안 바뀐다 */
         clearInterval(rlTimer);
         rlTimer = setInterval(rlRefresh, 60000);
+
+        /* 「N분 전」은 받지 않아도 흘러간다. 시계는 따로 돈다 */
+        clearInterval(rlFreshTimer);
+        rlFreshTimer = setInterval(rlFreshPaint, 20000);
       };
 
+      /* 화면을 덮어 뒀다 돌아왔을 때.
+         전에는 아무 처리가 없어서 다음 주기(최대 60초)까지 옛 값이었다.
+         주머니에 넣었다 꺼내는 것이 이 화면을 쓰는 보통 방식인데. */
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible') return;
+        if (!rlTrip) return;
+        rlRefresh();
+      });
+
       window.rlBack = function () {
-        clearInterval(rlTimer);
+        clearInterval(rlTimer); clearInterval(rlFreshTimer);
+        rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
+        var fr = document.getElementById('rlFresh'); if (fr) fr.hidden = true;
         rlTrip = null; rlPos = null; rlModeKey = null; rlVisitKey = null;
         document.getElementById('rlNow').hidden = true;
         document.getElementById('rlPick').hidden = false;
         rlLoadTrips();
       };
+
+      /* 바꾸기 — 한 번 묻고, 바꾸기 전 일정을 들고 있다가, 되돌릴 수 있게 둔다.
+         되돌릴 수 없으면 아예 바꾸지 않는다. 돌아올 길이 없는 변경은 제안이 아니다. */
+      async function rlApplyLive(o) {
+        if (!rlTrip) return;
+        if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+
+        var before = null;
+        try { before = await rlGetRoute(); } catch (e) {}
+        if (!rlUsable(before)) { toast('지금 일정을 읽지 못해 되돌릴 수 없으므로 바꾸지 않았습니다.'); return; }
+
+        var ok = false, msg = '', data = null;
+        try {
+          var r = await fetch(o.endpoint, { method: 'POST', headers: rlAuth() });
+          var j = await r.json().catch(function () { return null; });
+          ok = !!(j && j.success);
+          msg = (j && j.message) || '';
+          data = j && j.data;
+        } catch (e) { msg = '연결이 끊겼습니다.'; }
+
+        if (!ok) { toast(msg || '바꾸지 못했습니다. 일정은 그대로입니다.'); return; }
+
+        /* 서버가 「바꿀 게 없다」고 답할 때가 있다. 그때는 되돌리기를 만들지 않는다 */
+        if (data && data.changed === false) { toast(data.note || '바꿀 것이 없습니다.'); return; }
+
+        rlUndoSet({ label: o.label, route: before, at: Date.now() });
+        toast((data && data.note) || o.done || '바꿨습니다. 되돌릴 수 있습니다.');
+        rlRefresh();
+      }
+
+      /* 다른 곳으로 — 서버가 그날 한적한 곳을 골라 준다. 여기서는 보여 주고 고르게만 한다.
+         「이대로 가기」를 늘 같이 둔다. 하나를 강요하지 않는다. */
+      var rlAltList = [];
+      var rlAltTarget = '';
+
+      async function rlQuiet() {
+        var box = document.getElementById('rlAlt');
+        if (!box || !rlTrip) return;
+        box.hidden = false;
+        box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p><p class="rl-modes-note">한적한 곳을 찾는 중</p>';
+
+        var d = null;
+        try {
+          var r = await fetch('/api/live/quiet?tripId=' + rlTrip + '&day=' + rlDayNo + '&limit=3',
+                              { headers: rlAuth() });
+          var j = await r.json().catch(function () { return null; });
+          d = j && j.success ? j.data : null;
+        } catch (e) { /* 아래에서 없다고 쓴다 */ }
+
+        if (!d) {
+          box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p>' +
+            '<p class="rl-modes-note">후보를 불러오지 못했습니다.</p>' + rlKeepBtn();
+          return;
+        }
+
+        rlAltList = d.candidates || [];
+        rlAltTarget = d.target || '';
+
+        if (!rlAltList.length) {
+          box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p>' +
+            '<p class="rl-modes-note">' + esc(d.note || '바꿀 만한 곳을 찾지 못했습니다.') + '</p>' +
+            rlKeepBtn();
+          return;
+        }
+
+        box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p>' +
+          '<p class="rl-modes-note">' + esc(rlAltTarget) +
+            (d.targetCrowd != null ? ' 집중률 ' + esc(String(d.targetCrowd)) : '') +
+            ' 대신 갈 만한 곳입니다.</p>' +
+          rlAltList.map(function (c, i) {
+            return '<button type="button" class="rl-alt-pick" onclick="rlAltPick(' + i + ')">' +
+              '<b class="rl-alt-n">' + esc(c.name) + '</b>' +
+              '<span class="rl-cw cw-' + esc(c.crowdKey || 'low') + '">' +
+                esc(c.crowdLabel || '') + ' ' + esc(String(c.crowd)) + '</span>' +
+              (c.address ? '<span class="rl-alt-a">' + esc(c.address) + '</span>' : '') +
+            '</button>';
+          }).join('') +
+          '<p class="rl-modes-note">' + esc(d.note || '') + '</p>' + rlKeepBtn();
+      }
+
+      function rlKeepBtn() {
+        return '<button type="button" class="rl-alt-keep" onclick="rlAltKeep()">이대로 가기</button>';
+      }
+
+      window.rlAltKeep = function () {
+        var box = document.getElementById('rlAlt');
+        if (box) { box.hidden = true; box.innerHTML = ''; }
+        toast('계획대로 갑니다.');
+      };
+
+      /* 고른 곳으로 그 자리만 갈아 끼운다. 시각은 자리에 남긴다 —
+         14:20 슬롯은 그대로고 거기 들어가는 장소만 바뀐다. */
+      window.rlAltPick = async function (i) {
+        var c = rlAltList[i];
+        if (!c || !rlTrip) return;
+        if (!confirm(c.name + '(으)로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+
+        var route = null;
+        try { route = await rlGetRoute(); } catch (e) {}
+        if (!rlUsable(route)) { toast('지금 일정을 읽지 못해 바꾸지 않았습니다.'); return; }
+
+        var before = JSON.parse(JSON.stringify(route));
+        var day = rlDayOf(route, rlDayNo);
+        var hit = day && Array.isArray(day.places) ? rlFindPlace(day.places, rlAltTarget) : null;
+        if (!hit) { toast('바꿀 장소를 찾지 못했습니다.'); return; }
+
+        hit.name = c.name;
+        hit.lat = c.lat;
+        hit.lng = c.lng;
+        if (c.address) hit.sub = c.address;
+        /* 바뀐 곳의 집중률은 저장할 때 서버가 다시 붙인다. 옛 값을 들고 있으면 거짓이 된다 */
+        delete hit.crowd; delete hit.crowdLabel; delete hit.crowdKey;
+
+        var ok = false, msg = '';
+        try {
+          var r = await fetch('/api/trips/' + rlTrip + '/routes/reorder', {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' }, rlAuth()),
+            body: JSON.stringify(route)
+          });
+          var j = await r.json().catch(function () { return null; });
+          ok = !!(j && j.success);
+          msg = (j && j.message) || '';
+        } catch (e) { msg = '연결이 끊겼습니다.'; }
+
+        if (!ok) { toast(msg || '바꾸지 못했습니다. 일정은 그대로입니다.'); return; }
+
+        rlUndoSet({ label: '다른 곳으로', route: before, at: Date.now() });
+        rlAltKeep();
+        toast(c.name + '(으)로 바꿨습니다. 되돌릴 수 있습니다.');
+        rlRefresh();
+      };
+
+      /* 이름으로 그날 정거장 하나를 찾는다. 공백·괄호가 달라도 같은 곳으로 본다 */
+      function rlFindPlace(places, name) {
+        var want = rlNorm(name);
+        for (var k = 0; k < places.length; k++) {
+          var p = places[k];
+          if (!p || p.transit != null || typeof p.name !== 'string' || !p.name.trim()) continue;
+          var got = rlNorm(p.name);
+          if (!want) return p;
+          if (got === want || got.indexOf(want) >= 0 || want.indexOf(got) >= 0) return p;
+        }
+        return null;
+      }
+      function rlNorm(s) {
+        return String(s == null ? '' : s).replace(/[\s()\[\]·,.-]/g, '');
+      }
 
       /* 지도로 넘길 때 어느 여행인지 넘긴다.
          지도는 window._currentTripId 와 sessionStorage.plannerDraftId 만 읽는다 —
@@ -698,8 +938,25 @@
           }
           return;
         }
-        if (key === 'swap' || key === 'quiet') {
-          rlGoMap(key);
+        if (key === 'swap') {
+          rlApplyLive({
+            label: '순서 바꾸기',
+            note: '붐비는 곳을 남은 구간의 뒤로 미룹니다',
+            endpoint: '/api/trips/' + rlTrip + '/routes/swap-crowded?day=' + rlDayNo
+          });
+          return;
+        }
+        if (key === 'indoor') {
+          rlApplyLive({
+            label: '실내로 바꾸기',
+            note: '비 예보라 그날 야외 일정을 실내로 다시 짭니다',
+            endpoint: '/api/trips/' + rlTrip + '/routes/indoor-replace?day=' + rlDayNo,
+            done: '실내 일정으로 바꿨습니다. 되돌릴 수 있습니다.'
+          });
+          return;
+        }
+        if (key === 'quiet') {
+          rlQuiet();
           return;
         }
       };
@@ -715,7 +972,9 @@
       };
 
       /* 화면을 떠나면 타이머를 끈다. 안 끄면 배터리를 먹는다 */
-      window.stopLivePage = function () { clearInterval(rlTimer); clearInterval(rlAgeTimer); };
+      window.stopLivePage = function () {
+        clearInterval(rlTimer); clearInterval(rlAgeTimer); clearInterval(rlFreshTimer);
+      };
     })();
   </script>
 </div>

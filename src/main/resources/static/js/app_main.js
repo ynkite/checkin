@@ -497,11 +497,81 @@ async function _initSession(accessToken, refreshToken) {
     updateNav();
     await updateMyPageUI();
     await _loadNotifications();
+    refreshLiveDot();
 }
+
+/**
+ * 하단 탭바 「실시간」의 점. 오늘이 여행 기간 안이면 켠다.
+ *
+ * 왜 이 점이 있나 — 실시간은 여행 중에만 볼 것이 있는 화면이다. 그런데 칸만
+ * 있으면 눌러 보기 전에는 볼 게 있는지 없는지 알 수 없다. 여행 중인 사람은
+ * 휴대폰을 들고 걷는 중이고, 헛걸음을 시키면 안 된다.
+ *
+ * 켤 일이 없으면 끈다. 늘 켜져 있는 점은 아무 말도 아니게 된다.
+ * 로그인 안 했으면 부르지 않는다 — 401 을 콘솔에 쌓을 이유가 없다.
+ */
+async function refreshLiveDot() {
+    const dot = document.getElementById('bnavLiveDot');
+    const bar = document.getElementById('liveNowBar');
+    const off = () => { if (dot) dot.hidden = true; if (bar) bar.hidden = true; };
+    if (!dot && !bar) return;
+    if (!_loggedIn) { off(); return; }
+
+    let now = null;
+    try {
+        const res = await api.get('/api/live/trips');
+        const list = (res && res.success && res.data) || [];
+        now = list.find(t => t.phase === 'TODAY') || null;
+    } catch (e) {
+        /* 못 받았으면 끈다. 있는지 모르는 것을 있다고 말하지 않는다 */
+        off();
+        return;
+    }
+    if (!now) { off(); return; }
+
+    window._liveNowTripId = now.tripId;
+    if (dot) dot.hidden = false;
+    if (bar) {
+        const t = document.getElementById('lnbTitle');
+        const sub = document.getElementById('lnbSub');
+        if (t) t.textContent = now.title || now.destination || '여행';
+        if (sub) sub.textContent = _liveDayLabel(now);
+        bar.hidden = false;
+    }
+}
+window.refreshLiveDot = refreshLiveDot;
+
+/** 「3일 중 2일째」. 날짜가 이상하면 아무 말도 안 한다 — 틀린 날짜를 쓰느니 비운다 */
+function _liveDayLabel(t) {
+    const s = t.startDate ? new Date(t.startDate) : null;
+    const e = t.endDate ? new Date(t.endDate) : s;
+    if (!s || isNaN(s) || !e || isNaN(e)) return '여행 중';
+    const day = ms => Math.floor(ms / 86400000);
+    const total = day(e - s) + 1;
+    const nth = day(new Date(new Date().toDateString()) - new Date(s.toDateString())) + 1;
+    if (nth < 1 || nth > total) return '여행 중';
+    return total > 1 ? `${total}일 중 ${nth}일째` : '오늘 하루';
+}
+
+/**
+ * 진행 중인 여행을 바로 연다. 실시간 화면이 목록을 그린 뒤 이 번호를 집는다.
+ *
+ * sessionStorage 에 둔다. goRefresh 는 location.reload() 를 하기 때문에
+ * window 에 담아 두면 그 자리에서 날아간다 — 처음에 그렇게 짰다가 눌러 보고 알았다.
+ */
+function openLiveNow() {
+    try {
+        if (window._liveNowTripId) sessionStorage.setItem('liveOpenTripId', String(window._liveNowTripId));
+    } catch (e) {}
+    goRefresh('live');
+}
+window.openLiveNow = openLiveNow;
 
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
     Token.clear();
+    _loggedIn = false;
+    if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
     // [캐시 정리] 세션 만료로 강제 로그아웃 시에도 플랜 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
@@ -799,6 +869,8 @@ function _handleOAuthCallback() {
 async function doLogout() {
     await api.post('/api/auth/logout', {});
     Token.clear();
+    _loggedIn = false;
+    if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
     // [캐시 정리] 다른 계정 로그인 시 이전 플랜이 남지 않도록 플랜 관련 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
@@ -2945,6 +3017,19 @@ function switchMapTab(tab, btn) {
     var rail = document.getElementById('mpRail');
     if (rail) rail.style.display = overlay ? '' : 'none';
 
+    /* 모형에만 있는 판 둘. 기둥 안으로 옮겼더니 지도 탭에서도 같이 떴다 —
+       기둥은 지도에서도 보이기 때문이다. 탭에 맞춰 끈다.
+       모형 탭에서는 오른쪽 영역에 표를 하나 붙인다. 돈 판을 한 줄로
+       줄이는 데 쓴다(styles_map.css 「모형 탭에서는 돈 판을」 참고) —
+       모형은 화면을 꽉 채운 그림이라 덮이는 값이 지도와 다르다. */
+    var right = document.getElementById('mapRightArea');
+    if (right) right.classList.toggle('mv-on', tab === 'model');
+    ['mv_fc', 'mv_legend'].forEach(function (id) {
+        var el = document.getElementById(id);
+        /* 내용이 없는 판은 모형 탭이어도 계속 숨긴다. _mvOpen 이 켤 때만 뜬다 */
+        if (el && tab !== 'model') el.hidden = true;
+    });
+
     if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
     if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
     if (tab === 'map' && window._kakaoMap) {
@@ -4212,6 +4297,11 @@ window.addEventListener('popstate', async e => {
             _loggedIn              = true;
             await updateMyPageUI();
             await _loadNotifications();
+            /* 새로고침으로 돌아온 경우다. 여기는 _initSession 을 거치지 않고
+               같은 일을 손으로 다시 하는 자리라, 한쪽에만 넣으면 어긋난다.
+               실제로 그랬다 — 실시간 점과 「여행 중」 줄이 갓 로그인했을 때만 뜨고
+               새로고침하면 사라졌다. 평소 쓰는 길은 이쪽인데. */
+            refreshLiveDot();
         } else {
             // 토큰 만료 → 재발급 시도
             const ok = await refreshAccessToken();

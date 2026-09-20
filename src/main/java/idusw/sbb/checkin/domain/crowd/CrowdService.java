@@ -33,7 +33,11 @@ public class CrowdService {
 
     private static final DateTimeFormatter YMD = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final long TTL_MS = 10 * 60_000;     // 10분
-    private static final int  ROWS = 600;               // 관광지 × 30일이 한 번에 온다
+    /* 관광지 × 30일이 한 번에 온다. 600 이면 20곳까지다 — 실호출로 재 보니 부산 해운대구는
+       19곳(570행)이라 겨우 들어오고, 대전 중구는 22곳(660행), 서울 종로구는 113곳(3390행)이라
+       잘렸다. 잘린 지역은 붐비는 곳이 목록에 없어 「한적하다」로 읽힌다.
+       4000 행을 물어도 0.4초 · 426KB 로 한 번에 오고 10분 캐시된다 */
+    private static final int  ROWS = 4000;
 
     private final ConcentrationService concentrationService;
 

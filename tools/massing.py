@@ -212,6 +212,7 @@ def scatter(rings, count, gap, seed, to_screen, clusters=0, spread=60.0, keep=No
 
 
 def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w=1600,
+          frame_bbox=False,
           crowd_on=('beach',), crowd_target=1150, tree_target=560,
           parasols=150, cars=140, route=(), route2=(), benches=170, bushes=180,
           seed=11):
@@ -288,6 +289,30 @@ def build(name, bbox, rot_deg, px_per_m, marks=(), kz=0.74, min_area=26.0, out_w
             allp.append(scr(plan(r['lat'], r['lon']), 0))
     for mk_ in marks:
         allp.append(scr(plan(mk_['lat'], mk_['lon']), 0))
+    # 화면 테두리를 무엇에 맞출 것인가.
+    #
+    # 기본은 「그린 것」이다 — 건물·동선·표식을 다 감싸는 네모.
+    # 건물이 범위를 고루 채우는 동네에서는 이게 낫다. 빈 여백이 안 생긴다.
+    #
+    # 그런데 성산일출봉처럼 명소가 산이고 건물은 서쪽 마을에만 몰린 곳에서는
+    # 테두리가 마을에만 맞춰진다. 정작 보여 주려던 봉우리는 테두리 밖으로
+    # 밀려난다. 실제로 그랬다 — 계산해 보니 세로 277% 자리, 화면 아래로
+    # 한참 벗어난 곳이었다. bbox 를 아무리 옮겨도 안 고쳐진다. 옮기면
+    # 담기는 건물이 바뀌고 테두리가 따라 움직여서, 풀리지 않는 뱅뱅 돌기가 된다.
+    #
+    # frame_bbox 를 켜면 bbox 네 귀퉁이를 「그린 것」에 넣는다. 그러면
+    # 테두리가 정확히 bbox 가 되고, 명소가 화면 어디에 오는지는 bbox 만
+    # 보고 정할 수 있다. json 의 fit 이 하는 말("bbox 가 이 장면의 범위다")도
+    # 그제서야 참이 된다.
+    #
+    # 왜 전부 켜지 않았나 — 마감이 코앞이고, 켜면 21개 장면의 구도가 전부
+    # 바뀐다. 지금 멀쩡한 19개를 다시 굽는 값이 얻는 것보다 크다.
+    # 마감 뒤에 기본으로 돌리는 게 맞다.
+    if frame_bbox:
+        for la in (s, n):
+            for lo in (w, e):
+                allp.append(scr(plan(la, lo), 0))
+
     if not allp:
         raise SystemExit('no buildings: ' + name)
     xs = [p[0] for p in allp]; ys = [p[1] for p in allp]
@@ -905,7 +930,10 @@ SCENES = {
     'gamcheon':     ((35.0920, 128.9990, 35.1040, 129.0215), 16, 0.74),
     'huinnyeoul':   ((35.0730, 129.0330, 35.0850, 129.0555), 16, 0.74),
     'nampo':        ((35.0930, 129.0180, 35.1050, 129.0405), 16, 0.74),
-    'taejongdae':   ((35.0469, 129.0787, 35.0589, 129.1012), 16, 0.74),   # 태종대 35.0532,129.0871 (계산으로 맞춘 값)
+    # 명소를 bbox 한가운데에 둔다. 테두리를 bbox 에 맞추면(다섯째 칸 True)
+    # 네모의 가운데는 반드시 화면 가운데로 간다 — 축측투영은 어파인이라
+    # 가운데를 가운데로 보낸다. 눈대중으로 옮길 필요가 없어졌다.
+    'taejongdae':   ((35.0472, 129.07585, 35.0592, 129.09835), 16, 0.74, 26.0, True),  # 태종대 35.0532,129.0871
     'gyeongbokgung':((37.5740, 126.9660, 37.5860, 126.9885), 16, 0.74, 95),
     'bukchon':      ((37.5770, 126.9790, 37.5890, 127.0015), 16, 0.74, 70),
     'namsan':       ((37.5450, 126.9820, 37.5570, 127.0045), 16, 0.74),
@@ -914,7 +942,7 @@ SCENES = {
     'gyeongpo':     ((37.7900, 128.8890, 37.8020, 128.9115), 16, 0.74),
     'jeongdongjin': ((37.6850, 129.0270, 37.6970, 129.0495), 16, 0.74),
     'hyeopjae':     ((33.3880, 126.2330, 33.4000, 126.2555), 16, 0.74),
-    'seongsan':     ((33.4487, 126.9383, 33.4607, 126.9608), 16, 0.74),   # 성산일출봉 33.4580,126.9425 (계산으로 맞춘 값)
+    'seongsan':     ((33.4520, 126.93125, 33.4640, 126.95375), 16, 0.74, 26.0, True),  # 성산일출봉 33.4580,126.9425
     # 카카오 로컬로 조회한 실좌표를 가운데 두고 잡았다 (2026-09-19)
     'yeosu':        ((34.7385, 127.7458, 34.7505, 127.7683), 16, 0.74),   # 오동도 34.7446,127.7663 · 엑스포 34.7421,127.7530
     'tongyeong':    ((34.8395, 128.4146, 34.8515, 128.4371), 16, 0.74),   # 동피랑 34.8453,128.4276 · 중앙시장 34.8456,128.4241
@@ -937,9 +965,12 @@ if __name__ == '__main__':
         cfg = SCENES[nm]
         bbox, rot, ppm = cfg[0], cfg[1], cfg[2]
         min_area = cfg[3] if len(cfg) > 3 else 26.0
-        print('== %s %s  최소넓이=%s' % (nm, bbox, min_area))
+        frame_bbox = bool(cfg[4]) if len(cfg) > 4 else False
+        print('== %s %s  최소넓이=%s  테두리=%s'
+              % (nm, bbox, min_area, 'bbox' if frame_bbox else '그린 것'))
         try:
-            build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=min_area)
+            build(nm, bbox, rot, ppm, marks=MARKS.get(nm, ()), min_area=min_area,
+                  frame_bbox=frame_bbox)
         except SystemExit as e:
             print('   건너뜀: %s' % e)
         except Exception as e:

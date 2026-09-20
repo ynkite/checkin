@@ -48,23 +48,88 @@ public class TourExtraService {
                 base(areaCode, rows), "반려동물");
     }
 
-    /** 고캠핑 — 야영장. 백패킹·차박 여행 */
+    /* 고캠핑·두루누비는 지역으로 거르는 요청 파라미터가 없다 (2026-09-20 실호출 확인).
+       - GoCamping doNm 은 INVALID_REQUEST_PARAMETER_ERROR — 존재하지 않는 파라미터
+       - Durunubi brdDiv 는 코스 종류(DNWW 도보 / DNBK 자전거)지 지역이 아니다
+       그래서 전국을 받아 응답의 지역 필드(doNm·sigun)로 우리가 거른다.
+       전국 목록은 자주 안 바뀌므로 분 단위 메모리 캐시를 둔다 (영구 저장 아님). */
+
+    private record Cached(List<Map<String, Object>> list, long at) {}
+    private static final long TTL_MS = 10 * 60_000;
+    private final Map<String, Cached> nationalCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 고캠핑 — 야영장. 지역 필터가 없어 전국을 받아 도명으로 거른다. */
     public List<Map<String, Object>> camping(String areaCode, int rows) {
-        Map<String, String> p = new LinkedHashMap<>();
-        p.put("numOfRows", String.valueOf(rows));
-        p.put("pageNo", "1");
-        if (areaCode != null && !areaCode.isBlank()) p.put("doNm", areaCode);
-        return simple("GoCamping", "basedList", p, "야영장");
+        return filterByRegion(national("GoCamping", "basedList", "야영장", "doNm", 3200), areaCode, rows);
     }
 
-    /** 두루누비 — 걷는 길·자전거 길 코스 */
+    /** 두루누비 — 걷는 길·자전거 길 코스. sigun("부산 영도구") 으로 거른다. */
     public List<Map<String, Object>> trails(String areaCode, int rows) {
-        Map<String, String> p = new LinkedHashMap<>();
-        p.put("numOfRows", String.valueOf(rows));
-        p.put("pageNo", "1");
-        if (areaCode != null && !areaCode.isBlank()) p.put("brdDiv", areaCode);
-        return simple("Durunubi", "courseList", p, "코스");
+        return filterByRegion(national("Durunubi", "courseList", "코스", "sigun", 300), areaCode, rows);
     }
+
+    /** 전국 목록 (분 단위 캐시). 각 항목에 지역 문자열을 _region 으로 실어 둔다. */
+    private List<Map<String, Object>> national(String service, String op, String kind,
+                                               String regionField, int fetchRows) {
+        Cached c = nationalCache.get(service);
+        if (c != null && System.currentTimeMillis() - c.at() < TTL_MS) return c.list();
+
+        Map<String, String> p = new LinkedHashMap<>();
+        p.put("numOfRows", String.valueOf(fetchRows));
+        p.put("pageNo", "1");
+        List<Map<String, Object>> list = simple(service, op, p, kind, regionField);
+        nationalCache.put(service, new Cached(list, System.currentTimeMillis()));
+        return list;
+    }
+
+    /** 시도별로 고른다. 응답 지역 필드가 풀네임(부산광역시)·약칭(부산 영도구) 섞여서 조각으로 맞춘다. */
+    private List<Map<String, Object>> filterByRegion(List<Map<String, Object>> all, String areaCode, int rows) {
+        String[] frags = (areaCode == null) ? null : REGION_FRAGMENTS.get(areaCode.trim());
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> m : all) {
+            if (frags != null) {
+                String region = String.valueOf(m.getOrDefault("_region", ""));
+                boolean hit = false;
+                for (String f : frags) if (region.contains(f)) { hit = true; break; }
+                if (!hit) continue;
+            }
+            Map<String, Object> copy = new LinkedHashMap<>(m);
+            copy.remove("_region");     // 내부용 — 화면엔 안 내보낸다
+            out.add(copy);
+            if (out.size() >= rows) break;
+        }
+        return out;
+    }
+
+    /**
+     * 그 지역 코드의 이름이 응답에 어떻게 적혀 있을 수 있는가.
+     *
+     * <p>관광공사 응답마다 시도를 다르게 적는다 — 「경상북도」·「경북」·「경북 경주시」.
+     * 이 표를 서비스마다 따로 들면 한쪽만 고쳐져 어긋난다. 실제로 방문자 수(데이터랩)가
+     * 「경상북도」를 주는데 우리 시도 이름은 「경북」이라 한 건도 안 맞았다.
+     * 표는 여기 하나만 둔다.
+     *
+     * @return 찾아볼 조각들. 모르는 코드면 빈 배열 — 부르는 쪽이 「거르지 않음」으로 볼지
+     *         「없음」으로 볼지 정한다
+     */
+    public static String[] fragmentsFor(String tourAreaCode) {
+        if (tourAreaCode == null) return new String[0];
+        String[] f = REGION_FRAGMENTS.get(tourAreaCode.trim());
+        return f == null ? new String[0] : f;
+    }
+
+    /* KorService2 지역코드 -> 응답 지역 문자열에서 찾을 조각.
+       충청·경상·전라는 풀네임(충청남도)과 약칭(충남)이 겹치는 글자가 없어 둘 다 넣는다. */
+    private static final Map<String, String[]> REGION_FRAGMENTS = Map.ofEntries(
+            Map.entry("1", new String[]{"서울"}), Map.entry("2", new String[]{"인천"}),
+            Map.entry("3", new String[]{"대전"}), Map.entry("4", new String[]{"대구"}),
+            Map.entry("5", new String[]{"광주"}), Map.entry("6", new String[]{"부산"}),
+            Map.entry("7", new String[]{"울산"}), Map.entry("8", new String[]{"세종"}),
+            Map.entry("31", new String[]{"경기"}), Map.entry("32", new String[]{"강원"}),
+            Map.entry("33", new String[]{"충청북", "충북"}), Map.entry("34", new String[]{"충청남", "충남"}),
+            Map.entry("35", new String[]{"경상북", "경북"}), Map.entry("36", new String[]{"경상남", "경남"}),
+            Map.entry("37", new String[]{"전북", "전라북"}), Map.entry("38", new String[]{"전남", "전라남"}),
+            Map.entry("39", new String[]{"제주"}));
 
     /* ── 바닥 ──────────────────────────────────────────────── */
 
@@ -84,6 +149,12 @@ public class TourExtraService {
      */
     private List<Map<String, Object>> simple(String service, String op,
                                              Map<String, String> params, String kind) {
+        return simple(service, op, params, kind, null);
+    }
+
+    /** regionField 를 주면 그 값을 _region 에 실어 둔다 (뒤에서 지역 필터에 쓴다). */
+    private List<Map<String, Object>> simple(String service, String op,
+                                             Map<String, String> params, String kind, String regionField) {
         List<Map<String, Object>> out = new ArrayList<>();
         try {
             JsonNode items = client.items(service, op, params);
@@ -100,6 +171,7 @@ public class TourExtraService {
                 Double lon = num(it, "mapx", "mapX", "gpsX", "longitude");
                 if (lat != null && lon != null) { m.put("lat", lat); m.put("lon", lon); }
                 m.put("imageUrl", first(it, "firstimage", "firstImageUrl", "imgFile"));
+                if (regionField != null) m.put("_region", it.path(regionField).asText(""));
                 out.add(m);
             }
         } catch (Exception e) {
