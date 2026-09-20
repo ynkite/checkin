@@ -251,3 +251,15 @@
   :where(#page-mypage) :where(button, [role="button"]){ min-width:44px }
   #page-mypage .my-menu{ display:flex; align-items:center; padding-block:0 }
 }
+
+/* ── 손가락으로 누르는 기기 ─────────────────────────────────
+   아이패드 768px 에서 메뉴 줄이 31px 로 그대로였다. 480 아래에만 깔아서다.
+   폭이 아니라 기기로 가른다 */
+@media (max-width:1024px), (pointer: coarse){
+  :where(#page-mypage) :where(button, summary, [role="button"], select, textarea,
+                              input:not([type="checkbox"]):not([type="radio"])){
+    min-height:44px;
+  }
+  :where(#page-mypage) :where(button, [role="button"]){ min-width:44px }
+  #page-mypage .my-menu{ display:flex; align-items:center; padding-block:0 }
+}

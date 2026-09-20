@@ -342,12 +342,51 @@
 
     document.addEventListener('DOMContentLoaded', initMyPageData);
     document.addEventListener('DOMContentLoaded', _watchTripCards);
-    function toggleMyMenu() {
+    /* ── 휴대폰에서는 메뉴를 접어 둔다 ──────────────────────────
+     * 390px 에서 메뉴 아홉 줄이 화면을 가득 채웠다. 「내 여행 기록」을 보려고
+     * 들어왔는데 목록은 한 줄도 안 보이고 굴려야 나왔다.
+     * 접어 두고, 단추에 지금 보고 있는 자리를 쓴다 — 접혀 있어도 어디인지 보인다.
+     * 넓은 화면은 옆에 둘 자리가 있으니 그대로 펼쳐 둔다. */
+    function _myIsNarrow() {
+      return window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+    }
+
+    function _myMenuLabel() {
+      const on = document.querySelector('#myMenuCollapse .my-menu.on');
+      return (on ? on.textContent : '메뉴').replace(/\s+/g, ' ').trim();
+    }
+
+    function _mySyncToggle() {
       const collapse = document.getElementById('myMenuCollapse');
       const toggle = document.getElementById('myMenuToggle');
-      const isCollapsed = collapse.classList.toggle('collapsed');
-      toggle.textContent = isCollapsed ? '메뉴 펼치기 ▼' : '메뉴 접기 ▲';
+      if (!collapse || !toggle) return;
+      toggle.textContent = _myMenuLabel() + (collapse.classList.contains('collapsed') ? ' ▾' : ' ▴');
     }
+
+    function toggleMyMenu() {
+      const collapse = document.getElementById('myMenuCollapse');
+      if (!collapse) return;
+      collapse.classList.toggle('collapsed');
+      _mySyncToggle();
+    }
+
+    function _myMenuInit() {
+      const collapse = document.getElementById('myMenuCollapse');
+      if (!collapse) return;
+      if (_myIsNarrow()) collapse.classList.add('collapsed');
+      _mySyncToggle();
+
+      if (collapse.dataset.pickWatch) return;
+      collapse.dataset.pickWatch = '1';
+      /* 하나 고르면 다시 접는다. 고른 것을 보러 들어왔으니 목록이 먼저다 */
+      collapse.addEventListener('click', function (e) {
+        if (!e.target.closest('.my-menu')) return;
+        if (_myIsNarrow()) collapse.classList.add('collapsed');
+        setTimeout(_mySyncToggle, 0);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', _myMenuInit);
   </script>
 
   <div class="page" id="page-mypage">

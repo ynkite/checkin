@@ -358,3 +358,15 @@
     padding-bottom: 10px;
   }
 }
+
+/* ── 손가락으로 누르는 기기 ─────────────────────────────────
+   아이패드 768px 에서 지역·날짜 칸이 36px 로 그대로였다.
+   480 아래에만 깔아 둔 탓이다. 폭이 아니라 기기로 가른다 */
+@media (max-width: 1024px), (pointer: coarse) {
+  .wx-pick select,
+  .wx-one input[type="date"] {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}

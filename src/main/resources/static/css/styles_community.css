@@ -252,6 +252,7 @@
     width: 640px;
     max-width: 100%;
     max-height: 90vh;
+    max-height: 90dvh;   /* 주소창·키보드가 차지하는 만큼 빼 준다. 아는 기기만 쓴다 */
     overflow-y: auto;
     background: var(--surface);
     border-radius: 22px;
@@ -1395,7 +1396,9 @@
  * 아래 #000 은 색이 아니라 「여기는 안 지운다」는 표시다(mask 는 밝기만 읽는다).
  * 토큰을 넣으면 오히려 틀린다.
  * ========================================================= */
-#page-community .comm-tabs { --fade: 18px; }
+/* 지도 날짜 줄(.day-tabs)과 같은 26px. 18px 은 마지막 탭이 반만 보이는 폭이라
+   흐림인지 그냥 잘린 것인지 구별이 안 됐다 */
+#page-community .comm-tabs { --fade: 26px; }
 
 #page-community .comm-tabs.ov-r {
     -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--fade)), transparent);
@@ -1445,3 +1448,68 @@
         justify-content: center;
     }
 }
+
+/* =========================================================
+ * 손가락으로 누르는 기기 — 폭이 아니라 기기로 가른다
+ * 아이패드 768px 에서 「후기 작성」이 34px, 탭이 31px 로 그대로였다.
+ * 480px 아래에만 깔아 둬서 그렇다. 아이패드는 휴대폰이 아니지만 손으로 누른다.
+ * (pointer: coarse) 가 「손가락으로 누르는 기기냐」를 직접 묻는 조건이다.
+ * 1024 까지는 폭으로도 같이 건다 — 마우스가 달린 작은 창도 손해 볼 것이 없다.
+ * ========================================================= */
+@media (max-width: 1024px), (pointer: coarse) {
+    :where(#page-community, #page-review)
+    :where(button, summary, [role="button"], [onclick], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"])) {
+        min-height: 44px;
+    }
+
+    :where(#page-community, #page-review)
+    :where(button, [role="button"], [onclick]) {
+        min-width: 44px;
+    }
+
+    #page-community .comm-tab,
+    #page-community .community-v2-page-btn,
+    #page-review .review-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding-block: 0;
+    }
+
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, summary, [role="button"], select, textarea,
+           input:not([type="checkbox"]):not([type="radio"]):not([type="file"])) {
+        min-height: 44px;
+    }
+
+    :where(#writeModal, #reviewDetailModal, #mapPlaceModal, #commentEditModal, #reportPostModal)
+    :where(button, [role="button"]) {
+        min-width: 44px;
+    }
+}
+
+/* =========================================================
+ * 아주 좁은 화면 — 탭을 두 줄로 접는다
+ * 폴드 280px 에서는 넘침이 69px 이라 마지막 「카페」가 아예 안 보였다.
+ * 흐림이 있어도 한 글자도 안 보이면 더 있다는 것을 알 수 없다.
+ * 줄여서 글자를 버리기보다 한 줄 더 쓴다 — 다섯 갈래가 다 보이는 편이 낫다.
+ * ========================================================= */
+@media (max-width: 360px) {
+    #page-community .comm-tabs {
+        flex-wrap: wrap;
+        overflow-x: visible;
+        row-gap: 4px;
+    }
+    /* 두 줄이 되면 넘치지 않으니 흐림도 필요 없다 */
+    #page-community .comm-tabs.ov-l,
+    #page-community .comm-tabs.ov-r {
+        -webkit-mask-image: none;
+                mask-image: none;
+    }
+}
+
+/* 댓글 칸 — flex 칸은 min-width:auto 가 기본이라 글자보다 작아지지 않는다.
+   280px 에서 입력 칸이 안 줄어 「등록」이 화면 밖(321px)으로 밀려났고
+   문서 전체에 가로 스크롤이 생겼다. 줄어들 칸이니 0 으로 둔다 */
+#page-review #commentInput { min-width: 0; }
