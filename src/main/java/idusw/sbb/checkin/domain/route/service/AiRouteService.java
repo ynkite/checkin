@@ -3158,8 +3158,14 @@ public class AiRouteService {
         System.out.println("🐾 [조건후보] " + label + " — 표시 " + marked.size() + "곳 · 추가 " + added + "곳");
     }
 
-    /** 집중률 목록에서 카카오로 찾아볼 장소 수. 한 곳당 카카오 호출 한 번이라 상한을 둔다. */
-    private static final int CROWD_PLACE_LOOKUP = 8;
+    /**
+     * 집중률 목록에서 카카오로 찾아볼 장소 수. 한 곳당 카카오 호출 한 번이라 상한을 둔다.
+     *
+     * <p>8 이었는데 그게 「집중률이 붙는 후보가 7곳뿐」의 원인이었다 — 관광공사 목록이 짧아서가
+     * 아니라 내가 8곳만 찾아봐서였다. 실제로는 시군구당 19~22곳(서울 종로구는 113곳)이다.
+     * 붐비는 곳부터 정렬해 넣으므로 앞쪽이 피해야 할 곳이다.
+     */
+    private static final int CROWD_PLACE_LOOKUP = 20;
 
     /**
      * 집중률을 아는 장소를 <b>후보에 합류</b>시킨다 (작업지시 4번).
