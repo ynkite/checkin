@@ -36,6 +36,8 @@
         <button type="button" class="rl-back" onclick="rlBack()">여행 바꾸기</button>
 
         <p class="rl-when" id="rlWhen"></p>
+        <!-- 언제 받은 값인가. 실시간이라고 말하는 화면은 이걸 말해야 한다 -->
+        <p class="rl-fresh" id="rlFresh" role="status" aria-live="polite" hidden></p>
         <h2 class="rl-head" id="rlHead"></h2>
 
         <div class="rl-next" id="rlNext"></div>
@@ -153,6 +155,43 @@
         }
       }
 
+      /* ── 언제 받은 값인가 ─────────────────────────────
+         이 화면은 「실시간」이라고 이름 붙어 있다. 그러면 화면에 있는 숫자가
+         언제 것인지 말해야 한다. 안 그러면 사용자는 늘 지금 것이라고 믿는다.
+
+         전에는 rlRefresh 의 catch 가 실패를 통째로 삼켰다. 지하철에 들어가
+         연결이 끊겨도 화면은 그대로였다. 70초를 기다려도 글자 하나 안 바뀌었다.
+         그 사이 붐빔은 바뀌어 있을 수 있는데 화면은 아무 말도 안 했다.
+         옛 값을 지금 값인 척 보여 주는 것이 빈칸보다 나쁘다. */
+      var rlSnapAt = 0;        /* 마지막으로 받아 낸 시각 */
+      var rlOffline = false;   /* 직전 시도가 실패했나 */
+      var rlGeoDenied = false; /* 위치를 못 받았나 */
+      var rlFreshTimer = null;
+
+      function rlFreshPaint() {
+        var el = document.getElementById('rlFresh');
+        if (!el) return;
+        var bits = [];
+
+        if (rlSnapAt) {
+          var min = Math.floor((Date.now() - rlSnapAt) / 60000);
+          bits.push(min < 1 ? '방금 받은 값입니다' : min + '분 전에 받은 값입니다');
+        }
+        if (rlOffline) {
+          bits.push('지금은 연결되지 않아 새로 받지 못하고 있습니다');
+        }
+        /* 위치는 없어도 화면이 돈다. 그래도 무엇이 빠지는지는 말해 준다 */
+        if (rlGeoDenied) {
+          bits.push('위치를 몰라 시각만으로 어디쯤인지 가늠합니다');
+        }
+
+        if (!bits.length) { el.hidden = true; return; }
+        el.hidden = false;
+        el.classList.toggle('rl-fresh-off', rlOffline);
+        el.innerHTML = esc(bits.join(' · ')) +
+          ' <button type="button" class="rl-again" onclick="rlAgain()">다시 받기</button>';
+      }
+
       /* ── 지금 상황 ───────────────────────────────────── */
       async function rlRefresh() {
         if (!rlTrip) return;
@@ -163,9 +202,18 @@
           var r = await fetch(q, { headers: rlAuth() });
           var j = await r.json();
           var d = (j && j.success && j.data) || null;
-          if (d) rlPaint(d);
-        } catch (e) { /* 다음 주기에 다시 받는다 */ }
+          if (!d) throw new Error('빈 응답');
+          rlPaint(d);
+          rlSnapAt = Date.now();
+          rlOffline = false;
+        } catch (e) {
+          /* 삼키지 않는다. 화면이 옛 값을 들고 있다는 사실을 화면이 말한다 */
+          rlOffline = true;
+        }
+        rlFreshPaint();
       }
+
+      window.rlAgain = function () { rlRefresh(); };
 
       function rlPaint(d) {
         rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
@@ -623,21 +671,45 @@
         document.getElementById('rlNow').hidden = false;
 
         /* 위치는 있으면 쓴다. 막아도 시각으로 가르므로 화면은 돌아간다 */
+        rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
         if (navigator.geolocation) {
           navigator.geolocation.getCurrentPosition(function (p) {
             rlPos = [p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6)];
+            rlGeoDenied = false;
             rlRefresh();
-          }, function () { /* 조용히 넘어간다 */ }, { timeout: 8000, maximumAge: 30000 });
+          }, function () {
+            /* 막아도 화면은 돈다. 다만 무엇이 빠지는지 말해 준다 —
+               전에는 아무 말도 없어서 위치를 준 사람과 화면이 똑같아 보였다 */
+            rlGeoDenied = true;
+            rlFreshPaint();
+          }, { timeout: 8000, maximumAge: 30000 });
+        } else {
+          rlGeoDenied = true;
         }
         rlRefresh();
 
         /* 1분마다 다시 묻는다. 더 자주 물어도 집중률은 하루 단위라 안 바뀐다 */
         clearInterval(rlTimer);
         rlTimer = setInterval(rlRefresh, 60000);
+
+        /* 「N분 전」은 받지 않아도 흘러간다. 시계는 따로 돈다 */
+        clearInterval(rlFreshTimer);
+        rlFreshTimer = setInterval(rlFreshPaint, 20000);
       };
 
+      /* 화면을 덮어 뒀다 돌아왔을 때.
+         전에는 아무 처리가 없어서 다음 주기(최대 60초)까지 옛 값이었다.
+         주머니에 넣었다 꺼내는 것이 이 화면을 쓰는 보통 방식인데. */
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState !== 'visible') return;
+        if (!rlTrip) return;
+        rlRefresh();
+      });
+
       window.rlBack = function () {
-        clearInterval(rlTimer);
+        clearInterval(rlTimer); clearInterval(rlFreshTimer);
+        rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
+        var fr = document.getElementById('rlFresh'); if (fr) fr.hidden = true;
         rlTrip = null; rlPos = null; rlModeKey = null;
         document.getElementById('rlNow').hidden = true;
         document.getElementById('rlPick').hidden = false;
@@ -845,7 +917,9 @@
       };
 
       /* 화면을 떠나면 타이머를 끈다. 안 끄면 배터리를 먹는다 */
-      window.stopLivePage = function () { clearInterval(rlTimer); clearInterval(rlAgeTimer); };
+      window.stopLivePage = function () {
+        clearInterval(rlTimer); clearInterval(rlAgeTimer); clearInterval(rlFreshTimer);
+      };
     })();
   </script>
 </div>

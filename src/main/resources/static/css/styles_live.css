@@ -261,3 +261,25 @@ body:has(#page-live.active) .lnb{ display:none }
   .lnb-txt{ flex-direction:column; gap:1px }
   .lnb-txt b{ font-size:12.5px }
 }
+
+/* ── 언제 받은 값인가 ───────────────────────────────────────
+   「실시간」이라고 이름 붙인 화면이 숫자가 언제 것인지 말하지 않으면,
+   사용자는 늘 지금 것이라고 믿는다. 지하철에 들어가 연결이 끊겨도
+   화면은 그대로였다 — 옛 값을 지금 값인 척 보여 준 셈이다.
+
+   평소에는 조용한 한 줄이다. 끊겼을 때만 눈에 들어오게 한다. */
+.rl-fresh{
+  margin:2px 0 10px; font-size:11.5px; line-height:1.6;
+  color:var(--ink-3); word-break:keep-all;
+}
+.rl-fresh-off{ color:var(--num); font-weight:600 }
+
+.rl-again{
+  margin-left:6px; padding:2px 9px 3px; border:0; cursor:pointer;
+  border-radius:var(--r-pill); font-family:inherit;
+  font-size:11.5px; font-weight:600; color:var(--ink-2);
+  background:var(--ui-plate);
+}
+.rl-again:hover{ color:var(--ink); background:var(--ui-plate-2) }
+/* 한 손으로 누르는 화면이다. 글자는 작아도 누를 자리는 작으면 안 된다 */
+.rl-again{ min-height:40px }
