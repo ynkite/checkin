@@ -1011,6 +1011,24 @@
   box-shadow:var(--glass-lift), inset 0 0 0 1px var(--glass-line);
 }
 
+/* 손가락으로 쓰는 기기에서는 흐림을 끈다.
+   blur 는 뒤에 있는 것이 움직일 때마다 배경을 다시 읽는다. 여기는 지도 위다 —
+   지도를 끄는 동안 이 판 일곱 개가 매 프레임 다시 그려진다. 데스크톱에서는
+   안 보이는데 휴대폰에서는 그때 지도가 끊긴다.
+
+   흐림을 빼면 글자 뒤가 비쳐서 읽기 어려워진다. 그래서 바닥을 더 불투명하게
+   바꾼다 — 보이는 결과는 비슷하고 매 프레임 하는 일이 없어진다.
+   hover 가 없는 기기로 가른다. 화면 폭이 아니라 입력 방식이 기준이다 —
+   창을 좁힌 데스크톱은 흐림을 그대로 둬도 된다. */
+@media (hover:none){
+  .mp-seg, .mp-chip, .mp-money, .mp-depart, .mp-alert, .mp-strip, .mp-pager,
+  #page-map .weather-alert{
+    background:var(--panel);
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+}
+
 /* ── 우상단 분절 ────────────────────────────────────────────
    지도 / 3D 모형 / 예산 은 같은 것을 다르게 보는 세 가지다.
    나란한 버튼 네 개보다 분절 하나가 그 관계를 말한다. */
@@ -1252,7 +1270,9 @@
   letter-spacing:var(--tracking-num); font-variant-numeric:tabular-nums;
 }
 .mp-mode.on{ background:var(--ink) }
-.mp-mode.on b{ color:rgba(255,255,255,.66) }
+/* 흰 글자를 옅게 쓰는 자리다. rgba 로 적으면 CSS 에 색을 직접 적는 것이 된다 —
+   글자만 든 칸이라 opacity 로 해도 결과가 같다 */
+.mp-mode.on b{ color:var(--panel); opacity:.66 }
 .mp-mode.on span{ color:var(--panel) }
 .mp-mode-off{ cursor:default; opacity:.5 }
 .mp-mode-off:hover{ background:var(--ui-plate) }
