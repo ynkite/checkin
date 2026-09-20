@@ -172,7 +172,13 @@
     if (!result[0]) { if (hero) hero.classList.remove('ck-cut'); return showWideMap([p]); }
     if (sceneNow !== p.scene) {
       host.innerHTML = result[0]; var svg = host.querySelector('svg');
-      if (svg) { svg.classList.add('mass'); svg.setAttribute('aria-hidden','true'); } sceneNow = p.scene;
+      if (svg) {
+        svg.classList.add('mass'); svg.setAttribute('aria-hidden','true');
+        /* 판 모양과 상관없이 가운데를 기준으로 잘라서 채운다.
+           무대 높이가 화면따라 변해도 모형이 안 눌린다 */
+        svg.setAttribute('preserveAspectRatio','xMidYMid slice');
+      }
+      sceneNow = p.scene;
     }
     $('ck_frame').style.setProperty('--st-ar', w.__ckScenes[p.scene].ar);
     view = 'model'; buttons();
