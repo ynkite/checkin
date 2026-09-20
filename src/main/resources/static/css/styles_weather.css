@@ -347,4 +347,12 @@
   .wx-one {
     padding: 16px 14px;
   }
+
+  /* 길 위에서 한 손으로 누른다. 손가락은 36px 칸을 못 맞힌다 */
+  .wx-pick select,
+  .wx-one input[type="date"] {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
 }

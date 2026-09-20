@@ -246,6 +246,11 @@
 }
 .og-row .og-input,
 .og-row .og-gps{ min-height:calc(var(--u) * 5) }
+/* 휴대폰에서는 손가락 칸. 40px 는 「지금 위치」와 입력 칸이 같이 눌린다 */
+@media (max-width:480px){
+  .og-row .og-input,
+  .og-row .og-gps{ min-height:calc(var(--u) * 5.5) }
+}
 .og-gps:hover{ color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink-3) }
 .og-gps:disabled{ cursor:default; color:var(--ink-3) }
 .og-hint:empty{ display:none }

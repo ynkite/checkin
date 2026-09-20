@@ -1359,4 +1359,22 @@
     #page-community .post-stats { justify-content: flex-end; }
 
     #page-community .popular-tags { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* 손가락으로 누르는 칸. 31~34px 는 옆 것이 같이 눌린다 */
+    #page-community .comm-tab,
+    #page-community .search-inp,
+    #page-community .search-bar select,
+    #page-community .search-bar button,
+    #page-community .btn-f,
+    #page-community .community-v2-page-btn,
+    #page-review .review-back,
+    #page-review .btn-o,
+    #page-review .btn-f,
+    #page-review #commentInput,
+    #page-review #btn-plan-preview {
+        min-height: 44px;
+    }
+
+    #page-community .comm-tab { padding-block: 0; }
+    #page-review .review-back { display: inline-flex; align-items: center; }
 }
