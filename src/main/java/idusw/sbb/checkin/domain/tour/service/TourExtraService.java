@@ -101,6 +101,23 @@ public class TourExtraService {
         return out;
     }
 
+    /**
+     * 그 지역 코드의 이름이 응답에 어떻게 적혀 있을 수 있는가.
+     *
+     * <p>관광공사 응답마다 시도를 다르게 적는다 — 「경상북도」·「경북」·「경북 경주시」.
+     * 이 표를 서비스마다 따로 들면 한쪽만 고쳐져 어긋난다. 실제로 방문자 수(데이터랩)가
+     * 「경상북도」를 주는데 우리 시도 이름은 「경북」이라 한 건도 안 맞았다.
+     * 표는 여기 하나만 둔다.
+     *
+     * @return 찾아볼 조각들. 모르는 코드면 빈 배열 — 부르는 쪽이 「거르지 않음」으로 볼지
+     *         「없음」으로 볼지 정한다
+     */
+    public static String[] fragmentsFor(String tourAreaCode) {
+        if (tourAreaCode == null) return new String[0];
+        String[] f = REGION_FRAGMENTS.get(tourAreaCode.trim());
+        return f == null ? new String[0] : f;
+    }
+
     /* KorService2 지역코드 -> 응답 지역 문자열에서 찾을 조각.
        충청·경상·전라는 풀네임(충청남도)과 약칭(충남)이 겹치는 글자가 없어 둘 다 넣는다. */
     private static final Map<String, String[]> REGION_FRAGMENTS = Map.ofEntries(

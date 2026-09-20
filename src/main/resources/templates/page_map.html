@@ -221,6 +221,39 @@
         '무장애 편의 정보가 확인되지 않았습니다.',
         '무장애 편의 정보가 확인되지 않았습니다.');
 
+      /* 야영장·둘레길은 이름과 주소뿐이다. 위 section 은 항목마다 조건을 적으려고
+         만든 것이라 여기에 쓰면 「확인되지 않았습니다」가 줄마다 붙는다. */
+      const spots = (sec, title, noneMsg, missMsg) => {
+        if (!sec || sec.status === 'NO_AREA') return '';
+        if (sec.status === 'UNAVAILABLE') return `<div style="${small};margin:6px 0">${missMsg}</div>`;
+        if (sec.status === 'NONE') return `<div style="${small};margin:6px 0">${noneMsg}</div>`;
+        return `<details style="margin:6px 0"><summary style="cursor:pointer;font-size:13px">${title} · ${count(sec)}</summary>
+          <ul style="margin:6px 0 0;padding-left:16px;font-size:13px;line-height:1.5">` +
+          sec.items.map(p => `<li style="margin-bottom:5px"><b>${_mpEsc(p.name)}</b>` +
+            (p.address ? `<div style="${small}">${_mpEsc(p.address)}</div>` : '') + '</li>').join('') +
+          `</ul>${sec.count > sec.items.length ? `<div style="${small}">앞의 ${sec.items.length}곳만 보여 드립니다.</div>` : ''}</details>`;
+      };
+      html += spots(data.camping, '야영장·차박',
+        '관광공사 고캠핑에 이 지역 야영장이 올라와 있지 않습니다.',
+        '야영장 정보가 확인되지 않았습니다.');
+      html += spots(data.trails, '걷는 길·자전거 길',
+        '두루누비에 이 지역 코스가 올라와 있지 않습니다.',
+        '둘레길 정보가 확인되지 않았습니다.');
+
+      /* 평소 하루 몇 명이 오는가. 집중률 74 가 몇 명인지 이 줄이 말해 준다.
+         데이터랩은 과거 실측이고 두어 달 늦게 올라온다 — 받은 날짜를 그대로 적는다.
+         「지난주」라고 적으면 거짓말이 된다. */
+      if (data.visitors && data.visitors.status === 'OK' && data.visitors.items.length) {
+        const v = data.visitors.items[0];
+        const man = n => n >= 10000 ? (Math.round(n / 1000) / 10) + '만 명' : Math.round(n).toLocaleString() + '명';
+        const ymd = t => t ? Number(t.slice(4, 6)) + '/' + Number(t.slice(6, 8)) : '';
+        html += `<div style="${small};margin:8px 0 0;line-height:1.6">
+          ${_mpEsc(v.areaName)}에는 하루 평균 <b style="color:var(--num)">${man(v.outsidersPerDay)}</b>이 밖에서 옵니다
+          <span style="opacity:.8">(${ymd(v.fromYmd)}~${ymd(v.toYmd)} 실측 · 현지인 ${man(v.localsPerDay)})</span></div>`;
+      } else if (data.visitors && data.visitors.status === 'UNAVAILABLE') {
+        html += `<div style="${small};margin:8px 0 0">이 지역 방문자 수가 확인되지 않았습니다.</div>`;
+      }
+
       box.innerHTML = html;
       box.hidden = false;
     }

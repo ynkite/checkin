@@ -47,8 +47,19 @@ public class TourAreaInfoService {
         static <T> Section<T> of(Status s) { return new Section<>(s, 0, List.of()); }
     }
 
+    /** 야영장·둘레길 — 이름과 좌표만 쓴다. 응답 모양이 서로 달라 Map 그대로 받는다 */
+    public record Spot(String name, String address, Double lat, Double lng) {}
+
+    /**
+     * 그 지역에 평소 하루 몇 명이 오는가 (DataLabService 실측).
+     * 집중률은 0~100 눈금이라 그것만으로는 규모를 알 수 없다. 이 숫자가 눈금에 크기를 준다.
+     */
+    public record Visitors(String areaName, String fromYmd, String toYmd,
+                           long outsidersPerDay, long localsPerDay) {}
+
     public record AreaInfo(String areaName, String baseYm,
-                           Section<Hub> hubs, Section<Place> pet, Section<Place> barrierFree) {}
+                           Section<Hub> hubs, Section<Place> pet, Section<Place> barrierFree,
+                           Section<Spot> camping, Section<Spot> trails, Section<Visitors> visitors) {}
 
     static final int SHOW = 5;
     private static final int FETCH = 50;
@@ -56,6 +67,8 @@ public class TourAreaInfoService {
     private final TourApiClient client;
     private final LocgoHubService hubService;
     private final OriginSearchService originSearchService;
+    private final TourExtraService tourExtraService;
+    private final VisitorService visitorService;
 
     /** 관광공사 KorService2 의 시군구 코드(법정코드와 다르다). 시도별로 한 번만 받는다 */
     private final Map<String, Map<String, String>> tourSigungu = new ConcurrentHashMap<>();
@@ -63,7 +76,9 @@ public class TourAreaInfoService {
     public AreaInfo lookup(String destination, Double lat, Double lng) {
         AreaCode.Area area = resolveArea(destination, lat, lng);
         if (area == null) {
-            return new AreaInfo(null, null, Section.of(Status.NO_AREA), Section.of(Status.NO_AREA), Section.of(Status.NO_AREA));
+            return new AreaInfo(null, null,
+                    Section.of(Status.NO_AREA), Section.of(Status.NO_AREA), Section.of(Status.NO_AREA),
+                    Section.of(Status.NO_AREA), Section.of(Status.NO_AREA), Section.of(Status.NO_AREA));
         }
         String tourArea = AreaCode.tourAreaCode(area);
         YearMonth now = YearMonth.now(ZoneId.of("Asia/Seoul"));
@@ -73,9 +88,97 @@ public class TourAreaInfoService {
         CompletableFuture<Section<Place>> pet = sg.thenApplyAsync(code -> places("KorPetTourService2", "detailPetTour2", tourArea, code, true));
         CompletableFuture<Section<Place>> bf = sg.thenApplyAsync(code -> places("KorWithService2", "detailWithTour2", tourArea, code, false));
 
+        /* 야영장·둘레길·방문자수는 이 판이 유일한 소비처다. 늦으면 그 칸만 「확인되지 않음」으로
+           두고 나머지를 먼저 낸다 — 하나가 느려서 판 전체가 안 뜨면 안 된다.
+           야영장은 전국을 받아 거르는 구조라(TourExtraService 참고) 캐시가 빈 첫 호출이 느리다. */
+        CompletableFuture<Section<Spot>> camp = later(() -> spots(tourArea, true));
+        CompletableFuture<Section<Spot>> trail = later(() -> spots(tourArea, false));
+        CompletableFuture<Section<Visitors>> vis = later(() -> visitors(area, tourArea));
+
         Object[] h = hubs.join();
         @SuppressWarnings("unchecked") Section<Hub> hubSection = (Section<Hub>) h[1];
-        return new AreaInfo(area.fullName(), (String) h[0], hubSection, pet.join(), bf.join());
+        return new AreaInfo(area.fullName(), (String) h[0], hubSection, pet.join(), bf.join(),
+                camp.join(), trail.join(), vis.join());
+    }
+
+    /** 늦거나 깨지면 「확인되지 않음」. 없다고 말하지 않는다 — 안 받은 것과 없는 것은 다르다 */
+    private <T> CompletableFuture<Section<T>> later(java.util.function.Supplier<Section<T>> f) {
+        return CompletableFuture.supplyAsync(f)
+                .exceptionally(e -> Section.of(Status.UNAVAILABLE))
+                .completeOnTimeout(Section.of(Status.UNAVAILABLE), 7, java.util.concurrent.TimeUnit.SECONDS);
+    }
+
+    /* ── 야영장 · 둘레길 ─────────────────────────────────────── */
+
+    private Section<Spot> spots(String tourArea, boolean camping) {
+        if (tourArea == null) return Section.of(Status.NO_AREA);
+        List<Map<String, Object>> rows = camping
+                ? tourExtraService.camping(tourArea, FETCH)
+                : tourExtraService.trails(tourArea, FETCH);
+        if (rows.isEmpty()) return new Section<>(Status.NONE, 0, List.of());
+        List<Spot> out = rows.stream().limit(SHOW)
+                .map(m -> new Spot(str(m, "name"), str(m, "addr"),
+                        dbl(m, "lat"), dbl(m, "lon")))
+                .filter(sp -> sp.name() != null && !sp.name().isBlank())
+                .toList();
+        return out.isEmpty() ? new Section<>(Status.NONE, 0, List.of())
+                             : new Section<>(Status.OK, rows.size(), out);
+    }
+
+    private static String str(Map<String, Object> m, String k) {
+        Object v = m.get(k);
+        return v == null ? null : String.valueOf(v);
+    }
+
+    private static Double dbl(Map<String, Object> m, String k) {
+        Object v = m.get(k);
+        return (v instanceof Number num) ? num.doubleValue() : null;
+    }
+
+    /* ── 평소 방문자 수 ──────────────────────────────────────── */
+
+    /**
+     * 집중률은 0~100 눈금이다. 「74」가 몇 명인지는 말해 주지 않는다.
+     * 관광 데이터랩은 과거 실측이라 두 달쯤 늦게 올라온다 — 최근 날짜를 부르면 빈 답이 온다.
+     * 그래서 지난달이 아니라 <b>석 달 전 한 주</b>를 부르고, 받은 날짜를 그대로 화면에 적는다.
+     * 「지난주」라고 적으면 거짓말이 된다.
+     */
+    private Section<Visitors> visitors(AreaCode.Area area, String tourArea) {
+        java.time.LocalDate end = java.time.LocalDate.now(ZoneId.of("Asia/Seoul")).minusMonths(3);
+        java.time.LocalDate start = end.minusDays(6);
+        DateTimeFormatter ymd = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+        List<idusw.sbb.checkin.domain.tour.dto.VisitorCount> rows;
+        try {
+            rows = visitorService.daily(start.format(ymd), end.format(ymd), 400, 1);
+        } catch (Exception e) {
+            return Section.of(Status.UNAVAILABLE);
+        }
+        if (rows == null || rows.isEmpty()) return Section.of(Status.UNAVAILABLE);
+
+        /* 시도 이름으로 고른다. 데이터랩 지역코드는 KorService2 것과 다르다.
+           이름도 그대로 안 맞는다 — 데이터랩은 「경상북도」, 우리 시도는 「경북」이라
+           글자가 하나도 안 겹친다. 실제로 한 건도 안 맞아 빈 줄이 나왔다.
+           적히는 꼴을 모아 둔 표(TourExtraService.fragmentsFor)를 같이 쓴다. 표는 하나여야 한다. */
+        List<String> keys = new ArrayList<>(List.of(TourExtraService.fragmentsFor(tourArea)));
+        keys.add(idusw.sbb.checkin.domain.route.RegionMatch.core(area.sido()));
+
+        double out = 0, loc = 0;
+        int outN = 0, locN = 0;
+        for (var r : rows) {
+            if (r.areaName() == null) continue;
+            boolean mine = false;
+            for (String k : keys) if (!k.isBlank() && r.areaName().contains(k)) { mine = true; break; }
+            if (!mine) continue;
+            if (r.visitorType() != null && r.visitorType().contains("외지")) { out += r.count(); outN++; }
+            else { loc += r.count(); locN++; }
+        }
+        if (outN == 0 && locN == 0) return new Section<>(Status.NONE, 0, List.of());
+
+        Visitors v = new Visitors(area.sido(), start.format(ymd), end.format(ymd),
+                outN == 0 ? 0 : Math.round(out / outN),
+                locN == 0 ? 0 : Math.round(loc / locN));
+        return new Section<>(Status.OK, 1, List.of(v));
     }
 
     /* 여행지가 「부산」처럼 시도만이면 AreaCode 는 첫 시군구를 고른다. 좌표가 있으면 그 시군구로 바로잡는다 */

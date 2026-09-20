@@ -18,7 +18,9 @@ class TourAreaInfoServiceTest {
     private final TourApiClient client = mock(TourApiClient.class);
     private final LocgoHubService hubs = mock(LocgoHubService.class);
     private final OriginSearchService origin = mock(OriginSearchService.class);
-    private final TourAreaInfoService svc = new TourAreaInfoService(client, hubs, origin);
+    private final TourExtraService extra = mock(TourExtraService.class);
+    private final VisitorService visitors = mock(VisitorService.class);
+    private final TourAreaInfoService svc = new TourAreaInfoService(client, hubs, origin, extra, visitors);
 
     private void area(String json) throws Exception {
         when(client.tryItems(eq("KorService2"), eq("areaCode2"), anyMap())).thenReturn(Optional.of(om.readTree(json)));
@@ -68,7 +70,7 @@ class TourAreaInfoServiceTest {
         area("[{\"code\":\"13\",\"name\":\"수원시\"}]");
         assertThat(svc.tourSigunguCode("31", "수원시 팔달구")).isEqualTo("13");
 
-        TourAreaInfoService fresh = new TourAreaInfoService(client, hubs, origin);
+        TourAreaInfoService fresh = new TourAreaInfoService(client, hubs, origin, extra, visitors);
         when(client.tryItems(eq("KorService2"), eq("areaCode2"), anyMap())).thenReturn(Optional.empty());
         assertThat(fresh.tourSigunguCode("35", "경주시")).isNull();
         assertThat(fresh.tourSigunguCode("35", "경주시")).isNull();
@@ -80,7 +82,50 @@ class TourAreaInfoServiceTest {
         TourAreaInfoService.AreaInfo r = svc.lookup("아틀란티스", null, null);
         assertThat(r.areaName()).isNull();
         assertThat(r.pet().status()).isEqualTo(Status.NO_AREA);
-        verifyNoInteractions(client, hubs);
+        verifyNoInteractions(client, hubs, extra, visitors);
+    }
+
+    /* 이 판이 고캠핑·두루누비·데이터랩의 유일한 소비처다. 부르지 않으면 심사에서
+       호출건수 0 으로 대조에 걸린다. 「부르는가」를 못으로 박아 둔다. */
+    @Test
+    void 야영장_둘레길_방문자수를_실제로_부른다() throws Exception {
+        area("[{\"code\":\"2\",\"name\":\"경주시\"}]");
+        when(hubs.hubList(any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(client.tryItems(anyString(), eq("areaBasedList2"), anyMap())).thenReturn(Optional.empty());
+        when(extra.camping(eq("35"), anyInt())).thenReturn(List.of(
+                java.util.Map.of("name", "경주 오토캠핑장", "addr", "경북 경주시", "lat", 35.8, "lon", 129.2)));
+        when(extra.trails(eq("35"), anyInt())).thenReturn(List.of());
+        when(visitors.daily(anyString(), anyString(), anyInt(), anyInt())).thenReturn(List.of(
+                new idusw.sbb.checkin.domain.tour.dto.VisitorCount("20260620", "35", "경상북도", "평일", "외지인(b)", 300000),
+                new idusw.sbb.checkin.domain.tour.dto.VisitorCount("20260621", "35", "경상북도", "주말", "외지인(b)", 500000),
+                new idusw.sbb.checkin.domain.tour.dto.VisitorCount("20260620", "35", "경상북도", "평일", "현지인(a)", 900000),
+                new idusw.sbb.checkin.domain.tour.dto.VisitorCount("20260620", "11", "서울특별시", "평일", "외지인(b)", 9000000)));
+
+        TourAreaInfoService.AreaInfo r = svc.lookup("경주", null, null);
+
+        verify(extra).camping(eq("35"), anyInt());
+        verify(extra).trails(eq("35"), anyInt());
+        verify(visitors).daily(anyString(), anyString(), anyInt(), anyInt());
+
+        assertThat(r.camping().status()).isEqualTo(Status.OK);
+        assertThat(r.camping().items().get(0).name()).isEqualTo("경주 오토캠핑장");
+        assertThat(r.trails().status()).isEqualTo(Status.NONE);   // 받았는데 0건 — 「확인 안 됨」이 아니다
+
+        /* 다른 시도 줄(서울)이 섞여 들어오면 안 된다. 경북 외지인 평균은 (30+50)/2 = 40만 */
+        assertThat(r.visitors().status()).isEqualTo(Status.OK);
+        assertThat(r.visitors().items().get(0).outsidersPerDay()).isEqualTo(400_000L);
+        assertThat(r.visitors().items().get(0).localsPerDay()).isEqualTo(900_000L);
+    }
+
+    @Test
+    void 방문자수를_못_받으면_없다고_하지_않는다() throws Exception {
+        area("[{\"code\":\"2\",\"name\":\"경주시\"}]");
+        when(hubs.hubList(any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(client.tryItems(anyString(), eq("areaBasedList2"), anyMap())).thenReturn(Optional.empty());
+        when(visitors.daily(anyString(), anyString(), anyInt(), anyInt()))
+                .thenThrow(new RuntimeException("관광공사 응답 없음"));
+
+        assertThat(svc.lookup("경주", null, null).visitors().status()).isEqualTo(Status.UNAVAILABLE);
     }
 
     @Test
