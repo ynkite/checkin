@@ -528,6 +528,41 @@
         }
       }
 
+      /* 여기까지 왔는데 못 골랐다면 「두 곳 이상 들어오는 장면이 없다」는 뜻이다.
+         그런데 장면 하나는 2km x 1.3km 이고 하루 동선은 도시를 가로질러 20km 에
+         퍼진다. 대전으로 여행을 짜면 성심당 장면이 있는데도 아무것도 안 떴다.
+
+         전국 시군구마다 그 지역에서 제일 많이 가는 곳을 한가운데 두고 구워 뒀다.
+         한 곳도 안 걸리더라도 그 지역 장면을 쓰는 편이 「모형이 없습니다」보다 낫다 —
+         적어도 그 도시의 진짜 거리다. 몇 곳이 담겼는지는 범례가 그대로 말한다.
+
+         아무 장면이나 쓰지는 않는다. 여행지와 같은 지역이어야 한다.
+         부산 여행에 대전 모형을 보여 주면 없느니만 못하다. */
+      if (!pick && stops.length) {
+        var dest = (window._mpTripDest || '').trim();
+        var token = dest ? dest.split(/\s+/)[0] : '';
+        if (token) {
+          var cy = stops.reduce(function (a, p) { return a + p.lat; }, 0) / stops.length;
+          var cx = stops.reduce(function (a, p) { return a + p.lng; }, 0) / stops.length;
+          var best = null;
+          for (var n = 0; n < scenes.length; n++) {
+            var s2 = scenes[n];
+            if (!s2.bbox || !s2.fit) continue;
+            if (String(s2.label || '').indexOf(token) !== 0) continue;   /* 같은 지역만 */
+            var my = (s2.bbox.s + s2.bbox.n) / 2, mx = (s2.bbox.w + s2.bbox.e) / 2;
+            var gap = (my - cy) * (my - cy) + (mx - cx) * (mx - cx);
+            if (!best || gap < best.gap) best = { sc: s2, meta: s2, gap: gap };
+          }
+          if (best) {
+            var on2 = stops.filter(function (p) {
+              var q = _mvProject(best.meta.fit, p.lat, p.lng);
+              return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
+            });
+            pick = { sc: best.sc, meta: best.meta, inside: on2 };
+          }
+        }
+      }
+
       if (!pick) {
         /* 목록이 이백 개가 넘으면 다 적을 수 없다. 몇 곳만 보여 준다 */
         var few = scenes.slice(0, 8).map(function (s) { return s.label; }).join(' · ');
@@ -548,7 +583,12 @@
         legend.innerHTML =
           '<b>' + _mpEsc(pick.sc.label) + '</b>' +
           '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
-          (pick.inside.length < stops.length
+          /* 한 곳도 안 담겼을 때 「0곳만 올렸습니다」는 말이 안 된다.
+             그 경우는 여행지 중심부를 대신 보여 주는 것이니 그렇게 말한다. */
+          (pick.inside.length === 0
+            ? '<em>일정에 있는 곳은 이 동네 밖입니다. 여행지 중심부 모습만 보여 드립니다 — '
+              + '가는 곳은 지도에서 보세요</em>'
+            : pick.inside.length < stops.length
             ? '<em>이 동네에 있는 ' + pick.inside.length + '곳만 모형에 올렸습니다. 나머지 '
               + (stops.length - pick.inside.length) + '곳은 멀리 있어 지도에서 보세요</em>' : '');
       }
@@ -767,6 +807,17 @@
           el.style.setProperty('--mv-z', z.toFixed(3));
           el.style.setProperty('--mv-x', px.toFixed(2) + '%');
           el.style.setProperty('--mv-y', py.toFixed(2) + '%');
+        });
+      } else if (frame && box) {
+        /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
+           그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
+           가운데를 적당히 당긴다. 갈 곳을 가리키지는 못해도 그 도시가
+           어떻게 생겼는지는 보여야 한다. */
+        [frame, document.getElementById('mv_pins')].forEach(function (el) {
+          if (!el) return;
+          el.style.setProperty('--mv-z', '1.5');
+          el.style.setProperty('--mv-x', '0%');
+          el.style.setProperty('--mv-y', '0%');
         });
       }
 
