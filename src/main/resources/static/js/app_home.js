@@ -172,6 +172,11 @@
       route = j.route || []; fixes = j.fixes || []; alt = j.alt;
       if (!route.length || !fixes.length) throw Error('route');
       window.__ckRoute = route; window.__ckFixes=fixes; window.__ckScenes=j.scenes || {}; window.__ckAlt=alt;
+      /* 동선과 갈래에 나오는 장면을 미리 받아 둔다. 안 그러면 장소를 누를 때마다
+         300~400KB 를 그 자리에서 받느라 단색 판이 몇 초 떠 있는다 */
+      if (S.warm) S.warm(route.map(function (p) { return p.scene; })
+        .concat(fixes.map(function (f) { return f.to && f.to.scene; }))
+        .concat(alt ? [alt.scene] : []));
       $('ck_opts').hidden=false;
       $('ck_opts').innerHTML=fixes.map(function (f,i) { return '<button class="ck-opt" type="button" data-o="'+i+'" aria-pressed="false"><b>'+(i+1)+'</b><span>'+esc(f.label)+'</span></button>'; }).join('');
       $('ck_opts').addEventListener('click',function (e) {

@@ -154,14 +154,31 @@
     }
     var ticket = ++revision, host = $('ck_scene'), hero = $('ck_hero');
     if (!host) return false;
-    status(p.name + ' · 모형 불러오는 중');
-    if (hero) hero.classList.add('ck-cut');
+
+    /* 덮개(.ck-cut)는 그림이 바뀌는 순간을 가리려고 두는 것이지,
+       기다리는 동안 보여 주는 것이 아니다. 전에는 받기 전에 먼저 덮었는데
+       장면 하나가 300~400KB 라, 느린 망에서는 단색 판만 몇 초 떠 있었다.
+       「아무것도 없는 화면」이 그것이다.
+
+       이미 받아 둔 장면이면 바로 덮고 바꾼다 — 덮개는 220ms 만 보인다.
+       아직 못 받았으면 앞 장면을 그대로 두고 기다린다.
+       앞 장면이라도 보이는 편이 빈 판보다 낫다. */
+    var warmed = !!cache[p.scene];
+    if (warmed && hero) hero.classList.add('ck-cut');
+    status(p.name + (warmed ? ' · 동네 모형' : ' · 모형 불러오는 중'));
     var result = await Promise.all([fetchScene(p.scene), new Promise(function (resolve) { setTimeout(resolve, reduced ? 0 : 220); })]);
+    if (!warmed && hero) hero.classList.add('ck-cut');
     if (ticket !== revision) return false;
     if (!result[0]) { if (hero) hero.classList.remove('ck-cut'); return showWideMap([p]); }
     if (sceneNow !== p.scene) {
       host.innerHTML = result[0]; var svg = host.querySelector('svg');
-      if (svg) { svg.classList.add('mass'); svg.setAttribute('aria-hidden','true'); } sceneNow = p.scene;
+      if (svg) {
+        svg.classList.add('mass'); svg.setAttribute('aria-hidden','true');
+        /* 판 모양과 상관없이 가운데를 기준으로 잘라서 채운다.
+           무대 높이가 화면따라 변해도 모형이 안 눌린다 */
+        svg.setAttribute('preserveAspectRatio','xMidYMid slice');
+      }
+      sceneNow = p.scene;
     }
     $('ck_frame').style.setProperty('--st-ar', w.__ckScenes[p.scene].ar);
     view = 'model'; buttons();
@@ -207,8 +224,20 @@
       clearTimeout(resizeTimer); resizeTimer = setTimeout(function () { camApply(); miniUpdate(); if (view === 'map') showWideMap(); },180);
     });
   }
+  /* 동선에 나오는 장면을 미리 받아 둔다. 한 번에 다 부르면 첫 화면이 느려지니
+     하나씩, 앞의 것이 끝난 뒤에 다음 것을 부른다. 실패해도 그냥 넘어간다 —
+     미리 받기는 있으면 좋은 것이지 없으면 안 되는 것이 아니다. */
+  function warm(names) {
+    var list = (names || []).filter(function (n,i,a) { return n && a.indexOf(n) === i && !cache[n]; });
+    (function next() {
+      var n = list.shift();
+      if (!n) return;
+      fetchScene(n).then(next, next);
+    })();
+  }
+
   w.ckStage = {
-    showWideMap:showWideMap, showPlace:showPlace, preloadScene:fetchScene,
+    showWideMap:showWideMap, showPlace:showPlace, preloadScene:fetchScene, warm:warm,
     camAt:camAt, camFit:camFit, bigDraw:bigDraw,
     cancel:function () { revision++; if ($('ck_hero')) $('ck_hero').classList.remove('ck-cut'); },
     render:function (r,a,st) {
