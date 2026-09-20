@@ -109,19 +109,36 @@ public class TravelTimeService {
     /** 화면에서 고를 수 있는 이동수단. 순서가 화면에 나오는 순서다. */
     public static final List<String> MODES = List.of("CAR", "TRANSIT", "WALK");
 
+    /** 실제로 잴 수 있는 것. 아래 주석 참고 — 지금은 자차뿐이다. */
+    public static final List<String> MEASURABLE = List.of("CAR");
+
     /**
-     * 같은 동선을 자차·대중교통·도보로 각각 재서 한 번에 돌려준다.
+     * 같은 동선을 이동수단별로 재서 한 번에 돌려준다.
      *
-     * 왜 셋을 다 재는가 — 「차로 24분」만 보여 주면 버스가 더 빠른 날인지
-     * 알 수 없다. 해운대처럼 주차가 막히는 곳은 실제로 지하철이 빠르다.
-     * 고르는 쪽이 판단할 수 있어야 한다.
+     * <p><b>지금은 자차만 잰다.</b> 대중교통 길찾기(/transit/routes)와 보행자
+     * 길찾기는 TMAP 과 <b>별개 상품</b>이라 앱키를 따로 받아야 한다. 우리 키로 부르면
+     * 403 {"code":"INVALID_API_KEY"} 가 온다. 같은 키로 /tmap/routes(자차)는 200 이다.
+     * 상품을 사지 않기로 정했다 (2026-09-20).
      *
-     * 하나가 실패해도 나머지는 그대로 돌려준다. TMAP 키가 없으면
-     * 셋 다 ready=false 로 오고 화면은 「연동 전」이라고 쓴다.
+     * <p>그래서 부르지 않는다. 부를 수 없는 것을 부르면 —
+     * 응답을 기다리는 만큼 화면이 늦어지고, 로그가 403 으로 더러워지고,
+     * 무엇보다 <b>「재지 못했다」와 「살 수 없다」가 구분되지 않는다.</b>
+     * 사용자에게는 같은 빈칸으로 보이지만 우리가 할 수 있는 일이 다르다.
+     *
+     * <p>안 재는 수단도 칸은 돌려준다. 화면이 「대중교통은 제공하지 않습니다」를
+     * 말할 수 있어야 하기 때문이다. 아무것도 안 주면 화면은 그 자리를 비워 두고,
+     * 사용자는 기능이 고장 난 줄 안다.
+     *
+     * <p>상품을 사게 되면 MEASURABLE 에 한 줄 더하면 된다.
      */
     public Map<String, TravelPlan> compare(TravelPlanRequest req) {
         Map<String, TravelPlan> out = new LinkedHashMap<>();
         for (String mode : MODES) {
+            if (!MEASURABLE.contains(mode)) {
+                out.put(mode, TravelPlan.notReady(mode, req.originName(), List.of(),
+                        "이 이동수단은 제공하지 않습니다"));
+                continue;
+            }
             TravelPlanRequest one = new TravelPlanRequest(
                     req.originName(), req.originLat(), req.originLng(),
                     mode, req.departAt(), req.stops());
