@@ -2938,6 +2938,7 @@ public class AiRouteService {
                 stayXY != null ? stayXY[1] : null,
                 stayXY != null ? stayXY[0] : null);
         mergeConditionPlaces(result, form, area);
+        mergeCrowdPlaces(result, plan, area);
         annotateCandidateCrowd(result, plan, area);
 
         // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
@@ -3157,6 +3158,108 @@ public class AiRouteService {
         System.out.println("🐾 [조건후보] " + label + " — 표시 " + marked.size() + "곳 · 추가 " + added + "곳");
     }
 
+    /** 집중률 목록에서 카카오로 찾아볼 장소 수. 한 곳당 카카오 호출 한 번이라 상한을 둔다. */
+    private static final int CROWD_PLACE_LOOKUP = 8;
+
+    /**
+     * 집중률을 아는 장소를 <b>후보에 합류</b>시킨다 (작업지시 4번).
+     *
+     * <p>집중률이 붙는 후보가 45곳 중 2곳뿐이었다. 관광공사가 집중률을 주는 장소 목록과,
+     * 우리가 카카오 키워드로 모으는 후보 목록이 <b>서로 다른 명단</b>이라 잘 안 겹친다.
+     * 그래서 「90 이상이면 피한다」가 작동하는 것을 볼 기회 자체가 없었다 — 90 이상인 후보가
+     * 생기질 않았다. 실제로 해운대구에 99.3 짜리가 있는데 그 장소가 후보에 없었다.
+     *
+     * <p>반려동물에서 한 것과 같은 결이다. <b>거르지 않고 합류시킨다</b> — 붐비는 곳을 빼는
+     * 것이 아니라, 붐빈다는 것을 알 수 있게 후보에 넣고 값을 실어 보낸다. 판단은 배치가 한다.
+     *
+     * <p><b>카카오 검증을 그대로 태운다.</b> 관광공사 목록에는 좌표가 없어서 이름으로 찾아야
+     * 하는데, 못 찾으면 버린다 — 관광공사 데이터라고 예외를 주지 않는다.
+     *
+     * <p>여행 기간 중 <b>가장 붐비는 날</b>의 값을 쓴다. 후보는 아직 날짜에 안 붙어 있고,
+     * 사흘 중 하루가 99 라면 그것을 알고 골라야 한다.
+     */
+    private void mergeCrowdPlaces(
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> result,
+            TravelPlan plan, idusw.sbb.checkin.domain.crowd.AreaCode.Area area) {
+
+        if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) return;
+
+        try {
+            /* CrowdService.rates 는 이미 받아 캐시한 목록을 준다. 여기서 API 를 또 부르지 않는다 */
+            var all = crowdService.rates(area.areaCd(), area.signguCd());
+            if (all.isEmpty()) return;
+
+            java.time.LocalDate from = plan.getStartDate() != null ? plan.getStartDate() : java.time.LocalDate.now();
+            java.time.LocalDate to   = plan.getEndDate()   != null ? plan.getEndDate()   : from;
+            java.time.format.DateTimeFormatter ymd = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd");
+            String f = from.format(ymd), t = to.format(ymd);
+
+            // 여행 기간 안에서 장소별 최댓값
+            java.util.Map<String, Double> worst = new java.util.LinkedHashMap<>();
+            for (var r : all) {
+                if (r.date() == null || r.placeName() == null) continue;
+                if (r.date().compareTo(f) < 0 || r.date().compareTo(t) > 0) continue;
+                worst.merge(r.placeName(), r.rate(), Math::max);
+            }
+            if (worst.isEmpty()) return;
+
+            // 붐비는 곳부터 — 피할 대상을 먼저 후보에 올려야 의미가 있다
+            var ordered = new java.util.ArrayList<>(worst.entrySet());
+            ordered.sort((x, y) -> Double.compare(y.getValue(), x.getValue()));
+
+            var tour = result.get("tour");
+            java.util.Set<String> have = new java.util.HashSet<>();
+            for (var list : result.values())
+                for (var n : list) have.add(idusw.sbb.checkin.domain.crowd.CrowdService.norm(n.path("name").asText("")));
+
+            int marked = 0, added = 0, dropped = 0, looked = 0;
+            for (var e : ordered) {
+                if (looked >= CROWD_PLACE_LOOKUP) break;
+
+                double rate = e.getValue();
+                var level = idusw.sbb.checkin.domain.crowd.CrowdLevel.of(rate);
+                String label = level == null ? null : level.label();
+
+                // 이미 후보에 있는 곳이면 표시만 한다 — 카카오를 또 부를 이유가 없다
+                String key = idusw.sbb.checkin.domain.crowd.CrowdService.norm(e.getKey());
+                if (have.contains(key)) {
+                    for (var list : result.values())
+                        for (var n : list)
+                            if (key.equals(idusw.sbb.checkin.domain.crowd.CrowdService.norm(n.path("name").asText("")))) {
+                                n.put("crowd", Math.round(rate));
+                                if (label != null) n.put("crowdLabel", label);
+                                marked++;
+                            }
+                    continue;
+                }
+
+                looked++;
+                var hit = kakaoSearchPlaces(e.getKey(), extractSigungu(plan.getDestination()), null, 0, 1);
+                if (hit.isEmpty()) { dropped++; continue; }
+                var n = hit.get(0);
+                if (!idusw.sbb.checkin.domain.crowd.CrowdService.matches(
+                        idusw.sbb.checkin.domain.crowd.CrowdService.norm(n.path("name").asText("")), key)) {
+                    dropped++; continue;   // 엉뚱한 곳이 잡혔다
+                }
+
+                n.put("type", "tour");
+                n.put("stars", "평점 정보 없음");
+                n.put("_unit", resolveDbPrice(n.path("name").asText("")));
+                n.put("_meal", "점심");
+                n.put("crowd", Math.round(rate));
+                if (label != null) n.put("crowdLabel", label);
+                tour.add(0, n);
+                have.add(idusw.sbb.checkin.domain.crowd.CrowdService.norm(n.path("name").asText("")));
+                added++;
+            }
+            System.out.println("📊 [집중률 후보] 표시 " + marked + "곳 · 추가 " + added
+                    + "곳 · 카카오에 없어 버림 " + dropped + "곳 (" + f + "~" + t + " 최댓값 기준)");
+
+        } catch (Exception ex) {
+            log.warn("[집중률 후보] 합류하지 못했습니다: {}", ex.getMessage());
+        }
+    }
+
     /**
      * 집중률을 <b>후보 단계에서</b> 붙인다.
      *
@@ -3232,6 +3335,84 @@ public class AiRouteService {
         if (c.contains("테마거리") || c.contains("거리"))                        return "거리";
         if (c.contains("테마파크") || c.contains("놀이"))                        return "테마파크";
         return null;
+    }
+
+    /** 이 값 이상이면 붐빈다고 본다. 관광공사 집중률 0~100. */
+    static final int CROWDED = 90;
+
+    /**
+     * 붐비는 곳을 한적한 곳으로 갈아 끼운다 (작업지시 4번).
+     *
+     * <p>프롬프트에 「90 이상은 피하라」를 적어도 지켜지지 않는다. 실제로 장산(95)이 그대로
+     * 동선에 들어왔다. 성격 중복 때도 같았다 — 규칙으로 부탁하면 안 되고 코드로 바꿔야 한다.
+     *
+     * <p><b>빼지 않고 바꾼다.</b> 부산·경주에서 90 이상을 다 빼면 갈 곳이 없다. 같은 성격의
+     * 안 쓴 후보 중 덜 붐비는 곳으로 갈아 끼우고, 갈아 낄 것이 없으면 그냥 둔다.
+     *
+     * <p><b>집중률을 모르는 후보도 대체 대상이다.</b> 「모른다」가 「붐빈다」보다 낫다고 볼
+     * 근거는 없지만, 아는 값이 90 이상인 것보다는 낫다. 다만 모르는 것을 「한적하다」고
+     * 적지는 않는다 — 옮겨 붙는 것은 그 후보가 가진 값뿐이다.
+     */
+    static void swapCrowdedPlaces(
+            JsonNode route,
+            java.util.Map<String, com.fasterxml.jackson.databind.node.ObjectNode> byName,
+            java.util.Map<String, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> candidates) {
+
+        java.util.Set<String> usedNames = new java.util.HashSet<>();
+        for (JsonNode day : route)
+            for (JsonNode pl : day.path("places"))
+                if (!pl.has("transit")) usedNames.add(pl.path("name").asText(""));
+
+        int swapped = 0, left = 0;
+        for (JsonNode day : route) {
+            for (JsonNode pl : day.path("places")) {
+                if (pl.has("transit") || !(pl instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
+                if (!o.hasNonNull("crowd") || o.path("crowd").asInt() < CROWDED) continue;
+
+                String type = o.path("type").asText("");
+                if ("stay".equals(type)) continue;          // 숙소는 못 바꾼다. 하루가 그 주변이다
+
+                var alt = pickQuieter(candidates.getOrDefault(type, java.util.List.of()), usedNames);
+                String before = o.path("name").asText("");
+                if (alt == null) {
+                    left++;
+                    log.warn("[붐빔] {} (집중률 {}) — 갈아 낄 후보가 없어 그대로 둔다",
+                            before, o.path("crowd").asInt());
+                    continue;
+                }
+
+                usedNames.remove(before);
+                usedNames.add(alt.path("name").asText(""));
+                o.put("name", alt.path("name").asText(""));
+                o.put("sub", alt.path("sub").asText(o.path("sub").asText("")));
+                o.remove("lat"); o.remove("lng"); o.remove("isFound");
+                o.remove("crowd"); o.remove("crowdLabel");   // 새 장소의 값만 붙인다
+                copyFlags(alt, o);
+                swapped++;
+                System.out.println("😶‍🌫️ [붐빔] " + before + " → " + alt.path("name").asText("")
+                        + (alt.hasNonNull("crowd") ? " (집중률 " + alt.path("crowd").asInt() + ")" : " (집중률 모름)"));
+            }
+        }
+        if (swapped > 0 || left > 0) {
+            System.out.println("😶‍🌫️ [붐빔] 교체 " + swapped + "곳 · 그대로 둠 " + left + "곳");
+        }
+    }
+
+    /** 안 쓴 같은 성격 후보 중 덜 붐비는 곳. 90 이상뿐이면 null. */
+    private static com.fasterxml.jackson.databind.node.ObjectNode pickQuieter(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
+            java.util.Set<String> usedNames) {
+
+        com.fasterxml.jackson.databind.node.ObjectNode best = null;
+        int bestCrowd = CROWDED;                     // 90 미만인 것만 후보로 본다
+        for (var c : pool) {
+            String nm = c.path("name").asText("");
+            if (nm.isBlank() || usedNames.contains(nm)) continue;
+            if (!c.hasNonNull("crowd")) return c;    // 모르는 곳이 있으면 그것으로 족하다
+            int v = c.path("crowd").asInt();
+            if (v < bestCrowd) { bestCrowd = v; best = c; }
+        }
+        return best;
     }
 
     /**
@@ -3328,6 +3509,32 @@ public class AiRouteService {
               .append('(').append(n.path("crowdLabel").asText("")).append(')');
         }
         return sb.toString();
+    }
+
+    /**
+     * 붐비는 후보가 실제로 있을 때만 규칙 16 을 준다.
+     *
+     * <p>값만 실어 보내고 규칙을 안 주면 AI 는 그 숫자를 무시한다. 반대로 붐비는 후보가
+     * 하나도 없는데 규칙만 주면 없는 것을 피하라는 말이 된다 — 프롬프트만 길어진다.
+     *
+     * <p><b>빼라고 하지 않는다.</b> 부산·경주에서 90 이상을 다 빼면 갈 곳이 없다.
+     * 같은 날 안에서 시각을 옮기거나, 성격이 같은 다른 후보로 바꾸라고 한다.
+     */
+    private static String crowdRule(CharSequence candidateLines) {
+        String s = candidateLines.toString();
+        boolean hasCrowded = false;
+        int at = 0;
+        while ((at = s.indexOf("집중률=", at)) >= 0) {
+            at += 4;
+            int end = at;
+            while (end < s.length() && Character.isDigit(s.charAt(end))) end++;
+            if (end > at && Integer.parseInt(s.substring(at, end)) >= 90) { hasCrowded = true; break; }
+        }
+        if (!hasCrowded) return "";
+
+        return "16. 붐비는 곳: 집중률 90 이상인 후보는 그 날 다른 시각으로 옮기거나," + "\n"
+             + "    성격이 같은 다른 후보로 바꾸세요. 빼서 하루를 비우지는 마세요." + "\n"
+             + "    집중률이 안 적힌 후보는 「한적하다」가 아니라 「모른다」입니다." + "\n" + "\n";
     }
 
     /** 조건을 고른 사람에게만 규칙 14 를 준다. 안 고르면 규칙 자체가 없다. */
@@ -3505,7 +3712,8 @@ public class AiRouteService {
                 + "13. 유저 요청 장소(" + userReqStr + ")는 거리 제약 예외이며 반드시 포함.\n"
                 + conditionRule(form)
                 + "15. 같은 날 같은 성격을 두 번 넣지 마세요. 해변·산·시장·전시·카페처럼\n"
-                + "    성격이 겹치는 후보는 하루에 하나만. 사람이 짜면 그렇게 안 짭니다.\n\n"
+                + "    성격이 겹치는 후보는 하루에 하나만. 사람이 짜면 그렇게 안 짭니다.\n"
+                + crowdRule(candidatesSb)
                 + "[출력 — 아래 JSON 배열만, 설명·마크다운 코드블럭 금지]\n"
                 + "[\n"
                 + "  {\n"
@@ -3585,6 +3793,7 @@ public class AiRouteService {
            실존 장소라면 지우는 쪽이 더 손해다. 대신 몇 개인지는 남긴다. 이 수가 0 이 아니면
            환각 차단이 프롬프트 부탁에만 기대고 있다는 뜻이다 */
         dedupeDayCategories(route, byName, candidates);
+        swapCrowdedPlaces(route, byName, candidates);
 
         if (offCandidate.isEmpty()) {
             System.out.println("✅ [후보검증] " + total + "곳 전부 카카오 후보에서 나왔다");
