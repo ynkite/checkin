@@ -93,7 +93,8 @@ class TourAreaInfoServiceTest {
         when(hubs.hubList(any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
         when(client.tryItems(anyString(), eq("areaBasedList2"), anyMap())).thenReturn(Optional.empty());
         when(extra.camping(eq("35"), anyInt())).thenReturn(List.of(
-                java.util.Map.of("name", "경주 오토캠핑장", "addr", "경북 경주시", "lat", 35.8, "lon", 129.2)));
+                java.util.Map.of("name", "경주 오토캠핑장", "address", "경북 경주시 산내면", "lat", 35.8, "lon", 129.2),
+                java.util.Map.of("name", "포항 해변캠핑장", "address", "경북 포항시 북구", "lat", 36.0, "lon", 129.4)));
         when(extra.trails(eq("35"), anyInt())).thenReturn(List.of());
         when(visitors.daily(anyString(), anyString(), anyInt(), anyInt())).thenReturn(List.of(
                 new idusw.sbb.checkin.domain.tour.dto.VisitorCount("20260620", "35", "경상북도", "평일", "외지인(b)", 300000),
@@ -108,13 +109,32 @@ class TourAreaInfoServiceTest {
         verify(visitors).daily(anyString(), anyString(), anyInt(), anyInt());
 
         assertThat(r.camping().status()).isEqualTo(Status.OK);
-        assertThat(r.camping().items().get(0).name()).isEqualTo("경주 오토캠핑장");
+        /* 시도(경북)로만 걸러져 포항도 섞여 온다. 여행지가 경주면 경주만 남긴다 —
+           여수 화면에 담양 야영장이 올라오던 것과 같은 문제다 */
+        assertThat(r.camping().items()).extracting(TourAreaInfoService.Spot::name)
+                .containsExactly("경주 오토캠핑장");
+        assertThat(r.camping().note()).isNull();   // 좁혀서 남았으니 변명할 것이 없다
         assertThat(r.trails().status()).isEqualTo(Status.NONE);   // 받았는데 0건 — 「확인 안 됨」이 아니다
 
         /* 다른 시도 줄(서울)이 섞여 들어오면 안 된다. 경북 외지인 평균은 (30+50)/2 = 40만 */
         assertThat(r.visitors().status()).isEqualTo(Status.OK);
         assertThat(r.visitors().items().get(0).outsidersPerDay()).isEqualTo(400_000L);
         assertThat(r.visitors().items().get(0).localsPerDay()).isEqualTo(900_000L);
+    }
+
+    @Test
+    void 시군구에_하나도_없으면_시도로_넓히되_그렇다고_말한다() throws Exception {
+        area("[{\"code\":\"2\",\"name\":\"경주시\"}]");
+        when(hubs.hubList(any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
+        when(client.tryItems(anyString(), eq("areaBasedList2"), anyMap())).thenReturn(Optional.empty());
+        when(extra.camping(eq("35"), anyInt())).thenReturn(List.of(
+                java.util.Map.of("name", "포항 해변캠핑장", "address", "경북 포항시 북구")));
+
+        var sec = svc.lookup("경주", null, null).camping();
+        assertThat(sec.status()).isEqualTo(Status.OK);
+        assertThat(sec.items()).hasSize(1);
+        /* 없는 척도, 경주 것인 척도 하지 않는다 */
+        assertThat(sec.note()).contains("경주시").contains("시도");
     }
 
     @Test
@@ -126,6 +146,26 @@ class TourAreaInfoServiceTest {
                 .thenThrow(new RuntimeException("관광공사 응답 없음"));
 
         assertThat(svc.lookup("경주", null, null).visitors().status()).isEqualTo(Status.UNAVAILABLE);
+    }
+
+    /* 두루누비는 주소 대신 코스 설명을 준다. <br> 태그가 섞인 서너 문단이다.
+       그대로 두면 화면이 밀리고 태그가 글자로 보인다. 실호출로 확인한 모양이다. */
+    @Test
+    void 주소_칸에_글_덩어리가_오면_한_줄로_줄인다() {
+        assertThat(TourAreaInfoService.oneLine("부산광역시 기장군 장안읍 1-5번지"))
+                .isEqualTo("부산광역시 기장군 장안읍 1-5번지");
+
+        String 코스 = "- 부산의 남단 오륙도에서 시작하여 광안대교와 해운대해수욕장, "
+                + "미포항까지 이어지는 코스<br>- 해안절경을 감상할 수 있는 구간";
+        String 줄인것 = TourAreaInfoService.oneLine(코스);
+        assertThat(줄인것).doesNotContain("<br>").doesNotContain("<");
+        assertThat(줄인것).doesNotStartWith("-");
+        assertThat(줄인것).endsWith("…");
+        assertThat(줄인것.length()).isLessThanOrEqualTo(47);
+
+        assertThat(TourAreaInfoService.oneLine(null)).isNull();
+        assertThat(TourAreaInfoService.oneLine("   ")).isNull();
+        assertThat(TourAreaInfoService.oneLine("<br><br>")).isNull();
     }
 
     @Test

@@ -43,8 +43,14 @@ public class TourAreaInfoService {
 
     public record Fact(String label, String text) {}
 
-    public record Section<T>(Status status, int count, List<T> items) {
-        static <T> Section<T> of(Status s) { return new Section<>(s, 0, List.of()); }
+    /**
+     * @param note 이 목록이 무엇의 목록인지 한 줄. 여행지 그대로면 null.
+     *             시군구에서 못 찾아 시도로 넓혔을 때 그 사실을 적는다 —
+     *             여수 화면에 담양 야영장을 올려 놓고 아무 말도 안 하면 거짓말이 된다.
+     */
+    public record Section<T>(Status status, int count, List<T> items, String note) {
+        public Section(Status status, int count, List<T> items) { this(status, count, items, null); }
+        static <T> Section<T> of(Status s) { return new Section<>(s, 0, List.of(), null); }
     }
 
     /** 야영장·둘레길 — 이름과 좌표만 쓴다. 응답 모양이 서로 달라 Map 그대로 받는다 */
@@ -62,6 +68,8 @@ public class TourAreaInfoService {
                            Section<Spot> camping, Section<Spot> trails, Section<Visitors> visitors) {}
 
     static final int SHOW = 5;
+    /** 주소 칸 한 줄에 들어갈 글자 수. 넘으면 줄인다 */
+    static final int LINE_MAX = 46;
     private static final int FETCH = 50;
 
     private final TourApiClient client;
@@ -91,8 +99,8 @@ public class TourAreaInfoService {
         /* 야영장·둘레길·방문자수는 이 판이 유일한 소비처다. 늦으면 그 칸만 「확인되지 않음」으로
            두고 나머지를 먼저 낸다 — 하나가 느려서 판 전체가 안 뜨면 안 된다.
            야영장은 전국을 받아 거르는 구조라(TourExtraService 참고) 캐시가 빈 첫 호출이 느리다. */
-        CompletableFuture<Section<Spot>> camp = later(() -> spots(tourArea, true));
-        CompletableFuture<Section<Spot>> trail = later(() -> spots(tourArea, false));
+        CompletableFuture<Section<Spot>> camp = later(() -> spots(tourArea, area.sigungu(), true));
+        CompletableFuture<Section<Spot>> trail = later(() -> spots(tourArea, area.sigungu(), false));
         CompletableFuture<Section<Visitors>> vis = later(() -> visitors(area, tourArea));
 
         Object[] h = hubs.join();
@@ -110,19 +118,67 @@ public class TourAreaInfoService {
 
     /* ── 야영장 · 둘레길 ─────────────────────────────────────── */
 
-    private Section<Spot> spots(String tourArea, boolean camping) {
+    private Section<Spot> spots(String tourArea, String sigungu, boolean camping) {
         if (tourArea == null) return Section.of(Status.NO_AREA);
         List<Map<String, Object>> rows = camping
                 ? tourExtraService.camping(tourArea, FETCH)
                 : tourExtraService.trails(tourArea, FETCH);
         if (rows.isEmpty()) return new Section<>(Status.NONE, 0, List.of());
+
+        /* 고캠핑·두루누비는 지역으로 거르는 요청 파라미터가 없어 시도로만 걸러져 온다.
+           그래서 여수 화면에 담양 야영장이 올라왔다 — 차로 두 시간 거리다.
+           주소에 시군구 이름이 들어 있으면 그것으로 한 번 더 좁힌다.
+           좁혀서 하나도 안 남으면 넓은 목록을 그대로 쓰되 무엇의 목록인지 적는다.
+           없는 것보다는 낫지만, 여수 것인 척하면 안 된다. */
+        String note = null;
+        String near = idusw.sbb.checkin.domain.route.RegionMatch.core(sigungu);
+        if (!near.isBlank()) {
+            List<Map<String, Object>> narrowed = rows.stream()
+                    .filter(m -> {
+                        String a = str(m, "address");
+                        return a != null && a.contains(near);
+                    })
+                    .toList();
+            if (!narrowed.isEmpty()) rows = narrowed;
+            else note = sigungu + "에는 없어 " + "같은 시도 안에서 보여 드립니다";
+        }
         List<Spot> out = rows.stream().limit(SHOW)
-                .map(m -> new Spot(str(m, "name"), str(m, "addr"),
+                /* 열쇠 이름은 "addr" 가 아니라 "address" 다(TourExtraService.simple).
+                   틀린 이름으로 꺼내면 null 이 오고, 화면은 주소 줄을 통째로 안 그린다.
+                   오류도 안 난다 — 서버를 띄워 실제 응답을 보고 나서야 알았다. */
+                .map(m -> new Spot(str(m, "name"), oneLine(str(m, "address")),
                         dbl(m, "lat"), dbl(m, "lon")))
                 .filter(sp -> sp.name() != null && !sp.name().isBlank())
                 .toList();
         return out.isEmpty() ? new Section<>(Status.NONE, 0, List.of())
-                             : new Section<>(Status.OK, rows.size(), out);
+                             : new Section<>(Status.OK, rows.size(), out, note);
+    }
+
+    /**
+     * 주소 칸에 한 줄만 남긴다.
+     *
+     * <p>야영장은 주소(「부산광역시 기장군 …」)가 오는데, 둘레길은 주소 항목이 없어
+     * 코스 설명이 대신 온다. 그것도 <b>{@code <br>} 태그가 섞인 서너 문단</b>이다.
+     * 그대로 넘기면 화면이 글 덩어리에 밀리고, 태그는 이스케이프되어
+     * {@code &lt;br&gt;} 글자로 보인다. 실제 응답을 보고 나서 알았다.
+     *
+     * <p>버리지는 않는다 — 둘레길은 그 설명이 유일한 설명이다. 첫 마디만 남긴다.
+     */
+    static String oneLine(String s) {
+        if (s == null) return null;
+        /* 주의 — 자바 15부터 문자열 안의 \s 는 「공백 한 칸」이다. 정규식의 공백류가
+           아니다. 한 겹으로 적으면 오류도 없이 다른 뜻이 된다. \\s 로 적는다. */
+        String t = s.replaceAll("(?i)<br\\s*/?>", " ")   // 줄바꿈 태그는 띄어쓰기로
+                    .replaceAll("<[^>]*>", "")            // 남은 태그 제거
+                    .replaceAll("[\\r\\n\\t]", " ")
+                    .replaceAll("\\s+", " ")
+                    .replaceAll("^[-·•\\s]+", "")   // 「- 」로 시작하는 목록 기호
+                    .trim();
+        if (t.isEmpty()) return null;
+        if (t.length() <= LINE_MAX) return t;
+        /* 자를 때 말 중간에서 끊지 않는다. 가까운 띄어쓰기에서 끊고 말줄임표를 붙인다 */
+        int cut = t.lastIndexOf(' ', LINE_MAX);
+        return t.substring(0, cut > LINE_MAX / 2 ? cut : LINE_MAX).trim() + "…";
     }
 
     private static String str(Map<String, Object> m, String k) {

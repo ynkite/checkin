@@ -553,9 +553,16 @@ function _liveDayLabel(t) {
     return total > 1 ? `${total}일 중 ${nth}일째` : '오늘 하루';
 }
 
-/** 진행 중인 여행을 바로 연다. 실시간 화면이 목록을 그린 뒤 이 번호를 집는다 */
+/**
+ * 진행 중인 여행을 바로 연다. 실시간 화면이 목록을 그린 뒤 이 번호를 집는다.
+ *
+ * sessionStorage 에 둔다. goRefresh 는 location.reload() 를 하기 때문에
+ * window 에 담아 두면 그 자리에서 날아간다 — 처음에 그렇게 짰다가 눌러 보고 알았다.
+ */
 function openLiveNow() {
-    if (window._liveNowTripId) window._liveOpenTripId = window._liveNowTripId;
+    try {
+        if (window._liveNowTripId) sessionStorage.setItem('liveOpenTripId', String(window._liveNowTripId));
+    } catch (e) {}
     goRefresh('live');
 }
 window.openLiveNow = openLiveNow;
@@ -563,6 +570,8 @@ window.openLiveNow = openLiveNow;
 /** 강제 로그아웃 (토큰 만료 등) */
 function forceLogout() {
     Token.clear();
+    _loggedIn = false;
+    if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
     // [캐시 정리] 세션 만료로 강제 로그아웃 시에도 플랜 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
@@ -860,6 +869,8 @@ function _handleOAuthCallback() {
 async function doLogout() {
     await api.post('/api/auth/logout', {});
     Token.clear();
+    _loggedIn = false;
+    if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
     // [캐시 정리] 다른 계정 로그인 시 이전 플랜이 남지 않도록 플랜 관련 캐시 전부 제거
     window._currentTripId = null; window._mapDestRegion = null;
     window._planHydrateTripId = null; window._planLoadedTripId = null; window._chatRestored = false;
@@ -4286,6 +4297,11 @@ window.addEventListener('popstate', async e => {
             _loggedIn              = true;
             await updateMyPageUI();
             await _loadNotifications();
+            /* 새로고침으로 돌아온 경우다. 여기는 _initSession 을 거치지 않고
+               같은 일을 손으로 다시 하는 자리라, 한쪽에만 넣으면 어긋난다.
+               실제로 그랬다 — 실시간 점과 「여행 중」 줄이 갓 로그인했을 때만 뜨고
+               새로고침하면 사라졌다. 평소 쓰는 길은 이쪽인데. */
+            refreshLiveDot();
         } else {
             // 토큰 만료 → 재발급 시도
             const ok = await refreshAccessToken();
