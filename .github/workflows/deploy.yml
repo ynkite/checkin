@@ -5,12 +5,18 @@
 
 name: deploy
 
-# develop 에 올라가면 자동으로 나간다. 버튼으로도 돌릴 수 있다.
+# main 에 올라가면 자동으로 나간다. 버튼으로도 돌릴 수 있다.
+#
+# develop 이 아니라 main 인 이유 — develop 은 작업하다 말고도 올린다.
+# 그때마다 서버가 교체되면 보고 있던 사람의 화면이 끊긴다. main 은
+# 내보내기로 정한 것만 올리는 자리라, 올라간다는 것이 곧 배포해도
+# 된다는 뜻이다. develop 에 머지하는 것만으로는 이제 안 나간다.
+#
 # 배포 중 20~30초는 앱이 교체되는 시간이라 접속이 끊긴다 —
-# 심사 기간에는 푸시를 멈추거나 push 줄을 지운다.
+# 심사 시간에는 main 에 올리지 않는다.
 on:
   push:
-    branches: [develop]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
