@@ -2904,7 +2904,10 @@ window._handleWriteImageSelect = function(input) {
      * 「없다」로 끝내지 않는다. 막다른 길이 되기 때문이다.
      * 검색해서 안 나온 것과 아직 아무도 안 쓴 것도 다른 말이다.
      */
-    function commEmptyBox(opt) {
+    /* 이 파일에는 닫힌 묶음(IIFE)이 여럿이다. 안에서만 만들면 다른 묶음의
+       _renderPostList 가 못 찾아 「불러오지 못했습니다」로 빠진다 — 실제로 그랬다.
+       창에 붙여 어디서나 같은 것을 쓰게 한다 */
+    window.commEmptyBox = function commEmptyBox(opt) {
         var o = opt || {};
         var wrap = 'padding:36px 20px;text-align:center;color:var(--text3);font-size:13.5px;line-height:1.7;word-break:keep-all';
         return '<div class="comm-empty" style="' + wrap + '">' +
@@ -2912,7 +2915,7 @@ window._handleWriteImageSelect = function(input) {
             (o.sub ? '<p style="margin:0">' + escapeHtml(o.sub) + '</p>' : '') +
             (o.btn ? '<button class="btn-f" style="margin-top:14px" onclick="' + o.act + '">' + escapeHtml(o.btn) + '</button>' : '') +
             '</div>';
-    }
+    };
 
     function extractPreviewScrapList(res) {
         if (Array.isArray(res)) return res;
