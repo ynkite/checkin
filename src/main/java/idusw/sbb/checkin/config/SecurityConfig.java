@@ -73,6 +73,11 @@ public class SecurityConfig {
                         .requestMatchers("/sw.js", "/manifest.json").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/push/public-key").permitAll()
 
+                        /* 한적한 곳 후보는 부를 때마다 관광공사를 친다. 열어 두면 남이
+                           일일 한도를 태울 수 있고, 그러면 심사 기간에 혼잡도가 통째로 죽는다.
+                           /api/live/** permitAll 보다 먼저 와야 걸린다 */
+                        .requestMatchers("/api/live/quiet").authenticated()
+
                         //인증 없이 누구나 접근 가능한 공통 API 목록(비로그인)
                         .requestMatchers(
                                 "/",
