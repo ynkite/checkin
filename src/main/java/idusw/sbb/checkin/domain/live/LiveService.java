@@ -39,6 +39,7 @@ public class LiveService {
 
     private final TravelPlanRepository planRepository;
     private final CrowdService crowdService;
+    private final idusw.sbb.checkin.domain.tour.service.TourAreaInfoService tourAreaInfoService;
     private final idusw.sbb.checkin.domain.weather.service.WeatherService weatherService;
     private final ObjectMapper objectMapper;
 
@@ -222,7 +223,18 @@ public class LiveService {
             return m;
         }
 
-        AreaCode.Area a = AreaCode.find(plan.getDestination());
+        /* 「부산」처럼 시도만 적힌 여행이 많다. 그러면 AreaCode 가 첫 시군구(중구)를
+           고른다. 부산 일정은 동구·사하구·중구·수영구·해운대구를 오가는데 전부
+           중구에 물어 보니 자갈치시장 말고는 하나도 안 맞았다. 「값이 없다」가
+           아니라 「엉뚱한 데를 봤다」였다.
+
+           정거장 좌표로 그 정거장의 시군구를 잡는다. 저장할 때 붙이는
+           AiRouteService.annotateCrowd 가 쓰는 것과 같은 길이다.
+           좌표가 없으면 종전대로 여행지 이름으로 간다. */
+        AreaCode.Area a = tourAreaInfoService.resolveArea(
+                plan.getDestination(),
+                next.get("lat") instanceof Number la ? la.doubleValue() : null,
+                next.get("lng") instanceof Number lo ? lo.doubleValue() : null);
         if (a == null || !AreaCode.hasCrowdData(a)) return Map.of();
         try {
             CrowdForecast f = crowdService.forecast(a.areaCd(), a.signguCd(), n, date);
@@ -344,20 +356,36 @@ public class LiveService {
             out.add(a);
         }
 
-        Object rate = crowd.get("rate");
-        if (rate instanceof Number r && r.intValue() >= 70) {
-            Map<String, Object> swap = act("swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다");
-            swap.put("method", "POST");
-            swap.put("endpoint", base + "/reorder");
-            swap.put("oneClick", false);   /* 바뀐 순서를 본문에 담아야 한다 */
-            out.add(swap);
+        /* 일정을 다시 짜는 것은 늘 할 수 있어야 한다. 혼잡도는 「지금 그게 필요한가」를
+           정할 뿐이다.
 
-            Map<String, Object> quiet = act("quiet", "다른 곳으로", "그 시각에 한적한 곳을 찾습니다");
-            quiet.put("method", "POST");
-            quiet.put("endpoint", base + "/replace");
-            quiet.put("oneClick", false);  /* 어느 곳을 무엇으로 바꿀지 골라야 한다 */
-            out.add(quiet);
-        }
+           전에는 70 이상일 때만 이 둘을 내보냈다. 그런데 한적한 날에 열면 우리가 제일
+           내세우는 기능이 화면에서 아예 사라진다. 실제로 오늘 부산이 52~62 라
+           (어제는 73~95 였다) 심사위원이 열면 「길 안내」와 「전체 일정」 둘만 보인다.
+
+           그렇다고 문턱을 낮추지는 않는다. 그건 숫자를 화면에 맞추는 짓이다.
+           대신 늘 보여 주고, 지금 권하는 것인지를 suggested 로 가른다.
+           한적한데 「붐비는 곳을 뒤로 미룹니다」라고 쓰면 그건 거짓말이다. 문구도 가른다. */
+        Object rate = crowd.get("rate");
+        boolean busy = rate instanceof Number r && r.intValue() >= 70;
+
+        Map<String, Object> swap = busy
+                ? act("swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다")
+                : act("swap", "순서 바꾸기", "들르는 순서를 바꿉니다");
+        swap.put("method", "POST");
+        swap.put("endpoint", base + "/reorder");
+        swap.put("oneClick", false);   /* 바뀐 순서를 본문에 담아야 한다 */
+        swap.put("suggested", busy);
+        out.add(swap);
+
+        Map<String, Object> quiet = busy
+                ? act("quiet", "다른 곳으로", "그 시각에 한적한 곳을 찾습니다")
+                : act("quiet", "다른 곳으로", "가까운 다른 곳을 찾습니다");
+        quiet.put("method", "POST");
+        quiet.put("endpoint", base + "/replace");
+        quiet.put("oneClick", false);  /* 어느 곳을 무엇으로 바꿀지 골라야 한다 */
+        quiet.put("suggested", busy);
+        out.add(quiet);
 
         if (next.get("lat") instanceof Number) {
             Map<String, Object> navi = act("navi", "길 안내", "다음 장소까지 안내를 켭니다");
