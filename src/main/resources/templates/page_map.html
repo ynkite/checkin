@@ -548,7 +548,13 @@
           for (var n = 0; n < scenes.length; n++) {
             var s2 = scenes[n];
             if (!s2.bbox || !s2.fit) continue;
-            if (String(s2.label || '').indexOf(token) !== 0) continue;   /* 같은 지역만 */
+            /* 라벨 앞부분만 보면 시군구 장면을 못 쓴다. 손으로 지은 것은
+               「청주 수암골」이라 「청주」로 시작하는데, 전국 시군구는
+               「충북 청주시 상당구」라 도 이름이 먼저 온다. 청주로 여행을 짜면
+               후보가 다섯 중 하나뿐이었다. 어디든 들어 있으면 후보로 본다 —
+               고르는 것은 아래에서 중심이 제일 가까운 장면이라, 후보가 늘어도
+               엉뚱한 지역이 뽑히지 않는다. */
+            if (String(s2.label || '').indexOf(token) < 0) continue;   /* 같은 지역만 */
             var my = (s2.bbox.s + s2.bbox.n) / 2, mx = (s2.bbox.w + s2.bbox.e) / 2;
             var gap = (my - cy) * (my - cy) + (mx - cx) * (mx - cx);
             if (!best || gap < best.gap) best = { sc: s2, meta: s2, gap: gap };
