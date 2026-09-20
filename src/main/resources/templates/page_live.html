@@ -72,13 +72,12 @@
         </div>
 
         <!-- 장소 확인하기 — 다음 정거장의 지금(또는 그날) 상황을 확인하고 갈래를 준다 -->
-        <div class="rl-acts" style="grid-template-columns:1fr">
+        <div class="rl-acts rl-acts-single">
           <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
             <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
           </button>
         </div>
-        <div id="rlCheck" hidden role="status" aria-live="polite"
-             style="margin:10px 0 14px;padding:14px 16px;border:1px solid var(--border2);border-radius:12px;background:var(--panel);word-break:keep-all"></div>
+        <div id="rlCheck" class="rl-check" hidden role="status" aria-live="polite"></div>
 
         <div class="rl-acts" id="rlActs"></div>
 

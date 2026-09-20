@@ -18,7 +18,7 @@ nav{
   backdrop-filter:none;
   border-bottom:1px solid transparent;
   padding:14px 26px;
-  transition:background .2s ease, border-color .2s ease, backdrop-filter .2s ease;
+  transition:background-color .2s ease, border-color .2s ease;
 }
 nav.nav-solid{
   /* blur 를 걷었다. 이 줄은 스크롤할 때마다 켜졌다 꺼지는데(app_home.js 의 sync),
@@ -39,7 +39,7 @@ nav.nav-solid{
    둔다. 거기가 앱 아이콘의 본래 쓰임이다.
    styles_responsive.css 34행이 .logo-symbol 을 (0,2,0) 으로 숨기므로
    자리수를 그보다 높여 둔다. */
-nav .nav-logo{ display:flex; align-items:center }
+nav .nav-logo{ display:flex; align-items:center; flex:0 1 auto; min-width:0 }
 nav .nav-logo .logo-full{
   display:block; height:38px; width:auto;
 }
@@ -63,7 +63,8 @@ nav .nav-link.on::after{
 }
 
 /* 오른쪽 — 주인은 하나뿐이다 */
-nav .nav-right{ display:flex; align-items:center; gap:14px }
+nav .nav-links{ min-width:0 }
+nav .nav-right{ display:flex; align-items:center; gap:14px; min-width:0 }
 nav .btn-nav-ghost,
 nav .nav-user{
   padding:0; border:0; background:none; cursor:pointer;
@@ -92,5 +93,13 @@ nav #navHamburger{
   nav{ padding:11px 18px }
   nav.nav-open{
     background:var(--page); border-bottom-color:var(--ui-line); backdrop-filter:none;
+  }
+}
+@media (max-width:900px){
+  nav .nav-link,
+  nav .btn-nav-ghost,
+  nav .btn-nav-primary,
+  nav #navBellBtn{
+    min-height:44px;
   }
 }
