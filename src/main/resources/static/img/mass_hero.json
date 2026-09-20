@@ -87,6 +87,11 @@
       "svg": "/img/mass_gwangalli.svg",
       "ar": 1.7246,
       "label": "광안리"
+    },
+    "dongbaek": {
+      "svg": "/img/mass_dongbaek.svg",
+      "ar": 1.5179,
+      "label": "동백섬 산책로"
     }
   },
   "fixes": [
@@ -121,7 +126,7 @@
         "lat": 35.1539081129,
         "lng": 129.1521170882,
         "crowd": 54,
-        "scene": "",
+        "scene": "dongbaek",
         "x": 73.0,
         "y": 31.0,
         "sx": 50.0,
