@@ -43,6 +43,25 @@
         <div class="rl-next" id="rlNext"></div>
         <div class="rl-modes" id="rlModes" hidden></div>
 
+        <!-- 말로 하기 — 운전 중이거나 걷는 중에는 화면을 못 본다.
+             소리는 거들 뿐이고 화면이 본문이다. 들은 말도 한 말도 여기 적힌다 -->
+        <div class="rl-voice-bar">
+          <button type="button" class="rl-voicebtn" id="rlVoiceBtn" onclick="rlVoiceToggle()">말로 하기</button>
+          <span class="rv-state" id="rlVoiceState"></span>
+        </div>
+        <div class="rl-voice" id="rlVoice" hidden>
+          <div class="rv-log" id="rlVoiceLog" role="log" aria-live="polite" hidden></div>
+          <div class="rv-ask" id="rlVoiceAsk" hidden></div>
+          <!-- 말이 안 되는 기기(아이폰 사파리)에서는 같은 말을 글로 넣는다.
+               해석하는 곳은 하나다 — 규칙이 두 벌이면 한쪽만 고쳐진다 -->
+          <div class="rv-type">
+            <input id="rlVoiceText" type="text" autocomplete="off"
+                   placeholder="다음 어디야 · 붐벼? · 날씨 · 길 안내"
+                   aria-label="실시간에게 물어보기" onkeydown="rlVoiceKey(event)">
+            <button type="button" onclick="rlVoiceSend()">묻기</button>
+          </div>
+        </div>
+
         <!-- 장소 확인하기 — 다음 정거장의 지금(또는 그날) 상황을 확인하고 갈래를 준다 -->
         <div class="rl-acts" style="grid-template-columns:1fr">
           <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
@@ -80,6 +99,7 @@
       /* 다음 정거장. rlPaint 가 채우고 「길 안내」가 읽는다.
          좌표가 없으면 null 로 둔다 — 좌표 없이 안내를 시작하면 바로 막힌다. */
       var rlNextStop = null;
+      var rlLast = null;        /* 마지막으로 받아 그린 한 벌. live-voice.js 가 읽는다 */
       var rlDayNo = 1;          /* 바꾸기 API 가 몇 일차인지 물어본다 */
 
       /* 로그인 토큰. 이 프로젝트는 전역 fetch 래퍼가 없어서 부르는 쪽이 직접 붙인다 —
@@ -243,7 +263,19 @@
 
       window.rlAgain = function () { rlRefresh(); };
 
+      /* 말로 하기(live-voice.js)가 읽는 창구.
+         전역을 늘리지 않으려고 함수 둘만 낸다 — 바깥에서 값을 바꿀 수는 없다. */
+      window.rlSnapshot = function () {
+        if (!rlLast) return { tripId: rlTrip };
+        return {
+          tripId: rlTrip, next: rlLast.next, crowd: rlLast.crowd,
+          weather: rlLast.weather, headline: rlLast.headline, dayNo: rlLast.dayNo
+        };
+      };
+      window.rlPosition = function () { return rlPos ? [+rlPos[0], +rlPos[1]] : null; };
+
       function rlPaint(d) {
+        rlLast = d;                      /* 말로 하기가 이걸 읽는다 */
         rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
         var when = document.getElementById('rlWhen');
         var head = document.getElementById('rlHead');
@@ -736,6 +768,7 @@
       });
 
       window.rlBack = function () {
+        if (window.rlVoiceStop) window.rlVoiceStop();
         clearInterval(rlTimer); clearInterval(rlFreshTimer);
         rlSnapAt = 0; rlOffline = false; rlGeoDenied = false;
         var fr = document.getElementById('rlFresh'); if (fr) fr.hidden = true;
@@ -947,6 +980,7 @@
 
       /* 화면을 떠나면 타이머를 끈다. 안 끄면 배터리를 먹는다 */
       window.stopLivePage = function () {
+        if (window.rlVoiceStop) window.rlVoiceStop();   /* 화면을 떠나면 마이크를 놓는다 */
         clearInterval(rlTimer); clearInterval(rlAgeTimer); clearInterval(rlFreshTimer);
       };
     })();

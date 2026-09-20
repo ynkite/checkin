@@ -303,3 +303,71 @@ body:has(#page-live.active) .lnb{ display:none }
 
 /* 평년값은 예보가 아니다. 11일 뒤부터는 이 값이 온다 */
 .rl-wx i{ font-style:normal; opacity:.75; font-size:11.5px }
+
+/* ── 말로 하기 ──────────────────────────────────────────────
+   운전 중이거나 걷는 중에는 화면을 못 본다. 그때 쓰라고 만들었다.
+   그래도 소리는 거들 뿐이고 화면이 본문이다 — 차 안에 음악이 나오면
+   안 들리고, 소리를 못 듣는 사람도 있다. 들은 말도 한 말도 여기 적힌다. */
+.rl-voice-bar{
+  display:flex; align-items:center; gap:10px;
+  margin:16px 0 0; flex-wrap:wrap;
+}
+.rl-voicebtn{
+  display:inline-flex; align-items:center; gap:7px;
+  min-height:44px; padding:0 18px; border:0; cursor:pointer;
+  border-radius:var(--r-pill); font-family:inherit;
+  font-size:14px; font-weight:600; color:var(--ink);
+  background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.rl-voicebtn::before{
+  content:""; width:9px; height:9px; border-radius:50%;
+  background:var(--ink-3);
+}
+.rl-voicebtn:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
+.rl-voicebtn.on{ background:var(--sig); color:var(--on-sig); box-shadow:none }
+.rl-voicebtn.on::before{ background:var(--on-sig) }
+
+.rv-state{ font-size:12px; color:var(--ink-3); word-break:keep-all }
+/* 듣고 있을 때만 숨을 쉰다. 늘 움직이면 아무 말도 아니게 된다 */
+.rv-state.rv-live{ color:var(--num); font-weight:600; animation:rv-breathe 2s ease-in-out infinite }
+@keyframes rv-breathe{ 0%,100%{ opacity:1 } 50%{ opacity:.5 } }
+@media (prefers-reduced-motion: reduce){ .rv-state.rv-live{ animation:none } }
+
+.rl-voice{ margin:10px 0 0 }
+.rv-log{
+  max-height:180px; overflow-y:auto; padding:12px 14px;
+  border-radius:12px; background:var(--ui-plate);
+  font-size:13px; line-height:1.6; word-break:keep-all;
+}
+.rv-row{ margin:0 0 6px }
+.rv-row:last-child{ margin-bottom:0 }
+/* 내가 한 말과 기계가 한 말을 섞지 않는다 */
+.rv-me{ color:var(--ink-3) }
+.rv-me::before{ content:"나 · "; font-weight:600 }
+.rv-bot{ color:var(--ink); font-weight:500 }
+.rv-err{ color:var(--num) }
+.rv-ask{ color:var(--num) }
+
+.rv-ask{ display:flex; gap:8px; margin:10px 0 0; flex-wrap:wrap }
+.rv-yes, .rv-no{
+  min-height:44px; padding:0 18px; border:0; cursor:pointer;
+  border-radius:var(--r-pill); font-family:inherit; font-size:14px; font-weight:600;
+}
+.rv-yes{ background:var(--ink); color:var(--panel) }
+.rv-no{ background:var(--panel); color:var(--ink-2); box-shadow:inset 0 0 0 1px var(--ui-line) }
+
+/* 말이 안 되는 기기에서는 글로. 같은 해석기를 쓴다 */
+.rv-type{ display:flex; gap:8px; margin:10px 0 0 }
+.rv-type input{
+  flex:1 1 auto; min-width:0; min-height:44px; padding:0 14px;
+  border:0; border-radius:var(--r-pill); font-family:inherit; font-size:14px;
+  color:var(--ink); background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.rv-type input::placeholder{ color:var(--ink-3) }
+.rv-type input:focus{ outline:none; box-shadow:inset 0 0 0 1.5px var(--ink-3) }
+.rv-type button{
+  flex:0 0 auto; min-height:44px; padding:0 18px; border:0; cursor:pointer;
+  border-radius:var(--r-pill); font-family:inherit; font-size:14px; font-weight:600;
+  color:var(--panel); background:var(--ink);
+}
