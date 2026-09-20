@@ -1508,3 +1508,8 @@
                 mask-image: none;
     }
 }
+
+/* 댓글 칸 — flex 칸은 min-width:auto 가 기본이라 글자보다 작아지지 않는다.
+   280px 에서 입력 칸이 안 줄어 「등록」이 화면 밖(321px)으로 밀려났고
+   문서 전체에 가로 스크롤이 생겼다. 줄어들 칸이니 0 으로 둔다 */
+#page-review #commentInput { min-width: 0; }
