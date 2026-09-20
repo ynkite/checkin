@@ -31,8 +31,42 @@
     display:flex; flex-direction:column; height:auto; min-height:0;
   }
   .map-right{
-    order:1; flex:0 0 auto; height:clamp(300px, 52vh, 460px);
+    order:1; flex:0 0 auto; height:auto; overflow:visible;
     border-bottom:1px solid var(--ui-line);
+    display:flex; flex-direction:column;
+  }
+
+  /* ── 지도 위에 판을 얹지 않는다 ───────────────────────────
+     넓은 화면에서는 판이 지도 위에 떠 있는 게 맞다. 지도가 크니까
+     한쪽 귀퉁이를 내줘도 된다.
+
+     휴대폰은 다르다. 재 보니 지도가 371px 인데 오른쪽 판이 371~491px 였다.
+     판 하나가 지도보다 크다. 거기에 하단 레일 141px 이 또 올라탄다.
+     지도가 보이라고 만든 화면에서 지도가 안 보였다.
+
+     좁을 때는 얹지 말고 쌓는다 — 탭 · 지도 · 판 · 레일 순서로.
+     세로로 길어지지만 휴대폰은 원래 세로로 긴 화면이다. */
+  #mapView, #modelView{
+    position:relative; inset:auto; order:1; flex:0 0 auto;
+    height:clamp(300px, 52vh, 460px);
+  }
+  /* 인라인 style 로 박혀 있어 !important 가 있어야 이긴다.
+     (page_map.html 의 #budgetView — 손대면 탭 전환 JS 와 얽힌다) */
+  #budgetView{
+    position:relative !important; inset:auto !important;
+    order:1; flex:1 1 auto; min-height:60vh;
+  }
+  .mp-tools{
+    position:static; order:0; align-self:flex-end;
+    margin:10px 14px 0;
+  }
+  .mp-float{
+    position:static; order:2; width:auto; max-height:none;
+    margin:10px 14px 0; overflow:visible;
+  }
+  .mp-rail{
+    position:static; order:3; left:auto; right:auto; bottom:auto;
+    margin:10px 14px 14px;
   }
   .map-left{
     order:2; flex:1 1 auto; overflow:visible;
@@ -67,7 +101,8 @@
   .map-list{ padding:0 10px 18px }
   .place-row{ padding:11px 10px 12px; gap:9px }
   .pr-name{ font-size:16px }
-  .map-right{ height:clamp(260px, 44vh, 380px) }
+  #mapView, #modelView{ height:clamp(260px, 44vh, 380px) }
+  .mp-tools, .mp-float, .mp-rail{ margin-left:10px; margin-right:10px }
   .mbb-amount{ font-size:21px }
 
   /* 접기 — JS 가 현재 구간 앞뒤 행에 mp-near 를 붙인다.
@@ -81,5 +116,5 @@
 
 /* 가로 모드 짧은 화면 */
 @media (max-height:520px) and (orientation:landscape) and (max-width:1000px){
-  .map-right{ height:64vh }
+  #mapView, #modelView{ height:64vh }
 }
