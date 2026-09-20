@@ -59,7 +59,18 @@
 /* 두 장의 타일만 이동한다. 날씨는 카메라와 함께 확대하지 않는다. */
 .ck-home .ck-wx{ position:absolute; inset:0; z-index:3; pointer-events:none; opacity:0; background:var(--home-wash); overflow:hidden; transition:opacity 1.2s ease }
 .ck-home .ck-wx::before{ content:""; position:absolute; inset:60% 0 0; background:linear-gradient(174deg,transparent,var(--home-wet)); transform:translateY(var(--u)); animation:none }
-.ck-home .ck-wx::after{ content:none }
+/* 가까이 떨어지는 줄기. 층이 둘뿐이면 무늬가 흐르는 것처럼 보이고
+   비로는 안 읽힌다. 멀리(back) · 보통(front) · 가까이(::after) 세 층이
+   서로 다른 속도로 흘러야 깊이가 생긴다. 요소를 더 만들지 않고
+   ::after 를 쓴다 — 마크업은 그대로 둔다 */
+.ck-home .ck-wx::after{
+  content:""; position:absolute; inset:calc(var(--home-rain-shift)*-1);
+  background-image:var(--home-rain-near);
+  background-size:calc(var(--home-rain-tile)*.62) calc(var(--home-rain-tile)*.62);
+  animation:ck-rain-fall .42s linear infinite; animation-play-state:paused;
+  opacity:0;
+}
+.ck-home .ck-wx.is-raining::after{ opacity:.5; animation-play-state:running }
 .ck-home .ck-wx > i{ position:absolute; inset:calc(var(--home-rain-shift)*-1); background-image:var(--home-rain-lines); background-size:var(--home-rain-tile) var(--home-rain-tile); animation:ck-rain-fall .75s linear infinite; animation-play-state:paused; opacity:.8 }
 .ck-home .ck-wx .ck-rain-back{ background-size:calc(var(--home-rain-tile)*2) calc(var(--home-rain-tile)*2); animation-name:ck-rain-distant; animation-duration:1.3s; opacity:.38 }
 .ck-home .ck-wx.is-raining,.ck-home .ck-wx.is-clearing{ opacity:1 }
@@ -79,8 +90,13 @@
 .ck-splashes > i:nth-child(6){ left:43%; top:82%; animation-delay:-1.4s }
 @keyframes ck-rain-fall{ from{ transform:translate3d(0,0,0) } to{ transform:translate3d(0,var(--home-rain-shift),0) } }
 @keyframes ck-rain-distant{ from{ transform:rotate(-8deg) translate3d(0,0,0) } to{ transform:rotate(-8deg) translate3d(0,var(--home-rain-shift),0) } }
-@keyframes ck-splash{ 0%,65%,100%{ opacity:0; transform:scale(.3) } 70%{ opacity:.8; transform:scale(.4) } 92%{ opacity:0; transform:scale(1.8) } }
-@media (max-width:1280px){
+/* 빗방울이 떨어진 자리. 전에는 한 바퀴의 65%를 아무것도 없이 보냈다 —
+   여섯 개가 다 쉬는 순간이 자주 생겨서 「가끔 뭔가 번쩍인다」로 보였다.
+   쉬는 구간을 줄이고 번지는 폭을 키운다 */
+@keyframes ck-splash{ 0%,30%,100%{ opacity:0; transform:scale(.3) } 36%{ opacity:.85; transform:scale(.45) } 70%{ opacity:0; transform:scale(2.1) } }
+/* 1280 은 노트북 기본 폭이다. 거기서 한 칸으로 무너지면 이야기 판이
+   433px 까지 길어져 무대와 같이 안 보인다. 1100 으로 내린다 */
+@media (max-width:1100px){
   .st-story{ grid-template-columns:minmax(0,1fr) }
   .ck-opts{ flex-direction:row; flex-wrap:wrap; margin-top:var(--u) }
   .ck-opt{ flex:1 1 auto }
@@ -99,4 +115,33 @@
   .ck-home .ck-wx > i,.ck-splashes{ display:none }
   .ck-home .ck-wx,.ck-ph > i.ck-on b{ transition:none }
   .ck-fix-in .ck-new,.ck-fix-in .ck-change-arrow,.ck-fix-in .ck-result,.ck-new .ck-bub{ animation:none }
+}
+
+/* ── 무대와 세 갈래를 한 화면에 ──────────────────────────────
+   재 보니 1440x900 에서 .st-tour 가 800px 인데 보이는 높이는 749px 이었다.
+   갈래를 누르려고 내리면 무대 위쪽이 잘린다. 누른 뒤에 그림이 어떻게
+   바뀌는지를 못 본다 — 이 화면에서 제일 보여 주고 싶은 것이 그것인데.
+
+   무대 높이를 토큰으로 고정하지 않고 「남는 만큼」 쓰게 한다.
+   머리말·정거장·이야기는 줄어들면 안 되니 flex:0 0 auto 로 묶는다.
+   처음에 그걸 안 묶었더니 정거장 알약이 64px 에서 20px 로 눌렸다.
+
+   실측 (지금 → 바꾼 뒤, .st-tour 아래끝 / 보이는 높이) —
+     1920x1080   977/929 → 914/929  들어감
+     1440x900    892/749 → 734/749  들어감
+     1440x780    824/629 → 598/629  들어감
+     1280x800    969/649 → 618/649  들어감
+     1152x720    989/569 → 803/569  아직 안 들어감. 화면이 너무 낮다
+   마지막 경우는 무대를 190px 밑으로 줄여야 들어가는데 그러면 모형이
+   무엇인지 안 보인다. 조금 스크롤하는 편이 낫다고 보고 두었다. */
+@media (min-width:1101px){
+  /* 갈래 셋은 나란히 놓는다. 세로로 쌓으면 140px 인데 44px 이면 된다 */
+  .ck-opts{ flex-direction:row; flex-wrap:wrap; gap:calc(var(--u)/2); margin-top:var(--u) }
+  .ck-opts > *{ flex:1 1 0; min-width:0 }
+}
+@media (min-width:1101px) and (min-height:600px){
+  .st-tour{ display:flex; flex-direction:column;
+            height:calc(100dvh - var(--nav-h,72px) - var(--u)*5) }
+  .st-tour-head,#st_stops,.fl-path,.st-story{ flex:0 0 auto }
+  .st-viewport{ height:auto; flex:1 1 auto; min-height:190px }
 }

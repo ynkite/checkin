@@ -406,9 +406,9 @@ table {
         left: 0;
         right: 0;
         z-index: 1200;
-        background: var(--surface);
+        background: var(--panel);
         border-top: 1px solid var(--border2);
-        box-shadow: 0 -2px 12px rgba(var(--sh-rgb),.08);
+        box-shadow: var(--lift);
         padding-bottom: env(safe-area-inset-bottom, 0px);
     }
 
@@ -420,6 +420,7 @@ table {
 
     /* --- 6-5. 탭 버튼 --- */
     .bnav-item {
+        position: relative;
         flex: 1;
         min-width: 0;
         min-height: 56px;
@@ -436,6 +437,16 @@ table {
         transition: color .15s;
         -webkit-tap-highlight-color: transparent;
     }
+    .bnav-item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 18%;
+        right: 18%;
+        height: 2px;
+        border-radius: 99px;
+        background: transparent;
+    }
     .bnav-icon { font-size: 20px; line-height: 1; transition: transform .15s; }
     .bnav-lbl  { font-size: 10px; font-weight: 500; white-space: nowrap; }
 
@@ -447,7 +458,16 @@ table {
     body:has(#page-planner.active)   .bnav-item[data-page="planner"],
     body:has(#page-map.active)       .bnav-item[data-page="planner"],
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] {
-        color: var(--sage);
+        color: var(--ink);
+    }
+    body:has(#page-main.active)      .bnav-item[data-page="main"]::before,
+    body:has(#page-community.active) .bnav-item[data-page="community"]::before,
+    body:has(#page-weather.active)   .bnav-item[data-page="weather"]::before,
+    body:has(#page-live.active)      .bnav-item[data-page="live"]::before,
+    body:has(#page-planner.active)   .bnav-item[data-page="planner"]::before,
+    body:has(#page-map.active)       .bnav-item[data-page="planner"]::before,
+    body:has(#page-mypage.active)    .bnav-item[data-page="mypage"]::before {
+        background: var(--ink);
     }
     body:has(#page-main.active)      .bnav-item[data-page="main"] .bnav-icon,
     body:has(#page-community.active) .bnav-item[data-page="community"] .bnav-icon,
@@ -457,6 +477,15 @@ table {
     body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-icon {
         transform: translateY(-1px);
+    }
+    body:has(#page-main.active)      .bnav-item[data-page="main"] .bnav-lbl,
+    body:has(#page-community.active) .bnav-item[data-page="community"] .bnav-lbl,
+    body:has(#page-weather.active)   .bnav-item[data-page="weather"] .bnav-lbl,
+    body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-lbl,
+    body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-lbl,
+    body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-lbl,
+    body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-lbl {
+        font-weight: 700;
     }
 
     /* --- 6-5-1. 실시간 칸을 세운다 ------------------------------------
