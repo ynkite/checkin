@@ -513,8 +513,14 @@ public class AiRouteService {
     private String annotateCrowd(String json, TravelPlan plan) {
         if (json == null || json.isBlank()) return json;
 
+        /* 「부산」처럼 시도만 오면 AreaCode 는 첫 시군구(중구)를 고른다.
+           해운대 여행인데 중구 집중률을 물어 늘 엉뚱한 값을 받고 있었다.
+           「없다」가 아니라 「엉뚱한 데를 봤다」였다. 홍은표님이 찾아 알려 준 것이다.
+           동선의 좌표로 시군구를 바로잡는다. 좌표가 없으면 종전대로 간다. */
+        double[] here = firstCoord(json);
         idusw.sbb.checkin.domain.crowd.AreaCode.Area area =
-                idusw.sbb.checkin.domain.crowd.AreaCode.find(plan.getDestination());
+                tourAreaInfoService.resolveArea(plan.getDestination(),
+                        here == null ? null : here[0], here == null ? null : here[1]);
         if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) {
             return json;   /* 집중률 대상이 아닌 지역 — 광주·전남은 아예 안 나온다 */
         }
@@ -563,6 +569,31 @@ public class AiRouteService {
         } catch (Exception e) {
             log.warn("[동선] 집중률을 붙이지 못했습니다: {}", e.getMessage());
             return json;
+        }
+    }
+
+    /**
+     * 동선에서 시군구를 대표할 좌표 하나. 숙소가 있으면 숙소를, 없으면 첫 장소를 쓴다.
+     * 숙소를 먼저 보는 까닭 — 하루 일정이 그 주변으로 모이기 때문에
+     * 그 동네를 제일 잘 대표한다.
+     */
+    private double[] firstCoord(String json) {
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            if (!root.isArray()) return null;
+            double[] any = null;
+            for (JsonNode day : root) {
+                for (JsonNode pl : day.path("places")) {
+                    if (pl.hasNonNull("transit")) continue;
+                    if (!pl.hasNonNull("lat") || !pl.hasNonNull("lng")) continue;
+                    double[] c = { pl.path("lat").asDouble(), pl.path("lng").asDouble() };
+                    if ("stay".equals(pl.path("type").asText(""))) return c;
+                    if (any == null) any = c;
+                }
+            }
+            return any;
+        } catch (Exception e) {
+            return null;
         }
     }
 
