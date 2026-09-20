@@ -13,6 +13,10 @@ m = importlib.util.module_from_spec(spec); sys.modules['m'] = m; spec.loader.exe
 
 keys = [k for k in m.SCENES if k.startswith('sig_')]
 todo = [k for k in keys if not os.path.exists(os.path.join(here, 'mass_%s.json' % k))]
+# 일꾼 둘이 같은 곳을 굽지 않게 한쪽은 뒤에서부터 간다.
+# 가운데서 만나면 이미 있는 파일을 건너뛰므로 저절로 멈춘다.
+if len(sys.argv) > 1 and sys.argv[1] == 'rev':
+    todo = todo[::-1]
 print('전체 %d · 이미 있음 %d · 할 것 %d' % (len(keys), len(keys)-len(todo), len(todo)), flush=True)
 
 GAP = 22          # 장면 사이 쉬는 시간. 75 는 너무 길다 — 251개면 5시간이 여기서만 간다
