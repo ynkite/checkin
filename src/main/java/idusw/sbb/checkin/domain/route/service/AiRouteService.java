@@ -2217,6 +2217,8 @@ public class AiRouteService {
                         plObj.put("lat", c[0]);
                         plObj.put("lng", c[1]);
                         plObj.put("isFound", true);
+                        String addr = geoAddr(withRegion(destination, nm));
+                        if (addr != null) plObj.put("addr", addr);   // 화면이 쓸 수 있게 같이 저장한다
                     } else {
                         plObj.put("isFound", false);
                         System.out.println("⚠️ [좌표 실패] " + nm);
@@ -2303,6 +2305,16 @@ public class AiRouteService {
     // 좌표 조회 결과를 호출 간 공유하는 인스턴스 캐시(중복 카카오 호출 방지)
     private final java.util.Map<String, double[]> geoSharedCache = new java.util.concurrent.ConcurrentHashMap<>();
 
+    /* 카카오가 좌표와 함께 준 주소. 전에는 지역 검증에만 쓰고 버렸다 — 작업지시 1번이
+       「좌표·분류·주소를 같이 저장한다」고 했는데 주소만 빠져 있었다. 좌표를 캐시에서
+       재사용하면 카카오를 다시 부르지 않으므로, 주소도 같은 때 같은 이름으로 담아 둔다. */
+    private final java.util.Map<String, String> geoAddrCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 이 이름으로 찾은 주소. 없으면 null — 「모른다」를 빈 문자열로 적지 않는다. */
+    private String geoAddr(String name) {
+        return name == null ? null : geoAddrCache.get(name);
+    }
+
     private double[] geocodeCached(String name, java.util.Map<String, double[]> cache) {
         if (name == null || name.isBlank()) return null;
         if (cache.containsKey(name)) return cache.get(name);
@@ -2337,12 +2349,12 @@ public class AiRouteService {
         if (placeName == null || placeName.isBlank()) return null;
         String q = placeName.trim();
 
-        double[] r = geocodeOnce(q);
+        double[] r = geocodeOnce(q, q);
         if (r != null) return r;
 
         String noSpace = q.replaceAll("\\s+", "");
         if (!noSpace.equals(q)) {
-            r = geocodeOnce(noSpace);
+            r = geocodeOnce(noSpace, q);
             if (r != null) return r;
         }
 
@@ -2353,14 +2365,14 @@ public class AiRouteService {
                 if (sb.length() > 0) sb.append(" ");
                 sb.append(parts[i]);
             }
-            r = geocodeOnce(sb.toString());
+            r = geocodeOnce(sb.toString(), q);
             if (r != null) return r;
         }
         return null;
     }
 
     // 단일 query로 카카오 키워드 검색. 인코딩 후 100자 초과면 호출하지 않는다(카카오가 400을 내므로).
-    private double[] geocodeOnce(String query) {
+    private double[] geocodeOnce(String query, String addrKey) {
         if (query == null || query.isBlank()) return null;
         try {
             // ★이중 인코딩 방지: 직접 encode 하지 않고, 인코딩된 URI 문자열로 URI 객체를 만들어
@@ -2392,6 +2404,12 @@ public class AiRouteService {
                     String addr = doc.path("address_name").asText("");
                     if (!addr.contains(regionKeyword)) continue;
                 }
+                /* 여기서 주소를 버리지 않는다. 도로명이 있으면 도로명, 없으면 지번.
+                   키는 검색에 쓴 변형이 아니라 부른 쪽이 아는 원래 이름이다. */
+                String road = doc.path("road_address_name").asText("");
+                String jibun = doc.path("address_name").asText("");
+                String found = !road.isBlank() ? road : jibun;
+                if (addrKey != null && !found.isBlank()) geoAddrCache.put(addrKey, found);
                 return new double[]{ doc.path("y").asDouble(), doc.path("x").asDouble() }; // [위도, 경도]
             }
             return null;
@@ -2462,6 +2480,7 @@ public class AiRouteService {
                 n.put("lat", doc.path("y").asDouble());
                 n.put("lng", doc.path("x").asDouble());
                 n.put("category", catName);
+                if (!road.isBlank() || !addr.isBlank()) n.put("addr", !road.isBlank() ? road : addr);
                 out.add(n);
             }
         } catch (Exception e) {
@@ -3378,7 +3397,12 @@ public class AiRouteService {
                 String type = o.path("type").asText("");
                 if ("stay".equals(type)) continue;          // 숙소는 못 바꾼다. 하루가 그 주변이다
 
-                var alt = pickQuieter(candidates.getOrDefault(type, java.util.List.of()), usedNames);
+                /* 해운대(해변)가 붐빈다고 박물관을 넣으면 사용자가 고른 여행이 아니게 된다.
+                   작업지시 2번이 「대체 장소는 반대로 같은 분류여야 한다」고 한 그 규칙이다.
+                   성격을 모르면(null) 종전대로 같은 type 안에서만 고른다. */
+                var cand = byName.get(o.path("name").asText(""));
+                String want = cand == null ? null : categoryBucket(cand.path("category").asText(""));
+                var alt = pickQuieter(candidates.getOrDefault(type, java.util.List.of()), usedNames, want);
                 String before = o.path("name").asText("");
                 if (alt == null) {
                     left++;
@@ -3395,7 +3419,11 @@ public class AiRouteService {
                 o.remove("crowd"); o.remove("crowdLabel");   // 새 장소의 값만 붙인다
                 copyFlags(alt, o);
                 swapped++;
-                System.out.println("😶‍🌫️ [붐빔] " + before + " → " + alt.path("name").asText("")
+                String altBucket = categoryBucket(alt.path("category").asText(""));
+                System.out.println("😶‍🌫️ [붐빔] " + before
+                        + (want == null ? "" : " (" + want + ")")
+                        + " → " + alt.path("name").asText("")
+                        + (altBucket == null ? "" : " (" + altBucket + ")")
                         + (alt.hasNonNull("crowd") ? " (집중률 " + alt.path("crowd").asInt() + ")" : " (집중률 모름)"));
             }
         }
@@ -3404,16 +3432,38 @@ public class AiRouteService {
         }
     }
 
-    /** 안 쓴 같은 성격 후보 중 덜 붐비는 곳. 90 이상뿐이면 null. */
+    /**
+     * 안 쓴 후보 중 덜 붐비는 곳. 90 이상뿐이면 null.
+     *
+     * <p><b>같은 성격을 먼저 찾는다.</b> {@code want} 가 「해변」이면 해변 후보만 먼저 훑고,
+     * 거기서 못 찾으면 그때 성격을 가리지 않는다. 바다를 보러 간 사람에게 박물관을 주지
+     * 않으려는 것이다 — 「해운대 대신 광안리」가 성립하는 건 둘 다 해변이기 때문이다.
+     *
+     * <p>성격을 아예 모르면({@code want == null}) 종전대로 한 번만 훑는다. 모르는 것을
+     * 「안 맞는다」로 치지 않는다.
+     */
     private static com.fasterxml.jackson.databind.node.ObjectNode pickQuieter(
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
-            java.util.Set<String> usedNames) {
+            java.util.Set<String> usedNames, String want) {
+
+        if (want != null) {
+            var same = pickQuieterIn(pool, usedNames, want);
+            if (same != null) return same;
+        }
+        return pickQuieterIn(pool, usedNames, null);
+    }
+
+    /** {@code bucket} 이 null 이면 성격을 가리지 않는다. */
+    private static com.fasterxml.jackson.databind.node.ObjectNode pickQuieterIn(
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
+            java.util.Set<String> usedNames, String bucket) {
 
         com.fasterxml.jackson.databind.node.ObjectNode best = null;
         int bestCrowd = CROWDED;                     // 90 미만인 것만 후보로 본다
         for (var c : pool) {
             String nm = c.path("name").asText("");
             if (nm.isBlank() || usedNames.contains(nm)) continue;
+            if (bucket != null && !bucket.equals(categoryBucket(c.path("category").asText("")))) continue;
             if (!c.hasNonNull("crowd")) return c;    // 모르는 곳이 있으면 그것으로 족하다
             int v = c.path("crowd").asInt();
             if (v < bestCrowd) { bestCrowd = v; best = c; }
@@ -3499,7 +3549,7 @@ public class AiRouteService {
     /** 후보에 있는 표시만 옮긴다. 없는 것은 안 붙인다 — false 를 박으면 「확인 안 됨」이 「아님」이 된다. */
     static void copyFlags(com.fasterxml.jackson.databind.node.ObjectNode from,
                           com.fasterxml.jackson.databind.node.ObjectNode to) {
-        for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel"}) {
+        for (String f : new String[]{"petOk", "barrierFree", "crowd", "crowdLabel", "addr"}) {
             if (from.hasNonNull(f)) to.set(f, from.get(f));
         }
     }
@@ -3845,6 +3895,8 @@ public class AiRouteService {
                 }
                 node.put("lat", c[0]);
                 node.put("lng", c[1]);
+                String addr = geoAddr(withRegion(destination, nm));
+                if (addr != null) node.put("addr", addr);
                 list.add(node);
                 all.add(node);
             }

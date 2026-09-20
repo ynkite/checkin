@@ -78,6 +78,47 @@ class RouteCrowdSwapTest {
         assertThat(names(route)).containsExactly("장산");
     }
 
+    /**
+     * 작업지시 2번 뒷줄 — 「대체 장소를 고를 때는 반대로 같은 분류여야」.
+     * 바다를 보러 간 사람에게 박물관을 주면 고른 여행이 아니게 된다.
+     */
+    @Test
+    void 붐비는_해변은_다른_해변으로_바꾼다() {
+        JsonNode route = day(place("해운대해수욕장", "tour", 95));
+        var pool = pool(
+                candCat("해운대해수욕장", "tour", 95, "여행 > 관광,명소 > 해수욕장"),
+                candCat("부산박물관",     "tour", 10, "문화,예술 > 박물관"),      // 더 한적하지만 성격이 다르다
+                candCat("광안리해수욕장", "tour", 40, "여행 > 관광,명소 > 해수욕장"));
+
+        AiRouteService.swapCrowdedPlaces(route, byName(pool), pool);
+
+        assertThat(names(route)).containsExactly("광안리해수욕장");
+    }
+
+    /** 같은 성격이 없으면 그때는 가리지 않는다 — 빼서 하루를 비우는 것보다 낫다. */
+    @Test
+    void 같은_성격이_없으면_다른_성격으로라도_바꾼다() {
+        JsonNode route = day(place("해운대해수욕장", "tour", 95));
+        var pool = pool(
+                candCat("해운대해수욕장", "tour", 95, "여행 > 관광,명소 > 해수욕장"),
+                candCat("부산박물관",     "tour", 10, "문화,예술 > 박물관"));
+
+        AiRouteService.swapCrowdedPlaces(route, byName(pool), pool);
+
+        assertThat(names(route)).containsExactly("부산박물관");
+    }
+
+    /** 성격을 모르는 곳은 「안 맞는다」로 치지 않는다. 종전대로 고른다. */
+    @Test
+    void 성격을_모르면_종전대로_고른다() {
+        JsonNode route = day(place("장산", "tour", 95));
+        var pool = pool(cand("장산", "tour", 95), cand("문탠로드", "tour", 30));
+
+        AiRouteService.swapCrowdedPlaces(route, byName(pool), pool);
+
+        assertThat(names(route)).containsExactly("문탠로드");
+    }
+
     @Test
     void 숙소는_바꾸지_않는다() {
         // 하루가 숙소 주변으로 모이므로 여기서 바꾸면 여행이 통째로 딸려 간다
@@ -112,6 +153,12 @@ class RouteCrowdSwapTest {
     private static ObjectNode cand(String name, String type, int crowd) {
         ObjectNode o = place(name, type, crowd);
         o.put("sub", "관광지 · 1h · ₩0×2");
+        return o;
+    }
+
+    private static ObjectNode candCat(String name, String type, int crowd, String category) {
+        ObjectNode o = cand(name, type, crowd);
+        o.put("category", category);
         return o;
     }
 
