@@ -24,8 +24,13 @@
      높이가 화면에 따라 늘었다 줄었다 하면 아예 맞출 수가 없다.
      height:100% 에 aspect-ratio 를 주면 폭은 브라우저가 낸다.
      min-width:100% 는 세로로 긴 무대에서 좌우가 비지 않게 하는 것이다. */
-  position:absolute; left:50%; top:50%; height:100%; width:auto; min-width:100%;
-  aspect-ratio:var(--st-ar,1.3892); transform-origin:center;
+  /* 판을 그대로 채운다. 비율은 SVG 가 맞춘다 —
+     svg 에 preserveAspectRatio="xMidYMid slice" 를 걸어 두면(app_stage.js)
+     박스 모양과 상관없이 가운데를 기준으로 잘라서 채운다.
+     전에는 여기서 「토큰 높이 x 비율」로 폭을 냈는데, 무대 높이가 화면따라
+     변하게 되면서 비율이 어긋나 모형이 납작하게 눌렸다. 찍어 보고 알았다.
+     명소는 bbox 한가운데에 있으니 가운데 기준으로 잘라도 늘 보인다. */
+  position:absolute; left:50%; top:50%; width:100%; height:100%; transform-origin:center;
   transform:translate(calc(-50% + var(--st-x,0px)),calc(-50% + var(--st-y,0px))) scale(var(--st-z,1));
   transition:transform 1.1s var(--home-ease);
 }
