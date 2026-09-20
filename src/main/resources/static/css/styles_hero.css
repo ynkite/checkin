@@ -72,7 +72,7 @@
   -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 78%,transparent 96%);
   mask-image:linear-gradient(to bottom,transparent 0,#000 10%,#000 78%,transparent 96%);
 }
-.ck-home .ck-wx.is-raining::after{ opacity:.5; animation-play-state:running }
+.ck-home .ck-wx.is-raining::after{ opacity:.24; animation-play-state:running }
 /* 빗줄기 층. 위아래 끝을 흐리게 잘라 준다 — 안 그러면 판 모서리에서
    줄이 뚝 끊겨 「붙여 놓은 그림」으로 보인다 */
 .ck-home .ck-wx > i{
@@ -80,14 +80,14 @@
   background-image:var(--home-rain-lines);
   background-size:var(--home-rain-tile) var(--home-rain-tile);
   animation:ck-rain-fall .46s linear infinite; animation-play-state:paused;
-  opacity:.72;
+  opacity:.34;
   -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14%,#000 86%,transparent 100%);
   mask-image:linear-gradient(to bottom,transparent 0,#000 14%,#000 86%,transparent 100%);
 }
 /* 멀리 있는 비. 작고 느리고 옅다. 가까운 층과 속도가 달라야 깊이가 생긴다 */
 .ck-home .ck-wx .ck-rain-back{
   background-size:calc(var(--home-rain-tile)*.55) calc(var(--home-rain-tile)*.55);
-  animation-name:ck-rain-distant; animation-duration:.95s; opacity:.30;
+  animation-name:ck-rain-distant; animation-duration:.95s; opacity:.16;
 }
 .ck-home .ck-wx.is-raining,.ck-home .ck-wx.is-clearing{ opacity:1 }
 .ck-home .ck-wx.is-raining > i,.ck-home .ck-wx.is-clearing > i{ animation-play-state:running }
