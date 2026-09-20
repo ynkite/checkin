@@ -238,7 +238,8 @@
   </div>
 
   <div class="overlay" id="writeModal" onclick="if(event.target===this)closeWrite()">
-    <div class="modal" style="width:560px;max-height:90vh;display:flex;flex-direction:column">
+    <!-- 키보드가 올라오면 vh 는 그대로인데 볼 수 있는 높이는 줄어든다. dvh 를 아는 기기는 그걸 쓴다 -->
+      <div class="modal" style="width:560px;max-height:90vh;max-height:90dvh;display:flex;flex-direction:column">
       <div class="modal-hd">
         <div class="modal-ttl">후기 작성</div>
         <button class="modal-x" onclick="closeWrite()" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>

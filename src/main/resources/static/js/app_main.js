@@ -143,12 +143,21 @@ function openModal(id) {
 
 /** 페이지별 CSS를 처음 진입할 때만 동적으로 로드 */
 function loadPageCSS(href) {
-    if (!document.querySelector(`link[href="${href}"]`)) {
-        const link = document.createElement('link');
-        link.rel  = 'stylesheet';
-        link.href = href;
-        document.head.appendChild(link);
-    }
+    /* index.html 은 캐시 때문에 ?v=... 를 붙여 싣는다. 물음표까지 같이 비교하면
+       이미 실린 것을 못 찾고 같은 파일을 한 번 더 싣는다. 나중에 실린 쪽이
+       반응형 파일보다 뒤에 와서 그 규칙을 통째로 덮었다 — 가계부가 320px 화면에서
+       데스크톱 여백(왼쪽 56px · 오른쪽 176px)을 그대로 써서 본문이 88px 였다.
+       물음표 앞까지만 비교한다. */
+    const path = href.split('?')[0];
+    const already = Array.prototype.some.call(
+        document.querySelectorAll('link[rel="stylesheet"]'),
+        l => (l.getAttribute('href') || '').split('?')[0] === path);
+    if (already) return;
+
+    const link = document.createElement('link');
+    link.rel  = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
 }
 
 /* ───────────────────────────────────────────────
