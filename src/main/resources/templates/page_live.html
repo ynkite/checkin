@@ -625,11 +625,22 @@
         rlLoadTrips();
       };
 
+      /* 지도로 넘길 때 어느 여행인지 넘긴다.
+         지도는 window._currentTripId 와 sessionStorage.plannerDraftId 만 읽는다 —
+         전에는 쓰지도 않는 currentTripId 에 넣어서 지도가 「아직 만들어진 일정이 없습니다」로 열렸다 */
+      function rlGoMap(intent) {
+        window._currentTripId = rlTrip;
+        try {
+          sessionStorage.setItem('plannerDraftId', String(rlTrip));
+          sessionStorage.removeItem('ai_generated_route');
+          if (intent) sessionStorage.setItem('mapIntent', intent);
+        } catch (e) {}
+        go('map');
+      }
+
       window.rlDo = function (key) {
         if (key === 'map') {
-          sessionStorage.setItem('currentTripId', String(rlTrip));
-          sessionStorage.removeItem('ai_generated_route');
-          go('map');
+          rlGoMap(null);
           return;
         }
         if (key === 'navi') {
@@ -645,10 +656,7 @@
           return;
         }
         if (key === 'swap' || key === 'quiet') {
-          sessionStorage.setItem('currentTripId', String(rlTrip));
-          sessionStorage.removeItem('ai_generated_route');
-          sessionStorage.setItem('mapIntent', key);
-          go('map');
+          rlGoMap(key);
           return;
         }
       };
