@@ -17,7 +17,7 @@ class BudgetLimitServiceTest {
     }
 
     private BudgetEstimate.Item item(String label, long amount) {
-        return new BudgetEstimate.Item("STAY", label, amount, "", true, null);
+        return BudgetEstimate.Item.estimated("STAY", label, amount, "", null);
     }
 
     @Test

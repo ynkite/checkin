@@ -511,6 +511,11 @@
 .mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--slate) }
 .mp-bg-row.mp-lead .mp-bg-bar i{ background:var(--sig) }
 .mp-bg-row.mp-lead .mp-bg-top span:last-child{ color:var(--num) }
+
+/* 해당없음 — 값이 없는 항목이다. 0원으로 추정한 것과 다르게 보여야 한다.
+   막대를 안 그리고 글자를 죽여서 「이 여행엔 없다」로 읽히게 한다 */
+.mp-bg-row.mp-bg-none .mp-bg-top span{ color:var(--text3) }
+.mp-bg-row.mp-bg-none .mp-bg-why{ color:var(--text3) }
 .mp-bg-total{
   display:flex; justify-content:space-between; align-items:baseline; gap:12px;
   border-top:1.5px solid var(--ink); margin-top:18px; padding-top:15px;

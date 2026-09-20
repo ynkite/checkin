@@ -1088,14 +1088,21 @@
       if (box) {
         var max = 1;
         b.items.forEach(function (i) { if (i.amount > max) max = i.amount; });
+        /* 확정·추정·해당없음 셋을 가른다. 전에는 「확정」만 적어서 값이 없는 항목과
+           추정한 항목이 같은 얼굴이었다 — 당일치기의 숙박비가 0원 추정처럼 보였다.
+           status 가 없는 옛 응답이면 estimated 로 떨어진다 */
+        var MARK = { CONFIRMED: ' · 확정', ESTIMATED: ' · 추정', NONE: ' · 해당없음' };
         box.innerHTML = b.items.map(function (i) {
-          return '<div class="mp-bg-row' + (i.amount === max ? ' mp-lead' : '') + '">' +
+          var st = i.status || (i.estimated ? 'ESTIMATED' : 'CONFIRMED');
+          var isNone = st === 'NONE';
+          return '<div class="mp-bg-row' + (i.amount === max && !isNone ? ' mp-lead' : '')
+                 + (isNone ? ' mp-bg-none' : '') + '">' +
             '<div class="mp-bg-top"><span>' + _mpEsc(i.label) + '</span>' +
-            '<span>' + i.amount.toLocaleString() + '원</span></div>' +
-            '<div class="mp-bg-bar"><i style="width:' +
-              Math.round(i.amount / max * 100) + '%"></i></div>' +
-            '<div class="mp-bg-why">' + _mpEsc(i.basis) +
-              (i.estimated ? '' : ' · 확정') + '</div>' +
+            '<span>' + (isNone ? '—' : i.amount.toLocaleString() + '원') + '</span></div>' +
+            (isNone ? '' :
+              '<div class="mp-bg-bar"><i style="width:' +
+                Math.round(i.amount / max * 100) + '%"></i></div>') +
+            '<div class="mp-bg-why">' + _mpEsc(i.basis) + (MARK[st] || '') + '</div>' +
           '</div>';
         }).join('') + _mpBudgetNote(b);
       }
