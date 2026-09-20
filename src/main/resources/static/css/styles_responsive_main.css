@@ -225,3 +225,29 @@
   :where(#page-main) :where(#ck_replay){ min-height: 44px }
   :where(#page-main) :where(.ck-tabs button){ min-width: 44px }
 }
+
+/* 미리 짜 둔 경로가 없거나 못 받았을 때 — 빈 판을 두지 않는다 */
+.ck-cur-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 13.5px;
+  line-height: 1.7;
+  word-break: keep-all;
+}
+.ck-cur-empty p { margin: 0 }
+.ck-cur-empty .ck-cur-empty-t { margin-bottom: 4px; color: var(--ink-2); font-weight: 600 }
+.ck-cur-empty-go {
+  margin-top: 14px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--panel);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}

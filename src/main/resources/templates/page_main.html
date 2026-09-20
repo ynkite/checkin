@@ -231,9 +231,13 @@
         d => `<button class="hsc-dest" type="button" onclick="window._pendingDestText='${d}';goNewPlanner()">${d}</button>`).join('');
       // 2. 큐레이션 데이터 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
       let curations = typeof MOCK_CURATIONS !== 'undefined' ? MOCK_CURATIONS : null;
+      /* 못 받은 것과 없는 것은 다르다. 전에는 둘 다 빈 배열이 되어
+         판이 화살표만 남기고 아무 말도 안 했다 */
+      let _curFailed = false;
       if (!curations && typeof api !== 'undefined') {
         const res = await api.get('/api/curations');
-        curations = res.success && Array.isArray(res.data) ? res.data : [];
+        _curFailed = !(res && res.success !== false && Array.isArray(res.data));
+        curations = _curFailed ? [] : res.data;
       }
       /* 만들다 만 기록은 내보내지 않는다 — 제목이 한 글자이거나
          들를 곳이 하나도 없으면 보여 줄 것이 없다. 지우는 것은
@@ -379,6 +383,19 @@
             goSlide(nextIdx);
           }
         }, 4000); // 4000ms = 4초
+      } else if (panelEl) {
+        /* 보여 줄 것이 없을 때 빈 판을 두지 않는다. 막다른 길이 되기 때문이다 */
+        const box = document.createElement('div');
+        box.className = 'ck-cur-empty';
+        box.innerHTML = _curFailed
+          ? '<p class="ck-cur-empty-t">미리 짜 둔 경로를 불러오지 못했습니다.</p>'
+            + '<p>연결이 끊겼거나 서버가 답하지 않았습니다. 없는 것이 아니라 받지 못한 것입니다.</p>'
+            + '<button type="button" class="ck-cur-empty-go" onclick="location.reload()">다시 시도</button>'
+          : '<p class="ck-cur-empty-t">아직 미리 짜 둔 경로가 없습니다.</p>'
+            + '<p>지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>'
+            + '<button type="button" class="ck-cur-empty-go" onclick="goNewPlanner()">경로 만들기</button>';
+        const arrow = panelEl.querySelector('.slide-arr-wrap');
+        if (arrow) panelEl.insertBefore(box, arrow); else panelEl.appendChild(box);
       }
 
       // 3. 커뮤니티 인기 경로 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
