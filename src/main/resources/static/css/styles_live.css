@@ -218,3 +218,46 @@
 /* 주행 중(10km/h↑) — 조작을 큰 것만 남긴다 */
 body.rl-driving .rl-drive-head{ font-size:24px }
 body.rl-driving input, body.rl-driving textarea{ display:none }
+
+/* ── 여행 중일 때만 뜨는 줄 (index.html #liveNowBar) ─────────
+   실시간은 여행 중에만 쓸모가 있는 화면이다. 그런데 그 사실을 화면이
+   말해 주지 않으면, 정작 쓸 사람이 탭을 눌러 보기 전에는 모른다.
+   여행 중인 사람은 밖에서 휴대폰을 들고 걷는 중이다. 먼저 말을 건다.
+
+   여행 중이 아니면 아예 없다. 늘 떠 있는 줄은 아무 말도 아니게 된다. */
+/* 기본값은 60 이 아니라 72 다 — :root 에 그렇게 적혀 있고, syncNavHeight() 가
+   실제 높이를 재서 덮어쓴다. 60 으로 두면 JS 가 늦을 때 줄이 내비 밑으로 4px 파고든다 */
+.lnb{ position:sticky; top:var(--nav-h, 72px); z-index:900 }
+body:has(#page-live.active) .lnb{ display:none }
+
+.lnb-in{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:9px 22px 10px; border:0; cursor:pointer;
+  background:var(--sig); color:var(--on-sig);
+  font-family:inherit; text-align:left; word-break:keep-all;
+}
+.lnb-dot{
+  flex:0 0 auto; width:7px; height:7px; border-radius:50%;
+  background:var(--on-sig);
+  animation:lnb-breathe 2.2s ease-in-out infinite;
+}
+@keyframes lnb-breathe{ 0%,100%{ opacity:1 } 50%{ opacity:.4 } }
+@media (prefers-reduced-motion: reduce){ .lnb-dot{ animation:none } }
+
+.lnb-txt{ flex:1 1 auto; min-width:0; display:flex; align-items:baseline; gap:7px }
+.lnb-txt b{
+  font-size:13px; font-weight:700; letter-spacing:var(--tracking-tight);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.lnb-txt span{ font-size:11.5px; opacity:.85; white-space:nowrap }
+.lnb-go{
+  flex:0 0 auto; font-size:12px; font-weight:700;
+  padding:3px 10px 4px; border-radius:var(--r-pill);
+  box-shadow:inset 0 0 0 1px var(--on-sig);
+}
+
+@media (max-width:768px){
+  .lnb-in{ padding:8px 14px 9px }
+  .lnb-txt{ flex-direction:column; gap:1px }
+  .lnb-txt b{ font-size:12.5px }
+}
