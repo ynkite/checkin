@@ -2945,6 +2945,19 @@ function switchMapTab(tab, btn) {
     var rail = document.getElementById('mpRail');
     if (rail) rail.style.display = overlay ? '' : 'none';
 
+    /* 모형에만 있는 판 둘. 기둥 안으로 옮겼더니 지도 탭에서도 같이 떴다 —
+       기둥은 지도에서도 보이기 때문이다. 탭에 맞춰 끈다.
+       모형 탭에서는 오른쪽 영역에 표를 하나 붙인다. 돈 판을 한 줄로
+       줄이는 데 쓴다(styles_map.css 「모형 탭에서는 돈 판을」 참고) —
+       모형은 화면을 꽉 채운 그림이라 덮이는 값이 지도와 다르다. */
+    var right = document.getElementById('mapRightArea');
+    if (right) right.classList.toggle('mv-on', tab === 'model');
+    ['mv_fc', 'mv_legend'].forEach(function (id) {
+        var el = document.getElementById(id);
+        /* 내용이 없는 판은 모형 탭이어도 계속 숨긴다. _mvOpen 이 켤 때만 뜬다 */
+        if (el && tab !== 'model') el.hidden = true;
+    });
+
     if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
     if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
     if (tab === 'map' && window._kakaoMap) {
