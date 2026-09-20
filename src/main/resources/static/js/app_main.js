@@ -1654,7 +1654,7 @@ function closeNotifPopup() {
 //           <div style="font-size:12px;color:var(--text2);line-height:1.6">${n.content || ''}</div>
 //           <div style="font-size:10px;color:var(--text3);margin-top:4px">${n.createdAt ? n.createdAt.substring(0,10) : ''}</div>
 //         </div>
-//         <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">✕</button>
+//         <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">×</button>
 //       </div>
 //     </div>`).join('');
 //
@@ -1708,7 +1708,7 @@ function renderNotifList() {
           <div style="font-size:12px;color:var(--text2);line-height:1.7;word-break:keep-all;overflow-wrap:break-word">${formatNotifContent(n)}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:4px">${n.createdAt ? n.createdAt.substring(0,10) : ''}</div>
         </div>
-        <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">✕</button>
+        <button onclick="deleteNotif(${n.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;flex-shrink:0">×</button>
       </div>
     </div>`).join('');
 
@@ -2104,7 +2104,7 @@ async function sendMsg() {
                     row.id = rowId;
                     row.className = 'asc-row';
                     row.innerHTML = `<div class="asc-label">${label}</div><div class="asc-val">${value}</div><button class="asc-del" onclick="event.stopPropagation();
-                clearExtraRow('${label.replace(/'/g,"\\'")}')">✕</button>`;
+                clearExtraRow('${label.replace(/'/g,"\\'")}')">×</button>`;
                     extraContainer.appendChild(row);
                 } else {
                     row.querySelector('.asc-val').textContent = value;
@@ -2726,7 +2726,7 @@ function _applyCurationPreferences(c) {
             recoRows.forEach(item => {
                 const row = document.createElement('div');
                 row.className = 'asc-row';
-                row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">✕</button>`;
+                row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')">×</button>`;
                 extraContainer.appendChild(row);
             });
             const emptyMsg = document.getElementById('extra-empty-msg');
@@ -3170,7 +3170,7 @@ function renderQ() {
     if(_q.length===0){box.classList.remove('has');cnt.textContent='0';if(btn)btn.disabled=true;items.innerHTML='';return;}
     box.classList.add('has'); box.style.display='block'; cnt.textContent=_q.length;
     if(btn) btn.disabled=false;
-    items.innerHTML=_q.map((q,i)=>`<div class="q-item"><div style="flex:1;min-width:0"><div class="q-place">${q.place}</div><div class="q-req">${q.req}</div></div><button class="q-rm" onclick="rmQ(${i})">✕</button></div>`).join('');
+    items.innerHTML=_q.map((q,i)=>`<div class="q-item"><div style="flex:1;min-width:0"><div class="q-place">${q.place}</div><div class="q-req">${q.req}</div></div><button class="q-rm" onclick="rmQ(${i})">×</button></div>`).join('');
 }
 function rmQ(i) { _q.splice(i,1); renderQ(); toast('요청 제거됨'); }
 function closeQueue() { document.getElementById('queueBox').classList.remove('has'); document.getElementById('queueBox').style.display='none'; document.getElementById('queueToggle').style.display='block'; }
@@ -3283,7 +3283,7 @@ function addDay() {
     <span style="font-weight:800;color:var(--sage-d)">Day ${_dayN}</span>
     <div style="display:flex;gap:6px">
       <button style="font-size:11px;background:var(--sage-pale);border:1px solid var(--sage-l);border-radius:5px;padding:3px 9px;cursor:pointer;color:var(--sage-d)" onclick="addPlanItem(this)">+ 장소 추가</button>
-      <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">✕</button>
+      <button style="font-size:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:5px;padding:3px 7px;cursor:pointer;color:var(--coral)" onclick="removeDay(this)">×</button>
     </div></div>
     <div style="font-size:11px;color:var(--text3);padding:6px;text-align:center">장소를 추가해 주세요</div>`;
     document.getElementById('curDays').appendChild(div);
@@ -3296,7 +3296,7 @@ function addPlanItem(btn) {
     div.innerHTML=`<div style="display:flex;align-items:center;gap:8px;width:100%">
     <span class="pdb-type-icon">곳</span>
     <input style="flex:1;border:1px solid var(--border2);background:var(--surface);padding:5px 9px;border-radius:6px;font-size:12px;font-family:inherit;outline:none" placeholder="장소명">
-    <button class="btn-pdb-rm" onclick="this.closest('.pdb-item').remove()" style="flex-shrink:0">✕</button>
+    <button class="btn-pdb-rm" onclick="this.closest('.pdb-item').remove()" style="flex-shrink:0">×</button>
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;width:100%">
     <select style="padding:5px 7px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:inherit">

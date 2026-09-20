@@ -15,6 +15,7 @@
 #page-planner, #page-planner *{ min-width:0 }
 #page-planner .planner-wrap{
   padding-inline:clamp(14px, 5vw, 56px);
+  max-width:1180px;
 }
 :where(#page-planner button, #page-planner [role=button], #page-planner input, #page-planner select){
   min-width:44px; min-height:44px;
@@ -27,7 +28,7 @@
   letter-spacing:.005em; color:var(--ink-3);
 }
 #page-planner .planner-ttl{
-  font-size:clamp(24px, 2.6vw, 30px); font-weight:700;
+  font-size:clamp(28px, 3.2vw, 38px); font-weight:700;
   letter-spacing:var(--tracking-tight); line-height:1.15;
 }
 #page-planner .planner-sub{
@@ -65,6 +66,10 @@
 }
 #page-planner .step-item.active .step-num,
 #page-planner .step-item.active .step-lbl{ color:var(--ink) }
+#page-planner .step-item.done .step-num,
+#page-planner .step-item.done .step-lbl{ color:var(--ink-2) }
+#page-planner .step-item.locked .step-num,
+#page-planner .step-item.locked .step-lbl{ color:var(--ink-3) }
 
 /* ── 판 ───────────────────────────────────────────────────── */
 #page-planner .pl-card{
@@ -179,11 +184,11 @@
 /* 다음으로 가는 버튼은 메인과 같은 주황 알약이다 */
 #page-planner .btn-next{
   padding:13px 26px 14px; border-radius:99px; border:0; cursor:pointer;
-  background:var(--terra); color:var(--panel);
+  background:var(--ink); color:var(--panel);
   font-family:inherit; font-size:15px; font-weight:700; letter-spacing:-.02em;
-  transition:filter .15s;
+  transition:background-color .15s, transform .15s;
 }
-#page-planner .btn-next:hover{ filter:brightness(1.2) }
+#page-planner .btn-next:hover{ background:var(--ui-d); transform:translateY(-1px) }
 #page-planner .btn-prev-step{
   padding:12px 20px 13px; border-radius:99px; border:0; cursor:pointer;
   background:var(--panel); color:var(--ink-2);
@@ -288,6 +293,103 @@
 .og-item:hover{ background:var(--ui-plate) }
 .og-item b{ display:block; font-size:13.5px; font-weight:600; color:var(--ink) }
 .og-item span{ display:block; margin-top:2px; font-size:11.5px; color:var(--ink-3) }
+
+/* 대화와 요약 — 입력 흐름 뒤에 붙는 작업면이라 더 단단한 판으로 정리한다. */
+#page-planner .chat-layout{
+  grid-template-columns:minmax(0,1fr) minmax(286px,.42fr);
+  gap:calc(var(--u)*3);
+}
+#page-planner .chat-box,
+#page-planner .asc{
+  background:var(--panel); border:1px solid var(--ui-line); border-radius:8px;
+  box-shadow:none; overflow:hidden;
+}
+#page-planner .chat-hd{
+  padding:16px 18px; background:var(--panel); border-bottom:1px solid var(--ui-line);
+}
+#page-planner .chat-bot-av,
+#page-planner .cav.bot{
+  background:var(--ink); color:var(--panel); border-radius:8px;
+  font-family:var(--fig); font-weight:600;
+}
+#page-planner .cav.user{ background:var(--num); color:var(--panel) }
+#page-planner .chat-info-bar{
+  padding:10px 18px; background:var(--ui-plate); color:var(--ink-2);
+  border-bottom:1px solid var(--ui-line); font-size:12.5px;
+}
+#page-planner .chat-msgs{
+  min-height:clamp(360px, 52dvh, 560px); padding:18px;
+  background:var(--page-2); gap:12px;
+}
+#page-planner .cmsg{ max-width:min(560px, 90%) }
+#page-planner .cbubble{
+  padding:10px 13px; border-radius:8px; font-size:13.5px; line-height:1.68;
+}
+#page-planner .cbubble.bot{
+  background:var(--panel); color:var(--ink);
+  box-shadow:inset 0 0 0 1px var(--ui-line-2);
+  border-radius:2px 8px 8px 8px;
+}
+#page-planner .cbubble.user{
+  background:var(--ink); color:var(--panel); border-radius:8px 2px 8px 8px;
+}
+#page-planner .chat-inp-area{ padding:14px 16px; border-top:1px solid var(--ui-line) }
+#page-planner .chat-inp-row{ gap:8px }
+#page-planner .chat-inp{
+  min-height:44px; padding:11px 14px; border:0; border-radius:8px;
+  background:var(--ui-plate); box-shadow:inset 0 0 0 1px var(--ui-line);
+  font-size:14px; line-height:1.5;
+}
+#page-planner .chat-inp:focus{
+  outline:none; box-shadow:inset 0 0 0 1.5px var(--ink-3);
+}
+#page-planner .btn-send{
+  width:44px; height:44px; border-radius:8px; background:var(--ink);
+  transition:background-color .15s, transform .15s;
+}
+#page-planner .btn-send:hover{ background:var(--ui-d); transform:translateY(-1px) }
+#page-planner .asc{ position:sticky; top:calc(var(--nav-h, 72px) + 14px) }
+#page-planner .asc-hd{ background:var(--ink); padding:14px 16px }
+#page-planner .asc-ttl{ font-size:14px; color:var(--panel) }
+#page-planner .asc-sub{ font-size:11.5px; color:var(--home-muted-dark) }
+#page-planner .asc-tabs{ background:var(--panel); border-bottom:1px solid var(--ui-line) }
+#page-planner .asc-tab{
+  min-height:44px; color:var(--ink-2); transition:color .15s, background-color .15s;
+}
+#page-planner .asc-tab:hover{ color:var(--ink); background:var(--ui-plate) }
+#page-planner .asc-tab.on{
+  color:var(--ink); background:var(--ui-plate); border-bottom-color:var(--ink);
+}
+#page-planner .asc-row{
+  display:grid; grid-template-columns:7ch minmax(0,1fr) minmax(32px,auto);
+  gap:10px; align-items:center; padding:11px 14px;
+}
+#page-planner .asc-label{ font-size:11.5px; color:var(--ink-3) }
+#page-planner .asc-val{
+  min-width:0; text-align:left; font-size:13px; color:var(--ink);
+  overflow-wrap:anywhere;
+}
+#page-planner .asc-del{
+  min-width:24px; min-height:24px; display:grid; place-items:center;
+  color:var(--ink-3); border-radius:4px;
+}
+#page-planner .asc-del:hover{ color:var(--tile); background:var(--tile-pale) }
+#page-planner .asc-note{
+  padding:24px 16px; color:var(--ink-3); font-size:12.5px; line-height:1.6;
+  text-align:center; border-top:0;
+}
+#page-planner .btn-gen{
+  width:calc(100% - 28px); min-height:48px; margin:14px;
+  border:0; border-radius:8px; background:var(--terra); color:var(--panel);
+  font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;
+  transition:background-color .15s, transform .15s;
+}
+#page-planner .btn-gen:hover{ background:var(--tile); transform:translateY(-1px) }
+
+@media (max-width:760px){
+  #page-planner .chat-layout{ grid-template-columns:minmax(0,1fr) }
+  #page-planner .asc{ position:static }
+}
 
 /* ── 플래너 날씨 판 ─────────────────────────────────────────
    이레까지만 나온다는 안내와, 그 뒤를 보러 나가는 곳.

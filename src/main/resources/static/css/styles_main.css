@@ -130,8 +130,7 @@ nav {
     z-index: 1000;
     /* height: 60px; <- 제거하거나 auto로 변경 */
     height: auto;
-    background: rgba(var(--w-rgb),.95);
-    backdrop-filter: blur(12px);
+    background: rgba(var(--w-rgb),.98);
     border-bottom: 1px solid var(--border2);
     display: flex;
     align-items: center;
@@ -298,7 +297,7 @@ nav {
     box-shadow: var(--lift);
 
     position: relative;
-    /* 💡 X 버튼이 이 하얀 박스 오른쪽 위 구석을 기준으로 움직이도록 기준점을 잡습니다. */
+    /* X 버튼이 이 하얀 박스 오른쪽 위 구석을 기준으로 움직이도록 기준점을 잡습니다. */
 }
 
 .overlay.open .modal {
@@ -321,11 +320,11 @@ nav {
 /* ── 수정된 부분 2 ── */
 .modal-x {
     position: absolute;
-    /* 💡 기존 레이아웃 정렬을 깨고 자유롭게 움직이는 절대 위치로 바꿉니다. */
+    /* 기존 레이아웃 정렬을 깨고 자유롭게 움직이는 절대 위치로 바꿉니다. */
     top: 18px;
-    /* 💡 하얀 박스 위쪽 경계선으로부터 18px 아래로 배치 */
+    /* 하얀 박스 위쪽 경계선으로부터 18px 아래로 배치 */
     right: 18px;
-    /* 💡 하얀 박스 오른쪽 경계선으로부터 18px 안쪽으로 배치 */
+    /* 하얀 박스 오른쪽 경계선으로부터 18px 안쪽으로 배치 */
 
     width: 32px;
     height: 32px;
@@ -882,12 +881,11 @@ nav {
     display: inline-block;
     padding: 5px 13px;
     border-radius: 20px;
-    background: rgba(var(--w-rgb),.22);
-    backdrop-filter: blur(6px);
+    background: rgba(var(--w-rgb),.58);
     color: rgba(var(--w-rgb),.95);
     font-size: 11px;
     font-weight: 700;
-    border: 1px solid rgba(var(--w-rgb),.3);
+    border: 1px solid rgba(var(--w-rgb),.55);
     letter-spacing: .2px
 }
 
@@ -926,15 +924,15 @@ nav {
 
 .slide-note {
     font-size: 11px;
-    color: rgba(var(--w-rgb),.75);
-    background: rgba(var(--sh-rgb),.15);
+    color: rgba(var(--w-rgb),.92);
+    background: rgba(var(--sh-rgb),.42);
     padding: 6px 12px;
     border-radius: 8px;
     display: inline-flex;
     align-items: center;
     gap: 5px;
     align-self: flex-start;
-    backdrop-filter: blur(4px)
+    border: 1px solid rgba(var(--w-rgb),.16)
 }
 
 .slide-acts {
@@ -955,7 +953,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    /* ⚠️ 중요: HTML에 적힌 패딩을 무시하고 강제로 양쪽 끝(-15px)으로 탈출시킵니다 */
+    /* 중요: HTML에 적힌 패딩을 무시하고 강제로 양쪽 끝(-15px)으로 탈출시킵니다 */
     padding: 0 !important;
     margin-left: -5px;
     margin-right: -5px;
@@ -1144,7 +1142,7 @@ nav {
     border-radius: var(--r);
     border: 1px solid var(--border2);
 
-    /* 💡 중요: .pop-card와 완전히 똑같은 크기를 유지하기 위해 패딩을 18px로 일치시킵니다 */
+    /* 중요: .pop-card와 완전히 똑같은 크기를 유지하기 위해 패딩을 18px로 일치시킵니다 */
     padding: 18px;
 
     cursor: pointer;
@@ -1278,7 +1276,8 @@ nav {
     font-size: 10px;
     font-weight: 700;
     letter-spacing: .3px;
-    backdrop-filter: blur(8px)
+    background: rgba(var(--w-rgb),.58);
+    border: 1px solid rgba(var(--w-rgb),.45)
 }
 
 /* 화살표는 slide-arr-wrap 기준 좌우 자동 배치 */
@@ -1894,11 +1893,6 @@ nav {
 .step-item.locked .step-num {
     background: var(--coral);
 }
-.step-item.locked .step-lbl::after {
-    content: ' ⚠';
-    font-size: 10px;
-    color: var(--coral);
-}
 .prev-pref {
     display: flex;
     align-items: center;
@@ -2131,7 +2125,7 @@ nav {
     border-radius: 12px 3px 12px 12px
 }
 
-/* 🎯 [신규] 챗봇 답변 마크다운 렌더링 스타일 (가독성 개선) */
+/* 챗봇 답변 마크다운 렌더링 스타일 (가독성 개선) */
 .cbubble.bot strong { font-weight: 700; }
 .cbubble.bot em { font-style: italic; }
 .cbubble.bot .cb-line { margin: 2px 0; }
@@ -2878,8 +2872,7 @@ nav {
     top: 0;
     left: 0;
     right: 0;
-    background: rgba(var(--w-rgb),.92);
-    backdrop-filter: blur(8px);
+    background: rgba(var(--w-rgb),.98);
     border-bottom: 1px solid var(--border2);
     padding: 7px 12px;
     display: flex;
