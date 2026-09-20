@@ -35,7 +35,9 @@ class LiveOpenableTripsTest {
 
     private final TravelPlanRepository planRepository = mock(TravelPlanRepository.class);
     private final LiveService live = new LiveService(
-            planRepository, mock(CrowdService.class), mock(WeatherService.class), new ObjectMapper());
+            planRepository, mock(CrowdService.class),
+            mock(idusw.sbb.checkin.domain.tour.service.TourAreaInfoService.class),
+            mock(WeatherService.class), new ObjectMapper());
 
     private TravelPlan plan(long id, String title, String status, String route) {
         TravelPlan p = TravelPlan.builder()
