@@ -3439,6 +3439,10 @@ public class AiRouteService {
      * 거기서 못 찾으면 그때 성격을 가리지 않는다. 바다를 보러 간 사람에게 박물관을 주지
      * 않으려는 것이다 — 「해운대 대신 광안리」가 성립하는 건 둘 다 해변이기 때문이다.
      *
+     * <p><b>같은 성격이 없으면 바꾸지 않는다.</b> 「빼지 않고 바꾼다」가 원래 규칙이었지만,
+     * 성격을 갈아 치우는 교체는 바꾸는 것이 아니라 다른 여행이 된다. 그냥 두면 화면이
+     * 「붐빔」을 띄우니 사용자가 알고 고른다.
+     *
      * <p>성격을 아예 모르면({@code want == null}) 종전대로 한 번만 훑는다. 모르는 것을
      * 「안 맞는다」로 치지 않는다.
      */
@@ -3446,10 +3450,12 @@ public class AiRouteService {
             java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> pool,
             java.util.Set<String> usedNames, String want) {
 
-        if (want != null) {
-            var same = pickQuieterIn(pool, usedNames, want);
-            if (same != null) return same;
-        }
+        /* 성격을 아는데 같은 성격이 없으면 바꾸지 않는다. 실측에서 이렇게 나왔다 —
+             해운대해수욕장(98, 해변) → 할매탕        바다 보러 간 사람을 목욕탕으로 보낸다
+             동백섬              → 베니키아호텔사우나
+           붐빈다는 이유로 성격을 갈아 치우면 사용자가 고른 여행이 아니게 된다. 그냥 두면
+           화면이 「붐빔」을 띄우므로 사용자가 알고 고른다 — 모르고 딴 데 가는 것보다 낫다. */
+        if (want != null) return pickQuieterIn(pool, usedNames, want);
         return pickQuieterIn(pool, usedNames, null);
     }
 

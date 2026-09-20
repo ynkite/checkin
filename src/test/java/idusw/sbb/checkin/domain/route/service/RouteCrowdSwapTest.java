@@ -95,9 +95,15 @@ class RouteCrowdSwapTest {
         assertThat(names(route)).containsExactly("광안리해수욕장");
     }
 
-    /** 같은 성격이 없으면 그때는 가리지 않는다 — 빼서 하루를 비우는 것보다 낫다. */
+    /**
+     * 같은 성격이 없으면 <b>바꾸지 않는다.</b>
+     *
+     * <p>실측에서 해운대해수욕장(98)이 「할매탕」으로, 동백섬이 「베니키아호텔사우나」로
+     * 갈렸다. 바다를 보러 간 사람을 목욕탕으로 보내는 것이라 교체가 아니라 다른 여행이다.
+     * 그냥 두면 화면이 「붐빔」을 띄우므로 사용자가 알고 고른다.
+     */
     @Test
-    void 같은_성격이_없으면_다른_성격으로라도_바꾼다() {
+    void 같은_성격이_없으면_바꾸지_않는다() {
         JsonNode route = day(place("해운대해수욕장", "tour", 95));
         var pool = pool(
                 candCat("해운대해수욕장", "tour", 95, "여행 > 관광,명소 > 해수욕장"),
@@ -105,7 +111,7 @@ class RouteCrowdSwapTest {
 
         AiRouteService.swapCrowdedPlaces(route, byName(pool), pool);
 
-        assertThat(names(route)).containsExactly("부산박물관");
+        assertThat(names(route)).containsExactly("해운대해수욕장");
     }
 
     /** 성격을 모르는 곳은 「안 맞는다」로 치지 않는다. 종전대로 고른다. */
