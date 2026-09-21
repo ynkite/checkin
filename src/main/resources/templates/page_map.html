@@ -569,6 +569,29 @@
         }
       }
 
+      /* 장면 하나는 2km x 1.3km 인데 하루 동선은 도시를 가로질러 20km 에 퍼진다.
+         그래서 어느 장면을 골라도 「일정에 있는 곳은 이 동네 밖입니다」가 자주 떴다.
+         전국 251곳을 다 구워 놓고 한 동네만 보여 주는 것은 아깝다.
+
+         정거장마다 제 동네 장면을 미리 찾아 둔다. 아래 띠에서 고르면 그 동네로 옮긴다.
+         「밖입니다」라고 말하는 대신 그 동네로 데려가는 쪽이 맞다. */
+      _mvStopScenes = stops.map(function (p) {
+        var bestS = null, bestD = Infinity;
+        for (var i = 0; i < scenes.length; i++) {
+          var sc = scenes[i];
+          if (!sc.bbox || !sc.fit) continue;
+          var my = (sc.bbox.s + sc.bbox.n) / 2, mx = (sc.bbox.w + sc.bbox.e) / 2;
+          /* 먼저 그 장면 안에 들어오는지 본다. 들어오면 그게 제 동네다 */
+          var q = _mvProject(sc.fit, p.lat, p.lng);
+          var inside = q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
+          var d = (my - p.lat) * (my - p.lat) + (mx - p.lng) * (mx - p.lng);
+          if (inside) d -= 1000;                       /* 담기는 장면을 우선한다 */
+          if (d < bestD) { bestD = d; bestS = sc; }
+        }
+        return { stop: p, sc: bestS };
+      });
+      _mvAllStops = stops;
+
       if (!pick) {
         /* 목록이 이백 개가 넘으면 다 적을 수 없다. 몇 곳만 보여 준다 */
         var few = scenes.slice(0, 8).map(function (s) { return s.label; }).join(' · ');
@@ -591,13 +614,14 @@
           '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
           /* 한 곳도 안 담겼을 때 「0곳만 올렸습니다」는 말이 안 된다.
              그 경우는 여행지 중심부를 대신 보여 주는 것이니 그렇게 말한다. */
-          (pick.inside.length === 0
-            ? '<em>일정에 있는 곳은 이 동네 밖입니다. 여행지 중심부 모습만 보여 드립니다 — '
-              + '가는 곳은 지도에서 보세요</em>'
-            : pick.inside.length < stops.length
-            ? '<em>이 동네에 있는 ' + pick.inside.length + '곳만 모형에 올렸습니다. 나머지 '
-              + (stops.length - pick.inside.length) + '곳은 멀리 있어 지도에서 보세요</em>' : '');
+          (pick.inside.length < stops.length
+            ? '<em>이 동네에 ' + pick.inside.length + '곳이 있습니다. '
+              + '아래에서 다른 곳을 고르면 그 동네 모형으로 갑니다</em>'
+            : '');
       }
+
+      /* 정거장 띠 — 고르면 그 동네 모형으로 옮긴다 */
+      _mvDrawStopStrip(pick.sc);
     }
 
     /* 그 동선에서 가장 붐비는 곳의 30일 흐름.
@@ -2910,6 +2934,52 @@
       _mpSyncPinHighlight();
     }
 
+    /* ── 정거장 띠 — 고르면 그 동네 모형으로 옮긴다 ───────────
+       전에는 동선에서 제일 많이 담기는 장면 하나만 보여 주고, 나머지는
+       「멀리 있어 지도에서 보세요」로 끝냈다. 전국 251곳을 구워 놓고
+       한 동네만 보여 주는 것은 아깝다. 정거장마다 제 동네가 있다. */
+    var _mvStopScenes = [];
+    var _mvAllStops = [];
+
+    function _mvDrawStopStrip(nowScene) {
+      var strip = document.getElementById('mv_stops');
+      if (!strip) return;
+      if (!_mvStopScenes.length) { strip.hidden = true; strip.innerHTML = ''; return; }
+      strip.hidden = false;
+      var key = nowScene && nowScene.key;
+      strip.innerHTML = _mvStopScenes.map(function (e, i) {
+        var here = e.sc && e.sc.key === key;
+        return '<button type="button" class="mv-st' + (here ? ' on' : '') + '" data-i="' + i + '">'
+             + '<b>' + (i + 1) + '</b>' + _mpEsc(e.stop.name) + '</button>';
+      }).join('');
+      strip.querySelectorAll('button').forEach(function (b) {
+        b.addEventListener('click', function () { _mvGoStop(parseInt(b.dataset.i, 10)); });
+      });
+    }
+
+    async function _mvGoStop(i) {
+      var e = _mvStopScenes[i];
+      if (!e || !e.sc) return;
+      await _mvDrawScene(e.sc);
+      _mvFill(e.sc);
+      /* 그 동네에 같이 담기는 정거장은 다 찍는다. 혼자만 찍으면 동선이 안 보인다 */
+      var on = _mvAllStops.filter(function (p) {
+        var q = _mvProject(e.sc.fit, p.lat, p.lng);
+        return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
+      });
+      _mvDrawPins(e.sc, on.length ? on : [e.stop]);
+      var legend = document.getElementById('mv_legend');
+      if (legend) {
+        legend.hidden = false;
+        legend.innerHTML =
+          '<b>' + _mpEsc(e.sc.label) + '</b>' +
+          '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
+          '<em>' + _mpEsc(e.stop.name) + ' 가 있는 동네입니다'
+            + (on.length > 1 ? ' · 여기에 ' + on.length + '곳이 모여 있습니다' : '') + '</em>';
+      }
+      _mvDrawStopStrip(e.sc);
+    }
+
     /* ── 모형을 손으로 움직인다 ────────────────────────────────
        전에는 열 때 계산한 자리에 고정이라, 옆 동네가 궁금해도 볼 수가 없었다.
        전국 251곳을 다 구워 놓고 한 자리만 보여 주는 것은 아깝다.
@@ -4136,6 +4206,8 @@
           <div class="ck-pins" id="mv_pins"></div>
           <div class="mv-none" id="mv_none" hidden></div>
           <!-- 모형을 손으로 움직인다. 전에는 열 때 잡아 준 자리에서 꼼짝도 못 했다 -->
+          <!-- 정거장 띠. 고르면 그 동네 모형으로 옮긴다 -->
+          <div class="mv-stops" id="mv_stops" hidden></div>
           <div class="mv-view" id="mv_view">
             <button type="button" class="mv-vb" id="mv_in" aria-label="확대">+</button>
             <button type="button" class="mv-vb" id="mv_out" aria-label="축소">−</button>

@@ -322,8 +322,10 @@
                     (c.source === 'SK' || c.source === 'SK_LIVE' ? '지금 ' : '예측 ') +
                     esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
                 /* 「없음」은 한적하다는 말로 읽힌다. 예측 대상이 아닌 곳(숙소·식당),
-                   데이터가 아예 없는 지역(광주·전남), 조회 실패가 전부 여기로 온다 */
-                : '<span class="rl-cw rl-cw-none">붐빔 확인되지 않음</span>') +
+                   데이터가 아예 없는 지역(광주·전남), 조회 실패가 전부 여기로 온다.
+                   「확인되지 않음」은 우리가 손 놓았다는 말로 들려서, 다시 받아 보면
+                   될 수도 있다는 뜻이 담기게 고쳤다 */
+                : '<span class="rl-cw rl-cw-none">혼잡도 정보 갱신 필요</span>') +
               rlWeatherChip(d.weather);
           }
         }
