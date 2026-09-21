@@ -532,7 +532,11 @@ table {
         padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
     }
 
-    /* --- 6-7. 비로그인 시 마이페이지 탭 → 로그인 아이콘 --- */
+    /* --- 6-7. 비로그인 시 마이페이지 탭 → 「로그인」 ---
+       이 폭에서는 위 메뉴를 감춘다. 그래서 로그인 안 한 사람에게는
+       로그인으로 가는 길이 화면 어디에도 글자로 안 남아 있었다.
+       하단 탭은 「마이페이지」라고만 떠 있었고, 눌러야 로그인으로 간다는 것을
+       알 길이 없었다 — 심사위원이 가입부터 막히는 자리다. */
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-icon { opacity: .72; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl   { font-size: 0; }
     body:has(#navUserNameBtn[style*="none"]) .bnav-item[data-page="mypage"] .bnav-lbl::before   { content: "로그인"; font-size: 10px; font-weight: 500; }
