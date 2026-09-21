@@ -600,6 +600,8 @@
           '<button type="button" class="dv-v" id="navV3">3D 모형</button>' +
         '</div>' +
         '<button type="button" class="dv-traffic on" id="navTraffic">실시간 교통</button>' +
+        /* 지도를 손으로 밀면 따라가기를 멈춘다. 다시 붙고 싶을 때 누른다 */
+        '<button type="button" class="dv-recenter" id="navRecenter" hidden>현재 위치</button>' +
         '<p class="dv-note" id="navNote" hidden></p>' +
       '</div>' +
       '<div class="dv-bottom">' +
@@ -636,6 +638,7 @@
       if (window.rlVoiceToggle) window.rlVoiceToggle();
       else if (window.startVoice) window.startVoice();
     });
+    on('navRecenter', function () { nvFollowOn(); });
     on('navV2',    function () { nvMode('2d'); });
     on('navV3',    function () { nvMode('3d'); });
     on('navTraffic', function () {
@@ -684,7 +687,7 @@
      2D 는 카카오 지도에 실시간 교통정보를 얹는다.
      3D 는 우리가 구워 둔 건물 모형을 쓴다 — 전국 251곳이 이미 있다.
      어느 쪽을 보든 경로와 지금 자리는 같은 값으로 그린다. */
-  var nv = { map: null, line: null, halo: null, me: null, dest: null,
+  var nv = { follow: true, map: null, line: null, halo: null, me: null, dest: null,
              mode: '2d', traffic: true, idx: null, scene: null, meta: null, drawn: false };
 
   function nvToken(name, fb) {
@@ -718,6 +721,8 @@
         center: new kakao.maps.LatLng(st.pos.lat, st.pos.lng),
         level: (window.innerWidth <= 520 ? 2 : 3)
       });
+      /* 손으로 밀면 그 자리에 둔다. 우리가 옮기는 setCenter 는 dragstart 를 내지 않는다 */
+      try { kakao.maps.event.addListener(nv.map, 'dragstart', nvFollowOff); } catch (e) {}
       nvTrafficApply();
       nvDrawRoute();
       nvFollow();
@@ -772,6 +777,24 @@
     });
   }
   /* 지금 있는 자리로 지도를 옮긴다. 운전 중에는 손으로 끌 일이 없다 */
+  /* 따라가기 — 실제 내비처럼 갈수록 화면이 같이 간다.
+     다만 손으로 지도를 밀면 그 자리에 두어야 한다. 밀어 놓고 봤는데
+     다음 좌표가 와서 도로 튕겨 돌아가면 아무것도 못 본다.
+     멈춘 동안에는 「현재 위치」 단추를 띄우고, 누르면 다시 붙는다. */
+  function nvFollowOff() {
+    if (!nv.follow) return;
+    nv.follow = false;
+    var b = document.getElementById('navRecenter');
+    if (b) b.hidden = false;
+  }
+  function nvFollowOn() {
+    nv.follow = true;
+    nv.pan = { x: 0, y: 0 };
+    var b = document.getElementById('navRecenter');
+    if (b) b.hidden = true;
+    if (nv.mode === '2d') nvFollow(); else nvDraw3d();
+  }
+
   function nvFollow() {
     if (!nv.map || !st || !st.pos) return;
     var ll = new kakao.maps.LatLng(st.pos.lat, st.pos.lng);
@@ -786,7 +809,7 @@
       nv.me.setPosition(ll);
       nv.me.setContent('<div class="dv-me"><i style="transform:rotate(' + deg.toFixed(0) + 'deg)"></i></div>');
     }
-    nv.map.setCenter(ll);
+    if (nv.follow) nv.map.setCenter(ll);
   }
 
   /* ── 3D 모형 ──────────────────────────────────────────── */
@@ -849,8 +872,10 @@
     frame.style.width = w + 'px';  frame.style.height = h + 'px';
     layer.style.width = w + 'px';  layer.style.height = h + 'px';
     var at = nvProject(sc.fit, st.pos.lat, st.pos.lng);
+    var pan = nv.pan || { x: 0, y: 0 };
     var shift = 'translate(-50%,-50%) translate(' +
-      ((50 - at.x) / 100 * w).toFixed(1) + 'px,' + ((50 - at.y) / 100 * h).toFixed(1) + 'px)';
+      ((50 - at.x) / 100 * w + pan.x).toFixed(1) + 'px,' +
+      ((50 - at.y) / 100 * h + pan.y).toFixed(1) + 'px)';
     frame.style.transform = shift;
     layer.style.transform = shift;
 
@@ -885,6 +910,29 @@
       '<div class="dv-me dv-me-3d" style="left:' + me.x.toFixed(2) + '%;top:' + me.y.toFixed(2) +
       '%"><i style="transform:rotate(' + deg.toFixed(0) + 'deg)"></i></div>';
   }
+  /* 모형도 손으로 밀 수 있게 한다. 미는 동안은 따라가기를 멈춘다 */
+  function nvBind3dDrag() {
+    var box = document.getElementById('navMap3d');
+    if (!box || box._nvDrag) return;
+    box._nvDrag = true;
+    var g = null;
+    box.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('button')) return;
+      var pn = nv.pan || { x: 0, y: 0 };
+      g = { x: e.clientX, y: e.clientY, px: pn.x, py: pn.y };
+      nvFollowOff();
+      try { box.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+    box.addEventListener('pointermove', function (e) {
+      if (!g) return;
+      nv.pan = { x: g.px + (e.clientX - g.x), y: g.py + (e.clientY - g.y) };
+      if (nv.scene) nvPaint3d(nv.scene);
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function (t) {
+      box.addEventListener(t, function () { g = null; });
+    });
+  }
+
   function nvRunD(run) {
     return 'M' + run.map(function (q) { return q.x.toFixed(2) + ' ' + q.y.toFixed(2); }).join('L');
   }
@@ -905,6 +953,7 @@
       nvInit2d();
       if (nv.map) { nv.map.relayout(); nvFollow(); }
     } else {
+      nvBind3dDrag();
       nvDraw3d();
     }
   }
@@ -919,7 +968,7 @@
   }
   function nvReset() {
     (nv.marks || []).forEach(function (m) { try { m.setMap(null); } catch (e) {} });
-    nv = { map: null, line: null, halo: null, me: null, dest: null, marks: [],
+    nv = { follow: true, map: null, line: null, halo: null, me: null, dest: null, marks: [],
            mode: '2d', traffic: true, idx: nv.idx, scene: null, meta: null, drawn: false };
   }
 
