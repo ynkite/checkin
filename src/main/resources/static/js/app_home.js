@@ -84,22 +84,47 @@
         '<p class="ck-fix-source">'+esc(source)+'</p>';
       cap.classList.remove('ck-fix-in'); void cap.offsetWidth; cap.classList.add('ck-fix-in');
     }
+    /* 순서를 바꾸는 갈래에서 앞으로 당겨진 곳. 말풍선을 세울 자리다 */
+    function pulled(order) {
+      for (var i=0;i<order.length;i++) if (order[i] !== i) return route[order[i]];
+      return null;
+    }
+    /* 갈래를 하나 고르면 지도에서 동선이 바뀌는 것을 먼저 보여 준다.
+       전에는 순서를 바꾸는 갈래만 지도를 켰고 장소를 바꾸는 두 갈래는
+       곧장 동네 모형으로 넘어가서, 정작 「경로가 이렇게 바뀐다」가
+       화면에 없었다. 셋 다 지도에서 원래 선과 바꾼 선을 겹쳐 보여 준다. */
     async function applyOpt(n) {
       var f = fixes[n]; if (!f) return;
       say(f,n); setWx(f.key === 'rain' ? 'rain' : (window.__ckWx || {}).kind, f.key === 'rain');
       if (f.kind === 'reorder') {
-        render(route,f.order,0); await S.showWideMap(f.order.map(function (i) { return route[i]; }));
+        var after = f.order.map(function (i) { return route[i]; });
+        render(route,f.order,0);
+        if (S.showChange) await S.showChange(route,after,{label:f.label,now:pulled(f.order),nowCap:'먼저 갑니다'});
+        else await S.showWideMap(after);
       } else {
         var mix = route.slice(); mix[f.at] = f.to; render(mix,null,f.at);
-        await S.showPlace(f.to,f.at+1);
+        if (S.showChange) await S.showChange(route,mix,{label:f.label,was:route[f.at],wasCap:'여기 대신',now:f.to,nowCap:'이곳으로'});
+        else await S.showPlace(f.to,f.at+1);
       }
+    }
+    /* 저절로 도는 동안은 지도에서 바뀐 동선을 보여 준 뒤
+       그 자리의 동네 모형까지 들어간다. 손으로 고른 경우에는
+       지도에 세워 둔다 — 모형은 「모형」 단추로 언제든 볼 수 있다 */
+    async function playFix(n, ticket) {
+      var f = fixes[n]; if (!f) return;
+      await applyOpt(n); if (ticket !== epoch) return;
+      await wait(3100); if (ticket !== epoch) return;
+      var p = f.kind === 'reorder' ? route[f.order[1]] : f.to;
+      var no = f.kind === 'reorder' ? 2 : f.at + 1;
+      if (p) { await S.showPlace(p,no); if (ticket !== epoch) return; }
+      await wait(1600);
     }
     function rest() {
       introducing = false; hero.classList.remove('ck-intro'); restoreWeather();
       render(route,null,0); S.showPlace(route[0],1);
       caption('부산, 오늘은 이렇게 둘러볼까요', '장소를 누르면 동네 모형으로 이동합니다. 아래에서 바꾸는 방법도 살펴보세요.');
       mark(-1);
-      cap.innerHTML = '<p class="ck-opening">지금은 원래 동선입니다.<br><strong>길·혼잡·날씨 중 하나를 골라<br>어떻게 바뀌는지 보세요.</strong></p>';
+      cap.innerHTML = '<p class="ck-opening">지금은 원래 동선입니다.<br><strong>길·혼잡·날씨 중 하나를 골라<br>지도에서 경로가 어떻게 바뀌는지 보세요.</strong></p>';
     }
     function skip() {
       if (!introducing) return;
@@ -111,8 +136,7 @@
       stop(); setPlay(true); var ticket = epoch;
       for (var i=0;i<fixes.length;i++) {
         if (ticket !== epoch) return;
-        await applyOpt(i); if (ticket !== epoch) return;
-        await wait(4400);
+        await playFix(i,ticket); if (ticket !== epoch) return;
       }
       if (ticket === epoch) { setPlay(false); rest(); }
     }
@@ -137,8 +161,7 @@
       for (var n=0;n<fixes.length;n++) {
         if (ticket !== epoch) return;
         if (fixes[n+1] && fixes[n+1].to) S.preloadScene(fixes[n+1].to.scene);
-        await applyOpt(n); if (ticket !== epoch) return;
-        await wait(4600);
+        await playFix(n,ticket); if (ticket !== epoch) return;
       }
       if (ticket === epoch) { setPlay(false); rest(); }
     }

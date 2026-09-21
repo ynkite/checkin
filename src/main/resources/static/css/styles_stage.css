@@ -38,7 +38,7 @@
 .ck-stage .ck-frame svg.mass{ width:100%; height:100%; display:block }
 .st-viewport::after{ content:""; position:absolute; inset:0; z-index:4; pointer-events:none; background:var(--water); opacity:0; transform:translateX(100%); transition:transform .22s var(--home-ease),opacity .22s ease }
 .ck-cut .st-viewport::after{ opacity:1; transform:translateX(0) }
-.st-scene-label{ position:absolute; left:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:5; max-width:calc(100% - var(--u)*4); background:var(--panel); border-radius:var(--r-field); padding:var(--u) calc(var(--u)*1.5); font-size:var(--home-meta); color:var(--ink); pointer-events:none }
+.st-scene-label{ position:absolute; left:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:5; max-width:calc(100% - var(--u)*4); background:var(--panel); border-radius:var(--r-field); padding:var(--u) calc(var(--u)*1.5); font-size:var(--home-meta); color:var(--ink); word-break:keep-all; pointer-events:none }
 .st-tools,.st-view{ position:absolute; display:flex; flex-wrap:nowrap; gap:calc(var(--u)/2); z-index:6; right:calc(var(--u)*2) }
 .st-tools{ top:calc(var(--u)*2) }
 .st-view{ bottom:calc(var(--u)*2) }
@@ -121,6 +121,53 @@
 .ck-home .ck-skipin{ display:none }
 .ck-home .ck-intro .ck-skipin{ display:block; position:absolute; left:calc(var(--u)*2); top:calc(var(--u)*2); z-index:6; padding:var(--u) calc(var(--u)*1.5); min-height:var(--home-target); border-radius:var(--r-field); background:var(--panel); color:var(--ink); font-size:var(--home-meta) }
 
+/* ── 동선이 바뀌는 순간 ────────────────────────────
+   원래 동선은 회색 점선, 바꾼 동선은 주황 굵은 선.
+   선 색은 app_stage.js 가 여기 토큰을 읽어서 카카오맵에 넘긴다.
+   핀은 선이 닿을 때 선다(.fl-wait 가 풀린다). */
+.ck-home .st-viewport.st-changing .fl-mp{ transition:transform .3s var(--home-ease),opacity .3s ease }
+.ck-home .fl-mp.fl-ghost{
+  width:calc(var(--home-pin-size) - var(--u)); height:calc(var(--home-pin-size) - var(--u));
+  background:var(--panel); color:var(--ink-3); font-size:var(--t-xs);
+  box-shadow:inset 0 0 0 1px var(--ui-line),0 1px 0 rgba(var(--sh-rgb),.10);
+}
+.ck-home .fl-mp.fl-fresh{ background:var(--ink); color:var(--panel) }
+.ck-home .fl-mp.fl-swap{
+  background:var(--terra); color:var(--panel);
+  width:calc(var(--home-pin-size) + var(--u)); height:calc(var(--home-pin-size) + var(--u));
+  font-size:var(--t-sm);
+  box-shadow:0 0 0 calc(var(--u)/2) var(--terra-pale),0 2px 0 rgba(var(--sh-rgb),.18);
+}
+.ck-home .fl-mp.fl-wait{ opacity:0; transform:scale(.4) }
+
+/* 바뀐 자리에 세우는 말풍선. 원래 자리는 취소선, 바뀐 자리는 짙은 판 */
+.st-callout{
+  display:flex; align-items:baseline; gap:calc(var(--u)*.75);
+  padding:calc(var(--u)*.75) calc(var(--u)*1.25);
+  border-radius:var(--r-field); background:var(--panel); box-shadow:var(--home-shadow);
+  line-height:1.4; white-space:nowrap; word-break:keep-all;
+  animation:st-callout-in .42s var(--home-ease) both;
+}
+.st-callout b{ font-size:var(--t-xs); font-weight:600 }
+.st-callout span{ font-size:var(--t-sm); font-weight:650 }
+.st-callout-was{ background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line),var(--home-shadow) }
+.st-callout-was b{ color:var(--ink-3) }
+.st-callout-was span{ color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1px }
+.st-callout-new{ background:var(--ink) }
+.st-callout-new b{ color:var(--home-muted-dark) }
+.st-callout-new span{ color:var(--home-on-dark) }
+@keyframes st-callout-in{ from{ opacity:0; transform:translateY(calc(var(--u)/2)) } to{ opacity:1; transform:none } }
+
+/* 어느 선이 어느 동선인지 — 장면 이름표가 같이 말해 준다 */
+.st-scene-label .st-lg-t{ display:block; font-weight:700 }
+.st-scene-label .st-lg{
+  display:flex; flex-wrap:wrap; align-items:center; gap:calc(var(--u)/2) calc(var(--u)*1.5);
+  margin-top:calc(var(--u)/2); font-size:var(--t-xs); color:var(--ink-2);
+}
+.st-scene-label .st-lg i{ display:inline-block; width:calc(var(--u)*2.5); height:2px; border-radius:2px; margin-right:calc(var(--u)/2) }
+.st-scene-label .st-lg .st-lg-was{ background:var(--ink-3) }
+.st-scene-label .st-lg .st-lg-new{ background:var(--terra); height:4px }
+
 @media (max-width:1050px){
   .ck-home .ck-stage{ grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*3); padding-top:calc(var(--u)*3) }
   .st-introduction{ grid-area:1 / 1 }
@@ -137,6 +184,16 @@
   .st-view{ bottom:var(--u); right:var(--u) }
   .st-scene-label{ bottom:calc(var(--home-target) + var(--u)*2); left:var(--u); max-width:calc(100% - var(--u)*2) }
   .ck-home .ck-intro .ck-skipin{ top:calc(var(--home-target) + var(--u)*2); left:var(--u) }
+  .st-callout{ padding:calc(var(--u)/2) var(--u); gap:calc(var(--u)/2) }
+  .st-callout span{ font-size:var(--home-meta) }
+  .ck-home .fl-mp.fl-swap{ width:var(--home-pin-size); height:var(--home-pin-size); font-size:var(--home-meta) }
+  /* 좁은 판에서는 이름표를 맨 아래로 내리고 한 줄로 줄인다.
+     가운데에 두면 정작 바뀐 동선을 가린다. 어느 갈래인지는
+     바로 아래 단추와 설명 판이 이미 말하고 있다 */
+  .st-viewport.st-changing .st-scene-label{ bottom:var(--u); padding:calc(var(--u)/2) var(--u); max-width:calc(100% - var(--home-target)*4) }
+  .st-viewport.st-changing .st-scene-label .st-lg-t{ display:none }
+  .st-viewport.st-changing .st-scene-label .st-lg{ margin-top:0; gap:calc(var(--u)/2) var(--u); flex-wrap:nowrap }
+  .st-viewport.st-changing .st-scene-label .st-lg i{ width:calc(var(--u)*2); margin-right:calc(var(--u)/4) }
   .st-form{ padding:calc(var(--u)*2) }
   .st-form .ck-fr{ grid-template-columns:repeat(2,minmax(0,1fr)) }
   .st-form .ck-fld:nth-child(3){ grid-column:1 / -1; grid-row:2 }
@@ -199,4 +256,6 @@
 @media (prefers-reduced-motion:reduce){
   .ck-stage .ck-frame,.st-viewport::after{ transition:none }
   .st-viewport::after{ content:none }
+  .ck-home .st-viewport.st-changing .fl-mp{ transition:none }
+  .st-callout{ animation:none }
 }
