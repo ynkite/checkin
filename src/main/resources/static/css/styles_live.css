@@ -121,24 +121,125 @@
 .rl-cw.cw-vlow { background:var(--slate-pale); color:var(--slate) }
 .rl-cw-none{ background:var(--ui-plate); color:var(--ink-3); font-weight:400 }
 
-/* 할 수 있는 것 — 손이 흔들려도 눌리게 크게 */
-/* 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
-   우리가 제일 내세우는 기능인데 단추가 낱개로 흩어져 있어 눈에 안 들어왔다.
-   테두리로 한 묶음을 만들고 제목을 단다. 안에서는 지금까지 쓰던 배치 그대로다. */
+/* ── 지금 할 수 있는 것 ─────────────────────────────────────
+   갈래는 성격이 셋이다. 살펴보는 것(장소 확인하기), 손보는 것(순서 바꾸기 ·
+   다른 곳으로 · 실내로), 떠나는 것(길 안내). 전에는 흰 네모 넷이 나란히 서서
+   목록으로 읽혔다 — 우리가 제일 내세우는 기능이 제일 안 보이는 자리에 있었다.
+
+   위에서 아래로 갈수록 판이 진해진다. 흰 판(보기) → 회색 판(고치기) →
+   신호색(떠나기). 무엇을 고르든 되돌릴 수 있는 것이 위, 실제로 움직이는 것이
+   아래다. 다음 정거장 카드 바로 밑에 붙여 한 덩어리로 읽히게 한다. */
 .rl-branch{
-  margin-top:16px; padding:13px 13px 14px;
-  border-radius:var(--r-panel);
-  box-shadow:inset 0 0 0 1px var(--ui-line);
+  margin-top:12px; padding:20px 18px 20px;
+  border-radius:var(--r-panel); background:var(--panel);
+  box-shadow:var(--lift); word-break:keep-all;
 }
 .rl-branch-lb{
-  margin:0 2px 10px; font-size:12px; font-weight:700;
-  letter-spacing:var(--tracking-tight); color:var(--ink-3); word-break:keep-all;
+  margin:0 0 12px; font-size:13px; font-weight:700;
+  letter-spacing:var(--tracking-tight); color:var(--ink); word-break:keep-all;
 }
-.rl-branch .rl-acts{ margin-top:8px }
-.rl-branch > .rl-acts:first-of-type{ margin-top:0 }
+/* 「지금」이라는 말은 점 하나로 한다. 글자를 신호색으로 쓰면 안 읽힌다 */
+.rl-branch-lb::before{
+  content:""; display:inline-block; width:7px; height:7px; margin-right:7px;
+  border-radius:50%; background:var(--sig); vertical-align:.08em;
+}
+.rl-br-sub{
+  margin:18px 0 9px; font-size:var(--t-xs); font-weight:600;
+  letter-spacing:.02em; color:var(--ink-3); word-break:keep-all;
+}
+
+/* 갈래 하나. 움직이면서 한 손으로 누른다 — 어느 것이든 64px 아래로 두지 않는다 */
+.rl-br{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center;
+  gap:13px; width:100%; min-height:64px; padding:14px 15px;
+  border:0; cursor:pointer; text-align:left; font-family:inherit;
+  border-radius:var(--r-card); background:var(--panel);
+  box-shadow:inset 0 0 0 1px var(--ui-line); word-break:keep-all;
+  transition:box-shadow .14s ease, background-color .14s ease, transform .1s ease;
+}
+.rl-br:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
+.rl-br:active{ transform:translateY(1px) }
+.rl-br-tx{ min-width:0 }
+.rl-br-tx b{
+  display:block; font-size:16px; font-weight:600; line-height:1.3;
+  letter-spacing:var(--tracking-tight); color:var(--ink);
+}
+.rl-br-tx > span{
+  display:block; margin-top:3px; font-size:var(--home-meta); line-height:1.5;
+  color:var(--ink-2);
+}
+/* 아이콘은 선만 긋고 색은 여기서 정한다. 글자를 읽기 전에 모양으로 알아채라고 둔다 */
+.rl-br-ic{
+  display:grid; place-items:center; width:38px; height:38px;
+  border-radius:var(--r-card); background:var(--ui-plate); color:var(--ink-2);
+}
+.rl-br-svg{
+  display:block; width:21px; height:21px;
+  fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.rl-br-cue{ display:grid; place-items:center; color:var(--ink-3) }
+.rl-br-cue .rl-br-svg{ width:18px; height:18px }
+
+/* 살펴보는 것 — 눌러도 일정이 바뀌지 않는다. 제일 조용하게 둔다 */
+.rl-br-look{ min-height:68px }
+.rl-br-look .rl-br-tx b{ font-size:17px }
+
+/* 손보는 것 — 이 제품이 하겠다고 한 일이다. 회색 판으로 채워 두 칸에 세운다 */
+.rl-br-grid{ display:grid; gap:10px; grid-template-columns:minmax(0,1fr) }
+@media (min-width:560px){
+  .rl-br-grid{ grid-template-columns:1fr 1fr }
+  /* 홀수로 남는 하나는 빈 칸 옆에 반쪽으로 서지 않고 줄을 다 쓴다 */
+  .rl-br-grid > :last-child:nth-child(odd){ grid-column:1 / -1 }
+}
+.rl-br-edit{
+  grid-template-columns:auto minmax(0,1fr);
+  min-height:92px; padding:15px 16px;
+  background:var(--ui-plate); box-shadow:none;
+}
+.rl-br-edit .rl-br-ic{ background:var(--panel) }
+.rl-br-edit:hover{ background:var(--ui-plate-2); box-shadow:none }
+/* 서버가 「지금 이게 필요하다」고 표시한 갈래(붐비는 날)만 옆줄이 선다 */
+.rl-br-sug, .rl-br-sug:hover{ box-shadow:inset 3px 0 0 var(--sig) }
+.rl-br-tag{
+  grid-column:2; justify-self:start; margin-top:9px;
+  padding:3px 9px 4px; border-radius:var(--r-pill);
+  font-size:var(--t-xs); font-weight:700; letter-spacing:var(--tracking-tight);
+  background:var(--sig); color:var(--on-sig);
+}
+
+/* 떠나는 것 — 여기서만 화면 밖으로 나간다. 하나뿐이라 채워서 크게 */
+.rl-br-go{
+  margin-top:14px; min-height:78px; padding:16px 18px;
+  background:var(--sig); color:var(--on-sig); box-shadow:none;
+}
+.rl-br-go .rl-br-tx b{ font-size:19px; color:var(--on-sig) }
+.rl-br-go .rl-br-tx > span{ color:var(--on-sig-2) }
+.rl-br-go .rl-br-ic{
+  width:42px; height:42px; background:none; color:var(--on-sig);
+}
+.rl-br-go .rl-br-svg{ width:30px; height:30px; stroke-width:1.8 }
+.rl-br-go .rl-br-cue{ color:var(--on-sig) }
+.rl-br-go:hover{ box-shadow:inset 0 0 0 2px var(--on-sig) }
+
+/* 지도로 넘어가는 것 — 여기서 하는 일이 아니라 다른 화면으로 가는 길이다.
+   갈래 넷과 같은 판을 주면 다섯 번째 갈래처럼 보인다. 줄 하나로 둔다 */
+.rl-br-tail{
+  display:flex; align-items:center; flex-wrap:wrap; gap:3px 10px;
+  width:100%; min-height:44px; margin-top:14px; padding:13px 4px 0;
+  border:0; cursor:pointer; background:none; font-family:inherit;
+  text-align:left; box-shadow:inset 0 1px 0 var(--ui-line-2); word-break:keep-all;
+}
+.rl-br-tail b{
+  font-size:var(--t-sm); font-weight:600; color:var(--ink);
+  letter-spacing:var(--tracking-tight);
+}
+.rl-br-tail span{ font-size:var(--home-meta); color:var(--ink-3) }
+.rl-br-tail:hover b{ text-decoration:underline; text-underline-offset:3px }
+
+/* 확인 결과가 고르라고 내놓는 단추들은 아직 이 얼굴을 쓴다 */
 .rl-acts{ display:grid; gap:8px; margin-top:14px }
 @media (min-width:560px){ .rl-acts{ grid-template-columns:1fr 1fr } }
-.rl-acts.rl-acts-single{ grid-template-columns:minmax(0,1fr) }
 .rl-act{
   display:flex; flex-direction:column; align-items:flex-start; gap:3px;
   min-height:72px; padding:16px 18px; border:0; cursor:pointer; text-align:left;
@@ -150,10 +251,11 @@
 .rl-act b{ font-size:16px; font-weight:600; color:var(--ink);
   letter-spacing:var(--tracking-tight) }
 .rl-act span{ font-size:var(--home-meta); color:var(--ink-2) }
+/* 확인한 결과 — 갈래 판 안에서 펼쳐진다. 흰 판 위의 흰 상자는 안 보인다 */
 .rl-check{
-  margin:10px 0 14px; padding:14px 16px;
-  border:1px solid var(--border2); border-radius:12px;
-  background:var(--panel); word-break:keep-all;
+  margin:10px 0 0; padding:14px 16px;
+  border:0; border-radius:var(--r-card);
+  background:var(--ui-plate); word-break:keep-all;
 }
 
 /* 그날 동선 */
@@ -230,22 +332,18 @@
 }
 
 /* ── 주행모드 · 음성 오버레이 (nav-drive.js) ── */
-.rl-drive, .rl-voice{
+.rl-voice{
   position:fixed; left:0; right:0; z-index:1300;
   padding:16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); background:var(--panel);
   border-top:1px solid var(--ui-line);
   box-shadow:var(--lift);
 }
-.rl-drive{ bottom:0 }
 .rl-voice{ bottom:0 }
-.rl-drive .rl-drive-head, .rl-voice .rl-voice-msg{
+.rl-voice .rl-voice-msg{
   font-size:20px; font-weight:700; color:var(--ink);
   margin-bottom:12px; word-break:keep-all;
 }
-.rl-drive .rl-act, .rl-voice .rl-act{ width:100% }
-/* 주행 중(10km/h↑) — 조작을 큰 것만 남긴다 */
-body.rl-driving .rl-drive-head{ font-size:24px }
-body.rl-driving input, body.rl-driving textarea{ display:none }
+.rl-voice .rl-act{ width:100% }
 
 /* ── 여행 중일 때만 뜨는 줄 (index.html #liveNowBar) ─────────
    실시간은 여행 중에만 쓸모가 있는 화면이다. 그런데 그 사실을 화면이
@@ -435,11 +533,17 @@ body:has(#page-live.active) .lnb{ display:none }
   .rl-next-n{ font-size:clamp(23px, 8vw, 30px) }
   .rl-acts{ grid-template-columns:minmax(0,1fr) }
   .rl-act{ padding:15px 16px }
+  .rl-branch{ padding:16px 14px 18px }
+  .rl-br{ gap:11px; padding:13px 13px }
+  /* 한 칸으로 내려오면 세로로 길어질 이유가 없다. 글자만큼만 */
+  .rl-br-edit{ min-height:0; padding:14px 14px }
+  .rl-br-go{ min-height:72px; padding:15px 14px }
+  .rl-br-go .rl-br-tx b{ font-size:18px }
   .rl-st{ grid-template-columns:48px minmax(0,1fr); gap:8px; padding:13px 16px }
   .rl-st-c{ grid-column:2; justify-self:start }
   .rl-mode{ flex-direction:column; align-items:flex-start; gap:3px }
   .rl-mode-x{ text-align:left }
-  .rl-drive,.rl-voice{ padding:14px 14px calc(14px + env(safe-area-inset-bottom, 0px)) }
+  .rl-voice{ padding:14px 14px calc(14px + env(safe-area-inset-bottom, 0px)) }
 }
 
 /* ── 아주 좁은 화면 (갤럭시 폴드 접은 상태 280px) ─────────────
@@ -453,159 +557,14 @@ body:has(#page-live.active) .lnb{ display:none }
 @media (max-width:360px){
   .rl-trip{ grid-template-columns:auto 1fr; row-gap:5px; padding:16px }
   .rl-trip-d{ grid-column:1 / -1; white-space:normal }
-}
-
-/* ── 주행 안내 화면 ────────────────────────────────────────
-   운전 중에 보는 화면이다. 제일 큰 글자가 「다음에 무엇을 하나」여야 한다.
-   그 아래에 어디로 가는지와 남은 것, 맨 아래에 손대는 것들.
-
-   주행 중에도 동선을 바꿀 수 있다는 것이 이 제품의 주장이다.
-   안내를 끄지 않고 그 자리에서 순서를 바꾸고 다른 곳을 찾게 둔다.
-   운전 중에 누르는 것이라 44px 보다 크게 잡았다. */
-.nv-turn{ display:flex; align-items:center; gap:calc(var(--u)*1.5) }
-.nv-arrow{
-  flex:0 0 auto; display:grid; place-items:center;
-  width:52px; height:52px; border-radius:14px;
-  background:var(--sig); color:var(--ink);
-  font-size:30px; line-height:1; font-weight:700;
-}
-.nv-turn-t{ min-width:0; flex:1 1 auto }
-.nv-dist{
-  display:block; font-family:var(--fig); font-size:26px; font-weight:700;
-  letter-spacing:var(--tracking-num); color:var(--ink); line-height:1.15;
-}
-.nv-dist:empty{ display:none }
-.rl-drive .rl-drive-head{
-  font-size:16px; font-weight:600; color:var(--ink-2);
-  word-break:keep-all; line-height:1.4;
-}
-.nv-meta{
-  display:flex; align-items:center; gap:var(--u); flex-wrap:wrap;
-  margin-top:var(--u); font-size:13px; color:var(--ink-2); word-break:keep-all;
-}
-.nv-meta i{ width:3px; height:3px; border-radius:99px; background:var(--ui-line) }
-.nv-acts{
-  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:calc(var(--u)/1.5); margin-top:calc(var(--u)*1.5);
-}
-.nv-b{
-  min-height:52px; padding:0 var(--u); border:0; border-radius:var(--r-field);
-  background:var(--ui-plate); color:var(--ink);
-  font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
-  word-break:keep-all;
-}
-.nv-b:hover{ background:var(--ui-line) }
-.nv-b-off{ background:var(--ink); color:var(--panel) }
-
-/* 달리는 중에는 글자를 더 키운다. 흘깃 보고 읽어야 한다 */
-body.rl-driving .nv-dist{ font-size:34px }
-body.rl-driving .nv-arrow{ width:64px; height:64px; font-size:38px }
-body.rl-driving .rl-drive .rl-drive-head{ font-size:19px }
-@media (max-width:420px){
-  .nv-acts{ gap:calc(var(--u)/2) }
-  .nv-b{ font-size:13px; min-height:48px }
-}
-
-/* ── 길 안내 — 화면 전체 ───────────────────────────────────
-   전에는 아래쪽에 한 줄짜리 판만 띄웠다. 안내는 됐지만 티맵을 써 본
-   사람에게 그것은 네비게이션으로 보이지 않았다.
-   위에 다음 갈림길, 가운데에 지도, 아래에 남은 거리와 손대는 것들.
-   휴대폰이든 넓은 화면이든 같은 자리에 둔다. */
-.rl-drive.nv-full{
-  top:0; bottom:0; padding:0; border-top:0;
-  display:flex; flex-direction:column;
-  background:var(--panel);
-}
-body.nv-open{ overflow:hidden }
-
-/* 위 — 다음에 무엇을 하나. 운전 중에는 이것만 읽는다 */
-.nv-full .nv-turn{
-  flex:0 0 auto;
-  padding:calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
-  background:var(--ink);
-}
-.nv-full .nv-dist{ color:var(--panel) }
-.nv-full .rl-drive-head{ color:var(--panel); opacity:.82; margin-bottom:0 }
-
-/* 가운데 — 지도. 남는 높이를 전부 가져간다 */
-.nv-stage{
-  position:relative; flex:1 1 auto; min-height:0; overflow:hidden;
-  background:var(--ui-plate);
-}
-.nv-canvas{ position:absolute; inset:0 }
-.nv-canvas[hidden]{ display:none }
-.nv-model{ overflow:hidden }
-/* 모형은 상자를 덮는 크기로 늘려 가운데에 둔다. 경로 층도 같은 크기를 받는다 */
-.nv-model-frame, .nv-model-layer{
-  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-}
-.nv-model-layer{ pointer-events:none }
-.nv-model-frame svg.mass{ width:100%; height:100%; display:block }
-.nv-m-svg{ position:absolute; inset:0; width:100%; height:100%; overflow:hidden }
-.nv-m-halo{
-  fill:none; stroke:var(--halo); stroke-width:11; opacity:.85;
-  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
-}
-.nv-m-road{
-  fill:none; stroke:var(--sig); stroke-width:5;
-  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
-}
-
-/* 지금 있는 자리 */
-.nv-me{
-  width:22px; height:22px; border-radius:99px;
-  background:var(--halo); display:grid; place-items:center;
-  box-shadow:0 1px 2px rgba(var(--sh-rgb),.28);
-}
-.nv-me i{ width:12px; height:12px; border-radius:99px; background:var(--sig); display:block }
-.nv-me-3d{ position:absolute; transform:translate(-50%,-50%) }
-.nv-dest{
-  padding:5px 10px; border-radius:var(--r-field);
-  background:var(--ink); color:var(--panel);
-  font-size:12px; font-weight:600; white-space:nowrap;
-}
-
-/* 2D · 3D 고르기 — 오른쪽 위 */
-.nv-view{
-  position:absolute; right:12px; top:12px; z-index:3;
-  display:flex; gap:2px; padding:3px; border-radius:99px;
-  background:var(--halo); box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.14);
-}
-.nv-v{
-  min-height:36px; padding:0 13px; border:0; border-radius:99px;
-  background:transparent; color:var(--ink-2);
-  font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
-  word-break:keep-all;
-}
-.nv-v.on{ background:var(--ink); color:var(--panel) }
-.nv-traffic{
-  position:absolute; right:12px; top:58px; z-index:3;
-  min-height:36px; padding:0 13px; border:0; border-radius:99px;
-  background:var(--halo); color:var(--ink-3);
-  font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
-  box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.14); word-break:keep-all;
-}
-.nv-traffic.on{ background:var(--ink); color:var(--panel) }
-.nv-note{
-  position:absolute; left:12px; right:92px; bottom:12px; z-index:3; margin:0;
-  padding:9px 12px; border-radius:var(--r-field);
-  background:var(--halo); color:var(--ink-2);
-  font-size:12.5px; line-height:1.45; word-break:keep-all;
-  box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.12);
-}
-
-/* 아래 — 얼마나 남았나와 손대는 것들 */
-.nv-bottom{
-  flex:0 0 auto;
-  padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-  border-top:1px solid var(--ui-line); background:var(--panel);
-}
-.nv-bottom .nv-meta{ margin-top:0; margin-bottom:10px }
-
-@media (max-width:420px){
-  .nv-view{ right:10px; top:10px }
-  .nv-traffic{ right:10px; top:54px }
-  .nv-note{ right:86px }
+  /* 갈래도 같은 이유로 줄인다. 누를 자리는 그대로 두고 아이콘만 작게,
+     오른쪽 꺾쇠는 뺀다 — 글자가 들어갈 칸이 먼저다 */
+  .rl-br{ gap:10px }
+  .rl-br-ic{ width:34px; height:34px }
+  .rl-br-svg{ width:19px; height:19px }
+  .rl-br-look .rl-br-cue{ display:none }
+  .rl-br-go .rl-br-ic{ width:36px; height:36px }
+  .rl-br-go .rl-br-svg{ width:26px; height:26px }
 }
 
 /* 이동수단·지역 방문자 — 접어 둔다. 늘 보는 것이 아니라서
@@ -623,11 +582,3 @@ body.nv-open{ overflow:hidden }
 }
 .rl-more[open] > summary::after{ content:"⌃" }
 .rl-more > summary:hover{ color:var(--ink) }
-
-/* 길 안내만 채운다 — 앞의 셋은 살펴보는 것이고 이것은 떠나는 것이다.
-   .rl-act 보다 뒤에 있어야 한다. 앞에 두었더니 같은 힘의 규칙이라
-   뒤에 오는 .rl-act 의 흰 배경이 이겨서, 흰 바탕에 흰 글씨가 됐다. */
-.rl-act-go{ background:var(--ink); box-shadow:none }
-.rl-act-go b{ color:var(--panel) }
-.rl-act-go span{ color:var(--panel); opacity:.74 }
-.rl-act-go:hover{ box-shadow:none; transform:translateY(-1px) }

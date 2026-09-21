@@ -43,19 +43,34 @@
 
         <div class="rl-next" id="rlNext"></div>
 
-        <!-- 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
-             이 화면에서 제일 중요한 자리인데 단추가 흩어져 있어 그렇게 안 보였다.
-             한 묶음으로 세우고 무엇을 할 수 있는지 제목으로 말해 준다 -->
+        <!-- 갈래 — 살펴보는 것 · 손보는 것 · 떠나는 것.
+             이 화면에서 제일 중요한 자리인데 네모 단추 넷이 같은 무게로 서 있어
+             목록처럼 읽혔다. 성격대로 층을 갈라 위에서 아래로 읽히게 한다.
+             손보는 갈래(순서 바꾸기 · 다른 곳으로)는 서버가 rlActs 에 그린다 -->
         <div class="rl-branch" role="group" aria-labelledby="rlBranchLb">
           <p class="rl-branch-lb" id="rlBranchLb">지금 할 수 있는 것</p>
-          <div class="rl-acts rl-acts-single">
-            <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
-              <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
-            </button>
-          </div>
+
+          <button type="button" class="rl-br rl-br-look" id="rlCheckBtn" onclick="rlCheck()">
+            <span class="rl-br-ic">
+              <svg class="rl-br-svg" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.4"></circle>
+                <path d="M15.9 15.9 21 21"></path>
+              </svg>
+            </span>
+            <span class="rl-br-tx">
+              <b>장소 확인하기</b>
+              <span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
+            </span>
+            <!-- 이 갈래는 화면을 떠나지 않는다. 결과가 바로 아래에 펼쳐지므로
+                 꺾쇠도 아래를 본다 -->
+            <span class="rl-br-cue" aria-hidden="true">
+              <svg class="rl-br-svg" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"></path></svg>
+            </span>
+          </button>
+
           <div id="rlCheck" class="rl-check" hidden role="status" aria-live="polite"></div>
 
-          <div class="rl-acts" id="rlActs"></div>
+          <div class="rl-br-acts" id="rlActs"></div>
         </div>
 
         <!-- 「다른 곳으로」가 고른 후보. 고르는 것은 사용자다 -->
@@ -296,6 +311,26 @@
       };
       window.rlPosition = function () { return rlPos ? [+rlPos[0], +rlPos[1]] : null; };
 
+      /* 갈래 아이콘. 글자만 넷을 세워 두면 어느 것이 무엇인지 읽어야 안다 —
+         움직이면서 보는 화면이라 모양으로 먼저 알아채는 편이 낫다.
+         선만 긋고 색은 CSS 가 정한다(stroke:currentColor). filter 는 쓰지 않는다. */
+      var RL_ICON = {
+        swap:  '<path d="M7.5 20V5"></path><path d="M4 8.6 7.5 5 11 8.6"></path>' +
+               '<path d="M16.5 4v15"></path><path d="M20 15.4 16.5 19 13 15.4"></path>',
+        quiet: '<path d="M8.6 20.5s4.6-4.3 4.6-7.9a4.6 4.6 0 1 0-9.2 0c0 3.6 4.6 7.9 4.6 7.9Z"></path>' +
+               '<circle cx="8.6" cy="12.5" r="1.7"></circle>' +
+               '<path d="M15 6h5"></path><path d="m17.7 3.6 2.3 2.4-2.3 2.4"></path>',
+        navi:  '<path d="M20.4 3.6 3.9 10.8l7 2.9 2.9 7 6.6-17.1Z"></path>',
+        indoor:'<path d="M4 10.6 12 4.2l8 6.4V20H4Z"></path><path d="M9.6 20v-5.2h4.8V20"></path>',
+        map:   '<path d="m3 6.6 6-2.4 6 2.4 6-2.4v13.2l-6 2.4-6-2.4-6 2.4Z"></path>' +
+               '<path d="M9 4.2v13.2"></path><path d="M15 6.6v13.2"></path>'
+      };
+      function rlBrIcon(key) {
+        var p = RL_ICON[key] || '<circle cx="12" cy="12" r="7.6"></circle>';
+        return '<span class="rl-br-ic"><svg class="rl-br-svg" viewBox="0 0 24 24" ' +
+               'aria-hidden="true">' + p + '</svg></span>';
+      }
+
       function rlPaint(d) {
         rlLast = d;                      /* 말로 하기가 이걸 읽는다 */
         rlNextStop = (d.next && d.next.lat != null && d.next.lng != null) ? d.next : null;
@@ -340,14 +375,53 @@
           }
         }
 
-        /* 지금 할 수 있는 것 — 버튼을 크게. 움직이면서 누른다 */
+        /* 지금 할 수 있는 것 — 성격대로 층을 나눈다.
+           일정을 손보는 것(순서 바꾸기 · 다른 곳으로 · 실내로)은 나란히 놓고,
+           떠나는 것(길 안내)은 그 아래에 크게 하나, 지도로 넘어가는 것은 꼬리에.
+           서버가 보내는 차례는 살피지 않는다 — 여기서 무게 순으로 다시 세운다. */
         if (acts) {
-          acts.innerHTML = (d.actions || []).map(function (a) {
-            /* 길 안내는 넷 중 마지막에 누르는 것이라 채워서 세운다 */
-            var go = a.key === 'navi' ? ' rl-act-go' : '';
-            return '<button type="button" class="rl-act' + go + '" onclick="rlDo(\'' + esc(a.key) + '\')">' +
-              '<b>' + esc(a.label) + '</b><span>' + esc(a.note) + '</span></button>';
-          }).join('');
+          var all = d.actions || [];
+          var navi = null, map = null, edit = [];
+          all.forEach(function (a) {
+            if (!a || !a.key) return;
+            if (a.key === 'navi') navi = a;
+            else if (a.key === 'map') map = a;
+            else edit.push(a);            /* 모르는 갈래가 새로 와도 빠뜨리지 않는다 */
+          });
+          var ord = { indoor: 1, swap: 2, quiet: 3 };
+          edit.sort(function (x, y) { return (ord[x.key] || 9) - (ord[y.key] || 9); });
+
+          var html = '';
+          if (edit.length) {
+            html += '<p class="rl-br-sub">일정 손보기</p><div class="rl-br-grid">' +
+              edit.map(function (a) {
+                /* suggested 는 서버가 「지금 이게 필요한가」를 붐빔으로 가른 값이다 */
+                return '<button type="button" class="rl-br rl-br-edit' +
+                    (a.suggested ? ' rl-br-sug' : '') +
+                    '" onclick="rlDo(\'' + esc(a.key) + '\')">' +
+                  rlBrIcon(a.key) +
+                  '<span class="rl-br-tx"><b>' + esc(a.label) + '</b>' +
+                  '<span>' + esc(a.note) + '</span></span>' +
+                  (a.suggested ? '<span class="rl-br-tag">지금 권함</span>' : '') +
+                '</button>';
+              }).join('') + '</div>';
+          }
+          if (navi) {
+            html += '<button type="button" class="rl-br rl-br-go" onclick="rlDo(\'navi\')">' +
+              rlBrIcon('navi') +
+              '<span class="rl-br-tx"><b>' + esc(navi.label) + '</b>' +
+              '<span>' + esc(navi.note) + '</span></span>' +
+              '<span class="rl-br-cue" aria-hidden="true">' +
+                '<svg class="rl-br-svg" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg>' +
+              '</span>' +
+            '</button>';
+          }
+          if (map) {
+            html += '<button type="button" class="rl-br-tail" onclick="rlDo(\'map\')">' +
+              '<b>' + esc(map.label) + '</b><span>' + esc(map.note) + '</span>' +
+            '</button>';
+          }
+          acts.innerHTML = html;
         }
 
         /* 그날 동선 — 지난 곳은 물린다 */

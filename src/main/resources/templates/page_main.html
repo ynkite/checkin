@@ -523,12 +523,40 @@
     <div class="ck-home">
       <!-- 실시간과 길 안내 — 이 서비스가 하는 일의 전부다.
            히어로 아래에 두었더니 2,400px 을 내려야 나왔다. 첫 화면으로 올린다.
-           한 줄과 단추 둘만 둔다 — 여기서 길게 말하면 아래 이야기를 가린다. -->
-      <section class="ck-lv" id="ck_live">
+           아래 무대가 이미 크다. 여기는 머리말이지 두 번째 히어로가 아니므로
+           폭과 안쪽 여백만 무대(.ck-stage)에 맞추고 높이는 낮게 둔다.
+           무엇이 실시간으로 바뀌는지 넷을 보여 주는 것이 이 블록이 하는 일이다. -->
+      <section class="ck-lv" id="ck_live" aria-labelledby="ck_lv_title">
         <div class="ck-lv-in">
-          <p class="ck-lv-t"><b>실시간과 길 안내</b>
-            떠난 뒤가 진짜입니다. 붐비거나 비가 오면 그 자리에서 순서를 바꾸고,
-            길 안내는 지도를 꽉 채워 켜집니다.</p>
+          <div class="ck-lv-say">
+            <p class="ck-lv-eye"><i class="ck-lv-dot" aria-hidden="true"></i>떠난 뒤가 진짜입니다</p>
+            <h2 class="ck-lv-t" id="ck_lv_title">실시간과 길 안내</h2>
+            <p class="ck-lv-d">붐비거나 비가 오면 그 자리에서 순서를 바꿉니다.
+              길 안내는 지도를 꽉 채워 켜집니다.</p>
+          </div>
+
+          <div class="ck-lv-sig">
+            <p class="ck-lv-cap">여행 중에 지켜보는 것</p>
+            <ul class="ck-lv-list">
+              <li>
+                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v4M9.3 11v9M14.7 13.5v6.5M20 6v14"/></svg>
+                <span>혼잡</span>
+              </li>
+              <li>
+                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 15.5a3.8 3.8 0 0 0-1-7.5A5.8 5.8 0 0 0 5.2 9.6 3.4 3.4 0 0 0 6.2 15.5"/><path d="M9 17.5 8 20M13 17.5 12 20M17 17.5 16 20"/></svg>
+                <span>비</span>
+              </li>
+              <li>
+                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20V5M7 5 4 8M7 5l3 3"/><path d="M17 4v15M17 19l-3-3M17 19l3-3"/></svg>
+                <span>순서</span>
+              </li>
+              <li>
+                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.6 20.4 12 16.6l7.4 3.8z"/></svg>
+                <span>길 안내</span>
+              </li>
+            </ul>
+          </div>
+
           <div class="ck-lv-acts">
             <button type="button" class="ck-lv-go" onclick="go('live')">실시간 열기</button>
             <button type="button" class="ck-lv-sub" onclick="go('map')">동선 보기</button>
