@@ -3,6 +3,7 @@ package idusw.sbb.checkin.domain.crowd;
 import idusw.sbb.checkin.domain.crowd.dto.CrowdForecast;
 import idusw.sbb.checkin.domain.tour.dto.ConcentrationRate;
 import idusw.sbb.checkin.domain.tour.service.ConcentrationService;
+import idusw.sbb.checkin.domain.tour.service.VisitorTrendService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,10 @@ import java.util.Map;
  * 장소 이름은 서로 다르게 적혀 온다 — 「해운대해수욕장」 「해운대 해수욕장」
  * 「해운대해변」. 공백을 지우고 서로 품는지 본다.
  *
+ * 집중률이 아예 오지 않는 지역(광주·전남, 조회 실패)은 DataLab 시도 외지인 방문자 수로
+ * 가늠한다. 같은 요일 평균보다 얼마나 많은지를 단계로 옮긴 추정이라 source 를
+ * VISITOR_EST 로 따로 두고 rate 는 비운다. 방문자 자료도 없으면 지금처럼 값 없음이다.
+ *
  * 응답을 저장하지 않는다. 캐시는 분 단위 메모리뿐이다.
  */
 @Slf4j
@@ -40,9 +45,12 @@ public class CrowdService {
     private static final int  ROWS = 4000;
 
     private final ConcentrationService concentrationService;
+    private final VisitorTrendService visitorTrend;
 
     private record Cached(List<ConcentrationRate> rates, long at) {}
     private final Map<String, Cached> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private record Est(VisitorTrendService.Trend trend, long at) {}
+    private final Map<String, Est> estCache = new java.util.concurrent.ConcurrentHashMap<>();
 
     /** 지역 하나의 예측 전체 (시군구 단위). */
     public List<ConcentrationRate> rates(String areaCd, String signguCd) {
@@ -72,14 +80,17 @@ public class CrowdService {
     public List<CrowdForecast> forecast(String areaCd, String signguCd,
                                         List<String> placeNames, LocalDate date) {
         String want = date != null ? date.format(YMD) : null;
-        List<ConcentrationRate> all = rates(areaCd, signguCd);
+        AreaCode.Area area = AreaCode.byCode(signguCd);
+        /* 광주·전남은 집중률이 없다고 확인된 곳이라 부르지 않는다 */
+        List<ConcentrationRate> all = area != null && !AreaCode.hasCrowdData(area)
+                ? List.of() : rates(areaCd, signguCd);
 
         List<CrowdForecast> out = new ArrayList<>();
         for (String name : placeNames == null ? List.<String>of() : placeNames) {
             ConcentrationRate hit = bestMatch(all, name, want);
             if (hit == null) {
-                out.add(CrowdForecast.unknown(name, want,
-                        all.isEmpty() ? "집중률을 받지 못했습니다" : "이 장소는 예측 대상이 아닙니다"));
+                out.add(all.isEmpty() ? estimate(area, name, want)
+                        : CrowdForecast.unknown(name, want, "이 장소는 예측 대상이 아닙니다"));
                 continue;
             }
             CrowdLevel lv = CrowdLevel.of(hit.rate());
@@ -88,6 +99,42 @@ public class CrowdService {
                     "TOUR", hit.areaName(), hit.sigunguName(), null));
         }
         return out;
+    }
+
+    /**
+     * 집중률이 없을 때의 추정. 시도 외지인 방문자가 같은 요일 평균보다 얼마나 많은가를
+     * 다섯 단계로 옮긴다 — ±10% 안이면 정상, 30% 넘게 벗어나면 매우 혼잡/한적.
+     * 시도 전체·과거 실측이라 장소 하나의 그날 값이 아니다. note 에 그렇게 적는다.
+     */
+    private CrowdForecast estimate(AreaCode.Area area, String name, String want) {
+        VisitorTrendService.Trend t = trend(area);
+        if (t == null || t.status() != VisitorTrendService.Status.OK || t.deltaPercent() == null) {
+            return CrowdForecast.unknown(name, want, area != null && !AreaCode.hasCrowdData(area)
+                    ? CrowdController.topicParticle(area.sido()) + " 관광공사 집중률 예측 대상이 아닙니다"
+                    : "집중률을 받지 못했습니다");
+        }
+        int d = t.deltaPercent();
+        CrowdLevel lv = d >= 30 ? CrowdLevel.VERY_HIGH : d >= 10 ? CrowdLevel.HIGH
+                : d > -10 ? CrowdLevel.NORMAL : d > -30 ? CrowdLevel.LOW : CrowdLevel.VERY_LOW;
+        String note = "추정 — " + t.areaName() + " 외지인 방문자가 " + t.latestDate()
+                + " 기준 같은 요일 평균" + (d == 0 ? "과 같습니다" : "보다 " + Math.abs(d) + "% " + (d > 0 ? "많습니다" : "적습니다"));
+        return new CrowdForecast(name, want, null, lv.key(), lv.label(),
+                "VISITOR_EST", t.areaName(), area.sigungu(), note);
+    }
+
+    private VisitorTrendService.Trend trend(AreaCode.Area area) {
+        if (area == null) return null;
+        Est e = estCache.get(area.areaCd());
+        long now = System.currentTimeMillis();
+        if (e != null && now - e.at() < TTL_MS) return e.trend();
+        try {
+            VisitorTrendService.Trend t = visitorTrend.summary(area);
+            estCache.put(area.areaCd(), new Est(t, now));
+            return t;
+        } catch (Exception ex) {
+            log.warn("[crowd] 방문자 추정 실패 {} : {}", area.areaCd(), ex.getMessage());
+            return e != null ? e.trend() : null;
+        }
     }
 
     /** 한 장소의 날짜별 흐름 — 「언제 가면 한적한가」를 화면이 그릴 수 있게. */

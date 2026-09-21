@@ -8,6 +8,8 @@ package idusw.sbb.checkin.domain.crowd.dto;
  *
  * source  TOUR   관광공사 집중률 예측
  *         SK     SK 실시간 (키가 붙으면)
+ *         VISITOR_EST  집중률이 없어 DataLab 시도 외지인 방문자 수로 가늠한 추정.
+ *                      rate 는 null 이고 levelKey·levelLabel 만 있다 — 집중률 눈금이 아니다
  *         NONE   없음
  */
 public record CrowdForecast(
