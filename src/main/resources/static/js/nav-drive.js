@@ -713,7 +713,10 @@
     if (!box || nv.map || !st || !st.pos) return;
     var ok = nvKakaoReady(function () {
       nv.map = new kakao.maps.Map(box, {
-        center: new kakao.maps.LatLng(st.pos.lat, st.pos.lng), level: 3
+        /* 휴대폰은 화면이 좁다. 실제 내비처럼 바짝 당겨야 다음 갈림길이 읽힌다.
+           넓은 화면은 한 단계 물려 앞뒤를 같이 본다 */
+        center: new kakao.maps.LatLng(st.pos.lat, st.pos.lng),
+        level: (window.innerWidth <= 520 ? 2 : 3)
       });
       nvTrafficApply();
       nvDrawRoute();
@@ -838,10 +841,18 @@
     var layer = document.getElementById('navModelLayer');
     if (!stage || !frame || !layer || !sc || !st || !st.pos) return;
     var ar = (nv.meta && nv.meta.ar) || 1.5;
-    var w = Math.max(stage.clientWidth, stage.clientHeight * ar);
+    /* 동네 전체를 한 화면에 담으면 건물이 점만 해진다. 실제 내비처럼 당긴다.
+       휴대폰이 더 좁으니 더 당기고, 달리는 자리가 화면 한가운데 오게 민다. */
+    var Z = (window.innerWidth <= 520 ? 2.6 : 1.8);
+    var w = Math.max(stage.clientWidth, stage.clientHeight * ar) * Z;
     var h = w / ar;
     frame.style.width = w + 'px';  frame.style.height = h + 'px';
     layer.style.width = w + 'px';  layer.style.height = h + 'px';
+    var at = nvProject(sc.fit, st.pos.lat, st.pos.lng);
+    var shift = 'translate(-50%,-50%) translate(' +
+      ((50 - at.x) / 100 * w).toFixed(1) + 'px,' + ((50 - at.y) / 100 * h).toFixed(1) + 'px)';
+    frame.style.transform = shift;
+    layer.style.transform = shift;
 
     var d = '';
     var line = (st.route && st.route.line) || [];
