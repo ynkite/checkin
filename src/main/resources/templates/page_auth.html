@@ -159,7 +159,11 @@
                 }
 
                 fetch(`${AUTH_API.sendEmail}?email=${email}`, { method: 'POST' })
-                        .then(() => alert(AUTH_VALID_MSG.emailSent))
+                        .then(res => {
+                          // fetch 는 500 에도 성공으로 온다. 상태를 봐야 보냈는지 안다
+                          if (!res.ok) throw new Error(res.status);
+                          alert(AUTH_VALID_MSG.emailSent);
+                        })
                         .catch(() => alert("메일을 보내지 못했습니다. 이메일 주소를 확인한 뒤 다시 시도해 주세요."))
                         .finally(() => {
                           // 3. 발송 완료 후(성공/실패 무관) 버튼을 원래대로 복구합니다.
@@ -357,6 +361,22 @@
       }
     }).catch(() => prSetMsg('pr-pw-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
+
+  /* 휴대폰에서 아이디·비밀번호 칸을 누르면 키보드가 화면 절반을 덮는다.
+     390x380 에서 재 보니 「로그인」이 접힌 자리 35px 밑에 있었다 —
+     비밀번호를 치고 나면 누를 것이 안 보인다. 칸을 누를 때 단추까지 끌어올린다.
+     손가락으로 쓰는 기기에서만, 단추가 실제로 안 보일 때만 움직인다. */
+  document.addEventListener('focusin', function (e) {
+    if (!window.matchMedia || !window.matchMedia('(pointer: coarse)').matches) return;
+    const card = e.target.closest && e.target.closest('#page-login .auth-card');
+    if (!card) return;
+    const btn = card.querySelector('.auth-submit');
+    if (!btn) return;
+    setTimeout(function () {
+      const r = btn.getBoundingClientRect();
+      if (r.bottom > window.innerHeight - 8) btn.scrollIntoView({ block: 'nearest' });
+    }, 300);
+  });
 
   document.addEventListener('DOMContentLoaded', initAuthPage);
 </script>
