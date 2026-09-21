@@ -303,7 +303,11 @@
           <input id="writeImageInput" type="file" accept="image/*" multiple style="display:none"
                  onchange="window._handleWriteImageSelect && window._handleWriteImageSelect(this)">
         </div>
-        <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:16px">
+        <!-- 휴대폰에서 키보드가 올라오면 판 안에서 볼 수 있는 높이가 300px 밑으로 준다.
+             등록 단추가 폼 맨 아래에 있으면 거기까지 내려야 닿는다. 바닥에 붙여 둔다 -->
+        <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:16px;
+                    position:sticky;bottom:-20px;background:var(--panel);
+                    border-top:1px solid var(--ui-line);padding:12px 0 20px">
           <div style="display:flex;gap:8px">
             <button class="btn-o" style="padding:10px 16px;font-size:13px" onclick="closeWrite()">취소</button>
             <button class="btn-f" style="padding:10px 24px;font-size:13px" onclick="submitReview()">등록하기</button>

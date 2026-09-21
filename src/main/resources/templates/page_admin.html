@@ -1073,6 +1073,16 @@
     .btn-sus-ok:hover{filter:brightness(.92);}
     .btn-sus-cl{flex:0 0 80px;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;color:var(--text2);}
     .btn-sus-cl:hover{background:var(--cream2);}
+
+    /* 손가락으로 누를 자리는 44px. 관리자 메뉴가 368x32, 날짜 칸이 27px 이었다.
+       :where() 로 감싸 특정도를 0 으로 두어, 더 구체적인 규칙이 있으면 그쪽이 이긴다 */
+    @media (pointer: coarse) {
+      #page-admin :where(.admin-link) { min-height:44px; }
+      #page-admin :where(.form-input),
+      #page-admin :where(input[type="date"]),
+      #page-admin :where(select)      { min-height:44px; }
+      #page-admin :where(.btn-o, .btn-f) { min-height:44px; }
+    }
   </style>
 
   <div class="page" id="page-admin">
