@@ -1871,7 +1871,12 @@
         const planIdValue = planEl ? String(planEl.value || '').trim() : '';
 
         if (!planIdValue) {
-            if (typeof toast === 'function') toast('연결할 여행을 골라 주세요.');
+            /* 고를 것이 아예 없는 것과, 있는데 안 고른 것은 다른 이야기다 */
+            const state = planEl ? planEl.dataset.planState : '';
+            let msg = '연결할 여행을 골라 주세요.';
+            if (state === 'none')  msg = '확정한 여행이 있어야 후기를 쓸 수 있습니다. 지도에서 일정을 확정해 주세요.';
+            if (state === 'error') msg = '여행 목록을 불러오지 못했습니다. 잠시 뒤에 다시 열어 주세요.';
+            if (typeof toast === 'function') toast(msg);
             return;
         }
 
@@ -1962,9 +1967,27 @@
             || `여행계획 #${getTripId(trip)}`;
     }
 
+    /* 고를 여행이 없을 때 까닭을 칸 밑에 적는다.
+       목록에는 확정한 여행만 온다(서버가 FIXED 만 내려준다). 처음 온 사람은
+       여행을 만들어도 확정 전이라 여기가 비는데, 왜 비었는지 알 길이 없었다. */
+    function setWritePlanNote(select, text) {
+        const holder = select.closest('.form-group') || select.parentElement;
+        if (!holder) return;
+        let note = document.getElementById('writePlanNote');
+        if (!text) { if (note) note.remove(); return; }
+        if (!note) {
+            note = document.createElement('div');
+            note.id = 'writePlanNote';
+            note.style.cssText = 'margin-top:6px;font-size:12px;color:var(--text3);line-height:1.6;word-break:keep-all';
+            select.insertAdjacentElement('afterend', note);
+        }
+        note.textContent = text;
+    }
+
     async function loadWritePlanOptions(select) {
         if (!select) return;
         select.innerHTML = `<option value="">플랜을 선택하지 않음</option>`;
+        select.dataset.planState = 'loading';
 
         try {
             const res   = await api.get('/api/trips');
@@ -1972,8 +1995,10 @@
 
             if (!trips.length) {
                 const opt = document.createElement('option');
-                opt.value = ''; opt.textContent = '연동 가능한 플랜이 없습니다'; opt.disabled = true;
+                opt.value = ''; opt.textContent = '확정한 여행이 없습니다'; opt.disabled = true;
                 select.appendChild(opt);
+                select.dataset.planState = 'none';
+                setWritePlanNote(select, '후기는 확정한 여행에 붙여 씁니다. 지도에서 일정을 확정하면 여기에 나타납니다.');
                 return;
             }
 
@@ -1984,8 +2009,12 @@
                 opt.value = id; opt.textContent = getTripTitle(trip);
                 select.appendChild(opt);
             });
+            select.dataset.planState = 'ok';
+            setWritePlanNote(select, '');
         } catch (e) {
             console.error('[community-v2] 플랜 목록 조회 실패:', e);
+            select.dataset.planState = 'error';
+            setWritePlanNote(select, '여행 목록을 불러오지 못했습니다. 없는 것이 아니라 받지 못한 것입니다.');
             if (typeof toast === 'function') toast('플랜 목록을 불러오지 못했습니다.');
         }
     }
