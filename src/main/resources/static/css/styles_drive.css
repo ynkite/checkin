@@ -1,3 +1,8 @@
+/* 감출 것은 감춘다. hidden 은 UA 규칙이라 display 를 준 클래스에 진다 —
+   제한속도를 못 받은 길에서 숫자 없는 빨간 동그라미만 떠 있었다.
+   이 화면 안에서는 hidden 이 늘 이기게 둔다. */
+.dv [hidden]{ display:none }
+
 /*
  * 체크인 — 주행 안내 화면 (styles_drive.css)
  *
