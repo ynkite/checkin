@@ -136,12 +136,6 @@
 }
 .rl-branch .rl-acts{ margin-top:8px }
 .rl-branch > .rl-acts:first-of-type{ margin-top:0 }
-/* 길 안내만 채운다 — 앞의 셋은 살펴보는 것이고 이것은 떠나는 것이다 */
-.rl-act-go{ background:var(--ink); box-shadow:none }
-.rl-act-go b{ color:var(--panel) }
-.rl-act-go span{ color:var(--panel); opacity:.74 }
-.rl-act-go:hover{ box-shadow:none; transform:translateY(-1px) }
-
 .rl-acts{ display:grid; gap:8px; margin-top:14px }
 @media (min-width:560px){ .rl-acts{ grid-template-columns:1fr 1fr } }
 .rl-acts.rl-acts-single{ grid-template-columns:minmax(0,1fr) }
@@ -629,3 +623,11 @@ body.nv-open{ overflow:hidden }
 }
 .rl-more[open] > summary::after{ content:"⌃" }
 .rl-more > summary:hover{ color:var(--ink) }
+
+/* 길 안내만 채운다 — 앞의 셋은 살펴보는 것이고 이것은 떠나는 것이다.
+   .rl-act 보다 뒤에 있어야 한다. 앞에 두었더니 같은 힘의 규칙이라
+   뒤에 오는 .rl-act 의 흰 배경이 이겨서, 흰 바탕에 흰 글씨가 됐다. */
+.rl-act-go{ background:var(--ink); box-shadow:none }
+.rl-act-go b{ color:var(--panel) }
+.rl-act-go span{ color:var(--panel); opacity:.74 }
+.rl-act-go:hover{ box-shadow:none; transform:translateY(-1px) }
