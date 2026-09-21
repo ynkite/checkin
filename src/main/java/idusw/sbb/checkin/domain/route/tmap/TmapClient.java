@@ -189,6 +189,24 @@ public class TmapClient {
         return post("/tmap/routes/pedestrian?version=1", body);
     }
 
+    /**
+     * 좌표를 가장 가까운 도로에 붙이고 그 도로 링크의 속성을 돌려준다.
+     * resultData.header 에 speed(제한속도 km/h) · lane(차선 수) · roadName · roadCategory 가 온다.
+     *
+     * 경로 응답(/tmap/routes)에는 제한속도도 차선수도 없다. 주행 화면에 숫자를 띄우려면
+     * 이걸 따로 불러야 한다. 좌표가 도로에서 멀면 엉뚱한 옆길에 붙으니, 부르는 쪽에서
+     * 돌아온 roadName 이 기대한 도로와 같은지 확인하고 쓴다.
+     */
+    public JsonNode nearToRoad(double lat, double lon) {
+        if (!ready()) return null;
+        Map<String, String> q = new LinkedHashMap<>();
+        q.put("version", "1");
+        q.put("lat", String.valueOf(lat));
+        q.put("lon", String.valueOf(lon));
+        q.put("coordType", "WGS84GEO");
+        return get("/tmap/road/nearToRoad", q);
+    }
+
     /** 좌표 -> 주소. 「지금 위치」 버튼이 쓴다 */
     public JsonNode reverseGeo(double lat, double lon) {
         if (!ready()) return null;

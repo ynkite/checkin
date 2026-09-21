@@ -1,0 +1,51 @@
+{
+  "_": "주행 안내 화면이 쓰는 안전 지점 표본 데이터.",
+
+  "출처": [
+    "좌표는 티맵 POI 통합검색(/tmap/pois)에서 학교 이름으로 찾은 실제 좌표다. 지어낸 값이 아니다.",
+    "다만 이것은 학교 지점(대개 정문)이지 어린이보호구역의 경계가 아니다.",
+    "어린이보호구역은 도로교통법 제12조에 따라 초등학교 주변에 지정되므로 학교 앞을 지나면 보호구역일 가능성이 높다 — 그 근사치로 쓴다.",
+    "공공데이터포털 「전국어린이보호구역표준데이터」를 쓰는 것이 맞다. 지금 프로젝트 키(tour.api.key·weather.api.key)로는 그 API 가 열려 있지 않아(SERVICE_KEY_IS_NOT_REGISTERED_ERROR) 대신 둔 표본이다.",
+    "키가 열리면 이 파일을 버리고 표준데이터로 갈아탄다."
+  ],
+
+  "덮는 범위": "부산 해운대·센텀·좌동·광안리·수영·용호동 일대. 그 밖의 지역은 비어 있다.",
+
+  "과속방지턱": {
+    "_비어있는이유": "실제 위치를 확인할 방법이 없다. 표준데이터 API 가 안 열리고 티맵 POI 에도 없다. 지어내지 않고 비워 둔다."
+  },
+  "단속카메라": {
+    "_비어있는이유": "위와 같다. 위치를 확인 못 해 비워 둔다. 잘못된 카메라 위치는 없는 것만 못하다."
+  },
+
+  "spots": [
+    { "kind": "school", "name": "해운대초등학교", "lat": 35.164324, "lng": 129.165338, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "해강초등학교",   "lat": 35.161740, "lng": 129.141173, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "해원초등학교",   "lat": 35.158296, "lng": 129.144201, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "해동초등학교",   "lat": 35.169629, "lng": 129.154866, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "센텀초등학교",   "lat": 35.180682, "lng": 129.121647, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "재송초등학교",   "lat": 35.185599, "lng": 129.127646, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "신재초등학교",   "lat": 35.191014, "lng": 129.123146, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "송수초등학교",   "lat": 35.190015, "lng": 129.118508, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "반산초등학교",   "lat": 35.193098, "lng": 129.129090, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "좌동초등학교",   "lat": 35.175934, "lng": 129.175670, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "부흥초등학교",   "lat": 35.176045, "lng": 129.178920, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "상당초등학교",   "lat": 35.179767, "lng": 129.177114, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "양운초등학교",   "lat": 35.174101, "lng": 129.166449, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "신도초등학교",   "lat": 35.169518, "lng": 129.166671, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "신곡초등학교",   "lat": 35.170185, "lng": 129.182558, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "좌산초등학교",   "lat": 35.168268, "lng": 129.183781, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "해송초등학교",   "lat": 35.164935, "lng": 129.178920, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "광안초등학교",   "lat": 35.156713, "lng": 129.116842, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "수영초등학교",   "lat": 35.165712, "lng": 129.113148, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "민락초등학교",   "lat": 35.160296, "lng": 129.126758, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "민안초등학교",   "lat": 35.162379, "lng": 129.121508, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "남천초등학교",   "lat": 35.143297, "lng": 129.107482, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "호암초등학교",   "lat": 35.158185, "lng": 129.107315, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "망미초등학교",   "lat": 35.174794, "lng": 129.114925, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "수미초등학교",   "lat": 35.168628, "lng": 129.103065, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "배산초등학교",   "lat": 35.177988, "lng": 129.102898, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "분포초등학교",   "lat": 35.128244, "lng": 129.114316, "speedLimit": 30, "radiusMeters": 150 },
+    { "kind": "school", "name": "용문초등학교",   "lat": 35.130188, "lng": 129.108927, "speedLimit": 30, "radiusMeters": 150 }
+  ]
+}

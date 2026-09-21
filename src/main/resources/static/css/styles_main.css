@@ -4506,33 +4506,83 @@ nav {
 }
 .btn-demo:hover { border-color: var(--text3); }
 
-/* ── 메인 · 실시간과 길 안내 ────────────────────────────────
-   이 서비스가 하는 일의 전부인데 화면 아래에 있었다.
-   스크롤을 안 내린 사람은 있는 줄도 몰랐다. 첫 화면 바로 아래로 올린다. */
-.ck-lv{ padding: 14px 20px 0 }
+/* ── 메인 머리말 · 실시간과 길 안내 ──────────────────────────
+   첫 화면 맨 위, 무대(.ck-hero.ck-stage) 바로 위에 붙는 띠다.
+   전에는 화면 아래에 따로 놓인 카드라 공지사항처럼 읽혔다.
+   폭(--home-width)과 안쪽 여백(--home-inset)을 무대와 똑같이 맞추고
+   테두리 대신 바닥 실선 하나로 아래 무대와 이었다.
+   제목을 --t-h3 에서 멈추는 것은 아래 무대의 h1(--home-title)을
+   이기지 않게 하려는 것이다. 여기는 머리말이다. */
+.ck-lv{ border-bottom:1px solid var(--ui-line-2) }
 .ck-lv-in{
-  padding: 15px 17px 16px;
-  border-radius: var(--r-lg);
-  background: var(--surface);
-  border: 1px solid var(--border2);
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  align-items:center;
+  gap:calc(var(--u)*2) calc(var(--u)*5);
+  max-width:var(--home-width);
+  margin-inline:auto;
+  padding:calc(var(--u)*3) var(--home-inset);
+  word-break:keep-all;
 }
-.ck-lv-t{
-  margin: 0 0 12px;
-  font-size: 14px; line-height: 1.6; color: var(--text2);
-  word-break: keep-all;
+
+.ck-lv-say{ min-width:0; max-width:52ch }
+.ck-lv-eye{
+  display:flex; align-items:center; gap:calc(var(--u)*.75);
+  font-size:var(--t-xs); line-height:1.5; color:var(--ink-3);
 }
-.ck-lv-t b{ display: block; font-size: 16px; color: var(--text); margin-bottom: 3px }
-.ck-lv-acts{ display: flex; flex-wrap: wrap; gap: 8px }
+/* 「지금」을 뜻하는 점. 밝은 바탕에 --sig 로 글자를 쓰지 않는다(금지 3).
+   색은 점에만 두고 글자는 --ink-3 로 읽힌다. */
+.ck-lv-dot{
+  flex:0 0 auto; width:calc(var(--u)*.75); height:calc(var(--u)*.75);
+  border-radius:50%; background:var(--sig);
+  box-shadow:0 0 0 calc(var(--u)*.5) var(--home-cut);
+}
+.ck-lv-t{ margin-top:calc(var(--u)*1.5); font-size:var(--t-h3); line-height:1.35; color:var(--ink) }
+.ck-lv-d{ margin-top:var(--u); font-size:var(--t-sm); line-height:1.75; color:var(--ink-2) }
+
+/* 무엇이 실시간으로 바뀌는지 넷. 이 넷이 이 블록의 근거다 */
+.ck-lv-sig{ min-width:0 }
+.ck-lv-cap{ margin-bottom:calc(var(--u)*1.5); font-size:var(--t-xs); line-height:1.5; color:var(--ink-3) }
+.ck-lv-list{ display:flex; flex-wrap:wrap; gap:var(--u); margin:0; padding:0; list-style:none }
+.ck-lv-list li{
+  display:flex; align-items:center; gap:calc(var(--u)*.75);
+  min-height:calc(var(--u)*4); padding:calc(var(--u)*.75) calc(var(--u)*1.5);
+  border-radius:var(--r-pill); background:var(--ui-plate);
+  font-size:var(--home-meta); line-height:1.4; color:var(--ink); white-space:nowrap;
+}
+.ck-lv-i{
+  flex:0 0 auto; width:calc(var(--u)*2); height:calc(var(--u)*2);
+  fill:none; stroke:var(--ink-2); stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+.ck-lv-acts{ display:flex; flex-wrap:wrap; gap:var(--u) }
 .ck-lv-go, .ck-lv-sub{
-  flex: 1 1 auto; min-height: 48px; padding: 0 16px; border-radius: var(--r);
-  font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
-  word-break: keep-all;
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:var(--home-target); padding:0 calc(var(--u)*3);
+  border-radius:var(--r-pill);
+  font-family:inherit; font-size:var(--t-sm); font-weight:700; line-height:1.4;
+  word-break:keep-all;
+  transition:background-color .18s var(--home-ease), color .18s var(--home-ease);
 }
-.ck-lv-go{ border: 0; background: var(--text); color: var(--surface) }
-.ck-lv-sub{ border: 1px solid var(--border2); background: var(--surface); color: var(--text) }
-.ck-lv-go:hover{ opacity: .92 }
-.ck-lv-sub:hover{ border-color: var(--text3) }
-.ck-lv-n{
-  margin: 12px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text3);
-  word-break: keep-all;
+.ck-lv-go{ background:var(--ink); color:var(--panel) }
+.ck-lv-go:hover{ background:var(--home-dark-hover) }
+.ck-lv-sub{ background:var(--panel); color:var(--ink); box-shadow:inset 0 0 0 1px var(--ui-line) }
+.ck-lv-sub:hover{ background:var(--ui-plate) }
+
+/* 세로 3칸이 좁아지는 지점. 무대가 한 줄로 서는 1050 보다 먼저 온다 —
+   글 + 칩 넷 + 단추 둘이 한 줄에 들어가려면 1240 은 있어야 한다 */
+@media (max-width:1240px){
+  .ck-lv-in{ grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:calc(var(--u)*2.5) calc(var(--u)*4) }
+  .ck-lv-say{ grid-column:1 / -1; max-width:64ch }
+  .ck-lv-sig{ grid-column:1 }
+  .ck-lv-acts{ grid-column:2; justify-content:flex-end }
+}
+@media (max-width:600px){
+  .ck-lv-in{ grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*2); padding-block:calc(var(--u)*2.5) }
+  .ck-lv-say{ max-width:none }
+  .ck-lv-acts{ grid-column:1 }
+  .ck-lv-go, .ck-lv-sub{ flex:1 1 calc(var(--u)*18); padding-inline:calc(var(--u)*2) }
+  .ck-lv-list{ gap:calc(var(--u)*.75) }
+  .ck-lv-list li{ padding-inline:calc(var(--u)*1.25) }
 }
