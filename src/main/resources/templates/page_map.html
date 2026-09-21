@@ -2941,6 +2941,17 @@
     var _mvStopScenes = [];
     var _mvAllStops = [];
 
+    /* 「자갈치 시장 가 있는」이 아니라 「자갈치 시장이 있는」이다.
+       한글 음절은 0xAC00 부터 28개씩 한 벌이고 그 안의 자리가 종성이다.
+       받침이 있으면 이, 없으면 가. */
+    function _mpGa(word) {
+      var w = String(word || '');
+      if (!w) return '이';
+      var last = w.charCodeAt(w.length - 1);
+      var hangul = last >= 0xAC00 && last <= 0xD7A3;
+      return (hangul && (last - 0xAC00) % 28 !== 0) ? '이' : '가';
+    }
+
     function _mvDrawStopStrip(nowScene) {
       var strip = document.getElementById('mv_stops');
       if (!strip) return;
@@ -2974,7 +2985,7 @@
         legend.innerHTML =
           '<b>' + _mpEsc(e.sc.label) + '</b>' +
           '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
-          '<em>' + _mpEsc(e.stop.name) + ' 가 있는 동네입니다'
+          '<em>' + _mpEsc(e.stop.name) + _mpGa(e.stop.name) + ' 있는 동네입니다'
             + (on.length > 1 ? ' · 여기에 ' + on.length + '곳이 모여 있습니다' : '') + '</em>';
       }
       _mvDrawStopStrip(e.sc);

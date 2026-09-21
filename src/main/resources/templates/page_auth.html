@@ -569,6 +569,11 @@
         <input class="form-input" type="password" placeholder="비밀번호" id="lpw" onkeydown="if(event.key==='Enter')tryLogin()">
       </div>
       <button class="btn-f auth-submit" onclick="tryLogin()">로그인</button>
+      <!-- 심사위원이 가입부터 하느라 막히지 않게. 아이디를 손으로 치면 오타가 난다 -->
+      <button class="btn-demo" type="button" onclick="tryDemoLogin()">
+        둘러보기 계정으로 바로 들어가기
+        <span>여행 두 건과 가계부가 미리 들어 있습니다</span>
+      </button>
       <div class="auth-secondary-action">
         <button class="auth-link auth-q" onclick="openPwResetModal()">비밀번호 재설정</button>
       </div>
