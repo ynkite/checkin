@@ -108,6 +108,7 @@
         }
         st.route = d; st.guideIdx = 0; st.spoken = {};
         render(headText(d));
+        renderMeta(d, st.dest.name);
         speak(headText(d));
         if (cb) cb();
       })
@@ -144,13 +145,16 @@
       var g = guides[st.guideIdx];
       var gd = haversine(st.pos.lat, st.pos.lng, g.lat, g.lng);
       if (gd <= 20) { st.guideIdx++; return; } // 지나감
+      /* 말은 500·300·100m 에서만 하지만 화면의 남은 거리는 계속 줄어야 한다.
+         숫자가 안 줄면 멈춰 있는 화면으로 보인다 */
+      render(g.description, gd);
       for (var i = 0; i < SPEAK_AT.length; i++) {
         var th = SPEAK_AT[i];
         var key = st.guideIdx + ':' + th;
         if (gd <= th && !st.spoken[key]) {
           st.spoken[key] = true;
           var msg = th + '미터 앞, ' + g.description;
-          render(msg);
+          render(g.description, gd);   /* 화면에는 거리와 화살표를 따로 크게 */
           speak(msg);
           break;
         }
@@ -159,22 +163,84 @@
   }
 
   /* ── 오버레이 UI (자체 주입, rl- 접두어) ── */
+  /* 화살표. 티맵 안내 문구에 든 말로 방향을 가른다.
+     turnType 을 그대로 쓰면 코드표를 들고 다녀야 해서 말로 판단한다. */
+  function arrowFor(text) {
+    var t = String(text || '');
+    if (t.indexOf('좌회전') >= 0 || t.indexOf('왼쪽') >= 0) return '↰';
+    if (t.indexOf('우회전') >= 0 || t.indexOf('오른쪽') >= 0) return '↱';
+    if (t.indexOf('유턴') >= 0) return '⤺';
+    if (t.indexOf('회전교차로') >= 0 || t.indexOf('로터리') >= 0) return '↻';
+    if (t.indexOf('고속도로') >= 0 || t.indexOf('진입') >= 0) return '↗';
+    if (t.indexOf('출구') >= 0 || t.indexOf('나가') >= 0) return '↘';
+    if (t.indexOf('도착') >= 0) return '◉';
+    return '↑';
+  }
+
   function ensureOverlay() {
     var el = document.getElementById('navDrive');
     if (el) return el;
     el = document.createElement('div');
     el.id = 'navDrive';
     el.className = 'rl-drive';
+    /* 운전 중에 보는 화면이다. 제일 큰 글자가 「다음에 무엇을 하나」여야 한다.
+       그 아래에 어디로 가는지, 얼마나 남았는지. 맨 아래에 손대는 것들.
+
+       주행 중에도 동선을 바꿀 수 있어야 한다는 것이 이 제품의 주장이다.
+       그걸 안내 화면에서 못 하면 주장이 아니라 말뿐이다. 그래서 안내를 끄지 않고
+       그 자리에서 순서를 바꾸고 다른 곳을 찾을 수 있게 둔다.
+       누르는 것은 서서 하는 일이라 44px 보다 크게 잡았다. */
     el.innerHTML =
-      '<div class="rl-drive-head" id="navHead">주행 준비 중</div>' +
-      '<button type="button" class="rl-act" id="navStop">안내 종료</button>';
+      '<div class="nv-turn">' +
+        '<b class="nv-arrow" id="navArrow">↑</b>' +
+        '<div class="nv-turn-t">' +
+          '<span class="nv-dist" id="navDist"></span>' +
+          '<div class="rl-drive-head" id="navHead">주행 준비 중</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="nv-meta" id="navMeta" hidden>' +
+        '<span id="navTo"></span><i></i><span id="navLeft"></span><i></i><span id="navEta"></span>' +
+      '</div>' +
+      '<div class="nv-acts">' +
+        '<button type="button" class="nv-b" id="navSwap">순서 바꾸기</button>' +
+        '<button type="button" class="nv-b" id="navQuiet">다른 곳으로</button>' +
+        '<button type="button" class="nv-b" id="navSay">말로 하기</button>' +
+        '<button type="button" class="nv-b nv-b-off" id="navStop">안내 종료</button>' +
+      '</div>';
     document.body.appendChild(el);
-    document.getElementById('navStop').addEventListener('click', stopDrive);
+    var on = function (id, fn) { var b = document.getElementById(id); if (b) b.addEventListener('click', fn); };
+    on('navStop', stopDrive);
+    /* 실시간 화면의 갈래를 그대로 부른다. 안내를 끄지 않는다 —
+       고치고 나면 아래에서 경로를 다시 받아 이어서 안내한다. */
+    on('navSwap',  function () { if (window.rlDo) window.rlDo('swap');  else if (window.go) window.go('map'); });
+    on('navQuiet', function () { if (window.rlDo) window.rlDo('quiet'); else if (window.go) window.go('map'); });
+    on('navSay',   function () { if (window.rlVoiceToggle) window.rlVoiceToggle(); });
     return el;
   }
-  function render(text) {
+
+  /* 안내 한 줄. 거리와 화살표를 따로 받으면 크게 보여 준다 */
+  function render(text, meters) {
     var h = document.getElementById('navHead');
     if (h) h.textContent = text;
+    var a = document.getElementById('navArrow');
+    if (a) a.textContent = arrowFor(text);
+    var d = document.getElementById('navDist');
+    if (d) d.textContent = meters == null ? '' : (meters >= 1000
+      ? (meters / 1000).toFixed(1) + 'km' : Math.round(meters) + 'm');
+  }
+
+  /* 남은 거리·시간·도착 예정 시각 */
+  function renderMeta(d, destName) {
+    var box = document.getElementById('navMeta');
+    if (!box || !d) return;
+    box.hidden = false;
+    var min = Math.round(d.totalSeconds / 60);
+    var eta = new Date(Date.now() + d.totalSeconds * 1000);
+    var two = function (n) { return (n < 10 ? '0' : '') + n; };
+    var set = function (id, t) { var e = document.getElementById(id); if (e) e.textContent = t; };
+    set('navTo', destName || '다음 장소');
+    set('navLeft', min + '분 · ' + (d.totalMeters / 1000).toFixed(1) + 'km');
+    set('navEta', two(eta.getHours()) + ':' + two(eta.getMinutes()) + ' 도착');
   }
 
   /* ── 시작/종료 ── */

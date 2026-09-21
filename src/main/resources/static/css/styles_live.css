@@ -438,3 +438,54 @@ body:has(#page-live.active) .lnb{ display:none }
   .rl-trip{ grid-template-columns:auto 1fr; row-gap:5px; padding:16px }
   .rl-trip-d{ grid-column:1 / -1; white-space:normal }
 }
+
+/* ── 주행 안내 화면 ────────────────────────────────────────
+   운전 중에 보는 화면이다. 제일 큰 글자가 「다음에 무엇을 하나」여야 한다.
+   그 아래에 어디로 가는지와 남은 것, 맨 아래에 손대는 것들.
+
+   주행 중에도 동선을 바꿀 수 있다는 것이 이 제품의 주장이다.
+   안내를 끄지 않고 그 자리에서 순서를 바꾸고 다른 곳을 찾게 둔다.
+   운전 중에 누르는 것이라 44px 보다 크게 잡았다. */
+.nv-turn{ display:flex; align-items:center; gap:calc(var(--u)*1.5) }
+.nv-arrow{
+  flex:0 0 auto; display:grid; place-items:center;
+  width:52px; height:52px; border-radius:14px;
+  background:var(--sig); color:var(--ink);
+  font-size:30px; line-height:1; font-weight:700;
+}
+.nv-turn-t{ min-width:0; flex:1 1 auto }
+.nv-dist{
+  display:block; font-family:var(--fig); font-size:26px; font-weight:700;
+  letter-spacing:var(--tracking-num); color:var(--ink); line-height:1.15;
+}
+.nv-dist:empty{ display:none }
+.rl-drive .rl-drive-head{
+  font-size:16px; font-weight:600; color:var(--ink-2);
+  word-break:keep-all; line-height:1.4;
+}
+.nv-meta{
+  display:flex; align-items:center; gap:var(--u); flex-wrap:wrap;
+  margin-top:var(--u); font-size:13px; color:var(--ink-2); word-break:keep-all;
+}
+.nv-meta i{ width:3px; height:3px; border-radius:99px; background:var(--ui-line) }
+.nv-acts{
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:calc(var(--u)/1.5); margin-top:calc(var(--u)*1.5);
+}
+.nv-b{
+  min-height:52px; padding:0 var(--u); border:0; border-radius:var(--r-field);
+  background:var(--ui-plate); color:var(--ink);
+  font-family:inherit; font-size:14px; font-weight:600; cursor:pointer;
+  word-break:keep-all;
+}
+.nv-b:hover{ background:var(--ui-line) }
+.nv-b-off{ background:var(--ink); color:var(--panel) }
+
+/* 달리는 중에는 글자를 더 키운다. 흘깃 보고 읽어야 한다 */
+body.rl-driving .nv-dist{ font-size:34px }
+body.rl-driving .nv-arrow{ width:64px; height:64px; font-size:38px }
+body.rl-driving .rl-drive .rl-drive-head{ font-size:19px }
+@media (max-width:420px){
+  .nv-acts{ gap:calc(var(--u)/2) }
+  .nv-b{ font-size:13px; min-height:48px }
+}
