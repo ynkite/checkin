@@ -120,6 +120,26 @@
 .rl-cw-none{ background:var(--ui-plate); color:var(--ink-3); font-weight:400 }
 
 /* 할 수 있는 것 — 손이 흔들려도 눌리게 크게 */
+/* 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
+   우리가 제일 내세우는 기능인데 단추가 낱개로 흩어져 있어 눈에 안 들어왔다.
+   테두리로 한 묶음을 만들고 제목을 단다. 안에서는 지금까지 쓰던 배치 그대로다. */
+.rl-branch{
+  margin-top:16px; padding:13px 13px 14px;
+  border-radius:var(--r-panel);
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.rl-branch-lb{
+  margin:0 2px 10px; font-size:12px; font-weight:700;
+  letter-spacing:var(--tracking-tight); color:var(--ink-3); word-break:keep-all;
+}
+.rl-branch .rl-acts{ margin-top:8px }
+.rl-branch > .rl-acts:first-of-type{ margin-top:0 }
+/* 길 안내만 채운다 — 앞의 셋은 살펴보는 것이고 이것은 떠나는 것이다 */
+.rl-act-go{ background:var(--ink); box-shadow:none }
+.rl-act-go b{ color:var(--panel) }
+.rl-act-go span{ color:var(--panel); opacity:.74 }
+.rl-act-go:hover{ box-shadow:none; transform:translateY(-1px) }
+
 .rl-acts{ display:grid; gap:8px; margin-top:14px }
 @media (min-width:560px){ .rl-acts{ grid-template-columns:1fr 1fr } }
 .rl-acts.rl-acts-single{ grid-template-columns:minmax(0,1fr) }

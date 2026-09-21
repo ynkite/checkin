@@ -97,7 +97,9 @@
   .map-filters, .day-tabs{ padding:11px 16px }
   .map-filters{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none }
   .map-filters::-webkit-scrollbar{ display:none }
-  .day-tab{ max-width:124px }
+  /* 124px 로 묶어 두니 장소 이름이 들어갈 자리가 없었다.
+     넓은 화면과 똑같이 한 줄에 둘씩 놓고 남는 폭을 나눠 갖게 한다 */
+  .day-tab{ max-width:none }
   .map-list{ padding:0 10px 18px }
   .place-row{ padding:11px 10px 12px; gap:9px }
   .pr-name{ font-size:16px }
