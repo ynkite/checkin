@@ -4476,7 +4476,7 @@ nav {
 }
 .ck-out a:hover{ color:var(--ink); border-bottom-color:var(--ink) }
 
-/* 둘러보기 계정 단추 — 로그인 아래에 둔다.
+/* 테스트 계정 단추 — 로그인 아래에 둔다.
    심사위원이 아이디를 손으로 치다 막히지 않게 만든 자리다. 주된 길이 아니므로
    채운 단추(로그인)보다 약하게, 그러나 눈에는 띄게 테두리로 세운다. */
 .btn-demo {
@@ -4505,3 +4505,34 @@ nav {
     color: var(--text3);
 }
 .btn-demo:hover { border-color: var(--text3); }
+
+/* ── 메인 · 실시간과 길 안내 ────────────────────────────────
+   이 서비스가 하는 일의 전부인데 화면 아래에 있었다.
+   스크롤을 안 내린 사람은 있는 줄도 몰랐다. 첫 화면 바로 아래로 올린다. */
+.ck-lv{ padding: 14px 20px 0 }
+.ck-lv-in{
+  padding: 15px 17px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+}
+.ck-lv-t{
+  margin: 0 0 12px;
+  font-size: 14px; line-height: 1.6; color: var(--text2);
+  word-break: keep-all;
+}
+.ck-lv-t b{ display: block; font-size: 16px; color: var(--text); margin-bottom: 3px }
+.ck-lv-acts{ display: flex; flex-wrap: wrap; gap: 8px }
+.ck-lv-go, .ck-lv-sub{
+  flex: 1 1 auto; min-height: 48px; padding: 0 16px; border-radius: var(--r);
+  font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+  word-break: keep-all;
+}
+.ck-lv-go{ border: 0; background: var(--text); color: var(--surface) }
+.ck-lv-sub{ border: 1px solid var(--border2); background: var(--surface); color: var(--text) }
+.ck-lv-go:hover{ opacity: .92 }
+.ck-lv-sub:hover{ border-color: var(--text3) }
+.ck-lv-n{
+  margin: 12px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--text3);
+  word-break: keep-all;
+}

@@ -107,6 +107,8 @@
           return;
         }
         st.route = d; st.guideIdx = 0; st.spoken = {};
+        nv.drawn = false;
+        nvOnPos();
         render(headText(d));
         renderMeta(d, st.dest.name);
         speak(headText(d));
@@ -125,6 +127,7 @@
     st.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
     // 안전 — 10km/h 넘으면 주행모드(화면 조작 잠금 클래스). 멈추면 해제
     document.body.classList.toggle('rl-driving', isDriving(p.coords.speed));
+    nvOnPos();
     if (!st.route) return;
 
     // 이탈 판정
@@ -182,9 +185,13 @@
     if (el) return el;
     el = document.createElement('div');
     el.id = 'navDrive';
-    el.className = 'rl-drive';
-    /* 운전 중에 보는 화면이다. 제일 큰 글자가 「다음에 무엇을 하나」여야 한다.
-       그 아래에 어디로 가는지, 얼마나 남았는지. 맨 아래에 손대는 것들.
+    el.className = 'rl-drive nv-full';
+    /* 운전 중에 보는 화면이다. 전에는 아래쪽에 한 줄짜리 판만 띄웠는데,
+       티맵을 써 본 사람에게 그것은 네비게이션으로 보이지 않는다.
+       지도가 화면을 채우고 그 위에 안내가 얹혀야 한다.
+
+       위 — 다음에 무엇을 하나. 가운데 — 지금 어디에 있나.
+       아래 — 얼마나 남았나와 손대는 것들.
 
        주행 중에도 동선을 바꿀 수 있어야 한다는 것이 이 제품의 주장이다.
        그걸 안내 화면에서 못 하면 주장이 아니라 말뿐이다. 그래서 안내를 끄지 않고
@@ -198,16 +205,32 @@
           '<div class="rl-drive-head" id="navHead">주행 준비 중</div>' +
         '</div>' +
       '</div>' +
-      '<div class="nv-meta" id="navMeta" hidden>' +
-        '<span id="navTo"></span><i></i><span id="navLeft"></span><i></i><span id="navEta"></span>' +
+      '<div class="nv-stage" id="navStage">' +
+        '<div class="nv-canvas" id="navMap2d"></div>' +
+        '<div class="nv-canvas nv-model" id="navMap3d" hidden>' +
+          '<div class="nv-model-frame" id="navModelFrame"></div>' +
+          '<div class="nv-model-layer" id="navModelLayer"></div>' +
+        '</div>' +
+        '<div class="nv-view" role="group" aria-label="지도 보기 방식">' +
+          '<button type="button" class="nv-v on" id="navV2">2D 지도</button>' +
+          '<button type="button" class="nv-v" id="navV3">3D 모형</button>' +
+        '</div>' +
+        '<button type="button" class="nv-traffic on" id="navTraffic">실시간 교통</button>' +
+        '<p class="nv-note" id="navNote" hidden></p>' +
       '</div>' +
-      '<div class="nv-acts">' +
-        '<button type="button" class="nv-b" id="navSwap">순서 바꾸기</button>' +
-        '<button type="button" class="nv-b" id="navQuiet">다른 곳으로</button>' +
-        '<button type="button" class="nv-b" id="navSay">말로 하기</button>' +
-        '<button type="button" class="nv-b nv-b-off" id="navStop">안내 종료</button>' +
+      '<div class="nv-bottom">' +
+        '<div class="nv-meta" id="navMeta" hidden>' +
+          '<span id="navTo"></span><i></i><span id="navLeft"></span><i></i><span id="navEta"></span>' +
+        '</div>' +
+        '<div class="nv-acts">' +
+          '<button type="button" class="nv-b" id="navSwap">순서 바꾸기</button>' +
+          '<button type="button" class="nv-b" id="navQuiet">다른 곳으로</button>' +
+          '<button type="button" class="nv-b" id="navSay">말로 하기</button>' +
+          '<button type="button" class="nv-b nv-b-off" id="navStop">안내 종료</button>' +
+        '</div>' +
       '</div>';
     document.body.appendChild(el);
+    document.body.classList.add('nv-open');
     var on = function (id, fn) { var b = document.getElementById(id); if (b) b.addEventListener('click', fn); };
     on('navStop', stopDrive);
     /* 실시간 화면의 갈래를 그대로 부른다. 안내를 끄지 않는다 —
@@ -215,7 +238,237 @@
     on('navSwap',  function () { if (window.rlDo) window.rlDo('swap');  else if (window.go) window.go('map'); });
     on('navQuiet', function () { if (window.rlDo) window.rlDo('quiet'); else if (window.go) window.go('map'); });
     on('navSay',   function () { if (window.rlVoiceToggle) window.rlVoiceToggle(); });
+    on('navV2',    function () { nvMode('2d'); });
+    on('navV3',    function () { nvMode('3d'); });
+    on('navTraffic', function () {
+      nv.traffic = !nv.traffic;
+      var b = document.getElementById('navTraffic');
+      if (b) b.classList.toggle('on', nv.traffic);
+      nvTrafficApply();
+    });
     return el;
+  }
+
+  /* ══ 지도 ══════════════════════════════════════════════════
+     2D 는 카카오 지도에 실시간 교통정보를 얹는다.
+     3D 는 우리가 구워 둔 건물 모형을 쓴다 — 전국 251곳이 이미 있다.
+     어느 쪽을 보든 경로와 지금 있는 자리는 같은 값으로 그린다. */
+  var nv = { map: null, line: null, halo: null, me: null, dest: null,
+             mode: '2d', traffic: true, idx: null, scene: null, meta: null, drawn: false };
+
+  /* 색은 tokens.css 가 정한다. 카카오 폴리라인은 값을 직접 받아야 해서
+     화면에서 읽어 넘긴다 — 여기에 색을 적지 않는다 */
+  function nvToken(name, fb) {
+    try {
+      var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fb;
+    } catch (e) { return fb; }
+  }
+
+  function nvEsc(t) {
+    return String(t == null ? '' : t)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function nvNote(t) {
+    var e = document.getElementById('navNote');
+    if (!e) return;
+    if (!t) { e.hidden = true; return; }
+    e.hidden = false; e.textContent = t;
+  }
+
+  function nvKakaoReady(cb) {
+    if (typeof kakao === 'undefined' || !kakao.maps) return false;
+    if (kakao.maps.Map) { cb(); return true; }
+    try { kakao.maps.load(cb); return true; } catch (e) { return false; }
+  }
+
+  function nvInit2d() {
+    var box = document.getElementById('navMap2d');
+    if (!box || nv.map || !st || !st.pos) return;
+    var ok = nvKakaoReady(function () {
+      nv.map = new kakao.maps.Map(box, {
+        center: new kakao.maps.LatLng(st.pos.lat, st.pos.lng), level: 4
+      });
+      nvTrafficApply();
+      nvDrawRoute();
+      nvFollow();
+    });
+    if (!ok) nvNote('지도를 불러오지 못했습니다. 안내는 그대로 됩니다.');
+  }
+
+  function nvTrafficApply() {
+    if (!nv.map || typeof kakao === 'undefined' || !kakao.maps.MapTypeId) return;
+    try {
+      if (nv.traffic) nv.map.addOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC);
+      else nv.map.removeOverlayMapTypeId(kakao.maps.MapTypeId.TRAFFIC);
+    } catch (e) { /* 교통정보를 못 얹어도 안내는 된다 */ }
+  }
+
+  function nvDrawRoute() {
+    if (!nv.map || !st || !st.route || !st.route.line || !st.route.line.length) return;
+    var path = st.route.line.map(function (c) { return new kakao.maps.LatLng(c[0], c[1]); });
+    [nv.halo, nv.line].forEach(function (l) { if (l) l.setMap(null); });
+    nv.halo = new kakao.maps.Polyline({
+      path: path, strokeWeight: 13, strokeColor: nvToken('--halo', '#FFFFFF'),
+      strokeOpacity: 0.9, strokeStyle: 'solid'
+    });
+    nv.line = new kakao.maps.Polyline({
+      path: path, strokeWeight: 7, strokeColor: nvToken('--sig', '#FF9E12'),
+      strokeOpacity: 0.95, strokeStyle: 'solid'
+    });
+    nv.halo.setMap(nv.map);
+    nv.line.setMap(nv.map);
+
+    if (nv.dest) nv.dest.setMap(null);
+    nv.dest = new kakao.maps.CustomOverlay({
+      position: path[path.length - 1], yAnchor: 1, zIndex: 3,
+      content: '<div class="nv-dest">' + nvEsc((st.dest && st.dest.name) || '도착') + '</div>'
+    });
+    nv.dest.setMap(nv.map);
+    nv.drawn = true;
+  }
+
+  /* 지금 있는 자리로 지도를 옮긴다. 운전 중에는 손으로 끌 일이 없다 */
+  function nvFollow() {
+    if (!nv.map || !st || !st.pos) return;
+    var ll = new kakao.maps.LatLng(st.pos.lat, st.pos.lng);
+    if (!nv.me) {
+      nv.me = new kakao.maps.CustomOverlay({
+        position: ll, yAnchor: 0.5, xAnchor: 0.5, zIndex: 5,
+        content: '<div class="nv-me"><i></i></div>'
+      });
+      nv.me.setMap(nv.map);
+    } else {
+      nv.me.setPosition(ll);
+    }
+    nv.map.setCenter(ll);
+  }
+
+  /* ── 3D 모형 ──────────────────────────────────────────── */
+  function nvProject(fit, lat, lng) {
+    return { x: fit.a * lng + fit.b * lat + fit.c, y: fit.d * lng + fit.e * lat + fit.f };
+  }
+
+  function nvIndex() {
+    if (nv.idx) return Promise.resolve(nv.idx);
+    return fetch('/img/mass_index.json')
+      .then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (j) { nv.idx = Array.isArray(j) ? j : []; return nv.idx; })
+      .catch(function () { nv.idx = []; return nv.idx; });
+  }
+
+  function nvPickScene(lat, lng) {
+    var best = null, bd = Infinity;
+    (nv.idx || []).forEach(function (sc) {
+      if (!sc.bbox || !sc.fit) return;
+      var my = (sc.bbox.s + sc.bbox.n) / 2, mx = (sc.bbox.w + sc.bbox.e) / 2;
+      var q = nvProject(sc.fit, lat, lng);
+      var inside = q.x >= 0 && q.x <= 100 && q.y >= 0 && q.y <= 100;
+      var d = (my - lat) * (my - lat) + (mx - lng) * (mx - lng);
+      if (inside) d -= 1000;               /* 담기는 장면을 먼저 고른다 */
+      if (d < bd) { bd = d; best = sc; }
+    });
+    return best;
+  }
+
+  function nvDraw3d() {
+    if (!st || !st.pos) return;
+    nvIndex().then(function () {
+      var sc = nvPickScene(st.pos.lat, st.pos.lng);
+      if (!sc) { nvNote('이 지역은 아직 3D 모형이 없습니다. 2D 지도로 보세요.'); return; }
+      var q = nvProject(sc.fit, st.pos.lat, st.pos.lng);
+      var far = q.x < -4 || q.x > 104 || q.y < -4 || q.y > 104;
+      nvNote(far ? sc.label + ' 모형입니다. 지금 자리는 이 동네 밖이라 2D 지도가 정확합니다.' : '');
+      if (nv.scene && nv.scene.key === sc.key) { nvPaint3d(sc); return; }
+      fetch(sc.svg, { cache: 'force-cache' })
+        .then(function (r) { return r.text(); })
+        .then(function (svg) {
+          var frame = document.getElementById('navModelFrame');
+          if (!frame) return null;
+          frame.innerHTML = svg;
+          nv.scene = sc;
+          return fetch(sc.json).then(function (r) { return r.ok ? r.json() : null; });
+        })
+        .then(function (meta) { nv.meta = meta || nv.meta; nvPaint3d(sc); })
+        .catch(function () { nvNote('모형을 불러오지 못했습니다. 2D 지도로 보세요.'); });
+    });
+  }
+
+  /* 모형이 화면을 덮게 늘리고, 그 위에 경로와 지금 자리를 같은 좌표로 얹는다 */
+  function nvPaint3d(sc) {
+    var stage = document.getElementById('navMap3d');
+    var frame = document.getElementById('navModelFrame');
+    var layer = document.getElementById('navModelLayer');
+    if (!stage || !frame || !layer || !sc || !st || !st.pos) return;
+    var ar = (nv.meta && nv.meta.ar) || 1.5;
+    var w = Math.max(stage.clientWidth, stage.clientHeight * ar);
+    var h = w / ar;
+    frame.style.width = w + 'px';  frame.style.height = h + 'px';
+    layer.style.width = w + 'px';  layer.style.height = h + 'px';
+
+    var d = '';
+    var line = (st.route && st.route.line) || [];
+    var run = [], out = null;
+    for (var i = 0; i < line.length; i++) {
+      var q = nvProject(sc.fit, line[i][0], line[i][1]);
+      if (q.x >= -6 && q.x <= 106 && q.y >= -6 && q.y <= 106) {
+        if (out) { run.push(out); out = null; }
+        run.push(q);
+      } else {
+        if (run.length) { run.push(q); d += nvRunD(run); run = []; }
+        out = q;
+      }
+    }
+    if (run.length >= 2) d += nvRunD(run);
+
+    var me = nvProject(sc.fit, st.pos.lat, st.pos.lng);
+    layer.innerHTML =
+      '<svg class="nv-m-svg" viewBox="0 0 100 100" preserveAspectRatio="none">' +
+        (d ? '<path class="nv-m-halo" d="' + d + '"/><path class="nv-m-road" d="' + d + '"/>' : '') +
+      '</svg>' +
+      '<div class="nv-me nv-me-3d" style="left:' + me.x.toFixed(2) + '%;top:' + me.y.toFixed(2) + '%"><i></i></div>';
+  }
+
+  function nvRunD(run) {
+    return 'M' + run.map(function (q) { return q.x.toFixed(2) + ' ' + q.y.toFixed(2); }).join('L');
+  }
+
+  /* ── 2D · 3D 고르기 ── */
+  function nvMode(m) {
+    nv.mode = m;
+    var a = document.getElementById('navMap2d'), b = document.getElementById('navMap3d');
+    var v2 = document.getElementById('navV2'), v3 = document.getElementById('navV3');
+    var tf = document.getElementById('navTraffic');
+    if (a) a.hidden = (m !== '2d');
+    if (b) b.hidden = (m !== '3d');
+    if (v2) v2.classList.toggle('on', m === '2d');
+    if (v3) v3.classList.toggle('on', m === '3d');
+    /* 교통정보는 카카오 지도에만 얹힌다. 모형에는 얹을 자리가 없다 */
+    if (tf) tf.hidden = (m !== '2d');
+    if (m === '2d') {
+      nvNote('');
+      nvInit2d();
+      if (nv.map) { nv.map.relayout(); nvFollow(); }
+    } else {
+      nvDraw3d();
+    }
+  }
+
+  /* 위치가 올 때마다 — 2D 는 따라가고 3D 는 다시 얹는다 */
+  function nvOnPos() {
+    if (!st || !st.pos) return;
+    if (nv.mode === '2d') {
+      if (!nv.map) nvInit2d();
+      else { if (!nv.drawn) nvDrawRoute(); nvFollow(); }
+    } else {
+      nvDraw3d();
+    }
+  }
+
+  function nvReset() {
+    nv = { map: null, line: null, halo: null, me: null, dest: null,
+           mode: '2d', traffic: true, idx: nv.idx, scene: null, meta: null, drawn: false };
   }
 
   /* 안내 한 줄. 거리와 화살표를 따로 받으면 크게 보여 준다 */
@@ -278,7 +531,9 @@
       function (p) {
         var first = !st.pos;
         st.pos = { lat: p.coords.latitude, lng: p.coords.longitude };
-        if (first) loadRoute(); else onPos(p);
+        /* 첫 좌표가 오면 경로를 받기 전에 지도부터 띄운다 —
+           빈 화면을 보여 주지 않는다 */
+        if (first) { nvOnPos(); loadRoute(); } else onPos(p);
       },
     function () { render('브라우저 설정에서 위치 권한을 켜 주세요.'); },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
@@ -293,6 +548,8 @@
     document.body.classList.remove('rl-driving');
     var el = document.getElementById('navDrive');
     if (el) el.remove();
+    document.body.classList.remove('nv-open');
+    nvReset();
     st = null;
   }
 

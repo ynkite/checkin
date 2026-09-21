@@ -742,6 +742,74 @@
           window.__mvMeta) _mvFill(window.__mvMeta);
     });
 
+    /* ── 모형 위의 길 ──────────────────────────────────────────
+       정거장 사이를 곧은 선으로 이으면 건물 한복판을 가로지른다.
+       2D 지도가 쓰는 도로 좌표(segPaths)가 이미 있으니 같은 것을 모형에도 얹는다.
+       장면 밖으로 나가는 부분은 잘라 내고, 어느 쪽으로 가는지는 갈매기로 찍는다. */
+    function _mvRoadRuns(fit) {
+      var byKey = {};
+      (typeof MAP_PINS !== 'undefined' ? MAP_PINS : []).forEach(function (p) {
+        if (p && p.isFound) byKey[p.key] = p;
+      });
+      var runs = [];
+      (typeof DAY_ROUTES !== 'undefined' ? DAY_ROUTES : []).forEach(function (route) {
+        var keys = route.keys || [];
+        for (var i = 0; i < keys.length - 1; i++) {
+          var a = byKey[keys[i]], b = byKey[keys[i + 1]];
+          if (!a || !b) continue;
+          var seg = (route.segPaths || [])[i];
+          var coords = (Array.isArray(seg) && seg.length >= 2)
+                  ? [[a.lat, a.lng]].concat(seg.map(function (c) { return [c[0], c[1]]; }),
+                                            [[b.lat, b.lng]])
+                  : [[a.lat, a.lng], [b.lat, b.lng]];
+          /* 장면에 걸치는 동안만 이어 그린다. 경계 바깥 한 점까지 넣어야
+             선이 테두리에 닿는다 — 넘치는 부분은 svg 가 자른다 */
+          var run = [], out = null;
+          for (var k = 0; k < coords.length; k++) {
+            var q = _mvProject(fit, coords[k][0], coords[k][1]);
+            if (q.x >= -6 && q.x <= 106 && q.y >= -6 && q.y <= 106) {
+              if (out) { run.push(out); out = null; }
+              run.push(q);
+            } else {
+              if (run.length) { run.push(q); runs.push(run); run = []; }
+              out = q;
+            }
+          }
+          if (run.length >= 2) runs.push(run);
+        }
+      });
+      return runs.filter(function (r) { return r.length >= 2; });
+    }
+
+    /* 갈매기. 장면은 viewBox 100x100 을 화면 비율로 늘여 쓰기 때문에
+       그 안에서 각을 재면 모양이 찌그러진다. 픽셀로 재고 다시 돌려놓는다 */
+    function _mvChevPath(runs, W, H) {
+      var sx = (W || 900) / 100, sy = (H || 560) / 100;
+      var d = '';
+      runs.forEach(function (run) {
+        var px = run.map(function (q) { return [q.x * sx, q.y * sy]; });
+        var acc = 0, next = 48, arm = 5.5, off = Math.PI * 0.76;
+        for (var i = 1; i < px.length; i++) {
+          var dx = px[i][0] - px[i - 1][0], dy = px[i][1] - px[i - 1][1];
+          var len = Math.sqrt(dx * dx + dy * dy);
+          if (!(len > 0)) continue;
+          while (acc + len >= next) {
+            var t = (next - acc) / len;
+            var cx = px[i - 1][0] + dx * t, cy = px[i - 1][1] + dy * t;
+            var ang = Math.atan2(dy, dx);
+            var lx = cx + Math.cos(ang - off) * arm, ly = cy + Math.sin(ang - off) * arm;
+            var rx = cx + Math.cos(ang + off) * arm, ry = cy + Math.sin(ang + off) * arm;
+            d += 'M' + (lx / sx).toFixed(2) + ' ' + (ly / sy).toFixed(2)
+               + 'L' + (cx / sx).toFixed(2) + ' ' + (cy / sy).toFixed(2)
+               + 'L' + (rx / sx).toFixed(2) + ' ' + (ry / sy).toFixed(2);
+            next += 96;
+          }
+          acc += len;
+        }
+      });
+      return d;
+    }
+
     function _mvDrawPins(meta, stops) {
       window.__mvMeta = meta;
       var layer = document.getElementById('mv_pins');
@@ -785,9 +853,23 @@
         }
       })();
 
-      /* 동선 — 정거장을 순서대로 잇는다 */
+      /* 동선 — 도로를 따라 그린다. 도로 좌표가 없으면 정거장을 곧게 잇는다 */
       var line = '';
-      if (pts.length > 1) {
+      var _fr = document.getElementById('mv_frame');
+      var runs = _mvRoadRuns(meta.fit);
+      if (runs.length) {
+        var dRoad = runs.map(function (run) {
+          return 'M' + run.map(function (q) {
+            return q.x.toFixed(2) + ' ' + q.y.toFixed(2);
+          }).join('L');
+        }).join('');
+        var dChev = _mvChevPath(runs, _fr && _fr.clientWidth, _fr && _fr.clientHeight);
+        line = '<svg class="mv-route" viewBox="0 0 100 100" preserveAspectRatio="none">'
+             + '<path class="mv-rt-case" d="' + dRoad + '"/>'
+             + '<path class="mv-rt-road" d="' + dRoad + '"/>'
+             + (dChev ? '<path class="mv-chev" d="' + dChev + '"/>' : '')
+             + '</svg>';
+      } else if (pts.length > 1) {
         line = '<svg class="mv-route" viewBox="0 0 100 100" preserveAspectRatio="none">' +
           '<polyline points="' +
           pts.map(function (q) { return q.x.toFixed(2) + ',' + q.y.toFixed(2); }).join(' ') +
@@ -1908,9 +1990,14 @@
         MAP_DAYS = [{ key: 'all', label: '전체', default: true }];
         routeData.forEach(d => {
           const names = (d.places || []).filter(p => !p.transit && p.name).map(p => p.name);
+          /* 「포천암소갈비살 연산점 ~ 산청강마을어탕국수」처럼 둘 다 길면 탭을 넘어간다.
+             띄어쓰기 없는 긴 이름은 줄바꿈도 안 되어 옆으로 삐져나왔다.
+             한쪽이 열두 자를 넘으면 거기서 자른다. 두 줄까지는 CSS 가 받아 준다.
+             물결표 대신 화살표를 쓴다 — 어디서 어디로 가는 날인지 바로 읽힌다. */
+          const cut = n => (n.length > 12 ? n.slice(0, 12) + '…' : n);
           const anchor = names.length > 1
-                  ? names[0] + ' ~ ' + names[names.length - 1]
-                  : (names[0] || '');
+                  ? cut(names[0]) + ' → ' + cut(names[names.length - 1])
+                  : (names[0] ? cut(names[0]) : '');
           MAP_DAYS.push({ key: d.day, label: `${d.day}일차`, anchor: anchor });
         });
         MAP_DAYS[0].anchor = routeData.length + '일';

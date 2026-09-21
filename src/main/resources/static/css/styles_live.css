@@ -94,7 +94,9 @@
   box-shadow:var(--home-shadow);
 }
 .rl-next-lb{
-  margin:0; font-family:var(--fig); font-size:11px; font-weight:500;
+  /* 숫자용 글꼴(--fig)을 쓰니 「다 음」처럼 글자 사이가 벌어졌다.
+     그 글꼴에 한글이 없어 글자마다 다른 글꼴로 떨어진 자리다. 본문 글꼴로 쓴다 */
+  margin:0; font-size:11px; font-weight:500;
   color:var(--home-muted-dark); letter-spacing:.02em;
 }
 .rl-next-n{
@@ -120,6 +122,26 @@
 .rl-cw-none{ background:var(--ui-plate); color:var(--ink-3); font-weight:400 }
 
 /* 할 수 있는 것 — 손이 흔들려도 눌리게 크게 */
+/* 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
+   우리가 제일 내세우는 기능인데 단추가 낱개로 흩어져 있어 눈에 안 들어왔다.
+   테두리로 한 묶음을 만들고 제목을 단다. 안에서는 지금까지 쓰던 배치 그대로다. */
+.rl-branch{
+  margin-top:16px; padding:13px 13px 14px;
+  border-radius:var(--r-panel);
+  box-shadow:inset 0 0 0 1px var(--ui-line);
+}
+.rl-branch-lb{
+  margin:0 2px 10px; font-size:12px; font-weight:700;
+  letter-spacing:var(--tracking-tight); color:var(--ink-3); word-break:keep-all;
+}
+.rl-branch .rl-acts{ margin-top:8px }
+.rl-branch > .rl-acts:first-of-type{ margin-top:0 }
+/* 길 안내만 채운다 — 앞의 셋은 살펴보는 것이고 이것은 떠나는 것이다 */
+.rl-act-go{ background:var(--ink); box-shadow:none }
+.rl-act-go b{ color:var(--panel) }
+.rl-act-go span{ color:var(--panel); opacity:.74 }
+.rl-act-go:hover{ box-shadow:none; transform:translateY(-1px) }
+
 .rl-acts{ display:grid; gap:8px; margin-top:14px }
 @media (min-width:560px){ .rl-acts{ grid-template-columns:1fr 1fr } }
 .rl-acts.rl-acts-single{ grid-template-columns:minmax(0,1fr) }
@@ -489,3 +511,121 @@ body.rl-driving .rl-drive .rl-drive-head{ font-size:19px }
   .nv-acts{ gap:calc(var(--u)/2) }
   .nv-b{ font-size:13px; min-height:48px }
 }
+
+/* ── 길 안내 — 화면 전체 ───────────────────────────────────
+   전에는 아래쪽에 한 줄짜리 판만 띄웠다. 안내는 됐지만 티맵을 써 본
+   사람에게 그것은 네비게이션으로 보이지 않았다.
+   위에 다음 갈림길, 가운데에 지도, 아래에 남은 거리와 손대는 것들.
+   휴대폰이든 넓은 화면이든 같은 자리에 둔다. */
+.rl-drive.nv-full{
+  top:0; bottom:0; padding:0; border-top:0;
+  display:flex; flex-direction:column;
+  background:var(--panel);
+}
+body.nv-open{ overflow:hidden }
+
+/* 위 — 다음에 무엇을 하나. 운전 중에는 이것만 읽는다 */
+.nv-full .nv-turn{
+  flex:0 0 auto;
+  padding:calc(14px + env(safe-area-inset-top, 0px)) 16px 14px;
+  background:var(--ink);
+}
+.nv-full .nv-dist{ color:var(--panel) }
+.nv-full .rl-drive-head{ color:var(--panel); opacity:.82; margin-bottom:0 }
+
+/* 가운데 — 지도. 남는 높이를 전부 가져간다 */
+.nv-stage{
+  position:relative; flex:1 1 auto; min-height:0; overflow:hidden;
+  background:var(--ui-plate);
+}
+.nv-canvas{ position:absolute; inset:0 }
+.nv-canvas[hidden]{ display:none }
+.nv-model{ overflow:hidden }
+/* 모형은 상자를 덮는 크기로 늘려 가운데에 둔다. 경로 층도 같은 크기를 받는다 */
+.nv-model-frame, .nv-model-layer{
+  position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+}
+.nv-model-layer{ pointer-events:none }
+.nv-model-frame svg.mass{ width:100%; height:100%; display:block }
+.nv-m-svg{ position:absolute; inset:0; width:100%; height:100%; overflow:hidden }
+.nv-m-halo{
+  fill:none; stroke:var(--halo); stroke-width:11; opacity:.85;
+  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
+}
+.nv-m-road{
+  fill:none; stroke:var(--sig); stroke-width:5;
+  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
+}
+
+/* 지금 있는 자리 */
+.nv-me{
+  width:22px; height:22px; border-radius:99px;
+  background:var(--halo); display:grid; place-items:center;
+  box-shadow:0 1px 2px rgba(var(--sh-rgb),.28);
+}
+.nv-me i{ width:12px; height:12px; border-radius:99px; background:var(--sig); display:block }
+.nv-me-3d{ position:absolute; transform:translate(-50%,-50%) }
+.nv-dest{
+  padding:5px 10px; border-radius:var(--r-field);
+  background:var(--ink); color:var(--panel);
+  font-size:12px; font-weight:600; white-space:nowrap;
+}
+
+/* 2D · 3D 고르기 — 오른쪽 위 */
+.nv-view{
+  position:absolute; right:12px; top:12px; z-index:3;
+  display:flex; gap:2px; padding:3px; border-radius:99px;
+  background:var(--halo); box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.14);
+}
+.nv-v{
+  min-height:36px; padding:0 13px; border:0; border-radius:99px;
+  background:transparent; color:var(--ink-2);
+  font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  word-break:keep-all;
+}
+.nv-v.on{ background:var(--ink); color:var(--panel) }
+.nv-traffic{
+  position:absolute; right:12px; top:58px; z-index:3;
+  min-height:36px; padding:0 13px; border:0; border-radius:99px;
+  background:var(--halo); color:var(--ink-3);
+  font-family:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.14); word-break:keep-all;
+}
+.nv-traffic.on{ background:var(--ink); color:var(--panel) }
+.nv-note{
+  position:absolute; left:12px; right:92px; bottom:12px; z-index:3; margin:0;
+  padding:9px 12px; border-radius:var(--r-field);
+  background:var(--halo); color:var(--ink-2);
+  font-size:12.5px; line-height:1.45; word-break:keep-all;
+  box-shadow:0 1px 2px rgba(var(--sh-rgb),.10), 0 2px 6px rgba(var(--sh-rgb),.12);
+}
+
+/* 아래 — 얼마나 남았나와 손대는 것들 */
+.nv-bottom{
+  flex:0 0 auto;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top:1px solid var(--ui-line); background:var(--panel);
+}
+.nv-bottom .nv-meta{ margin-top:0; margin-bottom:10px }
+
+@media (max-width:420px){
+  .nv-view{ right:10px; top:10px }
+  .nv-traffic{ right:10px; top:54px }
+  .nv-note{ right:86px }
+}
+
+/* 이동수단·지역 방문자 — 접어 둔다. 늘 보는 것이 아니라서
+   펼쳐 두면 정작 눌러야 할 갈래가 화면 밖으로 밀렸다 */
+.rl-more{ margin-top:14px }
+.rl-more > summary{
+  list-style:none; cursor:pointer;
+  min-height:44px; display:flex; align-items:center; gap:6px;
+  padding:0 2px; font-size:13px; font-weight:600; color:var(--ink-2);
+  word-break:keep-all;
+}
+.rl-more > summary::-webkit-details-marker{ display:none }
+.rl-more > summary::after{
+  content:"⌄"; font-size:15px; line-height:1; color:var(--ink-3);
+}
+.rl-more[open] > summary::after{ content:"⌃" }
+.rl-more > summary:hover{ color:var(--ink) }

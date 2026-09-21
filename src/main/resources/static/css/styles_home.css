@@ -16,7 +16,9 @@
 .ck-home .ck-row{ display:flex; flex-wrap:wrap; gap:calc(var(--u)*2) }
 .ck-trip{ flex:1 1 var(--home-pin-width); min-width:0; display:block; text-align:left; padding:calc(var(--u)*3); background:var(--ui-plate); border-radius:var(--r-panel); color:var(--ink); transition:transform .22s var(--home-ease) }
 .ck-trip:hover{ transform:translateY(calc(var(--u)*-.5)) }
-.ck-trip .ck-when{ font:500 var(--home-meta) var(--fig); color:var(--ink-2) }
+/* 「지난 여행」·「다가오는 여행」이 들어오는 자리다. 숫자 글꼴(--fig)에는 한글이
+   없어 글자마다 다른 글꼴로 떨어지면서 사이가 벌어져 보였다. 본문 글꼴로 쓴다 */
+.ck-trip .ck-when{ font-size:var(--home-meta); font-weight:500; color:var(--ink-2) }
 .ck-trip .ck-nm{ font-size:var(--t-h3); font-weight:650; line-height:1.5; margin-block:var(--u) }
 .ck-trip .ck-why{ font-size:var(--t-sm); color:var(--ink-2); line-height:1.7 }
 .ck-live{ display:inline-block; font-size:var(--home-meta); color:var(--on-sig); background:var(--sig); padding:calc(var(--u)/2) var(--u); border-radius:var(--r-field); margin-bottom:var(--u) }

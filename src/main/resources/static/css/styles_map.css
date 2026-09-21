@@ -126,6 +126,11 @@
 .day-tab .dt-an{
   font-size:11px; color:var(--ink-3); letter-spacing:-.01em;
   max-width:100%; word-break:keep-all; line-height:1.45;
+  /* 「산청강마을어탕국수」처럼 띄어쓰기가 없는 이름은 keep-all 이 끊지 못해
+     탭 밖으로 삐져나왔다. 끊을 자리가 아예 없을 때만 글자 사이에서 끊는다. */
+  overflow-wrap:anywhere;
+  /* 두 줄까지 보여 주고 그 아래는 말줄임. 탭 높이가 들쭉날쭉해지지 않는다 */
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
 .day-tab.on{ background:var(--ink); box-shadow:none }
@@ -877,12 +882,27 @@
 /* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
 .mv-route{
   position:absolute; inset:0; width:100%; height:100%;
-  overflow:visible; pointer-events:none;
+  /* 도로를 따라 그리면서 장면 밖 한 점까지 넣는다. 그 꼬리를 여기서 자른다 */
+  overflow:hidden; pointer-events:none;
 }
 .mv-route polyline{
   fill:none; stroke:var(--sig); stroke-width:2.6;
   stroke-linecap:round; stroke-linejoin:round;
   stroke-dasharray:7 6; vector-effect:non-scaling-stroke;
+}
+/* 실제 도로를 따라가는 선. 건물색과 겹쳐 묻히지 않게 테두리를 한 겹 깐다 */
+.mv-rt-case{
+  fill:none; stroke:var(--halo); stroke-width:6.5; opacity:.8;
+  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
+}
+.mv-rt-road{
+  fill:none; stroke:var(--sig); stroke-width:2.8;
+  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
+}
+/* 진행 방향 갈매기 — 번호만으로는 어느 쪽으로 도는 길인지 안 읽힌다 */
+.mv-chev{
+  fill:none; stroke:var(--sig); stroke-width:1.9;
+  stroke-linecap:round; stroke-linejoin:round; vector-effect:non-scaling-stroke;
 }
 
 /* 왼쪽 아래에 따로 떠 있었다. 그 자리가 하단 레일 자리라 레일 밑에 깔려
