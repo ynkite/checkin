@@ -47,7 +47,10 @@ public class VisitorTrendService {
     private final VisitorService visitorService;
 
     public Trend summary(String destination) {
-        AreaCode.Area area = AreaCode.find(destination);
+        return summary(AreaCode.find(destination));
+    }
+
+    public Trend summary(AreaCode.Area area) {
         if (area == null) return Trend.of(Status.NO_AREA, null, "이 여행지는 지역 코드가 없습니다.");
 
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));

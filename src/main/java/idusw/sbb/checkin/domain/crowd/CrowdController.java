@@ -45,12 +45,7 @@ public class CrowdController {
                     .map(n -> CrowdForecast.unknown(n, null, "지원하지 않는 지역입니다"))
                     .toList()));
         }
-        if (!AreaCode.hasCrowdData(a)) {
-            return ResponseEntity.ok(ApiResponse.success(names.stream()
-                    .map(n -> CrowdForecast.unknown(n, null,
-                            topicParticle(a.sido()) + " 관광공사 집중률 예측 대상이 아닙니다"))
-                    .toList()));
-        }
+        /* 집중률이 없는 지역은 CrowdService 가 방문자 추정(VISITOR_EST)으로 답하거나 없다고 말한다 */
         return ResponseEntity.ok(ApiResponse.success(
                 crowdService.forecast(a.areaCd(), a.signguCd(), names,
                         date != null ? date : LocalDate.now())));
@@ -135,18 +130,18 @@ public class CrowdController {
         }
 
         AreaCode.Area a = AreaCode.find(region);
-        if (a == null || !AreaCode.hasCrowdData(a)) {
+        if (a == null) {
             out.put("source", "NONE");
             out.put("note", "이 지역은 혼잡도 자료가 없습니다.");
             return ResponseEntity.ok(ApiResponse.success(out));
         }
         CrowdForecast f = crowdService.forecast(a.areaCd(), a.signguCd(), place, LocalDate.now());
-        out.put("source", f.rate() == null ? "NONE" : "TOUR");
+        out.put("source", f.source());
         out.put("rate", f.rate());
         out.put("levelKey", f.levelKey());
         out.put("levelLabel", f.levelLabel());
         out.put("headcount", null);
-        out.put("note", f.rate() == null
+        out.put("note", f.rate() == null || !"TOUR".equals(f.source())
                 ? (f.note() == null ? "혼잡도 자료가 없습니다." : f.note())
                 : (sk.ready() ? "지금 값을 못 받아 오늘 예측으로 답합니다."
                               : "오늘 예측값입니다. 실시간 인원은 아직 연동 전입니다."));

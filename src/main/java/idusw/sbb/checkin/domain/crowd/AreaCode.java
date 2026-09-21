@@ -372,6 +372,12 @@ public final class AreaCode {
         return null;
     }
 
+    /** 시군구 코드로 찾는다. 모르면 null. */
+    public static Area byCode(String signguCd) {
+        if (signguCd == null) return null;
+        return BY_NAME.values().stream().filter(a -> a.signguCd().equals(signguCd)).findFirst().orElse(null);
+    }
+
     /** 시도 하나의 시군구 전부. 화면의 두 번째 고르기 칸이 쓴다. */
     public static List<Area> sigungus(String sido) {
         String k = key(sido);

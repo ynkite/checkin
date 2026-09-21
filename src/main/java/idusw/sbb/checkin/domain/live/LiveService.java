@@ -235,16 +235,18 @@ public class LiveService {
                 plan.getDestination(),
                 next.get("lat") instanceof Number la ? la.doubleValue() : null,
                 next.get("lng") instanceof Number lo ? lo.doubleValue() : null);
-        if (a == null || !AreaCode.hasCrowdData(a)) return Map.of();
+        if (a == null) return Map.of();
         try {
+            /* 집중률이 없으면 방문자 추정(VISITOR_EST)이 온다 — rate 없이 단계만 있다 */
             CrowdForecast f = crowdService.forecast(a.areaCd(), a.signguCd(), n, date);
-            if (f == null || f.rate() == null) return Map.of();
+            if (f == null || f.levelKey() == null) return Map.of();
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("placeName", f.placeName());
-            m.put("rate", Math.round(f.rate()));
+            m.put("rate", f.rate() == null ? null : Math.round(f.rate()));
             m.put("levelLabel", f.levelLabel());
             m.put("levelKey", f.levelKey());
-            m.put("source", "TOUR");
+            m.put("source", f.source());
+            m.put("note", f.note());
             return m;
         } catch (Exception e) {
             log.warn("[실시간] 혼잡도 조회 실패: {}", e.getMessage());
