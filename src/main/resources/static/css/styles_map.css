@@ -1310,3 +1310,32 @@
 /* 단추 위에서는 끌기 손 모양이 나오면 안 된다 */
 .mv-view, .mv-vb{ cursor:default }
 .mv-vb{ cursor:pointer }
+
+/* ── 모형 정거장 띠 ────────────────────────────────────────
+   고르면 그 동네 모형으로 옮긴다. 화면 아래에 깔되 조작 단추와 겹치지 않게
+   왼쪽만 쓴다. 칸이 모자라면 가로로 넘기는 것이 맞다 — 여기는 목록이라
+   다 보이는 것보다 지금 어디인지가 먼저다. */
+.mv-stops{
+  position:absolute; left:calc(var(--u)*2); right:calc(var(--u)*2);
+  bottom:calc(var(--u)*2 + 44px + var(--u)); z-index:7;
+  display:flex; gap:calc(var(--u)/2); overflow-x:auto; scrollbar-width:none;
+  padding-bottom:2px;
+}
+.mv-stops::-webkit-scrollbar{ display:none }
+.mv-st{
+  flex:0 0 auto; display:flex; align-items:center; gap:calc(var(--u)/1.6);
+  min-height:44px; padding:0 calc(var(--u)*1.4); border:0; border-radius:99px;
+  background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
+  font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+  white-space:nowrap; word-break:keep-all;
+}
+.mv-st b{
+  display:grid; place-items:center; width:20px; height:20px; border-radius:99px;
+  background:var(--ui-plate); color:var(--ink-2); font-size:11px; font-weight:700;
+}
+.mv-st.on{ background:var(--ink); color:var(--panel) }
+.mv-st.on b{ background:var(--sig); color:var(--ink) }
+@media (max-width:760px){
+  .mv-stops{ bottom:calc(var(--u) + 44px + var(--u)) }
+  .mv-st{ font-size:12px; padding:0 calc(var(--u)*1.1) }
+}
