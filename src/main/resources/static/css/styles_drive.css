@@ -380,3 +380,27 @@ body.dv-driving .dv-lane-why{ display:none }
 }
 .dv-recenter:hover{ opacity:.92 }
 @media (max-width:420px){ .dv-recenter{ right:10px; bottom:10px } }
+
+/* 주행 중 자동 제안 — 지도 아래쪽에 떠서 먼저 말을 건다.
+   운전 중이라 글자를 크게 두고, 누르는 자리는 48px 보다 크게 잡았다.
+   「그대로 간다」를 같이 둔 것은, 제안이 항상 옳지는 않기 때문이다. */
+.dv-sug{
+  position:absolute; left:12px; right:12px; bottom:12px; z-index:5;
+  padding:13px 14px 14px; border-radius:var(--r-panel);
+  background:var(--ink); color:var(--panel);
+  box-shadow:0 1px 2px rgba(var(--sh-rgb),.20), 0 6px 18px rgba(var(--sh-rgb),.22);
+}
+.dv-sug-t{
+  margin:0 0 11px; font-size:15px; font-weight:700; line-height:1.45;
+  color:var(--panel); word-break:keep-all;
+}
+.dv-sug-b{ display:grid; grid-template-columns:1fr 1fr; gap:8px }
+.dv-sug-go, .dv-sug-x{
+  min-height:48px; padding:0 12px; border:0; border-radius:var(--r-field);
+  font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;
+  word-break:keep-all;
+}
+.dv-sug-go{ background:var(--sig); color:var(--ink) }
+.dv-sug-x{ grid-column:1 / -1; background:transparent; color:var(--panel); opacity:.72; font-weight:600 }
+.dv-sug-x:hover{ opacity:1 }
+@media (max-width:420px){ .dv-sug{ left:10px; right:10px; bottom:10px } }
