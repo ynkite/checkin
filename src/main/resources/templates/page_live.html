@@ -43,10 +43,34 @@
 
         <div class="rl-next" id="rlNext"></div>
 
-        <div class="rl-modes" id="rlModes" hidden></div>
+        <!-- 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
+             이 화면에서 제일 중요한 자리인데 단추가 흩어져 있어 그렇게 안 보였다.
+             한 묶음으로 세우고 무엇을 할 수 있는지 제목으로 말해 준다 -->
+        <div class="rl-branch" role="group" aria-labelledby="rlBranchLb">
+          <p class="rl-branch-lb" id="rlBranchLb">지금 할 수 있는 것</p>
+          <div class="rl-acts rl-acts-single">
+            <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
+              <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
+            </button>
+          </div>
+          <div id="rlCheck" class="rl-check" hidden role="status" aria-live="polite"></div>
+
+          <div class="rl-acts" id="rlActs"></div>
+        </div>
+
+        <!-- 「다른 곳으로」가 고른 후보. 고르는 것은 사용자다 -->
+        <div class="rl-alt" id="rlAlt" hidden role="group" aria-label="다른 곳 후보"></div>
+
+        <div class="rl-rail" id="rlRail"></div>
+
+        <!-- 이동수단과 지역 방문자는 궁금할 때만 본다. 펼쳐 두면 갈래가 아래로 밀린다 -->
+        <details class="rl-more">
+          <summary>이동수단과 지역 방문자</summary>
+          <div class="rl-modes" id="rlModes" hidden></div>
 
         <!-- 지역 방문자 — 시도 단위 과거 실측. 집중률(시군구 예측)과 눈금이 달라 따로 둔다 -->
-        <div class="rl-modes" id="rlVisitors" hidden></div>
+          <div class="rl-modes" id="rlVisitors" hidden></div>
+        </details>
         <!-- 말로 하기 — 운전 중이거나 걷는 중에는 화면을 못 본다.
              소리는 거들 뿐이고 화면이 본문이다. 들은 말도 한 말도 여기 적힌다 -->
         <div class="rl-voice-bar">
@@ -71,25 +95,6 @@
           </div>
         </div>
 
-        <!-- 갈래 넷 — 장소 확인하기 · 순서 바꾸기 · 다른 곳으로 · 길 안내.
-             이 화면에서 제일 중요한 자리인데 단추가 흩어져 있어 그렇게 안 보였다.
-             한 묶음으로 세우고 무엇을 할 수 있는지 제목으로 말해 준다 -->
-        <div class="rl-branch" role="group" aria-labelledby="rlBranchLb">
-          <p class="rl-branch-lb" id="rlBranchLb">지금 할 수 있는 것</p>
-          <div class="rl-acts rl-acts-single">
-            <button type="button" class="rl-act" id="rlCheckBtn" onclick="rlCheck()">
-              <b>장소 확인하기</b><span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
-            </button>
-          </div>
-          <div id="rlCheck" class="rl-check" hidden role="status" aria-live="polite"></div>
-
-          <div class="rl-acts" id="rlActs"></div>
-        </div>
-
-        <!-- 「다른 곳으로」가 고른 후보. 고르는 것은 사용자다 -->
-        <div class="rl-alt" id="rlAlt" hidden role="group" aria-label="다른 곳 후보"></div>
-
-        <div class="rl-rail" id="rlRail"></div>
 
         <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측값, 이동시간은 티맵 자동차 경로입니다.</p>
       </section>

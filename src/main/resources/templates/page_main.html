@@ -521,6 +521,21 @@
 
   <div class="page active" id="page-main">
     <div class="ck-home">
+      <!-- 실시간과 길 안내 — 이 서비스가 하는 일의 전부다.
+           히어로 아래에 두었더니 2,400px 을 내려야 나왔다. 첫 화면으로 올린다.
+           한 줄과 단추 둘만 둔다 — 여기서 길게 말하면 아래 이야기를 가린다. -->
+      <section class="ck-lv" id="ck_live">
+        <div class="ck-lv-in">
+          <p class="ck-lv-t"><b>실시간과 길 안내</b>
+            떠난 뒤가 진짜입니다. 붐비거나 비가 오면 그 자리에서 순서를 바꾸고,
+            길 안내는 지도를 꽉 채워 켜집니다.</p>
+          <div class="ck-lv-acts">
+            <button type="button" class="ck-lv-go" onclick="go('live')">실시간 열기</button>
+            <button type="button" class="ck-lv-sub" onclick="go('map')">동선 보기</button>
+          </div>
+        </div>
+      </section>
+
       <section class="ck-hero ck-stage" id="ck_hero" aria-labelledby="ck_main_title">
         <div class="st-introduction">
           <div class="fl st-head">
