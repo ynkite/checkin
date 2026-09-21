@@ -602,6 +602,15 @@
         '<button type="button" class="dv-traffic on" id="navTraffic">실시간 교통</button>' +
         /* 지도를 손으로 밀면 따라가기를 멈춘다. 다시 붙고 싶을 때 누른다 */
         '<button type="button" class="dv-recenter" id="navRecenter" hidden>현재 위치</button>' +
+        /* 주행 중 자동 제안 — 먼저 말해 주되, 바꾸는 것은 사람이 누른다 */
+        '<div class="dv-sug" id="navSug" hidden role="status" aria-live="polite">' +
+          '<p class="dv-sug-t" id="navSugT"></p>' +
+          '<div class="dv-sug-b">' +
+            '<button type="button" class="dv-sug-go" id="navSugSwap">순서 바꾸기</button>' +
+            '<button type="button" class="dv-sug-go" id="navSugQuiet">다른 곳으로</button>' +
+            '<button type="button" class="dv-sug-x" id="navSugNo">그대로 간다</button>' +
+          '</div>' +
+        '</div>' +
         '<p class="dv-note" id="navNote" hidden></p>' +
       '</div>' +
       '<div class="dv-bottom">' +
@@ -639,6 +648,9 @@
       else if (window.startVoice) window.startVoice();
     });
     on('navRecenter', function () { nvFollowOn(); });
+    on('navSugSwap',  function () { nvSugHide(); if (window.rlDo) window.rlDo('swap'); });
+    on('navSugQuiet', function () { nvSugHide(); if (window.rlDo) window.rlDo('quiet'); });
+    on('navSugNo',    function () { nvSugHide(); });
     on('navV2',    function () { nvMode('2d'); });
     on('navV3',    function () { nvMode('3d'); });
     on('navTraffic', function () {
@@ -681,6 +693,57 @@
     var d = new Date(), two = function (n) { return (n < 10 ? '0' : '') + n; };
     e.textContent = two(d.getHours()) + ':' + two(d.getMinutes());
     st.clock = setTimeout(tickClock, 20000);
+  }
+
+  /* ── 주행 중 자동 제안 ──────────────────────────────────
+     지금까지는 사람이 눌러야 바뀌었다. 가는 중에 다음 목적지가 갑자기 붐비거나
+     비가 오면 먼저 말해 준다. 바꾸는 것은 여전히 사람이 누른다 —
+     운전 중에 화면이 제멋대로 바뀌면 그게 더 위험하다.
+
+     값은 실시간 화면이 이미 받아 둔 것을 읽는다. 같은 것을 두 번 묻지 않는다. */
+  var SUG_EVERY = 90000;      /* 이만큼마다 한 번 살핀다 */
+  var SUG_BUSY = 70;          /* 집중률이 이 이상이면 붐빈다고 본다 */
+
+  function nvSugHide() {
+    var b = document.getElementById('navSug');
+    if (b) b.hidden = true;
+  }
+  function nvSugShow(text) {
+    var b = document.getElementById('navSug'), t = document.getElementById('navSugT');
+    if (!b || !t) return;
+    t.textContent = text;
+    b.hidden = false;
+  }
+  function nvSuggestTick() {
+    if (!st) return;
+    var snap = (typeof window.rlSnapshot === 'function') ? window.rlSnapshot() : null;
+    if (!snap || !snap.next || !snap.next.name) return;
+    var name = snap.next.name;
+    var c = snap.crowd || {}, w = snap.weather || {};
+    var kind = null, say = null;
+    if (c.rate != null && Number(c.rate) >= SUG_BUSY) {
+      kind = 'busy';
+      say = name + ' 이 붐빕니다. 순서를 바꾸거나 가까운 다른 곳을 찾을 수 있습니다.';
+    } else if (String(w.summary || w.text || '').indexOf('비') >= 0) {
+      kind = 'rain';
+      say = name + ' 에 비 소식이 있습니다. 실내로 바꾸거나 순서를 미룰 수 있습니다.';
+    }
+    if (!kind) { nvSugHide(); return; }
+    var key = kind + ':' + name;
+    st.suggested = st.suggested || {};
+    if (st.suggested[key]) return;      /* 같은 말을 두 번 하지 않는다 */
+    st.suggested[key] = true;
+    nvSugShow(say);
+    speak(say);
+  }
+  function nvSuggestStart() {
+    if (!st || st.sugTimer) return;
+    st.sugTimer = setInterval(function () {
+      try {
+        if (typeof window.rlAgain === 'function') window.rlAgain();
+      } catch (e) {}
+      setTimeout(nvSuggestTick, 1500);   /* 새 값이 들어올 틈을 준다 */
+    }, SUG_EVERY);
   }
 
   /* ══ 지도 ══════════════════════════════════════════════
@@ -1006,6 +1069,7 @@
     speak('운전 중에는 화면을 보지 마세요. 소리로 안내합니다.', true);
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
+    nvSuggestStart();
     st.watchId = navigator.geolocation.watchPosition(
       function (p) {
         var first = !st.pos;
@@ -1028,6 +1092,7 @@
   function stopDrive(fromPop) {
     if (!st) return;
     var pushed = st.pushed;
+    if (st.sugTimer) { clearInterval(st.sugTimer); st.sugTimer = null; }
     if (st.watchId != null) navigator.geolocation.clearWatch(st.watchId);
     if (st.clock) clearTimeout(st.clock);
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
