@@ -21,7 +21,8 @@ public record BudgetEstimate(
         Season season,
         List<Festival> festivals,
         Accuracy accuracy,
-        List<String> notes
+        List<String> notes,
+        Calibration calibration
 ) {
     /**
      * @param category LODGING | FOOD | TRANSPORT | TOUR
@@ -73,4 +74,19 @@ public record BudgetEstimate(
      * @param guessed 가정으로 메운 항목 수
      */
     public record Accuracy(String level, String label, int real, int guessed, String why) {}
+
+    /**
+     * 학습 보정 — 다녀온 여행의 실제 지출로 추정 항목에 곱한 배수.
+     *
+     * @param applied    보정했는지. false 면 multiplier 는 1.0 이다
+     * @param multiplier 곱한 배수 (상·하한 적용 후)
+     * @param raw        자르기 전 중앙값. 보정 안 했으면 1.0
+     * @param samples    근거 표본 수. 보정 안 했을 때는 가장 넓은 묶음(시도)의 표본 수
+     * @param group      묶음 이름 (「부산·호텔·성수기」). 보정 안 했으면 null
+     */
+    public record Calibration(boolean applied, double multiplier, double raw, int samples, String group, String why) {
+        public static Calibration none(int samples, String why) {
+            return new Calibration(false, 1.0, 1.0, samples, null, why);
+        }
+    }
 }

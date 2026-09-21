@@ -18,7 +18,8 @@ public record BudgetRequest(
         String    lodgingContentId,   // 관광공사 숙소 contentId. 있으면 실제 요금표를 본다
         List<String> stops,           // 들를 곳 이름. 끼니·입장료 칸 수
         Integer   totalMeters,        // 이미 계산한 총 이동거리(m). 없으면 가정
-        Integer   transitFare         // 이미 계산한 대중교통 요금 합. 없으면 가정
+        Integer   transitFare,        // 이미 계산한 대중교통 요금 합. 없으면 가정
+        String    lodgingType         // 호텔 · 펜션 … 학습 보정을 묶는 기준. 없으면 유형 없이 묶는다
 ) {
     public int peopleOr(int fallback) {
         return people == null || people < 1 ? fallback : people;

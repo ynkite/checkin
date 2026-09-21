@@ -45,6 +45,7 @@ public class BudgetEstimateService {
 
     private final LodgingRateService lodgingRateService;
     private final FestivalService festivalService;
+    private final BudgetCalibrationService calibrationService;
 
     public BudgetEstimate estimate(BudgetRequest req) {
         int people = req.peopleOr(2);
@@ -192,6 +193,19 @@ public class BudgetEstimateService {
             notes.add("지역을 못 알아봐서 숙박·축제는 지역 자료 없이 냈습니다.");
         }
 
+        /* ── 학습 보정 ─────────────────────────────────────
+           확정 항목(공개 요금표·티맵 실측)은 흔들지 않는다. 추정 항목에만 곱한다 */
+        BudgetEstimate.Calibration cal = calibrationService.calibrate(
+                area != null ? area.sido() : null, req.lodgingType(), season.peak());
+        if (cal.applied()) {
+            items.replaceAll(i -> i.estimated()
+                    ? new BudgetEstimate.Item(i.category(), i.label(), Math.round(i.amount() * cal.multiplier()),
+                            i.basis() + " · 학습 보정 " + x(cal.multiplier()), i.status(), i.seasonApplied())
+                    : i);
+            notes.add("다녀온 여행 " + cal.samples() + "건(" + cal.group() + ")의 실제 지출로 추정 항목을 "
+                    + x(cal.multiplier()) + " 보정했습니다.");
+        }
+
         long total = items.stream().mapToLong(BudgetEstimate.Item::amount).sum();
 
         return new BudgetEstimate(total,
@@ -202,7 +216,8 @@ public class BudgetEstimateService {
                         SeasonRules.peakDays(from, to).stream().map(LocalDate::toString).toList()),
                 festivals,
                 accuracy(real, guessed),
-                notes);
+                notes,
+                cal);
     }
 
     /* 요금표가 없어 지역 평균으로 메울 때만 성수기를 곱한다.

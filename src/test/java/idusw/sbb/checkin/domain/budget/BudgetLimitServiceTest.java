@@ -13,7 +13,7 @@ class BudgetLimitServiceTest {
     private final BudgetLimitService svc = new BudgetLimitService();
 
     private BudgetEstimate estimate(long total, BudgetEstimate.Item... items) {
-        return new BudgetEstimate(total, total, 2, 2, 3, List.of(items), null, List.of(), null, List.of());
+        return new BudgetEstimate(total, total, 2, 2, 3, List.of(items), null, List.of(), null, List.of(), null);
     }
 
     private BudgetEstimate.Item item(String label, long amount) {
