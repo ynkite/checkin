@@ -41,7 +41,10 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/checkin:latest
+          # sha 태그를 같이 남겨 둔다. 되돌릴 때는 레지스트리의 latest 를 그 sha 로 다시 가리킨다
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/checkin:latest
+            ghcr.io/${{ github.repository_owner }}/checkin:${{ github.sha }}
 
   release:
     needs: build

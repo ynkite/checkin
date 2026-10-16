@@ -37,11 +37,12 @@ public class PushNotificationService {
     public void subscribe(Long userId, String endpoint, String p256dh, String auth) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("회원을 찾을 수 없습니다."));
-        // 같은 기기(endpoint) 재구독이면 기존 것 지우고 다시 저장 (키가 바뀌었을 수 있음)
-        subscriptionRepository.findByEndpoint(endpoint)
-                .ifPresent(subscriptionRepository::delete);
-        subscriptionRepository.save(PushSubscription.builder()
-                .user(user).endpoint(endpoint).p256dh(p256dh).auth(auth).build());
+        // 같은 기기(endpoint) 재구독이면 기존 행을 고쳐 쓴다 (키가 바뀌었을 수 있음).
+        // 지우고 다시 넣으면 Hibernate 가 INSERT 를 DELETE 보다 먼저 보내 uq_push_endpoint 에 걸린다
+        subscriptionRepository.findByEndpoint(endpoint).ifPresentOrElse(
+                s -> s.renew(user, p256dh, auth),
+                () -> subscriptionRepository.save(PushSubscription.builder()
+                        .user(user).endpoint(endpoint).p256dh(p256dh).auth(auth).build()));
     }
 
     // 구독 해제 — 로그인한 본인 구독만. 남의 구독은 endpoint 를 알아도 못 지운다.

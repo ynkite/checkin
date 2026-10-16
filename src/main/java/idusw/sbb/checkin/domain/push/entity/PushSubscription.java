@@ -49,4 +49,11 @@ public class PushSubscription {
         this.auth = auth;
         this.createdAt = LocalDateTime.now();
     }
+
+    // 같은 기기(endpoint) 재구독: 행은 그대로 두고 주인과 키만 바꾼다 (지우고 다시 넣으면 unique 충돌)
+    public void renew(User user, String p256dh, String auth) {
+        this.user = user;
+        this.p256dh = p256dh;
+        this.auth = auth;
+    }
 }

@@ -85,6 +85,7 @@ public class SecurityConfig {
                                 "/privacy",                         //개인정보 처리방침. 로그인 전에 읽을 수 있어야 한다
                                 "/api/auth/signup",                 //회원가입
                                 "/api/auth/login",                  //로그인
+                                "/api/auth/refresh",                //토큰 재발급. 본문의 refresh 토큰이 자격 증명이라 access 토큰 없이 부른다
                                 "/api/auth/check-username",         //아이디 중복 확인
                                 "/api/auth/check-email",            //이메일 중복 확인
                                 "/api/auth/send-email",             //이메일 인증 발송
