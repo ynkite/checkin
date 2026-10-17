@@ -102,6 +102,41 @@
     var s = dist > OFF_METERS ? prevStreak + 1 : 0;
     return { streak: s, off: s >= OFF_STREAK };
   }
+  /* ══ 가상 주행 (실내 시연) ═══════════════════════════════
+     주소에 ?sim=1 을 붙이면 GPS 대신 받은 경로를 따라 시속 45km 로 움직인다.
+     갈림길 · 음성 · 도착은 실제 주행과 같은 길(onPos)로 흐른다. 없으면 예전 그대로 */
+  var SIM = /[?&]sim=1\b/.test(location.search);
+  var SIM_MS = 12.5;   // 초속 12.5m = 시속 45km
+  function simPoint(line, acc, m) {
+    for (var i = 0; i < line.length - 1; i++) {
+      if (acc[i + 1] >= m) {
+        var t = (m - acc[i]) / ((acc[i + 1] - acc[i]) || 1);
+        return [line[i][0] + (line[i + 1][0] - line[i][0]) * t, line[i][1] + (line[i + 1][1] - line[i][1]) * t];
+      }
+    }
+    return line[line.length - 1];
+  }
+  function simTick() {
+    if (!st || !SIM) return;
+    if (st.route && !st.arrived) {
+      st.simM = Math.min((st.simM || 0) + SIM_MS, st.route.totalMeters || st.acc[st.acc.length - 1]);
+      var q = simPoint(st.route.line, st.acc, st.simM);
+      onPos({ coords: { latitude: q[0], longitude: q[1], speed: SIM_MS } });
+    }
+    st.simTimer = setTimeout(simTick, 1000);
+  }
+  function simStart() {   /* 출발점: 지금 위치를 한 번만 받고, 안 되면 목적지에서 북쪽 약 2km */
+    var go = function (lat, lng) {
+      if (!st) return;
+      st.pos = { lat: lat, lng: lng };
+      paintSpeed(); nvOnPos(); loadRoute();
+      st.simTimer = setTimeout(simTick, 1500);
+    };
+    navigator.geolocation.getCurrentPosition(
+      function (p) { go(p.coords.latitude, p.coords.longitude); },
+      function () { go(st.dest.lat + 0.018, st.dest.lng); },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 5000 });
+  }
   function kmh(speedMs) { return speedMs == null || speedMs < 0 ? 0 : speedMs * 3.6; }
   function isDriving(speedMs) { return kmh(speedMs) >= DRIVE_KMH; }
 
@@ -1083,6 +1118,7 @@
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
     nvSuggestStart();
+    if (SIM) { simStart(); return; }
     st.watchId = navigator.geolocation.watchPosition(
       function (p) {
         var first = !st.pos;
@@ -1107,6 +1143,7 @@
     var pushed = st.pushed;
     if (st.sugTimer) { clearInterval(st.sugTimer); st.sugTimer = null; }
     if (st.watchId != null) navigator.geolocation.clearWatch(st.watchId);
+    if (st.simTimer) clearTimeout(st.simTimer);
     if (st.clock) clearTimeout(st.clock);
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
     document.removeEventListener('visibilitychange', onVisible);
