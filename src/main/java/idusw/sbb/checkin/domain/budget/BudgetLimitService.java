@@ -4,6 +4,8 @@ import idusw.sbb.checkin.domain.budget.dto.BudgetEstimate;
 import idusw.sbb.checkin.domain.budget.dto.BudgetLimitCheck;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 바뀐 동선이 예산 한도를 넘는지 판단만 한다 (작업지시 3번).
  *
@@ -21,17 +23,18 @@ public class BudgetLimitService {
      * @param limitWon 사용자가 정한 예산. 0 이하면 「예산 안 정함」으로 본다
      */
     public BudgetLimitCheck check(BudgetEstimate estimate, long limitWon) {
-        long total = estimate == null ? 0 : estimate.total();
+        return estimate == null ? check(0, List.of(), limitWon) : check(estimate.total(), estimate.items(), limitWon);
+    }
 
+    /** 산출 객체 없이 총액·항목만 있을 때 (예산 맞춤이 일정에서 바로 부른다). */
+    public BudgetLimitCheck check(long total, List<BudgetEstimate.Item> items, long limitWon) {
         // 총액에서 가장 큰 항목 — 줄일 후보로 화면이 제시한다
         String biggestLabel = null;
         long biggestAmount = 0;
-        if (estimate != null && estimate.items() != null) {
-            for (BudgetEstimate.Item it : estimate.items()) {
-                if (it.amount() > biggestAmount) {
-                    biggestAmount = it.amount();
-                    biggestLabel = it.label();
-                }
+        for (BudgetEstimate.Item it : items == null ? List.<BudgetEstimate.Item>of() : items) {
+            if (it.amount() > biggestAmount) {
+                biggestAmount = it.amount();
+                biggestLabel = it.label();
             }
         }
 

@@ -420,8 +420,46 @@ async function _loadExpenses(tripId) {
     }
 
     // 숙박비 근거 표 · 예측 정확도 — 실패해도 가계부 화면은 그대로 뜬다
+    _loadBudgetFit(tripId, d);
     _loadBudgetEstimate(tripId);
     _loadBudgetAccuracy();
+}
+
+/** GET /api/trips/{tripId}/budget-fit → 예산의 N% · 조정 전 → 후.
+    서버가 못 주면 가계부 예상 총액으로 % 만 낸다 — 오류 화면을 띄우지 않는다 */
+async function _loadBudgetFit(tripId, report) {
+    const card = document.getElementById('budget-fit-card');
+    if (!card) return;
+    let f = null;
+    try {
+        const res = await api.get('/api/trips/' + tripId + '/budget-fit');
+        if (res && res.success && res.data && !res.data.fallback) f = res.data;
+    } catch (e) { /* 아래 대체 표시로 */ }
+
+    const limit = f ? f.limit : (report.budget || 0);
+    if (!limit) { card.hidden = true; return; }
+    const after = f ? f.after : (report.totalEstimatedAmount || 0);
+    const pct = Math.round(after / limit * 100);
+    const set = (id, text) => {
+        const el = document.getElementById(id);
+        el.textContent = text || '';
+        el.hidden = !text;
+    };
+
+    set('budget-fit-pct', '예산의 ' + pct + '%');
+    set('budget-fit-ref', '정한 예산 ' + _fmtWon(limit) + ' 기준');
+    set('budget-fit-line', f && f.before !== f.after
+        ? '조정 전 ' + _fmtWon(f.before) + ' → 조정 후 ' + _fmtWon(f.after) : '');
+    document.getElementById('budget-fit-list').replaceChildren(...(f ? f.changes : []).map(c => {
+        const li = document.createElement('li');
+        li.textContent = c;
+        return li;
+    }));
+    set('budget-fit-note', !f ? '예산 맞춤을 불러오지 못해 원래 일정 금액으로 보여 드립니다.'
+        : f.suggest || (pct > 100 && f.biggestLabel
+            ? '가장 큰 지출은 ' + f.biggestLabel + ' ' + _fmtWon(f.biggestAmount) + '입니다.' : ''));
+    card.toggleAttribute('data-over', pct > 100);
+    card.hidden = false;
 }
 
 // 항목 상태 3종. 색만으로 구분하지 않고 기호를 같이 찍는다.

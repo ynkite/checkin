@@ -33,10 +33,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class BudgetEstimator {
 
-    /* 추정 단가 — 공개 데이터에 금액 필드가 없는 항목들.
-       ponytail: 전국 단일값 휴리스틱. 3층(예측 vs 실측) 오차가 쌓이면
-       지역·숙소유형별 계수로 올린다. 지금 지역별 표를 만들면 근거가 없다. */
-    static final long EXTRA_PERSON_PER_NIGHT = 20_000;   // 정원 초과 1인 1박
+    /* 평균 기준 단가 — 관광공사 응답에 금액 필드가 없는 항목들.
+       화면에는 「평균 기준」이라고 적는다. 인원 추가는 객실 요금이 있으면
+       거기서 1인 몫을 내고, 요금이 없을 때만 아래 값을 쓴다. */
+    static final long EXTRA_PERSON_PER_NIGHT = 20_000;   // 정원 초과 1인 1박 (객실 요금 모를 때)
     static final long BARBECUE               = 30_000;   // 1회
     static final long LATE_CHECKOUT          = 10_000;   // 1회
     static final long PET_PER_NIGHT          = 20_000;   // 1박
@@ -132,26 +132,32 @@ public class BudgetEstimator {
         int over = in.people() - in.baseCount();
         if (over <= 0) return Item.none("인원 추가", "기준인원 " + in.baseCount() + "명 이내");
 
-        long amount = (long) over * EXTRA_PERSON_PER_NIGHT * Math.max(1, in.nights());
+        /* 1인 몫 = 객실 요금 ÷ 기준인원 (천 원 단위 반올림). 요금표에서 나온 값이지만
+           숙소가 받는 실제 추가요금은 공개되지 않으므로 항목은 추정으로 둔다 */
+        LodgingRate r = in.rate();
+        boolean fromRate = r != null && r.amount() > 0;
+        long perHead = fromRate ? Math.round(r.amount() / (double) in.baseCount() / 1000) * 1000 : EXTRA_PERSON_PER_NIGHT;
+        long amount = (long) over * perHead * Math.max(1, in.nights());
         return Item.estimated("인원 추가 " + over + "명", amount,
-                "기준인원 " + in.baseCount() + "명 초과 · 1인 " + won(EXTRA_PERSON_PER_NIGHT) + " 추정");
+                "기준인원 " + in.baseCount() + "명 초과 · 1인 " + won(perHead)
+                        + (fromRate ? " (객실 " + won(r.amount()) + " ÷ " + in.baseCount() + "명)" : " (평균 기준)"));
     }
 
     /** 바베큐 — 공개 데이터는 「가능한지」만 알려 준다. 금액은 끝까지 추정으로 남는다. */
     private static Item barbecue(Input in) {
         if (!in.barbecue()) return Item.none("바베큐", "선택 안 함");
         return Item.estimated("바베큐", BARBECUE,
-                in.barbecueAvailable() ? "숙소 제공 확인 · 금액은 추정" : "지역 평균 추정");
+                in.barbecueAvailable() ? "숙소 제공 확인 · 금액은 평균 기준 추정" : "평균 기준 추정");
     }
 
     private static Item lateCheckout(Input in) {
         if (!in.lateCheckout()) return Item.none("레이트 체크아웃", "선택 안 함");
-        return Item.estimated("레이트 체크아웃", LATE_CHECKOUT, "일반 관행 추정");
+        return Item.estimated("레이트 체크아웃", LATE_CHECKOUT, "평균 기준 추정");
     }
 
     private static Item pet(Input in) {
         if (!in.pet()) return Item.none("반려동물", "동반 없음");
-        return Item.estimated("반려동물", PET_PER_NIGHT * Math.max(1, in.nights()), "동반 추가요금 추정");
+        return Item.estimated("반려동물", PET_PER_NIGHT * Math.max(1, in.nights()), "동반 추가요금 · 평균 기준 추정");
     }
 
     private static String won(long amount) {

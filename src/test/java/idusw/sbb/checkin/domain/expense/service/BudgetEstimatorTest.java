@@ -22,15 +22,27 @@ class BudgetEstimatorTest {
 
     @Test
     void 신뢰도는_확정_항목의_금액_비중이다() {
-        // 확정 객실료 60,000 x 2박 = 120,000 / 인원 추가 2명 x 20,000 x 2박 = 80,000
+        // 확정 객실료 60,000 x 2박 = 120,000
+        // 인원 추가 1인 몫 = 60,000 ÷ 기준 2명 = 30,000 → 2명 x 30,000 x 2박 = 120,000
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.confirmed(60_000, "비수기 주중"),
                 2, 4, 2, false, false, false, false));
 
-        assertEquals(200_000, e.total());
-        assertEquals(60, e.confidence(), "확정 120,000 ÷ 총액 200,000");
+        assertEquals(240_000, e.total());
+        assertEquals(50, e.confidence(), "확정 120,000 ÷ 총액 240,000");
         assertEquals(Status.CONFIRMED, item(e, "객실 기본료").status());
         assertEquals(Status.ESTIMATED, item(e, "인원 추가").status());
+        assertTrue(item(e, "인원 추가").basis().contains("÷ 2명"), "객실 요금에서 낸 값임을 적는다");
+    }
+
+    @Test
+    void 객실_요금을_모르면_인원_추가는_평균_기준이다() {
+        BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
+                LodgingRate.none("비수기 주중"), 1, 3, 2, false, false, false, false));
+
+        Item extra = item(e, "인원 추가");
+        assertEquals(BudgetEstimator.EXTRA_PERSON_PER_NIGHT, extra.amount());
+        assertTrue(extra.basis().contains("평균 기준"));
     }
 
     @Test
@@ -89,7 +101,7 @@ class BudgetEstimatorTest {
         Item bbq = item(e, "바베큐");
         assertEquals(Status.ESTIMATED, bbq.status());
         assertTrue(bbq.basis().contains("숙소 제공 확인"));
-        assertTrue(bbq.basis().contains("추정"));
+        assertTrue(bbq.basis().contains("평균 기준"));
     }
 
     @Test
