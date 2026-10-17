@@ -781,8 +781,10 @@
 
         var bs = rlLegSum(b), as = rlLegSum(a);
         if (bs != null && as != null && bs !== as) {
+          var est = rlStops(b).concat(rlStops(a)).some(function (p) { return p.legEstimated; });
           lines.push('그날 이동 시간 ' + bs + '분 → ' + as + '분 (' +
-            (as < bs ? (bs - as) + '분 줄었습니다' : (as - bs) + '분 늘었습니다') + ')');
+            (as < bs ? (bs - as) + '분 줄었습니다' : (as - bs) + '분 늘었습니다') + ')' +
+            (est ? ' · 일부 구간은 거리로 어림한 예상 시간' : ''));
         } else if (bs == null || as == null) {
           lines.push('이동 시간은 재지 못한 구간이 있어 비교하지 않았습니다.');
         }
