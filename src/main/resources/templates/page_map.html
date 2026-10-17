@@ -4314,18 +4314,22 @@
         </div>
 
         <!-- Budget view -->
-        <div id="budgetView" style="display:none;position:absolute;inset:0;overflow-y:auto;z-index:8">
-          <div style="max-width:760px;margin:0 auto">
+        <div id="budgetView" style="display:none">
+          <div class="mp-budget-inner">
             <div class="mp-bg-eyebrow">예상 지출</div>
             <h3>가계부</h3>
 
             <div class="mp-bg-card">
+              <div class="mp-bg-summary">
+                <div id="map-budget-remaining" role="status">예산을 입력하면 남은 금액을 확인할 수 있습니다.</div>
+                <p class="mp-bg-ratio"><span>예산 대비</span><strong id="map-budget-ratio">—</strong></p>
+              </div>
               <div id="map-budget-items"></div>
               <div class="mp-bg-total">
                 <div id="map-budget-total-label">예상 총액</div>
                 <div id="map-budget-total">0원</div>
               </div>
-              <div id="map-budget-remaining">정한 예산을 입력하면 남는 금액을 같이 보여줍니다.</div>
+              
             </div>
 
             <div class="mp-bg-card" style="margin-top:14px">

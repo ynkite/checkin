@@ -18,6 +18,11 @@
  *   tokens.css 의 금지 3번(밝은 배경에 --sig 로 글자)에 걸리지 않는다.
  */
 
+:where(button, summary, [role="button"], a[onclick], input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select){
+  min-height:var(--home-target);
+}
+:where(button, [role="button"], a[onclick]){ min-width:var(--home-target) }
+
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible{
   outline:2px solid var(--sig) !important;
   outline-offset:2px !important;

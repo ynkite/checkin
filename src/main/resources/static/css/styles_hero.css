@@ -45,10 +45,10 @@
 
 /* 축소 배율의 역수로 이름표 크기를 유지한다. 좌표는 모형에만 속한다. */
 .ck-pins{ z-index:3; pointer-events:none }
-.ck-pin{ position:absolute; display:flex; flex-direction:column; align-items:center; width:var(--home-pin-width); transform:translate(-50%,-50%) scale(calc(1 / var(--st-z,1))); transform-origin:50% 50%; gap:var(--u) }
+.ck-pin{ position:absolute; display:flex; flex-direction:column; align-items:center; width:min(var(--home-pin-detail), calc(100vw - var(--u)*4)); transform:translate(-50%,-50%) scale(calc(1 / var(--st-z,1))); transform-origin:50% 50%; gap:calc(var(--u)/2) }
 .ck-pin .ck-no{ display:grid; place-items:center; width:var(--home-pin-size); height:var(--home-pin-size); border-radius:50%; font:600 var(--home-meta) var(--fig); background:var(--sig); color:var(--on-sig); box-shadow:0 0 0 calc(var(--u)/2) var(--panel) }
-.ck-pin .ck-bub{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:calc(var(--u)/2) var(--u); max-width:100%; padding:var(--u) calc(var(--u)*1.5); background:var(--panel); color:var(--ink); box-shadow:var(--home-shadow); border-radius:var(--r-field); font-size:var(--t-sm) }
-.ck-bub strong{ font-weight:650 }
+.ck-pin .ck-bub{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:calc(var(--u)/2) var(--u); min-width:0; max-width:100%; padding:calc(var(--u)/2) var(--u); background:var(--panel); color:var(--ink); box-shadow:var(--home-shadow); border-radius:var(--r-field); font-size:var(--home-meta) }
+.ck-bub strong{ min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:650 }
 .ck-bub em{ font:500 var(--home-meta) var(--fig); color:var(--ink-2) }
 .ck-cw{ display:flex; gap:calc(var(--u)/2); align-items:baseline; font-size:var(--home-meta); color:var(--ink-2) }
 .ck-cw b{ color:var(--ink); font-family:var(--fig) }

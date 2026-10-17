@@ -26,13 +26,14 @@
   display:flex; flex-direction:column;
   background:var(--home-dark); color:var(--home-on-dark);
   word-break:keep-all;
+  overflow-y:auto;
 }
 body.dv-open{ overflow:hidden }
 
 /* ── 위 — 다음에 무엇을 하나 ──────────────────────────── */
 .dv-top{
   flex:0 0 auto;
-  padding:calc(var(--u) + env(safe-area-inset-top, 0px)) calc(var(--u)*2) calc(var(--u)*1.5);
+  padding:calc(var(--u) + env(safe-area-inset-top, 0px)) calc(var(--u)*2) var(--u);
   background:var(--home-dark);
 }
 .dv-bar{
@@ -64,7 +65,7 @@ body.dv-open{ overflow:hidden }
 }
 .dv-arrow{
   flex:0 0 auto; display:grid; place-items:center;
-  width:clamp(62px, 17vw, 84px); height:clamp(62px, 17vw, 84px);
+  width:var(--drive-arrow); height:var(--drive-arrow);
   border-radius:var(--r-panel);
   background:var(--sig);
 }
@@ -76,13 +77,13 @@ body.dv-open{ overflow:hidden }
 .dv-turn-t{ min-width:0; flex:1 1 auto }
 .dv-dist{
   display:block; font-family:var(--fig); font-weight:700;
-  font-size:clamp(32px, 9vw, 52px); line-height:1.05;
+  font-size:var(--drive-distance); line-height:1.05;
   letter-spacing:var(--tracking-num); color:var(--home-on-dark);
 }
 .dv-dist:empty{ display:none }
 .dv-what{
   margin:calc(var(--u)/2) 0 0; line-height:1.3;
-  font-size:clamp(16px, 4.4vw, 22px); font-weight:650;
+  font-size:var(--drive-instruction); font-weight:650;
   color:var(--home-on-dark); word-break:keep-all;
 }
 .dv-road{
@@ -93,7 +94,7 @@ body.dv-open{ overflow:hidden }
 /* 그다음 갈림길 — 미리 알면 차선을 잡는다 */
 .dv-then{
   display:flex; align-items:center; gap:var(--u);
-  margin-top:calc(var(--u)*1.5); padding:calc(var(--u)/1.5) var(--u);
+  margin-top:var(--u); padding:calc(var(--u)/2) var(--u);
   border-radius:var(--r-field);
   background:var(--home-dark-hover);
   font-size:var(--t-sm); color:var(--home-muted-dark); word-break:keep-all;
@@ -104,7 +105,7 @@ body.dv-open{ overflow:hidden }
   width:100%; height:100%; fill:none; stroke:var(--sig); stroke-width:2.2;
   stroke-linecap:round; stroke-linejoin:round;
 }
-.dv-then b{ min-width:0; color:var(--home-on-dark); font-weight:600; font-size:var(--t-sm) }
+.dv-then b{ min-width:0; color:var(--home-on-dark); font-weight:600; font-size:var(--t-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .dv-then-r{
   min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   font-size:var(--t-xs); color:var(--home-muted-dark);
@@ -115,7 +116,7 @@ body.dv-open{ overflow:hidden }
    그 사실을 화면에도 적는다 — 운전 중에 보는 것이라 틀릴 수 있다고 말해야 한다. */
 .dv-lane{
   display:flex; align-items:center; gap:var(--u); flex-wrap:wrap;
-  margin-top:var(--u); padding:calc(var(--u)/1.5) var(--u);
+  margin-top:calc(var(--u)/2); padding:calc(var(--u)/2) var(--u);
   border-radius:var(--r-field);
   background:var(--home-dark-hover);
 }
@@ -127,7 +128,7 @@ body.dv-open{ overflow:hidden }
 }
 .dv-ln.on{ background:var(--sig) }
 .dv-lane b{
-  font-size:var(--t-body); font-weight:700; color:var(--home-on-dark);
+  font-size:var(--t-sm); font-weight:700; color:var(--home-on-dark);
   letter-spacing:var(--tracking-tight);
 }
 .dv-lane-why{
@@ -137,10 +138,10 @@ body.dv-open{ overflow:hidden }
 
 /* ── 가운데 — 지도 ─────────────────────────────────────── */
 .dv-stage{
-  position:relative; flex:1 1 auto; min-height:0; overflow:hidden;
+  position:relative; flex:1 0 var(--drive-map-min); min-height:var(--drive-map-min); overflow:hidden;
   background:var(--ui-plate);
 }
-.dv-canvas{ position:absolute; inset:0 }
+.dv-canvas{ position:absolute; inset:var(--drive-toolbar) 0 0 }
 .dv-canvas[hidden]{ display:none }
 .dv-model{ overflow:hidden }
 .dv-model-frame,.dv-model-layer{
@@ -189,7 +190,7 @@ body.dv-open{ overflow:hidden }
    어린이보호구역·과속방지턱·단속카메라. 소리로도 읽지만
    소리를 못 듣는 상황(음소거·동승자 대화)이 있어 화면에도 띄운다. */
 .dv-alert{
-  position:absolute; left:calc(var(--u)*1.5); right:calc(var(--u)*1.5); top:calc(var(--u)*1.5);
+  position:absolute; left:calc(var(--u)*1.5); right:calc(var(--u)*1.5); top:calc(var(--drive-toolbar) + var(--u));
   z-index:5; display:flex; align-items:center; gap:var(--u);
   padding:calc(var(--u)*1.25) calc(var(--u)*1.75);
   border-radius:var(--r-panel);
@@ -219,7 +220,7 @@ body.dv-open{ overflow:hidden }
 /* ── 속도 ──────────────────────────────────────────────
    지금 속도와 제한속도를 나란히. 제한속도는 서버가 줄 때만 뜬다. */
 .dv-speed{
-  position:absolute; left:calc(var(--u)*1.5); bottom:calc(var(--u)*1.5); z-index:5;
+  position:absolute; left:calc(var(--u)*1.5); bottom:var(--map-attribution-space); z-index:5;
   display:flex; align-items:baseline; gap:calc(var(--u)/2);
   padding:calc(var(--u)/1.5) calc(var(--u)*1.5);
   border-radius:var(--r-panel);
@@ -245,29 +246,25 @@ body.dv-open{ overflow:hidden }
 
 /* 2D · 3D 고르기 */
 .dv-view{
-  position:absolute; right:calc(var(--u)*1.5); top:calc(var(--u)*1.5); z-index:6;
-  display:flex; gap:2px; padding:3px; border-radius:var(--r-pill);
+  position:absolute; left:var(--u); top:calc(var(--u)/2); z-index:6;
+  display:flex; gap:calc(var(--u)/4); padding:0; border-radius:var(--r-pill);
   background:var(--panel);
   box-shadow:0 1px 0 rgba(var(--sh-rgb),.14),0 3px 0 rgba(var(--sh-rgb),.07);
 }
 .dv-v{
-  min-height:38px; padding:0 calc(var(--u)*1.5); border:0; border-radius:var(--r-pill);
+  min-height:var(--home-target); padding:0 calc(var(--u)*1.5); border:0; border-radius:var(--r-pill);
   background:transparent; color:var(--ink-2); cursor:pointer;
   font-family:inherit; font-size:var(--home-meta); font-weight:600; word-break:keep-all;
 }
 .dv-v.on{ background:var(--ink); color:var(--panel) }
 .dv-traffic{
-  position:absolute; right:calc(var(--u)*1.5); top:calc(var(--u)*8); z-index:6;
-  min-height:38px; padding:0 calc(var(--u)*1.5); border:0; border-radius:var(--r-pill);
+  position:absolute; right:var(--u); top:calc(var(--u)/2); z-index:6;
+  min-height:var(--home-target); padding:0 calc(var(--u)*1.5); border:0; border-radius:var(--r-pill);
   background:var(--panel); color:var(--ink-3); cursor:pointer;
   font-family:inherit; font-size:var(--home-meta); font-weight:600; word-break:keep-all;
   box-shadow:0 1px 0 rgba(var(--sh-rgb),.14),0 3px 0 rgba(var(--sh-rgb),.07);
 }
 .dv-traffic.on{ background:var(--ink); color:var(--panel) }
-/* 안전 안내가 떠 있는 동안은 지도 단추를 그만큼 내린다.
-   안 내리면 「어린이보호구역」 띠가 2D·3D 단추를 덮는다 — 찍어 보고 알았다 */
-.dv-alert:not([hidden]) ~ .dv-view{ top:calc(var(--u)*9) }
-.dv-alert:not([hidden]) ~ .dv-traffic{ top:calc(var(--u)*15.5) }
 .dv-note{
   position:absolute; left:calc(var(--u)*1.5); right:calc(var(--u)*13); bottom:calc(var(--u)*9);
   z-index:4; margin:0; padding:var(--u) calc(var(--u)*1.5);
@@ -280,7 +277,7 @@ body.dv-open{ overflow:hidden }
 /* ── 아래 — 남은 것과 손대는 것 ───────────────────────── */
 .dv-bottom{
   flex:0 0 auto;
-  padding:calc(var(--u)*1.5) calc(var(--u)*2) calc(var(--u)*1.5 + env(safe-area-inset-bottom, 0px));
+  padding:var(--u) calc(var(--u)*2) calc(var(--u) + env(safe-area-inset-bottom, 0px));
   background:var(--home-dark);
 }
 .dv-meta{
@@ -299,23 +296,23 @@ body.dv-open{ overflow:hidden }
 }
 .dv-b{
   position:relative; overflow:hidden;
-  min-height:54px; padding:0 var(--u); border:0; border-radius:var(--r-field);
+  min-height:var(--drive-action); padding:0 var(--u); border:0; border-radius:var(--r-field);
   background:var(--home-dark-hover); color:var(--home-on-dark);
   font-family:inherit; font-size:var(--t-sm); font-weight:650; cursor:pointer;
   word-break:keep-all;
 }
 .dv-b:hover{ background:var(--home-dark-line) }
-.dv-b-say{ grid-column:1 / -1; background:var(--sig); color:var(--on-sig) }
+.dv-b-say{ background:var(--sig); color:var(--on-sig) }
 .dv-b-say:hover{ background:var(--sig) }
 .dv-b-off{ background:var(--tile); color:var(--panel) }
 .dv-b-off:hover{ background:var(--tile) }
 .dv-b-t{ position:relative; z-index:1 }
 /* 길게 누르는 동안 차오른다 */
 .dv-hold{
-  position:absolute; left:0; top:0; bottom:0; width:0;
+  position:absolute; inset:0; transform:scaleX(0); transform-origin:left;
   background:var(--home-dark); opacity:.45;
 }
-.dv-holding .dv-hold{ width:100%; transition:width 1.1s linear }
+.dv-holding .dv-hold{ transform:scaleX(1); transition:transform 1.1s linear }
 .dv-tip{
   margin:var(--u) 0 0; font-size:var(--t-xs); color:var(--home-muted-dark);
   line-height:1.5; word-break:keep-all;
@@ -324,15 +321,14 @@ body.dv-open{ overflow:hidden }
 /* ── 달리는 중 ─────────────────────────────────────────
    시속 10km 를 넘으면 붙는다. 조준해서 누를 수 없는 상태다.
    작은 단추를 접고 「말로 하기」만 넓게 남긴다. 글자도 키운다. */
-body.dv-driving .dv-dist{ font-size:clamp(40px, 12vw, 64px) }
-body.dv-driving .dv-what{ font-size:clamp(19px, 5.4vw, 26px) }
-body.dv-driving .dv-arrow{ width:clamp(74px, 20vw, 96px); height:clamp(74px, 20vw, 96px) }
-body.dv-driving .dv-speed b{ font-size:clamp(34px, 9vw, 46px) }
+body.dv-driving .dv-dist{ font-size:var(--drive-number) }
+body.dv-driving .dv-what{ font-size:var(--drive-instruction) }
+body.dv-driving .dv-speed b{ font-size:var(--drive-number) }
 body.dv-driving .dv-acts{ grid-template-columns:minmax(0,1fr) auto }
 body.dv-driving #navSwap,
 body.dv-driving #navQuiet{ display:none }
-body.dv-driving .dv-b-say{ grid-column:1; min-height:76px; font-size:var(--t-h3) }
-body.dv-driving .dv-b-off{ min-height:76px; padding:0 calc(var(--u)*2) }
+body.dv-driving .dv-b-say{ grid-column:1; min-height:var(--drive-toolbar); font-size:var(--t-body) }
+body.dv-driving .dv-b-off{ min-height:var(--drive-toolbar); padding:0 calc(var(--u)*2) }
 body.dv-driving .dv-b-off .dv-b-t::after{ content:" (길게)"; font-size:var(--t-xs); opacity:.85 }
 body.dv-driving .dv-tip{ display:none }
 body.dv-driving .dv-lane-why{ display:none }
@@ -342,24 +338,30 @@ body.dv-driving .dv-lane-why{ display:none }
   .dv-top{ padding-left:calc(var(--u)*1.5); padding-right:calc(var(--u)*1.5) }
   .dv-bottom{ padding-left:calc(var(--u)*1.5); padding-right:calc(var(--u)*1.5) }
   .dv-turn{ gap:calc(var(--u)*1.5) }
-  .dv-view{ right:var(--u); top:var(--u) }
-  .dv-traffic{ right:var(--u); top:calc(var(--u)*7) }
-  .dv-alert:not([hidden]) ~ .dv-view{ top:calc(var(--u)*7.5) }
-  .dv-alert:not([hidden]) ~ .dv-traffic{ top:calc(var(--u)*13.5) }
-  .dv-alert{ left:var(--u); right:var(--u); top:var(--u); padding:var(--u) calc(var(--u)*1.25) }
+  .dv-alert{ left:var(--u); right:var(--u); padding:var(--u) calc(var(--u)*1.25) }
   .dv-alert-n{ display:none }
-  .dv-speed{ left:var(--u); bottom:var(--u) }
+  .dv-speed{ left:var(--u) }
   .dv-note{ left:var(--u); right:calc(var(--u)*11); bottom:calc(var(--u)*8) }
   .dv-b{ font-size:var(--home-meta) }
+  .dv-tip{ display:none }
+}
+@media (min-width:900px) and (min-height:521px){
+  .dv-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:var(--u) calc(var(--u)*4) }
+  .dv-bar{ grid-column:1 / -1; margin:0 }
+  .dv-turn{ grid-row:2 / 4 }
+  .dv-then,.dv-lane{ margin:0 }
+  .dv-stage{ flex-basis:var(--drive-map-wide); min-height:var(--drive-map-wide) }
+  .dv-acts{ grid-template-columns:repeat(4,minmax(0,1fr)) }
+  .dv-tip{ display:none }
 }
 /* 가로로 누운 휴대폰 — 거치대에 눕혀 놓고 쓰는 자세다.
    위아래가 짧으니 안내를 왼쪽으로 세우고 지도에 남은 높이를 준다. */
 @media (max-height:520px) and (orientation:landscape){
-  .dv{ display:grid; grid-template-columns:minmax(260px,34%) minmax(0,1fr); grid-template-rows:1fr auto }
+  .dv{ display:grid; grid-template-columns:minmax(var(--drive-sidebar),34%) minmax(0,1fr); grid-template-rows:1fr auto }
   .dv-top{ grid-area:1 / 1; overflow:auto }
   .dv-bottom{ grid-area:2 / 1 }
-  .dv-stage{ grid-area:1 / 2 / 3 / 3 }
-  .dv-dist{ font-size:clamp(28px,5vw,40px) }
+  .dv-stage{ grid-area:1 / 2 / 3 / 3; min-height:var(--drive-map-landscape) }
+  .dv-dist{ font-size:var(--drive-distance) }
   .dv-tip{ display:none }
 }
 
@@ -371,21 +373,20 @@ body.dv-driving .dv-lane-why{ display:none }
    밀어 놓고 보는 중에 다음 좌표가 와서 도로 튕겨 돌아가면 아무것도 못 본다.
    그래서 따라가기를 끊고, 다시 붙고 싶을 때 이 단추를 누르게 했다. */
 .dv-recenter{
-  position:absolute; right:12px; bottom:12px; z-index:4;
-  min-height:44px; padding:0 16px; border:0; border-radius:var(--r-pill);
+  position:absolute; right:var(--u); bottom:var(--map-attribution-space); z-index:4;
+  min-height:var(--home-target); padding:0 calc(var(--u)*2); border:0; border-radius:var(--r-pill);
   background:var(--ink); color:var(--panel);
   font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;
   word-break:keep-all;
   box-shadow:0 1px 2px rgba(var(--sh-rgb),.18), 0 3px 10px rgba(var(--sh-rgb),.16);
 }
 .dv-recenter:hover{ opacity:.92 }
-@media (max-width:420px){ .dv-recenter{ right:10px; bottom:10px } }
 
 /* 주행 중 자동 제안 — 지도 아래쪽에 떠서 먼저 말을 건다.
    운전 중이라 글자를 크게 두고, 누르는 자리는 48px 보다 크게 잡았다.
    「그대로 간다」를 같이 둔 것은, 제안이 항상 옳지는 않기 때문이다. */
 .dv-sug{
-  position:absolute; left:12px; right:12px; bottom:12px; z-index:5;
+  position:absolute; left:var(--u); right:var(--u); bottom:var(--map-attribution-space); z-index:5;
   padding:13px 14px 14px; border-radius:var(--r-panel);
   background:var(--ink); color:var(--panel);
   box-shadow:0 1px 2px rgba(var(--sh-rgb),.20), 0 6px 18px rgba(var(--sh-rgb),.22);
@@ -403,4 +404,3 @@ body.dv-driving .dv-lane-why{ display:none }
 .dv-sug-go{ background:var(--sig); color:var(--ink) }
 .dv-sug-x{ grid-column:1 / -1; background:transparent; color:var(--panel); opacity:.72; font-weight:600 }
 .dv-sug-x:hover{ opacity:1 }
-@media (max-width:420px){ .dv-sug{ left:10px; right:10px; bottom:10px } }

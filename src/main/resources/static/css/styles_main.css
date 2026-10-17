@@ -233,7 +233,7 @@ nav {
     display: none;
     min-height: 100vh;
     min-height: 100dvh;
-    padding-top: 60px
+    padding-top: var(--nav-h)
 }
 
 .page.active {
@@ -326,9 +326,9 @@ nav {
     right: 18px;
     /* 하얀 박스 오른쪽 경계선으로부터 18px 안쪽으로 배치 */
 
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
+    width:var(--home-target);
+    height:var(--home-target);
+    border-radius:50%;
     border: none;
     background: var(--cream);
     cursor: pointer;

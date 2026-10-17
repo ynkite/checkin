@@ -10,7 +10,10 @@
  */
 
 #page-live{ background:var(--page-2) }
-#page-live, #page-live *{ min-width:0 }
+body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #page-live{ padding-top:0 }
+.rl-now-hd{ display:flex; align-items:center; justify-content:space-between; gap:var(--u) }
+.rl-now-hd > p{ margin:0; font-size:var(--t-sm); font-weight:600; color:var(--ink-2) }
+#page-live, #page-live :where(:not(button, input, select, [role="button"])){ min-width:0 }
 :where(#page-live button, #page-live [role=button], #page-live input, #page-live select){
   min-width:44px; min-height:44px;
 }
@@ -79,8 +82,8 @@
 .rl-back:hover{ color:var(--ink) }
 
 .rl-when{
-  margin:20px 0 0; font-family:var(--fig); font-size:12px; color:var(--ink-3);
-  letter-spacing:var(--tracking-num);
+  margin:var(--u) 0 0; font-family:var(--sans); font-size:var(--home-meta); color:var(--ink-3);
+  letter-spacing:normal; font-variant-numeric:tabular-nums; line-height:1.6;
 }
 .rl-head{
   margin:8px 0 0; font-size:clamp(22px, 3vw, 30px); font-weight:700;
@@ -354,7 +357,7 @@
 /* 기본값은 60 이 아니라 72 다 — :root 에 그렇게 적혀 있고, syncNavHeight() 가
    실제 높이를 재서 덮어쓴다. 60 으로 두면 JS 가 늦을 때 줄이 내비 밑으로 4px 파고든다 */
 .lnb{ position:sticky; top:var(--nav-h, 72px); z-index:900 }
-body:has(#page-live.active) .lnb{ display:none }
+body:has(#page-live.active, #page-main.active) .lnb{ display:none }
 
 .lnb-in{
   display:flex; align-items:center; gap:10px; width:100%;
@@ -401,14 +404,12 @@ body:has(#page-live.active) .lnb{ display:none }
 .rl-fresh-off{ color:var(--num); font-weight:600 }
 
 .rl-again{
-  margin-left:6px; padding:2px 9px 3px; border:0; cursor:pointer;
+  margin-left:calc(var(--u)*.75); padding:0 var(--u); border:0; cursor:pointer; min-height:var(--home-target);
   border-radius:var(--r-pill); font-family:inherit;
   font-size:var(--t-xs); font-weight:600; color:var(--ink-2);
   background:var(--ui-plate);
 }
 .rl-again:hover{ color:var(--ink); background:var(--ui-plate-2) }
-/* 한 손으로 누르는 화면이다. 글자는 작아도 누를 자리는 작으면 안 된다 */
-.rl-again{ min-height:40px }
 
 /* ── 날씨 ───────────────────────────────────────────────────
    서버는 하늘·기온·강수확률·실내외 위험을 다 보내는데 화면이 한 번도
@@ -525,7 +526,7 @@ body:has(#page-live.active) .lnb{ display:none }
    같은 특정도라 뒤에 오는 것이 이긴다. 순서가 뒤집히면
    .rl-trip 을 360 에서 두 칸으로 고쳐 둔 것이 여기에 덮인다 */
 @media (max-width:520px){
-  .rl-wrap{ padding:22px 14px calc(92px + env(safe-area-inset-bottom, 0px)) }
+  .rl-wrap{ padding:var(--u) calc(var(--u)*1.75) calc(var(--u)*11.5 + env(safe-area-inset-bottom, 0px)) }
   .rl-trip{ grid-template-columns:minmax(0,1fr); gap:7px; padding:16px }
   .rl-trip-t{ white-space:normal; overflow:visible; text-overflow:clip }
   .rl-trip-d{ white-space:normal }

@@ -12,9 +12,9 @@
 .ck-home .st-head .fl-eye{ font-size:var(--home-meta); color:var(--ink-2); margin-bottom:calc(var(--u)*2) }
 .ck-home .st-head .fl-sub{ color:var(--ink-2); font-size:var(--t-sm); line-height:1.8; margin-top:calc(var(--u)*2) }
 .st-tour{ grid-area:1 / 1 / 3 / 2; min-width:0 }
-.st-tour-head{ display:flex; justify-content:space-between; align-items:center; gap:var(--u); padding-bottom:var(--u); font-size:var(--t-sm) }
+.st-tour-head{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--u); padding-bottom:var(--u); font-size:var(--t-sm) }
 .st-tour-head > span{ font-weight:700 }
-.st-tour-head button{ min-height:var(--home-target); color:var(--ink-2); font-size:var(--home-meta); text-decoration:underline; text-underline-offset:calc(var(--u)/2) }
+.st-tools .st-replay{ text-decoration:underline; text-underline-offset:calc(var(--u)/2) }
 .st-viewport{ height:var(--home-scene); position:relative; isolation:isolate; overflow:hidden; border-radius:var(--home-radius) var(--home-radius) var(--r-field) var(--r-field); background:var(--water) }
 .ck-stage .ck-scene,.ck-stage .st-bigmap{ position:absolute; inset:0; background:var(--water) }
 .ck-stage .ck-scene{ overflow:hidden; pointer-events:none }
@@ -39,12 +39,12 @@
 .st-viewport::after{ content:""; position:absolute; inset:0; z-index:4; pointer-events:none; background:var(--water); opacity:0; transform:translateX(100%); transition:transform .22s var(--home-ease),opacity .22s ease }
 .ck-cut .st-viewport::after{ opacity:1; transform:translateX(0) }
 .st-scene-label{ position:absolute; left:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:5; max-width:calc(100% - var(--u)*4); background:var(--panel); border-radius:var(--r-field); padding:var(--u) calc(var(--u)*1.5); font-size:var(--home-meta); color:var(--ink); word-break:keep-all; pointer-events:none }
-.st-tools,.st-view{ position:absolute; display:flex; flex-wrap:nowrap; gap:calc(var(--u)/2); z-index:6; right:calc(var(--u)*2) }
-.st-tools{ top:calc(var(--u)*2) }
-.st-view{ bottom:calc(var(--u)*2) }
-.ck-home .st-viewport .fl-tool{ display:inline-flex; align-items:center; gap:calc(var(--u)/2); min-width:var(--home-target); min-height:var(--home-target); padding:var(--u); color:var(--ink); background:var(--panel); border-radius:var(--r-field); box-shadow:var(--home-shadow); font-size:var(--home-meta); transition:transform .18s ease }
-.ck-home .st-viewport .fl-tool svg{ width:calc(var(--u)*2); height:calc(var(--u)*2); fill:none; stroke:currentColor; stroke-width:1.7 }
-.ck-home .st-viewport .fl-tool[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
+.st-tools,.st-view{ display:flex; gap:calc(var(--u)/2); z-index:6 }
+.st-tools{ position:static; flex-wrap:wrap; max-width:100% }
+.st-view{ position:absolute; right:calc(var(--u)*2); bottom:calc(var(--u)*2) }
+.ck-home .st-tour .fl-tool{ display:inline-flex; align-items:center; justify-content:center; gap:calc(var(--u)/2); min-width:var(--home-target); min-height:var(--home-target); padding:var(--u); color:var(--ink); background:var(--panel); border-radius:var(--r-field); box-shadow:var(--home-shadow); font-size:var(--home-meta); transition:transform .18s ease }
+.ck-home .st-tour .fl-tool svg{ width:calc(var(--u)*2); height:calc(var(--u)*2); fill:none; stroke:currentColor; stroke-width:1.7 }
+.ck-home .st-tour .fl-tool[aria-pressed="true"]{ background:var(--ink); color:var(--panel) }
 .ck-stage.st-still .crowd .cw,.ck-stage.st-still .wv,.ck-stage.st-still .cb,.ck-stage.st-still .ct{ animation-play-state:paused }
 .ck-home .st-stops{ display:flex; flex-wrap:nowrap; gap:var(--u); overflow-x:auto; scrollbar-width:thin; padding:calc(var(--u)*1.5) 0 var(--u); scroll-snap-type:x proximity }
 .ck-home .st-stops .fl-pill{ flex:0 0 auto; display:flex; align-items:center; gap:var(--u); min-height:var(--home-target); white-space:nowrap; padding:var(--u) calc(var(--u)*1.5); border-radius:var(--r-pill); box-shadow:none; background:var(--ui-plate); color:var(--ink-2); font-size:var(--t-sm); scroll-snap-align:start }
@@ -143,13 +143,14 @@
 /* 바뀐 자리에 세우는 말풍선. 원래 자리는 취소선, 바뀐 자리는 짙은 판 */
 .st-callout{
   display:flex; align-items:baseline; gap:calc(var(--u)*.75);
+  max-width:var(--map-label-width);
   padding:calc(var(--u)*.75) calc(var(--u)*1.25);
   border-radius:var(--r-field); background:var(--panel); box-shadow:var(--home-shadow);
   line-height:1.4; white-space:nowrap; word-break:keep-all;
   animation:st-callout-in .42s var(--home-ease) both;
 }
-.st-callout b{ font-size:var(--t-xs); font-weight:600 }
-.st-callout span{ font-size:var(--t-sm); font-weight:650 }
+.st-callout b{ flex:none; font-size:var(--t-xs); font-weight:600 }
+.st-callout span{ min-width:0; overflow:hidden; text-overflow:ellipsis; font-size:var(--t-sm); font-weight:650 }
 .st-callout-was{ background:var(--panel); box-shadow:inset 0 0 0 1px var(--ui-line),var(--home-shadow) }
 .st-callout-was b{ color:var(--ink-3) }
 .st-callout-was span{ color:var(--ink-2); text-decoration:line-through; text-decoration-thickness:1px }
@@ -169,7 +170,8 @@
 .st-scene-label .st-lg .st-lg-new{ background:var(--terra); height:4px }
 
 @media (max-width:1050px){
-  .ck-home .ck-stage{ grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*3); padding-top:calc(var(--u)*3) }
+  .ck-home{ display:flex; flex-direction:column }
+  .ck-home .ck-stage{ order:-1; width:100%; grid-template-columns:minmax(0,1fr); gap:calc(var(--u)*3); padding-top:calc(var(--u)*3) }
   .st-introduction{ grid-area:1 / 1 }
   .st-tour{ grid-area:2 / 1 }
   .st-form{ grid-area:3 / 1 }
@@ -180,7 +182,6 @@
 }
 @media (max-width:600px){
   .st-viewport{ height:var(--home-scene-small); border-radius:var(--r-panel) }
-  .st-tools{ top:var(--u); left:var(--u); right:auto }
   .st-view{ bottom:var(--u); right:var(--u) }
   .st-scene-label{ bottom:calc(var(--home-target) + var(--u)*2); left:var(--u); max-width:calc(100% - var(--u)*2) }
   .ck-home .ck-intro .ck-skipin{ top:calc(var(--home-target) + var(--u)*2); left:var(--u) }
@@ -190,7 +191,7 @@
   /* 좁은 판에서는 이름표를 맨 아래로 내리고 한 줄로 줄인다.
      가운데에 두면 정작 바뀐 동선을 가린다. 어느 갈래인지는
      바로 아래 단추와 설명 판이 이미 말하고 있다 */
-  .st-viewport.st-changing .st-scene-label{ bottom:var(--u); padding:calc(var(--u)/2) var(--u); max-width:calc(100% - var(--home-target)*4) }
+  .st-viewport.st-changing .st-scene-label{ padding:calc(var(--u)/2) var(--u) }
   .st-viewport.st-changing .st-scene-label .st-lg-t{ display:none }
   .st-viewport.st-changing .st-scene-label .st-lg{ margin-top:0; gap:calc(var(--u)/2) var(--u); flex-wrap:nowrap }
   .st-viewport.st-changing .st-scene-label .st-lg i{ width:calc(var(--u)*2); margin-right:calc(var(--u)/4) }

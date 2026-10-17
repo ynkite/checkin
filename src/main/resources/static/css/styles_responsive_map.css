@@ -48,18 +48,19 @@
      세로로 길어지지만 휴대폰은 원래 세로로 긴 화면이다. */
   #mapView, #modelView{
     position:relative; inset:auto; order:1; flex:0 0 auto;
-    height:clamp(300px, 52vh, 460px);
+    height:var(--map-height);
   }
-  /* 인라인 style 로 박혀 있어 !important 가 있어야 이긴다.
-     (page_map.html 의 #budgetView — 손대면 탭 전환 JS 와 얽힌다) */
   #budgetView{
-    position:relative !important; inset:auto !important;
-    order:1; flex:1 1 auto; min-height:60vh;
+    position:relative; inset:auto;
+    order:1; flex:1 1 auto; min-height:60vh; padding:calc(var(--u)*2);
   }
   .mp-tools{
-    position:static; order:0; align-self:flex-end;
-    margin:10px 14px 0;
+    position:static; order:0; align-self:stretch; justify-content:center;
+    margin:var(--u) calc(var(--u)*1.75); gap:var(--u);
   }
+  .mp-seg{ flex:1; justify-content:center; min-width:0 }
+  .mp-seg .btn-map-act{ flex:1; min-width:0; min-height:var(--home-target); padding:var(--u) }
+  .mp-chip{ min-height:var(--home-target); box-shadow:none; background:transparent; padding:var(--u) }
   .mp-float{
     position:static; order:2; width:auto; max-height:none;
     margin:10px 14px 0; overflow:visible;
@@ -103,7 +104,7 @@
   .map-list{ padding:0 10px 18px }
   .place-row{ padding:11px 10px 12px; gap:9px }
   .pr-name{ font-size:16px }
-  #mapView, #modelView{ height:clamp(260px, 44vh, 380px) }
+  #mapView, #modelView{ height:var(--map-height-small) }
   .mp-tools, .mp-float, .mp-rail{ margin-left:10px; margin-right:10px }
   .mbb-amount{ font-size:21px }
 
@@ -121,26 +122,8 @@
   #mapView, #modelView{ height:64vh }
 }
 
-/* ── 손가락 크기 ────────────────────────────────────────────
-   실시간으로 쓰는 화면은 앉아서 마우스로 누르는 화면이 아니다.
-   걸으면서, 한 손으로, 흔들리는 지하철에서 누른다.
-   재 보니 「상세」가 40x25, 필터 칩이 28px, 접는 줄이 21px 이었다.
-
-   글자를 키우지 않는다 — 글자를 키우면 목록이 길어져 한 화면에 덜 들어간다.
-   누를 자리만 넓힌다. 보이는 것과 닿는 것은 같을 필요가 없다.
-   40px 로 맞춘다. 권장은 44 지만 여기는 목록이 촘촘한 화면이라
-   44 를 강제하면 한 화면에 두 곳밖에 안 들어간다. */
+/* 터치 영역의 최솟값은 styles_focus.css에서 공통으로 정한다. */
 @media (max-width:1000px){
-  /* 하나씩 세어 고치다가 그만뒀다. 열일곱 개를 고치면 다음 주에 열여덟 번째가
-     생긴다. 이 두 화면 안의 누를 것은 전부 40 이상으로 둔다 —
-     새로 만드는 단추도 자동으로 따라온다. */
-  /* :where() 는 특정도가 0 이다. 그냥 #page-map button 으로 쓰면 이 규칙이
-     .rl-voicebtn{min-height:44px} 을 이겨서, 더 크게 잡아 둔 단추를 40 으로
-     끌어내린다. 바닥을 깔려고 만든 규칙이 천장이 되는 셈이다 — 실제로 그랬다.
-     특정도를 0 으로 두면 각자 적어 둔 값이 그대로 이긴다. */
-  :where(#page-map, #page-live) :where(button, summary, [role="button"]){
-    min-height:40px;
-  }
   /* summary 와 여러 줄 단추는 세로 가운데로. 안 그러면 늘어난 만큼 위로 쏠린다 */
   #page-map summary, #page-live summary,
   .mf-chip, .btn-detail, .btn-replace, .mp-disc, .mp-pg{
@@ -151,7 +134,6 @@
   .btn-detail, .btn-replace{ padding-left:14px; padding-right:14px; justify-content:center }
   .day-tab{ min-height:44px }
 
-  /* 예외 — 늘리면 오히려 깨지는 것.
-     레일 칸은 이미 90px 이고, 모달 닫기는 정사각형이라야 한다 */
-  .modal-x{ min-height:40px; min-width:40px }
+  /* 닫기는 정사각형 터치 영역을 유지한다. */
+  .modal-x{ min-height:var(--home-target); min-width:var(--home-target) }
 }
