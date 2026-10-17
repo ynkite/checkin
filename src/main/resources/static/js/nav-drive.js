@@ -208,7 +208,21 @@
   }
 
   /* ══ 경로 받기 ═════════════════════════════════════════ */
-  function loadRoute(cb) {
+  /* 이탈할 때마다 요청이 쌓이지 않게 — 받는 중이면 건너뛰고, 다시 찾기는 15초에 한 번.
+     실패하면 2·5·10초 뒤 다시 (첫 경로가 한 번 실패하면 안내가 멈춰 있었다) */
+  var RETRY_MS = [2000, 5000, 10000];
+  function loadRoute(cb, tries) {
+    tries = tries || 0;
+    if (st.loading) return;
+    if (!tries && st.lastLoad && Date.now() - st.lastLoad < 15000 && st.route) return;
+    st.loading = true;
+    st.lastLoad = Date.now();
+    var fail = function () {
+      st.loading = false;
+      if (tries >= RETRY_MS.length) { setTurn('straight', null, '경로를 불러오지 못했습니다', ''); return; }
+      setTurn('straight', null, '경로를 다시 불러오는 중', '');
+      setTimeout(function () { if (st) loadRoute(cb, tries + 1); }, RETRY_MS[tries]);
+    };
     var body = {
       startLat: st.pos.lat, startLng: st.pos.lng,
       endLat: st.dest.lat, endLng: st.dest.lng,
@@ -220,10 +234,9 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var d = j && j.data;
-        if (!d || !d.ready || !d.line || d.line.length === 0) {
-          setTurn('straight', null, '경로를 불러오지 못했습니다', '');
-          return;
-        }
+        if (!st) return;  // 받는 사이에 안내를 닫았다
+        if (!d || !d.ready || !d.line || d.line.length === 0) return fail();
+        st.loading = false;
         st.route = d;
         st.acc = cumulative(d.line);
         st.guideIdx = 0; st.spoken = {}; st.alerted = {}; st.overSpoken = {};
@@ -243,7 +256,7 @@
         paintHelp();
         if (cb) cb();
       })
-      .catch(function () { setTurn('straight', null, '경로를 불러오지 못했습니다', ''); });
+      .catch(function () { if (st) fail(); });
   }
   function headLine(d) {
     return Math.round(d.totalSeconds / 60) + '분 · ' + (d.totalMeters / 1000).toFixed(1) + 'km';
