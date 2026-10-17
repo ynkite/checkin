@@ -61,12 +61,11 @@ public class NaviService {
     // 현재위치 → 다음 목적지 자차 경로를 네비 형태로
     public NaviRoute driveRoute(double sx, double sy, double ex, double ey,
                                 String startName, String endName) {
-        if (!tmapClient.ready()) {
-            return NaviRoute.notReady("티맵 연동 준비 중입니다.");
-        }
+        /* 키가 없거나 한도·시간 초과로 답이 없으면 직선 예상 경로로 안내를 이어 간다.
+           「경로를 불러오지 못했습니다」에서 멈추는 것보다 낫다. 화면은 「예상」이라고 적는다 */
         JsonNode res = tmapClient.carRoute(sx, sy, ex, ey, startName, endName, null);
         NaviRoute parsed = parse(res);
-        if (parsed == null) return NaviRoute.notReady("경로를 불러오지 못했습니다.");
+        if (parsed == null) return NaviRoute.estimate(sy, sx, ey, ex);
         return enrich(parsed);
     }
 

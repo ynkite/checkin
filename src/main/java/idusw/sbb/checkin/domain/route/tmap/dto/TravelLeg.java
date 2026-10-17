@@ -1,5 +1,7 @@
 package idusw.sbb.checkin.domain.route.tmap.dto;
 
+import idusw.sbb.checkin.domain.route.tmap.RouteEstimate;
+
 /**
  * 한 구간의 이동 — 어디서 어디로, 얼마나 걸리고, 얼마 드는가.
  *
@@ -19,5 +21,17 @@ public record TravelLeg(
 ) {
     public static TravelLeg unknown(String from, String to, String note) {
         return new TravelLeg(from, to, "NONE", null, null, null, null, note);
+    }
+
+    /** 티맵이 답하지 않을 때의 자차 예상값. note 로 잰 값과 구분한다. */
+    public static final String ESTIMATE = "예상 시간";
+
+    public static TravelLeg estimate(String from, String to, double sLat, double sLng, double eLat, double eLng) {
+        int[] ms = RouteEstimate.of(sLat, sLng, eLat, eLng);
+        return new TravelLeg(from, to, "CAR", Math.max(1, (ms[1] + 59) / 60), ms[0], null, null, ESTIMATE);
+    }
+
+    public boolean estimated() {
+        return ESTIMATE.equals(note);
     }
 }

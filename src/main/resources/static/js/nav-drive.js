@@ -594,7 +594,9 @@
   function paintHelp() {
     var src = (st.route && st.route.alertSource) || '';
     var has = ((st.route && st.route.alerts) || []).length;
-    var msg = has
+    var msg = src === '예상'   /* 티맵이 답하지 않아 직선 예상 경로로 안내 중 */
+      ? st.route.note + '. 목적지 방향만 알려 드립니다.'
+      : has
       ? '안전 안내 ' + has + '곳 · ' + (src || '출처 미표기')
       : '이 구간은 안전 안내 데이터가 없습니다. 갈림길 안내는 그대로 됩니다.';
     nvNote(msg);

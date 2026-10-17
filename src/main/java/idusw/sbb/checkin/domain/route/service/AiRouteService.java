@@ -791,6 +791,7 @@ public class AiRouteService {
                     if (leg.meters() != null)    target.put("legDistance", leg.meters());
                     if (leg.fare() != null)      target.put("legFare", leg.fare());
                     if (leg.transfers() != null) target.put("legTransfers", leg.transfers());
+                    if (leg.estimated())         target.put("legEstimated", true);
                 }
 
                 /* 합계는 0 보다 클 때만 쓴다. 구간을 하나도 못 쟀을 때 TravelPlan 이

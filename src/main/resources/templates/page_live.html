@@ -563,8 +563,11 @@
               : '<span class="rl-mode-x">' + esc(p.note || '재지 못했습니다') + '</span>') +
           '</div>';
         }).join('');
+        /* 티맵이 답하지 않으면 서버가 예상값을 주고 legs 의 note 를 「예상 시간」으로 단다 */
+        var est = m.CAR && (m.CAR.legs || []).some(function (l) { return l && l.note === '예상 시간'; });
         box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' + rows +
-          '<p class="rl-modes-note">대중교통과 도보 시간은 제공하지 않습니다. 자차만 실제로 잽니다.</p>';
+          '<p class="rl-modes-note">' + (est ? esc(m.CAR.note)
+            : '대중교통과 도보 시간은 제공하지 않습니다. 자차만 실제로 잽니다.') + '</p>';
       }
 
       /* 콘솔에서 부르는 점검 — 좌표 뭉개기와 같은 구간 건너뛰기 */

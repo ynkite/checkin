@@ -1,5 +1,7 @@
 package idusw.sbb.checkin.domain.route.tmap.dto;
 
+import idusw.sbb.checkin.domain.route.tmap.RouteEstimate;
+
 import java.util.List;
 
 // 주행 네비게이션용 경로 — 경로선 좌표 + 턴 안내점 + 구간 정보 + 안전 지점.
@@ -57,5 +59,13 @@ public record NaviRoute(
     // 키 없거나 경로 못 받았을 때 — 0으로 채우지 않고 준비중으로 돌려준다
     public static NaviRoute notReady(String note) {
         return new NaviRoute(false, List.of(), List.of(), 0, 0, note, List.of(), List.of(), "연동 전");
+    }
+
+    /** 티맵이 답하지 않을 때 — 갈림길 없이 목적지까지 직선 한 줄. alertSource 「예상」으로 화면이 알아본다 */
+    public static NaviRoute estimate(double sLat, double sLng, double eLat, double eLng) {
+        int[] ms = RouteEstimate.of(sLat, sLng, eLat, eLng);
+        return new NaviRoute(true, List.of(new double[]{sLat, sLng}, new double[]{eLat, eLng}), List.of(),
+                ms[0], ms[1], RouteEstimate.NOTE,
+                List.of(), List.of(), "예상");
     }
 }
