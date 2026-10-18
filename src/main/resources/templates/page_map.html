@@ -1976,6 +1976,11 @@
           realTotalBudget += dailySum;
         });
 
+        /* 무료 관광지가 「₩0×2」로 찍혔다. 금액을 다 센 뒤 보이는 글만 「무료」로 바꾼다 */
+        routeData.forEach(d => (d.places || []).forEach(p => {
+          if (p.sub) p.sub = p.sub.replace(/₩0(?![\d,])(?:×\d+)?/g, '무료');
+        }));
+
         /* 지도 위 돈 카드를 먼저 만든다 — #totalBudget 가 그 안에 있다 */
         _mpPaintMoney(realTotalBudget, catSums);
 
