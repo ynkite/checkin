@@ -123,15 +123,9 @@ public class LiveService {
             stops.get(i).put("now", i == idx);
         }
 
+        /* 다음 정거장의 값만 쓴다. 전에는 값이 없으면 그 뒤 관광지 값을 빌려 와서
+           다음은 부산역인데 칩에는 광안리 혼잡도가 섰다. 없으면 없다고 말한다 */
         Map<String, Object> crowd = crowdOf(plan, next, dayDate);
-        /* 다음이 식당·숙소처럼 혼잡도 대상이 아니면 그 뒤 관광지로 본다 (세 곳까지).
-           placeName 이 어느 곳의 값인지 말한다 — 화면과 길 안내가 그 이름으로 알린다 */
-        int looked = 0;
-        for (int i = stops.indexOf(next) + 1; crowd.isEmpty() && looked < 3 && i > 0 && i < stops.size(); i++) {
-            if (!"tour".equals(stops.get(i).get("type"))) continue;
-            crowd = crowdOf(plan, stops.get(i), dayDate);
-            looked++;
-        }
         Map<String, Object> weather = weatherOf(plan, next, dayDate);
         String head = headline(ph, next, stops.get(0), crowd, weather);
 
@@ -181,6 +175,7 @@ public class LiveService {
             m.put("time", p.path("time").asText(""));
             m.put("type", p.path("type").asText(""));
             m.put("sub", p.path("sub").asText(""));
+            if (p.hasNonNull("category")) m.put("category", p.path("category").asText());
             if (p.hasNonNull("lat")) m.put("lat", p.path("lat").asDouble());
             if (p.hasNonNull("lng")) m.put("lng", p.path("lng").asDouble());
             if (p.hasNonNull("crowd")) m.put("crowd", p.path("crowd").asInt());
@@ -291,7 +286,9 @@ public class LiveService {
             m.put("label", s);
             if (next.get("wx") instanceof Number rp) m.put("rainProb", rp.intValue());
             if (next.get("wxSource") instanceof String src) m.put("source", src);
-            m.put("outdoorRisk", Boolean.TRUE.equals(next.get("outdoorRisk")));
+            /* 저장 때 붙인 표시는 옛 판정이다. 부산역 같은 실내가 야외로 남아 있어
+               「실내로 바꿔 볼까요」가 떴다. 지금 규칙으로 한 번 더 거른다 */
+            m.put("outdoorRisk", Boolean.TRUE.equals(next.get("outdoorRisk")) && outdoor(next));
             return m;
         }
 
@@ -309,14 +306,11 @@ public class LiveService {
             m.put("rain", dw.isRainExpected());
             m.put("source", dw.getSource());
 
-            String name = String.valueOf(next.getOrDefault("name", ""));
-            String type = String.valueOf(next.getOrDefault("type", ""));
             /* rainExpected 플래그만 보면 「강수확률 70%인데 플래그는 false」인 예보를 놓친다.
                감지 엔진과 같은 규칙으로 판정한다 */
             boolean rainy = idusw.sbb.checkin.domain.detection.DetectionRules
                     .weather(dw.isRainExpected(), dw.getRainProb(), rainProbThreshold).triggered();
-            m.put("outdoorRisk", rainy
-                    && idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(name, type));
+            m.put("outdoorRisk", rainy && outdoor(next));
 
             return m.isEmpty() ? Map.of() : m;
 
@@ -324,6 +318,14 @@ public class LiveService {
             log.warn("[실시간] 날씨 조회 실패: {}", e.getMessage());
             return Map.of();
         }
+    }
+
+    private static boolean outdoor(Map<String, Object> stop) {
+        Object c = stop.get("category");
+        return idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(
+                String.valueOf(stop.getOrDefault("name", "")),
+                String.valueOf(stop.getOrDefault("type", "")),
+                c == null ? null : String.valueOf(c));
     }
 
     /** 한 문장. 운전 중에 들어도 되는 길이로 쓴다 */
