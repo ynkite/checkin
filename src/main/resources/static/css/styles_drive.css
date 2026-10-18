@@ -266,8 +266,9 @@ body.dv-open{ overflow:hidden }
 }
 .dv-traffic.on{ background:var(--ink); color:var(--panel) }
 .dv-note{
-  position:absolute; left:calc(var(--u)*1.5); right:calc(var(--u)*13); bottom:calc(var(--u)*9);
-  z-index:4; margin:0; padding:var(--u) calc(var(--u)*1.5);
+  /* 아래쪽은 속도 배지가 덮는다. 2D·3D 단추 바로 밑에 띄운다 */
+  position:absolute; left:var(--u); right:var(--u); top:calc(var(--home-target) + var(--u));
+  z-index:6; margin:0; padding:var(--u) calc(var(--u)*1.5);
   border-radius:var(--r-field);
   background:var(--panel); color:var(--ink-2);
   font-size:var(--home-meta); line-height:1.5; word-break:keep-all;
@@ -341,7 +342,6 @@ body.dv-driving .dv-lane-why{ display:none }
   .dv-alert{ left:var(--u); right:var(--u); padding:var(--u) calc(var(--u)*1.25) }
   .dv-alert-n{ display:none }
   .dv-speed{ left:var(--u) }
-  .dv-note{ left:var(--u); right:calc(var(--u)*11); bottom:calc(var(--u)*8) }
   .dv-b{ font-size:var(--home-meta) }
   .dv-tip{ display:none }
 }
@@ -404,3 +404,11 @@ body.dv-driving .dv-lane-why{ display:none }
 .dv-sug-go{ background:var(--sig); color:var(--ink) }
 .dv-sug-x{ grid-column:1 / -1; background:transparent; color:var(--panel); opacity:.72; font-weight:600 }
 .dv-sug-x:hover{ opacity:1 }
+
+/* ── 시작 확인 창 — 몸체는 styles_main.css .overlay/.modal ── */
+.dv-ask .modal{
+  width:calc(var(--u)*47); padding:calc(var(--u)*3.5) calc(var(--u)*3) calc(var(--u)*3);
+  word-break:keep-all;
+}
+.dv-ask .mp-mhint{ margin:var(--u) 0 calc(var(--u)*2.5) }
+.dv-ask-row{ display:flex; gap:var(--u) }

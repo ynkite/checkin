@@ -1,0 +1,19 @@
+/* 휴대폰 이어 보기 창 — 몸체는 styles_main.css .overlay/.modal, 제목은 .mp-mttl */
+.pq{ width:calc(var(--u)*45); padding:calc(var(--u)*3.5) calc(var(--u)*3) calc(var(--u)*3); word-break:keep-all }
+.pq-sub{ margin:var(--u) 0 calc(var(--u)*2); font-size:var(--home-meta); line-height:1.6; color:var(--ink-2) }
+.pq-pick{ display:flex; align-items:center; gap:var(--u); font-size:var(--home-meta); color:var(--ink-2) }
+.pq-pick select{
+  flex:1; min-width:0; min-height:var(--home-target); padding:0 var(--u);
+  border:1px solid var(--ui-line); border-radius:var(--r-field);
+  background:var(--panel); color:var(--ink); font:inherit;
+}
+.pq-code{ width:min(100%, calc(var(--u)*30)); margin:calc(var(--u)*2) auto var(--u) }
+.pq-code svg{ display:block; width:100%; height:auto }
+/* 카메라가 읽게 흰 바탕 · 짙은 칸 */
+.pq-bg{ fill:var(--panel) }
+.pq-fg{ fill:var(--ink) }
+.pq-url{ margin:0; text-align:center; font-size:var(--t-xs); color:var(--ink-3); word-break:break-all }
+.pq-open{
+  padding:calc(var(--u)/2) calc(var(--u)*1.25); border:0; border-radius:var(--r-field); cursor:pointer;
+  background:var(--ink); color:var(--panel); font:inherit; font-size:var(--t-xs); font-weight:700; white-space:nowrap;
+}

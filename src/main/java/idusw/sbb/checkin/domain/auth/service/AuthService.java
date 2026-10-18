@@ -16,8 +16,8 @@ public interface AuthService {
     //이메일 중복 체크
     boolean checkEmail(String email);
 
-    //로그아웃 → Refresh Token 삭제
-    void logout(Long userId);
+    //로그아웃 → 이 기기의 Refresh Token 만 삭제
+    void logout(Long userId, String refreshToken);
     //회원가입
     void signUp(SignUpRequestDTO dto);
 

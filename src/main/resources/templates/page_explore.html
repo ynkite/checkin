@@ -1,0 +1,18 @@
+<div th:fragment="explore" xmlns:th="http://www.thymeleaf.org">
+  <!-- 전국 둘러보기 — 시도와 시군구를 고르면 그 동네 3D 모형 한 장을 띄운다. 동작은 explore.js -->
+  <div class="page" id="page-explore">
+    <section class="ex" aria-labelledby="exTitle">
+      <h1 class="ex-ttl" id="exTitle">전국 둘러보기</h1>
+      <p class="ex-sub">시도와 시군구를 고르면 그 동네 3D 모형이 뜹니다. 건물은 OpenStreetMap 건물 자료로 세웠어요.</p>
+      <div class="ex-pick">
+        <label class="ex-field"><span>시도</span><select id="exSido" onchange="exPickSido()"></select></label>
+        <label class="ex-field"><span>시군구</span><select id="exScene" onchange="exShow()"></select></label>
+      </div>
+      <div class="ex-stage">
+        <div class="ex-frame" id="exFrame"></div>
+        <p class="ex-msg" id="exMsg" aria-live="polite">모형을 불러오는 중입니다</p>
+      </div>
+      <p class="ex-count" id="exCount"></p>
+    </section>
+  </div>
+</div>

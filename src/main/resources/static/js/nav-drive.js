@@ -854,11 +854,18 @@
     return String(t == null ? '' : t)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
-  function nvNote(t) {
+  function nvNote(t, ms) {
     var e = document.getElementById('navNote');
     if (!e) return;
+    clearTimeout(nv.noteT);
     if (!t) { e.hidden = true; return; }
     e.hidden = false; e.textContent = t;
+    if (ms) nv.noteT = setTimeout(function () { e.hidden = true; }, ms);
+  }
+  /* 모형이 없거나 지금 자리가 모형 밖이면 빈 판만 남는다. 2D 로 돌려놓고 알린다 */
+  function nvBack2d(t) {
+    nvMode('2d');
+    nvNote(t, 5000);
   }
   function nvKakaoReady(cb) {
     if (typeof kakao === 'undefined' || !kakao.maps) return false;
@@ -996,10 +1003,13 @@
     if (!st || !st.pos) return;
     nvIndex().then(function () {
       var sc = nvPickScene(st.pos.lat, st.pos.lng);
-      if (!sc) { nvNote('이 지역은 아직 3D 모형이 없습니다. 2D 지도로 보세요.'); return; }
-      var q = nvProject(sc.fit, st.pos.lat, st.pos.lng);
-      var far = q.x < -4 || q.x > 104 || q.y < -4 || q.y > 104;
-      nvNote(far ? sc.label + ' 모형입니다. 지금 자리는 이 동네 밖이라 2D 지도가 정확합니다.' : '');
+      if (nv.mode !== '3d') return;
+      var q = sc && nvProject(sc.fit, st.pos.lat, st.pos.lng);
+      if (!q || q.x < -4 || q.x > 104 || q.y < -4 || q.y > 104) {
+        nvBack2d('이 근처는 3D 모형이 없어요. 2D 지도로 안내합니다.');
+        return;
+      }
+      nvNote('');
       if (nv.scene && nv.scene.key === sc.key) { nvPaint3d(sc); return; }
       fetch(sc.svg, { cache: 'force-cache' })
         .then(function (r) { return r.text(); })
@@ -1011,7 +1021,7 @@
           return fetch(sc.json).then(function (r) { return r.ok ? r.json() : null; });
         })
         .then(function (meta) { nv.meta = meta || nv.meta; nvPaint3d(sc); })
-        .catch(function () { nvNote('모형을 불러오지 못했습니다. 2D 지도로 보세요.'); });
+        .catch(function () { if (nv.mode === '3d') nvBack2d('모형을 불러오지 못했어요. 2D 지도로 안내합니다.'); });
     });
   }
   function nvPaint3d(sc) {
@@ -1159,13 +1169,50 @@
        다른 화면은 좌표를 격자로 뭉개서 보내지만 주행 안내는 그럴 수 없다.
        110m 격자로는 턴 안내가 안 되고, 브라우저에서 티맵을 직접 부르면
        appKey 가 노출된다. 그래서 이 기능만 정밀 좌표를 서버로 보낸다. */
-    var NL = String.fromCharCode(10);
-    var NOTICE = '길 안내 중에는 지금 있는 곳의 정확한 위치를 서버로 보냅니다.' + NL
-      + '티맵에서 경로를 받아 갈림길을 읽어 주기 위해서입니다.' + NL
-      + '안내를 끄면 전송도 같이 멈춥니다.' + NL + NL
-      + '시작할까요?';
-    if (!window.confirm(NOTICE)) return;
+    askStart(function () { beginDrive(dest); });
+  }
 
+  /* 앱 안 확인 창. 브라우저 기본 confirm 은 무대 화면에 회색 창으로 뜬다.
+     지도 화면 창(.overlay · .modal · .mp-m*)을 그대로 쓴다.
+     「시작」 누름이 곧 사용자 동작이라 그 안에서 소리를 깨워도 된다 */
+  function askStart(onYes) {
+    var ov = document.getElementById('navAsk');
+    if (!ov) {
+      ov = document.createElement('div');
+      ov.id = 'navAsk';
+      ov.className = 'overlay dv-ask';
+      ov.innerHTML =
+        '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="navAskT">' +
+          '<p class="mp-mttl" id="navAskT">길 안내를 시작할까요?</p>' +
+          '<p class="mp-mhint">안내하는 동안 지금 있는 곳의 정확한 위치를 서버로 보냅니다. ' +
+          '티맵에서 길을 받아 갈림길을 읽어 주려고요. 안내를 끄면 보내는 것도 멈춥니다.</p>' +
+          '<div class="dv-ask-row">' +
+            '<button type="button" class="mp-mbtn mp-mbtn-q" data-a="no">취소</button>' +
+            '<button type="button" class="mp-mbtn" data-a="yes">시작</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(ov);
+    }
+    var back = document.activeElement;
+    function close(yes) {
+      ov.classList.remove('open');
+      ov.onclick = null;
+      document.removeEventListener('keydown', onKey);
+      if (back && back.focus) back.focus();
+      if (yes) onYes();
+    }
+    function onKey(e) { if (e.key === 'Escape') close(false); }
+    ov.onclick = function (e) {
+      var a = e.target.getAttribute('data-a');
+      if (a === 'yes') close(true);
+      else if (a === 'no' || e.target === ov) close(false);
+    };
+    document.addEventListener('keydown', onKey);
+    ov.classList.add('open');
+    ov.querySelector('[data-a="yes"]').focus();
+  }
+
+  function beginDrive(dest) {
     wakeAudio();   /* 아이폰은 누른 그 순간에 한 번 울려 둬야 뒤 안내가 나온다 */
 
     st = { dest: dest, pos: null, route: null, acc: [], offStreak: 0, guideIdx: 0,
