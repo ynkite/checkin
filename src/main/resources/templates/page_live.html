@@ -829,7 +829,7 @@
 
       async function rlApplyOneClick(o) {
         if (rlStale()) { toast('확인한 지 10분이 넘었습니다. 다시 확인한 뒤 바꿔 주세요.'); return; }
-        if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+        if (!(await askYes('이대로 바꿀까요?', o.label + (o.note ? ' — ' + o.note : '') + '. 바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
         var box = rlCheckBox();
         var day = rlLastCheck && rlLastCheck.place ? rlLastCheck.place.day : null;
         var beforeCheck = rlLastCheck;
@@ -867,7 +867,7 @@
       window.rlUndoChange = async function () {
         var u = rlUndoGet();
         if (!u || !rlUsable(u.route)) { rlUndoSet(null); toast('되돌릴 일정이 없습니다.'); return; }
-        if (!confirm(u.label + ' 전 일정으로 되돌릴까요?')) return;
+        if (!(await askYes(u.label + ' 전 일정으로 되돌릴까요?', '', '되돌리기'))) return;
         try {
           var r = await fetch('/api/trips/' + rlTrip + '/routes/reorder', {
             method: 'POST',
@@ -987,7 +987,7 @@
          되돌릴 수 없으면 아예 바꾸지 않는다. 돌아올 길이 없는 변경은 제안이 아니다. */
       async function rlApplyLive(o) {
         if (!rlTrip) return;
-        if (!confirm(o.label + ' — ' + (o.note || '') + '\n이대로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+        if (!(await askYes('이대로 바꿀까요?', o.label + (o.note ? ' — ' + o.note : '') + '. 바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
 
         var before = null;
         try { before = await rlGetRoute(); } catch (e) {}
@@ -1077,7 +1077,7 @@
       window.rlAltPick = async function (i) {
         var c = rlAltList[i];
         if (!c || !rlTrip) return;
-        if (!confirm(c.name + '(으)로 바꿀까요? 바꾼 뒤에 되돌릴 수 있습니다.')) return;
+        if (!(await askYes(c.name + '(으)로 바꿀까요?', '바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
 
         var route = null;
         try { route = await rlGetRoute(); } catch (e) {}

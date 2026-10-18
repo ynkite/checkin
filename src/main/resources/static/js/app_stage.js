@@ -12,6 +12,9 @@
   var cam = { z:1, x:0, y:0 }, CAM_MIN = 1, CAM_MAX = 2.4;
   var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   var sdkPromise;
+  /* 다른 그림으로 넘어가면 앞 장면의 덮개를 걷는다. 모형을 받는 사이 창 크기가 바뀌어
+     지도로 넘어가면, 덮개가 물빛으로 지도를 가린 채 남았다 */
+  function bump() { if ($('ck_hero')) $('ck_hero').classList.remove('ck-cut'); return ++revision; }
 
   function sdk() {
     if (!sdkPromise) sdkPromise = new Promise(function (resolve) {
@@ -95,7 +98,7 @@
     } else { bigLine.setPath(path); bigLine.setMap(big); }
   }
   async function showWideMap(points) {
-    var ticket = ++revision;
+    var ticket = bump();
     view = 'map'; buttons();
     var scene = d.querySelector('.ck-scene'), host = $('st_bigmap');
     if (!scene || !host) return false;
@@ -194,7 +197,7 @@
   async function showChange(before, after, mark) {
     if (!(before || []).length || !(after || []).length) return false;
     mark = mark || {};
-    var ticket = ++revision;
+    var ticket = bump();
     view = 'map'; buttons();
     var scene = d.querySelector('.ck-scene'), host = $('st_bigmap');
     if (!scene || !host) return false;
@@ -331,8 +334,8 @@
     if (warmed && hero) hero.classList.add('ck-cut');
     status(p.name + (warmed ? ' · 동네 모형' : ' · 모형 불러오는 중'));
     var result = await Promise.all([fetchScene(p.scene), new Promise(function (resolve) { setTimeout(resolve, reduced ? 0 : 220); })]);
-    if (!warmed && hero) hero.classList.add('ck-cut');
     if (ticket !== revision) return false;
+    if (!warmed && hero) hero.classList.add('ck-cut');
     if (!result[0]) { if (hero) hero.classList.remove('ck-cut'); return showWideMap([p]); }
     if (sceneNow !== p.scene) {
       host.innerHTML = result[0]; var svg = host.querySelector('svg');
@@ -408,7 +411,7 @@
   w.ckStage = {
     showWideMap:showWideMap, showPlace:showPlace, showChange:showChange, preloadScene:fetchScene, warm:warm, sdk:sdk,
     camAt:camAt, camFit:camFit, bigDraw:bigDraw,
-    cancel:function () { revision++; if ($('ck_hero')) $('ck_hero').classList.remove('ck-cut'); },
+    cancel:bump,
     render:function (r,a,st) {
       route = r || []; alt = a || null; st = st || {};
       order = st.order || route.map(function (_,i) { return i; }); hot = st.hot == null ? 0 : st.hot;
