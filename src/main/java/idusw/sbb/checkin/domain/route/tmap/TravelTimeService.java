@@ -46,16 +46,16 @@ public class TravelTimeService {
                 ? "출발지" : req.originName();
 
         /* 키가 없거나 오늘 한도가 다 찼어도 좌표가 있으면 자차는 예상값으로 잰다 (carLeg).
-           출발지 좌표조차 없을 때만 「연동 전」이다 */
+           출발지 좌표조차 없을 때만 못 잰다. 그 까닭을 그대로 적는다 */
         if (!tmap.ready() && origin == null) {
             List<TravelLeg> legs = new ArrayList<>();
             String from = originName;
             for (TravelPlanRequest.Stop s : stops) {
-                legs.add(TravelLeg.unknown(from, s.name(), "이동시간 연동 전"));
+                legs.add(TravelLeg.unknown(from, s.name(), "출발지를 찾지 못했습니다"));
                 from = s.name();
             }
             return TravelPlan.notReady(mode, originName, legs,
-                    "TMAP 키가 아직 없어 이동시간을 재지 못했습니다.");
+                    "출발지를 찾지 못해 이동시간을 재지 못했습니다.");
         }
 
         if (origin == null) {

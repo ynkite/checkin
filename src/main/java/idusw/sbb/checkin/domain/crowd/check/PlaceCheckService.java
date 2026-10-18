@@ -116,7 +116,7 @@ public class PlaceCheckService {
         findings.add(crowd(plan, next, day, live));
         findings.add(weather(snap.weather()));
         Object[] traffic = traffic(snap, next, lat, lng, live, now);
-        findings.add((Finding) traffic[0]);
+        if (traffic[0] != null) findings.add((Finding) traffic[0]);   // 붙지 않은 항목은 줄을 만들지 않는다
 
         Map<String, Map<String, Object>> actions = new LinkedHashMap<>();
         for (Map<String, Object> a : snap.actions()) actions.put(String.valueOf(a.get("key")), a);
@@ -142,9 +142,9 @@ public class PlaceCheckService {
 
         String liveMiss = null;
         if (live) {
-            if (!sk.ready()) liveMiss = "실시간 인원은 아직 연동 전이라";
-            else if (!paidGate.allow("sk-realtime")) liveMiss = "실시간 인원은 지금 쓸 수 없어(유료 호출 닫힘 또는 오늘 상한)";
-            else {
+            /* 실시간 인원이 붙지 않았거나 유료 호출이 닫혀 있으면 말없이 예측만 보여 준다.
+               「연동 전」을 화면에 드러내지 않는다 */
+            if (sk.ready() && paidGate.allow("sk-realtime")) {
                 Double lat = num(next.get("lat")), lng = num(next.get("lng"));
                 SkRealtimeCrowdClient.Live l = sk.now(name, lat, lng);
                 if (l != null) {
@@ -220,10 +220,7 @@ public class PlaceCheckService {
             return new Object[]{new Finding(Kind.TRAFFIC, Status.SKIPPED, false, "NONE", "TMAP 교통",
                     "지금 위치를 몰라 길 상황은 보지 않았습니다.", Map.of()), null};
         }
-        if (!tmap.ready()) {
-            return new Object[]{new Finding(Kind.TRAFFIC, Status.UNAVAILABLE, false, "TMAP_LIVE", "TMAP 실시간 교통",
-                    "교통 정보는 아직 연동 전입니다.", Map.of()), null};
-        }
+        if (!tmap.ready()) return new Object[]{null, null};   // 교통이 안 붙었으면 그 줄을 감춘다
         Integer sec = null;
         try {
             JsonNode res = tmap.carRoute(fromLng, fromLat, toLng, toLat, "지금 위치", String.valueOf(next.get("name")), null);

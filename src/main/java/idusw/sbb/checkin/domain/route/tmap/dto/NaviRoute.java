@@ -58,7 +58,7 @@ public record NaviRoute(
 
     // 키 없거나 경로 못 받았을 때 — 0으로 채우지 않고 준비중으로 돌려준다
     public static NaviRoute notReady(String note) {
-        return new NaviRoute(false, List.of(), List.of(), 0, 0, note, List.of(), List.of(), "연동 전");
+        return new NaviRoute(false, List.of(), List.of(), 0, 0, note, List.of(), List.of(), "");
     }
 
     /** 티맵이 답하지 않을 때 — 갈림길 없이 목적지까지 직선 한 줄. alertSource 「예상」으로 화면이 알아본다 */

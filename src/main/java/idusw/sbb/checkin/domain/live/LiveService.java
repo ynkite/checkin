@@ -186,34 +186,32 @@ public class LiveService {
     }
 
     /**
-     * 지금 몇 번째 정거장인가.
-     * 좌표가 있으면 제일 가까운 곳, 없으면 시각으로 가른다.
-     * 시각도 없으면(전날 미리보기) -1 — 아직 출발 전이라는 뜻이다.
+     * 지금 몇 번째 정거장인가. 시각이 기준이다.
+     * 좌표는 시각보다 한 칸 앞까지만 믿는다 — 새벽 3시에 센텀에 있다고 14:20 광안리에
+     * 와 있는 것으로 보면 09:10 부산역부터 네 곳을 건너뛴다. 실제로 그랬다.
+     * 시각이 없으면(전날 미리보기) -1 — 아직 출발 전이라는 뜻이다.
      */
-    private int liveIndex(List<Map<String, Object>> stops, LocalTime now, Double lat, Double lng) {
-        if (lat != null && lng != null) {
-            int best = -1; double bestD = Double.MAX_VALUE;
-            for (int i = 0; i < stops.size(); i++) {
-                Object a = stops.get(i).get("lat"), b = stops.get(i).get("lng");
-                if (!(a instanceof Number) || !(b instanceof Number)) continue;
-                double d = Math.hypot(((Number) a).doubleValue() - lat,
-                                      ((Number) b).doubleValue() - lng);
-                if (d < bestD) { bestD = d; best = i; }
-            }
-            /* 0.02도 = 대략 2km. 그보다 멀면 「그 동선 위에 있다」고 볼 수 없다 */
-            if (best >= 0 && bestD <= 0.02) return best;
-        }
-        if (now == null) return -1;
-
+    static int liveIndex(List<Map<String, Object>> stops, LocalTime now, Double lat, Double lng) {
         int idx = -1;
-        for (int i = 0; i < stops.size(); i++) {
+        for (int i = 0; now != null && i < stops.size(); i++) {
             LocalTime t = parseTime(String.valueOf(stops.get(i).get("time")));
             if (t != null && !t.isAfter(now)) idx = i;
         }
-        return idx;
+        if (lat == null || lng == null) return idx;
+
+        int best = -1; double bestD = Double.MAX_VALUE;
+        for (int i = 0; i < stops.size(); i++) {
+            Object a = stops.get(i).get("lat"), b = stops.get(i).get("lng");
+            if (!(a instanceof Number) || !(b instanceof Number)) continue;
+            double d = Math.hypot(((Number) a).doubleValue() - lat,
+                                  ((Number) b).doubleValue() - lng);
+            if (d < bestD) { bestD = d; best = i; }
+        }
+        /* 0.02도 = 대략 2km. 그보다 멀면 「그 동선 위에 있다」고 볼 수 없다 */
+        return best >= 0 && bestD <= 0.02 && best <= idx + 1 ? best : idx;
     }
 
-    private LocalTime parseTime(String s) {
+    static LocalTime parseTime(String s) {
         if (s == null) return null;
         var m = java.util.regex.Pattern.compile("(\\d{1,2}):(\\d{2})").matcher(s);
         if (!m.find()) return null;

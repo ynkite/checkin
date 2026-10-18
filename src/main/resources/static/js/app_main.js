@@ -3122,6 +3122,13 @@ function showDay(day, btn) {
     if (typeof _mpRail === 'function') _mpRail();
     const mt = document.getElementById('mapTabModel');
     if (mt && mt.classList.contains('on') && typeof _mvOpen === 'function') _mvOpen();
+    /* 휴대폰은 지도가 위, 일차 탭이 아래 목록에 있다. 목록 탭을 누르면 바뀐 지도가 화면 밖이라
+       그날을 볼 수 없었다. 지도를 다시 올려 보여 준다. 지도 위 레일 버튼은 이미 지도에 있어 그대로 둔다 */
+    const area = document.getElementById('mapRightArea');
+    if (btn.classList.contains('day-tab') && window.innerWidth < 768 && area
+        && area.getBoundingClientRect().bottom < 120) {
+        area.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    }
 }
 function switchMapTab(tab, btn) {
     /* 켜짐 표시가 한 칸 늦던 원인 — 색 전환(.18s)이 도는 사이 아래 모형·가계부 그리기가
