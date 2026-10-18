@@ -389,15 +389,11 @@
       paintLane(lane);
 
       /* 소리 */
-      for (var i = 0; i < SPEAK_AT.length; i++) {
-        var th = SPEAK_AT[i], key = st.guideIdx + ':' + th;
-        if (gd <= th && !st.spoken[key]) {
-          st.spoken[key] = true;
-          var msg = speechFor(g, th);
-          if (lane && lane.side !== 'center' && th <= 300) msg += '. ' + lane.text + '으로 가세요';
-          speak(msg, true);
-          break;
-        }
+      var th = nearStep(SPEAK_AT, gd, st.spoken, st.guideIdx);
+      if (th) {
+        var msg = speechFor(g, th);
+        if (lane && lane.side !== 'center' && th <= 300) msg += '. ' + lane.text + '으로 가세요';
+        speak(msg, true);
       }
       return;
     }
@@ -405,6 +401,17 @@
     setTurn('arrive', Math.max(0, st.route.totalMeters - st.meter), '목적지까지', st.dest.name || '');
     setThen(null, null, 0);
     paintLane(null);
+  }
+
+  /* 지금 거리에 가장 가까운 단계 하나만 읽는다. 그보다 먼 단계는 지난 것으로 친다.
+     안내를 다시 열었을 때 50m 앞인데 「500미터 앞」부터 셋을 연달아 읽던 것을 막는다.
+     steps 는 큰 값부터. 읽을 단계가 없으면 0 */
+  function nearStep(steps, d, done, id) {
+    var hit = -1;
+    for (var i = 0; i < steps.length; i++) if (d <= steps[i]) hit = i;
+    if (hit < 0 || done[id + ':' + steps[hit]]) return 0;
+    for (var j = 0; j <= hit; j++) done[id + ':' + steps[j]] = true;
+    return steps[hit];
   }
 
   /* 티맵 안내문은 「…에서 …로 우회전 후 …를 따라 199m 이동」처럼 길다.
@@ -471,13 +478,8 @@
       if (away < -25) continue;
       if (away > ALERT_SHOW) break;
       if (!shown) shown = { a: a, away: Math.max(0, away) };
-      for (var k = 0; k < ALERT_SPEAK_AT.length; k++) {
-        var th = ALERT_SPEAK_AT[k], key = i + ':' + th;
-        if (away <= th && away > -25 && !st.alerted[key]) {
-          st.alerted[key] = true;
-          speak(alertSpeech(a, Math.max(0, away)));
-          break;
-        }
+      if (away > -25 && nearStep(ALERT_SPEAK_AT, away, st.alerted, i)) {
+        speak(alertSpeech(a, Math.max(0, away)));
       }
     }
     paintAlert(shown);
