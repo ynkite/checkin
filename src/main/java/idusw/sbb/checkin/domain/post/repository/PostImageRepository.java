@@ -12,4 +12,6 @@ public interface PostImageRepository extends JpaRepository<PostImage, Long> {
 
     // 게시글 삭제 시 S3 Object Key 조회 등에 사용
     List<PostImage> findByPostId(Long postId);
+
+    long countByImageUrl(String imageUrl);
 }
