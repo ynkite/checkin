@@ -977,6 +977,14 @@ public class AiRouteService {
         placeService.parseAndSavePlacesFromRouteJson(plan, json);
     }
 
+    /** 저장하지 않고 보정만 한 동선. 바꾸기 전에 시간·돈 변화를 보여 줄 때 쓴다. 결과는 enrichOnce 가 1분 들고 있다 */
+    @Transactional
+    public String previewEnriched(Long tripId, String json) {
+        TravelPlan plan = planRepository.findById(tripId)
+                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        return enrichOnce(tripId, plan, json);
+    }
+
     /* 같은 동선을 잇달아 두 번 저장하는 길이 있다 — 장소 교체·실내 전환은 서비스 안에서 한 번,
        컨트롤러가 같은 JSON 으로 또 한 번 저장한다. 그때마다 카카오·TMAP·기상청을 다시 불렀다.
        1분 안에 같은 여행·같은 입력이면 앞에서 다듬은 결과를 그대로 쓴다. DB 저장은 그대로 한다. */

@@ -25,14 +25,15 @@ public class LiveReplanController {
 
     private final LiveReplanService liveReplanService;
 
-    /** 붐비는 곳을 남은 구간의 뒤로 미룬다. 실시간 화면의 「순서 바꾸기」 */
+    /** 붐비는 곳을 남은 구간의 뒤로 미룬다. 실시간 화면의 「순서 바꾸기」. preview 면 저장하지 않고 시간·돈 변화만 낸다 */
     @PostMapping("/swap-crowded")
     public ResponseEntity<ApiResponse<Map<String, Object>>> swapCrowded(
             @PathVariable Long tripId,
-            @RequestParam(defaultValue = "1") int day) {
+            @RequestParam(defaultValue = "1") int day,
+            @RequestParam(defaultValue = "false") boolean preview) {
         try {
             return ResponseEntity.ok(ApiResponse.success(
-                    liveReplanService.swapCrowded(tripId, day, currentUserId())));
+                    liveReplanService.swapCrowded(tripId, day, currentUserId(), preview)));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error(e.getMessage()));

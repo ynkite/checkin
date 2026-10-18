@@ -4203,8 +4203,9 @@ function askYes(title, hint, yes, onYes) {
             + '<p class="mp-mttl" id="appAskT"></p><p class="mp-mhint"></p>'
             + '<div class="dv-ask-row"><button type="button" class="mp-mbtn mp-mbtn-q" data-a="no">취소</button>'
             + '<button type="button" class="mp-mbtn" data-a="yes"></button></div></div>';
-        document.body.appendChild(ov);
     }
+    /* 열 때마다 맨 뒤로 옮긴다. 길 안내(#navDrive)와 z-index 가 같아서 먼저 만들어진 창은 안내 밑에 깔린다 */
+    document.body.appendChild(ov);
     ov.querySelector('.mp-mttl').textContent = title;
     const h = ov.querySelector('.mp-mhint');
     h.textContent = hint || ''; h.hidden = !hint;

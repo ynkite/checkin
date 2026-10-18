@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.route.dto.RouteDelta;
 import idusw.sbb.checkin.domain.route.service.AiRouteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,9 +41,10 @@ public class LiveReplanService {
      * @param tripId 여행
      * @param dayNo  며칠째 (1부터)
      * @param userId 부른 사람. 남의 여행을 고칠 수 없다
+     * @param preview 참이면 저장하지 않는다. 바꾸자고 묻는 창에 시간·돈 변화를 먼저 보여 줄 때 쓴다
      * @return 무엇이 바뀌었는지. 바꿀 게 없으면 changed=false
      */
-    public Map<String, Object> swapCrowded(Long tripId, int dayNo, Long userId) {
+    public Map<String, Object> swapCrowded(Long tripId, int dayNo, Long userId, boolean preview) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("여행을 찾지 못했습니다."));
 
@@ -113,10 +115,22 @@ public class LiveReplanService {
         ArrayNode rebuilt = LiveReplan.rebuild(places, order, stopPositions);
         ((ObjectNode) day).set("places", rebuilt);
 
-        aiRouteService.saveAiRouteToDb(tripId, route.toString());
+        /* 구간 시간·요금은 저장 직전 보정에서 다시 잰다. 같은 입력이면 1분 동안 그 결과를 재쓰니
+           미리 재 본 뒤 바로 바꿔도 외부 호출은 한 번이다 */
+        String next = route.toString();
+        RouteDelta delta = RouteDelta.between(json, aiRouteService.previewEnriched(tripId, next));
+        if (preview) return withDelta(result(true, "붐비는 곳을 뒤로 미룹니다.", moved), delta);
+
+        aiRouteService.saveAiRouteToDb(tripId, next);
         log.info("[실시간] 붐비는 곳을 뒤로 미뤘습니다 trip={} day={} moved={}", tripId, dayNo, moved);
 
-        return result(true, "붐비는 곳을 뒤로 미뤘습니다.", moved);
+        return withDelta(result(true, "붐비는 곳을 뒤로 미뤘습니다.", moved), delta);
+    }
+
+    /* 못 잰 쪽만 있으면 싣지 않는다 — 화면은 delta 가 없으면 그 줄을 숨긴다 */
+    private Map<String, Object> withDelta(Map<String, Object> m, RouteDelta d) {
+        if (!d.isEmpty()) m.put("delta", d);
+        return m;
     }
 
     private boolean isToday(TravelPlan plan, int dayNo) {

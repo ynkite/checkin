@@ -27,7 +27,7 @@
 
   var OFF_METERS = 50;              // 경로선에서 이 이상 벗어나면
   var OFF_STREAK = 3;               // 이만큼 연속이면 이탈 (GPS 튐 방지)
-  var SPEAK_AT = [800, 300, 100];   // 갈림길까지 이 거리에서 한 번씩 읽는다
+  var SPEAK_AT = [500, 300, 100];   // 갈림길까지 이 거리에서 한 번씩 읽는다
   var ALERT_SPEAK_AT = [300, 100];  // 안전 지점은 이 거리에서
   var ALERT_SHOW = 700;             // 이 거리 안에 들면 화면에 띄운다
   var ARRIVE_M = 35;                // 남은 거리가 이 아래면 도착
@@ -714,14 +714,14 @@
     });
     /* 실시간 화면의 갈래를 그대로 부른다 — 주행 중에도 동선을 바꿀 수 있다는 것이
        이 제품의 주장이다. 안내 화면에서 못 하면 주장이 아니라 말뿐이다 */
-    on('navSwap',  function () { if (window.rlDo) window.rlDo('swap');  else if (window.go) window.go('map'); });
+    on('navSwap',  function () { if (window.rlDo) window.rlDo('swap', st && st.dest); else if (window.go) window.go('map'); });
     on('navQuiet', nvQuiet);
     on('navSay',   function () {
       if (window.rlVoiceToggle) window.rlVoiceToggle();
       else if (window.startVoice) window.startVoice();
     });
     on('navRecenter', function () { nvFollowOn(); });
-    on('navSugSwap',  function () { nvSugHide(); if (window.rlDo) window.rlDo('swap'); });
+    on('navSugSwap',  function () { nvSugHide(); if (window.rlDo) window.rlDo('swap', st && st.dest); });
     on('navSugQuiet', function () { nvSugHide(); nvQuiet(); });
     on('navSugNo',    function () { nvSugHide(); });
     on('navV2',    function () { nvMode('2d'); });
@@ -821,6 +821,11 @@
     st.suggested[key] = true;
     nvSugShow(say);
     speak(say);
+    /* 순서를 바꾸면 이동 시간·비용이 얼마나 달라지는지 — 서버가 잰 값이 오면 글로만 붙인다. 못 재면 안 붙인다 */
+    if (kind === 'busy' && window.rlSwapPair) window.rlSwapPair().then(function (p) {
+      var t = document.getElementById('navSugT');
+      if (p && t && t.textContent === say) t.textContent = say + ' 순서를 바꾸면 ' + p + '.';
+    });
   }
   /* 일정에 혼잡도가 안 붙은 다음 목적지 — 그 장소로 한 번만 받아 온다 (관광공사 집중률 · 실측이 있으면 실측).
      받으면 바로 다시 살핀다. 실패하면 조용히 넘어간다 — 안내는 계속된다 */
