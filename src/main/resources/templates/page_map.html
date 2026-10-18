@@ -3952,13 +3952,20 @@
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
       if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
 
-      // 로딩을 알리기 위해 임시 토스트 창 띄우기
-      toast(`${dayNum}일차를 실내 일정으로 다시 짜는 중입니다.`, 6000);
+      // 기다리는 동안 단계 문구를 토스트로 넘긴다 (시각으로 짐작한 단계)
+      const stopSteps = stepText(s => toast(s, 30000), [
+        `${dayNum}일차를 실내 일정으로 다시 짜는 중입니다.`,
+        `${dayNum}일차에 넣을 실내 장소를 고르는 중입니다.`,
+        '바뀐 곳까지 길과 이동 시간을 재는 중입니다.',
+        '날씨와 붐빔 정보를 붙이는 중입니다.',
+        '거의 다 됐습니다.'
+      ], 20000);
 
       try {
         // 백엔드 컨트롤러 경로: @PostMapping("/indoor-replace") 형식에 완벽 매핑
         // 쿼리 파라미터로 day 전달
         const res = await api.post(`/api/trips/${tripId}/routes/indoor-replace?day=${dayNum}`, {});
+        stopSteps();
 
         if (res.success && res.data) {
           toast(`${dayNum}일차를 실내 일정으로 바꿨습니다.`);
@@ -3983,6 +3990,7 @@
           toast('실내 일정으로 바꾸지 못했습니다.');
         }
       } catch (err) {
+        stopSteps();
         console.error('[IndoorReplace] 통신 에러:', err);
         toast('응답이 늦습니다. 잠시 뒤에 다시 시도해 주세요.');
       }
