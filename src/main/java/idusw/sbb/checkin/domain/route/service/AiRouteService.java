@@ -889,7 +889,8 @@ public class AiRouteService {
                 if (!(day instanceof com.fasterxml.jackson.databind.node.ObjectNode o)) continue;
                 String label = o.path("label").asText("");
                 if (label.isBlank()) continue;
-                String clean = EMOJI.matcher(label).replaceAll("").trim();
+                // 「Day 1 · 10/23」 → 「1일차 · 10/23」 — 화면에 영문을 남기지 않는다
+                String clean = EMOJI.matcher(label).replaceAll("").trim().replaceFirst("^Day\\s*(\\d+)", "$1일차");
                 if (!clean.equals(label)) { o.put("label", clean); changed = true; }
             }
             return changed ? objectMapper.writeValueAsString(root) : json;
@@ -901,6 +902,37 @@ public class AiRouteService {
 
     /* 그림문자(Symbol, other)와 이형 선택자. 대부분의 이모지가 여기 든다 */
     private static final Pattern EMOJI = Pattern.compile("[\\p{So}\\uFE0F\\u200D]+");
+
+    /**
+     * 2일차부터 아침 첫 줄의 숙소는 「숙소에서 출발」이다. 전날 밤 숙소와 같은 곳이라
+     * 금액까지 달고 있으면 1박이 두 번 셈해진다 (2박인데 숙소 4줄 = 4박 값).
+     * 그 줄의 금액만 지운다. 가계부·예산 맞춤·하루 합계가 모두 sub 의 금액을 읽으므로
+     * 여기 한 곳에서 지우면 다 같이 맞는다.
+     */
+    static String unpriceDepartureStay(String json) {
+        if (json == null || json.isBlank()) return json;
+        try {
+            JsonNode root = new ObjectMapper().readTree(json);
+            if (!root.isArray()) return json;
+            boolean changed = false;
+            for (int d = 1; d < root.size(); d++) {
+                for (JsonNode p : root.get(d).path("places")) {
+                    if (p.has("transit")) continue;
+                    String sub = p.path("sub").asText("");
+                    if ("stay".equals(p.path("type").asText()) && AMOUNT_PATTERN.matcher(sub).find()) {
+                        ((com.fasterxml.jackson.databind.node.ObjectNode) p)
+                                .put("sub", AMOUNT_PATTERN.matcher(sub).replaceAll("출발").trim());
+                        changed = true;
+                    }
+                    break;   // 첫 장소만 본다
+                }
+            }
+            return changed ? new ObjectMapper().writeValueAsString(root) : json;
+        } catch (Exception e) {
+            log.warn("[동선] 출발 숙소 금액을 정리하지 못했습니다: {}", e.getMessage());
+            return json;
+        }
+    }
 
     /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
        하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
@@ -916,6 +948,9 @@ public class AiRouteService {
     public void saveAiRouteToDb(Long tripId, String json) {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+
+        // ★아침 출발 숙소 줄의 금액을 지운다 (1박 두 번 셈 방지). 하루 합계를 다시 내는 아래보다 먼저
+        json = unpriceDepartureStay(json);
 
         // ★카카오 API로 거리/시간/통행료를 실제값으로 보정 (저장 직전 1회)
         PlanInputForm form = plan.getForm();

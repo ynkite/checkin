@@ -638,7 +638,7 @@ function _renderItinerary(routeData, actualExps, startDate) {
             <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px">
                 <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 16px;background:var(--cream2)">
                     <div>
-                        <span style="font-size:13px;font-weight:700">${day.label || 'Day ' + day.day}</span>
+                        <span style="font-size:13px;font-weight:700">${(day.label || '').replace(/Day\s*(\d+)/, '$1일차') || day.day + '일차'}</span>
                         ${dayDate ? `<span style="font-size:11px;color:var(--text3);margin-left:7px">${dayDate.replace(/-/g, '.')}</span>` : ''}
                     </div>
                     <div style="font-size:11px;text-align:right">

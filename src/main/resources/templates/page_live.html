@@ -368,6 +368,8 @@
               /* 실측(SK)과 예측(관광공사)을 같은 얼굴로 두지 않는다 */
               (c.rate != null
                 ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">' +
+                    /* 다음이 식당·숙소면 그 뒤 관광지 값이 온다 — 어느 곳인지 먼저 적는다 */
+                    (c.placeName && c.placeName !== n.name ? esc(c.placeName) + ' ' : '') +
                     (c.source === 'SK' || c.source === 'SK_LIVE' ? '지금 ' : '예측 ') +
                     esc(c.levelLabel || '') + ' ' + c.rate + '</span>'
                 /* 집중률이 안 오는 지역은 도 단위 방문자 수로 가늠한 단계가 온다.
