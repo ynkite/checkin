@@ -1080,6 +1080,7 @@
               '<span class="rl-cw cw-' + esc(c.crowdKey || 'low') + '">' +
                 esc(c.crowdLabel || '') + ' ' + esc(String(c.crowd)) + '</span>' +
               (c.address ? '<span class="rl-alt-a">' + esc(c.address) + '</span>' : '') +
+              (c.related ? '<span class="rl-alt-a">함께 많이 가는 곳</span>' : '') +
             '</button>';
           }).join('') +
           '<p class="rl-modes-note">' + esc(d.note || '') + '</p>' + rlKeepBtn();
