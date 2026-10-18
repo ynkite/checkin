@@ -137,6 +137,17 @@ public class TravelPlan {
         this.status = "FIXED";
     }
 
+    /* 「수정」— 확정 상태에서 저장한 것(교체·되돌리기)은 draft 에 쌓인다. 그걸 본문으로 올리고
+       draft 를 비운 뒤 수정 중으로 간다. 비우지 않으면 /routes 가 묵은 draft 를 먼저 돌려줘
+       「이 순서로 저장」이 routeJson 에 들어가도 화면은 옛 순서였고, 다음 확정이 그걸로 덮었다 */
+    public void startEditing() {
+        if (this.draftRouteJson != null && !this.draftRouteJson.isBlank()) {
+            this.routeJson = this.draftRouteJson;
+        }
+        this.draftRouteJson = null;
+        this.status = "DRAFT";
+    }
+
     // ★미확정 수정 폐기: draft를 버리고 직전 확정본(routeJson)을 유지한다.
     public void discardDraft() {
         this.draftRouteJson = null;

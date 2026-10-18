@@ -54,7 +54,8 @@ public class SecurityConfig {
                 // API URL 주소별 접근 권한 나누기
                 .authorizeHttpRequests(auth -> auth
                         // 장소 확인하기는 유료 호출(SK 실시간)이 섞여 있어 로그인해야 한다. /api/crowd/** 전체 허용보다 먼저
-                        .requestMatchers(HttpMethod.POST, "/api/crowd/check").authenticated()
+                        // 남은 횟수(GET)도 계정으로 센다
+                        .requestMatchers("/api/crowd/check", "/api/crowd/check/**").authenticated()
                         // 정적 리소스 전체 허용.
                         // 디렉터리로 잡는다 — 확장자 패턴만 쓰면 하위 경로가 빠진다.
                         // (기존에 "/**.svg" 만 있어서 /img/*.svg 가 302 로 튕겼다)
@@ -130,6 +131,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/trips/*").permitAll()               // 비회원 공유 링크
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/routes").permitAll()        // 공유 링크 읽기 전용
                         .requestMatchers(HttpMethod.GET, "/api/trips/*/input-form").permitAll()     // 비회원 인원수/이동수단 정보
+                        .requestMatchers(HttpMethod.GET, "/api/trips/*/budget-fit").permitAll()     // 공유 링크의 예산 탭. PlanAccess.read 가 지킨다
                         .requestMatchers(HttpMethod.GET, "/api/curations").permitAll()
 
 

@@ -1556,11 +1556,22 @@
         }).catch(function () {});
     }
 
+    /* 날짜별 장소 이름 순서. 서버가 거리·시각은 다시 재도 순서는 그대로여야 한다 */
+    function _mpOrderKey(d) {
+      try { if (typeof d === 'string') d = JSON.parse(d); } catch (e) { return ''; }
+      return (Array.isArray(d) ? d : []).map(function (day) {
+        return (day.places || []).map(function (p) { return p.name; }).join('>');
+      }).join('|');
+    }
+
     function _mpSaveOrder() {
       var id = window._currentTripId;
       if (!id || !_mpUndo) return;
+      var sent = _mpOrderKey(MAP_ITINERARY);
       api.post('/api/trips/' + id + '/routes/reorder', MAP_ITINERARY).then(function (res) {
         if (!res || !res.success) { toast('순서를 저장하지 못했습니다. ' + ((res && res.message) || '')); return; }
+        /* 응답이 보낸 순서와 다르면 남지 않은 것이다. '저장했습니다' 를 띄우고 새로 고치면 바꾼 순서까지 잃는다 */
+        if (_mpOrderKey(res.data) !== sent) { toast('저장이 남지 않았습니다. 잠시 뒤에 다시 눌러 주세요.', 4200); return; }
         var pair = typeof _fmtRoutePair === 'function' ? _fmtRoutePair(res.delta) : '';
         toast(pair ? '저장했습니다 · ' + pair : '저장했습니다.', pair ? 4200 : 2800);
         initMapPage();                      /* 보정된 일정을 다시 읽는다. _mpUndo 도 여기서 비운다 */
@@ -1712,6 +1723,9 @@
         const res = await api.patch(`/api/trips/${tripId}/status`, { status: nextStatus });
         if (!res.success) { toast(res.message || '상태 변경에 실패했습니다.'); return; }
 
+        /* 저장된 여행을 고치는 중 — 머리글이 새 플랜 단계로 바뀌지 않게 표시해 둔다 */
+        if (nextStatus === 'FIXED') sessionStorage.removeItem('editingSavedTrip');
+        else sessionStorage.setItem('editingSavedTrip', tripId);
         applyPlanConfirmState(nextStatus === 'FIXED');
 
         if (nextStatus === 'FIXED') {

@@ -116,7 +116,7 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
 
         // 폼 행만 있고 연결이 끊긴 경우가 있으면 그걸 다시 쓴다 — 두 벌을 만들면
         // findByPlanId 가 Optional 이라 나중에 터진다.
-        PlanInputForm form = planInputFormRepository.findByPlanId(plan.getId())
+        PlanInputForm form = planInputFormRepository.findFirstByPlanIdOrderByIdDesc(plan.getId())
                 .orElseGet(() -> planInputFormRepository.save(PlanInputForm.builder()
                 .plan(plan).user(judge)
                 .departure("서울")

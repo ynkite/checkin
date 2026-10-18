@@ -16,4 +16,10 @@ public interface ChatbotService {
     }
 
     void saveSystemMessage(Long sessionId, String message);
+
+    /** 내 대화방 목록 — 플랜을 이어 쓸 때 어느 방을 다시 열지 고른다 */
+    java.util.List<java.util.Map<String, Object>> mySessions();
+
+    /** 내 대화방의 말 전부, 오래된 것부터 */
+    java.util.List<java.util.Map<String, Object>> messages(Long sessionId);
 }

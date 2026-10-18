@@ -453,6 +453,26 @@ public class ChatbotServiceImpl implements ChatbotService {
     }
 
     // 내가 만든 대화방만. 남의 방 번호를 넣으면 없는 방과 같게 답한다
+    @Override
+    public java.util.List<java.util.Map<String, Object>> mySessions() {
+        Long me = idusw.sbb.checkin.domain.plan.support.PlanAccess.currentUserId();
+        if (me == null) return java.util.List.of();
+        return sessionRepository.findByUserIdOrderByIdAsc(me).stream()
+                .<java.util.Map<String, Object>>map(s -> {
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("sessionId", s.getId());
+                    m.put("planId", s.getPlanId());
+                    return m;
+                }).toList();
+    }
+
+    @Override
+    public java.util.List<java.util.Map<String, Object>> messages(Long sessionId) {
+        return messageRepository.findByChatSessionOrderByIdAsc(ownSession(sessionId)).stream()
+                .<java.util.Map<String, Object>>map(m -> java.util.Map.of("role", m.getRole(), "content", m.getContent() == null ? "" : m.getContent()))
+                .toList();
+    }
+
     private ChatSession ownSession(Long sessionId) {
         Long me = idusw.sbb.checkin.domain.plan.support.PlanAccess.currentUserId();
         return sessionRepository.findById(sessionId)

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,6 +25,13 @@ public class PlaceCheckController {
 
     private final PlaceCheckService placeCheckService;
     private final PlaceCheckQuota quota;
+
+    /** 화면을 열 때 몇 번 남았는지. 쓰지 않고 본다 — 브라우저가 아니라 계정으로 센 값이다 */
+    @GetMapping("/check/left")
+    public ResponseEntity<ApiResponse<Void>> left(@AuthenticationPrincipal CustomUserDetails user) {
+        PlaceCheckQuota.Verdict q = quota.peek(user == null ? null : user.getUserId());
+        return ResponseEntity.ok(ApiResponse.success("남은 확인 " + q.remaining() + "번", null));
+    }
 
     @PostMapping("/check")
     public ResponseEntity<ApiResponse<PlaceCheck.Result>> check(
