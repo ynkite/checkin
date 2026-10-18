@@ -25,6 +25,7 @@ import java.util.Map;
 public class LiveController {
 
     private final LiveService live;
+    private final idusw.sbb.checkin.domain.plan.support.PlanAccess access;
 
     /** 실시간으로 열 수 있는 여행 목록. 지난 여행은 뺀다 */
     @GetMapping("/trips")
@@ -46,6 +47,7 @@ public class LiveController {
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "false") boolean sim) {
+        access.read(tripId);
         return ResponseEntity.ok(ApiResponse.success(live.snapshot(tripId, lat, lng, date, sim)));
     }
 }

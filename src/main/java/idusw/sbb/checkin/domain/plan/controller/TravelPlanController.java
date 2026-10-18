@@ -22,6 +22,14 @@ import java.util.Map;
 public class TravelPlanController {
 
     private final TravelPlanService travelPlanService;
+    private final idusw.sbb.checkin.domain.planshare.service.TripShareService tripShareService;
+
+    // 공유 링크(/trip/{토큰}) 화면이 여행 번호를 묻는 자리. 토큰은 X-Share-Token 머리말로 받는다
+    @GetMapping("/shared")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resolveShared(
+            @RequestHeader(value = idusw.sbb.checkin.domain.plan.support.PlanAccess.SHARE_HEADER, required = false) String token) {
+        return ResponseEntity.ok(ApiResponse.success(tripShareService.resolveShared(token)));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<Map<String, Long>>> createPlan(

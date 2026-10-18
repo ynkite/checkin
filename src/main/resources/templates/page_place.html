@@ -832,9 +832,9 @@
             return;
         }
 
-        // 읽기 전용 링크 세팅 (/plan/view 경로)
+        // 읽기 전용 링크 — 서버가 발급한 /trip/{토큰}. 여행을 만든 사람만 받는다
         const linkEl = document.getElementById('share-link-url');
-        if (linkEl) linkEl.value = `${window.location.origin}/plan/view?id=${tripId}`;
+        if (linkEl) { linkEl.value = ''; _fetchShareLink(tripId).then(link => { linkEl.value = link; }); }
 
         // 멤버 목록 렌더링
         const membersRes = await api.get(`/api/trips/${tripId}/members`);
@@ -845,8 +845,8 @@
                 listEl.innerHTML = membersRes.data.map(m => `
                         <div style="display:flex; align-items:center; justify-content:space-between;">
                           <div style="display:flex; align-items:center; gap:12px;">
-                            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
-                            <div style="font-weight:700; font-size:14px; color:var(--ink);">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
+                            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${_escSafe((m.name||'?')[0])}</div>
+                            <div style="font-weight:700; font-size:14px; color:var(--ink);">${_escSafe(m.name||'')} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
                           </div>
                           <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
                         </div>`).join('');
@@ -856,8 +856,8 @@
                 listEl.innerHTML = `
                       <div style="display:flex; align-items:center; justify-content:space-between;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
-                          <div style="font-weight:700; font-size:14px; color:var(--ink);">${me} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
+                          <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${_escSafe(me[0])}</div>
+                          <div style="font-weight:700; font-size:14px; color:var(--ink);">${_escSafe(me)} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
                         </div>
                         <div style="font-size:12px; color:var(--text3);">소유자</div>
                       </div>`;

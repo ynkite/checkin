@@ -2,6 +2,7 @@ package idusw.sbb.checkin.domain.planshare.service;
 
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.plan.support.PlanAccess;
 import idusw.sbb.checkin.domain.planshare.dto.ShareInviteRequestDto;
 import idusw.sbb.checkin.domain.planshare.dto.TripMemberResponseDto;
 import idusw.sbb.checkin.domain.planshare.entity.PlanRole;
@@ -28,15 +29,15 @@ public class TripShareService {
     private final TripMemberRepository tripMemberRepository;
     private final TravelPlanRepository travelPlanRepository;
     private final UserRepository userRepository;
+    private final PlanAccess access;
 
     // 구글 메일 발송 도구 주입
     private final JavaMailSender mailSender;
 
     // 멤버 목록 조회
     public List<TripMemberResponseDto> getMembers(Long tripId) {
-        // 플랜 정보 가져오기 (소유자 확인용)
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        // 멤버 이메일이 들어 있다 — 이 여행을 볼 수 있는 사람만
+        TravelPlan plan = access.read(tripId);
 
         // 공유 테이블에 저장된 초대 멤버들 불러오기
         List<TripMemberResponseDto> members = tripMemberRepository.findByTravelPlanId(tripId).stream()
@@ -59,8 +60,8 @@ public class TripShareService {
     // 멤버 초대 및 실제 이메일 발송
     @Transactional
     public void inviteMember(Long tripId, ShareInviteRequestDto dto) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        // 초대는 소유자만. 전에는 아무나 남의 여행에 자기를 편집자로 넣을 수 있었다
+        TravelPlan plan = access.own(tripId);
 
         // 이메일로 가입된 유저인지 확인
         User invitee = userRepository.findByEmail(dto.getEmail())
@@ -71,8 +72,11 @@ public class TripShareService {
             throw new IllegalArgumentException("이미 초대된 그룹 멤버입니다.");
         }
 
-        // 권한(Role)값이 안 넘어왔을 경우 방어: 기본값 EDITOR 강제 할당
+        // 권한(Role)값이 안 넘어왔을 경우 방어: 기본값 EDITOR 강제 할당. 소유자 자리는 줄 수 없다
         String roleStr = (dto.getRole() != null && !dto.getRole().isBlank()) ? dto.getRole() : "EDITOR";
+        if (!"EDITOR".equals(roleStr) && !"READER".equals(roleStr)) {
+            throw new IllegalArgumentException("허용되지 않은 역할입니다.");
+        }
 
         // DB에 멤버 추가
         TripMember newMember = TripMember.builder()
@@ -113,8 +117,7 @@ public class TripShareService {
     // READER 는 /trip/{토큰}, EDITOR 는 /trip/{토큰}/edit. 읽기 토큰으로 편집 링크를 유도할 수 없다.
     @Transactional
     public Map<String, String> generateShareLink(Long tripId, PlanRole role) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        TravelPlan plan = access.own(tripId);
 
         String token = ensureToken(plan, role);
         String link = shareUrl(token, role);
@@ -130,8 +133,7 @@ public class TripShareService {
     // 토큰 재발급 — 유출됐을 때 기존 링크를 끊고 새 토큰을 준다.
     @Transactional
     public Map<String, String> regenerateShareLink(Long tripId, PlanRole role) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        TravelPlan plan = access.own(tripId);
         setToken(plan, role, null);
         String token = ensureToken(plan, role);
         return Map.of("shareLink", shareUrl(token, role), "role", role.name());
@@ -140,8 +142,7 @@ public class TripShareService {
     // 토큰 폐기 — 링크를 완전히 끊는다.
     @Transactional
     public void revokeShareLink(Long tripId, PlanRole role) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
+        TravelPlan plan = access.own(tripId);
         setToken(plan, role, null);
     }
 
@@ -155,6 +156,14 @@ public class TripShareService {
     public TravelPlan resolveByEditToken(String token) {
         return travelPlanRepository.findByShareEditToken(token)
                 .orElseThrow(() -> new IllegalArgumentException("유효하지 않거나 폐기된 링크입니다."));
+    }
+
+    // /trip/{토큰} 화면이 여행 번호를 묻는다. 읽기 토큰이 아니면 편집 토큰으로 본다
+    public Map<String, Object> resolveShared(String token) {
+        if (token == null || token.isBlank()) throw new IllegalArgumentException("유효하지 않거나 폐기된 링크입니다.");
+        return travelPlanRepository.findByShareReadToken(token)
+                .map(p -> Map.<String, Object>of("tripId", p.getId(), "role", "READER"))
+                .orElseGet(() -> Map.of("tripId", resolveByEditToken(token).getId(), "role", "EDITOR"));
     }
 
     // role 에 해당하는 토큰을 반환하되, 없으면 새로 발급해 저장한다.

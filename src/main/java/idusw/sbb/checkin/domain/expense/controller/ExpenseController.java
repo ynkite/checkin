@@ -20,12 +20,14 @@ public class ExpenseController {
 
     private final ExpenseService expenseService;
     private final idusw.sbb.checkin.domain.budget.BudgetFitService budgetFitService;
+    private final idusw.sbb.checkin.domain.plan.support.PlanAccess access;
 
     @GetMapping("/{tripId}/expenses")
     public ResponseEntity<ApiResponse<BudgetReportResponseDto>> getBudgetReport(
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long tripId) {
 
+        access.read(tripId);
         BudgetReportResponseDto report = expenseService.getBudgetReport(tripId);
         return ResponseEntity.ok(ApiResponse.success(report));
     }
@@ -48,6 +50,7 @@ public class ExpenseController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable Long tripId) {
 
+        access.read(tripId);
         return ResponseEntity.ok(ApiResponse.success(expenseService.estimateBudget(tripId)));
     }
 
@@ -55,6 +58,7 @@ public class ExpenseController {
     @GetMapping("/{tripId}/budget-fit")
     public ResponseEntity<ApiResponse<idusw.sbb.checkin.domain.budget.dto.BudgetFitView>> budgetFit(
             @PathVariable Long tripId) {
+        access.read(tripId);
         return ResponseEntity.ok(ApiResponse.success(budgetFitService.view(tripId)));
     }
 
@@ -64,6 +68,7 @@ public class ExpenseController {
             @PathVariable Long tripId,
             @RequestBody ExpenseAddRequestDto dto) {
 
+        access.edit(tripId);
         expenseService.addExpense(tripId, dto);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
@@ -75,7 +80,8 @@ public class ExpenseController {
             @PathVariable Long expenseId,
             @RequestBody ExpenseAddRequestDto dto) {
 
-        expenseService.updateExpense(expenseId, dto);
+        access.edit(tripId);
+        expenseService.updateExpense(tripId, expenseId, dto);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -86,7 +92,8 @@ public class ExpenseController {
             @PathVariable Long tripId,
             @PathVariable Long expenseId) {
 
-        expenseService.deleteExpense(expenseId);
+        access.edit(tripId);
+        expenseService.deleteExpense(tripId, expenseId);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -3911,7 +3911,7 @@
         const replaceBtns = document.getElementById('mwp-ai-replace-btns');
 
         // [핵심 변경 가드]: 읽기 전용 주소(/plan/view)로 들어왔을 때는 교체 기능을 원천 무력화합니다.
-        if (location.pathname.includes('/plan/view')) {
+        if (_isReadOnlyShare()) {
           replaceWrap.style.display = 'block';
           replaceWrap.classList.add('mp-mswap-off');
 
