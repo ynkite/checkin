@@ -1524,6 +1524,15 @@
       var t2 = ps[ia].time; ps[ia].time = ps[ib].time; ps[ib].time = t2;
 
       _mpAfterOrder('순서를 바꿨습니다. 뒤 시각도 다시 잡았습니다.');
+
+      /* 확정 전에 서버가 잰 이동 시간·비용 변화를 붙인다. 못 재면 아무것도 붙이지 않는다 */
+      if (!window._currentTripId || typeof _fmtRoutePair !== 'function') return;
+      api.post('/api/trips/' + window._currentTripId + '/routes/reorder?preview=true', MAP_ITINERARY)
+        .then(function (res) {
+          var pair = res && res.success ? _fmtRoutePair(res.delta) : '';
+          var t = _mpUndo && document.querySelector('#mpAlert .mp-al-2');
+          if (pair && t) t.textContent = pair + '. ' + t.textContent;
+        }).catch(function () {});
     }
 
     function _mpUndoOrder() {

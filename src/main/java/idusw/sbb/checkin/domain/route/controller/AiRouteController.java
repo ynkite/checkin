@@ -140,6 +140,7 @@ public class AiRouteController {
     @PostMapping("/reorder")
     public ResponseEntity<?> updateRouteManually(
             @PathVariable Long tripId,
+            @RequestParam(defaultValue = "false") boolean preview,
             @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
         access.edit(tripId);
         try {
@@ -147,6 +148,10 @@ public class AiRouteController {
 
             // 순서를 바꾸는 것도 동선 변경이다 — 저장 전 동선을 들고 있는다 (예산 엔진 2층)
             String beforeRouteJson = currentRouteJson(tripId);
+
+            // 미리 보기 — 저장하지 않고 시간·돈 쌍만 낸다. 지도 붐빔 카드가 확정 전에 보여 준다
+            if (preview) return ResponseEntity.ok(java.util.Map.of("success", true,
+                    "delta", RouteDelta.between(beforeRouteJson, aiRouteService.previewEnriched(tripId, json))));
 
             // 저장(내부에서 카카오 거리/시간/비용 재계산 + budget 갱신 수행)
             aiRouteService.saveAiRouteToDb(tripId, json);

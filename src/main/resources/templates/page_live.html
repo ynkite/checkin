@@ -987,7 +987,9 @@
          되돌릴 수 없으면 아예 바꾸지 않는다. 돌아올 길이 없는 변경은 제안이 아니다. */
       async function rlApplyLive(o) {
         if (!rlTrip) return;
-        if (!(await askYes('이대로 바꿀까요?', o.label + (o.note ? ' — ' + o.note : '') + '. 바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
+        var pair = o.preview ? await o.preview() : '';
+        if (!(await askYes('이대로 바꿀까요?', o.label + (o.note ? ' — ' + o.note : '') + '. ' +
+                           (pair ? pair + '. ' : '') + '바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
 
         var before = null;
         try { before = await rlGetRoute(); } catch (e) {}
@@ -1008,9 +1010,26 @@
         if (data && data.changed === false) { toast(data.note || '바꿀 것이 없습니다.'); return; }
 
         rlUndoSet({ label: o.label, route: before, at: Date.now() });
-        toast((data && data.note) || o.done || '바꿨습니다. 되돌릴 수 있습니다.');
-        rlRefresh();
+        pair = (data && typeof _fmtRoutePair === 'function') ? _fmtRoutePair(data.delta) : '';
+        toast(((data && data.note) || o.done || '바꿨습니다. 되돌릴 수 있습니다.') + (pair ? ' ' + pair : ''));
+        await rlRefresh();
+        /* 길 안내 중에 바꿨으면 새 다음 장소로 길을 다시 받는다 */
+        var d = o.drive, n = rlNextStop;
+        if (d && n && window.resumeDrive && (n.lat !== d.lat || n.lng !== d.lng)) window.resumeDrive(n);
       }
+
+      /* 순서 바꾸기를 저장하지 않고 재 본다. 서버가 잰 이동 시간·비용 변화만 쓴다.
+         못 재거나 늦으면 '' — 줄을 아예 숨긴다. 늦게 온 값은 서버가 1분 들고 있어 실제 바꾸기가 빨라진다 */
+      window.rlSwapPair = function () {
+        if (!rlTrip || typeof _fmtRoutePair !== 'function') return Promise.resolve('');
+        var late = new Promise(function (ok) { setTimeout(function () { ok(''); }, 3000); });
+        var got = fetch('/api/trips/' + rlTrip + '/routes/swap-crowded?day=' + rlDayNo + '&preview=true',
+                        { method: 'POST', headers: rlAuth() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { return j && j.success && j.data && j.data.changed ? _fmtRoutePair(j.data.delta) : ''; })
+          .catch(function () { return ''; });
+        return Promise.race([got, late]);
+      };
 
       /* 다른 곳으로 — 서버가 그날 한적한 곳을 골라 준다. 여기서는 보여 주고 고르게만 한다.
          「이대로 가기」를 늘 같이 둔다. 하나를 강요하지 않는다. */
@@ -1061,6 +1080,7 @@
               '<span class="rl-cw cw-' + esc(c.crowdKey || 'low') + '">' +
                 esc(c.crowdLabel || '') + ' ' + esc(String(c.crowd)) + '</span>' +
               (c.address ? '<span class="rl-alt-a">' + esc(c.address) + '</span>' : '') +
+              (c.related ? '<span class="rl-alt-a">함께 많이 가는 곳</span>' : '') +
             '</button>';
           }).join('') +
           '<p class="rl-modes-note">' + esc(d.note || '') + '</p>' + rlKeepBtn();
@@ -1173,7 +1193,9 @@
           rlApplyLive({
             label: '순서 바꾸기',
             note: '붐비는 곳을 남은 구간의 뒤로 미룹니다',
-            endpoint: '/api/trips/' + rlTrip + '/routes/swap-crowded?day=' + rlDayNo
+            endpoint: '/api/trips/' + rlTrip + '/routes/swap-crowded?day=' + rlDayNo,
+            preview: window.rlSwapPair,
+            drive: arguments[1]
           });
           return;
         }
