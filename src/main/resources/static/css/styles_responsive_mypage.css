@@ -239,10 +239,9 @@
     width:100%;
     min-width:0 !important;
     text-align:left !important;
-    display:flex; align-items:center; flex-wrap:wrap; gap:calc(var(--u)/2) var(--u);
+    display:flex; align-items:flex-start; flex-wrap:wrap; gap:calc(var(--u)/2) var(--u);
   }
-  #page-mypage .trip-budget > span:last-child{ display:flex; gap:calc(var(--u)/2); font-variant-numeric:tabular-nums; }
-  #page-mypage .trip-budget br{ display:block; flex:0 0 0; }
+  #page-mypage .trip-budget > span:last-child{ font-variant-numeric:tabular-nums; }
 
   #page-mypage .trip-card .trip-route{ order:3; }
 }
