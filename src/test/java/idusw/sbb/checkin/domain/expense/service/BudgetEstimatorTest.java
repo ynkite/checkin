@@ -26,7 +26,7 @@ class BudgetEstimatorTest {
         // 인원 추가 1인 몫 = 60,000 ÷ 기준 2명 = 30,000 → 2명 x 30,000 x 2박 = 120,000
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.confirmed(60_000, "비수기 주중"),
-                2, 4, 2, false, false, false, false, 0));
+                2, 4, 2, false, false, false, false, 0, 1));
 
         assertEquals(240_000, e.total());
         assertEquals(50, e.confidence(), "확정 120,000 ÷ 총액 240,000");
@@ -38,7 +38,7 @@ class BudgetEstimatorTest {
     @Test
     void 객실_요금을_모르면_인원_추가는_평균_기준이다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
-                LodgingRate.none("비수기 주중"), 1, 3, 2, false, false, false, false, 0));
+                LodgingRate.none("비수기 주중"), 1, 3, 2, false, false, false, false, 0, 1));
 
         Item extra = item(e, "인원 추가");
         assertEquals(BudgetEstimator.EXTRA_PERSON_PER_NIGHT, extra.amount());
@@ -48,7 +48,7 @@ class BudgetEstimatorTest {
     @Test
     void 기준인원을_모르면_객실_2인_기준으로_평균_금액을_쓴다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
-                LodgingRate.confirmed(80_000, "비수기 주중"), 1, 3, 0, false, false, false, false, 0));
+                LodgingRate.confirmed(80_000, "비수기 주중"), 1, 3, 0, false, false, false, false, 0, 1));
 
         Item extra = item(e, "인원 추가");
         assertEquals(Status.ESTIMATED, extra.status());
@@ -68,25 +68,39 @@ class BudgetEstimatorTest {
     void 일정에_숙박비가_있으면_총액이_그_값과_같다() {
         // 4명 · 기준 2명 → 2실. 1실 21,000 × 2실 × 2박 = 84,000 = 일정 숙박비 → 확정
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
-                LodgingRate.confirmed(21_000, "비수기 주말"), 2, 4, 2, true, true, true, false, 84_000));
+                LodgingRate.confirmed(21_000, "비수기 주말"), 2, 4, 2, true, true, true, false, 84_000, 2));
 
-        assertEquals(84_000, e.total(), "가계부 숙박 예상과 같은 값 — 옵션은 현장 결제라 따로");
+        assertEquals(84_000 + 30_000 + 10_000, e.total(), "일정 숙박비 + 고른 옵션");
         assertEquals(Status.CONFIRMED, item(e, "객실 기본료").status());
         assertTrue(item(e, "객실 기본료").basis().contains("2실"));
-        assertEquals(Status.NONE, item(e, "인원 추가").status());
-        assertTrue(item(e, "바베큐").basis().contains("30,000원"));
+        assertEquals(Status.NONE, item(e, "인원 추가").status(), "일정 숙박비가 2실 값이면 4명 모두 들어간다");
+        assertEquals(40_000, BudgetEstimator.extrasOf(e).stream().mapToLong(Item::amount).sum());
 
         BudgetEstimate guess = BudgetEstimator.compute(new BudgetEstimator.Input(
-                null, 2, 4, 0, false, false, false, false, 240_000));
-        assertEquals(240_000, guess.total());
+                null, 2, 4, 0, false, false, false, false, 240_000, 1));
+        assertEquals(240_000, guess.total(), "기준인원을 모르면 인원 추가는 셈하지 않는다");
         assertEquals(Status.ESTIMATED, item(guess, "객실 기본료").status());
+        assertTrue(item(guess, "바베큐").basis().contains("고르면 약 30,000원"), "안 고른 옵션은 금액 안내만");
+    }
+
+    @Test
+    void 기준인원을_알면_일정_객실로_못_받는_인원만_더한다() {
+        // 일정 숙박비는 1실 값, 기준 2명, 4명 → 2명 넘음. 1인 = 60,000 ÷ 2 = 30,000 × 2명 × 2박
+        BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
+                LodgingRate.confirmed(60_000, "비수기 주중"), 2, 4, 2, false, false, false, false, 120_000, 1));
+        assertEquals(120_000 + 120_000, e.total());
+        assertEquals(Status.ESTIMATED, item(e, "인원 추가").status());
+        assertEquals(1, BudgetEstimator.scheduleRooms("""
+            [{"places":[{"type":"stay","name":"a","sub":"숙소 · ₩60,000"}]}]"""));
+        assertEquals(2, BudgetEstimator.scheduleRooms("""
+            [{"places":[{"type":"stay","name":"a","sub":"숙소 · 2실 · ₩60,000"}]}]"""));
     }
 
     @Test
     void 예측_구간은_추정_항목에만_붙는다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.confirmed(100_000, "비수기 주중"),
-                1, 2, 2, true, true, false, false, 0));   // 확정 100,000 + 바베큐 추정 30,000
+                1, 2, 2, true, true, false, false, 0, 1));   // 확정 100,000 + 바베큐 추정 30,000
 
         assertEquals(130_000, e.total());
         assertEquals(124_000, e.low(),  "추정 30,000 의 20% 인 6,000 만 흔들린다");
@@ -97,7 +111,7 @@ class BudgetEstimatorTest {
     @Test
     void 공개요금이_없으면_확정이_0이고_신뢰도도_0이다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
-                null, 2, 2, 0, false, false, false, false, 0));
+                null, 2, 2, 0, false, false, false, false, 0, 1));
 
         assertEquals(0, e.total());
         assertEquals(0, e.confidence());
@@ -109,7 +123,7 @@ class BudgetEstimatorTest {
     void 지역평균으로_받은_요금은_추정으로_남는다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.estimated(90_000, 12, "성수기 주말"),
-                1, 2, 2, false, false, false, false, 0));
+                1, 2, 2, false, false, false, false, 0, 1));
 
         assertEquals(Status.ESTIMATED, item(e, "객실 기본료").status());
         assertEquals(0, e.confidence(), "추정뿐이면 신뢰도 0");
@@ -120,7 +134,7 @@ class BudgetEstimatorTest {
     void 정원_이내거나_고르지_않은_항목은_해당없음으로_남긴다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.confirmed(80_000, "비수기 주중"),
-                1, 2, 4, false, false, false, false, 0));
+                1, 2, 4, false, false, false, false, 0, 1));
 
         assertEquals(80_000, e.total());
         assertEquals(Status.NONE, item(e, "인원 추가").status());
@@ -133,7 +147,7 @@ class BudgetEstimatorTest {
     void 바베큐는_제공확인이어도_금액은_추정이다() {
         BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
                 LodgingRate.confirmed(80_000, "비수기 주중"),
-                1, 2, 2, true, true, false, false, 0));
+                1, 2, 2, true, true, false, false, 0, 1));
 
         Item bbq = item(e, "바베큐");
         assertEquals(Status.ESTIMATED, bbq.status());

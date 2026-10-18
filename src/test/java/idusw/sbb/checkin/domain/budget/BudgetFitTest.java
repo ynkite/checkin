@@ -163,7 +163,7 @@ class BudgetFitTest {
         when(tx.execute(any())).thenAnswer(inv -> inv.<org.springframework.transaction.support.TransactionCallback<?>>getArgument(0).doInTransaction(null));
         var route = mock(idusw.sbb.checkin.domain.route.service.AiRouteService.class);
 
-        BudgetFitService svc = new BudgetFitService(repo, route, new BudgetLimitService(), null, tx, null);
+        BudgetFitService svc = new BudgetFitService(repo, route, new BudgetLimitService(), null, tx, null, null);
 
         assertDoesNotThrow(() -> svc.applyTo(1L));
         verify(route, never()).saveAiRouteToDb(any(), any());

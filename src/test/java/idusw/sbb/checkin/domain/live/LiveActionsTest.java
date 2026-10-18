@@ -76,7 +76,7 @@ class LiveActionsTest {
     }
 
     private List<Map<String, Object>> 갈래() {
-        return live.snapshot(1L, null, null, LocalDate.now()).actions();
+        return live.snapshot(1L, null, null, LocalDate.now(), true).actions();
     }
 
     private Map<String, Object> 갈래(String key) {
@@ -114,8 +114,17 @@ class LiveActionsTest {
         여행하나(88);
 
         /* 여행지 이름은 「부산」이다. 그것만 보면 중구가 나와 해운대가 안 맞는다 */
-        assertThat(live.snapshot(1L, null, null, LocalDate.now()).crowd())
+        assertThat(live.snapshot(1L, null, null, LocalDate.now(), true).crowd())
                 .containsEntry("rate", 88L);
+    }
+
+    @Test
+    void 가상_주행은_지금을_그날_첫_일정_시각으로_본다() {
+        여행하나(88);
+
+        /* 시연하는 시각이 오후든 밤이든 다음 목적지는 두 번째 곳이다 */
+        assertThat(live.snapshot(1L, null, null, LocalDate.now(), true).next())
+                .containsEntry("name", "광안리 해수욕장");
     }
 
     @Test
