@@ -30,7 +30,12 @@ import java.util.Map;
  * 키가 없으면 호출하지 않고 null 을 돌려준다. 화면은 「이동시간 확인 중」으로
  * 남고 나머지는 그대로 돈다 — 키 하나 없다고 경로 화면이 죽으면 안 된다.
  *
- * 응답을 저장하지 않는다. 실시간 호출 이력이 남아야 한다.
+ * 같은 요청은 10분 동안 메모리에 둔 답을 다시 쓴다. 시연에서 같은 동선을
+ * 여러 번 돌려도 하루 한도를 깎지 않게. 디스크·DB 에는 남기지 않는다.
+ *
+ * 시간 초과 · 502~504 · 마지막 키까지 한도 초과면 1분 동안 부르지 않는다.
+ * 그사이 부르는 쪽은 null 을 받고 예상값(RouteEstimate)으로 넘어간다 —
+ * 구간마다 5초씩 기다리다 화면이 멈추는 것을 막는다.
  */
 @Slf4j
 @Component
@@ -248,9 +253,51 @@ public class TmapClient {
     /* 403 을 받은 API 경로. 「이 키로는 그 상품을 못 쓴다」는 뜻이라 다시 불러도 같은 답이다 */
     private final java.util.Set<String> forbidden = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
+    static final long CACHE_MS = 10 * 60_000L;
+    static final long PAUSE_MS = 60_000L;
+    private record Hit(JsonNode node, long at) {}
+    private final Map<String, Hit> cache = new java.util.concurrent.ConcurrentHashMap<>();
+    private volatile long pausedUntil = 0;
+
     private JsonNode call(HttpMethod method, String path, Object body) {
         String api = path.contains("?") ? path.substring(0, path.indexOf('?')) : path;
         if (forbidden.contains(api)) return null;
+
+        String key = cacheKey(method, path, body);
+        long now = System.currentTimeMillis();
+        Hit hit = cache.get(key);
+        if (hit != null && now - hit.at() < CACHE_MS) return hit.node();
+        if (now < pausedUntil) return null;
+
+        JsonNode res = fetch(method, path, body, api);
+        if (res != null) {
+            if (cache.size() > 500) cache.clear();
+            cache.put(key, new Hit(res, now));
+        }
+        return res;
+    }
+
+    /* startTime(경유지 최적화)은 분마다 바뀌어 키에서 뺀다 */
+    private String cacheKey(HttpMethod method, String path, Object body) {
+        Object b = body;
+        if (body instanceof Map<?, ?> m && m.containsKey("startTime")) {
+            Map<Object, Object> copy = new LinkedHashMap<>(m);
+            copy.remove("startTime");
+            b = copy;
+        }
+        try {
+            return method + path + (b == null ? "" : objectMapper.writeValueAsString(b));
+        } catch (Exception e) {
+            return method + path + b;
+        }
+    }
+
+    private void pause(String why) {
+        pausedUntil = System.currentTimeMillis() + PAUSE_MS;
+        log.warn("[tmap] {} — 1분 동안 부르지 않고 예상값으로 보여 줍니다", why);
+    }
+
+    private JsonNode fetch(HttpMethod method, String path, Object body, String api) {
 
         String url = baseUrl + path;
         try {
@@ -279,9 +326,14 @@ public class TmapClient {
 
             if (ring.fail(st)) {
                 log.info("[tmap] 다음 키로 다시 부릅니다 ({})", path);
-                return call(method, path, body);
+                return fetch(method, path, body, api);
             }
-            log.warn("[tmap] {} 실패 HTTP {}", path, st);
+            /* 500 은 요청 탓인 경우가 많아(좌표 형식 등) 멈추지 않는다. 한도·게이트웨이 장애만 */
+            if (st == 429 || st == 502 || st == 503 || st == 504) pause(path + " HTTP " + st);
+            else log.warn("[tmap] {} 실패 HTTP {}", path, st);
+            return null;
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            pause(path + " 응답 없음: " + e.getMessage());
             return null;
         } catch (Exception e) {
             /* 길이 없거나 SK 가 느릴 때다. 여기서 터지면 경로 화면

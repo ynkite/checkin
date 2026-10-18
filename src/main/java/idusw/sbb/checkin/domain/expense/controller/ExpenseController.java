@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class ExpenseController {
 
     private final ExpenseService expenseService;
+    private final idusw.sbb.checkin.domain.budget.BudgetFitService budgetFitService;
 
     @GetMapping("/{tripId}/expenses")
     public ResponseEntity<ApiResponse<BudgetReportResponseDto>> getBudgetReport(
@@ -48,6 +49,13 @@ public class ExpenseController {
             @PathVariable Long tripId) {
 
         return ResponseEntity.ok(ApiResponse.success(expenseService.estimateBudget(tripId)));
+    }
+
+    /** 예산 맞춤 — 예산의 N% · 조정 전 → 후. 일정을 못 읽어도 fallback 으로 응답한다. */
+    @GetMapping("/{tripId}/budget-fit")
+    public ResponseEntity<ApiResponse<idusw.sbb.checkin.domain.budget.dto.BudgetFitView>> budgetFit(
+            @PathVariable Long tripId) {
+        return ResponseEntity.ok(ApiResponse.success(budgetFitService.view(tripId)));
     }
 
     @PostMapping("/{tripId}/expenses")

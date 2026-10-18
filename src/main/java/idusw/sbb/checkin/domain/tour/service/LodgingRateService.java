@@ -50,12 +50,16 @@ public class LodgingRateService {
         String label = seasonLabel(peak, weekend);
 
         long confirmed = minFee(rooms(contentId), field);
-        if (confirmed > 0) return LodgingRate.confirmed(confirmed, label);
+        return confirmed > 0 ? LodgingRate.confirmed(confirmed, label) : regional(areaCode, checkIn);
+    }
 
-        Avg avg = regionalAverage(areaCode, field);
-        if (avg.n() > 0) return LodgingRate.estimated(avg.value(), avg.n(), label);
-
-        return LodgingRate.none(label);
+    /** 지역 평균 1박 요금. 숙소를 모를 때 쓰고, 예산 맞춤이 비교 기준으로도 쓴다. */
+    public LodgingRate regional(String areaCode, LocalDate checkIn) {
+        boolean peak = isPeak(checkIn);
+        boolean weekend = isWeekend(checkIn);
+        String label = seasonLabel(peak, weekend);
+        Avg avg = regionalAverage(areaCode, feeField(peak, weekend));
+        return avg.n() > 0 ? LodgingRate.estimated(avg.value(), avg.n(), label) : LodgingRate.none(label);
     }
 
     /**

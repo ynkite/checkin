@@ -57,8 +57,9 @@ public class AuthController {
 
     // POST /api/auth/refresh
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponseDto> refresh(@RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(authService.refresh(body.get("refreshToken")));
+    public ResponseEntity<ApiResponse<TokenResponseDto>> refresh(@RequestBody Map<String, String> body) {
+        // 실패는 GlobalExceptionHandler 가 ApiResponse 로 내보낸다. 성공도 login 과 같은 모양으로
+        return ResponseEntity.ok(ApiResponse.success("토큰 재발급 성공", authService.refresh(body.get("refreshToken"))));
     }
 
     // 인증번호 발송 요청

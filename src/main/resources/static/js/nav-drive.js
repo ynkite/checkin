@@ -102,6 +102,41 @@
     var s = dist > OFF_METERS ? prevStreak + 1 : 0;
     return { streak: s, off: s >= OFF_STREAK };
   }
+  /* ══ 가상 주행 (실내 시연) ═══════════════════════════════
+     주소에 ?sim=1 을 붙이면 GPS 대신 받은 경로를 따라 시속 45km 로 움직인다.
+     갈림길 · 음성 · 도착은 실제 주행과 같은 길(onPos)로 흐른다. 없으면 예전 그대로 */
+  var SIM = /[?&]sim=1\b/.test(location.search);
+  var SIM_MS = 12.5;   // 초속 12.5m = 시속 45km
+  function simPoint(line, acc, m) {
+    for (var i = 0; i < line.length - 1; i++) {
+      if (acc[i + 1] >= m) {
+        var t = (m - acc[i]) / ((acc[i + 1] - acc[i]) || 1);
+        return [line[i][0] + (line[i + 1][0] - line[i][0]) * t, line[i][1] + (line[i + 1][1] - line[i][1]) * t];
+      }
+    }
+    return line[line.length - 1];
+  }
+  function simTick() {
+    if (!st || !SIM) return;
+    if (st.route && !st.arrived) {
+      st.simM = Math.min((st.simM || 0) + SIM_MS, st.route.totalMeters || st.acc[st.acc.length - 1]);
+      var q = simPoint(st.route.line, st.acc, st.simM);
+      onPos({ coords: { latitude: q[0], longitude: q[1], speed: SIM_MS } });
+    }
+    st.simTimer = setTimeout(simTick, 1000);
+  }
+  function simStart() {   /* 출발점: 지금 위치를 한 번만 받고, 안 되면 목적지에서 북쪽 약 2km */
+    var go = function (lat, lng) {
+      if (!st) return;
+      st.pos = { lat: lat, lng: lng };
+      paintSpeed(); nvOnPos(); loadRoute();
+      st.simTimer = setTimeout(simTick, 1500);
+    };
+    navigator.geolocation.getCurrentPosition(
+      function (p) { go(p.coords.latitude, p.coords.longitude); },
+      function () { go(st.dest.lat + 0.018, st.dest.lng); },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 5000 });
+  }
   function kmh(speedMs) { return speedMs == null || speedMs < 0 ? 0 : speedMs * 3.6; }
   function isDriving(speedMs) { return kmh(speedMs) >= DRIVE_KMH; }
 
@@ -208,7 +243,21 @@
   }
 
   /* ══ 경로 받기 ═════════════════════════════════════════ */
-  function loadRoute(cb) {
+  /* 이탈할 때마다 요청이 쌓이지 않게 — 받는 중이면 건너뛰고, 다시 찾기는 15초에 한 번.
+     실패하면 2·5·10초 뒤 다시 (첫 경로가 한 번 실패하면 안내가 멈춰 있었다) */
+  var RETRY_MS = [2000, 5000, 10000];
+  function loadRoute(cb, tries) {
+    tries = tries || 0;
+    if (st.loading) return;
+    if (!tries && st.lastLoad && Date.now() - st.lastLoad < 15000 && st.route) return;
+    st.loading = true;
+    st.lastLoad = Date.now();
+    var fail = function () {
+      st.loading = false;
+      if (tries >= RETRY_MS.length) { setTurn('straight', null, '경로를 불러오지 못했습니다', ''); return; }
+      setTurn('straight', null, '경로를 다시 불러오는 중', '');
+      setTimeout(function () { if (st) loadRoute(cb, tries + 1); }, RETRY_MS[tries]);
+    };
     var body = {
       startLat: st.pos.lat, startLng: st.pos.lng,
       endLat: st.dest.lat, endLng: st.dest.lng,
@@ -220,10 +269,9 @@
       .then(function (r) { return r.json(); })
       .then(function (j) {
         var d = j && j.data;
-        if (!d || !d.ready || !d.line || d.line.length === 0) {
-          setTurn('straight', null, '경로를 불러오지 못했습니다', '');
-          return;
-        }
+        if (!st) return;  // 받는 사이에 안내를 닫았다
+        if (!d || !d.ready || !d.line || d.line.length === 0) return fail();
+        st.loading = false;
         st.route = d;
         st.acc = cumulative(d.line);
         st.guideIdx = 0; st.spoken = {}; st.alerted = {}; st.overSpoken = {};
@@ -243,7 +291,7 @@
         paintHelp();
         if (cb) cb();
       })
-      .catch(function () { setTurn('straight', null, '경로를 불러오지 못했습니다', ''); });
+      .catch(function () { if (st) fail(); });
   }
   function headLine(d) {
     return Math.round(d.totalSeconds / 60) + '분 · ' + (d.totalMeters / 1000).toFixed(1) + 'km';
@@ -546,7 +594,9 @@
   function paintHelp() {
     var src = (st.route && st.route.alertSource) || '';
     var has = ((st.route && st.route.alerts) || []).length;
-    var msg = has
+    var msg = src === '예상'   /* 티맵이 답하지 않아 직선 예상 경로로 안내 중 */
+      ? st.route.note + '. 목적지 방향만 알려 드립니다.'
+      : has
       ? '안전 안내 ' + has + '곳 · ' + (src || '출처 미표기')
       : '이 구간은 안전 안내 데이터가 없습니다. 갈림길 안내는 그대로 됩니다.';
     nvNote(msg);
@@ -1070,6 +1120,7 @@
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
     nvSuggestStart();
+    if (SIM) { simStart(); return; }
     st.watchId = navigator.geolocation.watchPosition(
       function (p) {
         var first = !st.pos;
@@ -1094,6 +1145,7 @@
     var pushed = st.pushed;
     if (st.sugTimer) { clearInterval(st.sugTimer); st.sugTimer = null; }
     if (st.watchId != null) navigator.geolocation.clearWatch(st.watchId);
+    if (st.simTimer) clearTimeout(st.simTimer);
     if (st.clock) clearTimeout(st.clock);
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
     document.removeEventListener('visibilitychange', onVisible);

@@ -45,7 +45,9 @@ public class TravelTimeService {
         String originName = req.originName() == null || req.originName().isBlank()
                 ? "출발지" : req.originName();
 
-        if (!tmap.ready()) {
+        /* 키가 없거나 오늘 한도가 다 찼어도 좌표가 있으면 자차는 예상값으로 잰다 (carLeg).
+           출발지 좌표조차 없을 때만 「연동 전」이다 */
+        if (!tmap.ready() && origin == null) {
             List<TravelLeg> legs = new ArrayList<>();
             String from = originName;
             for (TravelPlanRequest.Stop s : stops) {
@@ -71,6 +73,7 @@ public class TravelTimeService {
         double fx = origin[1], fy = origin[0];          // x=경도, y=위도
         String fromName = originName;
         int sumMin = 0, sumM = 0, sumFare = 0, missed = 0;
+        boolean estimated = false;
 
         /* 첫 구간만 출발 시각을 쓴다. 뒤 구간은 앞 구간이 끝나는 시각이
            달라지므로 여기서 추정하지 않는다 — 추정을 쌓으면 오차가 곱해진다. */
@@ -85,6 +88,7 @@ public class TravelTimeService {
             }
             TravelLeg leg = leg(mode, fx, fy, s.lng(), s.lat(), fromName, s.name(), departAt);
             legs.add(leg);
+            if (leg.estimated()) estimated = true;
             if (leg.minutes() != null) {
                 sumMin += leg.minutes();
                 if (leg.meters() != null) sumM += leg.meters();
@@ -98,7 +102,8 @@ public class TravelTimeService {
             departAt = null;
         }
 
-        String note = missed == 0
+        String note = estimated ? RouteEstimate.NOTE
+                : missed == 0
                 ? (req.departAt() != null ? "첫 구간은 출발 시각의 교통량 기준입니다." : "지금 교통량 기준입니다.")
                 : missed + "개 구간은 길을 찾지 못했습니다. 나머지만 더한 값입니다.";
 
@@ -170,6 +175,9 @@ public class TravelTimeService {
     private TravelLeg carLeg(double sx, double sy, double ex, double ey,
                              String from, String to, String departAt) {
         JsonNode res = tmap.carRoute(sx, sy, ex, ey, from, to, departAt);
+        /* 답이 아예 없다 = 한도 초과 · 시간 초과 · 키 없음. 빈칸 대신 예상값을 준다.
+           답은 왔는데 길이 없는 것과는 다르다 — 그건 아래에서 「길을 찾지 못했습니다」 */
+        if (res == null) return TravelLeg.estimate(from, to, sy, sx, ey, ex);
         JsonNode p = firstFeatureProps(res);
         if (p == null) return TravelLeg.unknown(from, to, "길을 찾지 못했습니다");
 

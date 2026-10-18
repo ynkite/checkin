@@ -15,6 +15,7 @@ public class AiRouteController {
 
     private final AiRouteService aiRouteService;
     private final idusw.sbb.checkin.domain.route.RouteProgress progress;
+    private final idusw.sbb.checkin.domain.budget.BudgetFitService budgetFitService;
 
     /**
      * 일정을 만드는 데 어디까지 왔나.
@@ -60,6 +61,9 @@ public class AiRouteController {
         //    - 사용자요청인데 숙소에서 먼 장소는 삭제하지 않고 over50으로 반환 → 프론트 알림
         progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.POLISHING);
         java.util.List<String> over50 = aiRouteService.finalizeRoute(tripId);
+
+        // 5) 예산 맞춤: 정한 예산을 넘으면 끼니·카페부터 줄인다. 실패해도 원래 일정이 남는다
+        budgetFitService.applyTo(tripId);
 
         // 최종본을 다시 읽어서 반환
         Object finalRoute = aiRouteService.getRoutesByTripId(tripId);

@@ -36,8 +36,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String accessToken = jwtProvider.createAccessToken(userId, "USER");
         String refreshToken = jwtProvider.createRefreshToken(userId);
 
-        //리프레시 토큰을 해싱해서 DB에 저장
-        refreshTokenRepository.deleteByUserId(userId);
+        //리프레시 토큰을 해싱해서 DB에 저장. 기기마다 하나씩, 만료된 것만 지운다
+        refreshTokenRepository.deleteByUserIdAndExpiresAtBefore(userId, LocalDateTime.now());
         String hashedRefreshToken = hashSha256(refreshToken);
         refreshTokenRepository.save(RefreshToken.builder()
                 .userId(userId)

@@ -74,8 +74,8 @@ public class AuthServiceImpl implements AuthService {
         String accessToken = jwtProvider.createAccessToken(user.getId(), user.getRole());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
-        // Refresh Token 해싱 후 DB 저장 (기존 토큰 지우고 새로 저장)
-        refreshTokenRepository.deleteByUserId(user.getId());
+        // Refresh Token 해싱 후 DB 저장. 기기마다 하나씩 둔다 — 지우는 건 만료된 것만 (휴대폰으로 로그인해도 PC 가 로그아웃되지 않게)
+        refreshTokenRepository.deleteByUserIdAndExpiresAtBefore(user.getId(), LocalDateTime.now());
         String hashedRefreshToken = hashSha256(refreshToken);
         RefreshToken tokenEntity = RefreshToken.builder()
                 .userId(user.getId())

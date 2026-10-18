@@ -252,6 +252,16 @@
 }
 .ledger-season b{ color:var(--num); font-weight:600 }
 
+/* 예산 맞춤 — 예산의 N% 와 조정 전 → 후 */
+.budget-fit{ margin-bottom:16px; word-break:keep-all }
+.budget-fit-pct{ margin:0; font-size:13px; color:var(--ink-3) }
+.budget-fit-pct b{ font-family:var(--fig); font-size:20px; font-weight:800; color:var(--ink) }
+.budget-fit[data-over] .budget-fit-pct b{ color:var(--terra) }
+.budget-fit-line{ margin:6px 0 0; font-family:var(--fig); font-size:14px; color:var(--ink-2) }
+.budget-fit-list{ margin:8px 0 0; padding-left:18px; font-size:12.5px; line-height:1.6; color:var(--ink-2) }
+.budget-fit-list:empty{ display:none }
+.budget-fit-note{ margin:8px 0 0; font-size:12px; line-height:1.6; color:var(--ink-3) }
+
 /* 긴 표와 동적 그리드는 자기 통 안에서만 스크롤한다. */
 #ledger-act-table,
 #budget-basis-rows,
