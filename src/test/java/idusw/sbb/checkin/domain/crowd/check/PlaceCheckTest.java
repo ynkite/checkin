@@ -97,6 +97,15 @@ class PlaceCheckTest {
     }
 
     @Test
+    void 조금_늦으면_괜찮다고만_하지_않고_몇_분인지_적는다() {
+        PlaceCheck.Result r = PlaceCheck.decide("LIVE", "지금 상황", "d", "t", PLACE,
+                List.of(ok(Kind.TRAFFIC, false, "TMAP_LIVE")), ACTIONS, 6);
+        assertThat(r.verdict().status()).isEqualTo("OK");
+        assertThat(r.verdict().text()).contains("6분쯤 늦지만").doesNotContain("걸리는 게 없습니다");
+        assertThat(keys(r)).containsExactly("keep");
+    }
+
+    @Test
     void 평년값_날은_비를_판단하지_않고_예보_아님이라고_적는다() {
         Finding f = PlaceCheckService.weather(Map.of("source", "NORMAL", "tempMin", 12));
         assertThat(f.status()).isEqualTo(Status.NO_DATA);

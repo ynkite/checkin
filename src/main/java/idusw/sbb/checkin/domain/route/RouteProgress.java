@@ -27,10 +27,13 @@ public class RouteProgress {
     /** 단계와 그 단계가 끝났을 때의 백분율. 순서가 곧 진행 순서다. */
     public enum Phase {
         QUEUED("기다리는 중입니다", 5),
-        COLLECTING("갈 만한 곳을 찾는 중입니다", 45),
-        ASSEMBLING("하루 순서를 짜는 중입니다", 70),
-        SAVING("일정을 저장하는 중입니다", 85),
-        POLISHING("동선을 다듬는 중입니다", 95),
+        COLLECTING("갈 만한 곳을 찾는 중입니다", 15),
+        CONDITIONS("조건에 맞는 곳과 붐빔을 보는 중입니다", 25),
+        PRICING("가격을 어림하는 중입니다", 35),
+        ASSEMBLING("하루 순서를 짜는 중입니다", 50),
+        SAVING("일정을 저장하는 중입니다", 70),
+        POLISHING("동선을 다듬는 중입니다", 85),
+        FITTING("예산에 맞추는 중입니다", 95),
         DONE("다 됐습니다", 100),
         FAILED("만들지 못했습니다", 100);
 

@@ -61,6 +61,14 @@ public class AiRouteService {
     // ★카카오 거리 계산용
     private final org.springframework.web.client.RestTemplate restTemplate;
 
+    /* 만드는 동안 어디까지 왔는지. 생성자 주입이 아닌 이유 — 시험은 이 빈 없이 서비스를 직접 만든다 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private idusw.sbb.checkin.domain.route.RouteProgress progress;
+
+    private void step(TravelPlan plan, idusw.sbb.checkin.domain.route.RouteProgress.Phase phase) {
+        if (progress != null && plan != null) progress.set(plan.getId(), phase);
+    }
+
     @org.springframework.beans.factory.annotation.Value("${kakao.rest.api.key}")
     private String kakaoRestKey;
 
@@ -2992,6 +3000,7 @@ public class AiRouteService {
                     collectCandidatesFromKakao(plan, form, userRequested);
 
             // ★엔진 경로 — 순서·시각을 코드가 정한다. 실패하면 기존 AI 조립으로 되돌아간다.
+            step(plan, idusw.sbb.checkin.domain.route.RouteProgress.Phase.ASSEMBLING);
             if (routeEngineEnabled) {
                 try {
                     /* 엔진도 자기 JSON 을 새로 쓴다. 표시를 옮기지 않으면 조건이 후보에만 남고
@@ -3208,6 +3217,7 @@ public class AiRouteService {
         /* 여행지 이름만으로는 시군구가 틀린다. destination 이 「부산」이면 AreaCode 가 첫 시군구인
            중구를 집는데 이 여행은 해운대다 — 중구의 반려동물 목록을 받아 0건을 보고 「없다」고
            말하게 된다. 숙소(또는 여행지 중심) 좌표로 시군구를 바로잡는다 */
+        step(plan, idusw.sbb.checkin.domain.route.RouteProgress.Phase.CONDITIONS);
         idusw.sbb.checkin.domain.crowd.AreaCode.Area area = tourAreaInfoService.resolveArea(
                 dest,
                 stayXY != null ? stayXY[1] : null,
@@ -3217,6 +3227,7 @@ public class AiRouteService {
         annotateCandidateCrowd(result, plan, area);
 
         // ── 4) 가격(_unit)이 미정(-1)인 장소들을 AI(Claude)로 일괄 추정 → sub 생성 ──
+        step(plan, idusw.sbb.checkin.domain.route.RouteProgress.Phase.PRICING);
         estimatePricesWithAi(result, dest);
         for (var entry : result.entrySet()) {
             String type = entry.getKey();

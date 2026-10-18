@@ -81,6 +81,13 @@ public class TourAreaInfoService {
     /** 관광공사 KorService2 의 시군구 코드(법정코드와 다르다). 시도별로 한 번만 받는다 */
     private final Map<String, Map<String, String>> tourSigungu = new ConcurrentHashMap<>();
 
+    /* 지역 판 하나에 관광공사 호출이 여섯 갈래라 5~6초다. 지도를 열 때마다 같은 시군구를 또 물었다.
+       거점·반려동물·무장애 목록은 달 단위로 바뀌니 10분은 같은 답을 준다.
+       한 칸이라도 「확인되지 않음」이면 담지 않는다 — 다음에 다시 받아 채운다 */
+    static final long CACHE_MS = 10 * 60_000L;
+    private record Hit(AreaInfo info, long at) {}
+    private final Map<String, Hit> infoCache = new ConcurrentHashMap<>();
+
     public AreaInfo lookup(String destination, Double lat, Double lng) {
         AreaCode.Area area = resolveArea(destination, lat, lng);
         if (area == null) {
@@ -88,6 +95,18 @@ public class TourAreaInfoService {
                     Section.of(Status.NO_AREA), Section.of(Status.NO_AREA), Section.of(Status.NO_AREA),
                     Section.of(Status.NO_AREA), Section.of(Status.NO_AREA), Section.of(Status.NO_AREA));
         }
+        long now = System.currentTimeMillis();
+        Hit hit = infoCache.get(area.fullName());
+        if (hit != null && now - hit.at() < CACHE_MS) return hit.info();
+        AreaInfo info = build(area);
+        if (java.util.stream.Stream.of(info.hubs(), info.pet(), info.barrierFree(), info.camping(), info.trails(), info.visitors())
+                .noneMatch(s -> s.status() == Status.UNAVAILABLE)) {
+            infoCache.put(area.fullName(), new Hit(info, now));
+        }
+        return info;
+    }
+
+    private AreaInfo build(AreaCode.Area area) {
         String tourArea = AreaCode.tourAreaCode(area);
         YearMonth now = YearMonth.now(ZoneId.of("Asia/Seoul"));
 

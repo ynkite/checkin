@@ -15,7 +15,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT COUNT(p) > 0 FROM Post p WHERE p.plan.id = :planId AND p.isPublic = true AND p.status = 'ACTIVE'")
     boolean existsVisibleByPlanId(@Param("planId") Long planId);
 
-    List<Post> findByUserIdAndStatusOrderByIdDesc(Long userId, String status);
+    /* 목록 하나에 글쓴이를 글마다 따로 읽었다(N+1). 한 번에 같이 읽는다 */
+    @Query("SELECT p FROM Post p LEFT JOIN FETCH p.user WHERE p.user.id = :userId AND p.status = :status ORDER BY p.id DESC")
+    List<Post> findByUserIdAndStatusOrderByIdDesc(@Param("userId") Long userId, @Param("status") String status);
 
     // 커뮤니티 - 게시글 목록 조회
     Page<Post> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);

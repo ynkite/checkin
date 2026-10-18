@@ -21,6 +21,9 @@ public final class PlaceCheck {
 
     private PlaceCheck() {}
 
+    /** 이만큼 늦으면 갈래를 연다. 그 밑이라도 늦는 분은 그대로 적는다 */
+    public static final int LATE_MIN = 15;
+
     /** OK 확인됨 · NO_DATA 자료가 없는 곳 · UNAVAILABLE 불렀는데 못 받음 · SKIPPED 볼 필요가 없음 */
     public enum Status { OK, NO_DATA, UNAVAILABLE, SKIPPED }
 
@@ -100,7 +103,10 @@ public final class PlaceCheck {
             List<String> unseen = findings.stream()
                     .filter(f -> f.status() == Status.UNAVAILABLE || f.status() == Status.NO_DATA)
                     .map(f -> KIND_KO.get(f.kind())).toList();
-            v = new Verdict("OK", name + " — 그대로 가도 됩니다. 확인한 것 중에 걸리는 게 없습니다."
+            boolean bitLate = lateMin != null && lateMin > 0;
+            v = new Verdict("OK", name + " — 그대로 가도 됩니다. "
+                    + (bitLate ? "계획보다 " + lateMin + "분쯤 늦지만 " + LATE_MIN + "분 안이라 그대로 둡니다."
+                               : "확인한 것 중에 걸리는 게 없습니다.")
                     + (unseen.isEmpty() ? "" : " " + topic(String.join("·", unseen)) + " 확인하지 못했습니다."));
         } else {
             v = new Verdict("UNKNOWN", name + "의 지금 상황을 확인하지 못했습니다. 아래에 이유를 적었습니다.");

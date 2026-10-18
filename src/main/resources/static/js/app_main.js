@@ -236,7 +236,7 @@ function checkUnsavedChangesAndSave() {
            「고친 내용이 남아 있습니다」라고 하면 없는 것을 있다고 하는 말이다. */
         const hasPlan = Array.isArray(window.MAP_ITINERARY) &&
             window.MAP_ITINERARY.some(d => (d.places || []).some(p => !p.transit && p.name));
-        if (window._planConfirmed === false && hasPlan) {
+        if (mapDirty() && hasPlan) {
             const modal = document.getElementById('unsavedChangesModal');
             if (modal) {
                 modal.style.display = 'flex';
@@ -270,12 +270,16 @@ function closeUnsavedChangesModal() {
     }
 }
 
+/* 확정하지 않은 것과 고친 것은 다르다. 지도에서 동선을 바꾼 뒤(순서·장소·실내)에만 묻는다.
+   전에는 열어 보기만 해도 「사이트에서 나가시겠습니까」가 떴다 */
+function mapDirty() { return window._planConfirmed === false && window._mapEdited === true; }
+
 /** 브라우저 종료 및 새로고침 시 경고 메시지 노출 및 자동 확정 처리 */
 window.addEventListener('beforeunload', function (e) {
     if (window._isSavingAndLeaving) return; // 이미 저장 절차가 진행 중이면 중복 실행 방지
 
     const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
-    if (window._planConfirmed === false && tripId) {
+    if (mapDirty() && tripId) {
         const token = Token.getAccess();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = 'Bearer ' + token;
@@ -3295,6 +3299,7 @@ async function execAllReplace() {
         stopSteps();
 
         if (res.success && res.data) {
+            window._mapEdited = true;
             // 동선을 바꾸면 시간과 돈이 같이 움직인다. 둘을 쌍으로 남긴다 (예산 엔진 2층)
             // 1.5초 뒤 새로고침되므로 토스트로 띄우면 못 읽는다 → 새로고침 뒤에 띄운다
             const pair = _fmtRoutePair(res.delta);
@@ -4268,7 +4273,7 @@ window.addEventListener('popstate', async e => {
 
     // [뒤로가기 가드]: 이전 페이지가 지도였고, 현재 수정 중인 상태(확정하지 않은 상태)라면 뒤로가기 가드 실행
     const prevPage = sessionStorage.getItem('currentPage');
-    if (prevPage === 'map' && p !== 'map' && window._planConfirmed === false) {
+    if (prevPage === 'map' && p !== 'map' && mapDirty()) {
         // 이미 히스토리는 넘어갔으므로 제자리 유지를 위해 히스토리를 임시로 map 상태로 강제 복구
         history.pushState({ page: 'map' }, '', '/');
 

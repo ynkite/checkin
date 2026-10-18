@@ -700,7 +700,8 @@
           '<p style="font-size:15px;font-weight:800;margin:0 0 10px">' + esc(d.verdict ? d.verdict.text : '') + '</p>';
 
         (d.findings || []).forEach(function (f) {
-          var mark = f.status === 'OK' ? (f.issue ? '확인 · 걸림' : '확인 · 괜찮음')
+          var late = f.values && f.values.lateMin > 0;
+          var mark = f.status === 'OK' ? (f.issue ? '확인 · 걸림' : late ? '확인 · 조금 늦음' : '확인 · 괜찮음')
                    : f.status === 'NO_DATA' ? '자료 없음'
                    : f.status === 'SKIPPED' ? '보지 않음' : '확인되지 않음';
           html += '<div style="padding:6px 0;border-top:1px solid var(--border2)">' +

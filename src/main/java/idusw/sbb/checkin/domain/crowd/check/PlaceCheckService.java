@@ -49,7 +49,7 @@ import java.util.Map;
 public class PlaceCheckService {
 
     static final int BUSY = 70;          // 실시간 화면 순서 바꾸기 기준과 같게
-    static final int LATE_MIN = 15;      // 이만큼 늦으면 알린다
+    static final int LATE_MIN = PlaceCheck.LATE_MIN;
 
     private final TravelPlanRepository planRepository;
     private final TripMemberRepository memberRepository;
@@ -238,14 +238,17 @@ public class PlaceCheckService {
         Integer late = null;
         boolean issue = false;
         String summary = "지금 출발하면 약 " + minutes + "분, " + eta.format(DateTimeFormatter.ofPattern("HH:mm")) + "쯤 도착합니다";
+        /* 몇 분이든 늦으면 늦는다고 적는다. 전에는 15분 밑이면 「계획 09:10」만 적어
+           6분 늦는데 「괜찮음」으로 보였다. 갈래를 여는 기준(LATE_MIN)과 사실을 적는 것은 다르다 */
         if (planned != null && !now.toLocalTime().isAfter(planned.plusHours(3))) {
             long diff = java.time.Duration.between(planned, eta).toMinutes();
-            if (diff >= LATE_MIN) {
+            String plan = planned.format(DateTimeFormatter.ofPattern("HH:mm"));
+            if (diff > 0) {
                 late = (int) diff;
-                issue = true;
-                summary += "(계획 " + planned.format(DateTimeFormatter.ofPattern("HH:mm")) + "보다 " + diff + "분 늦음)";
+                issue = diff >= LATE_MIN;
+                summary += "(계획 " + plan + "보다 " + diff + "분 늦음)";
             } else {
-                summary += "(계획 " + planned.format(DateTimeFormatter.ofPattern("HH:mm")) + ")";
+                summary += "(계획 " + plan + ")";
             }
         }
         return new Object[]{new Finding(Kind.TRAFFIC, Status.OK, issue, "TMAP_LIVE", "TMAP 실시간 교통", summary + ".",
