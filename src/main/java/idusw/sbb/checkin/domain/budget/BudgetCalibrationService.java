@@ -37,7 +37,7 @@ public class BudgetCalibrationService {
     static final int MIN_SAMPLES = 3;
     static final double MIN = 0.8;
     static final double MAX = 1.3;
-    private static final String DEMO_MARK = "시연";   // BudgetLoopSeedInitializer 의 제목 표기
+    private static final String DEMO_USER = "openapi";   // 심사 계정. 시드 여행이 여기 있다
 
     private final ExpenseRepository expenseRepository;
 
@@ -93,7 +93,7 @@ public class BudgetCalibrationService {
         Map<TravelPlan, long[]> byPlan = new LinkedHashMap<>();   // {예측, 실측}
         for (Expense e : expenses) {
             TravelPlan p = e.getPlan();
-            if (p.getTitle() != null && p.getTitle().contains(DEMO_MARK)) continue;
+            if (p.getUser() != null && DEMO_USER.equals(p.getUser().getUsername())) continue;
             byPlan.computeIfAbsent(p, k -> new long[2])[e.isEstimated() ? 0 : 1] += e.getAmount();
         }
         List<Sample> out = new ArrayList<>();

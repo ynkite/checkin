@@ -38,6 +38,6 @@ class BudgetAccuracyTest {
     void emptySampleClaimsNothing() {
         BudgetAccuracy a = BudgetAccuracy.of(List.of());
         assertThat(a.n()).isZero();
-        assertThat(a.note()).contains("시연");
+        assertThat(a.note()).contains("정확도를 내지 않습니다");
     }
 }

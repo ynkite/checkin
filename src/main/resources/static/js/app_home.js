@@ -189,6 +189,32 @@
           places.forEach(function (p) { if (p.name === v.placeName) { p.crowd=Math.round(Number(v.rate)); p.crowdLabel=v.levelLabel; p.crowdLive=true; } });
         });
       } catch (e) {}
+      await quietSwap();
+    }
+    /* 「사람이 몰려서」의 대안. 동백섬은 해수욕장 바로 옆이라 집중률도 거의 같다(96 → 95).
+       그날 이 구에서 실제로 한적한 곳을 받아 그리로 바꾼다. 위치는 카카오 장소 검색으로 찾고,
+       못 찾으면 원래 대안을 그대로 둔다 */
+    async function quietSwap() {
+      var f = fixes.filter(function (x) { return x.key === 'crowd'; })[0];
+      var a = f && route[f.at];
+      if (!a || a.crowd == null || (f.to.crowd != null && f.to.crowd <= a.crowd - 20)) return;
+      try {
+        var q = await readJSON('/api/crowd/quiet?region='+encodeURIComponent(HERO_REGION)+'&date='+iso(heroDate())+'&limit=8');
+        var cands = (q && q.data || []).filter(function (x) { return x.rate != null && x.rate < 70 && x.rate <= a.crowd - 20; });
+        if (!cands.length || !(await window.ckStage.sdk()) || !kakao.maps.services) return;
+        var ps = new kakao.maps.services.Places();
+        for (var i = 0; i < cands.length; i++) {
+          var hit = await new Promise(function (ok) {
+            ps.keywordSearch(HERO_REGION + ' ' + cands[i].placeName, function (d, st) { ok(st === 'OK' ? d[0] : null); }, { size: 1 });
+          });
+          if (!hit) continue;
+          var nm = cands[i].placeName;
+          f.to = { name: nm, note: a.note, cat: (hit.category_name || '').split(' > ').pop() || '관광지',
+                   lat: +hit.y, lng: +hit.x, crowd: Math.round(cands[i].rate), crowdLive: true };
+          f.how = '붐비는 해변 대신 ' + nm + '부터 갑니다';
+          return;
+        }
+      } catch (e) {}
     }
     try {
       var j = await readJSON('/img/mass_hero.json');
@@ -351,8 +377,8 @@
         /* 「한가한 곳」에는 한가한 곳만 넣는다. 가장 낮은 순으로 와도
            그것들이 70 을 넘으면 붐비는 곳이다 — 71 을 「여유 있습니다」로
            적어 두면 가서 줄을 선다. */
+        /* 붐비는 곳을 비교용으로 하나 붙였더니 「한적한 곳」 아래에 92 매우 혼잡이 섰다. 뺀다 */
         var quiet = list.filter(function (x) { return x.rate < 70; }).slice(0, 3);
-        var busy = list[list.length - 1];        /* 가장 붐비는 곳 하나를 같이 */
         if (!quiet.length) { box.innerHTML='<p class="ck-empty">지금은 한적한 곳의 예측값이 없습니다.</p>'; return; }
 
         var side = document.querySelector('#ck_free .ck-side') ||
@@ -365,13 +391,12 @@
         if (hd) hd.setAttribute('data-label', '한국관광공사 집중률 예측');
 
         /* 구가 전부 같으면 카드마다 같은 줄이 붙는다. 다를 때만 적는다 */
-        var shown = quiet.concat(busy && busy.rate >= 70 ? [busy] : []);
-        var oneGu = shown.every(function (x) { return x.sigunguName === shown[0].sigunguName; });
+        var oneGu = quiet.every(function (x) { return x.sigunguName === quiet[0].sigunguName; });
 
-        function card(x, hot) {
+        function card(x) {
           var g = (window.crowd && window.crowd(x.rate)) || { key: 'mid', label: '정상' };
           var k = 'cw-' + g.key;
-          return '<article class="ck-spot' + (hot ? ' ck-hot' : '') + '">' +
+          return '<article class="ck-spot">' +
             '<div class="ck-nm">' + esc(x.placeName) + '</div>' +
             (!oneGu && x.sigunguName ? '<div class="ck-why">' + esc(x.sigunguName) + '</div>' : '') +
             '<div class="ck-vv"><b class="ck-fig">' + Math.round(x.rate) + '</b>' +
@@ -381,8 +406,7 @@
           '</article>';
         }
 
-        box.innerHTML = quiet.map(function (x) { return card(x, false); }).join('') +
-                        (busy && busy.rate >= 70 ? card(busy, true) : '');
+        box.innerHTML = quiet.map(card).join('');
       })
       .catch(function () { box.innerHTML='<p class="ck-empty">혼잡도 예측을 가져오지 못했습니다. 잠시 뒤 다시 확인해 주세요.</p>'; });
   }
@@ -403,10 +427,12 @@
     });
   }
 
-  function isOngoing(t) {
-    if (!t.startDate || !t.endDate) return false;
-    var today = new Date().toISOString().slice(0, 10);
-    return t.startDate <= today && today <= t.endDate;
+  /* 상태는 날짜로만 정한다. 서버 status 는 FIXED 라 쓸 수 없고,
+     toISOString 은 UTC 라 새벽에 하루 밀린다 — 한국 날짜로 비교한다 */
+  function tripState(t) {
+    var today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    if (!t.startDate || !t.endDate) return 2;
+    return today < t.startDate ? 1 : today > t.endDate ? 2 : 0;
   }
 
   function renderMine(list) {
@@ -417,20 +443,18 @@
       return;
     }
     /* 여행 중 → 다가오는 → 지난 순. 각 묶음 안에서는 최근 수정순 */
-    var rank = function (t) { return isOngoing(t) ? 0 : (t.status === 'UPCOMING' ? 1 : 2); };
     list.sort(function (a, b) {
-      return rank(a) - rank(b) ||
+      return tripState(a) - tripState(b) ||
              String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
     });
 
     row.innerHTML = list.slice(0, 6).map(function (t) {
-      var live = isOngoing(t)
-        ? '<span class="ck-live">여행 중</span>'
-        : '';
-      var when = t.status === 'UPCOMING' ? '다가오는 여행' : '지난 여행';
+      var st = tripState(t);
+      var live = st === 0 ? '<span class="ck-live">여행 중</span>' : '';
+      var when = st === 1 ? '다가오는 여행' : st === 2 ? '지난 여행' : '';
       return '<button type="button" class="ck-trip" onclick="ckOpenTrip(' + Number(t.id) + ')">' +
              live +
-             '<span class="ck-when ck-fig">' + esc(when) + '</span>' +
+             (when ? '<span class="ck-when ck-fig">' + when + '</span>' : '') +
              '<span class="ck-nm">' + esc(t.title || t.destination || '제목 없는 여행') + '</span>' +
              '<span class="ck-why">' + esc(t.meta || '') +
              (t.budget ? ' · ' + esc(t.budget) : '') + '</span>' +

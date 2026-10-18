@@ -29,7 +29,14 @@ public final class PlaceOutdoor {
             "박물관", "미술관", "아쿠아리움", "수족관", "전시관", "전시장", "갤러리",
             "도서관", "실내", "백화점", "아웃렛", "쇼핑몰", "과학관", "기념관",
             "체험관", "영화관", "극장", "공연장", "스파", "온천", "찜질방", "사우나",
-            "문화센터", "플라자");
+            "문화센터", "플라자", "기차역", "터미널", "공항", "면세점", "쇼핑");
+
+    /* 카카오 category_name(「교통,수송 > 기차,철도 > 기차역」)이나 관광공사 분류에
+       이 말이 들어 있으면 실내다. 이름에 단서가 없는 「부산역」 「센텀시티」를 여기서 가른다 */
+    private static final List<String> INDOOR_CATEGORY = List.of(
+            "기차역", "지하철역", "터미널", "공항", "백화점", "쇼핑몰", "대형마트", "면세점",
+            "아울렛", "아웃렛", "박물관", "미술관", "전시관", "영화관", "공연장", "아쿠아리움",
+            "실내", "문화시설", "쇼핑");
 
     private PlaceOutdoor() {}
 
@@ -38,10 +45,19 @@ public final class PlaceOutdoor {
      * @param type 동선 JSON 의 분류 — tour | food | cafe | stay
      */
     public static boolean is(String name, String type) {
-        String n = name == null ? "" : name;
+        return is(name, type, null);
+    }
+
+    /** @param category 카카오 category_name 이나 관광공사 분류. 없으면 null */
+    public static boolean is(String name, String type, String category) {
+        String n = name == null ? "" : name.trim();
+        String c = category == null ? "" : category;
 
         for (String w : OUTDOOR_WORDS) if (n.contains(w)) return true;
         for (String w : INDOOR_WORDS)  if (n.contains(w)) return false;
+        for (String w : INDOOR_CATEGORY) if (c.contains(w)) return false;
+        /* 「부산역」 「송정역」처럼 역으로 끝나면 역사 안이다 */
+        if (n.endsWith("역")) return false;
 
         return "tour".equals(type);
     }

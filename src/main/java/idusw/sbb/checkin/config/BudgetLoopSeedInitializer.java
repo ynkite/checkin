@@ -32,7 +32,9 @@ import java.util.List;
  *   날짜가 한 번이라도 밀리면 시연이 통째로 사라진다
  * - 제목으로 찾는다. 재부팅해도 여행·지출을 다시 심지 않는다
  *
- * 화면·응답 문구에 「시연」 표기가 들어간다. 실사용 축적치가 아니다.
+ * 예전에는 제목 끝에 「 · 시연」을 붙여 가드로 썼다. 화면에 그대로 드러나서 뗐고,
+ * 이미 심긴 여행은 부팅 때 그 꼬리만 한 번 지운다(stripOldMark).
+ * 보정 표본에서 빼는 것은 계정으로 가른다(BudgetCalibrationService).
  */
 @Component
 @Order(21)   // JudgeSeedInitializer(20) 뒤
@@ -41,8 +43,9 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(BudgetLoopSeedInitializer.class);
 
-    private static final String JUDGE_USERNAME = "openapi";
-    private static final String TITLE_MARK = "시연";   // 가드 겸 화면 표기
+    static final String JUDGE_USERNAME = "openapi";
+    private static final String OLD_MARK = " · 시연";
+    static final List<String> SEED_TITLES = List.of("경주 1박 2일", "강릉 2박 3일", "전주 1박 2일");
 
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
@@ -54,26 +57,42 @@ public class BudgetLoopSeedInitializer implements CommandLineRunner {
         User judge = userRepository.findByUsername(JUDGE_USERNAME).orElse(null);
         if (judge == null) return;   // 심사 계정이 없으면 심을 데가 없다
 
-        List<TravelPlan> mine = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
-                .filter(p -> p.getTitle() != null && p.getTitle().contains(TITLE_MARK))
-                .toList();
+        stripOldMark(judge);
+        List<TravelPlan> mine = seedPlans(judge);
 
         // 예측 / 실측 — 오차가 한쪽으로만 쏠리지 않게 초과 2건 · 미달 1건을 섞는다
-        seedTrip(judge, mine, "경주 1박 2일 · 시연", "경주", 63, 1, 120_000, 120_000, 48_000, 55_000, 30_000, 30_000);
-        seedTrip(judge, mine, "강릉 2박 3일 · 시연", "강릉", 42, 2, 240_000, 220_000, 70_000, 66_000, 30_000, 20_000);
-        seedTrip(judge, mine, "전주 1박 2일 · 시연", "전주", 21, 1,  90_000,  90_000, 42_000, 51_000, 20_000, 20_000);
+        seedTrip(judge, mine, "경주 1박 2일", "경주", 63, 1, 120_000, 120_000, 48_000, 55_000, 30_000, 30_000);
+        seedTrip(judge, mine, "강릉 2박 3일", "강릉", 42, 2, 240_000, 220_000, 70_000, 66_000, 30_000, 20_000);
+        seedTrip(judge, mine, "전주 1박 2일", "전주", 21, 1,  90_000,  90_000, 42_000, 51_000, 20_000, 20_000);
 
         /* 경로와 취향 입력. 전에는 여행만 심어서 지도·내 여행에서 누르면 빈 화면이었다.
            장소·좌표는 카카오 로컬 검색, 구간은 카카오모빌리티 길찾기 값이다(resources/seed/demo-routes).
            숙박·식비 합은 위 예측값과 같다. 이미 경로·취향이 있으면 건드리지 않는다 */
-        List<TravelPlan> seeded = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
-                .filter(p -> p.getTitle() != null && p.getTitle().contains(TITLE_MARK))
-                .toList();
-        fillRoute(judge, seeded, "경주 1박 2일 · 시연", "gyeongju",  "[\"문화·역사\",\"음식 탐방\"]", 198_000L);
-        fillRoute(judge, seeded, "강릉 2박 3일 · 시연", "gangneung", "[\"힐링\",\"음식 탐방\"]",     340_000L);
-        fillRoute(judge, seeded, "전주 1박 2일 · 시연", "jeonju",    "[\"문화·역사\",\"음식 탐방\"]", 152_000L);
+        List<TravelPlan> seeded = seedPlans(judge);
+        fillRoute(judge, seeded, "경주 1박 2일", "gyeongju",  "[\"문화·역사\",\"음식 탐방\"]", 198_000L);
+        fillRoute(judge, seeded, "강릉 2박 3일", "gangneung", "[\"힐링\",\"음식 탐방\"]",     340_000L);
+        fillRoute(judge, seeded, "전주 1박 2일", "jeonju",    "[\"문화·역사\",\"음식 탐방\"]", 152_000L);
 
         seedJudgeTripForm(judge);
+    }
+
+    private List<TravelPlan> seedPlans(User judge) {
+        return travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
+                .filter(p -> SEED_TITLES.contains(p.getTitle()))
+                .toList();
+    }
+
+    /** 「경주 1박 2일 · 시연」 → 「경주 1박 2일」. 이 계정의 이 세 여행만, 꼬리만 지운다 */
+    private void stripOldMark(User judge) {
+        for (TravelPlan p : travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId())) {
+            String t = p.getTitle();
+            if (t == null || !t.endsWith(OLD_MARK)) continue;
+            String bare = t.substring(0, t.length() - OLD_MARK.length());
+            if (!SEED_TITLES.contains(bare)) continue;
+            p.updateTitle(bare);
+            travelPlanRepository.save(p);
+            log.info("[3층시드] 제목 꼬리를 지웠습니다: {}", bare);
+        }
     }
 
     /**

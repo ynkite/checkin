@@ -731,8 +731,11 @@ function updateNav() {
 
     const plannerBtn = document.getElementById('navPlannerBtn');
     if (plannerBtn) {
-        if (_loggedIn && _hasPlannerDraft()) {
-            plannerBtn.textContent = '작성중인 플랜';
+        /* 확정된 여행을 지도에서 보고 있으면 「작성 중」이 아니다 */
+        const viewingFixed = window._planConfirmed === true &&
+            document.getElementById('page-map')?.classList.contains('active');
+        if (_loggedIn && _hasPlannerDraft() && !viewingFixed) {
+            plannerBtn.textContent = '작성 중인 플랜';
         } else {
             plannerBtn.textContent = '플랜';
         }
@@ -1014,7 +1017,8 @@ async function updateMyPageUI() {
     const em = document.getElementById('myEmail');
     if (av) av.textContent = _currentUser.name ? _currentUser.name[0] : '?';
     if (nm) nm.textContent = _currentUser.name  || '';
-    if (em) em.textContent = _maskEmail(_currentUser.email);
+    /* 심사 계정의 openapi@checkin.local 같은 내부 주소는 받을 수 없는 메일이라 적지 않는다 */
+    if (em) em.textContent = /\.local$/i.test(_currentUser.email || '') ? '' : _maskEmail(_currentUser.email);
 
     // 내 기록과 초대받은 기록을 병렬로 각각 가져옵니다!
     const [tripsRes, invitedRes] = await Promise.all([
@@ -2903,7 +2907,8 @@ function _syncPlannerTopbar() {
     const hasDraft  = !!window._currentTripId;
     const onPlanner = document.getElementById('page-planner')?.classList.contains('active') ?? false;
     const onMap     = document.getElementById('page-map')?.classList.contains('active') ?? false;
-    const showSteps = onPlanner || (onMap && hasDraft);
+    /* 확정된 여행을 보는 중이면 플랜 단계를 띄우지 않는다 — 고치는 중이 아니다 */
+    const showSteps = onPlanner || (onMap && hasDraft && window._planConfirmed !== true);
 
     const navSteps  = document.getElementById('navPlannerSteps');
     const sb4       = document.getElementById('sb-4');
@@ -3297,6 +3302,8 @@ async function execAllReplace() {
 
             // 1.5초 뒤 완벽하게 새로고침
             setTimeout(() => {
+                /* 서버에 이미 저장됐다. 새로고침이 이탈 가드(빈 확인창 · 자동 확정)를 건드리지 않게 한다 */
+                window._isSavingAndLeaving = true;
                 location.reload();
             }, 1500);
 
@@ -3730,7 +3737,7 @@ function goNewPlanner() {
 function goResumePlanner() {
     if (!_loggedIn) { toast('로그인이 필요합니다.'); go('login'); return; }
     if (!_hasPlannerDraft()) {
-        toast('작성중인 플랜이 없습니다.');
+        toast('작성 중인 플랜이 없습니다.');
         goNewPlanner();
         return;
     }

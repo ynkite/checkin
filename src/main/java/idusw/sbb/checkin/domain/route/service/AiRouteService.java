@@ -664,7 +664,8 @@ public class AiRouteService {
                     /* 비 예보에 야외 장소가 걸린 자리. 여기만 실내 대안을 권한다 —
                        하루 전체를 갈아 끼우라고 하지 않는다. */
                     if (dw.isRainExpected() && idusw.sbb.checkin.domain.weather.PlaceOutdoor.is(
-                            o.path("name").asText(""), o.path("type").asText(""))) {
+                            o.path("name").asText(""), o.path("type").asText(""),
+                            o.path("category").asText(null))) {
                         o.put("outdoorRisk", true);
                     }
                 }
@@ -1242,6 +1243,11 @@ public class AiRouteService {
             반드시 아래 목록에 없는, 같은 권역의 '다른' 실존 장소로 교체하세요.
             %s
             
+            [붐빌 곳 — 교체 후보에서 뒤로 미룰 장소]
+            그날 관광공사 집중률 예측이 70 이상인 곳입니다. 가능하면 고르지 말고,
+            요청에 맞는 다른 곳이 없을 때만 쓰세요.
+            %s
+            
             [원본 여행 동선 JSON]
             %s
             
@@ -1284,6 +1290,7 @@ public class AiRouteService {
                 parseExtraNotesToPrompt(form.getExtraNotes()),
                 reqStr.toString(),
                 rejectedStr.length() > 0 ? rejectedStr.toString() : "- (없음)",  // ★블랙리스트 자리
+                crowdedForReplace(plan, originalJson, requests),
                 forPrompt(originalJson),
                 plan.getDestination()   // 규칙 0의 ★지역 절대 잠금★ 자리
         );
@@ -1354,6 +1361,46 @@ public class AiRouteService {
 
         return finalJson;
     }
+    /**
+     * 교체할 자리의 그날 붐빌 곳(집중률 70 이상). 교체 결과가 「혼잡 81」 아쿠아리움으로
+     * 나온 일이 있다. 자리의 좌표로 시군구를 잡고, 그 자리 일차의 날짜 값을 쓴다.
+     * 자료가 없으면 「(자료 없음)」 — 프롬프트는 종전대로 돈다.
+     */
+    private String crowdedForReplace(TravelPlan plan, String json,
+                                     java.util.List<java.util.Map<String, String>> requests) {
+        try {
+            java.util.Set<String> targets = new java.util.HashSet<>();
+            for (var r : requests) if (r.get("place") != null) targets.add(r.get("place").trim());
+            Double lat = null, lng = null;
+            int dayNo = 1;
+            JsonNode root = objectMapper.readTree(json);
+            outer:
+            for (int d = 0; d < root.size(); d++) {
+                for (JsonNode p : root.get(d).path("places")) {
+                    if (!targets.contains(p.path("name").asText("").trim())) continue;
+                    if (p.hasNonNull("lat")) { lat = p.path("lat").asDouble(); lng = p.path("lng").asDouble(); }
+                    dayNo = root.get(d).path("day").asInt(d + 1);
+                    break outer;
+                }
+            }
+            var area = tourAreaInfoService.resolveArea(plan.getDestination(), lat, lng);
+            if (area == null || !idusw.sbb.checkin.domain.crowd.AreaCode.hasCrowdData(area)) return "- (자료 없음)";
+            java.time.LocalDate day = (plan.getStartDate() != null ? plan.getStartDate() : java.time.LocalDate.now())
+                    .plusDays(Math.max(0, dayNo - 1));
+            String want = day.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+            java.util.Map<String, Double> busy = new java.util.TreeMap<>();
+            for (var r : crowdService.rates(area.areaCd(), area.signguCd())) {
+                if (want.equals(r.date()) && r.rate() >= 70) busy.merge(r.placeName(), r.rate(), Math::max);
+            }
+            if (busy.isEmpty()) return "- (없음)";
+            StringBuilder sb = new StringBuilder();
+            busy.forEach((n, v) -> sb.append("- ").append(n).append(" (").append(Math.round(v)).append(")\n"));
+            return sb.toString();
+        } catch (Exception e) {
+            return "- (자료 없음)";
+        }
+    }
+
     /** 쓸 만한 동선인가. 판정은 {@link idusw.sbb.checkin.domain.route.RouteJson} 에 있다 —
      *  지도 화면의 _mpUsable 과 같은 기준을 한 곳에서 지킨다. */
     private boolean usableRoute(String json) {

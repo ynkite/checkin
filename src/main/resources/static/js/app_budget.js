@@ -392,7 +392,7 @@ async function _loadExpenses(tripId) {
     // 날짜 input — 기본값: 오늘, 범위: 여행 기간
     const dateEl = document.getElementById('ledger-exp-date');
     if (dateEl) {
-        if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+        if (!dateEl.value) dateEl.value = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
         if (d.startDate) dateEl.min = d.startDate;
         if (d.endDate)   dateEl.max = d.endDate;
     }
@@ -413,7 +413,7 @@ async function _loadExpenses(tripId) {
     const notStarted  = document.getElementById('ledger-not-started');
     const addForm     = document.getElementById('ledger-add-form');
     if (addPanel && d.startDate) {
-        const today      = new Date().toISOString().slice(0, 10);
+        const today      = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
         const tripStarted = d.startDate <= today;
         if (notStarted) notStarted.style.display = tripStarted ? 'none' : 'block';
         if (notStarted && !tripStarted) {

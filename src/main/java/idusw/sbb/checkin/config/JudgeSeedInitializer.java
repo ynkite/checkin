@@ -38,7 +38,9 @@ public class JudgeSeedInitializer implements CommandLineRunner {
     private static final String JUDGE_USERNAME = "openapi";
     private static final String JUDGE_PASSWORD = "2026openapi!";   // 제출 지정 계정
     // 예산 엔진 3층 시드(BudgetLoopSeedInitializer)가 이 여행에 입력 폼을 붙인다 — package-private
-    static final String SEED_TITLE = "부산 2박 3일 · 진행 중";
+    static final String SEED_TITLE = "부산 2박 3일";
+    /* 예전 제목. 상태를 제목에 적어 두었더니 화면에 「부산 2박 3일 · 진행 중」이 섰다 */
+    private static final String OLD_TITLE = "부산 2박 3일 · 진행 중";
 
     private final UserRepository userRepository;
     private final TravelPlanRepository travelPlanRepository;
@@ -53,8 +55,9 @@ public class JudgeSeedInitializer implements CommandLineRunner {
         // 「목록 맨 앞」이 아니라 이 시드가 심은 여행을 제목으로 집는다.
         // 계정에 다른 여행(3층 시연 시드 등)이 생기면 맨 앞이 그쪽이 되어 엉뚱한 여행을 오늘로 민다.
         TravelPlan existing = travelPlanRepository.findByUserIdOrderByCreatedAtDesc(judge.getId()).stream()
-                .filter(p -> SEED_TITLE.equals(p.getTitle()))
+                .filter(p -> SEED_TITLE.equals(p.getTitle()) || OLD_TITLE.equals(p.getTitle()))
                 .findFirst().orElse(null);
+        if (existing != null && OLD_TITLE.equals(existing.getTitle())) existing.updateTitle(SEED_TITLE);
         if (existing != null) {
             TravelPlan plan = existing;
             plan.setStartDate(LocalDate.now());

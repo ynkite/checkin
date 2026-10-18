@@ -49,4 +49,14 @@ class PlaceOutdoorTest {
         assertThat(PlaceOutdoor.is(null, "food")).isFalse();
         assertThat(PlaceOutdoor.is("", null)).isFalse();
     }
+
+    @Test
+    void 역_터미널_쇼핑몰은_관광지라도_실내다() {
+        assertThat(PlaceOutdoor.is("부산역", "tour")).isFalse();
+        assertThat(PlaceOutdoor.is("부산종합버스터미널", "tour")).isFalse();
+        assertThat(PlaceOutdoor.is("신세계 센텀시티", "tour", "가정,생활 > 백화점")).isFalse();
+        assertThat(PlaceOutdoor.is("서면", "tour", "교통,수송 > 지하철,전철 > 부산 1호선 > 지하철역")).isFalse();
+        /* 분류가 실내여도 이름이 야외면 야외다 */
+        assertThat(PlaceOutdoor.is("해운대해수욕장", "tour", "실내")).isTrue();
+    }
 }

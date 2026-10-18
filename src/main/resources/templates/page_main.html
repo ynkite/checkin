@@ -438,7 +438,8 @@
           const rawTitle = r.isMock ? r.title : _esc(r.title || '');
           const title = rawTitle.replace(' — ', '<br>— ').replace(' - ', '<br>- ');
 
-          const sub = r.isMock ? r.sub : `${_esc(r.writerName || r.author?.name || '익명')} · 조회 ${r.viewCount || 0}`;
+          /* 조회수는 오른쪽 칸에 이미 있다. 여기서 viewCount 를 또 읽어 「조회 0」이 같이 섰다 */
+          const sub = r.isMock ? r.sub : _esc(r.writerName || r.author?.name || '익명');
 
           const onClickPreview = r.isMock ? `openPreview(${r.pvbKey})` : `openPostDetail(${r.postId})`;
           const pvbLabel = r.isMock ? r.pvbLabel : '후기 상세보기';

@@ -89,7 +89,8 @@ class BudgetCalibrationTest {
 
     @Test
     void 시연_여행과_실측_없는_여행은_표본이_아니다() {
-        TravelPlan real = plan("부산 여행"), demo = plan("경주 1박 2일 · 시연"), noActual = plan("부산 둘째");
+        TravelPlan real = plan("부산 여행"), demo = plan("경주 1박 2일"), noActual = plan("부산 둘째");
+        demo.setUser(idusw.sbb.checkin.domain.user.entity.User.builder().username("openapi").build());
 
         List<Sample> s = BudgetCalibrationService.samples(List.of(
                 expense(real, 100_000, true), expense(real, 110_000, false),

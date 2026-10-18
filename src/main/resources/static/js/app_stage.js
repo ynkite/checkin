@@ -406,7 +406,7 @@
   }
 
   w.ckStage = {
-    showWideMap:showWideMap, showPlace:showPlace, showChange:showChange, preloadScene:fetchScene, warm:warm,
+    showWideMap:showWideMap, showPlace:showPlace, showChange:showChange, preloadScene:fetchScene, warm:warm, sdk:sdk,
     camAt:camAt, camFit:camFit, bigDraw:bigDraw,
     cancel:function () { revision++; if ($('ck_hero')) $('ck_hero').classList.remove('ck-cut'); },
     render:function (r,a,st) {
