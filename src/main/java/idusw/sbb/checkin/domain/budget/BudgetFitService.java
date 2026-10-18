@@ -481,6 +481,15 @@ public class BudgetFitService {
                 List<KorTourService.Lodging> list = korTourService.nearbyLodging(lat, lng, STAY_RADIUS_M, STAY_LOOKUPS * 2);
                 found = list.size();
                 if (found == 0) note = "반경 " + STAY_RADIUS_M / 1000 + "km 안 관광공사 숙소 0곳";
+                /* 요금은 숙소마다 관광공사를 한 번씩 부른다(최대 10번). 서로 상관이 없으니 한꺼번에 받아 둔다 */
+                List<String> ids = new ArrayList<>();
+                for (KorTourService.Lodging l : list) {
+                    Spot sp = l.spot();
+                    if (ids.size() < STAY_LOOKUPS && sp.lat() != 0 && sp.lon() != 0
+                            && !sp.name().equals(old.path("name").asText())) ids.add(sp.id());
+                }
+                Map<String, long[]> rooms = idusw.sbb.checkin.global.util.Parallel.map(ids,
+                        id -> lodgingRateService.publicRoom(id, start));
                 int asked = 0;
                 for (KorTourService.Lodging l : list) {
                     Spot sp = l.spot();
@@ -489,7 +498,7 @@ public class BudgetFitService {
                             : asked >= STAY_LOOKUPS ? "요금 조회 상한(" + STAY_LOOKUPS + "곳) 넘음" : null;
                     if (why == null) {
                         asked++;
-                        long[] room = lodgingRateService.publicRoom(sp.id(), start);
+                        long[] room = rooms.get(sp.id()) != null ? rooms.get(sp.id()) : lodgingRateService.publicRoom(sp.id(), start);
                         boolean guess = room[0] <= 0;
                         long fee = guess ? average(sp.areaCode(), l.cat3(), start) : room[0];
                         Stay s = partyStay(sp.name(), fee, (int) room[1], people, sp.lat(), sp.lon(), guess);

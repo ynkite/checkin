@@ -3270,13 +3270,13 @@ async function execAllReplace() {
     const loadingOverlay = document.getElementById('replaceLoadingOverlay');
 
     if (loadingOverlay) loadingOverlay.style.display = 'flex';
-    if (btn) {
-        btn.innerHTML = '바꿀 곳을 찾는 중';
-        btn.disabled = true;
-    }
+    if (btn) btn.disabled = true;
+    const stopSteps = stepText(s => { if (btn) btn.textContent = s; },
+        ['바꿀 곳을 찾는 중', '길과 이동 시간을 재는 중', '거의 다 됐습니다']);
 
     try {
         const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
+        stopSteps();
 
         if (res.success && res.data) {
             // 동선을 바꾸면 시간과 돈이 같이 움직인다. 둘을 쌍으로 남긴다 (예산 엔진 2층)
@@ -3306,6 +3306,7 @@ async function execAllReplace() {
             if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
         }
     } catch(e) {
+        stopSteps();
         toast('바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
@@ -4179,6 +4180,15 @@ function toast(msg, dur=2800) {
     t.classList.add('show');
 
     _tt=setTimeout(()=>t.classList.remove('show'), dur);
+}
+
+/* 오래 걸리는 요청 동안 단계 문구를 시간에 맞춰 넘긴다. 서버가 단계를 알려 주지 않아
+   시각으로 짐작한 단계다 — 마지막 문구에서 멈추고 남은 시간은 적지 않는다. 멈추는 함수를 돌려준다 */
+function stepText(show, steps, everyMs = 15000) {
+    let i = 0;
+    show(steps[0]);
+    const id = setInterval(() => { if (i < steps.length - 1) show(steps[++i]); else clearInterval(id); }, everyMs);
+    return () => clearInterval(id);
 }
 
 /* ───────────────────────────────────────────────
