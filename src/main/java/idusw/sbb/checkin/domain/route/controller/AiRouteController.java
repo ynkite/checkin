@@ -41,9 +41,9 @@ public class AiRouteController {
         String candidatesJson = aiRouteService.generateCandidates(tripId);
 
         // 2) 후보 → 좌표 확보 → 일자별 클러스터링 → 시간 골격 조립
+        //    이 안의 단계(조건·가격·순서)는 서비스가 직접 알린다. 전에는 여기서 45% 로 20초 넘게 서 있었다
         progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.COLLECTING);
         String routeJson = aiRouteService.assembleCandidates(tripId, candidatesJson);
-        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.ASSEMBLING);
 
         /* 빈 일정을 성공으로 돌려주지 않는다. 전에는 조립이 실패해도 "[]" 가
            그대로 저장되고 성공으로 올라가서, 화면은 4단계로 넘어간 뒤 빈 지도를
@@ -66,6 +66,7 @@ public class AiRouteController {
         java.util.List<String> over50 = aiRouteService.finalizeRoute(tripId);
 
         // 5) 예산 맞춤: 정한 예산을 넘으면 끼니·카페부터 줄인다. 실패해도 원래 일정이 남는다
+        progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.FITTING);
         budgetFitService.applyTo(tripId);
 
         // 최종본을 다시 읽어서 반환

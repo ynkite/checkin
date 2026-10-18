@@ -911,17 +911,21 @@
         var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
         var pad = 12;
         var w = Math.max(16, x1 - x0 + pad * 2), h = Math.max(16, y1 - y0 + pad * 2);
-        /* 정거장이 화면의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다 */
-        var z = Math.min(2.2, Math.max(1.12, Math.min(100 / w, 100 / h)));
-
-        /* 밀 수 있는 만큼만 민다. 더 밀면 모형이 끝나고 바닥색이 드러난다 —
-           메인 무대에서 겪은 것과 같은 자리다(왼쪽 281px 이 크림이었다). */
+        /* 정거장이 보이는 자리의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다.
+           보이는 자리는 상자 전체가 아니다 — 아래 정거장 띠·확대 단추, 위 도구 막대를 뺀 곳이다.
+           좁은 화면에서 모형(가로가 상자 폭)은 상자보다 납작해서 상자 가운데에 맞추면
+           동선이 띠 밑에 깔렸다(여행 43, 390px). */
         var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
-        var maxX = Math.max(0, (fw * z - box.clientWidth) / 2 / fw * 100);
-        var maxY = Math.max(0, (fh * z - box.clientHeight) / 2 / fh * 100);
+        var free = _mvFree(box);
+        var z = Math.min(2.2, Math.max(1.12, Math.min(free.w / fw * 100 / w, free.h / fh * 100 / h)));
+
+        var lim = _mvLimit(frame, box, z);
         var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-        var px = Math.max(-maxX, Math.min(maxX, (50 - cx) * z));
-        var py = Math.max(-maxY, Math.min(maxY, (50 - cy) * z));
+        /* 보이는 자리의 가운데가 상자 가운데에서 얼마나 비켜 있는지(모형 폭 기준 %) */
+        var ox = (free.x + free.w / 2 - box.clientWidth / 2) / fw * 100;
+        var oy = (free.y + free.h / 2 - box.clientHeight / 2) / fh * 100;
+        var px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
+        var py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
 
         [frame, document.getElementById('mv_pins')].forEach(function (el) {
           if (!el) return;
@@ -1763,6 +1767,7 @@
 
       // 기본은 '수정 중' 상태로 시작 (DB 상세 로드 시 FIXED면 applyPlanConfirmState로 덮어씀)
       if (!localOnly && typeof applyPlanConfirmState === 'function') applyPlanConfirmState(false);
+      if (!localOnly) window._mapEdited = false;   /* 서버 것을 새로 읽었다 — 아직 고친 것이 없다 */
 
       const params = new URLSearchParams(location.search);
       const shareToken = params.get('token');
@@ -2970,15 +2975,33 @@
     var _mvHome = { z: 1.5, x: 0, y: 0 };
     var _mvCam  = { z: 1.5, x: 0, y: 0 };
 
+    /* 얼마나 밀 수 있나(모형 폭 기준 %). 모형이 상자보다 크면 바닥색이 안 보이는 만큼,
+       상자보다 작으면(좁은 화면의 세로) 모형이 상자 밖으로 안 나가는 만큼 */
+    function _mvLimit(frame, box, z) {
+      var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
+      return { x: Math.abs(fw * z - box.clientWidth) / 2 / fw * 100,
+               y: Math.abs(fh * z - box.clientHeight) / 2 / fh * 100 };
+    }
+    /* 상자 안에서 다른 것에 안 가리는 자리. 위는 도구 막대 밑, 아래는 정거장 띠·단추 위 */
+    function _mvFree(box) {
+      var top = 0, bottom = box.clientHeight;
+      var tools = document.querySelector('#mapRightArea .mp-tools');
+      if (tools && tools.offsetHeight) top = tools.offsetTop + tools.offsetHeight;
+      ['mv_stops', 'mv_view'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && !el.hidden && el.offsetHeight) bottom = Math.min(bottom, el.offsetTop);
+      });
+      var h = Math.max(120, bottom - top);
+      return { x: 0, y: top, w: box.clientWidth, h: h };
+    }
+
     function _mvApply() {
       var frame = document.getElementById('mv_frame');
       var box = document.getElementById('modelView');
       if (!frame || !box) return;
-      var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
-      var maxX = Math.max(0, (fw * _mvCam.z - box.clientWidth) / 2 / fw * 100);
-      var maxY = Math.max(0, (fh * _mvCam.z - box.clientHeight) / 2 / fh * 100);
-      _mvCam.x = Math.max(-maxX, Math.min(maxX, _mvCam.x));
-      _mvCam.y = Math.max(-maxY, Math.min(maxY, _mvCam.y));
+      var lim = _mvLimit(frame, box, _mvCam.z);
+      _mvCam.x = Math.max(-lim.x, Math.min(lim.x, _mvCam.x));
+      _mvCam.y = Math.max(-lim.y, Math.min(lim.y, _mvCam.y));
       [frame, document.getElementById('mv_pins')].forEach(function (el) {
         if (!el) return;
         el.style.setProperty('--mv-z', _mvCam.z.toFixed(3));
@@ -3937,6 +3960,7 @@
         stopSteps();
 
         if (res.success && res.data) {
+          window._mapEdited = true;
           toast(`${dayNum}일차를 실내 일정으로 바꿨습니다.`);
 
           // 백엔드에서 새로 업데이트되어 내려온 경로 JSON 확보
@@ -4138,6 +4162,7 @@
         const pair = (typeof _fmtRoutePair === 'function') ? _fmtRoutePair(res && res.delta) : '';
       toast(pair ? '저장했습니다 · ' + pair : '저장했습니다.', pair ? 4200 : 2800);
         if (typeof initMapPage === 'function') initMapPage();
+        window._mapEdited = true;
       } catch (e) {
         toast('저장 실패: ' + e.message);
       }

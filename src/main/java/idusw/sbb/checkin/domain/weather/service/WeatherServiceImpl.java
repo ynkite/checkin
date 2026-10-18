@@ -185,8 +185,10 @@ public class WeatherServiceImpl implements WeatherService {
         LocalDate today = LocalDate.now();
 
         // 단기(0~2)·중기(3~10) 는 한 번씩만 호출해 날짜→값 맵으로 만든다 (실시간 호출 이력 유지).
-        Map<String, DayWeather> shortMap = safeShortDaily(region);
+        // 둘은 서로 기다릴 일이 없다 — 같이 보낸다. 캐시가 비었을 때 3~5초 걸리던 것이 가장 긴 한 번만 남는다
+        var shortJob = java.util.concurrent.CompletableFuture.supplyAsync(() -> safeShortDaily(region));
         Map<String, DayWeather> midMap   = safeMidDaily(region);
+        Map<String, DayWeather> shortMap = shortJob.join();
 
         List<DayWeather> result = new ArrayList<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
@@ -263,7 +265,7 @@ public class WeatherServiceImpl implements WeatherService {
         Map<String, Integer> popMax = new HashMap<>(), skyNoon = new HashMap<>();
         Map<String, Boolean> rain = new HashMap<>();
         /* 시간별 기온·하늘. TMN·TMX 가 없는 날(=오늘)을 여기서 메운다 */
-        Map<String, Integer> tmpMin = new HashMap<>(), tmpMax = new HashMap<>();
+        Map<String, Integer> tmpMin = new HashMap<>(), tmpMax = new HashMap<>(), tmpHours = new HashMap<>();
         Map<String, Integer> skyAny = new HashMap<>();
         Set<String> dates = new LinkedHashSet<>();
 
@@ -280,6 +282,7 @@ public class WeatherServiceImpl implements WeatherService {
                     int v = parseIntSafe(val);
                     tmpMin.merge(date, v, Math::min);
                     tmpMax.merge(date, v, Math::max);
+                    tmpHours.merge(date, 1, Integer::sum);
                 }
                 case "POP" -> popMax.merge(date, parseIntSafe(val), Math::max);
                 case "SKY" -> {
@@ -305,14 +308,19 @@ public class WeatherServiceImpl implements WeatherService {
             Integer hi = tmx.containsKey(date) ? tmx.get(date) : tmpMax.get(date);
             Integer skyCode = skyNoon.containsKey(date) ? skyNoon.get(date) : skyAny.get(date);
             if (lo == null && hi == null && pop == null && skyCode == null) continue;
+            /* 단기예보의 마지막 날은 0시 한 시간만 온다. 그걸 담으면 최고·최저가 같은 값(8°·8°)이
+               되고 중기예보를 덮는다. TMN·TMX 가 없고 시간별 값도 몇 개뿐인 날은 중기에 맡긴다.
+               오늘은 예외다 — 발표시각이 지나면 TMN·TMX 가 안 오는 것이 정상이다 */
+            if (ahead > 0 && !tmn.containsKey(date) && !tmx.containsKey(date) && tmpHours.getOrDefault(date, 0) < 6) continue;
 
+            boolean wet = rain.getOrDefault(date, false) || (pop != null && pop >= 60);
             out.put(date, DayWeather.builder()
                     .date(date).source(sourceFor(ahead))
                     .tempMin(lo)
                     .tempMax(hi)
                     .rainProb(pop)
-                    .sky(skyCode != null ? skyText(skyCode) : null)
-                    .rainExpected(rain.getOrDefault(date, false) || (pop != null && pop >= 60))
+                    .sky(wet ? "비" : skyCode != null ? skyText(skyCode) : null)
+                    .rainExpected(wet)
                     .build());
         }
         return out;
@@ -330,8 +338,9 @@ public class WeatherServiceImpl implements WeatherService {
         String taUrl = "https://apihub.kma.go.kr/api/typ02/openApi/MidFcstInfoService/getMidTa"
                 + "?numOfRows=10&pageNo=1&dataType=JSON&regId=" + taCode + "&tmFc=" + tmFc + "&authKey=" + apiKey;
 
-        JsonNode land = firstItem(restTemplate.getForObject(landUrl, String.class));
-        JsonNode ta   = firstItem(restTemplate.getForObject(taUrl,   String.class));
+        var landJob = java.util.concurrent.CompletableFuture.supplyAsync(() -> restTemplate.getForObject(landUrl, String.class));
+        JsonNode ta   = firstItem(restTemplate.getForObject(taUrl, String.class));
+        JsonNode land = firstItem(landJob.join());
         if (land == null || ta == null) return Collections.emptyMap();
 
         /* dayN 은 발표일로부터 N일 뒤다. 오늘 기준으로 매기면
@@ -351,11 +360,13 @@ public class WeatherServiceImpl implements WeatherService {
 
             int pop = parseIntSafe(rnSt);
             String date = from.plusDays(day).format(YMD);
+            /* 아이콘은 비인데 글자는 「맑음 · 강수 60%」가 나왔다. 둘 다 한 값에서 나온다 */
+            boolean wet = pop >= 60 || wf.contains("비") || wf.contains("소나기");
             out.put(date, DayWeather.builder()
                     .date(date).source("MID")
                     .tempMin(parseIntSafe(taMin)).tempMax(parseIntSafe(taMax))
-                    .rainProb(pop).sky(skyText(wfToSky(wf)))
-                    .rainExpected(pop >= 60)
+                    .rainProb(pop).sky(wet ? "비" : skyText(wfToSky(wf)))
+                    .rainExpected(wet)
                     .build());
         }
         return out;

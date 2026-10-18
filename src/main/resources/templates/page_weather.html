@@ -83,9 +83,10 @@
                 return o + '</svg>';
             }
 
-            /* DayWeather.sky 는 글자다 — 맑음 / 구름많음 / 흐림 / 평년 */
+            /* DayWeather.sky 는 글자다 — 맑음 / 구름많음 / 흐림 / 비 / 평년.
+               비인지는 서버가 정한다(rainExpected). 여기서 확률로 다시 정하면 글자와 그림이 어긋난다 */
             function kindOf(d) {
-                if (d.rainExpected || (d.rainProb != null && d.rainProb >= 60)) return 'rain';
+                if (d.rainExpected) return 'rain';
                 if (!d.sky) return 'partly';
                 if (d.sky.indexOf('맑음') >= 0) return 'clear';
                 if (d.sky.indexOf('흐림') >= 0) return 'cloud';
@@ -147,7 +148,7 @@
                     var dt = ymd(d.date);
                     var lab = i === 0 ? '오늘' : i === 1 ? '내일'
                         : md(dt) + ' ' + DAYS_KO[dt.getDay()];
-                    var isRain = d.rainExpected || (d.rainProb != null && d.rainProb >= 60);
+                    var isRain = !!d.rainExpected;
                     if (isRain) wet.push(md(dt));
                     var firstMid = (d.source === 'MID' && !midSeen);
                     if (d.source === 'MID') midSeen = true;
@@ -279,9 +280,33 @@
                 }
             }
 
+            /* 지역을 안 넘기면 지금 가고 있거나 다음에 갈 여행지로 연다.
+               전에는 늘 서울이었다 — 부산 여행 중에 서울 날씨가 떴다.
+               목록에 있는 지역만 고를 수 있으니 여행지 이름에 든 것을 찾는다 */
+            var regionPicked = false;
+            async function tripRegion() {
+                var sel = document.getElementById('wxRegion');
+                if (!sel || typeof api === 'undefined' || !api.get) return null;
+                try {
+                    var j = await api.get('/api/trips');
+                    var list = (j && j.data) || [];
+                    var today = iso(new Date());
+                    var live = list.filter(function (t) { return t.startDate && t.endDate && t.endDate >= today; })
+                        .sort(function (a, b) { return a.startDate < b.startDate ? -1 : 1; });
+                    var cur = live.filter(function (t) { return t.startDate <= today; })[0] || live[0];
+                    if (!cur || !cur.destination) return null;
+                    for (var i = 0; i < sel.options.length; i++) {
+                        if (cur.destination.indexOf(sel.options[i].value) >= 0) return sel.options[i].value;
+                    }
+                } catch (e) { /* 비로그인이거나 못 받으면 서울 그대로 */ }
+                return null;
+            }
+
             /* go('weather') 가 부른다. 플래너는 지역을 넘겨 준다 —
                window.renderWeatherTab('부산') */
-            window.renderWeatherTab = function (r) {
+            window.renderWeatherTab = async function (r) {
+                if (!r && !regionPicked) r = await tripRegion();
+                regionPicked = true;
                 if (r) {
                     region = r;
                     var sel = document.getElementById('wxRegion');
