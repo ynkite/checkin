@@ -50,6 +50,12 @@ public class DataInitializer implements CommandLineRunner {
     private final PostCommentRepository postCommentRepository;
     private final ReportRepository reportRepository;
 
+    /* 시드 계정(admin · user01~20) 비밀번호. 정해 두지 않으면 아무도 모르는 무작위 값이다.
+       전에는 새 DB 마다 admin/1234 가 생겨 누구나 관리자로 들어올 수 있었다.
+       로컬에서 로그인해야 하면 CHECKIN_SEED_PASSWORD 환경변수로 준다 */
+    @org.springframework.beans.factory.annotation.Value("${checkin.seed.password:}")
+    private String seedPassword;
+
 
     @Override
     public void run(String... args) {
@@ -58,9 +64,11 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
 
+        String seedHash = passwordEncoder.encode(
+                seedPassword.isBlank() ? java.util.UUID.randomUUID().toString() : seedPassword);
         User admin = userRepository.save(User.builder()
                 .username("admin")
-                .passwordHash(passwordEncoder.encode("1234"))
+                .passwordHash(seedHash)
                 .name("관리자")
                 .email("admin@checkin.local")
                 .region("서울")
@@ -259,7 +267,7 @@ public class DataInitializer implements CommandLineRunner {
         for (int i = 0; i < 20; i++) {
             users[i] = userRepository.save(User.builder()
                     .username(userData[i][0])
-                    .passwordHash(passwordEncoder.encode("1234"))
+                    .passwordHash(seedHash)
                     .name(userData[i][1])
                     .email(userData[i][2])
                     .region(regions[i])
