@@ -119,11 +119,30 @@
   function simTick() {
     if (!st || !SIM) return;
     if (st.route && !st.arrived) {
-      st.simM = Math.min((st.simM || 0) + SIM_MS, st.route.totalMeters || st.acc[st.acc.length - 1]);
+      var from = st.simM || 0;
+      st.simM = Math.min(from + SIM_MS, st.route.totalMeters || st.acc[st.acc.length - 1]);
       var q = simPoint(st.route.line, st.acc, st.simM);
       onPos({ coords: { latitude: q[0], longitude: q[1], speed: SIM_MS } });
+      simGlide(from, st.simM);
     }
     st.simTimer = setTimeout(simTick, 1000);
+  }
+  /* 안내 판정은 1초에 한 번 그대로 두고, 화면의 내 위치만 그 1초 동안 두 점 사이를 이어 그린다.
+     지도는 다시 그리지 않는다 — 2D 는 표시 위치·가운데만, 3D 는 transform 과 표시 위치만 옮긴다 */
+  var CALM = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function simGlide(from, to) {
+    if (CALM || !st || !st.route || to <= from) return;
+    var line = st.route.line, acc = st.acc, t0 = performance.now();
+    cancelAnimationFrame(st.glide);
+    var step = function (now) {
+      if (!st || !st.route || st.route.line !== line) return;
+      var k = Math.min(1, (now - t0) / 1000);
+      var q = simPoint(line, acc, from + (to - from) * k);
+      st.pos = { lat: q[0], lng: q[1] };
+      nvGlideView();
+      if (k < 1) st.glide = requestAnimationFrame(step);
+    };
+    st.glide = requestAnimationFrame(step);
   }
   function simStart() {   /* 출발점: 지금 위치를 한 번만 받고, 안 되면 목적지에서 북쪽 약 2km */
     var go = function (lat, lng) {
@@ -770,11 +789,15 @@
     if (!snap || !snap.next || !snap.next.name) return;
     var name = snap.next.name;
     var c = snap.crowd || {}, w = snap.weather || {};
+    if (c.rate == null) {
+      c = st.crowdFor === name ? (st.crowd || {}) : {};
+      if (st.crowdFor !== name) nvCrowdOnce(snap);
+    }
     var kind = null, say = null;
     if (c.rate != null && Number(c.rate) >= SUG_BUSY) {
       kind = 'busy';
       say = name + ' 이 붐빕니다. 순서를 바꾸거나 가까운 다른 곳을 찾을 수 있습니다.';
-    } else if (String(w.summary || w.text || '').indexOf('비') >= 0) {
+    } else if (String(w.label || w.summary || w.text || '').indexOf('비') >= 0) {
       kind = 'rain';
       say = name + ' 에 비 소식이 있습니다. 실내로 바꾸거나 순서를 미룰 수 있습니다.';
     }
@@ -786,8 +809,26 @@
     nvSugShow(say);
     speak(say);
   }
+  /* 일정에 혼잡도가 안 붙은 다음 목적지 — 그 장소로 한 번만 받아 온다 (관광공사 집중률 · 실측이 있으면 실측).
+     받으면 바로 다시 살핀다. 실패하면 조용히 넘어간다 — 안내는 계속된다 */
+  function nvCrowdOnce(snap) {
+    var n = snap.next;
+    st.crowdFor = n.name;
+    st.crowd = null;
+    var q = '/api/crowd/now?region=' + encodeURIComponent(snap.destination || '')
+      + '&place=' + encodeURIComponent(n.name)
+      + (n.lat != null && n.lng != null ? '&lat=' + n.lat + '&lng=' + n.lng : '');
+    fetch(q).then(function (r) { return r.json(); }).then(function (j) {
+      if (!st || st.crowdFor !== n.name || !j || !j.success || !j.data) return;
+      st.crowd = j.data;
+      nvSuggestTick();
+    }).catch(function () {});
+  }
   function nvSuggestStart() {
     if (!st || st.sugTimer) return;
+    /* 시작하자마자 한 번 — 전에는 첫 확인이 90초 뒤라 짧은 구간에선 알림이 끝내 안 떴다 */
+    try { if (typeof window.rlAgain === 'function') window.rlAgain(); } catch (e) {}
+    setTimeout(nvSuggestTick, 1500);
     st.sugTimer = setInterval(function () {
       try {
         if (typeof window.rlAgain === 'function') window.rlAgain();
@@ -920,8 +961,10 @@
       nv.me.setMap(nv.map);
     } else {
       nv.me.setPosition(ll);
-      nv.me.setContent('<div class="dv-me"><i style="transform:rotate(' + deg.toFixed(0) + 'deg)"></i></div>');
+      /* 방향이 바뀔 때만 다시 그린다 — 가상 주행은 이 함수를 매 프레임 부른다 */
+      if (nv.meDeg !== deg) nv.me.setContent('<div class="dv-me"><i style="transform:rotate(' + deg.toFixed(0) + 'deg)"></i></div>');
     }
+    nv.meDeg = deg;
     if (nv.follow) nv.map.setCenter(ll);
   }
 
@@ -984,11 +1027,7 @@
     var h = w / ar;
     frame.style.width = w + 'px';  frame.style.height = h + 'px';
     layer.style.width = w + 'px';  layer.style.height = h + 'px';
-    var at = nvProject(sc.fit, st.pos.lat, st.pos.lng);
-    var pan = nv.pan || { x: 0, y: 0 };
-    var shift = 'translate(-50%,-50%) translate(' +
-      ((50 - at.x) / 100 * w + pan.x).toFixed(1) + 'px,' +
-      ((50 - at.y) / 100 * h + pan.y).toFixed(1) + 'px)';
+    var shift = nvShift(sc, w, h);
     frame.style.transform = shift;
     layer.style.transform = shift;
 
@@ -1022,6 +1061,26 @@
       '</svg>' + marks +
       '<div class="dv-me dv-me-3d" style="left:' + me.x.toFixed(2) + '%;top:' + me.y.toFixed(2) +
       '%"><i style="transform:rotate(' + deg.toFixed(0) + 'deg)"></i></div>';
+  }
+  /* 달리는 자리가 화면 가운데 오게 미는 값 */
+  function nvShift(sc, w, h) {
+    var at = nvProject(sc.fit, st.pos.lat, st.pos.lng), pan = nv.pan || { x: 0, y: 0 };
+    return 'translate(-50%,-50%) translate(' +
+      ((50 - at.x) / 100 * w + pan.x).toFixed(1) + 'px,' +
+      ((50 - at.y) / 100 * h + pan.y).toFixed(1) + 'px)';
+  }
+  /* 가상 주행의 사이 프레임 — 모형은 다시 그리지 않고 밀기와 내 위치 표시만 옮긴다 */
+  function nvGlideView() {
+    if (nv.mode === '2d') { nvFollow(); return; }
+    var frame = document.getElementById('navModelFrame'), layer = document.getElementById('navModelLayer');
+    var me = layer && layer.querySelector('.dv-me-3d');
+    if (!nv.scene || !frame || !me) return;
+    var shift = nvShift(nv.scene, parseFloat(frame.style.width), parseFloat(frame.style.height));
+    frame.style.transform = shift;
+    layer.style.transform = shift;
+    var at = nvProject(nv.scene.fit, st.pos.lat, st.pos.lng);
+    me.style.left = at.x.toFixed(2) + '%';
+    me.style.top = at.y.toFixed(2) + '%';
   }
   /* 모형도 손으로 밀 수 있게 한다. 미는 동안은 따라가기를 멈춘다 */
   function nvBind3dDrag() {

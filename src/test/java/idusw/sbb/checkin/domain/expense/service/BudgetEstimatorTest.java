@@ -42,7 +42,27 @@ class BudgetEstimatorTest {
 
         Item extra = item(e, "인원 추가");
         assertEquals(BudgetEstimator.EXTRA_PERSON_PER_NIGHT, extra.amount());
-        assertTrue(extra.basis().contains("평균 기준"));
+        assertTrue(extra.basis().contains("1인 20,000원"));
+    }
+
+    @Test
+    void 기준인원을_모르면_객실_2인_기준으로_평균_금액을_쓴다() {
+        BudgetEstimate e = BudgetEstimator.compute(new BudgetEstimator.Input(
+                LodgingRate.confirmed(80_000, "비수기 주중"), 1, 3, 0, false, false, false, false));
+
+        Item extra = item(e, "인원 추가");
+        assertEquals(Status.ESTIMATED, extra.status());
+        assertEquals(BudgetEstimator.EXTRA_PERSON_PER_NIGHT, extra.amount());
+        assertTrue(extra.basis().startsWith("객실 2인 기준"));
+    }
+
+    @Test
+    void 공개_요금이_없으면_일정에_적힌_숙소_금액을_추정으로_쓴다() {
+        LodgingRate r = BudgetEstimator.scheduleRate("""
+            [{"places":[{"type":"stay","name":"바다풍경펜션","sub":"숙소 · ₩120,000"}]}]""");
+        assertEquals(120_000, r.amount());
+        assertTrue(r.estimated());
+        assertNull(BudgetEstimator.scheduleRate("[]"));
     }
 
     @Test
@@ -76,7 +96,7 @@ class BudgetEstimatorTest {
 
         assertEquals(Status.ESTIMATED, item(e, "객실 기본료").status());
         assertEquals(0, e.confidence(), "추정뿐이면 신뢰도 0");
-        assertTrue(item(e, "객실 기본료").basis().contains("N=12"));
+        assertTrue(item(e, "객실 기본료").basis().contains("성수기 주말"));
     }
 
     @Test
@@ -101,7 +121,6 @@ class BudgetEstimatorTest {
         Item bbq = item(e, "바베큐");
         assertEquals(Status.ESTIMATED, bbq.status());
         assertTrue(bbq.basis().contains("숙소 제공 확인"));
-        assertTrue(bbq.basis().contains("평균 기준"));
     }
 
     @Test

@@ -63,6 +63,20 @@ public class KorTourService {
         return toSpots(client.items(SERVICE, "searchKeyword2", params));
     }
 
+    /** 좌표 반경 안 (locationBasedList2), 가까운 순. 예산 맞춤이 근처 숙소를 찾을 때 쓴다. */
+    public List<Spot> nearby(double lat, double lng, int radiusM, Integer contentTypeId, int numOfRows) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("mapX", String.valueOf(lng));
+        params.put("mapY", String.valueOf(lat));
+        params.put("radius", String.valueOf(radiusM));
+        params.put("numOfRows", String.valueOf(numOfRows));
+        params.put("pageNo", "1");
+        params.put("arrange", "E");                      // E: 거리순
+        if (contentTypeId != null) params.put("contentTypeId", String.valueOf(contentTypeId));
+
+        return toSpots(client.items(SERVICE, "locationBasedList2", params));
+    }
+
     private List<Spot> toSpots(JsonNode items) {
         List<Spot> result = new ArrayList<>();
         if (items.isObject()) {                          // 결과 1건이면 배열이 아닌 객체로 온다
