@@ -3301,12 +3301,12 @@ async function execAllReplace() {
             }, 1500);
 
         } else {
-            toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
+            toast('바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.');
             if (loadingOverlay) loadingOverlay.style.display = 'none';
             if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
         }
     } catch(e) {
-        toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
+        toast('바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
@@ -4175,7 +4175,7 @@ function toast(msg, dur=2800) {
     const t=document.getElementById('toast'); if(!t) return;
     if(_tt) clearTimeout(_tt);
 
-    t.innerHTML = msg;
+    t.textContent = msg;   // 회원 이름처럼 남이 쓴 글이 섞여 온다. HTML 로 넣지 않는다
     t.classList.add('show');
 
     _tt=setTimeout(()=>t.classList.remove('show'), dur);
