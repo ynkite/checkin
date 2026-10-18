@@ -223,7 +223,7 @@ class BudgetFitTest {
         when(rate.regional(any(), any())).thenReturn(idusw.sbb.checkin.domain.tour.dto.LodgingRate.none("비수기 주중"));
 
         BudgetFitService svc = new BudgetFitService(null, null, null, rate, null, kor, null);
-        var p = svc.probe(STAY_ROUTE, java.time.LocalDate.of(2026, 10, 30), 4);
+        var p = svc.probe(STAY_ROUTE, java.time.LocalDate.of(2026, 10, 30), 4, 0);
 
         assertEquals(4, p.tried().found());
         assertEquals(2, p.tried().priced());
@@ -236,8 +236,22 @@ class BudgetFitTest {
     @Test
     void 숙소_좌표가_없으면_진단에_그렇게_적는다() {
         BudgetFitService svc = new BudgetFitService(null, null, null, null, null, null, null);
-        var p = svc.probe(ROUTE, java.time.LocalDate.of(2026, 10, 30), 2);
+        var p = svc.probe(ROUTE, java.time.LocalDate.of(2026, 10, 30), 2, 0);
         assertEquals("지금 숙소 좌표가 없음", p.tried().note());
         assertTrue(p.stays().isEmpty());
+    }
+
+    @Test
+    void 숙소_비교는_지금_숙소의_인원_추가까지_더한_일행_전체_1박으로_한다() throws Exception {
+        // 지금 숙소 100,000 + 인원 추가 30,000(1박) = 130,000. 120,000 짜리는 일정 금액보다 비싸도 더 싸다
+        var days = (com.fasterxml.jackson.databind.node.ArrayNode) OM.readTree(STAY_ROUTE);
+        var to = new BudgetFitService.Stay("근처 펜션", 120_000, 2, 33.25, 126.62);
+        assertNull(BudgetFitService.swapStay((com.fasterxml.jackson.databind.node.ArrayNode) OM.readTree(STAY_ROUTE), to));
+        String change = BudgetFitService.swapStay(days, to, 30_000);
+        assertTrue(change.endsWith("−10,000원 (인원 추가 포함)"), change);
+
+        // 일정 몫 예산 95,000. 바꾸면 인원 추가 30,000 이 사라지므로 120,000 − 30,000 = 90,000 으로 견줘 예산 안
+        BudgetFitService.Fit f = BudgetFitService.best(STAY_ROUTE, 95_000, 12_000, List.of(to), 30_000);
+        assertTrue(f.changes().get(0).startsWith("숙소를 근처 근처 펜션"));
     }
 }

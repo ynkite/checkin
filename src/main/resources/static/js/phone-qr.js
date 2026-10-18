@@ -134,14 +134,29 @@
     var list = trips(), sel = document.getElementById('pqTrip');
     if (!sel) return;
     if (!list.length) { if (typeof toast === 'function') toast('먼저 여행을 만들어 주세요.'); return; }
+    /* 같은 이름 · 날짜 여행이 여럿이면(부산 해운대구 여행이 여섯 개) 예산을, 그래도 같으면 고친 시각을 붙인다 */
+    var tag = function (t, lv) {
+      var d = (t.startDate || '').slice(5).replace('-', '.');
+      var won = parseInt(String(t.budget || '').replace(/[^\d]/g, ''), 10);
+      var at = String(t.updatedAt || '').replace('T', ' ').slice(5, 16).replace('-', '.');
+      return (t.title || '여행') + (d ? ' · ' + d : '') +
+        (lv > 0 && won > 0 ? ' · 예산 ' + Math.round(won / 10000) + '만' : '') +
+        (lv > 1 && at ? ' · ' + at + ' 수정' : '');
+    };
+    var count = function (lv) {
+      var n = {};
+      list.forEach(function (t) { n[tag(t, lv)] = (n[tag(t, lv)] || 0) + 1; });
+      return n;
+    };
+    var c0 = count(0), c1 = count(1);
     sel.innerHTML = list.map(function (t) {
       var o = document.createElement('option');
       o.value = tripId(t);
-      o.textContent = (t.title || '여행') + (t.startDate ? ' · ' + t.startDate.replace(/-/g, '.') : '');
+      o.textContent = tag(t, c0[tag(t, 0)] < 2 ? 0 : c1[tag(t, 1)] < 2 ? 1 : 2);
       return o.outerHTML;
     }).join('');
-    var cur = String(window._currentTripId || '');
-    if (list.some(function (t) { return String(tripId(t)) === cur; })) sel.value = cur;
+    /* 처음 골라 두는 것은 목록 맨 위(가장 최근에 고친) 여행이다. 마이페이지 목록과 같은 순서 */
+    sel.value = String(tripId(list[0]));
     draw();
     document.getElementById('phoneQr').classList.add('open');
   };

@@ -61,7 +61,7 @@ public class BudgetFitService {
     private static final ObjectMapper OM = new ObjectMapper();
     private static final Pattern WON = Pattern.compile("₩([\\d,]+)(?:×(\\d+))?");
     private static final int STAY_RADIUS_M = 3000;    // 바꿀 숙소를 찾는 반경
-    private static final int STAY_LOOKUPS = 6;        // 요금을 물어볼 후보 수 (요청마다 실시간 호출)
+    private static final int STAY_LOOKUPS = 10;       // 요금을 물어볼 후보 수 (요청마다 실시간 호출). 6이면 53번에서 3곳이 안 물어봐졌다
     static final long MIN_PER_PERSON = 15_000;        // 1인 1박이 이보다 싸면 1인·1실 요금으로 보고 뺀다
 
     @Value("${budget.meal-per-person:12000}") private long mealPerPerson;
@@ -82,6 +82,12 @@ public class BudgetFitService {
     /** 여행에서 필요한 값만 떼어 낸 것. */
     record Snap(long limit, String json, LocalDate start, int people, List<BudgetEstimate.Item> extras) {
         long extra() { return extras.stream().mapToLong(BudgetEstimate.Item::amount).sum(); }
+
+        /** 지금 숙소의 기준인원을 넘어 붙는 돈. 숙소를 바꾸면 같이 사라진다 (새 숙소는 객실 수로 일행을 다 받는다) */
+        long stayExtra() {
+            return extras.stream().filter(i -> i.label() != null && i.label().startsWith("인원 추가"))
+                    .mapToLong(BudgetEstimate.Item::amount).sum();
+        }
     }
 
     /** 조정 결과. changed 가 false 면 json 은 손대지 않은 원본이다. */
@@ -102,7 +108,8 @@ public class BudgetFitService {
             long room = s.limit() - s.extra();     // 옵션 몫을 뗀, 일정이 쓸 수 있는 돈
             Fit f = fit(s.json(), room, mealPerPerson);
             if (f.after() > room)
-                f = best(s.json(), room, mealPerPerson, probe(s.json(), s.start(), s.people()).stays());
+                f = best(s.json(), room, mealPerPerson, probe(s.json(), s.start(), s.people(), s.stayExtra()).stays(),
+                        s.stayExtra());
             if (f.changed()) aiRouteService.saveAiRouteToDb(tripId, f.json());
         } catch (Exception e) {
             log.warn("[예산 맞춤] tripId={} 조정 못 함, 원래 일정 유지: {}", tripId, e.getMessage());
@@ -158,18 +165,28 @@ public class BudgetFitService {
 
     /** 숙소 후보마다 바꿔 보고 다시 맞춰, 예산 이하이면서 가장 가까운 결과. 후보가 없으면 fit 결과. */
     static Fit best(String json, long limit, long mealCap, List<Stay> stays) throws Exception {
+        return best(json, limit, mealCap, stays, 0);
+    }
+
+    /**
+     * stayExtra 는 지금 숙소의 인원 추가 금액(여행 전체). 숙소를 바꾸면 사라지므로
+     * 바꾼 쪽은 그만큼 예산이 늘어난 것으로 맞추고, 그 값을 뺀 총액으로 견준다.
+     */
+    static Fit best(String json, long limit, long mealCap, List<Stay> stays, long stayExtra) throws Exception {
         Fit best = fit(json, limit, mealCap);
         if (best.after() <= limit) return best;
         long before = total(OM.readTree(json));
+        long bestCost = best.after();
         for (Stay s : stays) {
             ArrayNode days = (ArrayNode) OM.readTree(json);
-            String change = swapStay(days, s);
+            String change = swapStay(days, s, stayExtra);
             if (change == null) continue;
-            Fit f = fit(OM.writeValueAsString(days), limit, mealCap);
+            Fit f = fit(OM.writeValueAsString(days), limit + stayExtra, mealCap);
             List<String> changes = new ArrayList<>(List.of(change));
             changes.addAll(f.changes());
             Fit cand = stamp((ArrayNode) OM.readTree(f.json()), before, changes);
-            if (closer(cand.after(), best.after(), limit)) best = cand;
+            long cost = cand.after() - stayExtra;
+            if (closer(cost, bestCost, limit)) { best = cand; bestCost = cost; }
         }
         return best;
     }
@@ -201,10 +218,20 @@ public class BudgetFitService {
      * 아침 출발 줄은 이름·좌표만. to 가 더 싸지 않으면 null. 바꾼 내용 한 줄을 돌려준다.
      */
     static String swapStay(ArrayNode days, Stay to) {
-        JsonNode old = priciestStay(days);
-        if (old == null || amount(old.path("sub").asText("")) <= to.price()) return null;
+        return swapStay(days, to, 0);
+    }
 
+    /**
+     * 같은 기준으로 견준다 — 둘 다 일행 전체 1박 값. 지금 숙소는 일정 금액에 인원 추가(stayExtra ÷ 박수)를
+     * 더한 값이고, 바꿀 숙소는 1실 요금 × 객실 수라 인원 추가가 없다. 박수는 연박 줄을 모두 바꾸므로 같다.
+     */
+    static String swapStay(ArrayNode days, Stay to, long stayExtra) {
+        JsonNode old = priciestStay(days);
+        if (old == null) return null;
         String oldName = old.path("name").asText();
+        long perNight = stayExtra / Math.max(1, nights(days, oldName));
+        if (amount(old.path("sub").asText("")) + perNight <= to.price()) return null;
+
         long saved = 0;
         for (JsonNode day : days) {
             ArrayNode places = (ArrayNode) day.path("places");
@@ -214,7 +241,7 @@ public class BudgetFitService {
                 ObjectNode o = ((ObjectNode) p).put("name", to.name()).put("lat", to.lat()).put("lng", to.lng());
                 long was = amount(p.path("sub").asText(""));
                 if (was > 0) {
-                    saved += was - to.price();
+                    saved += was + perNight - to.price();
                     o.put("sub", "숙소 · " + (to.rooms() > 1 ? to.rooms() + "실 · " : "") + (to.estimated() ? "추정 · " : "")
                             + String.format("₩%,d", to.price()));
                 }
@@ -223,7 +250,17 @@ public class BudgetFitService {
         }
         return "숙소를 근처 " + to.name() + "(" + (to.rooms() > 1 ? to.rooms() + "실, " : "")
                 + "1박 " + (to.estimated() ? "약 " + won(to.price()) + " · 추정" : won(to.price()))
-                + ")로 바꾸기 −" + won(saved);
+                + ")로 바꾸기 −" + won(saved) + (perNight > 0 ? " (인원 추가 포함)" : "");
+    }
+
+    /** 그 숙소에 금액이 붙은 줄(밤) 수 */
+    static int nights(JsonNode days, String name) {
+        int n = 0;
+        for (JsonNode day : days)
+            for (JsonNode p : day.path("places"))
+                if ("stay".equals(p.path("type").asText()) && name.equals(p.path("name").asText())
+                        && amount(p.path("sub").asText("")) > 0) n++;
+        return n;
     }
 
     /** 예산을 넘으면 한 줄 — 얼마나 넘는지와 무엇을 더 줄일 수 있는지. 안 넘으면 null. */
@@ -244,11 +281,7 @@ public class BudgetFitService {
         JsonNode old = priciestStay(days);
         if (old != null) {
             long now = amount(old.path("sub").asText(""));
-            int nights = 0;
-            for (JsonNode day : days)
-                for (JsonNode p : day.path("places"))
-                    if ("stay".equals(p.path("type").asText()) && old.path("name").asText().equals(p.path("name").asText())
-                            && amount(p.path("sub").asText("")) > 0) nights++;
+            int nights = nights(days, old.path("name").asText());
             Stay up = null;
             for (Stay st : stays)
                 if (st.price() > now && (st.price() - now) * Math.max(1, nights) <= spare
@@ -421,7 +454,7 @@ public class BudgetFitService {
         String key = tripId + ":" + s.json().hashCode() + ":" + s.people();
         Probe p = probes.get(key);
         if (p != null) return p;
-        p = probe(s.json(), s.start(), s.people());
+        p = probe(s.json(), s.start(), s.people(), s.stayExtra());
         if (p.tried().note() == null || !p.tried().note().startsWith("조회 실패")) probes.put(key, p);
         return p;
     }
@@ -431,7 +464,7 @@ public class BudgetFitService {
      * 공개 요금이 먼저고, 없으면 그 숙소 분류의 지역 평균(없으면 지역 전체 평균)으로 추정한다.
      * 지금 숙소보다 비싼 곳도 목록에 남긴다 — 줄일 때는 swapStay 가 거르고, 여유 제안이 쓴다.
      */
-    Probe probe(String json, LocalDate start, int people) {
+    Probe probe(String json, LocalDate start, int people, long stayExtra) {
         List<Stay> out = new ArrayList<>();
         Map<String, Integer> drop = new LinkedHashMap<>();
         int found = 0;
@@ -443,7 +476,8 @@ public class BudgetFitService {
             else if (start == null) note = "여행 시작일이 없음";
             else if (lat == 0 || lng == 0) note = "지금 숙소 좌표가 없음";
             else {
-                long now = amount(old.path("sub").asText(""));
+                long now = amount(old.path("sub").asText(""))
+                        + stayExtra / Math.max(1, nights(OM.readTree(json), old.path("name").asText()));
                 List<KorTourService.Lodging> list = korTourService.nearbyLodging(lat, lng, STAY_RADIUS_M, STAY_LOOKUPS * 2);
                 found = list.size();
                 if (found == 0) note = "반경 " + STAY_RADIUS_M / 1000 + "km 안 관광공사 숙소 0곳";
