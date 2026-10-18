@@ -1364,6 +1364,16 @@
     function _mpCrowdPanel() {
       var box = document.getElementById('mpAlert');
       if (!box || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
+      /* 순서를 바꾼 동안은 되돌리기 카드를 지킨다. 혼잡도가 늦게 와도 덮지 않는다 */
+      if (_mpUndo) {
+        box.hidden = false;
+        box.innerHTML = '<p class="mp-al-1">바꾼 순서로 보고 있습니다</p>' +
+          '<p class="mp-al-2">' + (_mpUndo.pair ? _mpEsc(_mpUndo.pair) + '. ' : '') +
+          '아직 확정하지 않았습니다. 위의 「확정」을 누르면 저장됩니다.</p>' +
+          '<div class="mp-opts"><button type="button" class="mp-opt mp-undo" ' +
+          'onclick="_mpUndoOrder()"><b>되돌리기</b><span>원래 순서로</span></button></div>';
+        return;
+      }
       var day = MAP_ITINERARY[0];
       var f = _mpWorst(day);
       if (!f || !f.next) { box.hidden = true; return; }
@@ -1527,11 +1537,13 @@
 
       /* 확정 전에 서버가 잰 이동 시간·비용 변화를 붙인다. 못 재면 아무것도 붙이지 않는다 */
       if (!window._currentTripId || typeof _fmtRoutePair !== 'function') return;
+      var u = _mpUndo;
       api.post('/api/trips/' + window._currentTripId + '/routes/reorder?preview=true', MAP_ITINERARY)
         .then(function (res) {
           var pair = res && res.success ? _fmtRoutePair(res.delta) : '';
-          var t = _mpUndo && document.querySelector('#mpAlert .mp-al-2');
-          if (pair && t) t.textContent = pair + '. ' + t.textContent;
+          if (!pair || _mpUndo !== u) return;
+          u.pair = pair;
+          _mpCrowdPanel();
         }).catch(function () {});
     }
 
@@ -1558,15 +1570,7 @@
       if (typeof drawRouteLayer === 'function') drawRouteLayer();
       _mpRedrawList();
       if (typeof toast === 'function') toast(msg, 3600);
-      var box = document.getElementById('mpAlert');
-      if (box && _mpUndo) {
-        box.innerHTML = '<p class="mp-al-1">바꾼 순서로 보고 있습니다</p>' +
-          '<p class="mp-al-2">아직 확정하지 않았습니다. 위의 「확정」을 누르면 저장됩니다.</p>' +
-          '<div class="mp-opts"><button type="button" class="mp-opt mp-undo" ' +
-          'onclick="_mpUndoOrder()"><b>되돌리기</b><span>원래 순서로</span></button></div>';
-      } else if (box) {
-        _mpCrowdPanel();
-      }
+      _mpCrowdPanel();
     }
 
     /* 지도 핀 번호를 새 순서로 다시 매긴다 */
@@ -1590,11 +1594,10 @@
       });
     }
 
-    /* 목록만 다시 그린다. 자료는 이미 MAP_ITINERARY 에 있다 */
+    /* 목록만 다시 그린다. 자료는 세션의 ai_generated_route 에 있다.
+       DB 를 다시 읽으면 저장 전에 바꾼 순서가 날아간다 */
     function _mpRedrawList() {
-      var keep = window._currentTripId;
-      window._currentTripId = null;        /* DB 를 다시 읽으면 바꾼 순서가 날아간다 */
-      try { initMapPage(); } finally { window._currentTripId = keep; }
+      initMapPage(true);
     }
 
     // 받침에 따라 조사를 고른다 — 「해운대가」 / 「동백섬이」
@@ -1717,11 +1720,13 @@
     }
 
     // ── DOM 렌더링 ──
-    async function initMapPage() {
+    async function initMapPage(localOnly) {
       var routeData = null;
+      localOnly = localOnly === true;
+      if (!localOnly) _mpUndo = null;      /* 서버 일정을 새로 읽으면 되돌릴 것이 없다 */
 
       // 기본은 '수정 중' 상태로 시작 (DB 상세 로드 시 FIXED면 applyPlanConfirmState로 덮어씀)
-      if (typeof applyPlanConfirmState === 'function') applyPlanConfirmState(false);
+      if (!localOnly && typeof applyPlanConfirmState === 'function') applyPlanConfirmState(false);
 
       const params = new URLSearchParams(location.search);
       const shareToken = params.get('token');
@@ -1739,7 +1744,7 @@
       if (!window._currentTripId) {
         window._currentTripId = parsedTripId || sessionStorage.getItem('plannerDraftId');
       }
-      var tripId = parsedTripId || window._currentTripId;
+      var tripId = localOnly ? null : (parsedTripId || window._currentTripId);
 
       window._q = [];
       if (typeof renderQ === 'function') renderQ();

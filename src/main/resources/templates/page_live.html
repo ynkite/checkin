@@ -1043,6 +1043,11 @@
         rlAltDrive = drive || null;
         box.hidden = false;
         box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p><p class="rl-modes-note">한적한 곳을 찾는 중</p>';
+        /* 길 안내를 접고 왔으면 화면은 맨 위다. 후보 상자가 한참 아래라 거기로 데려간다 */
+        if (drive) requestAnimationFrame(function () {
+          var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+          box.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+        });
 
         var d = null;
         try {
