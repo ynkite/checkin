@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ChatSessionRepository extends JpaRepository<ChatSession, Long> {
+    java.util.List<ChatSession> findByUserIdOrderByIdAsc(Long userId);
 }

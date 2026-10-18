@@ -80,6 +80,9 @@ async function apiCall(path, opts = {}, retry = true) {
     if (res.status === 401 && retry) {
         const refreshed = await refreshAccessToken();
         if (refreshed) return apiCall(path, opts, false);
+        /* 공유 링크를 로그인 없이 보는 중이다. 로그아웃할 계정이 없는데 로그인 화면으로 보내면
+           일정 대신 로그인 창이 뜬다 — 그 요청 하나만 비운다 */
+        if (_shareToken() && !Token.getAccess()) return { success: false, message: '로그인이 필요합니다', data: null };
         // 재발급 실패 → 강제 로그아웃
         forceLogout();
         return { success: false, message: '인증 만료', data: null };
@@ -732,7 +735,7 @@ function updateNav() {
     const plannerBtn = document.getElementById('navPlannerBtn');
     if (plannerBtn) {
         /* 확정된 여행을 지도에서 보고 있으면 「작성 중」이 아니다 */
-        const viewingFixed = window._planConfirmed === true &&
+        const viewingFixed = (window._planConfirmed === true || _editingSavedTrip()) &&
             document.getElementById('page-map')?.classList.contains('active');
         if (_loggedIn && _hasPlannerDraft() && !viewingFixed) {
             plannerBtn.textContent = '작성 중인 플랜';
@@ -2903,12 +2906,18 @@ function _syncStep4State() {
     }
 }
 
+/** 저장된 여행을 「수정」으로 열어 고치는 중인가. 새로 만드는 플랜이 아니라 단계 머리글을 띄우지 않는다 */
+function _editingSavedTrip() {
+    const id = sessionStorage.getItem('editingSavedTrip');
+    return !!id && String(id) === String(window._currentTripId);
+}
+
 function _syncPlannerTopbar() {
     const hasDraft  = !!window._currentTripId;
     const onPlanner = document.getElementById('page-planner')?.classList.contains('active') ?? false;
     const onMap     = document.getElementById('page-map')?.classList.contains('active') ?? false;
     /* 확정된 여행을 보는 중이면 플랜 단계를 띄우지 않는다 — 고치는 중이 아니다 */
-    const showSteps = onPlanner || (onMap && hasDraft && window._planConfirmed !== true);
+    const showSteps = onPlanner || (onMap && hasDraft && window._planConfirmed !== true && !_editingSavedTrip());
 
     const navSteps  = document.getElementById('navPlannerSteps');
     const sb4       = document.getElementById('sb-4');
@@ -3740,6 +3749,7 @@ function goNewPlanner() {
     sessionStorage.removeItem('plannerDraftId');
     sessionStorage.removeItem('plannerDraftStep');
     sessionStorage.removeItem('plannerDraftState');
+    sessionStorage.removeItem('editingSavedTrip');
 
     go('planner', false);   // history는 goPlanStep이 추가
     goPlanStep(1);
@@ -4360,7 +4370,7 @@ window.addEventListener('popstate', async e => {
     if (_shareToken()) {
         const r = await api.get('/api/trips/shared');
         if (r && r.success && r.data) sharedId = String(r.data.tripId);
-        else setTimeout(() => toast('열 수 없는 공유 링크입니다. 링크가 바뀌었을 수 있습니다.'), 300);
+        else setTimeout(() => toast('비공개 여행입니다. 만든 사람이 공유를 닫았거나 링크가 바뀌었습니다.', 5000), 300);
     }
 
     // 공유 링크(?token=난수값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?

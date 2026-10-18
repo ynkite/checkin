@@ -920,6 +920,11 @@
         clearInterval(rlAgeTimer);
         rlTrip = tripId;
         window._authToken = rlToken();   /* nav-drive 의 경로 요청이 이 값을 쓴다 */
+        /* 남은 횟수는 서버가 계정으로 센다. 열 때 받아 적는다 — 브라우저마다 다르게 보이면 안 된다 */
+        fetch('/api/crowd/check/left', { headers: rlAuth() })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { if (j && j.success) rlLeftLabel(j.message); })
+          .catch(function () {});
         document.getElementById('rlPick').hidden = true;
         document.getElementById('rlNow').hidden = false;
 

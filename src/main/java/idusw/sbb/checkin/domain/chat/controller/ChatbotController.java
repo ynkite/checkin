@@ -29,6 +29,17 @@ public class ChatbotController {
         ));
     }
 
+    // 작성 중인 플랜을 다시 열 때 대화를 되살린다. 전에는 GET 이 없어 405 였다
+    @GetMapping("/sessions")
+    public ResponseEntity<?> mySessions() {
+        return ResponseEntity.ok(Map.of("success", true, "data", chatbotService.mySessions()));
+    }
+
+    @GetMapping("/sessions/{sessionId}")
+    public ResponseEntity<?> messages(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(Map.of("success", true, "data", Map.of("messages", chatbotService.messages(sessionId))));
+    }
+
     // API AI 채팅 메시지 전송 (POST /api/chat/message)
     @PostMapping("/message")
     public ResponseEntity<?> sendMessage(@RequestBody ChatMessageDto request) {

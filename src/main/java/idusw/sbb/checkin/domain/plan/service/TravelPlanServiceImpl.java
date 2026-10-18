@@ -106,6 +106,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
                 // 내 여행 기록에는 '확정(FIXED)'된 일정만 노출 (DRAFT·INVITED 등은 제외)
                 .filter(plan -> "FIXED".equals(plan.getStatus()))
+                .sorted(listOrder(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul"))))
 
                 .map(plan -> {
                     String startStr = plan.getStartDate() != null ? plan.getStartDate().toString().replace("-", ".") : "";
@@ -134,6 +135,18 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                 .toList();
     }
 
+    /** 내 여행 기록 순서 — 진행 중 → 다가오는(가까운 날부터) → 지난(최근부터) */
+    public static java.util.Comparator<TravelPlan> listOrder(java.time.LocalDate today) {
+        java.util.function.ToIntFunction<TravelPlan> group = p -> {
+            if (p.getStartDate() == null || p.getEndDate() == null) return 2;
+            if (p.getStartDate().isAfter(today)) return 1;
+            return p.getEndDate().isBefore(today) ? 2 : 0;
+        };
+        java.util.Comparator<TravelPlan> byStart = java.util.Comparator.comparing(
+                TravelPlan::getStartDate, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()));
+        return java.util.Comparator.comparingInt(group)
+                .thenComparing((a, b) -> group.applyAsInt(a) == 2 ? byStart.compare(b, a) : byStart.compare(a, b));
+    }
 
 
     @Override
@@ -183,13 +196,16 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     @Transactional
     public void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields) {
-        access.edit(tripId);
+        TravelPlan owned = access.edit(tripId);
         String destination = fields.get("destination");
         if (destination != null) {
             travelPlanRepository.updateDestination(tripId, destination);
         }
 
-        PlanInputForm form = planInputFormRepository.findByPlanIdWithLock(tripId).orElse(null);
+        /* 2단계를 다시 저장할 때마다 폼 행이 하나씩 늘어난다. plan_id 로 하나만 고르면
+           두 번째 행부터 「결과가 둘」로 터졌다 — 챗봇이 바꾼 값이 500 으로 사라지던 자리.
+           여행이 가리키는 폼(form_id)이 지금 쓰는 폼이다 */
+        PlanInputForm form = owned.getForm();
         if (form == null) return;
 
         if (fields.containsKey("budget"))
@@ -260,14 +276,26 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
         java.util.Map<String, Object> map = new java.util.HashMap<>();
 
-        if (plan.getForm() != null) {
-            map.put("companionCount", plan.getForm().getCompanionCount());
-            map.put("transportType", plan.getForm().getTransportType());
-        } else {
+        PlanInputForm f = plan.getForm();
+        if (f == null) {
             map.put("companionCount", "2");
             map.put("transportType", "자차");
+            return map;
         }
-
+        /* 작성 중인 플랜을 다시 열 때 1·2단계를 이걸로 채운다. 두 칸만 주면 출발지·예산·숙소·동행이 비어 1단계에서 막힌다 */
+        map.put("companionCount", f.getCompanionCount());
+        map.put("transportType", f.getTransportType());
+        map.put("departure", f.getDeparture());
+        map.put("budget", f.getBudget());
+        map.put("accommodationType", f.getAccommodationType());
+        map.put("accommodationOptions", f.getAccommodationOptions());
+        map.put("companionType", f.getCompanionType());
+        map.put("travelStyles", f.getTravelStyles());
+        map.put("dietaryInfo", f.getDietaryInfo());
+        map.put("scheduleDensity", f.getScheduleDensity());
+        map.put("hasInfant", f.getHasInfant());
+        map.put("hasPet", f.getHasPet());
+        map.put("extraNotes", f.getExtraNotes());
         return map;
     }
 
@@ -299,7 +327,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         TravelPlan savedSnapshot = travelPlanRepository.save(snapshot);
 
         // 원본의 입력폼(14항목)도 복사해 스냅샷을 완전 독립본으로 만든다 (원본 삭제돼도 복제 가능)
-        planInputFormRepository.findByPlanId(originalPlanId).ifPresent(srcForm -> {
+        planInputFormRepository.findFirstByPlanIdOrderByIdDesc(originalPlanId).ifPresent(srcForm -> {
             PlanInputForm copied = copyForm(srcForm, savedSnapshot, user, originalPlanId);
             savedSnapshot.linkInputForm(planInputFormRepository.save(copied));
         });
@@ -358,7 +386,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         // ponytail: 사용자 날짜 폭이 원본 일수와 다르면 routeJson 의 day 수와 어긋날 수 있다. DRAFT 로 두어 사용자가 재편집.
         TravelPlan savedClone = travelPlanRepository.save(clone);
 
-        planInputFormRepository.findByPlanId(snap.getId()).ifPresent(srcForm -> {
+        planInputFormRepository.findFirstByPlanIdOrderByIdDesc(snap.getId()).ifPresent(srcForm -> {
             PlanInputForm copied = copyForm(srcForm, savedClone, user, snap.getScrapedFromPlanId());
             savedClone.linkInputForm(planInputFormRepository.save(copied));
         });
@@ -438,7 +466,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             if (plan.getUser().getId().equals(userId) && "INVITED".equals(plan.getStatus())) {
 
                 // 초대받은 일정폼 (PlanInputForm) 삭제
-                planInputFormRepository.findByPlanId(planId).ifPresent(form -> {
+                planInputFormRepository.findFirstByPlanIdOrderByIdDesc(planId).ifPresent(form -> {
                     planInputFormRepository.delete(form);
                 });
 
@@ -472,7 +500,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             // 확정: 수정 중(draft) 내용이 있으면 확정본으로 승격하고 draft를 비운다.
             plan.confirmDraft();
         } else {
-            plan.setStatus(status);
+            plan.startEditing();
         }
         plan.setUpdatedAt(java.time.LocalDateTime.now());
         travelPlanRepository.save(plan);
@@ -485,7 +513,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
             if (plan.getUser().getId().equals(userId)) {
 
                 // 플랜에 엮인 취향 폼(PlanInputForm)  삭제
-                planInputFormRepository.findByPlanId(tripId).ifPresent(form -> {
+                planInputFormRepository.findFirstByPlanIdOrderByIdDesc(tripId).ifPresent(form -> {
                     planInputFormRepository.delete(form);
                 });
 
