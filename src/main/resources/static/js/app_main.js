@@ -886,7 +886,7 @@ function _handleOAuthCallback() {
 
 /** ─── POST /api/auth/logout ─── */
 async function doLogout() {
-    await api.post('/api/auth/logout', {});
+    await api.post('/api/auth/logout', { refreshToken: Token.getRefresh() });   /* 이 기기 토큰만 지운다 */
     Token.clear();
     _loggedIn = false;
     if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
