@@ -1284,7 +1284,7 @@ public class AiRouteService {
                 parseExtraNotesToPrompt(form.getExtraNotes()),
                 reqStr.toString(),
                 rejectedStr.length() > 0 ? rejectedStr.toString() : "- (없음)",  // ★블랙리스트 자리
-                originalJson,
+                forPrompt(originalJson),
                 plan.getDestination()   // 규칙 0의 ★지역 절대 잠금★ 자리
         );
         // groq 사용할때 지금은 전체 주석처리하고 아래 구문 사용
@@ -1358,6 +1358,30 @@ public class AiRouteService {
      *  지도 화면의 _mpUsable 과 같은 기준을 한 곳에서 지킨다. */
     private boolean usableRoute(String json) {
         return idusw.sbb.checkin.domain.route.RouteJson.usable(json);
+    }
+
+    /* 저장할 때 다시 재는 칸. 도로 좌표(pathCoords)는 구간마다 수백 점이라 프롬프트를 크게 불렸고,
+       모델은 「같은 구조로」 출력하라는 말에 그것까지 베껴 쓰느라 오래 걸렸다.
+       프롬프트에 넣는 JSON 에서만 뺀다 — 결과는 saveAiRouteToDb 가 카카오·TMAP·관광공사·기상청으로 다시 채운다.
+       budgetFit 은 저장 때 다시 만들지 않아서 남긴다. 좌표(lat·lng)도 남긴다 — 재검색이 실패하면 그 값이 쓰인다 */
+    static final java.util.Set<String> REMEASURED = java.util.Set.of(
+            "pathCoords", "legMode", "legMinutes", "legDistance", "legFare", "legTransfers", "legEstimated",
+            "legTotalMinutes", "wx", "wxLabel", "wxSource", "wxRain", "crowd", "crowdLabel", "crowdKey");
+
+    /** 프롬프트용 동선 JSON. 읽지 못하면 받은 그대로 준다. */
+    static String forPrompt(String json) {
+        try {
+            JsonNode root = new ObjectMapper().readTree(json);
+            if (!root.isArray()) return json;
+            for (JsonNode day : root) {
+                if (day instanceof com.fasterxml.jackson.databind.node.ObjectNode d) d.remove(REMEASURED);
+                for (JsonNode p : day.path("places"))
+                    if (p instanceof com.fasterxml.jackson.databind.node.ObjectNode o) o.remove(REMEASURED);
+            }
+            return new ObjectMapper().writeValueAsString(root);
+        } catch (Exception e) {
+            return json;
+        }
     }
 
     // 모든 모델이 실패했을 때, 검증에서 걸린 장소(requests의 place)를 일정에서 제거한다.
@@ -1481,7 +1505,7 @@ public class AiRouteService {
                 form.getTransportType(), form.getAccommodationType(),
                 parseExtraNotesToPrompt(form.getExtraNotes()),
                 targetDay, targetDay,
-                originalJson
+                forPrompt(originalJson)
         );
 
         String updatedJson = "[]";
