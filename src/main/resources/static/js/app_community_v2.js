@@ -2467,13 +2467,11 @@ window._handleWriteImageSelect = function(input) {
     function renderDetailMeta(post) {
         const metaEl = document.getElementById('pr-meta');
         if (!metaEl) return;
-        const writer   = post.writerName || '사용자';
         const dateText = formatDate(post.createdAt);
         const views    = post.viewCount ?? post.views ?? 0;
         const likes    = post.likeCount ?? post.likes ?? 0;
 
         metaEl.innerHTML = `
-            <span>${escapeHtml(writer)}</span>
             ${dateText ? `<span>${escapeHtml(dateText)}</span>` : ''}
             <span>조회 ${escapeHtml(views)}</span>
             <span>좋아요 ${escapeHtml(likes)}</span>

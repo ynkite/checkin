@@ -4226,7 +4226,8 @@ function askYes(title, hint, yes, onYes) {
         };
         document.addEventListener('keydown', onKey);
         ov.classList.add('open');
-        ov.querySelector('[data-a="yes"]').focus();
+        /* 초점은 취소에 둔다. 실행 쪽에 두면 엔터 한 번에 일정이 바뀐다 */
+        ov.querySelector('[data-a="no"]').focus();
     });
 }
 
