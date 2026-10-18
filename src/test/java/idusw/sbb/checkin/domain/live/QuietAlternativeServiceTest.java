@@ -1,6 +1,9 @@
 package idusw.sbb.checkin.domain.live;
 
+import idusw.sbb.checkin.domain.crowd.dto.CrowdForecast;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,5 +37,25 @@ class QuietAlternativeServiceTest {
     void 지금_집중률을_모르면_권하지_않는다() {
         /* 모르는 값과 비교해서 「더 한적하다」고 말할 수 없다 */
         assertThat(QuietAlternativeService.worthMoving(null, 10)).isFalse();
+    }
+
+    private static CrowdForecast f(String name, Double rate) {
+        return new CrowdForecast(name, "20261019", rate, null, null, "TOUR", null, null, null);
+    }
+
+    @Test
+    void 연관_관광지는_한적한_순서_안에_섞인다() {
+        List<CrowdForecast> quiet = List.of(f("A", 10.0), f("B", 40.0));
+        List<CrowdForecast> related = List.of(f("C", 25.0), f("B", 40.0), f("D", null));
+
+        /* 같은 곳은 한 번만, 집중률을 모르는 곳은 빠지고, 순서는 한적한 순 그대로 */
+        assertThat(QuietAlternativeService.mix(quiet, related))
+                .extracting(CrowdForecast::placeName).containsExactly("A", "C", "B");
+    }
+
+    @Test
+    void 연관_관광지가_없으면_원래_목록_그대로다() {
+        List<CrowdForecast> quiet = List.of(f("A", 10.0), f("B", 40.0));
+        assertThat(QuietAlternativeService.mix(quiet, List.of())).isEqualTo(quiet);
     }
 }

@@ -520,6 +520,12 @@ async function _loadBudgetEstimate(tripId) {
           +   '<div>예상 범위</div>'
           +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
           + '</div>')
+        // 신뢰도 = 확정 금액 ÷ 총액(서버가 내림으로 계산). 0 이면 확정이 하나도 없다는 뜻이라 줄을 안 낸다
+        + (d.confidence > 0 ?
+            '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-3);margin-top:4px">'
+          +   '<div>신뢰도 ' + (d.confidence >= 70 ? '높음' : d.confidence >= 40 ? '보통' : '낮음') + '</div>'
+          +   '<div style="font-variant-numeric:tabular-nums">실제 요금으로 확인된 금액 ' + d.confidence + '%</div>'
+          + '</div>' : '')
         + (d.note ? '<div style="font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5">'
           +   esc(d.note) + '</div>' : '');
 
