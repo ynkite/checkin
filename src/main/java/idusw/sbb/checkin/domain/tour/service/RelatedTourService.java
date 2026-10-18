@@ -140,16 +140,12 @@ public class RelatedTourService {
         return rows;
     }
 
-    /* 「경포해변」과 「경포해수욕장」처럼 다른 이름은 못 맞춘다. 틀리게 맞추느니 지역 전체로 넘긴다. */
+    /* 「경포해변」과 「경포해수욕장」처럼 다른 이름은 못 맞춘다. 틀리게 맞추느니 지역 전체로 넘긴다.
+       「SEA LIFE 부산아쿠아리움」↔「부산 아쿠아리움」은 맞추고, 「경주역」↔「경주역사유적지구」는 막는다 —
+       집중률 이름 맞추기와 같은 기준이다. */
     static boolean sameName(String base, String anchor) {
-        if (base.isEmpty() || anchor.isEmpty()) return false;
-        if (base.equals(anchor)) return true;
-        /* 「경주불국사」↔「불국사」처럼 앞뒤에 지역명 정도만 더 붙은 경우. 「경주역」↔「경주역사유적지구」는 막는다 */
-        String longer = base.length() >= anchor.length() ? base : anchor;
-        String shorter = longer == base ? anchor : base;
-        return shorter.length() >= 3
-                && longer.length() - shorter.length() <= 3
-                && (longer.startsWith(shorter) || longer.endsWith(shorter));
+        return Math.min(base.length(), anchor.length()) >= 3
+                && idusw.sbb.checkin.domain.crowd.CrowdService.matches(base, anchor);
     }
 
     private static String norm(String s) {

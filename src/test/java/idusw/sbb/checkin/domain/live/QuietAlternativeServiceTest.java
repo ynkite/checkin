@@ -1,6 +1,8 @@
 package idusw.sbb.checkin.domain.live;
 
 import idusw.sbb.checkin.domain.crowd.dto.CrowdForecast;
+import idusw.sbb.checkin.domain.route.engine.GeoPoint;
+import idusw.sbb.checkin.domain.tour.dto.Spot;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -57,5 +59,22 @@ class QuietAlternativeServiceTest {
     void 연관_관광지가_없으면_원래_목록_그대로다() {
         List<CrowdForecast> quiet = List.of(f("A", 10.0), f("B", 40.0));
         assertThat(QuietAlternativeService.mix(quiet, List.of())).isEqualTo(quiet);
+    }
+
+    private static Spot spot(double lat, double lng) {
+        return new Spot("1", "송정역", lat, lng, null, null, null, null, null);
+    }
+
+    @Test
+    void 이름이_같아도_멀리_떨어진_곳은_버린다() {
+        GeoPoint aquarium = new GeoPoint(35.159, 129.160);              /* 해운대 */
+        assertThat(QuietAlternativeService.isNear(spot(35.137, 126.790), aquarium)).isFalse();  /* 광주 송정역 */
+        assertThat(QuietAlternativeService.isNear(spot(35.178, 129.200), aquarium)).isTrue();   /* 부산 송정역 */
+    }
+
+    @Test
+    void 좌표가_없으면_버리고_기준점을_모르면_거리는_보지_않는다() {
+        assertThat(QuietAlternativeService.isNear(spot(0, 0), null)).isFalse();
+        assertThat(QuietAlternativeService.isNear(spot(35.137, 126.790), null)).isTrue();
     }
 }

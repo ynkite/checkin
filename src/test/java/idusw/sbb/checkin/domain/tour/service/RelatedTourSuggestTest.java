@@ -109,5 +109,14 @@ class RelatedTourSuggestTest {
         assertThat(RelatedTourService.sameName("경주역", "경주역사유적지구")).isFalse();
         assertThat(RelatedTourService.sameName("첨성대", "첨성")).isFalse();
         assertThat(RelatedTourService.sameName("", "불국사")).isFalse();
+        /* 연관 관광지 기준 이름은 「SEA LIFE 부산아쿠아리움」, 일정에는 「부산 아쿠아리움」 */
+        assertThat(RelatedTourService.sameName("SEALIFE부산아쿠아리움", "부산아쿠아리움")).isTrue();
+    }
+
+    @Test
+    void 주소에_두_번_붙은_광역시를_뗀다() {
+        assertThat(KorTourService.address("부산광역시 해운대구광역시 석대동 26")).isEqualTo("부산광역시 해운대구 석대동 26");
+        assertThat(KorTourService.address("대구광역시 중구 동성로")).isEqualTo("대구광역시 중구 동성로");
+        assertThat(KorTourService.address("울산광역시 울주군광역시 서생면")).isEqualTo("울산광역시 울주군 서생면");
     }
 }

@@ -104,13 +104,18 @@ public class KorTourService {
                 text(n, "sigungucode"),
                 parseInteger(text(n, "contenttypeid")),
                 blankToNull(text(n, "firstimage")),     // 빈 문자열 → null (빈 이미지 박스 방지)
-                blankToNull(text(n, "addr1"))
+                blankToNull(address(text(n, "addr1")))
         );
     }
 
     private static String text(JsonNode n, String field) {
         JsonNode v = n.path(field);
         return v.isMissingNode() ? "" : v.asText();
+    }
+
+    /** 관광공사 원본에 「부산광역시 해운대구광역시 석대동 26」처럼 시군구 뒤에 「광역시」가 한 번 더 붙은 주소가 있다 */
+    static String address(String s) {
+        return s.replaceAll("(?<=\\s)([가-힣]+[구군])광역시", "$1");
     }
 
     private static String blankToNull(String s) {
