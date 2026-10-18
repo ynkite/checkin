@@ -143,8 +143,7 @@ public class CrowdController {
         out.put("headcount", null);
         out.put("note", f.rate() == null || !"TOUR".equals(f.source())
                 ? (f.note() == null ? "혼잡도 자료가 없습니다." : f.note())
-                : (sk.ready() ? "지금 값을 못 받아 오늘 예측으로 답합니다."
-                              : "오늘 예측값입니다. 실시간 인원은 아직 연동 전입니다."));
+                : (sk.ready() ? "지금 값을 못 받아 오늘 예측으로 답합니다." : "오늘 예측값입니다."));
         return ResponseEntity.ok(ApiResponse.success(out));
     }
 

@@ -38,7 +38,7 @@ public class SafetySeed {
     private List<Spot> spots = List.of();
 
     /** 이 표본이 어디서 온 것인지 — 응답의 alertSource 에 그대로 쓴다. */
-    private String source = "연동 전";
+    private String source = "";   // 표본이 없으면 출처도 없다. 「연동 전」을 화면에 쓰지 않는다
 
     @PostConstruct
     void load() {
@@ -62,8 +62,7 @@ public class SafetySeed {
                         Math.max(20, n.path("radiusMeters").asInt(40))));
             }
             this.spots = List.copyOf(out);
-            this.source = out.isEmpty() ? "연동 전"
-                    : "표본 데이터 — 부산 해운대·센텀·광안리 일대 학교 앞만. 공공데이터 연동 전입니다";
+            this.source = out.isEmpty() ? "" : "어린이보호구역 표본(부산 해운대·센텀·광안리 학교 앞)";
             log.info("[navi] 안전 지점 표본 {}곳 읽었습니다", out.size());
         } catch (Exception e) {
             log.warn("[navi] 안전 지점 표본을 못 읽었습니다: {}", e.getMessage());

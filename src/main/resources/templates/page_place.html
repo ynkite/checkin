@@ -850,8 +850,10 @@
                           </div>
                           <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
                         </div>`).join('');
+            } else if (!membersRes.success) {
+                listEl.innerHTML = '<div style="font-size:13px;color:var(--text3);">함께하는 사람을 불러오지 못했습니다.</div>';
             } else {
-                // 연동 전 가짜 데이터
+                // 받은 목록이 비었다 — 아직 아무도 초대하지 않았으니 여는 사람(소유자)만 있다
                 const me = (typeof _currentUser !== 'undefined' && _currentUser) ? _currentUser.name : '나';
                 listEl.innerHTML = `
                       <div style="display:flex; align-items:center; justify-content:space-between;">
