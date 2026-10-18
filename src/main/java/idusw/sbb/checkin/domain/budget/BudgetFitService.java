@@ -22,7 +22,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.ToLongFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,6 +44,7 @@ import java.util.regex.Pattern;
  *      요금은 공개된 1실 요금 × 필요한 객실 수(인원 ÷ 기준인원 올림)다. 공개 요금이 없으면
  *      관광공사 숙소 분류(호텔·펜션·모텔·게스트하우스 등)별 지역 평균으로 매기고 「추정」이라 적는다.
  *   5) 그래도 넘으면 화면에 「예산보다 N원 많아요」와 더 줄일 곳을 한 줄로 낸다
+ * 예산보다 10% 넘게 적으면 일정은 안 바꾸고 「N원 여유」와 근처 관광공사 숙소 중 올려도 되는 곳을 한 줄로 낸다.
  *
  * 고른 숙박 옵션 · 기준인원을 넘는 인원(BudgetEstimator.extras)은 일정 줄에 없지만 총액에 든다.
  * 그만큼 예산에서 먼저 떼고 일정을 맞춘다 — 가계부 「숙박」, 숙박비 근거 카드와 같은 계산이다.
@@ -70,6 +74,11 @@ public class BudgetFitService {
     private final KorTourService korTourService;
     private final BudgetEstimator budgetEstimator;
 
+    /** 근처 숙소 조회 결과 — 여행 번호·일정이 같으면 다시 묻지 않는다 (화면이 여러 번 부른다) */
+    private final Map<String, Probe> probes = new ConcurrentHashMap<>();
+
+    record Probe(List<Stay> stays, BudgetFitView.LodgingTried tried) {}
+
     /** 여행에서 필요한 값만 떼어 낸 것. */
     record Snap(long limit, String json, LocalDate start, int people, List<BudgetEstimate.Item> extras) {
         long extra() { return extras.stream().mapToLong(BudgetEstimate.Item::amount).sum(); }
@@ -93,7 +102,7 @@ public class BudgetFitService {
             long room = s.limit() - s.extra();     // 옵션 몫을 뗀, 일정이 쓸 수 있는 돈
             Fit f = fit(s.json(), room, mealPerPerson);
             if (f.after() > room)
-                f = best(s.json(), room, mealPerPerson, nearbyStays(s.json(), s.start(), s.people()));
+                f = best(s.json(), room, mealPerPerson, probe(s.json(), s.start(), s.people()).stays());
             if (f.changed()) aiRouteService.saveAiRouteToDb(tripId, f.json());
         } catch (Exception e) {
             log.warn("[예산 맞춤] tripId={} 조정 못 함, 원래 일정 유지: {}", tripId, e.getMessage());
@@ -115,12 +124,19 @@ public class BudgetFitService {
             items.addAll(s.extras());
             BudgetLimitCheck c = limitService.check(after, items, limit);
             long before = meta.has("before") ? meta.path("before").asLong() + s.extra() : after;
+            String line = overLine(after, limit, c.biggestLabel(), c.biggestAmount());
+            BudgetFitView.LodgingTried tried = null;
+            if (limit > 0 && (after > limit || after < limit * 0.9)) {
+                Probe p = cachedProbe(tripId, s);
+                tried = p.tried();
+                if (line == null) line = spareLine(days, limit - after, p.stays());
+            }
             return new BudgetFitView(c.hasLimit(), limit, before, after,
-                    percent(after, limit), changes, overLine(after, limit, c.biggestLabel(), c.biggestAmount()),
-                    c.biggestLabel(), c.biggestAmount(), false);
+                    percent(after, limit), changes, line,
+                    c.biggestLabel(), c.biggestAmount(), false, s.extra(), tried);
         } catch (Exception e) {
             log.warn("[예산 맞춤] tripId={} 일정을 못 읽음: {}", tripId, e.getMessage());
-            return new BudgetFitView(limit > 0, limit, 0, 0, 0, List.of(), null, null, 0, true);
+            return new BudgetFitView(limit > 0, limit, 0, 0, 0, List.of(), null, null, 0, true, 0, null);
         }
     }
 
@@ -216,6 +232,32 @@ public class BudgetFitService {
         String line = "예산보다 " + won(after - limit) + " 많아요.";
         return biggestLabel == null ? line
                 : line + " " + biggestLabel + "(" + won(biggestAmount) + ")을 바꾸거나 빼면 더 줄일 수 있어요.";
+    }
+
+    /**
+     * 예산이 한참 남으면 한 줄 — 얼마 남는지와 쓸 곳. 근처 관광공사 숙소 중 지금보다 비싸도
+     * 남는 돈 안에 드는 가장 비싼 곳을 권한다. 없으면 일정에 더 넣을 수 있다고만 적는다.
+     */
+    static String spareLine(JsonNode days, long spare, List<Stay> stays) {
+        if (spare <= 0) return null;
+        String line = "예산보다 " + won(spare) + " 여유가 있어요.";
+        JsonNode old = priciestStay(days);
+        if (old != null) {
+            long now = amount(old.path("sub").asText(""));
+            int nights = 0;
+            for (JsonNode day : days)
+                for (JsonNode p : day.path("places"))
+                    if ("stay".equals(p.path("type").asText()) && old.path("name").asText().equals(p.path("name").asText())
+                            && amount(p.path("sub").asText("")) > 0) nights++;
+            Stay up = null;
+            for (Stay st : stays)
+                if (st.price() > now && (st.price() - now) * Math.max(1, nights) <= spare
+                        && (up == null || st.price() > up.price())) up = st;
+            if (up != null)
+                return line + " 근처 " + up.name() + "(1박 " + (up.estimated() ? "약 " : "") + won(up.price())
+                        + ")로 숙소를 올려도 예산 안이에요.";
+        }
+        return line + " 체험이나 식사를 하나 더 넣어도 예산 안이에요.";
     }
 
     /** 장소 sub · 이동 구간 금액의 합. 가계부 예상 비용과 같은 기준이다. */
@@ -375,34 +417,63 @@ public class BudgetFitService {
         }
     }
 
+    private Probe cachedProbe(Long tripId, Snap s) {
+        String key = tripId + ":" + s.json().hashCode() + ":" + s.people();
+        Probe p = probes.get(key);
+        if (p != null) return p;
+        p = probe(s.json(), s.start(), s.people());
+        if (p.tried().note() == null || !p.tried().note().startsWith("조회 실패")) probes.put(key, p);
+        return p;
+    }
+
     /**
-     * 가장 비싼 숙소 반경 안의 관광공사 숙소 중 요금을 매길 수 있고 현실적인 곳. 실패하면 빈 목록.
+     * 가장 비싼 숙소 반경 안의 관광공사 숙소 중 요금을 매길 수 있고 현실적인 곳과, 왜 떨어졌는지.
      * 공개 요금이 먼저고, 없으면 그 숙소 분류의 지역 평균(없으면 지역 전체 평균)으로 추정한다.
+     * 지금 숙소보다 비싼 곳도 목록에 남긴다 — 줄일 때는 swapStay 가 거르고, 여유 제안이 쓴다.
      */
-    private List<Stay> nearbyStays(String json, LocalDate start, int people) {
+    Probe probe(String json, LocalDate start, int people) {
         List<Stay> out = new ArrayList<>();
+        Map<String, Integer> drop = new LinkedHashMap<>();
+        int found = 0;
+        String note = null;
         try {
             JsonNode old = priciestStay(OM.readTree(json));
-            if (old == null || start == null) return out;
-            double lat = old.path("lat").asDouble(), lng = old.path("lng").asDouble();
-            if (lat == 0 || lng == 0) return out;
-
-            int asked = 0;
-            for (KorTourService.Lodging l : korTourService.nearbyLodging(lat, lng, STAY_RADIUS_M, STAY_LOOKUPS * 2)) {
-                Spot sp = l.spot();
-                if (asked >= STAY_LOOKUPS) break;
-                if (sp.lat() == 0 || sp.lon() == 0 || sp.name().equals(old.path("name").asText())) continue;
-                asked++;
-                long[] room = lodgingRateService.publicRoom(sp.id(), start);
-                boolean guess = room[0] <= 0;
-                long fee = guess ? average(sp.areaCode(), l.cat3(), start) : room[0];
-                Stay s = partyStay(sp.name(), fee, (int) room[1], people, sp.lat(), sp.lon(), guess);
-                if (s != null) out.add(s);
+            double lat = old == null ? 0 : old.path("lat").asDouble(), lng = old == null ? 0 : old.path("lng").asDouble();
+            if (old == null) note = "일정에 숙소가 없음";
+            else if (start == null) note = "여행 시작일이 없음";
+            else if (lat == 0 || lng == 0) note = "지금 숙소 좌표가 없음";
+            else {
+                long now = amount(old.path("sub").asText(""));
+                List<KorTourService.Lodging> list = korTourService.nearbyLodging(lat, lng, STAY_RADIUS_M, STAY_LOOKUPS * 2);
+                found = list.size();
+                if (found == 0) note = "반경 " + STAY_RADIUS_M / 1000 + "km 안 관광공사 숙소 0곳";
+                int asked = 0;
+                for (KorTourService.Lodging l : list) {
+                    Spot sp = l.spot();
+                    String why = sp.lat() == 0 || sp.lon() == 0 ? "좌표 없음"
+                            : sp.name().equals(old.path("name").asText()) ? "지금 숙소"
+                            : asked >= STAY_LOOKUPS ? "요금 조회 상한(" + STAY_LOOKUPS + "곳) 넘음" : null;
+                    if (why == null) {
+                        asked++;
+                        long[] room = lodgingRateService.publicRoom(sp.id(), start);
+                        boolean guess = room[0] <= 0;
+                        long fee = guess ? average(sp.areaCode(), l.cat3(), start) : room[0];
+                        Stay s = partyStay(sp.name(), fee, (int) room[1], people, sp.lat(), sp.lon(), guess);
+                        if (fee <= 0) why = "요금 못 매김";
+                        else if (s == null) why = "1인 1박 " + won(MIN_PER_PERSON) + " 미만";
+                        else {
+                            out.add(s);
+                            if (s.price() >= now) why = "지금 숙소(" + won(now) + ")보다 비쌈";
+                        }
+                    }
+                    if (why != null) drop.merge(why, 1, Integer::sum);
+                }
             }
         } catch (Exception e) {
             log.warn("[예산 맞춤] 근처 숙소 조회 실패, 숙소 유지: {}", e.getMessage());
+            note = "조회 실패: " + e.getMessage();
         }
-        return out;
+        return new Probe(out, new BudgetFitView.LodgingTried(note, found, out.size(), drop));
     }
 
     /** 분류별 지역 평균 1실 1박. 없으면 지역 전체 평균, 그것도 없으면 0 (후보에서 빠진다) */

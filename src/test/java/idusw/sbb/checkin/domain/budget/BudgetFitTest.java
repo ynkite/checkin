@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /** 예산 맞춤 — 넘는 만큼만 줄이고, 못 줄이거나 실패하면 원래 일정을 그대로 둔다. */
@@ -186,5 +186,58 @@ class BudgetFitTest {
         assertTrue(v.fallback(), "화면은 가계부 총액으로 % 만 낸다");
         assertTrue(v.changes().isEmpty());
         assertThrows(Exception.class, () -> BudgetFitService.fit("깨진 JSON", 100_000, 12_000));
+    }
+
+    // 숙소 100,000 × 1박, 서귀포
+    private static final String STAY_ROUTE = """
+        [{"day":1,"places":[
+           {"type":"tour","name":"쇠소깍","sub":"관광지 · ₩0"},
+           {"type":"stay","name":"바다풍경펜션","sub":"숙소 · ₩100,000","lat":33.25,"lng":126.62}]}]
+        """;
+
+    @Test
+    void 예산이_한참_남으면_여유와_올려도_되는_근처_숙소를_권한다() throws Exception {
+        JsonNode days = OM.readTree(STAY_ROUTE);
+        String line = BudgetFitService.spareLine(days, 300_000, List.of(
+                new BudgetFitService.Stay("싼 민박", 60_000, 1, 33.2, 126.6),
+                new BudgetFitService.Stay("오션호텔", 250_000, 1, 33.2, 126.6, true),
+                new BudgetFitService.Stay("너무 비싼 리조트", 500_000, 1, 33.2, 126.6)));
+        assertEquals("예산보다 300,000원 여유가 있어요. 근처 오션호텔(1박 약 250,000원)로 숙소를 올려도 예산 안이에요.", line);
+        assertTrue(BudgetFitService.spareLine(days, 10_000, List.of()).endsWith("하나 더 넣어도 예산 안이에요."));
+        assertNull(BudgetFitService.spareLine(days, 0, List.of()));
+    }
+
+    @Test
+    void 숙소_바꾸기_진단은_후보_수와_떨어진_이유를_센다() {
+        var kor = mock(idusw.sbb.checkin.domain.tour.service.KorTourService.class);
+        var rate = mock(idusw.sbb.checkin.domain.tour.service.LodgingRateService.class);
+        java.util.function.BiFunction<String, String, idusw.sbb.checkin.domain.tour.service.KorTourService.Lodging> l =
+                (id, name) -> new idusw.sbb.checkin.domain.tour.service.KorTourService.Lodging(
+                        new idusw.sbb.checkin.domain.tour.dto.Spot(id, name, 33.25, 126.62, "39", "4", 32, null, null), "B02010700");
+        when(kor.nearbyLodging(anyDouble(), anyDouble(), anyInt(), anyInt())).thenReturn(List.of(
+                l.apply("1", "바다풍경펜션"), l.apply("2", "비싼 호텔"), l.apply("3", "싼 민박"), l.apply("4", "요금 없는 곳")));
+        when(rate.publicRoom(eq("2"), any())).thenReturn(new long[]{200_000, 4});
+        when(rate.publicRoom(eq("3"), any())).thenReturn(new long[]{70_000, 4});
+        when(rate.publicRoom(eq("4"), any())).thenReturn(new long[]{0, 0});
+        when(rate.regional(any(), any(), any())).thenReturn(idusw.sbb.checkin.domain.tour.dto.LodgingRate.none("비수기 주중"));
+        when(rate.regional(any(), any())).thenReturn(idusw.sbb.checkin.domain.tour.dto.LodgingRate.none("비수기 주중"));
+
+        BudgetFitService svc = new BudgetFitService(null, null, null, rate, null, kor, null);
+        var p = svc.probe(STAY_ROUTE, java.time.LocalDate.of(2026, 10, 30), 4);
+
+        assertEquals(4, p.tried().found());
+        assertEquals(2, p.tried().priced());
+        assertEquals(1, p.tried().dropped().get("지금 숙소"));
+        assertEquals(1, p.tried().dropped().get("요금 못 매김"));
+        assertEquals(1, p.tried().dropped().get("지금 숙소(100,000원)보다 비쌈"));
+        assertNull(p.tried().note());
+    }
+
+    @Test
+    void 숙소_좌표가_없으면_진단에_그렇게_적는다() {
+        BudgetFitService svc = new BudgetFitService(null, null, null, null, null, null, null);
+        var p = svc.probe(ROUTE, java.time.LocalDate.of(2026, 10, 30), 2);
+        assertEquals("지금 숙소 좌표가 없음", p.tried().note());
+        assertTrue(p.stays().isEmpty());
     }
 }
