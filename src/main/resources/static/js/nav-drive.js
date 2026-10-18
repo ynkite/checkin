@@ -35,6 +35,7 @@
   var OVER_KMH = 7;                 // 제한속도를 이만큼 넘으면 알린다
 
   var st = null;                    // 주행 상태
+  var lastPos = null;               // 접었다 다시 열 때 이어 갈 자리
 
   /* ══ 순수 기하 — 자체검증 대상 ══════════════════════════ */
   function haversine(aLat, aLng, bLat, bLng) {
@@ -151,6 +152,7 @@
       paintSpeed(); nvOnPos(); loadRoute();
       st.simTimer = setTimeout(simTick, 1500);
     };
+    if (st.from) { go(st.from.lat, st.from.lng); return; }   /* 다시 열 때는 멈춘 자리에서 */
     navigator.geolocation.getCurrentPosition(
       function (p) { go(p.coords.latitude, p.coords.longitude); },
       function () { go(st.dest.lat + 0.018, st.dest.lng); },
@@ -713,14 +715,14 @@
     /* 실시간 화면의 갈래를 그대로 부른다 — 주행 중에도 동선을 바꿀 수 있다는 것이
        이 제품의 주장이다. 안내 화면에서 못 하면 주장이 아니라 말뿐이다 */
     on('navSwap',  function () { if (window.rlDo) window.rlDo('swap');  else if (window.go) window.go('map'); });
-    on('navQuiet', function () { if (window.rlDo) window.rlDo('quiet'); else if (window.go) window.go('map'); });
+    on('navQuiet', nvQuiet);
     on('navSay',   function () {
       if (window.rlVoiceToggle) window.rlVoiceToggle();
       else if (window.startVoice) window.startVoice();
     });
     on('navRecenter', function () { nvFollowOn(); });
     on('navSugSwap',  function () { nvSugHide(); if (window.rlDo) window.rlDo('swap'); });
-    on('navSugQuiet', function () { nvSugHide(); if (window.rlDo) window.rlDo('quiet'); });
+    on('navSugQuiet', function () { nvSugHide(); nvQuiet(); });
     on('navSugNo',    function () { nvSugHide(); });
     on('navV2',    function () { nvMode('2d'); });
     on('navV3',    function () { nvMode('3d'); });
@@ -775,6 +777,15 @@
   var SUG_EVERY = 90000;      /* 이만큼마다 한 번 살핀다 */
   var SUG_BUSY = 70;          /* 집중률이 이 이상이면 붐빈다고 본다 */
 
+  /* 다른 곳으로 — 후보는 실시간 화면에 그려진다. 안내가 덮고 있으면 눌러도 아무 일 없는 것처럼 보인다.
+     안내를 잠시 접고 후보를 보여 준다. 고르거나 「이대로 가기」를 누르면 실시간 화면이
+     window.resumeDrive 로 안내를 다시 연다. 고르는 것은 여전히 사람이다 */
+  function nvQuiet() {
+    if (!window.rlDo) { if (window.go) window.go('map'); return; }
+    var dest = st && st.dest;
+    closeDrive();
+    window.rlDo('quiet', dest);
+  }
   function nvSugHide() {
     var b = document.getElementById('navSug');
     if (b) b.hidden = true;
@@ -1178,12 +1189,13 @@
       '시작', function () { beginDrive(dest); });
   }
 
-  function beginDrive(dest) {
+  function beginDrive(dest, from) {
     wakeAudio();   /* 아이폰은 누른 그 순간에 한 번 울려 둬야 뒤 안내가 나온다 */
 
     st = { dest: dest, pos: null, route: null, acc: [], offStreak: 0, guideIdx: 0,
            spoken: {}, alerted: {}, overSpoken: {}, wake: null, watchId: null,
-           meter: 0, speedKmh: 0, heading: null, arrived: false, pushed: false, clock: null };
+           meter: 0, speedKmh: 0, heading: null, arrived: false, pushed: false, clock: null,
+           from: from || null };
     ensureOverlay();
     pushHistory();
     window.addEventListener('popstate', onPop);
@@ -1215,6 +1227,7 @@
   function stopDrive(fromPop) {
     if (!st) return;
     var pushed = st.pushed;
+    lastPos = st.pos;
     if (st.sugTimer) { clearInterval(st.sugTimer); st.sugTimer = null; }
     if (st.watchId != null) navigator.geolocation.clearWatch(st.watchId);
     if (st.simTimer) clearTimeout(st.simTimer);
@@ -1235,6 +1248,12 @@
 
   window.startDrive = startDrive;
   window.stopDrive = function () { stopDrive(); };
+  /* 이미 시작을 허락받은 안내를 다시 연다 — 위치 고지를 또 묻지 않는다 */
+  window.resumeDrive = function (dest) {
+    if (!dest || dest.lat == null || dest.lng == null) return;
+    if (st) stopDrive(true);
+    beginDrive(dest, lastPos);
+  };
 
   /* ══ 자체검증 ══════════════════════════════════════════ */
   window._navCheck = function () {
