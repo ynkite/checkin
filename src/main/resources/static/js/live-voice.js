@@ -214,7 +214,7 @@
       if (!st.sessionId) throw new Error('세션 없음');
 
       var p = window.rlPosition && window.rlPosition();
-      var body = { sessionId: st.sessionId, message: cmd };
+      var body = { sessionId: st.sessionId, message: cmd, brief: true };
       if (p) { body.lat = p[0]; body.lng = p[1]; }
 
       var r = await fetch('/api/chat/message', {

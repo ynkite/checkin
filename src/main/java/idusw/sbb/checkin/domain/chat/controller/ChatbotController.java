@@ -2,6 +2,7 @@ package idusw.sbb.checkin.domain.chat.controller;
 
 import idusw.sbb.checkin.domain.chat.dto.ChatMessageDto;
 import idusw.sbb.checkin.domain.chat.service.ChatbotService;
+import idusw.sbb.checkin.domain.chat.service.ReplyText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -53,10 +54,10 @@ public class ChatbotController {
                 Boolean.TRUE.equals(request.getBrief())
         );
 
-        // reply 는 주행 화면 음성 안내가 읽는 이름이다. response 와 같은 값이다
+        // reply 는 음성 안내가 읽는다. 화면이 읽는 태그를 뗀 것 말고는 response 와 같다
         return ResponseEntity.ok(Map.of(
                 "success", true,
-                "data", Map.of("response", responseMessage, "reply", responseMessage)
+                "data", Map.of("response", responseMessage, "reply", ReplyText.untag(responseMessage))
         ));
     }
 }

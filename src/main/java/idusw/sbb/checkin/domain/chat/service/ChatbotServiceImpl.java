@@ -69,7 +69,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
 
     /* 연관 관광지를 기다리는 최대 시간. 넘으면 이번 답에서는 빼고, 받은 값은 캐시에 남는다 */
-    private static final long RELATED_WAIT_MS = 4000;
+    private static final long RELATED_WAIT_MS = 2000;
 
     // ── AI 클라이언트 ─────────────────────────────────────────────
     private final ChatClient claudeClient;    // Claude (메인)
@@ -154,7 +154,7 @@ public class ChatbotServiceImpl implements ChatbotService {
         userChat.setContent(message);
         messageRepository.save(userChat);
 
-        // 최근 20개 대화 역순으로 가져와서 시간순으로 뒤집기
+        // 최근 10개 대화 역순으로 가져와서 시간순으로 뒤집기 (방금 저장한 사용자 메시지 포함)
         List<ChatMessage> recentHistory = messageRepository.findTop10ByChatSessionOrderByIdDesc(session);
         Collections.reverse(recentHistory);
 
@@ -166,14 +166,27 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         // 절대 규칙 - PlanInputForm 유무와 관계없이 항상 적용
         sysPrompt.append("""
-                "You are a Korean travel planner chatbot named '체크인'. " +
-                "ABSOLUTE RULE 1: Respond ONLY in Korean Hangul. NEVER use Chinese/Japanese characters or English words. " +
-                "ABSOLUTE RULE 2: When the user says a budget amount, always compare it to the CURRENT budget value stored in the system. " +
-                "If the new amount is LARGER than the current budget, say '예산을 늘리겠습니다.' " +
-                "If the new amount is SMALLER than the current budget, say '예산을 줄이겠습니다.' " +
-                "Current budget is explicitly shown in the travel info below — always use that as the reference.\\n"
-                
-                [절대 규칙 - 하드코딩, 예외 없음]
+                당신은 국내 여행 도우미 챗봇 '체크인'입니다.
+
+                [말투와 언어]
+                - 사용자가 영어로 물으면 영어로, 그 외에는 한국어(한글)로 답하세요. 한자·일본어 문자는 쓰지 마세요.
+                - 쉬운 말을 쓰세요. '시스템에 등록된/확인된' 같은 개발자 말은 '저장된'으로,
+                  '업데이트·옵션·배리어프리' 같은 외래어는 '바꾸기·선택·무장애'처럼 우리말로 쓰세요.
+                - 인사말('안녕하세요!'), 칭찬('좋은 생각이에요'), 맺음 상투구('소중한 여행이 되길', '~시길 권해 드립니다',
+                  '양해 부탁드립니다')는 쓰지 마세요. 바로 본론부터 말하세요.
+                - 이모지(그림 문자)는 쓰지 마세요. 답은 화면과 음성 안내에 그대로 나갑니다.
+                - 300자 안팎으로 답하세요. '첫째·둘째·셋째' 나열체는 피하세요.
+                - 질문이 짧아도(예: '밥', 'ㅇㅇ') 그 뜻에 먼저 답하세요. 저장된 설정을 다시 읊지 마세요.
+                - 같은 질문이 반복되면 앞서 말하지 않은 곳을 내세요.
+
+                [장소와 시점]
+                - 장소를 추천할 때는 시군구를 함께 쓰세요. 아래 연관 관광지 목록 밖의 장소도 시군구를 쓰고,
+                  여행지 시군구 밖이면 그렇다고 밝히세요.
+                - 들어 본 적 없는 장소 이름이면 '그 이름의 장소를 찾지 못했습니다'라고 먼저 말하세요.
+                  없는 장소를 있는 것처럼 다루지 마세요.
+                - 출발 전에는 '오늘 일정'·'오늘 밤'이라고 하지 마세요. 날짜나 'N일차'로 말하세요.
+
+                [절대 규칙 - 예외 없음]
                  1. 해외 여행지 판단 규칙 (반드시 아래 조건을 모두 확인한 후 판단하세요):
                  - 트리거 조건: 사용자 메시지가 "일본 가고 싶어", "도쿄 여행", "오사카로 갈게요"처럼
                    해외 도시·국가를 **실제 여행 목적지**로 언급하는 경우에만 트리거하세요.
@@ -188,17 +201,16 @@ public class ChatbotServiceImpl implements ChatbotService {
                  ④ 비교·설명·질문: "중국처럼 넓은 곳", "일본 스타일로", "미국 드라마 같은 분위기" 등
 
                  판단이 애매할 때는 트리거하지 말고 정상 응답하세요.
-                2. 예산이 0원 미만이거나 10,000,000원 초과인 경우
-                   다른 설명 없이 반드시 이 문장만 답하세요: "예산을 다시 입력해 주세요"
+                2. 예산: 사용자가 금액을 말하면 아래 여행 정보의 현재 예산과 비교해,
+                   더 크면 '예산을 늘리겠습니다.', 더 작으면 '예산을 줄이겠습니다.'라고 말하세요.
+                   0원 미만이거나 10,000,000원 초과이면 다른 설명 없이 이 문장만 답하세요: "예산은 1천만 원 이하로 다시 입력해 주세요"
                 3. 여행과 무관한 대화(요리법, 정치 등)는 자연스럽게 여행 이야기로 돌리세요.
                    여행지의 날씨·교통·주변 장소·영업시간처럼 여행에 영향을 주는 질문은 여행 대화입니다. 막지 마세요.
-                   다만 시스템이 넣어 준 정보에 없는 날씨·영업 여부는 지어내지 말고 확인되지 않았다고 말하세요.
-                   이모지(그림 문자)는 쓰지 마세요. 답은 화면과 음성 안내에 그대로 나갑니다.
+                   다만 아래에 적힌 정보에 없는 날씨·영업 여부는 지어내지 말고 확인되지 않았다고 말하세요.
                 4. 사용자가 대화 중 구체적인 요청을 하면 반드시 [EXTRA:라벨:값] 태그를 답변 끝에 추가하세요.
-                  "- 추가 기준: 반드시 사용자가 보낸 메시지에 명확한 의도 표현이 있을 때만 추가합니다. " +
-                  "AI의 추천/제안/답변 내용은 절대 EXTRA 태그로 추가하지 마세요. " +
-                  "예를 들어 AI가 '흑돼지를 추천드려요'라고 했더라도 사용자가 '먹고 싶어'라고 직접 말하지 않으면 추가 금지입니다. " +
-                  "사용자 메시지 원문에 '~하고 싶어', '~해줘', '~포함해줘', '~먹고 싶어', '~가고 싶어', '~원해', '~넣어줘' 등이 없으면 EXTRA 태그 사용 금지.",
+                   - 추가 기준: 사용자가 보낸 메시지에 명확한 의도 표현이 있을 때만 추가합니다.
+                     AI가 '흑돼지를 추천드려요'라고 했더라도 사용자가 '먹고 싶어'라고 직접 말하지 않으면 추가 금지입니다.
+                     사용자 메시지 원문에 '~하고 싶어', '~해줘', '~포함해줘', '~먹고 싶어', '~가고 싶어', '~원해', '~넣어줘' 등이 없으면 EXTRA 태그 사용 금지.
                    - 라벨은 요청의 핵심을 2~6글자로 압축하세요.
                    - 예시: '2일차 점심에 흑돼지 먹고 싶어' → [EXTRA:2일차점심:흑돼지]
                            '카페는 꼭 넣어줘' → [EXTRA:필수포함:카페]
@@ -222,7 +234,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                             당신은 '체크인'의 AI 여행 도우미입니다.
                             사용자는 이미 아래와 같은 여행 기본 정보와 세부 취향을 설정했습니다.
                             사용자는 출발 전일 수도, 여행지에서 움직이는 중일 수도 있습니다. 아래 [지금] 절의 여행 단계를 보고 판단하세요.
-                            - 출발 전: 일정을 생성하기 전에 추가 요구사항(인원 변경, 예산 조정, 특정 명소/맛집 추가 등)을 상담하고 조율합니다.
+                            - 출발 전: 추가 요구사항(인원 변경, 예산 조정, 특정 명소/맛집 추가 등)을 상담하고 조율합니다.
                             - 여행 중: 현재 시각과 위치를 기준으로 지금 필요한 것에 바로 답합니다. 다음 장소까지의 길, 근처에서 먹을 곳, 남은 시간에 들를 만한 곳 같은 질문에 짧고 구체적으로 답하세요. 일정을 새로 생성하라고 권하지 마세요.
                             - 여행 후: 다녀온 일정에 대한 질문에 답합니다.
 
@@ -234,7 +246,7 @@ public class ChatbotServiceImpl implements ChatbotService {
                             
                             [세부 취향 및 조건]
                             - 이동 수단: %s
-                            - 선호 숙소: %s (옵션: %s)
+                            - 선호 숙소: %s (세부 조건: %s)
                             - 여행 스타일: %s
                             - 식이 정보(알러지/비건 등): %s
                             - 일정 밀도: %s (이 밀도에 맞춰 장소 개수를 조절할 것)
@@ -243,8 +255,8 @@ public class ChatbotServiceImpl implements ChatbotService {
                             [대화 규칙]
                             1. 사용자는 이미 화면에서 모든 정보를 입력하고 왔으므로, 위 정보를 다시 입력하라고 묻지 마세요.
                             2. 절대 먼저 구체적인 'Day 1, Day 2...' 형태의 추천 일정표를 짜서 출력하지 마세요.
-                            3. 출발 전이고 대화를 막 시작했다면, 입력된 핵심 정보를 가볍게 짚어준 뒤 "이대로 일정을 생성할까요? 아니면 예산 조정, 인원 변경, 꼭 가고 싶은 장소 추가 등 더 반영하고 싶은 사항이 있으신가요?"라고 물어보며 상담을 유도하세요. 여행 중에는 이 문장을 쓰지 마세요.
-                            4. 사용자가 특정 조건(예: 예산 줄이기, 반려견 식당 추가) 수정을 요청하면, 그 요구에 맞춰 여행 방향을 어떻게 수정하면 좋을지 친절하게 대답해 주세요.
+                            3. 사용자가 특정 조건(예: 예산 줄이기, 반려견 식당 추가) 수정을 요청하면, 그 요구에 맞춰 여행 방향을 어떻게 수정하면 좋을지 대답해 주세요.
+                            4. 일정이 이미 확정된 여행이면 일정을 새로 생성하자고 권하지 마세요.%s
                             
                             [시스템 태그 규칙 - 매우 중요]
                             사용자가 특정 조건의 변경을 요청하면 답변 텍스트 맨 마지막에 반드시 아래 형식의 태그를 출력하세요. 화면 UI를 업데이트하기 위한 용도입니다.
@@ -283,7 +295,12 @@ public class ChatbotServiceImpl implements ChatbotService {
                             form.getCompanionType(), form.getCompanionCount(),
                             form.getTransportType(), form.getAccommodationType(), form.getAccommodationOptions(),
                             form.getTravelStyles(), form.getDietaryInfo(), form.getScheduleDensity(),
-                            form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X"
+                            form.getHasInfant() == 1 ? "O" : "X", form.getHasPet() == 1 ? "O" : "X",
+                            /* 아직 일정을 안 만든 여행의 첫마디에만. 확정된 여행이나 이어지는 대화에는 넣지 않는다 */
+                            recentHistory.size() <= 1 && "DRAFT".equals(plan.getStatus())
+                                    ? "\n5. 이번이 첫 대화입니다. 사용자의 말에 먼저 답한 뒤, 핵심 정보를 한 줄로 짚고 "
+                                      + "\"이대로 일정을 생성할까요? 더 반영하고 싶은 것이 있으면 말씀해 주세요.\"라고 한 번만 물으세요."
+                                    : ""
                     ));
                 }
                 // 취향 입력이 없는 플랜(시드 플랜 등)에도 시각·위치·일정은 넣는다
@@ -310,7 +327,7 @@ public class ChatbotServiceImpl implements ChatbotService {
 
         promptMessages.add(new SystemMessage(sysPrompt.toString()));
 
-        // 최근 20개의 대화 기록 얹어주기
+        // 최근 10개의 대화 기록 얹어주기
         for (ChatMessage chat : recentHistory) {
             if ("USER".equals(chat.getRole())) {
                 promptMessages.add(new UserMessage(chat.getContent()));
@@ -360,7 +377,8 @@ public class ChatbotServiceImpl implements ChatbotService {
         }
         // ===== // 기존 API(그록 재미나이)사용할 때 끝 =====
 
-        // AI 답변 DB 저장
+        // AI 답변 DB 저장 — 맨 앞 인사와 그림 문자는 떼고 저장한다
+        aiReply = ReplyText.tidy(aiReply);
         ChatMessage aiChat = new ChatMessage();
         aiChat.setChatSession(session);
         aiChat.setRole("AI");

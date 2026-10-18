@@ -68,10 +68,19 @@ class TripContextPromptTest {
         String p = TripContextPrompt.build(now, "부산", LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 19),
                 stops(), null, null, null);
 
-        assertThat(p).contains("출발 전 (출발까지 7일)");
+        assertThat(p).contains("출발 전 (출발까지 7일)").contains("'오늘 일정'·'오늘 밤'이라고 말하지 마세요");
         assertThat(p).contains("1일차 일정");
         assertThat(p).contains("해운대해수욕장");
         assertThat(p).doesNotContain("다음 장소");
+    }
+
+    @Test
+    void 여행이_없는_대화방이면_오류_없이_여행_정보_없음이라고_적는다() {
+        ZonedDateTime now = ZonedDateTime.of(2026, 10, 19, 9, 0, 0, 0, SEOUL);
+        String p = TripContextPrompt.build(now, null, null, null, List.of(), null, null, null);
+
+        assertThat(p).contains("여행 단계: 여행 정보 없음").contains("일정 생성을 권하지 마세요");
+        assertThat(p).doesNotContain("출발까지");
     }
 
     @Test
@@ -94,8 +103,9 @@ class TripContextPromptTest {
 
         assertThat(p).contains("한국관광공사 연관 관광지 정보, 경북 경주시, 2026년 8월 통계");
         assertThat(p).contains("'불국사'에 다녀간 사람들이 함께 많이 간 곳");
-        assertThat(p).contains("- 국립경주박물관 (관광지)");
-        assertThat(p).contains("- 황리단길 (음식)");
+        assertThat(p).contains("- 국립경주박물관 (관광지, 경주시)");
+        assertThat(p).contains("- 황리단길 (음식, 경주시)");
+        assertThat(p).contains("괄호 안 시군구를 같이 말하세요");
     }
 
     @Test
