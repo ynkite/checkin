@@ -127,6 +127,10 @@ public class BudgetFitService {
             JsonNode meta = days.path(0).path(KEY);
             List<String> changes = new ArrayList<>();
             meta.path("changes").forEach(c -> changes.add(c.asText()));
+            if (meta.has("move")) {
+                long d = moves(days) - meta.path("move").asLong();
+                if (d != 0) changes.add("이동 구간 교통비 다시 잼 " + (d < 0 ? "−" : "+") + won(Math.abs(d)));
+            }
             List<BudgetEstimate.Item> items = items(days);
             items.addAll(s.extras());
             BudgetLimitCheck c = limitService.check(after, items, limit);
@@ -151,6 +155,7 @@ public class BudgetFitService {
 
     static Fit fit(String json, long limit, long mealCap) throws Exception {
         ArrayNode days = (ArrayNode) OM.readTree(json);
+        JsonNode orig = OM.readTree(json);
         long before = total(days);
         if (limit <= 0 || before <= limit) return new Fit(json, before, before, List.of(), false);
 
@@ -160,7 +165,7 @@ public class BudgetFitService {
         dropPaid(days, "tour", limit, changes, "유료 관광지·체험 ");
 
         if (changes.isEmpty()) return new Fit(json, before, before, List.of(), false);
-        return stamp(days, before, changes);
+        return stamp(days, orig, changes);
     }
 
     /** 숙소 후보마다 바꿔 보고 다시 맞춰, 예산 이하이면서 가장 가까운 결과. 후보가 없으면 fit 결과. */
@@ -175,7 +180,7 @@ public class BudgetFitService {
     static Fit best(String json, long limit, long mealCap, List<Stay> stays, long stayExtra) throws Exception {
         Fit best = fit(json, limit, mealCap);
         if (best.after() <= limit) return best;
-        long before = total(OM.readTree(json));
+        JsonNode orig = OM.readTree(json);
         long bestCost = best.after();
         for (Stay s : stays) {
             ArrayNode days = (ArrayNode) OM.readTree(json);
@@ -184,7 +189,7 @@ public class BudgetFitService {
             Fit f = fit(OM.writeValueAsString(days), limit + stayExtra, mealCap);
             List<String> changes = new ArrayList<>(List.of(change));
             changes.addAll(f.changes());
-            Fit cand = stamp((ArrayNode) OM.readTree(f.json()), before, changes);
+            Fit cand = stamp((ArrayNode) OM.readTree(f.json()), orig, changes);
             long cost = cand.after() - stayExtra;
             if (closer(cost, bestCost, limit)) { best = cand; bestCost = cost; }
         }
@@ -302,13 +307,24 @@ public class BudgetFitService {
         return sum;
     }
 
+    /** 이동 구간 금액만의 합. 장소를 빼면 붙은 구간이 「이동」으로 비고 저장 때 다시 재므로 바꾼 내용 줄과 따로 센다. */
+    static long moves(JsonNode days) {
+        long sum = 0;
+        for (JsonNode day : days)
+            for (JsonNode p : day.path("places"))
+                if (!p.has("type")) sum += amount(p.path("transit").asText(""));
+        return sum;
+    }
+
     static int percent(long total, long limit) {
         return limit <= 0 ? 0 : (int) Math.round(total * 100.0 / limit);
     }
 
-    private static Fit stamp(ArrayNode days, long before, List<String> changes) throws Exception {
+    private static Fit stamp(ArrayNode days, JsonNode orig, List<String> changes) throws Exception {
+        long before = total(orig);
         ObjectNode meta = ((ObjectNode) days.get(0)).putObject(KEY);
         meta.put("before", before);
+        meta.put("move", moves(orig));
         changes.forEach(meta.putArray("changes")::add);
         return new Fit(OM.writeValueAsString(days), before, total(days), changes, true);
     }

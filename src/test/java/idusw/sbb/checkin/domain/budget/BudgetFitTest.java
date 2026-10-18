@@ -69,6 +69,30 @@ class BudgetFitTest {
         assertEquals(124_000, f.after());   // 숙소는 fit 에서 바꾸지 않는다
     }
 
+    @Test
+    void 바꾼_내용_줄을_다_빼면_조정_후_총액이_된다() throws Exception {
+        // 카페가 빠지며 붙은 이동 3,000 이 사라지고, 저장 때 남은 「이동」 구간이 512원으로 다시 잰다
+        String fitted = BudgetFitService.fit(ROUTE, 130_000, 12_000).json()
+                .replace("\"transit\":\"이동\"", "\"transit\":\"차 · 0.3km · 약 1분 · ₩512\"");
+        var plan = mock(idusw.sbb.checkin.domain.plan.entity.TravelPlan.class, RETURNS_DEEP_STUBS);
+        when(plan.getForm().getBudget()).thenReturn(130_000L);
+        when(plan.getRouteJson()).thenReturn(fitted);
+        TravelPlanRepository repo = mock(TravelPlanRepository.class);
+        when(repo.findById(any())).thenReturn(Optional.of(plan));
+        TransactionTemplate tx = mock(TransactionTemplate.class);
+        when(tx.execute(any())).thenAnswer(inv -> inv.<org.springframework.transaction.support.TransactionCallback<?>>getArgument(0).doInTransaction(null));
+
+        BudgetFitView v = new BudgetFitService(repo, null, new BudgetLimitService(), null, tx, null, null).view(1L);
+
+        long explained = v.changes().stream()
+                .mapToLong(c -> (c.contains("+") ? -1 : 1) * Long.parseLong(c.replaceAll(".*[−+]([\\d,]+)원.*", "$1").replace(",", "")))
+                .sum();
+        assertEquals(159_000, v.before());
+        assertEquals(124_512, v.after());
+        assertEquals(v.before() - v.after(), explained, v.changes().toString());
+        assertTrue(v.changes().get(2).startsWith("이동 구간 교통비 다시 잼 −2,488원"));
+    }
+
     // 관광지 2곳(15,000×2 · 5,000×2) + 숙소 120,000 + 점심 12,000×2 + 2일차 8,000×2 = 200,000
     private static final String TRIP = """
         [{"day":1,"places":[
