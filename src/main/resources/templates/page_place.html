@@ -311,13 +311,9 @@
         const avEl = document.getElementById('pr-author-av');
         if (avEl) avEl.textContent = (d.authorName || '?')[0];
         // 관리자 배지 포함 작성자명 렌더링
-        const _adminBadgeHtml = (role) =>
-            role === 'ADMIN'
-                ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
-                : '';
         const _authorEl = document.getElementById('pr-author-name');
         if (_authorEl) {
-            _authorEl.innerHTML = escapeHtml(d.authorName || '') + _adminBadgeHtml(d.writerRole);
+            _authorEl.innerHTML = window._commUtil.escapeHtml(d.authorName || '') + window._adminBadge(d.writerRole, d.authorName);
         }
         _setHTML('pr-meta',
             `<span>${d.createdAt||''}</span>
@@ -440,25 +436,25 @@
                     const isHidden = c.status === 'HIDDEN';
                     if (isHidden) return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
-        <div class="comm-av" style="opacity:0.5;background:var(--tile-pale);color:var(--tile)">${(c.writerName||c.authorName||'?')[0]}</div>
+        <div class="comm-av" style="opacity:0.5;background:var(--tile-pale);color:var(--tile)">${window._commUtil.escapeHtml((c.writerName||c.authorName||'?')[0])}</div>
         <div class="comm-bubble" style="background:var(--tile-pale);border-color:var(--tile-pale);flex:1">
           <div class="comm-hd">
-            <span class="comm-author" style="color:var(--ink-3)">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
+            <span class="comm-author" style="color:var(--ink-3)">${window._commUtil.escapeHtml(c.writerName||c.authorName||'')}${window._adminBadge(c.writerRole, c.writerName||c.authorName)}</span>
             <span class="comm-date">${c.createdAt||''}</span>
             <span style="font-size:10px;color:var(--tile);background:var(--tile-pale);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
           </div>
-          <div class="comm-text" style="color:var(--ink-3)">${c.content||''}</div>
+          <div class="comm-text" style="color:var(--ink-3)">${window._commUtil.escapeHtml(c.content||'')}</div>
         </div>
       </div>`;
                     return `
       <div style="display:flex;gap:8px;margin-bottom:11px">
-        <div class="comm-av">${(c.writerName||c.authorName||'?')[0]}</div>
+        <div class="comm-av">${window._commUtil.escapeHtml((c.writerName||c.authorName||'?')[0])}</div>
         <div class="comm-bubble">
           <div class="comm-hd">
-            <span class="comm-author">${c.writerName||c.authorName||''}${c.writerRole==='ADMIN' ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>' : ''}</span>
+            <span class="comm-author">${window._commUtil.escapeHtml(c.writerName||c.authorName||'')}${window._adminBadge(c.writerRole, c.writerName||c.authorName)}</span>
             <span class="comm-date">${c.createdAt||''}</span>
           </div>
-          <div class="comm-text">${c.content||''}</div>
+          <div class="comm-text">${window._commUtil.escapeHtml(c.content||'')}</div>
         </div>
       </div>`;
                 }).join('');
@@ -669,7 +665,7 @@
         /* 이름을 이미 알고 들어온 경우가 많다. 먼저 이름을 띄우고 숫자는 뒤에 채운다 */
         if (headerEl) headerEl.innerHTML = hintPlaceName
             ? `<span class="pl-eye">장소</span>
-               <h2 class="pl-name">${escapeHtml ? escapeHtml(hintPlaceName) : hintPlaceName}</h2>`
+               <h2 class="pl-name">${window._commUtil.escapeHtml(hintPlaceName)}</h2>`
             : `<span class="pl-eye">장소</span><h2 class="pl-name">불러오는 중</h2>`;
 
         const res = await api.get(`/api/places/${placeId}/reviews`);

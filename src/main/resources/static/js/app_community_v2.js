@@ -1359,7 +1359,7 @@
                     return `
                 <div class="comment-item" style="background:var(--tile-pale);border-radius:8px;padding:8px 12px">
                     <div style="display:flex;align-items:center;gap:6px">
-                        <span class="comment-writer" style="color:var(--ink-3)">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
+                        <span class="comment-writer" style="color:var(--ink-3)">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole, c.writerName) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
                         <span style="font-size:10px;color:var(--tile);background:var(--tile-pale);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 6px">숨김 처리된 댓글</span>
                     </div>
@@ -1388,7 +1388,7 @@
                 return `
                 <div class="comment-item">
                     <div style="display:flex;align-items:center;gap:6px">
-                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole) : ''}</span>
+                        <span class="comment-writer">${escapeHtml(c.writerName || '사용자')}${window._adminBadge ? window._adminBadge(c.writerRole, c.writerName) : ''}</span>
                         <span class="comment-date">${escapeHtml(formatDate(c.createdAt))}</span>
                         ${actionButtons}
                     </div>
@@ -1588,7 +1588,7 @@
         const _prAuthorEl = document.getElementById('pr-author-name');
         if (_prAuthorEl) {
             _prAuthorEl.innerHTML = escapeHtml(post.writerName || '사용자') +
-                (window._adminBadge ? window._adminBadge(post.writerRole) : '');
+                (window._adminBadge ? window._adminBadge(post.writerRole, post.writerName) : '');
         }
         setText('pr-author-av',   (post.writerName || 'U').substring(0, 1));
         setText('pr-cat',         '여행 후기');
@@ -2261,7 +2261,7 @@ window._handleWriteImageSelect = function(input) {
                      style="${isHidden ? 'opacity:0.55;background:var(--ui-plate)' : ''}">
                     <div class="community-card-head">
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
-                        <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole) : ''} · ${escapeHtml(dateText)}</span>
+                        <span class="community-card-meta">${escapeHtml(writerText)}${window._adminBadge ? window._adminBadge(post.writerRole, writerText) : ''} · ${escapeHtml(dateText)}</span>
                     </div>
                     <div class="post-ttl">${escapeHtml(post.title || '제목 없음')}${isHidden ? ' <span style="font-size:11px;font-weight:700;background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:4px;padding:1px 7px;vertical-align:middle;white-space:nowrap">숨김 처리된 글</span>' : ''}</div>
                     ${tags.length ? `<div class="community-card-tags">${tags.map(tag => `<span>#${escapeHtml(tag)}</span>`).join('')}</div>` : ''}
@@ -2309,8 +2309,8 @@ window._handleWriteImageSelect = function(input) {
     };
 
     // 관리자 배지 HTML 헬퍼
-    window._adminBadge = (role) =>
-        role === 'ADMIN'
+    window._adminBadge = (role, name) =>
+        role === 'ADMIN' && String(name || '').trim() !== '관리자'
             ? ' <span style="font-size:10px;font-weight:800;background:var(--terra);color:var(--panel);border-radius:4px;padding:2px 9px;letter-spacing:.4px;vertical-align:middle">관리자</span>'
             : '';
 

@@ -1171,47 +1171,11 @@
        다른 화면은 좌표를 격자로 뭉개서 보내지만 주행 안내는 그럴 수 없다.
        110m 격자로는 턴 안내가 안 되고, 브라우저에서 티맵을 직접 부르면
        appKey 가 노출된다. 그래서 이 기능만 정밀 좌표를 서버로 보낸다. */
-    askStart(function () { beginDrive(dest); });
-  }
-
-  /* 앱 안 확인 창. 브라우저 기본 confirm 은 무대 화면에 회색 창으로 뜬다.
-     지도 화면 창(.overlay · .modal · .mp-m*)을 그대로 쓴다.
-     「시작」 누름이 곧 사용자 동작이라 그 안에서 소리를 깨워도 된다 */
-  function askStart(onYes) {
-    var ov = document.getElementById('navAsk');
-    if (!ov) {
-      ov = document.createElement('div');
-      ov.id = 'navAsk';
-      ov.className = 'overlay dv-ask';
-      ov.innerHTML =
-        '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="navAskT">' +
-          '<p class="mp-mttl" id="navAskT">길 안내를 시작할까요?</p>' +
-          '<p class="mp-mhint">안내하는 동안 지금 있는 곳의 정확한 위치를 서버로 보냅니다. ' +
-          '티맵에서 길을 받아 갈림길을 읽어 주려고요. 안내를 끄면 보내는 것도 멈춥니다.</p>' +
-          '<div class="dv-ask-row">' +
-            '<button type="button" class="mp-mbtn mp-mbtn-q" data-a="no">취소</button>' +
-            '<button type="button" class="mp-mbtn" data-a="yes">시작</button>' +
-          '</div>' +
-        '</div>';
-      document.body.appendChild(ov);
-    }
-    var back = document.activeElement;
-    function close(yes) {
-      ov.classList.remove('open');
-      ov.onclick = null;
-      document.removeEventListener('keydown', onKey);
-      if (back && back.focus) back.focus();
-      if (yes) onYes();
-    }
-    function onKey(e) { if (e.key === 'Escape') close(false); }
-    ov.onclick = function (e) {
-      var a = e.target.getAttribute('data-a');
-      if (a === 'yes') close(true);
-      else if (a === 'no' || e.target === ov) close(false);
-    };
-    document.addEventListener('keydown', onKey);
-    ov.classList.add('open');
-    ov.querySelector('[data-a="yes"]').focus();
+    /* 「시작」 누름이 곧 사용자 동작이라 그 안에서 소리를 깨운다 */
+    askYes('길 안내를 시작할까요?',
+      '안내하는 동안 지금 있는 곳의 정확한 위치를 서버로 보냅니다. ' +
+      '티맵에서 길을 받아 갈림길을 읽어 주려고요. 안내를 끄면 보내는 것도 멈춥니다.',
+      '시작', function () { beginDrive(dest); });
   }
 
   function beginDrive(dest) {

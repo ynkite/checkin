@@ -3122,12 +3122,16 @@ function showDay(day, btn) {
     if (typeof _mpRail === 'function') _mpRail();
     const mt = document.getElementById('mapTabModel');
     if (mt && mt.classList.contains('on') && typeof _mvOpen === 'function') _mvOpen();
-    /* 휴대폰은 지도가 위, 일차 탭이 아래 목록에 있다. 목록 탭을 누르면 바뀐 지도가 화면 밖이라
-       그날을 볼 수 없었다. 지도를 다시 올려 보여 준다. 지도 위 레일 버튼은 이미 지도에 있어 그대로 둔다 */
-    const area = document.getElementById('mapRightArea');
-    if (btn.classList.contains('day-tab') && window.innerWidth < 768 && area
-        && area.getBoundingClientRect().bottom < 120) {
-        area.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    /* 1000px 아래는 지도가 위, 일차 탭이 아래 목록에 있다. 목록 탭을 누르면 바뀐 지도가 화면 밖이라
+       그날을 볼 수 없었다. 지도 윗변이 고정 머리(메뉴 · 여행 중 줄)에 가려 있으면 머리 바로 밑까지 올린다.
+       전에는 오른쪽 칸 전체의 아랫변을 봐서, 지도 밑 판이 보이면 지도가 가려져도 올리지 않았다 */
+    const view = document.getElementById(mt && mt.classList.contains('on') ? 'modelView' : 'mapView');
+    if (btn.classList.contains('day-tab') && view && view.offsetHeight && matchMedia('(max-width:1000px)').matches) {
+        const lnb = document.getElementById('liveNowBar'), nav = document.querySelector('nav');
+        const head = Math.max(nav ? nav.getBoundingClientRect().bottom : 0,
+                              lnb && !lnb.hidden ? lnb.getBoundingClientRect().bottom : 0);
+        const dy = view.getBoundingClientRect().top - head;
+        if (dy < 0) window.scrollBy({ top: dy, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
     }
 }
 function switchMapTab(tab, btn) {
@@ -4186,6 +4190,46 @@ function updateCityDest(sel) { updateCity(sel,'dest-city'); }
  * ─────────────────────────────────────────────── */
 let _planDirty = false;
 let _tt = null;
+/* 앱 안 확인 창. 브라우저 기본 confirm 은 회색 창으로 떠서 화면의 다른 창과 모양이 다르다.
+   지도 화면 창(.overlay · .modal · .mp-m*)을 그대로 쓴다. 고르면 true / false 로 풀린다.
+   onYes 는 누른 그 순간에 부른다 — 아이폰은 소리를 그 안에서 깨워야 한다 */
+function askYes(title, hint, yes, onYes) {
+    let ov = document.getElementById('appAsk');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'appAsk';
+        ov.className = 'overlay dv-ask';
+        ov.innerHTML = '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="appAskT">'
+            + '<p class="mp-mttl" id="appAskT"></p><p class="mp-mhint"></p>'
+            + '<div class="dv-ask-row"><button type="button" class="mp-mbtn mp-mbtn-q" data-a="no">취소</button>'
+            + '<button type="button" class="mp-mbtn" data-a="yes"></button></div></div>';
+        document.body.appendChild(ov);
+    }
+    ov.querySelector('.mp-mttl').textContent = title;
+    const h = ov.querySelector('.mp-mhint');
+    h.textContent = hint || ''; h.hidden = !hint;
+    ov.querySelector('[data-a="yes"]').textContent = yes || '확인';
+    const back = document.activeElement;
+    return new Promise(resolve => {
+        function close(ok) {
+            ov.classList.remove('open'); ov.onclick = null;
+            document.removeEventListener('keydown', onKey);
+            if (back && back.focus) back.focus();
+            if (ok && onYes) onYes();
+            resolve(ok);
+        }
+        function onKey(e) { if (e.key === 'Escape') close(false); }
+        ov.onclick = e => {
+            const a = e.target.getAttribute('data-a');
+            if (a === 'yes') close(true);
+            else if (a === 'no' || e.target === ov) close(false);
+        };
+        document.addEventListener('keydown', onKey);
+        ov.classList.add('open');
+        ov.querySelector('[data-a="yes"]').focus();
+    });
+}
+
 function toast(msg, dur=2800) {
     const t=document.getElementById('toast'); if(!t) return;
     if(_tt) clearTimeout(_tt);
