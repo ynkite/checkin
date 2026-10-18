@@ -37,6 +37,7 @@ class AuthRefreshSecurityTest {
     @MockitoBean AuthService authService;
     @MockitoBean EmailAuthService emailAuthService;
     @MockitoBean JwtProvider jwtProvider;
+    @MockitoBean idusw.sbb.checkin.domain.user.repository.UserRepository userRepository;  // JWT 필터가 지금 역할·상태를 읽는다
     @MockitoBean CustomOAuth2UserService customOAuth2UserService;
     @MockitoBean OAuth2SuccessHandler oAuth2SuccessHandler;
     @MockitoBean OAuth2FailureHandler oAuth2FailureHandler;

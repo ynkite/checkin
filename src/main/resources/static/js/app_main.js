@@ -64,6 +64,8 @@ async function apiCall(path, opts = {}, retry = true) {
     if (retry && _tokenExpired(Token.getAccess())) await refreshAccessToken();
     const token = Token.getAccess();
     if (token) headers['Authorization'] = 'Bearer ' + token;
+    const shareToken = _shareToken();
+    if (shareToken) headers['X-Share-Token'] = shareToken;
 
     let res;
     try {
@@ -86,6 +88,25 @@ async function apiCall(path, opts = {}, retry = true) {
     let json;
     try { json = await res.json(); } catch (e) { json = {}; }
     return json;
+}
+
+/** 공유 링크(/trip/{토큰})로 들어왔으면 그 토큰. 서버는 이 토큰을 보고 남의 여행을 보여 준다 */
+function _shareToken() {
+    const m = location.pathname.match(/^\/trip\/([^/]+)/);
+    return m ? decodeURIComponent(m[1]) : null;
+}
+
+/** 보기 전용 공유 화면인가 — 옛 /plan/view 와 /trip/{토큰}. 편집 링크(/trip/{토큰}/edit)는 뺀다 */
+function _isReadOnlyShare() {
+    return location.pathname.includes('/plan/view') || /^\/trip\/[^/]+\/?$/.test(location.pathname);
+}
+
+/** 보기 전용 공유 링크. 서버가 발급한 /trip/{토큰} 만 쓴다.
+ *  전에는 여행 번호를 XOR 로 감춘 링크를 브라우저가 만들었는데, 누구나 풀어서 남의 여행 번호를 넣을 수 있었다.
+ *  여행을 만든 사람만 발급받는다 — 못 받으면 빈 문자열 */
+async function _fetchShareLink(tripId) {
+    const res = await api.post(`/api/trips/${tripId}/share`);
+    return (res && res.success && res.data && res.data.shareLink) || '';
 }
 
 /** JWT 의 exp 가 10초 안에 끝나면 true. 읽지 못하면 false (서버 401 로 다시 판단) */
@@ -3016,7 +3037,7 @@ function goPlanStep(n) {
 
     if (n === 4) {
         if (!sessionStorage.getItem('ai_generated_route')) {
-            toast('먼저 AI 챗봇에서 일정을 만들어 주세요.');
+            toast('먼저 대화로 고르기에서 일정을 만들어 주세요.');
             return;
         }
         if (_planDirty) {
@@ -3280,13 +3301,13 @@ async function execAllReplace() {
             }, 1500);
 
         } else {
-            toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
+            toast('바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.');
             if (loadingOverlay) loadingOverlay.style.display = 'none';
             if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
         }
     } catch(e) {
         stopSteps();
-        toast('<span style="color: black;">바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.</span>');
+        toast('바꾸지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
@@ -3506,9 +3527,8 @@ function openShareModal() {
     const linkEl = document.getElementById('share-link-val');
 
     if (linkEl && tripId) {
-        // 백엔드 규칙과 동일한 16진수 보안 암호화 규칙 적용하여 처음부터 난수로 표출
-        const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
-        linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
+        linkEl.value = '';
+        _fetchShareLink(tripId).then(link => { linkEl.value = link; });
     }
 
     modal.classList.add('open');
@@ -3516,7 +3536,7 @@ function openShareModal() {
 
 }
 
-function shareInviteToKakaoTalk() {
+async function shareInviteToKakaoTalk() {
     const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
     if (!tripId) { toast('여행 플랜 정보가 올바르지 않습니다.'); return; }
 
@@ -3525,20 +3545,8 @@ function shareInviteToKakaoTalk() {
             Kakao.init('50a304fa42a0bd2d294ac871e3acae14');
         }
 
-        // 백엔드 규칙과 동일한 16진수 난수 토큰 암호화 처리
-        let obscureToken;
-        try {
-            const bigTripId = BigInt(tripId);
-            const mask = BigInt("0x5A3C9B7D2E");
-            const obscure = bigTripId ^ mask;
-            obscureToken = obscure.toString(16);
-        } catch (e) {
-            console.error("카카오 토큰 암호화 실패:", e);
-            obscureToken = parseInt(tripId).toString(16);
-        }
-
-        // [동적 주소 연동]: 현재 접속 환경에 맞춰 자동으로 링크를 생성
-        const inviteUrl = `${window.location.origin}/plan/view?token=${obscureToken}`;
+        const inviteUrl = await _fetchShareLink(tripId);
+        if (!inviteUrl) { toast('공유 링크는 여행을 만든 사람만 만들 수 있습니다.'); return; }
 
         // v2 공식 규격: 이 함수를 실행하면 카카오 서버가 알아서 로그인 세션을 검증하고 단톡방/친구 선택 창(피커)을 자동으로 띄워줍니다.
         Kakao.Share.sendDefault({
@@ -3571,9 +3579,6 @@ async function loadShareMembersData() {
         return;
     }
 
-    // 화면 로드 시에도 링크 창에 완벽한 난수 주소가 유지되도록 체결
-    const obscureToken = (BigInt(tripId) ^ BigInt("0x5A3C9B7D2E")).toString(16);
-    if(linkEl) linkEl.value = `${window.location.origin}/plan/view?token=${obscureToken}`;
     if(listEl) listEl.innerHTML = '<div style="font-size:13px; color:var(--text3);">참여자 목록 불러오는 중...</div>';
 
     try {
@@ -3582,8 +3587,8 @@ async function loadShareMembersData() {
             listEl.innerHTML = res.data.map(m => `
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: 8px;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${(m.name||'?')[0]}</div>
-            <div style="font-weight:700; font-size:14px; color:var(--ink);">${m.name||''} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
+            <div style="width:36px; height:36px; border-radius:50%; background:${m.role === 'OWNER' ? 'var(--sage)' : 'var(--ui-line-2)'}; color:${m.role === 'OWNER' ? 'var(--panel)' : 'var(--ink)'}; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${_escSafe((m.name||'?')[0])}</div>
+            <div style="font-weight:700; font-size:14px; color:var(--ink);">${_escSafe(m.name||'')} ${m.role === 'OWNER' ? '<span style="color:var(--slate); font-weight:800;">(소유자)</span>' : ''}</div>
           </div>
           <div style="font-size:12px; color:var(--text3);">${m.role==='OWNER'?'소유자':'편집자'}</div>
         </div>`).join('');
@@ -3592,8 +3597,8 @@ async function loadShareMembersData() {
             listEl.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${me[0]}</div>
-            <div style="font-weight:700; font-size:14px; color:var(--ink);">${me} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
+            <div style="width:36px; height:36px; border-radius:50%; background:var(--sage); color:var(--panel); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${_escSafe(me[0])}</div>
+            <div style="font-weight:700; font-size:14px; color:var(--ink);">${_escSafe(me)} <span style="color:var(--slate); font-weight:800;">(소유자)</span></div>
           </div>
           <div style="font-size:12px; color:var(--text3);">소유자</div>
         </div>`;
@@ -3667,37 +3672,15 @@ async function copyShareLink() {
     const tripId = window._currentTripId;
     if (!tripId) { toast('여행 플랜 정보가 올바르지 않습니다.'); return; }
 
+    const link = await _fetchShareLink(tripId);
+    if (!link) { toast('공유 링크는 여행을 만든 사람만 만들 수 있습니다.'); return; }
+    const linkEl = document.getElementById('share-link-val');
+    if (linkEl) linkEl.value = link;
     try {
-        const response = await fetch(`/api/trips/${tripId}/share`, {
-            method: 'POST',
-            headers: {
-                'Authorization': Token.getAccess() ? `Bearer ${Token.getAccess()}` : '',
-                'Content-Type': 'application/json'
-            }
-        });
-        const res = await response.json();
-
-        if (res && res.success && res.data && res.data.shareLink) {
-            const linkEl = document.getElementById('share-link-val');
-            if (linkEl) linkEl.value = res.data.shareLink;
-
-            await copyToClipboard(res.data.shareLink);
-            toast('보기 전용 링크를 복사했습니다.');
-        } else {
-            throw new Error("API 반환 오류");
-        }
-
-    } catch (error) {
-        console.error("공유 링크 생성 실패:", error);
-
-        const fallbackObscure = (tripId ^ 0x5A3C9B7D2E).toString(16);
-        const fallbackLink = `${window.location.origin}/plan/view?token=${fallbackObscure}`;
-
-        const linkEl = document.getElementById('share-link-val');
-        if (linkEl) linkEl.value = fallbackLink;
-
-        await copyToClipboard(fallbackLink);
-        toast('링크가 복사했습니다.');
+        await copyToClipboard(link);
+        toast('보기 전용 링크를 복사했습니다.');
+    } catch (e) {
+        toast('복사하지 못했습니다. 링크 칸에서 직접 복사해 주세요.');
     }
 }
 
@@ -4193,7 +4176,7 @@ function toast(msg, dur=2800) {
     const t=document.getElementById('toast'); if(!t) return;
     if(_tt) clearTimeout(_tt);
 
-    t.innerHTML = msg;
+    t.textContent = msg;   // 회원 이름처럼 남이 쓴 글이 섞여 온다. HTML 로 넣지 않는다
     t.classList.add('show');
 
     _tt=setTimeout(()=>t.classList.remove('show'), dur);
@@ -4313,6 +4296,13 @@ window.addEventListener('popstate', async e => {
         }
     }
 
+    // 서버가 발급한 공유 링크(/trip/{토큰}) — 토큰으로 여행 번호를 서버에 묻는다
+    if (_shareToken()) {
+        const r = await api.get('/api/trips/shared');
+        if (r && r.success && r.data) sharedId = String(r.data.tripId);
+        else setTimeout(() => toast('열 수 없는 공유 링크입니다. 링크가 바뀌었을 수 있습니다.'), 300);
+    }
+
     // 공유 링크(?token=난수값)로 접속했는데, 읽기전용(/plan/view)이 아닌 편집링크(/plan)이고 토큰도 없다면?
     if (shareToken && !location.pathname.includes('/plan/view') && !token) {
         // 1. 현재 가려던 초대 링크 전체 주소를 브라우저 임시 창고에 박아둡니다.
@@ -4337,8 +4327,8 @@ window.addEventListener('popstate', async e => {
         sessionStorage.setItem('plannerDraftId', sharedId);
         sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
 
-        // 읽기 전용 주소(/plan/view)로 들어왔을 때의 강력한 차단 로직
-        if (location.pathname.includes('/plan/view')) {
+        // 읽기 전용 주소(/plan/view · /trip/{토큰})로 들어왔을 때의 강력한 차단 로직
+        if (_isReadOnlyShare()) {
 
             // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김
             const style = document.createElement('style');

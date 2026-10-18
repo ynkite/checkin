@@ -25,6 +25,7 @@ import java.util.Map;
 public class QuietAlternativeController {
 
     private final QuietAlternativeService quietAlternativeService;
+    private final idusw.sbb.checkin.domain.plan.support.PlanAccess access;
 
     /**
      * @param tripId 여행
@@ -38,6 +39,7 @@ public class QuietAlternativeController {
             @RequestParam(defaultValue = "1") int day,
             @RequestParam(required = false) String name,
             @RequestParam(defaultValue = "3") int limit) {
+        access.read(tripId);
         return ResponseEntity.ok(ApiResponse.success(
                 quietAlternativeService.alternatives(tripId, day, name, limit)));
     }

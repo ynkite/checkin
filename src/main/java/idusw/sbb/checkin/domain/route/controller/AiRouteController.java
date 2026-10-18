@@ -16,6 +16,7 @@ public class AiRouteController {
     private final AiRouteService aiRouteService;
     private final idusw.sbb.checkin.domain.route.RouteProgress progress;
     private final idusw.sbb.checkin.domain.budget.BudgetFitService budgetFitService;
+    private final idusw.sbb.checkin.domain.plan.support.PlanAccess access;
 
     /**
      * 일정을 만드는 데 어디까지 왔나.
@@ -27,11 +28,13 @@ public class AiRouteController {
      */
     @GetMapping("/progress")
     public ResponseEntity<ApiResponse<Object>> routeProgress(@PathVariable Long tripId) {
+        access.read(tripId);
         return ResponseEntity.ok(ApiResponse.success(progress.of(tripId)));
     }
 
     @PostMapping("/generate")
     public ResponseEntity<ApiResponse<Object>> generateRoute(@PathVariable Long tripId) {
+        access.edit(tripId);
         progress.set(tripId, idusw.sbb.checkin.domain.route.RouteProgress.Phase.QUEUED);
         try {
         // 1) AI가 type별 장소 후보(이름+sub+stars)만 생성 — 좌표·순서·날짜 없음
@@ -85,6 +88,7 @@ public class AiRouteController {
     // 컨트롤러에 추가해야 할 GET 매핑 (데이터 반환용)
     @GetMapping("")
     public ResponseEntity<ApiResponse<Object>> getRoutes(@PathVariable Long tripId) {
+        access.read(tripId);
         // routeService -> aiRouteService 로 수정
         return ResponseEntity.ok(ApiResponse.success(aiRouteService.getRoutesByTripId(tripId)));
     }
@@ -94,6 +98,7 @@ public class AiRouteController {
             @PathVariable Long tripId,
             @RequestBody java.util.Map<String, java.util.List<java.util.Map<String, String>>> payload) {
 
+        access.edit(tripId);
         java.util.List<java.util.Map<String, String>> requests = payload.get("requests");
 
         // 덮어쓰기 전의 동선 — 교체 결과와 비교해 시간·돈 쌍을 낸다 (예산 엔진 2층)
@@ -118,6 +123,7 @@ public class AiRouteController {
     public ResponseEntity<?> replaceDayIndoor(
             @PathVariable Long tripId,
             @RequestParam int day) {
+        access.edit(tripId);
 
         // AI한테 실내 일정으로 교체하라고 시킴
         String newRouteJson = aiRouteService.replaceDayWithIndoor(tripId, day);
@@ -135,6 +141,7 @@ public class AiRouteController {
     public ResponseEntity<?> updateRouteManually(
             @PathVariable Long tripId,
             @RequestBody com.fasterxml.jackson.databind.JsonNode routeData) {
+        access.edit(tripId);
         try {
             String json = routeData.toString();
 

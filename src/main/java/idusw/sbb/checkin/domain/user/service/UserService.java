@@ -3,7 +3,6 @@ package idusw.sbb.checkin.domain.user.service;
 import idusw.sbb.checkin.domain.expense.dto.BudgetReportResponseDto;
 import idusw.sbb.checkin.domain.plan.dto.TripListResponseDto;
 import idusw.sbb.checkin.domain.user.dto.ScrapResponseDto;
-import idusw.sbb.checkin.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.checkin.domain.user.dto.UserInfoResponseDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,7 +15,6 @@ import java.time.LocalDate;
 
 public interface UserService {
     UserInfoResponseDto getProfile(Long userId);
-    void updateNickname(Long userId, UserNicknameUpdateRequest request);
     void withdraw(Long userId);
     void loginFailed(String username, String ipAddress);
 
