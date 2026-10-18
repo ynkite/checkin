@@ -78,9 +78,10 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                       @RequestBody(required = false) Map<String, String> body) {
         if (userDetails != null) {
-            authService.logout(userDetails.getUserId());
+            authService.logout(userDetails.getUserId(), body == null ? null : body.get("refreshToken"));
         }
         return ResponseEntity.ok().build();
     }

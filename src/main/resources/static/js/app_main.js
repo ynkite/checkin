@@ -363,6 +363,9 @@ async function go(id, addToHistory) {
         }, 100);
     }
 
+    /* 전국 둘러보기 — 모형 한 장이 1MB 안팎이라 떠날 때 비운다 */
+    if (typeof window.exploreOn === 'function') window.exploreOn(id === 'explore');
+
     /* 출발지 칸 — 이 조각이 다시 들어오면 리스너가 사라진다 */
     if (id === 'planner' && typeof window.initOriginPicker === 'function') {
         setTimeout(window.initOriginPicker, 60);
@@ -886,7 +889,7 @@ function _handleOAuthCallback() {
 
 /** ─── POST /api/auth/logout ─── */
 async function doLogout() {
-    await api.post('/api/auth/logout', {});
+    await api.post('/api/auth/logout', { refreshToken: Token.getRefresh() });   /* 이 기기 토큰만 지운다 */
     Token.clear();
     _loggedIn = false;
     if (typeof refreshLiveDot === 'function') refreshLiveDot();   /* 남의 여행 줄이 남으면 안 된다 */
@@ -1173,9 +1176,10 @@ function _renderMyTrips(trips = null, page = 1) {
 
     // 타이틀 옆에 삭제버튼 배치 (초대받은 일정과 동일한 로직)
     let html = `
-  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <div class="my-sec-hd" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
     <h3 class="my-sec-ttl" style="margin:0;">내 여행 기록</h3>
     <div style="display:flex; gap:8px; margin-left:auto;">
+      ${!window._myTripsDeleteMode && allTrips.length ? `<button type="button" class="pq-open" onclick="openPhoneQr()">휴대폰으로 이어 보기</button>` : ''}
       ${window._myTripsDeleteMode ? `
         <button onclick="execMyTripsBulkDelete()" style="padding:4px 10px; background:var(--coral); color:var(--panel); border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;">선택 삭제 실행</button>
         <button onclick="toggleMyTripsDeleteMode(false)" style="padding:4px 10px; background:var(--cream); color:var(--text2); border:1px solid var(--border); border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">취소</button>
@@ -4393,6 +4397,20 @@ window.addEventListener('popstate', async e => {
         sessionStorage.setItem('plannerDraftId', window._currentTripId);
     }
     updateNav();
+
+    // 휴대폰 이어 보기 QR(?trip=번호): 로그인돼 있으면 그 여행 지도로, 아니면 로그인 뒤 이 주소로 돌아온다
+    const linkTrip = parseInt(params.get('trip'), 10);
+    if (linkTrip > 0) {
+        if (Token.getAccess()) {
+            history.replaceState({ page: 'map' }, '', location.pathname);
+            openMyTrip(linkTrip);
+            document.body.style.visibility = 'visible';
+            return;
+        }
+        sessionStorage.setItem('redirectUrl', location.pathname + location.search);
+        sessionStorage.setItem('currentPage', 'login');
+        setTimeout(() => toast('로그인하면 그 여행이 바로 열립니다.'), 300);
+    }
 
     const savedPage = sessionStorage.getItem('currentPage');
     if (savedPage && savedPage !== 'main') {

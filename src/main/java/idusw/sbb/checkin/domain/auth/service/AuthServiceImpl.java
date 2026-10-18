@@ -132,8 +132,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void logout(Long userId) {
-        refreshTokenRepository.deleteByUserId(userId);
+    public void logout(Long userId, String refreshToken) {
+        // 다른 기기는 로그인 상태로 둔다. 토큰을 안 보냈으면 지울 것도 없다
+        if (refreshToken == null || refreshToken.isBlank()) return;
+        refreshTokenRepository.deleteByUserIdAndTokenHash(userId, hashSha256(refreshToken));
     }
 
     @Override

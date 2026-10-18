@@ -15,7 +15,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Transactional
     void deleteByUserIdAndExpiresAtBefore(Long userId, java.time.LocalDateTime now);
 
-    // 로그아웃·탈퇴 시 해당 유저 토큰 전체 삭제
+    // 로그아웃: 이 기기 토큰 하나만
+    @Transactional
+    void deleteByUserIdAndTokenHash(Long userId, String tokenHash);
+
+    // 탈퇴 시 해당 유저 토큰 전체 삭제
     @Transactional
     void deleteByUserId(Long userId);
 }
