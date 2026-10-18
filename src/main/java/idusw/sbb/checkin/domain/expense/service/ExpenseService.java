@@ -167,9 +167,8 @@ public class ExpenseService {
     }
 
     @Transactional
-    public void updateExpense(Long expenseId, ExpenseAddRequestDto dto) {
-        Expense expense = expenseRepository.findById(expenseId)
-                .orElseThrow(() -> new EntityNotFoundException("지출 항목을 찾을 수 없습니다."));
+    public void updateExpense(Long planId, Long expenseId, ExpenseAddRequestDto dto) {
+        Expense expense = findInPlan(planId, expenseId);
 
         expense.update(
                 dto.getCategory(),
@@ -181,9 +180,14 @@ public class ExpenseService {
 
     //실제 지출 삭제
     @Transactional
-    public void deleteExpense(Long expenseId) {
-        Expense expense = expenseRepository.findById(expenseId)
+    public void deleteExpense(Long planId, Long expenseId) {
+        expenseRepository.delete(findInPlan(planId, expenseId));
+    }
+
+    // 주소의 여행에 속한 지출만 — 남의 여행 지출 번호를 넣어도 찾지 못한 것으로 답한다
+    private Expense findInPlan(Long planId, Long expenseId) {
+        return expenseRepository.findById(expenseId)
+                .filter(e -> e.getPlan() != null && e.getPlan().getId().equals(planId))
                 .orElseThrow(() -> new EntityNotFoundException("지출 항목을 찾을 수 없습니다."));
-        expenseRepository.delete(expense);
     }
 }

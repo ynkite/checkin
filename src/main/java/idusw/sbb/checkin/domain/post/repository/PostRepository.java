@@ -11,6 +11,10 @@ import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    // 공개 후기에 붙은 여행인가 — 붙은 여행은 후기를 읽는 사람도 볼 수 있다
+    @Query("SELECT COUNT(p) > 0 FROM Post p WHERE p.plan.id = :planId AND p.isPublic = true AND p.status = 'ACTIVE'")
+    boolean existsVisibleByPlanId(@Param("planId") Long planId);
+
     List<Post> findByUserIdAndStatusOrderByIdDesc(Long userId, String status);
 
     // 커뮤니티 - 게시글 목록 조회

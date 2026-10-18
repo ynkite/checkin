@@ -1385,11 +1385,17 @@
   }
 
   /* ── 챗봇 왕복 ── */
+  /* 대화방은 만든 회원만 쓴다. 토큰을 빼먹으면 로그인해 있어도 401 이 난다 */
+  function chatHeaders() {
+    var h = { 'Content-Type': 'application/json' };
+    var t = localStorage.getItem('accessToken');
+    if (t) h.Authorization = 'Bearer ' + t;
+    return h;
+  }
   function ensureSession(cb) {
     if (vs.sessionId) { cb(vs.sessionId); return; }
-    var headers = { 'Content-Type': 'application/json' };
     fetch('/api/chat/sessions', {
-      method: 'POST', headers: headers,
+      method: 'POST', headers: chatHeaders(),
       body: JSON.stringify({ planId: vs.tripId || null })
     }).then(function (r) { return r.json(); })
       .then(function (j) { vs.sessionId = j && j.data && j.data.sessionId; cb(vs.sessionId); })
@@ -1400,7 +1406,7 @@
   if (!sid) { speak('연결이 끊겼습니다. 다시 눌러 주세요.'); return; }
       render('체키에게 물어보는 중...');
       fetch('/api/chat/message', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: chatHeaders(),
         body: JSON.stringify({ sessionId: sid, message: cmd })
       }).then(function (r) { return r.json(); })
         .then(function (j) {

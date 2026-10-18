@@ -62,6 +62,9 @@ public class ChatbotServiceImpl implements ChatbotService {
     /* 날씨는 실시간 화면과 같은 값을 쓴다. 고치지 않고 부르기만 한다 */
     private final idusw.sbb.checkin.domain.live.LiveService liveService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private idusw.sbb.checkin.domain.plan.support.PlanAccess planAccess;
+
     /* 프롬프트에 넣는 현재 시각의 기준. 시험에서 바꿔 끼운다 */
     private Clock clock = Clock.system(ZoneId.of("Asia/Seoul"));
 
@@ -128,7 +131,9 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Override
     @Transactional
     public Long createSession(Long planId) {
+        if (planId != null) planAccess.read(planId);   // 볼 수 없는 여행으로는 대화방을 못 연다
         ChatSession session = new ChatSession();
+        session.setUserId(idusw.sbb.checkin.domain.plan.support.PlanAccess.currentUserId());
         session.setTitle("새로운 여행 플랜 대화");
         session.setPlanId(planId);
         session = sessionRepository.save(session);
@@ -140,8 +145,7 @@ public class ChatbotServiceImpl implements ChatbotService {
     @Transactional
     public String processMessage(Long sessionId, String message, Double lat, Double lng, boolean brief) {
 
-        ChatSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
+        ChatSession session = ownSession(sessionId);
 
         // 유저의 새로운 메시지 DB 저장
         ChatMessage userChat = new ChatMessage();
@@ -430,11 +434,18 @@ public class ChatbotServiceImpl implements ChatbotService {
         this.clock = clock;
     }
 
+    // 내가 만든 대화방만. 남의 방 번호를 넣으면 없는 방과 같게 답한다
+    private ChatSession ownSession(Long sessionId) {
+        Long me = idusw.sbb.checkin.domain.plan.support.PlanAccess.currentUserId();
+        return sessionRepository.findById(sessionId)
+                .filter(s -> me != null && me.equals(s.getUserId()))
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
+    }
+
     @Override
     @Transactional
     public void saveSystemMessage(Long sessionId, String message) {
-        ChatSession session = sessionRepository.findById(sessionId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 대화방입니다."));
+        ChatSession session = ownSession(sessionId);
 
         ChatMessage systemChat = new ChatMessage();
         systemChat.setChatSession(session);

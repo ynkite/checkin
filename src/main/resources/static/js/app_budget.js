@@ -831,14 +831,13 @@ function _drawExpensePage() {
         <tbody>
           ${pageExps.map(e => {
             const info = _CATEGORY_MAP[e.category] || { label: e.category, color: 'var(--ink-3)' };
-            const safeDesc = (e.description || '').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
             return `<tr id="exp-row-${e.id}" style="border-bottom:1px solid var(--border)">
               <td style="padding:7px 4px;color:var(--text3)">${e.date || '-'}</td>
-              <td style="padding:7px 4px"><span style="background:${info.color}22;color:${info.color};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">${info.label}</span></td>
-              <td style="padding:7px 4px;color:var(--text2)">${e.description || '-'}</td>
+              <td style="padding:7px 4px"><span style="background:${info.color}22;color:${info.color};border-radius:4px;padding:2px 8px;font-size:11px;font-weight:600">${_budEsc(info.label)}</span></td>
+              <td style="padding:7px 4px;color:var(--text2)">${_budEsc(e.description || '-')}</td>
               <td style="padding:7px 4px;text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
               <td style="padding:7px 4px;white-space:nowrap">
-                <button onclick="startEditExpense(${e.id},'${e.category}',${e.amount},'${e.date || ''}','${safeDesc}')" style="font-size:11px;padding:3px 10px;background:var(--sage-pale);border:1.5px solid var(--sage-l);border-radius:5px;cursor:pointer;color:var(--sage-d);font-weight:600">수정</button>
+                <button onclick="startEditExpense(${e.id},${_budEsc(JSON.stringify(e.category))},${e.amount},'${e.date || ''}',${_budEsc(JSON.stringify(e.description || ''))})" style="font-size:11px;padding:3px 10px;background:var(--sage-pale);border:1.5px solid var(--sage-l);border-radius:5px;cursor:pointer;color:var(--sage-d);font-weight:600">수정</button>
                 <button onclick="deleteExpense(${e.id})" style="font-size:11px;padding:3px 10px;background:var(--tile-pale);border:1.5px solid var(--tile);border-radius:5px;cursor:pointer;color:var(--tile);font-weight:600;margin-left:4px">삭제</button>
               </td>
             </tr>`;
@@ -892,6 +891,11 @@ async function addLedgerExpense() {
     await _loadExpenses(_budgetSelectedTripId);
 }
 
+/** 메모·분류는 사용자가 쓴 글이다. HTML 에 넣기 전에 따옴표까지 이스케이프한다 (value="" · onclick 안에도 들어간다) */
+function _budEsc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 /** 지출 행을 인라인 수정 모드로 전환 */
 function startEditExpense(id, category, amount, date, desc) {
     const row = document.getElementById('exp-row-' + id);
@@ -902,7 +906,7 @@ function startEditExpense(id, category, amount, date, desc) {
     row.innerHTML = `
     <td><input type="date" id="edit-date-${id}" value="${date}" ${_lastExpenseData&&_lastExpenseData.startDate?'min="'+_lastExpenseData.startDate+'"':''} ${_lastExpenseData&&_lastExpenseData.endDate?'max="'+_lastExpenseData.endDate+'"':''} style="width:108px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
     <td><select id="edit-cat-${id}" style="font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)">${catOptions}</select></td>
-    <td><input type="text" id="edit-desc-${id}" value="${desc}" placeholder="메모" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
+    <td><input type="text" id="edit-desc-${id}" value="${_budEsc(desc)}" placeholder="메모" style="width:100%;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
     <td><input type="number" id="edit-amt-${id}" value="${amount}" min="0" style="width:80px;font-size:11px;padding:3px 4px;border:1px solid var(--border);border-radius:4px;background:var(--surface);color:var(--text)"></td>
     <td style="white-space:nowrap">
       <button onclick="saveEditExpense(${id})" style="font-size:10px;padding:2px 7px;background:var(--sage);color:var(--panel);border:none;border-radius:4px;cursor:pointer;margin-right:2px">저장</button>
@@ -994,8 +998,8 @@ async function exportBudgetPDF() {
             const info = _CATEGORY_MAP[e.category] || { label: e.category };
             return `<tr>
           <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${e.date || '-'}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${info.label}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${e.description || '-'}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${_budEsc(info.label)}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2)">${_budEsc(e.description || '-')}</td>
           <td style="padding:7px 10px;border-bottom:1px solid var(--ui-line-2);text-align:right;font-weight:700">${_fmtWon(e.amount)}</td>
         </tr>`;
         }).join('');

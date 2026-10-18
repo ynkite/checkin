@@ -9,4 +9,6 @@ public interface TripMemberRepository extends JpaRepository<TripMember, Long> {
     boolean existsByTravelPlanIdAndUserEmail(Long travelPlanId, String email);
 
     boolean existsByTravelPlanIdAndUserIdAndRole(Long travelPlanId, Long userId, PlanRole role);
+
+    boolean existsByTravelPlanIdAndUserId(Long travelPlanId, Long userId);
 }

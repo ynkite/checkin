@@ -6,6 +6,7 @@ import idusw.sbb.checkin.domain.plan.dto.PlanDetailResponseDto;
 import idusw.sbb.checkin.domain.plan.dto.PlanInputFormSaveDto;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
+import idusw.sbb.checkin.domain.plan.support.PlanAccess;
 import idusw.sbb.checkin.domain.plan.support.PlanScrapCopier;
 import idusw.sbb.checkin.domain.plan.repository.PlanInputFormRepository;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
@@ -15,7 +16,6 @@ import idusw.sbb.checkin.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import idusw.sbb.checkin.domain.planshare.entity.PlanRole;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +31,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     private final UserRepository userRepository;
     private final ExpenseRepository expenseRepository;
     private final TripMemberRepository tripMemberRepository;
+    private final PlanAccess access;
 
     @Override
     @Transactional
@@ -57,14 +58,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
 
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
-
-        boolean isOwner = plan.getUser().getId().equals(userId);
-        boolean isEditor = tripMemberRepository.existsByTravelPlanIdAndUserIdAndRole(tripId, userId, PlanRole.EDITOR);
-        if (!isOwner && !isEditor) {
-            throw new IllegalStateException("접근 권한이 없습니다.");
-        }
+        TravelPlan plan = access.edit(tripId);
 
         PlanInputForm form = PlanInputForm.builder()
                 .plan(plan)
@@ -94,15 +88,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
     @Override
     public PlanDetailResponseDto getPlanDetail(Long userId, Long tripId) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
-
-//      공유 링크 열람을 위해 본인 검증 로직을 주석 처리
-//        if (!plan.getUser().getId().equals(userId)) {
-//            throw new IllegalStateException("접근 권한이 없습니다.");
-//        }
-
-        return new PlanDetailResponseDto(plan);
+        return new PlanDetailResponseDto(access.read(tripId));
     }
 
     @Override
@@ -153,6 +139,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     @Transactional
     public Long loadPreviousPreference(Long userId, Long tripId) {
+        TravelPlan plan = access.edit(tripId);
         PlanInputForm prev = planInputFormRepository
                 .findByUserIdAndPreferenceSourceNotOrderByCreatedAtDesc(userId, "AUTO_LOADED")
                 .stream()
@@ -166,8 +153,6 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
 
         PlanInputForm copied = PlanInputForm.builder()
                 .plan(plan)
@@ -198,6 +183,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     @Transactional
     public void updateInputForm(Long userId, Long tripId, java.util.Map<String, String> fields) {
+        access.edit(tripId);
         String destination = fields.get("destination");
         if (destination != null) {
             travelPlanRepository.updateDestination(tripId, destination);
@@ -270,9 +256,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
 
     @Override
     public java.util.Map<String, Object> getInputFormMap(Long tripId) {
-        // DB에 데이터를 반환
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 플랜입니다."));
+        TravelPlan plan = access.read(tripId);
 
         java.util.Map<String, Object> map = new java.util.HashMap<>();
 
@@ -479,13 +463,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
     @Override
     @Transactional
     public void updatePlanStatus(Long userId, Long tripId, String status) {
-        TravelPlan plan = travelPlanRepository.findById(tripId)
-                .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
-        boolean isOwner = plan.getUser().getId().equals(userId);
-        boolean isEditor = tripMemberRepository.existsByTravelPlanIdAndUserIdAndRole(tripId, userId, PlanRole.EDITOR);
-        if (!isOwner && !isEditor) {
-            throw new IllegalStateException("접근 권한이 없습니다.");
-        }
+        TravelPlan plan = access.edit(tripId);
         // 확정(FIXED) / 수정 중(DRAFT) 두 가지만 허용
         if (!"FIXED".equals(status) && !"DRAFT".equals(status)) {
             throw new IllegalArgumentException("허용되지 않은 상태값입니다.");

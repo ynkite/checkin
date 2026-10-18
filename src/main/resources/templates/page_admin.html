@@ -271,16 +271,16 @@
           if(u.status==='ACTIVE') badge='<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">활성</span>';
           else if(u.status==='SUSPENDED') badge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">정지</span>';
           else if(u.status==='DELETED') badge='<span class="badge" style="background:var(--ui-plate);color:var(--ink-3);border:1px solid var(--ink-3);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">탈퇴</span>';
-          else badge=`<span class="badge badge-a">${u.status}</span>`;
+          else badge=`<span class="badge badge-a">${_admEsc(u.status)}</span>`;
           let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
           let roleCell='<span style="font-size:11px;color:var(--text3)">탈퇴</span>';
           if(u.status!=='DELETED'){
-            if(u.role!=='ADMIN') suspCell=u.status==='ACTIVE'?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`:`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+            if(u.role!=='ADMIN') suspCell=u.status==='ACTIVE'?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal(${_admJs(u.username)},'${u.userId}')">정지</button>`:`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
             else suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
-            if(u.role==='USER') roleCell=u.status==='SUSPENDED'?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled>관리자 전환</button>`:`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`;
-            else roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+            if(u.role==='USER') roleCell=u.status==='SUSPENDED'?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled>관리자 전환</button>`:`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}',${_admJs(u.username)})">관리자 전환</button>`;
+            else roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}',${_admJs(u.username)})">일반 회원 전환</button>`;
           }
-          return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}"><td>#${u.userId}</td><td>${u.username}</td><td style="color:var(--text2)">${u.name||'-'}</td><td>${u.email}</td><td>${dateStr}</td><td>${badge}</td><td style="white-space:nowrap">${suspCell}</td><td style="white-space:nowrap">${roleCell}</td></tr>`;
+          return`<tr data-username="${_admEsc(u.username)}" data-email="${_admEsc(u.email)}" data-name="${_admEsc(u.name)}"><td>#${u.userId}</td><td>${_admEsc(u.username)}</td><td style="color:var(--text2)">${_admEsc(u.name||'-')}</td><td>${_admEsc(u.email)}</td><td>${dateStr}</td><td>${badge}</td><td style="white-space:nowrap">${suspCell}</td><td style="white-space:nowrap">${roleCell}</td></tr>`;
         }).join('');
         filterAdminUserRows();
       }
@@ -304,16 +304,15 @@
         const sorted=_applySort(window._rSort.list,col,window._rSort.dir);
         const tbody=document.getElementById('adminReportTable'); if(!tbody) return;
         if(!sorted.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">신고 내역이 없습니다</td></tr>';return;}
-        const esc=s=>(s||'').toString().replace(/'/g,"\'");
         tbody.innerHTML=sorted.map(r=>{
-          const actionCell=r.status==='PENDING'?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">숨김</button>&nbsp;<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">반려</button>`:'<span style="font-size:11px;color:var(--text3)">-</span>';
-          const pName=r.processedByName?`[${r.processedByName}]`:'';
+          const actionCell=r.status==='PENDING'?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},${_admJs(r.postTitle)},${_admJs(r.reporterName)},${_admJs(r.reason)})">숨김</button>&nbsp;<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},${_admJs(r.postTitle)},${_admJs(r.reporterName)},${_admJs(r.reason)})">반려</button>`:'<span style="font-size:11px;color:var(--text3)">-</span>';
+          const pName=r.processedByName?`[${_admEsc(r.processedByName)}]`:'';
           let rStatusBadge;
           if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
           else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
           else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
-          else rStatusBadge=`<span class="badge">${r.status}</span>`;
-          return`<tr><td>#${r.reportId}</td><td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600" onclick="openAdminPostDetail(${r.postId})">${r.postTitle||('#'+r.postId)}</span></td><td>${r.reporterName||'-'}</td><td style="white-space:nowrap"><span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? esc(r.commentAuthorName||'-') : esc(r.postAuthorName||'-')}</span><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},'${esc(r.commentAuthorName||'')}')">보기</button></td><td>${r.reason}</td><td>${rStatusBadge}</td><td style="white-space:nowrap">${actionCell}</td></tr>`;
+          else rStatusBadge=`<span class="badge">${_admEsc(r.status)}</span>`;
+          return`<tr><td>#${r.reportId}</td><td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600" onclick="openAdminPostDetail(${r.postId})">${_admEsc(r.postTitle||('#'+r.postId))}</span></td><td>${_admEsc(r.reporterName||'-')}</td><td style="white-space:nowrap"><span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? _admEsc(r.commentAuthorName||'-') : _admEsc(r.postAuthorName||'-')}</span><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},${_admJs(r.commentAuthorName||'')})">보기</button></td><td>${_admEsc(r.reason)}</td><td>${rStatusBadge}</td><td style="white-space:nowrap">${actionCell}</td></tr>`;
         }).join('');
       };
 
@@ -408,7 +407,7 @@
                 if(popularEl){
                   const pops=d.popularPosts||[];
                   popularEl.innerHTML=pops.length
-                          ?pops.map(p=>`<tr><td>${p.title}</td><td>${p.viewCount}</td><td>${p.likeCount}</td></tr>`).join('')
+                          ?pops.map(p=>`<tr><td>${_admEsc(p.title)}</td><td>${p.viewCount}</td><td>${p.likeCount}</td></tr>`).join('')
                           :'<tr><td colspan="3" style="text-align:center;color:var(--text3)">인기 게시글이 없습니다</td></tr>';
                 }
               });
@@ -526,7 +525,7 @@
                   if(u.status==='ACTIVE')    badge='<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">활성</span>';
                   else if(u.status==='SUSPENDED') badge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">정지</span>';
                   else if(u.status==='DELETED')   badge='<span class="badge" style="background:var(--ui-plate);color:var(--ink-3);border:1px solid var(--ink-3);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">탈퇴</span>';
-                  else badge=`<span class="badge badge-a">${u.status}</span>`;
+                  else badge=`<span class="badge badge-a">${_admEsc(u.status)}</span>`;
 
                   // 관리 열: 정지/정지해제만
                   let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
@@ -535,7 +534,7 @@
                   if(u.status!=='DELETED'){
                     if(u.role!=='ADMIN'){
                       suspCell=u.status==='ACTIVE'
-                              ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal('${u.username}','${u.userId}')">정지</button>`
+                              ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal(${_admJs(u.username)},'${u.userId}')">정지</button>`
                               :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
                     } else {
                       suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
@@ -543,16 +542,16 @@
                     if(u.role==='USER'){
                       roleCell=(u.status==='SUSPENDED')
                               ?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled title="정지된 회원은 관리자로 전환할 수 없습니다">관리자 전환</button>`
-                              :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}','${u.username}')">관리자 전환</button>`;
+                              :`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}',${_admJs(u.username)})">관리자 전환</button>`;
                     } else {
-                      roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}','${u.username}')">일반 회원 전환</button>`;
+                      roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}',${_admJs(u.username)})">일반 회원 전환</button>`;
                     }
                   }
-                  return`<tr data-username="${u.username}" data-email="${u.email}" data-name="${(u.name||'').replace(/"/g,'')}">
+                  return`<tr data-username="${_admEsc(u.username)}" data-email="${_admEsc(u.email)}" data-name="${_admEsc(u.name)}">
             <td>#${u.userId}</td>
-            <td>${u.username}</td>
-            <td style="color:var(--text2)">${u.name||'-'}</td>
-            <td>${u.email}</td>
+            <td>${_admEsc(u.username)}</td>
+            <td style="color:var(--text2)">${_admEsc(u.name||'-')}</td>
+            <td>${_admEsc(u.email)}</td>
             <td>${dateStr}</td>
             <td>${badge}</td>
             <td style="white-space:nowrap">${suspCell}</td>
@@ -587,6 +586,9 @@
     function _admEsc(s){
       return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     }
+    /* onclick="f(...)" 안에 넣는 문자열 인자. JS 문자열로 감싼 뒤 속성용으로 한 번 더 이스케이프한다.
+       회원 이름·신고 사유에 따옴표나 태그가 들어 있어도 코드가 되지 않는다 */
+    function _admJs(s){ return _admEsc(JSON.stringify(String(s==null?'':s))); }
     function _goPostPage(page){ loadAdminPosts(page); }
 
     async function loadAdminPosts(page=0){
@@ -693,29 +695,28 @@
                 }
                 window._rSort.list=list;
                 tbody.innerHTML=list.map(r=>{
-                  const esc=s=>(s||'').toString().replace(/'/g,"\\'");
                   const actionCell=r.status==='PENDING'
-                          ?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">숨김</button>&nbsp;`
-                          +`<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},'${esc(r.postTitle)}','${esc(r.reporterName)}','${esc(r.reason)}')">반려</button>`
+                          ?`<button class="btn-o" style="padding:3px 8px;font-size:11px;color:var(--coral);border-color:var(--coral)" onclick="openReportAction('hide',${r.reportId},${_admJs(r.postTitle)},${_admJs(r.reporterName)},${_admJs(r.reason)})">숨김</button>&nbsp;`
+                          +`<button class="btn-o" style="padding:3px 8px;font-size:11px" onclick="openReportAction('reject',${r.reportId},${_admJs(r.postTitle)},${_admJs(r.reporterName)},${_admJs(r.reason)})">반려</button>`
                           :'<span style="font-size:11px;color:var(--text3)">-</span>';
                   // 한글 상태 배지 + 처리자 이름
-                  const pName=r.processedByName?`[${r.processedByName}]`:'';
+                  const pName=r.processedByName?`[${_admEsc(r.processedByName)}]`:'';
                   let rStatusBadge;
                   if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
                   else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
                   else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
-                  else rStatusBadge=`<span class="badge">${r.status}</span>`;
+                  else rStatusBadge=`<span class="badge">${_admEsc(r.status)}</span>`;
                   return`<tr>
             <td>#${r.reportId}</td>
             <td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600"
                       onclick="openAdminPostDetail(${r.postId})"
-                      title="클릭하면 해당 게시글로 이동합니다">${r.postTitle||('#'+r.postId)}</span></td>
-            <td>${r.reporterName||'-'}</td>
+                      title="클릭하면 해당 게시글로 이동합니다">${_admEsc(r.postTitle||('#'+r.postId))}</span></td>
+            <td>${_admEsc(r.reporterName||'-')}</td>
             <td style="white-space:nowrap">
-              <span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? esc(r.commentAuthorName||'-') : esc(r.postAuthorName||'-')}</span>
-              <button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},'${esc(r.commentAuthorName||'')}')">보기</button>
+              <span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? _admEsc(r.commentAuthorName||'-') : _admEsc(r.postAuthorName||'-')}</span>
+              <button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},${_admJs(r.commentAuthorName||'')})">보기</button>
             </td>
-            <td>${r.reason}</td>
+            <td>${_admEsc(r.reason)}</td>
             <td>${rStatusBadge}</td>
             <td style="white-space:nowrap">${actionCell}</td>
           </tr>`;
@@ -823,12 +824,12 @@
                   // extra_notes에서 tags, cardColor 파싱
                   let en={};
                   try{en=JSON.parse(c.extra_notes||'{}');}catch(e){}
-                  const tags=(en.tags||[]).map(t=>`<span style="padding:2px 7px;border-radius:10px;font-size:10px;background:var(--sage-pale);color:var(--sage-d);border:1px solid var(--sage-l)">${t}</span>`).join(' ');
+                  const tags=(en.tags||[]).map(t=>`<span style="padding:2px 7px;border-radius:10px;font-size:10px;background:var(--sage-pale);color:var(--sage-d);border:1px solid var(--sage-l)">${_admEsc(t)}</span>`).join(' ');
                   const colorDot=en.cardColor?`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${en.cardColor};border:1px solid var(--border2);vertical-align:middle;margin-right:4px"></span>`:'';
                   return`<tr>
             <td>#${c.curationId||c.id}</td>
-            <td>${colorDot}${c.title}${tags?`<div style="margin-top:3px">${tags}</div>`:''}</td>
-            <td>${c.theme||'-'}</td>
+            <td>${colorDot}${_admEsc(c.title)}${tags?`<div style="margin-top:3px">${tags}</div>`:''}</td>
+            <td>${_admEsc(c.theme||'-')}</td>
             <td>${c.displayOrder||'-'}</td>
             <td style="font-size:11px">${c.isDefault?'<span style="padding:1px 6px;border-radius:8px;background:var(--sage-pale);color:var(--sage-d);border:1px solid var(--sage-l);margin-right:4px">상시</span>':''}${c.startDate?c.startDate.slice(0,10):''}~${c.endDate?c.endDate.slice(0,10):''}</td>
             <td>

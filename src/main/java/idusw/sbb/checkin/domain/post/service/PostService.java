@@ -152,6 +152,10 @@ public class PostService {
         if (dto.getPlanId() != null) {
             plan = travelPlanRepository.findById(dto.getPlanId())
                     .orElseThrow(() -> new IllegalArgumentException("해당 여행 플랜을 찾을 수 없습니다."));
+            // 후기에 붙은 여행은 읽는 사람 누구에게나 보인다. 남의 비공개 여행을 붙이지 못하게 한다
+            if (plan.getIsPublic() != 1 && !Objects.equals(plan.getUser().getId(), userId)) {
+                throw new IllegalArgumentException("내 여행만 후기에 붙일 수 있습니다.");
+            }
         }
 
         Post post = Post.builder()
@@ -167,16 +171,15 @@ public class PostService {
 
         postRepository.save(post);
 
-        if (dto.getImageUrls() != null) {
-            for (int i = 0; i < dto.getImageUrls().size(); i++) {
-                PostImage image = PostImage.builder()
-                        .post(post)
-                        .imageUrl(dto.getImageUrls().get(i))
-                        .s3ObjectKey(dto.getImageUrls().get(i))
-                        .imageOrder(i)
-                        .build();
-                postImageRepository.save(image);
-            }
+        List<String> urls = ownUploads(dto.getImageUrls());
+        for (int i = 0; i < urls.size(); i++) {
+            PostImage image = PostImage.builder()
+                    .post(post)
+                    .imageUrl(urls.get(i))
+                    .s3ObjectKey(urls.get(i))
+                    .imageOrder(i)
+                    .build();
+            postImageRepository.save(image);
         }
 
         return post.getId();
@@ -229,7 +232,7 @@ public class PostService {
         }
 
         List<PostImage> images = postImageRepository.findByPostId(postId);
-        images.forEach(img -> localFileService.delete(img.getImageUrl()));
+        images.forEach(img -> deleteFileIfUnshared(img.getImageUrl()));
         postImageRepository.deleteAll(images);
 
         post.delete();
@@ -254,7 +257,8 @@ public class PostService {
         );
 
         // 수정 화면에서 새로 추가한 이미지가 있으면 기존 이미지 뒤에 추가
-        if (dto.getImageUrls() != null && !dto.getImageUrls().isEmpty()) {
+        List<String> newUrls = ownUploads(dto.getImageUrls());
+        if (!newUrls.isEmpty()) {
             List<PostImage> existingImages =
                     postImageRepository.findByPostIdOrderByImageOrderAsc(postId);
 
@@ -264,8 +268,8 @@ public class PostService {
                     .max(Integer::compareTo)
                     .orElse(-1) + 1;
 
-            for (int i = 0; i < dto.getImageUrls().size(); i++) {
-                String imageUrl = dto.getImageUrls().get(i);
+            for (int i = 0; i < newUrls.size(); i++) {
+                String imageUrl = newUrls.get(i);
 
                 PostImage image = PostImage.builder()
                         .post(post)
@@ -562,9 +566,19 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("이미지를 찾을 수 없습니다."));
 
         // 실제 로컬 이미지 파일 삭제
-        localFileService.delete(image.getImageUrl());
+        deleteFileIfUnshared(image.getImageUrl());
 
         // DB에서 POST_IMAGES row 삭제
         postImageRepository.delete(image);
+    }
+
+    // 이 서버가 올려 준 사진만 글에 붙인다. 바깥 주소·경로 문자가 든 주소는 버린다
+    private List<String> ownUploads(List<String> urls) {
+        return urls == null ? List.of() : urls.stream().filter(localFileService::isOwnUpload).toList();
+    }
+
+    // 다른 글도 같은 사진을 쓰면 파일은 남긴다 — 남의 사진 주소를 내 글에 붙였다 지워서 남의 파일을 지우지 못하게
+    private void deleteFileIfUnshared(String url) {
+        if (postImageRepository.countByImageUrl(url) <= 1) localFileService.delete(url);
     }
 }
