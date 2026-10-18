@@ -310,7 +310,7 @@ public class DataInitializer implements CommandLineRunner {
         // ── Post 20건 (카테고리별 4건씩) ──
         // ROUTE 4건
         Post postRoute1 = postRepository.save(Post.builder().user(users[0]).plan(userPlans[0])
-                .title("제주 서부 3박4일 완벽 코스, 협재부터 수월봉까지")
+                .title("제주 서부 3박4일, 협재부터 수월봉까지")
                 .content("제주 여행의 정석 코스를 소개합니다. 1일차는 협재해변에서 에메랄드빛 바다를 감상하고 오설록 티뮤지엄을 들렀어요. 2일차에는 수월봉 일출을 보고 섭지코지 산책, 저녁엔 제주시 흑돼지 거리에서 식사했습니다. 렌터카 이동이라 편했고 도로도 잘 되어있어요.")
                 .styleTags("여름,힐링,오션뷰").category("ROUTE").isPublic(true).build());
 

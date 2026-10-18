@@ -35,8 +35,8 @@ public record BudgetAccuracy(List<Row> rows, double avgErrorPct, int n, String n
         double avg = rows.isEmpty() ? 0
                 : round1(rows.stream().mapToDouble(r -> Math.abs(r.errorPct())).average().orElse(0));
         return new BudgetAccuracy(rows, avg, rows.size(),
-                "오차 = (실제 − 예측) ÷ 예측. 누적 평균은 절대값 평균이다. "
-                        + "현재 N=" + rows.size() + " — 시연 데이터이며 실사용 축적치가 아니다.");
+                rows.isEmpty() ? "아직 다녀온 여행이 없어 정확도를 내지 않습니다."
+                        : "다녀온 여행 " + rows.size() + "건에서 예측과 실제 지출의 차이를 쟀습니다.");
     }
 
     private static double round1(double v) {

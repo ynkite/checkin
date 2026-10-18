@@ -26,7 +26,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<Expense> findByUserId(@Param("userId") Long userId);
 
     // 예산 학습 보정의 표본 — 모든 사용자의 끝난 여행
-    @Query("SELECT e FROM Expense e JOIN FETCH e.plan p LEFT JOIN FETCH p.form WHERE p.endDate < :today")
+    @Query("SELECT e FROM Expense e JOIN FETCH e.plan p LEFT JOIN FETCH p.form LEFT JOIN FETCH p.user WHERE p.endDate < :today")
     List<Expense> findOfFinishedTrips(@Param("today") LocalDate today);
 
     @Query("SELECT e FROM Expense e WHERE e.category = :category AND e.plan IN (SELECT t FROM TravelPlan t WHERE t.user.id = :userId)")
