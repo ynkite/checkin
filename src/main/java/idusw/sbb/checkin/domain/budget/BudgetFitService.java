@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import idusw.sbb.checkin.domain.budget.dto.BudgetEstimate;
 import idusw.sbb.checkin.domain.budget.dto.BudgetFitView;
 import idusw.sbb.checkin.domain.budget.dto.BudgetLimitCheck;
+import idusw.sbb.checkin.domain.expense.service.BudgetEstimator;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.checkin.domain.route.service.AiRouteService;
@@ -40,6 +41,9 @@ import java.util.regex.Pattern;
  *      요금은 공개된 1실 요금 × 필요한 객실 수(인원 ÷ 기준인원 올림)다.
  *   5) 그래도 넘으면 화면에 「예산보다 N원 많아요」와 더 줄일 곳을 한 줄로 낸다
  *
+ * 고른 숙박 옵션 · 기준인원을 넘는 인원(BudgetEstimator.extras)은 일정 줄에 없지만 총액에 든다.
+ * 그만큼 예산에서 먼저 떼고 일정을 맞춘다 — 가계부 「숙박」, 숙박비 근거 카드와 같은 계산이다.
+ *
  * 조정 전 총액·바꾼 내용은 1일차 칸의 budgetFit 에 남긴다 (화면이 「전 → 후」를 그린다).
  * 무엇이 실패하든 원래 일정을 그대로 둔다. 시연 중 오류 화면을 띄우지 않는다.
  */
@@ -63,9 +67,12 @@ public class BudgetFitService {
     private final LodgingRateService lodgingRateService;
     private final TransactionTemplate tx;     // 폼이 지연 로딩이라 읽기만 짧은 트랜잭션 안에서 한다
     private final KorTourService korTourService;
+    private final BudgetEstimator budgetEstimator;
 
     /** 여행에서 필요한 값만 떼어 낸 것. */
-    record Snap(long limit, String json, LocalDate start, int people) {}
+    record Snap(long limit, String json, LocalDate start, int people, List<BudgetEstimate.Item> extras) {
+        long extra() { return extras.stream().mapToLong(BudgetEstimate.Item::amount).sum(); }
+    }
 
     /** 조정 결과. changed 가 false 면 json 은 손대지 않은 원본이다. */
     record Fit(String json, long before, long after, List<String> changes, boolean changed) {}
@@ -78,9 +85,10 @@ public class BudgetFitService {
         try {
             Snap s = snap(tripId);
             if (s.limit() <= 0) return;
-            Fit f = fit(s.json(), s.limit(), mealPerPerson);
-            if (f.after() > s.limit())
-                f = best(s.json(), s.limit(), mealPerPerson, nearbyStays(s.json(), s.start(), s.people()));
+            long room = s.limit() - s.extra();     // 옵션 몫을 뗀, 일정이 쓸 수 있는 돈
+            Fit f = fit(s.json(), room, mealPerPerson);
+            if (f.after() > room)
+                f = best(s.json(), room, mealPerPerson, nearbyStays(s.json(), s.start(), s.people()));
             if (f.changed()) aiRouteService.saveAiRouteToDb(tripId, f.json());
         } catch (Exception e) {
             log.warn("[예산 맞춤] tripId={} 조정 못 함, 원래 일정 유지: {}", tripId, e.getMessage());
@@ -94,12 +102,15 @@ public class BudgetFitService {
             Snap s = snap(tripId);
             limit = s.limit();
             ArrayNode days = (ArrayNode) OM.readTree(s.json());
-            long after = total(days);
+            long after = total(days) + s.extra();
             JsonNode meta = days.path(0).path(KEY);
             List<String> changes = new ArrayList<>();
             meta.path("changes").forEach(c -> changes.add(c.asText()));
-            BudgetLimitCheck c = limitService.check(after, items(days), limit);
-            return new BudgetFitView(c.hasLimit(), limit, meta.path("before").asLong(after), after,
+            List<BudgetEstimate.Item> items = items(days);
+            items.addAll(s.extras());
+            BudgetLimitCheck c = limitService.check(after, items, limit);
+            long before = meta.has("before") ? meta.path("before").asLong() + s.extra() : after;
+            return new BudgetFitView(c.hasLimit(), limit, before, after,
                     percent(after, limit), changes, overLine(after, limit, c.biggestLabel(), c.biggestAmount()),
                     c.biggestLabel(), c.biggestAmount(), false);
         } catch (Exception e) {
@@ -336,8 +347,20 @@ public class BudgetFitService {
             int people = p.getForm() == null || p.getForm().getCompanionCount() == null ? 2 : p.getForm().getCompanionCount();
             String json = "FIXED".equals(p.getStatus()) && p.getDraftRouteJson() != null
                     ? p.getDraftRouteJson() : p.getRouteJson();
-            return new Snap(limit, json, p.getStartDate(), people);
+            return new Snap(limit, json, p.getStartDate(), people, extrasOf(p));
         });
+    }
+
+    /** 숙박 추가 금액을 이 화면의 항목 모양으로. 요금 조회가 실패하면 없는 것으로 본다. */
+    private List<BudgetEstimate.Item> extrasOf(TravelPlan p) {
+        try {
+            return budgetEstimator == null ? List.of() : budgetEstimator.extras(p).stream()
+                    .map(x -> BudgetEstimate.Item.estimated("stay", x.label(), x.amount(), x.basis(), null))
+                    .toList();
+        } catch (Exception e) {
+            log.warn("[예산 맞춤] 숙박 추가 금액을 못 셈함: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     /** 가장 비싼 숙소 반경 안의 관광공사 숙소 중 공개 요금이 있고 현실적인 곳. 실패하면 빈 목록. */

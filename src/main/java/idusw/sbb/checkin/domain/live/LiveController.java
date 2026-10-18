@@ -44,7 +44,8 @@ public class LiveController {
             @RequestParam Long tripId,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ResponseEntity.ok(ApiResponse.success(live.snapshot(tripId, lat, lng, date)));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(defaultValue = "false") boolean sim) {
+        return ResponseEntity.ok(ApiResponse.success(live.snapshot(tripId, lat, lng, date, sim)));
     }
 }

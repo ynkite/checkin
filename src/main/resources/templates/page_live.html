@@ -285,6 +285,8 @@
         if (!rlTrip) return;
         var q = '/api/live/now?tripId=' + rlTrip;
         if (rlPos) q += '&lat=' + rlPos[0] + '&lng=' + rlPos[1];
+        /* 가상 주행(?sim=1)은 실내 시연 — 서버가 「지금」을 그날 첫 일정 시각으로 본다 */
+        if (/[?&]sim=1\b/.test(location.search)) q += '&sim=1';
 
         try {
           var r = await fetch(q, { headers: rlAuth() });

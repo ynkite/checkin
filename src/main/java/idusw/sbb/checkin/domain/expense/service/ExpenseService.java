@@ -11,6 +11,7 @@ import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -114,6 +116,22 @@ public class ExpenseService {
                 totalAct += amount;
                 actualExpenses.add(detail);
             }
+        }
+
+        /* 고른 숙박 옵션 · 기준인원을 넘는 인원 — 일정 줄에는 없는 숙박비라 여기서 더한다.
+           숙박비 근거 카드 총액, 예산 맞춤과 같은 계산(BudgetEstimator.extras)이다.
+           요금 조회가 실패해도 가계부는 뜬다 */
+        try {
+            String day0 = plan.getStartDate() == null ? null : plan.getStartDate().toString();
+            for (BudgetEstimate.Item x : budgetEstimator.extras(plan)) {
+                categoryMap.computeIfAbsent("STAY", k -> CategoryBudgetDto.builder()
+                        .category(k).estimatedAmount(0L).actualAmount(0L).build()).addEstimated(x.amount());
+                totalEst += x.amount();
+                estimatedExpenses.add(BudgetReportResponseDto.ExpenseDetailDto.builder()
+                        .category("STAY").description(x.label()).amount(x.amount()).date(day0).build());
+            }
+        } catch (Exception e) {
+            log.warn("[가계부] 숙박 추가 금액을 못 셈함: {}", e.getMessage());
         }
 
         return BudgetReportResponseDto.builder()

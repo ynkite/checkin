@@ -80,6 +80,14 @@ public class LiveService {
     }
 
     public LiveSnapshot snapshot(Long tripId, Double lat, Double lng, LocalDate date) {
+        return snapshot(tripId, lat, lng, date, false);
+    }
+
+    /**
+     * sim 은 가상 주행(실내 시연)이다. 실제 시계로 가르면 시연하는 시각에 따라 다음 목적지가
+     * 이미 지난 것으로 빠진다. 그래서 「지금」을 그날 첫 일정 시각으로 본다.
+     */
+    public LiveSnapshot snapshot(Long tripId, Double lat, Double lng, LocalDate date, boolean sim) {
         TravelPlan plan = planRepository.findById(tripId).orElse(null);
         if (plan == null) return LiveSnapshot.empty(tripId, "여행을 찾지 못했습니다.");
 
@@ -103,7 +111,9 @@ public class LiveService {
         if (stops.isEmpty()) return LiveSnapshot.empty(tripId, "그날 들를 곳이 없습니다.");
 
         /* 지금 어디쯤인가 — 시각으로 가른다. 좌표가 있으면 그걸 우선한다 */
-        int idx = liveIndex(stops, base.equals(LocalDate.now()) ? LocalTime.now() : null, lat, lng);
+        LocalTime now = sim ? parseTime(String.valueOf(stops.get(0).get("time")))
+                : base.equals(LocalDate.now()) ? LocalTime.now() : null;
+        int idx = liveIndex(stops, now, lat, lng);
         Map<String, Object> here = idx >= 0 ? stops.get(idx) : Map.of();
         Map<String, Object> next = (idx + 1) < stops.size() ? stops.get(idx + 1)
                 : (idx < 0 && !stops.isEmpty() ? stops.get(0) : Map.of());
