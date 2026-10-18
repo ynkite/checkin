@@ -1043,11 +1043,23 @@
         rlAltDrive = drive || null;
         box.hidden = false;
         box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p><p class="rl-modes-note">한적한 곳을 찾는 중</p>';
-        /* 길 안내를 접고 왔으면 화면은 맨 위다. 후보 상자가 한참 아래라 거기로 데려간다 */
-        if (drive) requestAnimationFrame(function () {
-          var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-          box.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
-        });
+        /* 길 안내를 접고 왔으면 화면은 맨 위다. 후보 상자가 한참 아래라 거기로 데려간다.
+           안내는 history.back() 으로 닫혀서 popstate 뒤에야 body 잠금이 풀린다 — 그 뒤에 움직인다.
+           히스토리를 안 쌓은 안내면 popstate 가 없으니 잠깐 기다렸다 움직인다 */
+        if (drive) {
+          var moved = false;
+          var move = function () {
+            if (moved) return;
+            moved = true;
+            window.removeEventListener('popstate', move);
+            requestAnimationFrame(function () { requestAnimationFrame(function () {
+              var calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+              box.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'start' });
+            }); });
+          };
+          window.addEventListener('popstate', move);
+          setTimeout(move, 600);
+        }
 
         var d = null;
         try {

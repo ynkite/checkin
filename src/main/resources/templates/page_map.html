@@ -1365,12 +1365,21 @@
       var box = document.getElementById('mpAlert');
       if (!box || !Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
       /* 순서를 바꾼 동안은 되돌리기 카드를 지킨다. 혼잡도가 늦게 와도 덮지 않는다 */
+      /* 「확정」은 상태만 바꾸고 순서는 저장하지 않는다. 저장은 여기 단추로 한다.
+         확정된 여행은 「수정」을 눌러 풀어야 저장 단추가 나온다 */
       if (_mpUndo) {
+        var u = _mpUndo, canSave = window._currentTripId && !window._planConfirmed;
         box.hidden = false;
         box.innerHTML = '<p class="mp-al-1">바꾼 순서로 보고 있습니다</p>' +
-          '<p class="mp-al-2">' + (_mpUndo.pair ? _mpEsc(_mpUndo.pair) + '. ' : '') +
-          '아직 확정하지 않았습니다. 위의 「확정」을 누르면 저장됩니다.</p>' +
-          '<div class="mp-opts"><button type="button" class="mp-opt mp-undo" ' +
+          '<p class="mp-al-2">' + (u.pair
+            ? _mpEsc(u.a) + '·' + _mpEsc(u.b) + ' 자리만 바꾸면 ' + _mpEsc(u.pair) + '. ' : '') +
+          (!window._currentTripId ? '플랜을 저장할 때 이 순서로 저장됩니다.'
+            : window._planConfirmed ? '확정된 일정이라 아직 저장하지 않았습니다. 위의 「수정」을 누르면 저장할 수 있습니다.'
+            : '아직 저장하지 않았습니다.') + '</p>' +
+          '<div class="mp-opts">' +
+          (canSave ? '<button type="button" class="mp-opt" onclick="_mpSaveOrder()">' +
+            '<b>이 순서로 저장</b><span>일정에 반영</span></button>' : '') +
+          '<button type="button" class="mp-opt mp-undo" ' +
           'onclick="_mpUndoOrder()"><b>되돌리기</b><span>원래 순서로</span></button></div>';
         return;
       }
@@ -1527,7 +1536,7 @@
 
       /* 객체가 아니라 자리를 기억한다. 다시 그릴 때 배열이 새로 생기므로
          옛 객체를 들고 있으면 되돌려도 화면과 무관해진다. */
-      _mpUndo = { d: 0, ia: ia, ib: ib, ta: f.worst.time, tb: f.next.time };
+      _mpUndo = { d: 0, ia: ia, ib: ib, ta: f.worst.time, tb: f.next.time, a: f.worst.name, b: f.next.name };
 
       /* 자리를 맞바꾸고 시각은 자리에 남긴다 — 시각은 나오는 값이다 */
       var tmp = ps[ia]; ps[ia] = ps[ib]; ps[ib] = tmp;
@@ -1545,6 +1554,17 @@
           u.pair = pair;
           _mpCrowdPanel();
         }).catch(function () {});
+    }
+
+    function _mpSaveOrder() {
+      var id = window._currentTripId;
+      if (!id || !_mpUndo) return;
+      api.post('/api/trips/' + id + '/routes/reorder', MAP_ITINERARY).then(function (res) {
+        if (!res || !res.success) { toast('순서를 저장하지 못했습니다. ' + ((res && res.message) || '')); return; }
+        var pair = typeof _fmtRoutePair === 'function' ? _fmtRoutePair(res.delta) : '';
+        toast(pair ? '저장했습니다 · ' + pair : '저장했습니다.', pair ? 4200 : 2800);
+        initMapPage();                      /* 보정된 일정을 다시 읽는다. _mpUndo 도 여기서 비운다 */
+      }).catch(function () { toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.'); });
     }
 
     function _mpUndoOrder() {
@@ -1659,6 +1679,7 @@
     // 화면(배지·버튼·잠금)을 상태에 맞게 그려주는 함수
     function applyPlanConfirmState(isConfirmed) {
       window._planConfirmed = !!isConfirmed;
+      if (_mpUndo) _mpCrowdPanel();         /* 되돌리기 카드의 저장 안내가 상태를 따라간다 */
 
       const badge = document.getElementById('planStatusBadge');
       const btn   = document.getElementById('btnConfirmToggle');
