@@ -114,6 +114,14 @@ public class LiveService {
         }
 
         Map<String, Object> crowd = crowdOf(plan, next, dayDate);
+        /* 다음이 식당·숙소처럼 혼잡도 대상이 아니면 그 뒤 관광지로 본다 (세 곳까지).
+           placeName 이 어느 곳의 값인지 말한다 — 화면과 길 안내가 그 이름으로 알린다 */
+        int looked = 0;
+        for (int i = stops.indexOf(next) + 1; crowd.isEmpty() && looked < 3 && i > 0 && i < stops.size(); i++) {
+            if (!"tour".equals(stops.get(i).get("type"))) continue;
+            crowd = crowdOf(plan, stops.get(i), dayDate);
+            looked++;
+        }
         Map<String, Object> weather = weatherOf(plan, next, dayDate);
         String head = headline(ph, next, crowd, weather);
 
@@ -327,7 +335,7 @@ public class LiveService {
         Object rate = crowd.get("rate");
         String label = String.valueOf(crowd.getOrDefault("levelLabel", ""));
         if (rate instanceof Number r && r.intValue() >= 70) {
-            return name + "이 지금 " + label + "입니다. 순서를 바꿔 볼까요.";
+            return crowd.getOrDefault("placeName", name) + "이 지금 " + label + "입니다. 순서를 바꿔 볼까요.";
         }
         return "다음은 " + name + "입니다.";
     }

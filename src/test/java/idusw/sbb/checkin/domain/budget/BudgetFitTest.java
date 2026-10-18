@@ -7,6 +7,7 @@ import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -87,7 +88,7 @@ class BudgetFitTest {
         BudgetFitService.Fit f = BudgetFitService.fit(TRIP, 190_000, 12_000);
 
         assertEquals(200_000, f.before());
-        assertEquals(170_000, f.after(), "케이블카 30,000 만 빠지면 예산 안");
+        assertEquals(190_000, f.after(), "10,000 만 넘으니 수목원 하나로 멈춘다 — 케이블카까지 빼면 너무 줄어든다");
         assertTrue(f.changes().get(0).startsWith("유료 관광지·체험 1곳"));
 
         BudgetFitService.Fit all = BudgetFitService.fit(TRIP, 100_000, 12_000);
@@ -97,20 +98,53 @@ class BudgetFitTest {
     }
 
     @Test
-    void 숙소는_더_싼_근처_숙소로_바꾸고_좌표도_옮긴다() throws Exception {
-        BudgetFitService.Fit f = BudgetFitService.fit(TRIP, 150_000, 12_000);
-        BudgetFitService.Fit s = BudgetFitService.swapStay(f, new BudgetFitService.Stay("서귀포 게스트하우스", 50_000, 33.24, 126.55));
+    void 숙소는_바꾼_뒤_예산_이하이면서_가장_가까운_곳을_고른다() throws Exception {
+        List<BudgetFitService.Stay> stays = List.of(
+                new BudgetFitService.Stay("아주 싼 곳", 20_000, 1, 33.20, 126.50),        // 100,000 — 너무 줄어든다
+                new BudgetFitService.Stay("서귀포 게스트하우스", 50_000, 1, 33.24, 126.55), // 130,000 — 딱 예산
+                new BudgetFitService.Stay("조금 싼 호텔", 90_000, 1, 33.22, 126.52),       // 관광지까지 빼도 140,000
+                new BudgetFitService.Stay("비싼 호텔", 200_000, 1, 33.2, 126.5));           // 더 비싸면 안 바꾼다
+        BudgetFitService.Fit s = BudgetFitService.best(TRIP, 130_000, 12_000, stays);
 
         assertEquals(200_000, s.before(), "조정 전은 처음 총액 그대로");
-        assertEquals(f.after() - 70_000, s.after());
-        assertTrue(s.changes().get(s.changes().size() - 1).contains("서귀포 게스트하우스"));
-        JsonNode stay = OM.readTree(s.json()).get(0).path("places").get(4);
-        assertEquals("숙소 · ₩50,000", stay.path("sub").asText());
-        assertEquals(33.24, stay.path("lat").asDouble());
-        assertEquals("이동", OM.readTree(s.json()).get(0).path("places").get(3).path("transit").asText(), "숙소로 가는 길은 다시 잰다");
+        assertEquals(130_000, s.after(), "가장 싼 곳이 아니라 예산에 가장 가까운 곳");
+        assertEquals(1, s.changes().size(), "숙소만 바꿔 예산 안이면 관광지는 그대로");
+        assertTrue(s.changes().get(0).contains("서귀포 게스트하우스"));
+        JsonNode places = OM.readTree(s.json()).get(0).path("places");
+        assertEquals("숙소 · ₩50,000", places.get(6).path("sub").asText());
+        assertEquals(33.24, places.get(6).path("lat").asDouble());
+        assertEquals("이동", places.get(5).path("transit").asText(), "숙소로 가는 길은 다시 잰다");
 
-        assertSame(f, BudgetFitService.swapStay(f, new BudgetFitService.Stay("비싼 호텔", 200_000, 33.2, 126.5)),
-                "더 비싸면 바꾸지 않는다");
+        assertEquals(170_000, BudgetFitService.best(TRIP, 130_000, 12_000, List.of()).after(), "후보가 없으면 줄일 만큼만");
+    }
+
+    @Test
+    void 숙소_요금은_객실_수를_곱하고_비현실적으로_싸면_뺀다() {
+        assertNull(BudgetFitService.partyStay("캔버스", 21_000, 2, 4, 35.1, 129.1),
+                "4명이 2실 42,000원 — 1인 10,500원이라 1인·1실 요금으로 본다");
+        BudgetFitService.Stay s = BudgetFitService.partyStay("호텔", 60_000, 0, 4, 35.1, 129.1);
+        assertEquals(2, s.rooms(), "기준인원을 모르면 2인실로 본다");
+        assertEquals(120_000, s.price());
+    }
+
+    @Test
+    void 아침_출발_숙소_줄은_값을_달지_않는다() throws Exception {
+        var days = (com.fasterxml.jackson.databind.node.ArrayNode) OM.readTree("""
+            [{"places":[{"type":"stay","name":"펜션","sub":"숙소 · ₩120,000"}]},
+             {"places":[{"type":"stay","name":"펜션","sub":"숙소 · 출발"}]}]""");
+        String change = BudgetFitService.swapStay(days, new BudgetFitService.Stay("호텔", 100_000, 2, 35.1, 129.1));
+
+        assertTrue(change.contains("2실"));
+        assertEquals("숙소 · 2실 · ₩100,000", days.get(0).path("places").get(0).path("sub").asText());
+        assertEquals("숙소 · 출발", days.get(1).path("places").get(0).path("sub").asText());
+        assertEquals("호텔", days.get(1).path("places").get(0).path("name").asText());
+    }
+
+    @Test
+    void 가까움은_예산_안이_먼저다() {
+        assertTrue(BudgetFitService.closer(590_000, 550_000, 600_000));
+        assertTrue(BudgetFitService.closer(590_000, 610_000, 600_000));
+        assertTrue(BudgetFitService.closer(620_000, 650_000, 600_000));
     }
 
     @Test

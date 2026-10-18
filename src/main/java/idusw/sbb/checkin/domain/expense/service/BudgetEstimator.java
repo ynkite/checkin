@@ -47,7 +47,7 @@ public class BudgetEstimator {
     static final double ESTIMATE_BAND = 0.20;
 
     private static final ObjectMapper OM = new ObjectMapper();
-    private static final Pattern WON = Pattern.compile("₩([\\d,]+)");
+    private static final Pattern WON = Pattern.compile("₩([\\d,]+)(?:×(\\d+))?");
 
     private final KorTourService korTourService;
     private final LodgingRateService lodgingRateService;
@@ -63,6 +63,7 @@ public class BudgetEstimator {
      * @param barbecueAvailable 숙소가 바베큐 제공이라고 공개 데이터에 밝혔는지
      * @param lateCheckout      레이트 체크아웃 옵션
      * @param pet               반려동물 동반
+     * @param scheduleLodging   일정에 적힌 숙박비 합 (가계부 숙박 예상과 같은 값). 0 이면 일정에 없음
      */
     public record Input(
             LodgingRate rate,
@@ -72,8 +73,14 @@ public class BudgetEstimator {
             boolean barbecue,
             boolean barbecueAvailable,
             boolean lateCheckout,
-            boolean pet
-    ) {}
+            boolean pet,
+            long scheduleLodging
+    ) {
+        /** 필요한 객실 수 — 인원 ÷ 기준인원 올림. 기준인원을 모르면 객실 2인 기준 */
+        int rooms() {
+            return (int) Math.max(1, Math.ceil(people / (double) (baseCount > 0 ? baseCount : 2)));
+        }
+    }
 
     /** 여행 한 건의 숙박비 예측. 외부 API 가 죽어도 항목이 「없음」으로 내려갈 뿐 화면은 뜬다. */
     public BudgetEstimate estimate(TravelPlan plan) {
@@ -108,13 +115,24 @@ public class BudgetEstimator {
         return new BudgetEstimate(items, total, total - band, total + band, confidence, note);
     }
 
-    /** 객실 기본료 — 확정의 유일한 출처. 공개 요금이 없으면 지역 평균 추정으로 내려간다. */
+    /**
+     * 객실 기본료 — 일정에 숙박비가 있으면 그 값이다. 가계부 「숙박」 예상과 한 계산에서 나오게.
+     * 공개 요금 × 객실 수 × 박수가 그 값과 같을 때만 확정이다.
+     */
     private static Item roomFee(Input in) {
         LodgingRate rate = in.rate();
+        int nights = Math.max(1, in.nights());
+        if (in.scheduleLodging() > 0) {
+            boolean exact = rate != null && !rate.estimated()
+                    && rate.amount() * in.rooms() * nights == in.scheduleLodging();
+            return exact
+                    ? Item.confirmed("객실 기본료", in.scheduleLodging(),
+                        "실제 요금 1실 " + won(rate.amount()) + " × " + in.rooms() + "실 × " + nights + "박")
+                    : Item.estimated("객실 기본료", in.scheduleLodging(), "일정 숙박비 · " + nights + "박");
+        }
         if (rate == null || rate.amount() <= 0) {
             return Item.none("객실 기본료", "공개 요금 없음");
         }
-        int nights = Math.max(1, in.nights());
         long amount = rate.amount() * nights;
         String basis = rate.season() + " · " + nights + "박";
         return rate.estimated()
@@ -127,6 +145,7 @@ public class BudgetEstimator {
      * 그래서 항목 전체는 추정이고, 어디까지가 공개 데이터인지를 근거 문구에 적는다.
      */
     private static Item extraPeople(Input in) {
+        if (in.scheduleLodging() > 0) return Item.none("인원 추가", in.people() + "명 · 객실 기본료에 포함");
         // 기준인원을 모르면 객실 2인 기준으로 보고 평균 금액을 쓴다
         boolean known = in.baseCount() > 0;
         int base = known ? in.baseCount() : 2;
@@ -149,18 +168,26 @@ public class BudgetEstimator {
     /** 바베큐 — 공개 데이터는 「가능한지」만 알려 준다. 금액은 끝까지 추정으로 남는다. */
     private static Item barbecue(Input in) {
         if (!in.barbecue()) return Item.none("바베큐", "선택 안 함");
+        if (in.scheduleLodging() > 0) return onSite("바베큐", BARBECUE);
         return Item.estimated("바베큐", BARBECUE,
                 in.barbecueAvailable() ? "숙소 제공 확인" : "선택함");
     }
 
     private static Item lateCheckout(Input in) {
         if (!in.lateCheckout()) return Item.none("레이트 체크아웃", "선택 안 함");
+        if (in.scheduleLodging() > 0) return onSite("레이트 체크아웃", LATE_CHECKOUT);
         return Item.estimated("레이트 체크아웃", LATE_CHECKOUT, "선택함");
     }
 
     private static Item pet(Input in) {
         if (!in.pet()) return Item.none("반려동물", "동반 없음");
+        if (in.scheduleLodging() > 0) return onSite("반려동물", PET_PER_NIGHT * Math.max(1, in.nights()));
         return Item.estimated("반려동물", PET_PER_NIGHT * Math.max(1, in.nights()), "동반 추가요금");
+    }
+
+    /** 일정 숙박비에 없는 선택 항목 — 현장에서 따로 내는 돈이라 총액에 넣지 않고 금액만 알린다 */
+    private static Item onSite(String label, long amount) {
+        return Item.none(label, "선택함 · 현장에서 약 " + won(amount) + " (총액 별도)");
     }
 
     private static String won(long amount) {
@@ -179,19 +206,22 @@ public class BudgetEstimator {
         boolean barbecue = options.contains("바베큐");
         boolean lateCheckout = options.contains("레이트 체크아웃");
 
-        Spot stay = findStay(plan);
+        // 가계부·예산 맞춤과 같은 일정을 본다 — 확정된 여행을 고치는 중이면 고치는 쪽
+        String json = "FIXED".equals(plan.getStatus()) && plan.getDraftRouteJson() != null
+                ? plan.getDraftRouteJson() : plan.getRouteJson();
+        long lodging = scheduleLodging(json);
+        Spot stay = findStay(json);
         if (stay == null) {
-            return new Input(scheduleRate(plan.getRouteJson()), nights, people, 0, barbecue, false, lateCheckout, pet);
+            return new Input(null, nights, people, 0, barbecue, false, lateCheckout, pet, lodging);
         }
 
         // 관광공사 응답은 로컬 DB 에 저장하지 않는다 — 요청마다 실시간 호출이다.
         LodgingRate rate = lodgingRateService.nightly(stay.id(), stay.areaCode(), plan.getStartDate());
-        if (rate == null || rate.amount() <= 0) rate = scheduleRate(plan.getRouteJson());
         return new Input(rate, nights, people,
                 lodgingRateService.baseCount(stay.id()),
                 barbecue,
                 barbecue && lodgingRateService.barbecueAvailable(stay.id()),
-                lateCheckout, pet);
+                lateCheckout, pet, lodging);
     }
 
     /** 숙박 일수. 당일치기면 1박으로 본다(요금 항목이 0이 되면 화면이 빈다). */
@@ -202,8 +232,8 @@ public class BudgetEstimator {
     }
 
     /** 동선의 숙소 이름으로 관광공사 숙박(32) 을 찾는다. 못 찾으면 null 이고 항목은 「없음」이 된다. */
-    private Spot findStay(TravelPlan plan) {
-        String name = stayName(plan.getRouteJson());
+    private Spot findStay(String routeJson) {
+        String name = stayName(routeJson);
         if (name == null) return null;
         try {
             List<Spot> found = korTourService.searchByName(name, 32, 1);
@@ -220,13 +250,22 @@ public class BudgetEstimator {
         return stay == null ? null : stay.path("name").asText();
     }
 
-    /** 공개 요금이 없을 때 — 일정에 적힌 1박 금액(평균 기준으로 잡은 값)을 추정으로 쓴다. 없으면 null. */
-    static LodgingRate scheduleRate(String routeJson) {
-        JsonNode stay = firstStay(routeJson);
-        Matcher m = WON.matcher(stay == null ? "" : stay.path("sub").asText(""));
-        return m.find()
-                ? new LodgingRate(Long.parseLong(m.group(1).replace(",", "")), true, "일정 금액", "일정에 적힌 1박 금액", 0)
-                : null;
+    /** 일정의 숙소 금액 합 — 가계부가 숙박 예상을 내는 것과 같은 셈 (sub 의 ₩금액, ×N 이면 곱한다) */
+    static long scheduleLodging(String routeJson) {
+        long sum = 0;
+        if (routeJson == null || routeJson.isBlank()) return 0;
+        try {
+            for (JsonNode day : OM.readTree(routeJson))
+                for (JsonNode place : day.path("places")) {
+                    if (!"stay".equals(place.path("type").asText())) continue;
+                    Matcher m = WON.matcher(place.path("sub").asText(""));
+                    if (m.find()) sum += Long.parseLong(m.group(1).replace(",", ""))
+                            * (m.group(2) == null ? 1 : Long.parseLong(m.group(2)));
+                }
+        } catch (Exception e) {
+            log.warn("[budget] routeJson 파싱 실패: {}", e.getMessage());
+        }
+        return sum;
     }
 
     private static JsonNode firstStay(String routeJson) {
