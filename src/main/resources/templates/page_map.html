@@ -471,11 +471,13 @@
                y: fit.d * lng + fit.e * lat + fit.f };
     }
 
-    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것. 일차를 골랐으면 그날 것만 */
+    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것. 늘 하루치만 올린다.
+       「전체」여도 아래 레일이 고른 날(_mpRailDay)을 따른다 — 레일은 1일차인데
+       모형에는 사흘치 핀이 다 서던 것을 막는다 */
     function _mvStops() {
-      var out = [];
+      var out = [], dn = String(_mpRailDay());
       (MAP_ITINERARY || []).forEach(function (d) {
-        if (_MP_DAY !== 'all' && String(d.day) !== String(_MP_DAY)) return;
+        if (String(d.day) !== dn) return;
         (d.places || []).forEach(function (p) {
           if (p.transit || !p.name) return;
           if (!isFinite(p.lat) || !isFinite(p.lng)) return;
@@ -1659,6 +1661,10 @@
       }
       // 확정 상태면 일정 영역(드래그·교체·추가)을 잠금 처리
       if (left) left.classList.toggle('plan-locked', isConfirmed);
+      /* 머리의 플랜 단계 · 「작성 중인 플랜」도 같이 맞춘다. body.plan-fixed 는 CSS 가 하단 탭 불을 끄는 데 쓴다 */
+      document.body.classList.toggle('plan-fixed', !!isConfirmed);
+      if (typeof updateNav === 'function') updateNav();
+      else if (typeof _syncPlannerTopbar === 'function') _syncPlannerTopbar();
     }
 
     // 확정 ↔ 수정 토글 버튼 핸들러
@@ -3715,57 +3721,8 @@
       toast('교체 요청에 넣었습니다.');
     }
 
-    function renderQ() {
-      const box = document.getElementById('queueBox');
-      const items = document.getElementById('qItems');
-      const cnt = document.getElementById('qCnt');
-      const btn = document.getElementById('btnAll');
-
-      if (!box || !items) return;
-
-// 목록이 길어지면 스크롤 생성 (패널을 넘지 않도록 화면 비율로 제한)
-      items.style.maxHeight = 'min(240px, 32vh)';
-      items.style.overflowY = 'auto';
-      items.style.paddingRight = '5px';
-
-      if (_q.length === 0) {
-        box.classList.remove('has');
-        cnt.textContent = '0';
-        if (btn) btn.disabled = true;
-        items.innerHTML = '';
-        return;
-      }
-
-      box.classList.add('has');
-      box.style.display = 'block';
-      cnt.textContent = _q.length;
-      if (btn) btn.disabled = false;
-
-      // 요구사항은 등록한 뒤에도 고칠 수 있게 input 으로 둔다
-      items.innerHTML = _q.map((q, i) =>
-              `<div class="q-item">
-          <div class="q-itop">
-            <div class="q-place">${_mpEsc(q.place)}</div>
-            <button class="q-rm" onclick="rmQ(${i})">×</button>
-          </div>
-          <input class="q-inp" type="text" value="${_mpEsc(q.req)}" oninput="updateQueueReq(${i}, this.value)"
-                 placeholder="예: 바다가 보이는 조용한 카페로">
-        </div>`
-      ).join('');
-    }
-
-    // 항목 삭제
-    function rmQ(i) {
-      _q.splice(i, 1);
-      renderQ();
-      toast('요청 제거됨');
-      // 큐가 다 비워지면 재계산 바(recalcBar) 숨기기
-      if (_q.length === 0) {
-        const rb = document.getElementById('recalcBar');
-        if (rb) rb.style.display = 'none';
-      }
-    }
-
+    /* 대기열 그리기(renderQ · rmQ)와 모두 교체(execAllReplace)는 app_main.js 에 있다.
+       이 파일이 먼저 읽혀서 여기 있던 같은 이름의 함수는 덮여 쓰이지 않았다 */
     // 사용자가 input 창에 타이핑할 때 배열 데이터를 실시간 갱신
     function updateQueueReq(idx, newVal) {
       if (_q[idx]) _q[idx].req = newVal;
@@ -3784,48 +3741,6 @@
     function updateQueueReq(idx, newVal) {
       if (_q[idx]) _q[idx].req = newVal;
     }
-
-    // ── 2. 백엔드 AI로 부분 교체 요청 쏘기 ──
-
-    async function execAllReplace() {
-      const tripId = window._currentTripId;
-      if (!tripId || _q.length === 0) return;
-
-      const btn = document.getElementById('btnAll');
-      const originalText = btn.innerHTML; // 원래 버튼 텍스트 보관
-      const loadingOverlay = document.getElementById('replaceLoadingOverlay');
-
-      // 화면 잠그고 로딩창 띄우기 & 버튼 텍스트 변경
-      if (loadingOverlay) loadingOverlay.style.display = 'flex';
-      btn.innerHTML = '바꾸는 중';
-      btn.disabled = true;
-
-      try {
-        // 올바른 백엔드 주소로 연결!
-        const res = await api.post(`/api/trips/${tripId}/routes/replace`, { requests: _q });
-
-        if (res.success && res.data) {
-          toast('바꿨습니다. 화면을 다시 불러옵니다.');
-
-          // 1.5초 뒤 완벽하게 새로고침
-          setTimeout(() => {
-            location.reload();
-          }, 1500);
-
-        } else {
-          toast('교체하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
-          if (loadingOverlay) loadingOverlay.style.display = 'none';
-          btn.innerHTML = originalText;
-          btn.disabled = false;
-        }
-      } catch(e) {
-        toast('교체하지 못했습니다. 잠시 뒤에 다시 눌러 주세요.');
-        if (loadingOverlay) loadingOverlay.style.display = 'none';
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-      }
-    }
-
 
     /* ── 지도 화면 전용: 날씨 팝업 열기 ── */
     async function openMapWeatherPopup() {
@@ -3983,6 +3898,8 @@
 
           // 1초 뒤 브라우저를 깔끔하게 새로고침하여 바뀐 실내 마커와 동선 화살표를 다시 그림
           setTimeout(() => {
+            /* 서버에 이미 저장됐다. 새로고침이 이탈 가드(빈 확인창 · 자동 확정)를 건드리지 않게 한다 */
+            window._isSavingAndLeaving = true;
             location.reload();
           }, 1000);
 
