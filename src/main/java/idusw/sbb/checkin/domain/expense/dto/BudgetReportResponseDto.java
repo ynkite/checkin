@@ -13,6 +13,7 @@ public class BudgetReportResponseDto {
     private String destination;
     private String startDate;
     private String endDate;
+    private String transportType;   // 자차 · 렌터카 · 대중교통 — 교통비 줄의 안내에 쓴다
 
     private Long totalEstimatedAmount;
     private Long totalActualAmount;

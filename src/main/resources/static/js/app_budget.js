@@ -241,7 +241,7 @@ async function _loadExpenses(tripId) {
     if (destEl) destEl.textContent = [d.destination, (d.startDate && d.endDate) ? d.startDate + ' ~ ' + d.endDate : null].filter(Boolean).join(' · ');
 
     /* 예상 총액이 왜 그 값인지 — 성수기·축제 한 줄 */
-    _loadLedgerSeason({ startDate: d.startDate, endDate: d.endDate, destination: d.destination });
+    _loadLedgerSeason({ startDate: d.startDate, endDate: d.endDate, destination: d.destination, transportType: d.transportType });
 
     // 미입력 카테고리 경고
     const estCatSet  = new Set(estExps.map(e => e.category));
@@ -355,6 +355,8 @@ async function _loadExpenses(tripId) {
                 const actW   = Math.round((c.actualAmount   || 0) / maxAmt * 100) + '%';
                 const noAct  = !actCatSet.has(c.category);   // 0원 입력도 "입력됨"으로 처리
                 const isOver = !noAct && (c.actualAmount > c.estimatedAmount);
+                /* 자차 교통비는 일정 안 구간만 잰 값이다. 집에서 오가는 유류비·통행료는 없으니 없다고 적는다 */
+                const carNote = c.category === 'TRANSPORT' && _isCar(d.transportType);
                 return `
           <div style="padding:12px 14px;background:var(--cream2);border-radius:10px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -370,6 +372,7 @@ async function _loadExpenses(tripId) {
             <div class="bi-bar-track" title="예상 지출"><div class="bi-bar-fill" style="width:${estW};background:${info.color};opacity:.35"></div></div>
             <div class="bi-bar-track" style="margin-top:4px" title="실제 지출"><div class="bi-bar-fill" style="width:${actW};background:${info.color}"></div></div>
             ${isOver ? `<div style="font-size:11px;color:var(--coral);margin-top:5px;font-weight:600">${_fmtWon(c.actualAmount - c.estimatedAmount)} 초과</div>` : ''}
+            ${carNote ? '<div style="font-size:11px;color:var(--text3);margin-top:5px">출발지 왕복 이동비 미포함</div>' : ''}
           </div>`;
             }).join('');
             listEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">${items}</div>`;
@@ -1269,7 +1272,7 @@ async function _loadLedgerSeason(trip) {
     const bits = [];
     if (season && season.key !== 'off') {
         let s = '<b>' + season.label + '</b>에 가는 여행입니다.';
-        if (season.carMultiplier > 1) {
+        if (season.carMultiplier > 1 && /렌터카/.test(trip.transportType || '')) {
             s += ' 렌터카가 평시의 ' + season.carMultiplier.toFixed(2) + '배, ';
         }
         s += '숙소도 같이 오릅니다.';
@@ -1286,6 +1289,11 @@ async function _loadLedgerSeason(trip) {
     if (!bits.length) return;          /* 알려 줄 것이 없으면 줄을 두지 않는다 */
     el.innerHTML = bits.join(' ');
     el.hidden = false;
+}
+
+/* 플래너가 저장한 말 그대로다 — 「자차」「렌터카」면 차, 「대중교통」이면 아니다 */
+function _isCar(t) {
+    return /자차|렌터카/.test(t || '');
 }
 
 function _ldEsc(s) {

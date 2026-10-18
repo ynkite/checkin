@@ -299,7 +299,7 @@ public class BudgetFitService {
     }
 
     /** 장소 sub · 이동 구간 금액의 합. 가계부 예상 비용과 같은 기준이다. */
-    static long total(JsonNode days) {
+    public static long total(JsonNode days) {
         long sum = 0;
         for (JsonNode day : days)
             for (JsonNode p : day.path("places"))
@@ -434,7 +434,7 @@ public class BudgetFitService {
         return out;
     }
 
-    static long amount(String s) {
+    public static long amount(String s) {
         Matcher m = WON.matcher(s == null ? "" : s);
         if (!m.find()) return 0;
         long v = Long.parseLong(m.group(1).replace(",", ""));

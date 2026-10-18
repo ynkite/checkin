@@ -18,12 +18,12 @@ class RouteDepartureStayTest {
                                 {"type":"stay","name":"캔버스","sub":"숙소 · ₩120,000"}]},
              {"day":3,"places":[{"type":"stay","name":"캔버스","sub":"숙소 · ₩120,000"}]}]
             """;
-        JsonNode days = new ObjectMapper().readTree(AiRouteService.unpriceDepartureStay(json));
+        JsonNode days = new ObjectMapper().readTree(idusw.sbb.checkin.domain.route.RouteJson.unpriceDepartureStay(json));
 
         assertEquals("숙소 · ₩120,000", days.get(0).path("places").get(2).path("sub").asText(), "1일차 밤은 그대로");
         assertEquals("숙소 · 출발", days.get(1).path("places").get(0).path("sub").asText());
         assertEquals("숙소 · ₩120,000", days.get(1).path("places").get(2).path("sub").asText(), "2일차 밤은 그대로");
         assertEquals("숙소 · 출발", days.get(2).path("places").get(0).path("sub").asText());
-        assertEquals("깨진 JSON", AiRouteService.unpriceDepartureStay("깨진 JSON"));
+        assertEquals("깨진 JSON", idusw.sbb.checkin.domain.route.RouteJson.unpriceDepartureStay("깨진 JSON"));
     }
 }

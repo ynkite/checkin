@@ -2,7 +2,6 @@ package idusw.sbb.checkin.domain.route.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import idusw.sbb.checkin.domain.expense.entity.Expense;
 import idusw.sbb.checkin.domain.expense.repository.ExpenseRepository;
 import idusw.sbb.checkin.domain.place.service.PlaceService;
 import idusw.sbb.checkin.domain.plan.entity.PlanInputForm;
@@ -912,37 +911,6 @@ public class AiRouteService {
     /* 그림문자(Symbol, other)와 이형 선택자. 대부분의 이모지가 여기 든다 */
     private static final Pattern EMOJI = Pattern.compile("[\\p{So}\\uFE0F\\u200D]+");
 
-    /**
-     * 2일차부터 아침 첫 줄의 숙소는 「숙소에서 출발」이다. 전날 밤 숙소와 같은 곳이라
-     * 금액까지 달고 있으면 1박이 두 번 셈해진다 (2박인데 숙소 4줄 = 4박 값).
-     * 그 줄의 금액만 지운다. 가계부·예산 맞춤·하루 합계가 모두 sub 의 금액을 읽으므로
-     * 여기 한 곳에서 지우면 다 같이 맞는다.
-     */
-    static String unpriceDepartureStay(String json) {
-        if (json == null || json.isBlank()) return json;
-        try {
-            JsonNode root = new ObjectMapper().readTree(json);
-            if (!root.isArray()) return json;
-            boolean changed = false;
-            for (int d = 1; d < root.size(); d++) {
-                for (JsonNode p : root.get(d).path("places")) {
-                    if (p.has("transit")) continue;
-                    String sub = p.path("sub").asText("");
-                    if ("stay".equals(p.path("type").asText()) && AMOUNT_PATTERN.matcher(sub).find()) {
-                        ((com.fasterxml.jackson.databind.node.ObjectNode) p)
-                                .put("sub", AMOUNT_PATTERN.matcher(sub).replaceAll("출발").trim());
-                        changed = true;
-                    }
-                    break;   // 첫 장소만 본다
-                }
-            }
-            return changed ? new ObjectMapper().writeValueAsString(root) : json;
-        } catch (Exception e) {
-            log.warn("[동선] 출발 숙소 금액을 정리하지 못했습니다: {}", e.getMessage());
-            return json;
-        }
-    }
-
     /* 쓰기다. 클래스가 @Transactional(readOnly = true) 라서 이게 없으면
        하이버네이트가 flush 를 안 한다 — 순서 변경·장소 교체가 새로고침하면
        옛 동선으로 돌아가던 원인이다.
@@ -1005,7 +973,7 @@ public class AiRouteService {
     /** 저장 전에 거치는 보정 전부. 외부 호출(카카오·관광공사·기상청·TMAP)이 여기 몰려 있다. */
     String enrich(TravelPlan plan, String json) {
         // ★아침 출발 숙소 줄의 금액을 지운다 (1박 두 번 셈 방지). 하루 합계를 다시 내는 아래보다 먼저
-        json = unpriceDepartureStay(json);
+        json = idusw.sbb.checkin.domain.route.RouteJson.unpriceDepartureStay(json);
 
         // ★카카오 API로 거리/시간/통행료를 실제값으로 보정 (저장 직전 1회)
         PlanInputForm form = plan.getForm();
@@ -1078,78 +1046,10 @@ public class AiRouteService {
         }
     }
 
-    // AI 동선 JSON을 파싱해 가계부(Expense)의 "AI 예상 비용"을 생성/갱신
+    // 동선 JSON → 가계부 「예상 지출」. 가계부가 읽을 때와 같은 함수(EstimatedExpenses)다
     private void parseAndSaveEstimatedExpenses(TravelPlan plan, String json) {
-        // 재생성 시 기존 AI 예상 비용 초기화
         expenseRepository.deleteEstimatedByPlanId(plan.getId());
-
-        try {
-            JsonNode root = objectMapper.readTree(json);
-            if (!root.isArray()) return;
-
-            for (JsonNode dayNode : root) {
-                int day = dayNode.path("day").asInt(1);
-                LocalDate expenseDate = plan.getStartDate().plusDays(day - 1);
-                JsonNode places = dayNode.path("places");
-                if (!places.isArray()) continue;
-
-                long transitOfDay = 0;
-
-                for (JsonNode place : places) {
-                    /* 이동 구간은 장소가 아니라서 type 이 없다. 전에는 여기서 건너뛰어
-                       예상 지출에 교통비가 통째로 빠졌다 — 가계부 예상 총액이 지도에 뜨는
-                       동선 금액보다 늘 교통비만큼 적었고, 3층 오차도 그만큼 부풀었다.
-                       구간마다 한 줄씩 넣으면 짧은 이동이 수십 줄 쌓여 화면이 읽히지 않는다.
-                       그 날 몫을 하나로 합쳐 「이동 N구간」 한 줄로 넣는다 */
-                    if (!place.has("type")) {
-                        transitOfDay += parseAmountFromSub(place.path("transit").asText(""));
-                        continue;
-                    }
-
-                    String category = mapTypeToCategory(place.path("type").asText(""));
-                    if (category == null) continue;
-
-                    long amount = parseAmountFromSub(place.path("sub").asText(""));
-                    if (amount <= 0) continue;
-
-                    expenseRepository.save(Expense.builder()
-                            .plan(plan)
-                            .user(plan.getUser())
-                            .category(category)
-                            .description(place.path("name").asText(""))
-                            .amount(amount)
-                            .isEstimated(true)
-                            .expenseDate(expenseDate)
-                            .build());
-                }
-
-                if (transitOfDay > 0) {
-                    int legs = 0;
-                    for (JsonNode place : places) if (!place.has("type")) legs++;
-                    expenseRepository.save(Expense.builder()
-                            .plan(plan)
-                            .user(plan.getUser())
-                            .category("TRANSPORT")
-                            .description("이동 " + legs + "구간")
-                            .amount(transitOfDay)
-                            .isEstimated(true)
-                            .expenseDate(expenseDate)
-                            .build());
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("[Expense] AI 예상 비용 파싱 실패: " + e.getMessage());
-        }
-    }
-
-    private String mapTypeToCategory(String type) {
-        return switch (type.toLowerCase()) {
-            case "stay"  -> "STAY";
-            case "food"  -> "FOOD";
-            case "tour"  -> "TOUR";
-            case "cafe"  -> "CAFE";
-            default      -> null;
-        };
+        expenseRepository.saveAll(idusw.sbb.checkin.domain.expense.service.EstimatedExpenses.from(plan, json));
     }
 
     // "숙소 · ₩180,000" 또는 "맛집 · 점심 · ₩12,000×2" 형태에서 금액 추출
