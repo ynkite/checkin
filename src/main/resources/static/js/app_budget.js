@@ -755,10 +755,12 @@ async function _loadMapBudget() {
        덮으면 예산 탭을 한 번 열었다는 이유로 지도 숫자가 바뀐다 — 실제로 그렇게 보였다.
        가계부 쪽 총액은 아래 #map-budget-total 에만 쓴다 */
 
-    // 잔여 예산
+    // 잔여 예산 · 예산 대비 — 이 여행에 정한 예산 기준. 예산이 없으면 남은 금액을 말하지 않는다
+    const base  = d.budget || 0;
+    const spent = hasAct ? totalAct : totalEst;
+    const ratioEl = document.getElementById('map-budget-ratio');
+    if (ratioEl) ratioEl.textContent = base > 0 ? Math.round(spent / base * 100) + '%' : '정한 예산 없음';
     if (remainEl) {
-        const base  = d.budget || totalEst;
-        const spent = hasAct ? totalAct : totalEst;
         if (base > 0) {
             const remain = base - spent;
             remainEl.textContent       = remain >= 0

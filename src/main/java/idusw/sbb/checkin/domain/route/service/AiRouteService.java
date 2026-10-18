@@ -71,6 +71,9 @@ public class AiRouteService {
     @org.springframework.beans.factory.annotation.Value("${route.engine.enabled:false}")
     private boolean routeEngineEnabled;
 
+    @org.springframework.beans.factory.annotation.Value("${budget.meal-per-person:12000}")
+    private long mealPerPerson;
+
     private final idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler routeEngineAssembler =
             new idusw.sbb.checkin.domain.route.adapter.RouteEngineAssembler();
 
@@ -959,6 +962,9 @@ public class AiRouteService {
 
         // ★식당 끼니 라벨(점심/저녁)을 최종 time에 맞춰 동기화 (AI 라벨-시간 불일치 교정)
         json = syncMealLabelByTime(json);
+
+        // ★끼니 시간에 식당 없이 먹거리 거리(○○골목)가 관광지 ₩0 이면 식당으로 돌려 끼니값을 매긴다
+        json = idusw.sbb.checkin.domain.budget.MealGap.fill(json, paxCount, mealPerPerson);
 
         // ★날짜 라벨에 섞여 들어온 이모지를 걷어낸다 (UI 문구에 이모지를 쓰지 않는다)
         json = stripLabelEmoji(json);
