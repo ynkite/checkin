@@ -190,7 +190,7 @@ body.dv-open{ overflow:hidden }
    어린이보호구역·과속방지턱·단속카메라. 소리로도 읽지만
    소리를 못 듣는 상황(음소거·동승자 대화)이 있어 화면에도 띄운다. */
 .dv-alert{
-  position:absolute; left:calc(var(--u)*1.5); right:calc(var(--u)*1.5); top:calc(var(--drive-toolbar) + var(--u));
+  position:relative; margin:calc(var(--drive-toolbar) + var(--u)) var(--u) 0;
   z-index:5; display:flex; align-items:center; gap:var(--u);
   padding:calc(var(--u)*1.25) calc(var(--u)*1.75);
   border-radius:var(--r-panel);
@@ -266,14 +266,14 @@ body.dv-open{ overflow:hidden }
 }
 .dv-traffic.on{ background:var(--ink); color:var(--panel) }
 .dv-note{
-  /* 아래쪽은 속도 배지가 덮는다. 2D·3D 단추 바로 밑에 띄운다 */
-  position:absolute; left:var(--u); right:var(--u); top:calc(var(--home-target) + var(--u));
-  z-index:6; margin:0; padding:var(--u) calc(var(--u)*1.5);
+  position:relative; z-index:5;
+  margin:calc(var(--drive-toolbar) + var(--u)) var(--u) 0; padding:var(--u) calc(var(--u)*1.5);
   border-radius:var(--r-field);
   background:var(--panel); color:var(--ink-2);
   font-size:var(--home-meta); line-height:1.5; word-break:keep-all;
   box-shadow:0 1px 0 rgba(var(--sh-rgb),.12),0 3px 0 rgba(var(--sh-rgb),.06);
 }
+.dv-alert:not([hidden]) ~ .dv-note{ margin-top:var(--u) }
 
 /* ── 아래 — 남은 것과 손대는 것 ───────────────────────── */
 .dv-bottom{
@@ -339,7 +339,7 @@ body.dv-driving .dv-lane-why{ display:none }
   .dv-top{ padding-left:calc(var(--u)*1.5); padding-right:calc(var(--u)*1.5) }
   .dv-bottom{ padding-left:calc(var(--u)*1.5); padding-right:calc(var(--u)*1.5) }
   .dv-turn{ gap:calc(var(--u)*1.5) }
-  .dv-alert{ left:var(--u); right:var(--u); padding:var(--u) calc(var(--u)*1.25) }
+  .dv-alert{ padding:var(--u) calc(var(--u)*1.25) }
   .dv-alert-n{ display:none }
   .dv-speed{ left:var(--u) }
   .dv-b{ font-size:var(--home-meta) }

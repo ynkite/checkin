@@ -47,6 +47,7 @@
   --nav-symbol:36px;
   --map-label-width:128px;
   --map-label-small:96px;
+  --map-label-font:13px;
   --map-pin-size:32px;
   --map-pin-ring:3px;
   --map-label-offset:36px;
@@ -226,6 +227,9 @@
 }
 @media (max-width:1000px){
   :root{ --map-model-rail:0px }
+}
+@media (max-width:760px){
+  :root{ --map-label-font:12px }
 }
 @media (prefers-reduced-motion:reduce){
   :root{ --map-pan-duration:0s }

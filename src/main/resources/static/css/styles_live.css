@@ -47,6 +47,7 @@ body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #
 }
 .rl-trip:hover{ transform:translateY(-1px); box-shadow:var(--home-shadow) }
 .rl-trip-s{
+  justify-self:start;
   padding:3px 9px 4px; border-radius:var(--r-pill);
   font-size:11px; font-weight:600; white-space:nowrap;
   background:var(--ui-plate); color:var(--ink-2);
@@ -59,8 +60,8 @@ body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #
   min-width:0;   /* 격자 칸이 줄어들 수 있게. 없으면 제목이 칸을 밀어낸다 */
 }
 .rl-trip-d{
-  font-family:var(--fig); font-size:12px; color:var(--ink-3);
-  letter-spacing:var(--tracking-num); white-space:nowrap;
+  font-family:var(--sans); font-size:var(--home-meta); color:var(--ink-3);
+  font-variant-numeric:tabular-nums; white-space:nowrap;
 }
 
 .rl-empty{ padding:34px 24px; border-radius:var(--r-panel); background:var(--panel);

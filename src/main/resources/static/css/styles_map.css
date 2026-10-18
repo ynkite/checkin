@@ -877,19 +877,30 @@
 #modelView .ck-frame{ aspect-ratio:auto }
 #modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
 #modelView .ck-pins .ck-pin{
-  pointer-events:auto; width:var(--map-pin-size); height:var(--map-pin-size);
-  justify-content:center; transform:translate(-50%,-50%) scale(calc(1 / var(--mv-z,1)));
+  pointer-events:auto; width:0; height:0; transform:none; z-index:auto;
 }
-#modelView .ck-no{ flex-shrink:0; width:var(--map-pin-size); height:var(--map-pin-size); font-size:var(--t-sm); font-weight:700 }
+#modelView .ck-no{
+  position:absolute; left:0; top:0; z-index:2;
+  width:var(--map-pin-size); height:var(--map-pin-size); font-size:var(--t-sm); font-weight:700;
+  transform:translate(-50%,-50%) scale(calc(1 / var(--mv-z,1)));
+}
 #modelView .ck-bub{
-  position:absolute; top:var(--map-label-offset); left:0; max-width:var(--map-label-width);
+  position:absolute; z-index:1;
+  top:calc((var(--map-label-offset) - var(--map-pin-size)/2) / var(--mv-z,1));
+  left:calc(var(--map-pin-size) / -2 / var(--mv-z,1)); max-width:var(--map-label-width);
+  transform:scale(calc(1 / var(--mv-z,1))); transform-origin:top left;
   display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
-  font-size:var(--home-meta); line-height:1.5; pointer-events:none; box-shadow:var(--lift);
+  font-size:var(--map-label-font); line-height:1.4; pointer-events:none; box-shadow:var(--lift);
 }
-#modelView .ck-lbl-left .ck-bub{ left:auto; right:0 }
-#modelView .ck-pin:nth-of-type(even) .ck-bub{ top:auto; bottom:var(--map-label-offset) }
+#modelView .ck-lbl-left .ck-bub{
+  left:auto; right:calc(var(--map-pin-size) / -2 / var(--mv-z,1)); transform-origin:top right;
+}
+#modelView .ck-pin:nth-of-type(even) .ck-bub{
+  top:auto; bottom:calc((var(--map-label-offset) - var(--map-pin-size)/2) / var(--mv-z,1));
+  transform-origin:bottom left;
+}
+#modelView .ck-lbl-left:nth-of-type(even) .ck-bub{ transform-origin:bottom right }
 #modelView .ck-bub em, #modelView .ck-bub .ck-cw{ display:none }
-#modelView .ck-pin:hover, #modelView .ck-pin:focus-within{ z-index:4 }
 #modelView .ck-frame svg.mass{ width:100%; height:auto; display:block }
 
 /* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
