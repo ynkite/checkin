@@ -1016,16 +1016,20 @@
          「이대로 가기」를 늘 같이 둔다. 하나를 강요하지 않는다. */
       var rlAltList = [];
       var rlAltTarget = '';
+      var rlAltDrive = null;   /* 길 안내를 접고 왔으면 그 목적지. 고른 뒤 안내로 돌아간다 */
 
-      async function rlQuiet() {
+      async function rlQuiet(drive) {
         var box = document.getElementById('rlAlt');
-        if (!box || !rlTrip) return;
+        if (!box || !rlTrip) { if (drive && window.resumeDrive) window.resumeDrive(drive); return; }
+        rlAltDrive = drive || null;
         box.hidden = false;
         box.innerHTML = '<p class="rl-modes-lb">다른 곳으로</p><p class="rl-modes-note">한적한 곳을 찾는 중</p>';
 
         var d = null;
         try {
-          var r = await fetch('/api/live/quiet?tripId=' + rlTrip + '&day=' + rlDayNo + '&limit=3',
+          /* 안내 중이면 그 목적지를 바꿀 곳으로 준다. 아니면 서버가 그날 가장 붐비는 곳을 고른다 */
+          var r = await fetch('/api/live/quiet?tripId=' + rlTrip + '&day=' + rlDayNo + '&limit=3' +
+                              (drive && drive.name ? '&name=' + encodeURIComponent(drive.name) : ''),
                               { headers: rlAuth() });
           var j = await r.json().catch(function () { return null; });
           d = j && j.success ? j.data : null;
@@ -1066,10 +1070,13 @@
         return '<button type="button" class="rl-alt-keep" onclick="rlAltKeep()">이대로 가기</button>';
       }
 
-      window.rlAltKeep = function () {
+      window.rlAltKeep = function (to) {
         var box = document.getElementById('rlAlt');
         if (box) { box.hidden = true; box.innerHTML = ''; }
-        toast('계획대로 갑니다.');
+        if (!to) toast('계획대로 갑니다.');
+        var drive = rlAltDrive;
+        rlAltDrive = null;
+        if (drive && window.resumeDrive) window.resumeDrive(to || drive);
       };
 
       /* 고른 곳으로 그 자리만 갈아 끼운다. 시각은 자리에 남긴다 —
@@ -1110,7 +1117,8 @@
         if (!ok) { toast(msg || '바꾸지 못했습니다. 일정은 그대로입니다.'); return; }
 
         rlUndoSet({ label: '다른 곳으로', route: before, at: Date.now() });
-        rlAltKeep();
+        /* 안내 중이었으면 바꾼 곳이 곧 목적지다 — 새 곳으로 길을 다시 받는다 */
+        rlAltKeep(rlAltDrive ? { lat: c.lat, lng: c.lng, name: c.name } : null);
         toast(c.name + '(으)로 바꿨습니다. 되돌릴 수 있습니다.');
         rlRefresh();
       };
@@ -1179,7 +1187,7 @@
           return;
         }
         if (key === 'quiet') {
-          rlQuiet();
+          rlQuiet(arguments[1]);
           return;
         }
       };
