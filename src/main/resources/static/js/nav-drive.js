@@ -826,7 +826,7 @@
     /* 순서를 바꾸면 이동 시간·비용이 얼마나 달라지는지 — 서버가 잰 값이 오면 글로만 붙인다. 못 재면 안 붙인다 */
     if (kind === 'busy' && window.rlSwapPair) window.rlSwapPair().then(function (p) {
       var t = document.getElementById('navSugT');
-      if (p && t && t.textContent === say) t.textContent = say + ' 순서를 바꾸면 ' + p + '.';
+      if (p && t && t.textContent === say) t.textContent = say + ' 붐비는 곳을 남은 일정 뒤로 미루면 ' + p + '.';
     });
   }
   /* 일정에 혼잡도가 안 붙은 다음 목적지 — 그 장소로 한 번만 받아 온다 (관광공사 집중률 · 실측이 있으면 실측).
