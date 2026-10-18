@@ -165,7 +165,7 @@ public class BudgetFitService {
         dropPaid(days, "tour", limit, changes, "유료 관광지·체험 ");
 
         if (changes.isEmpty()) return new Fit(json, before, before, List.of(), false);
-        return stamp(days, orig, changes);
+        return stamp(days, orig, 0, changes);
     }
 
     /** 숙소 후보마다 바꿔 보고 다시 맞춰, 예산 이하이면서 가장 가까운 결과. 후보가 없으면 fit 결과. */
@@ -189,7 +189,7 @@ public class BudgetFitService {
             Fit f = fit(OM.writeValueAsString(days), limit + stayExtra, mealCap);
             List<String> changes = new ArrayList<>(List.of(change));
             changes.addAll(f.changes());
-            Fit cand = stamp((ArrayNode) OM.readTree(f.json()), orig, changes);
+            Fit cand = stamp((ArrayNode) OM.readTree(f.json()), orig, stayExtra, changes);
             long cost = cand.after() - stayExtra;
             if (closer(cost, bestCost, limit)) { best = cand; bestCost = cost; }
         }
@@ -320,8 +320,9 @@ public class BudgetFitService {
         return limit <= 0 ? 0 : (int) Math.round(total * 100.0 / limit);
     }
 
-    private static Fit stamp(ArrayNode days, JsonNode orig, List<String> changes) throws Exception {
-        long before = total(orig);
+    /** gone: 숙소를 바꿔 사라진 인원 추가. 화면은 지금 숙박 추가만 더하므로 조정 전에 미리 넣어 둔다 */
+    private static Fit stamp(ArrayNode days, JsonNode orig, long gone, List<String> changes) throws Exception {
+        long before = total(orig) + gone;
         ObjectNode meta = ((ObjectNode) days.get(0)).putObject(KEY);
         meta.put("before", before);
         meta.put("move", moves(orig));
