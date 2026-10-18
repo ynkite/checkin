@@ -457,10 +457,10 @@
   70%,100%{ transform:scale(1.9); opacity:0 }
 }
 .mp-here .mp-hlb{
-  position:absolute; left:0; top:23px; transform:translateX(-50%);
+  position:absolute; left:0; bottom:calc(var(--u)*4); transform:translateX(-50%);
   white-space:nowrap; padding:3px 10px 4px; border-radius:99px;
   background:var(--sig); color:var(--on-sig);
-  font-size:11px; font-weight:700; letter-spacing:.02em;
+  font-family:var(--sans); font-size:var(--t-xs); font-weight:700; letter-spacing:normal;
 }
 
 /* ── 날씨 알림 ─────────────────────────────────────────────── */
@@ -479,7 +479,8 @@
 .wa-cta{ font-size:12.5px; font-weight:600; color:var(--num); margin-top:8px }
 
 /* ── 예산 뷰 ───────────────────────────────────────────────── */
-#budgetView{ background:var(--page); padding:26px 28px 34px }
+#budgetView{ position:absolute; inset:0; overflow-y:auto; z-index:8; background:var(--page); padding:calc(var(--u)*10) calc(var(--u)*3.5) calc(var(--u)*4) }
+.mp-budget-inner{ max-width:var(--budget-chart-width); margin:0 auto }
 .mp-bg-eyebrow{
   font-size:11.5px; font-weight:600; letter-spacing:-.01em;
   color:var(--ink-3); margin-bottom:7px;
@@ -504,9 +505,7 @@
   letter-spacing:-.02em; color:var(--ink-2);
 }
 .mp-bg-bar{ height:5px; border-radius:99px; background:var(--ui-pale); overflow:hidden }
-.mp-bg-bar i{ display:block; height:100%; border-radius:99px; background:var(--slate) }
-.mp-bg-row.mp-lead .mp-bg-bar i{ background:var(--sig) }
-.mp-bg-row.mp-lead .mp-bg-top span:last-child{ color:var(--num) }
+.mp-bg-bar i{ display:block; height:100%; border-radius:var(--r-pill); background:var(--ink-3) }
 
 /* 해당없음 — 값이 없는 항목이다. 0원으로 추정한 것과 다르게 보여야 한다.
    막대를 안 그리고 글자를 죽여서 「이 여행엔 없다」로 읽히게 한다 */
@@ -522,13 +521,16 @@
   letter-spacing:-.05em; color:var(--ink);
 }
 #map-budget-remaining{
-  margin-top:12px; padding:10px 13px 11px; border-radius:10px;
-  font-size:12.5px; font-weight:500;
-  background:var(--ui-plate); border:1px solid var(--ui-line); color:var(--ink-2);
+  margin:0; font-family:var(--sans); font-size:var(--budget-balance); font-weight:700;
+  line-height:1.4; letter-spacing:var(--tracking-tight); color:var(--ink);
+  word-break:keep-all; overflow-wrap:anywhere;
 }
 #map-budget-remaining.mp-over{
-  background:var(--tile-pale); border-color:var(--tile); color:var(--tile);
+  color:var(--tile);
 }
+.mp-bg-summary{ margin-bottom:var(--budget-summary-gap); padding-bottom:calc(var(--u)*2); border-bottom:var(--line) solid var(--ui-line) }
+.mp-bg-ratio{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u); margin:var(--u) 0 0; color:var(--ink-2); font-size:var(--t-sm) }
+.mp-bg-ratio strong{ font-family:var(--fig); font-size:var(--budget-balance); font-weight:600; color:var(--ink) }
 .pie-ring{ border-radius:99px; flex-shrink:0 }
 .pie-legend{ display:flex; flex-direction:column; gap:7px }
 .pie-leg-item{
@@ -872,11 +874,11 @@
   transform:translate(calc(-50% + var(--mv-x, 0px)), calc(-50% + var(--mv-y, 0px)))
             scale(var(--mv-z, 1));
   transform-origin:50% 50%;
-  transition:transform .6s cubic-bezier(.22,.61,.36,1);
+  transition:transform var(--map-pan-duration) cubic-bezier(.22,.61,.36,1);
 }
 #modelView .ck-frame{ aspect-ratio:auto }
 #modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
-#modelView .ck-pins .ck-pin{ pointer-events:auto }
+#modelView .ck-pins .ck-pin{ pointer-events:auto; width:min(var(--map-label-width), calc(100vw - var(--u)*4)); transform:translate(-50%,-50%) scale(calc(1 / var(--mv-z,1))) }
 #modelView .ck-frame svg.mass{ width:100%; height:auto; display:block }
 
 /* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
@@ -956,7 +958,7 @@
 }
 .mv-fc-bars i{
   flex:1 1 0; min-width:0; border-radius:2px 2px 0 0;
-  background:var(--ui-line); transition:height .4s ease;
+  background:var(--ui-line);
 }
 .mv-fc-bars i.cw-vhigh{ background:var(--tile) }
 .mv-fc-bars i.cw-high { background:var(--terra) }
@@ -1302,7 +1304,7 @@
 .mp-pl{ display:none }
 
 .mp-svg-lbl{
-  font-family:var(--fig); font-size:12px; font-weight:650; letter-spacing:-.02em;
+  font-family:var(--sans); font-size:var(--home-meta); font-weight:650; letter-spacing:normal; word-spacing:normal;
   fill:var(--ink); paint-order:stroke fill;
   stroke:var(--halo); stroke-width:3.5; stroke-linejoin:round;
   dominant-baseline:middle;
@@ -1315,10 +1317,10 @@
    한 자리만 보여 주는 것은 아깝다. 끌고 당기고 밀 수 있게 한다. */
 .mv-view{
   position:absolute; right:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:7;
-  display:flex; gap:calc(var(--u)/2);
+  display:flex; gap:calc(var(--u)/2); isolation:isolate;
 }
 .mv-vb{
-  min-width:44px; min-height:44px; padding:0 calc(var(--u)*1.5);
+  min-width:var(--home-target); min-height:var(--home-target); padding:0 calc(var(--u)*1.5);
   border:0; border-radius:var(--r-field); cursor:pointer;
   background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
   font-family:inherit; font-size:15px; font-weight:700; line-height:1;
@@ -1337,14 +1339,14 @@
    다 보이는 것보다 지금 어디인지가 먼저다. */
 .mv-stops{
   position:absolute; left:calc(var(--u)*2); right:calc(var(--u)*2);
-  bottom:calc(var(--u)*2 + 44px + var(--u)); z-index:7;
+  bottom:calc(var(--u)*3 + var(--home-target)); z-index:7;
   display:flex; gap:calc(var(--u)/2); overflow-x:auto; scrollbar-width:none;
-  padding-bottom:2px;
+  padding-bottom:calc(var(--u)/4); isolation:isolate; touch-action:pan-x;
 }
 .mv-stops::-webkit-scrollbar{ display:none }
 .mv-st{
   flex:0 0 auto; display:flex; align-items:center; gap:calc(var(--u)/1.6);
-  min-height:44px; padding:0 calc(var(--u)*1.4); border:0; border-radius:99px;
+  min-height:var(--home-target); padding:0 calc(var(--u)*1.4); border:0; border-radius:var(--r-pill);
   background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
   font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
   white-space:nowrap; word-break:keep-all;
@@ -1356,6 +1358,6 @@
 .mv-st.on{ background:var(--ink); color:var(--panel) }
 .mv-st.on b{ background:var(--sig); color:var(--ink) }
 @media (max-width:760px){
-  .mv-stops{ bottom:calc(var(--u) + 44px + var(--u)) }
+  #modelView .ck-pins .ck-pin{ width:var(--map-label-small) }
   .mv-st{ font-size:12px; padding:0 calc(var(--u)*1.1) }
 }

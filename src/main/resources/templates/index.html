@@ -113,32 +113,32 @@
       window.ckSky();
     })();
   </script>
-  <link rel="stylesheet" th:href="@{/css/tokens.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/tokens.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_massing.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_main.css(v=20260921d)}">
+  <link rel="stylesheet" th:href="@{/css/styles_main.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_budget.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_place.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_weather.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20260921d)}">
+  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_community.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_calendar.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_float.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_float.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_home.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_hero.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_stage.css(v=20260921d)}">
+  <link rel="stylesheet" th:href="@{/css/styles_hero.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_stage.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_sections.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_saved.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_map.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_planner.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_map.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_planner.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_footer.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_drive.css(v=20260921d)}">
-  <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_drive.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20261018a)}">
   <script th:src="'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + ${kakaoMapKey} + '&autoload=false&libraries=services'"></script>
 
 </head>
@@ -147,10 +147,10 @@
 
 <!-- NAV -->
 <nav>
-  <div class="nav-logo" onclick="goHomeRefresh()" style="cursor:pointer">
+  <button type="button" class="nav-logo" onclick="goHomeRefresh()" aria-label="체크인 홈">
     <img class="logo-full" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
     <img class="logo-symbol" src="/img/logo-mark.png" alt="체크인" width="126" height="128" decoding="async">
-  </div>
+  </button>
   <button id="navHamburger" aria-label="메뉴 열기" onclick="document.querySelector('nav').classList.toggle('nav-open')"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
   <div class="nav-links">
     <button class="nav-link on" onclick="goHomeRefresh()">홈</button>
@@ -159,22 +159,22 @@
     <button class="nav-link" onclick="goRefresh('live')">실시간</button>
     <button class="nav-link" id="navPlannerBtn" onclick="navPlannerClick();setNav(this)">플랜</button>
     <div id="navPlannerSteps" class="nav-planner-steps" style="display:none">
-      <button class="nps-btn" id="nps-1" onclick="goPlanStep(1)">
+      <button class="nps-btn" id="nps-1" aria-label="1단계 기본 정보" onclick="goPlanStep(1)">
         <span class="nps-num">1</span>
         <span class="nps-lbl"><span class="nps-lbl-full">기본 정보</span><span class="nps-lbl-short">기본</span></span>
       </button>
       <span class="nps-arrow">›</span>
-      <button class="nps-btn" id="nps-2" onclick="goPlanStep(2)">
+      <button class="nps-btn" id="nps-2" aria-label="2단계 취향 설정" onclick="goPlanStep(2)">
         <span class="nps-num">2</span>
         <span class="nps-lbl"><span class="nps-lbl-full">취향 설정</span><span class="nps-lbl-short">취향</span></span>
       </button>
       <span class="nps-arrow">›</span>
-      <button class="nps-btn" id="nps-3" onclick="goPlanStep(3)">
+      <button class="nps-btn" id="nps-3" aria-label="3단계 대화" onclick="goPlanStep(3)">
         <span class="nps-num">3</span>
         <span class="nps-lbl"><span class="nps-lbl-full">AI 챗봇</span><span class="nps-lbl-short">대화</span></span>
       </button>
       <span class="nps-arrow">›</span>
-      <button class="nps-btn" id="nps-4" onclick="goPlanStep(4)">
+      <button class="nps-btn" id="nps-4" aria-label="4단계 일정" onclick="goPlanStep(4)">
         <span class="nps-num">4</span>
         <span class="nps-lbl"><span class="nps-lbl-full">일정 만들기</span><span class="nps-lbl-short">일정</span></span>
       </button>
@@ -184,17 +184,13 @@
   <div class="nav-btns nav-right" id="navBtns">
     <button class="btn-nav-ghost" id="navLoginBtn" onclick="go('login')">로그인</button>
     <button class="btn-nav-primary" id="navSignupBtn" onclick="go('signup')">체크인 시작</button>
-    <div id="navBellWrapper" style="position:relative;display:inline-flex;align-items:center;margin-right:8px;">
-      <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none;
-      background:transparent; border:none; font-size:22px; cursor:pointer; padding:0; line-height:1;"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.6a6 6 0 1 0-12 0c0 6-2.2 7.4-2.2 7.4h16.4S18 14.6 18 8.6"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></button>
-      <span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-7px;
-        background:var(--tile);color:var(--panel);border-radius:50%;min-width:18px;height:18px;
-        font-size:10px;font-weight:700;text-align:center;line-height:18px;
-        padding:0 3px;pointer-events:none;box-sizing:border-box;border:2px solid var(--page);"></span>
+    <div id="navBellWrapper">
+      <button id="navBellBtn" onclick="openNotificationPopup()" style="display:none" aria-label="알림"><svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8.6a6 6 0 1 0-12 0c0 6-2.2 7.4-2.2 7.4h16.4S18 14.6 18 8.6"/><path d="M13.7 20a2 2 0 0 1-3.4 0"/></svg></button>
+      <span id="notifBadge" style="display:none"></span>
     </div>
     <a class="btn-nav-ghost" id="navAdminLink" onclick="go('admin')" style="display:none;cursor:pointer;font-weight:600">관리자</a>
     <button class="btn-nav-ghost nav-user" id="navUserNameBtn" onclick="goRefresh('mypage')" style="display:none">마이페이지</button>
-    <button class="btn-nav-ghost" id="navLogoutBtn" onclick="doLogout()" style="display:none">로그아웃</button>
+    <button class="btn-nav-ghost" id="navLogoutBtn" onclick="doLogout()" style="display:none" aria-label="로그아웃"><span class="nav-logout-label">로그아웃</span><svg class="nav-logout-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4H4v16h5M8 12h12m-4-4 4 4-4 4"/></svg></button>
   </div>
 </nav>
 
@@ -320,7 +316,7 @@
 </script>
 
 <!-- ===== BOTTOM NAV (모바일 전용) — 제거 시 이 블록과 styles_responsive.css 6번 섹션 삭제 ===== -->
-<div id="bottomNav" class="bnav" role="navigation">
+<div id="bottomNav" class="bnav" role="navigation" aria-label="주 메뉴">
   <div class="bnav-bar">
     <button class="bnav-item" data-page="main"      onclick="goHomeRefresh()">
       <span class="bnav-icon"><svg viewBox="0 0 24 24" aria-hidden="true" class="bnav-svg"><path d="M3 10.4 12 3l9 7.4M5.6 9.2V20h12.8V9.2"/></svg></span><span class="bnav-lbl">홈</span>

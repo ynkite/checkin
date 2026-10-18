@@ -16,7 +16,7 @@
  * ========================================================================== */
 
 /* nav 실제 높이를 JS가 측정해서 덮어씀 (기본값 72px) */
-:root { --nav-h: 72px; }
+
 
 html, body {
     max-width: 100%;
@@ -83,149 +83,6 @@ table {
  * ========================================================================== */
 @media (max-width: 768px) {
 
-    /* ---------- 2-1. NAV ---------- */
-    nav {
-        flex-wrap: wrap;
-        padding: 10px 14px;
-        row-gap: 8px;
-        align-items: center;
-        min-width: 0;
-    }
-
-    /* 로고는 항상 보이고 좌측 정렬 */
-    .nav-logo {
-        flex: 0 0 auto;
-        margin-right: auto;
-    }
-    .nav-logo .logo-img {
-        height: 44px;
-        margin: 0;
-    }
-
-    /* 햄버거 버튼 숨김 — 하단 bottom nav 로 메뉴 대체 */
-    #navHamburger { display: none !important; }
-
-    /* 메뉴 링크: 기본 숨김 유지 (플래너 단계만 선택적으로 표시) */
-    .nav-links {
-        order: 3;
-        /* flex 자식은 min-width 가 auto 라서 「내용보다 작아질 수 없다」가 기본이다.
-           여기서 문제가 난 적은 아직 없다 — 280px 에서 nav 가 부푼 일이 있었는데
-           원인은 이쪽이 아니라 실시간 화면의 여행 카드였다(styles_live.css 참고).
-           그래도 0 으로 둔다. 플래너 단계 막대가 들어오면 같은 일이 날 자리다. */
-        min-width: 0;
-        flex-basis: 100%;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 2px;
-        min-width: 0;
-        overflow: visible;
-        max-height: 0;
-        opacity: 0;
-        pointer-events: none;
-        transition: max-height .28s ease, opacity .2s ease;
-    }
-
-    /* nav-btns: 항상 표시 / 로고 오른쪽에 배치 */
-    .nav-btns {
-        order: 2;
-        flex-basis: auto;
-        min-width: 0;
-        flex-wrap: nowrap;
-        gap: 4px;
-        max-height: none;
-        overflow: visible;
-        opacity: 1;
-        pointer-events: auto;
-        margin-left: auto;
-        display: flex;
-        align-items: center;
-        padding-top: 0 !important;
-        border-top: none !important;
-    }
-
-    /* 모바일에서 불필요한 버튼 숨김 (로그인·회원가입·마이페이지명) */
-    #navLoginBtn, #navSignupBtn, #navUserNameBtn { display: none !important; }
-
-    /* 관리자 버튼: 모바일에서는 관리자 계정일 때만 로그아웃 옆에 표시
-     *  (display 는 JS updateNav 이 admin 일 때만 ''로 풀어줌 → 일반 유저는 숨김 유지) */
-    #navAdminLink {
-        order: 0;                 /* 로그아웃(order:1) 바로 왼쪽 */
-        font-size: 12px;
-        padding: 6px 10px;
-    }
-
-    /* 로그아웃 버튼: 알림 왼쪽, 작게 */
-    #navLogoutBtn {
-        order: 1;
-        font-size: 12px;
-        padding: 6px 10px;
-    }
-    #navBellWrapper { order: 2; margin-right: 0; }
-
-    /* 플래너·지도 진입 시: 단계를 로고-버튼 사이 같은 행에 표시 */
-    body:has(#navPlannerSteps[style*="flex"]) .nav-logo { margin-right: 0; }
-    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
-        order: 1;           /* 로고(auto=0) 다음, nav-btns(2) 이전 */
-        flex: 1;
-        min-width: 0;
-        flex-basis: auto;
-        flex-direction: row;
-        align-items: center;
-        justify-content: center;
-        max-height: 60px;
-        opacity: 1;
-        pointer-events: auto;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        padding: 0 4px;
-    }
-    body:has(#navPlannerSteps[style*="flex"]) .nav-links::-webkit-scrollbar { display: none; }
-    body:has(#navPlannerSteps[style*="flex"]) .nav-links .nav-link { display: none; }
-    /* 단계 버튼 크기 축소 */
-    body:has(#navPlannerSteps[style*="flex"]) .nps-btn { font-size: 11px; padding: 3px 5px; gap: 3px; }
-    body:has(#navPlannerSteps[style*="flex"]) .nps-num  { width: 14px; height: 14px; font-size: 8px; }
-
-    /* ── 플래너 진입 시 nav 한 줄 만들기 ── */
-    /* 1) 로고: 전체 로고 숨기고 비행기 심볼만 표시 (가로 공간 확보) */
-    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-full { display: none; }
-    body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-symbol {
-        display: block;
-        height: 30px;
-    }
-    /* 2) 스텝 라벨: 전체 라벨 숨기고 축약 라벨("기본/취향/AI/경로") 표시 */
-    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-full  { display: none; }
-    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-short { display: inline; }
-    /* 3) 칩이 줄바꿈되지 않도록 + 더 압축 */
-    body:has(#navPlannerSteps[style*="flex"]) .nps-btn {
-        white-space: nowrap;
-        flex: 0 0 auto;
-        padding: 3px 6px;
-    }
-    body:has(#navPlannerSteps[style*="flex"]) .nps-lbl { white-space: nowrap; font-size: 11px; }
-    /* 4) 화살표 간격 축소 */
-    body:has(#navPlannerSteps[style*="flex"]) .nps-arrow { margin: 0 1px; font-size: 11px; }
-    /* 5) 스텝 영역은 가로 스크롤 없이 내용에 맞게 (줄바꿈만 방지) */
-    body:has(#navPlannerSteps[style*="flex"]) .nav-links {
-        overflow-x: auto;
-        flex-wrap: nowrap;
-    }
-
-    .nav-btns .btn-o,
-    .nav-btns .btn-f {
-        flex: 0 0 auto;
-        text-align: center;
-        padding: 6px 10px;
-        font-size: 12px;
-    }
-
-    /* 플래너 진입 시 로그아웃·알림 압축 (한 줄 확보) */
-    body:has(#navPlannerSteps[style*="flex"]) #navLogoutBtn {
-        font-size: 11px;
-        padding: 5px 8px;
-    }
-    body:has(#navPlannerSteps[style*="flex"]) #navBellBtn { font-size: 19px; }
-
     /* 알림 팝업이 화면을 넘지 않도록 */
     #notifPopup {
         width: 92vw !important;
@@ -258,7 +115,6 @@ table {
     /* hero / my-layout → 각 page 반응형 파일로 이동 */
     .form-row,
     .pl-2col,
-    .loc-selector,
     .chat-layout,
     .budget-layout,
     .comm-layout,
@@ -428,13 +284,12 @@ table {
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 3px;
-        padding: 8px 2px 10px;
+        gap:calc(var(--u)/4);
+        padding:var(--u) 0;
         border: none;
         background: transparent;
         color: var(--text3);
         cursor: pointer;
-        transition: color .15s;
         -webkit-tap-highlight-color: transparent;
     }
     .bnav-item::before {
@@ -443,12 +298,12 @@ table {
         top: 0;
         left: 18%;
         right: 18%;
-        height: 2px;
-        border-radius: 99px;
+        height:calc(var(--u)/2);
+        border-radius:var(--r-pill);
         background: transparent;
     }
-    .bnav-icon { font-size: 20px; line-height: 1; transition: transform .15s; }
-    .bnav-lbl  { font-size: 10px; font-weight: 500; white-space: nowrap; }
+    .bnav-icon { position:relative; display:grid; place-items:center; width:calc(var(--u)*4); height:calc(var(--u)*4); font-size:var(--home-small-number); line-height:1; }
+    .bnav-lbl  { font-size:var(--t-xs); font-weight:500; white-space:nowrap; }
 
     /* 활성 탭 강조 */
     body:has(#page-main.active)      .bnav-item[data-page="main"],
@@ -457,8 +312,10 @@ table {
     body:has(#page-live.active)      .bnav-item[data-page="live"],
     body:has(#page-planner.active)   .bnav-item[data-page="planner"],
     body:has(#page-map.active)       .bnav-item[data-page="planner"],
+    body:has(#page-ledger.active)    .bnav-item[data-page="planner"],
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] {
-        color: var(--ink);
+        color:var(--ink);
+        background:var(--ui-plate);
     }
     body:has(#page-main.active)      .bnav-item[data-page="main"]::before,
     body:has(#page-community.active) .bnav-item[data-page="community"]::before,
@@ -466,6 +323,7 @@ table {
     body:has(#page-live.active)      .bnav-item[data-page="live"]::before,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"]::before,
     body:has(#page-map.active)       .bnav-item[data-page="planner"]::before,
+    body:has(#page-ledger.active)    .bnav-item[data-page="planner"]::before,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"]::before {
         background: var(--ink);
     }
@@ -475,8 +333,9 @@ table {
     body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-icon,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-icon,
+    body:has(#page-ledger.active)    .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-icon {
-        transform: translateY(-1px);
+        transform:none;
     }
     body:has(#page-main.active)      .bnav-item[data-page="main"] .bnav-lbl,
     body:has(#page-community.active) .bnav-item[data-page="community"] .bnav-lbl,
@@ -484,48 +343,17 @@ table {
     body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-lbl,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-lbl,
     body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-lbl,
+    body:has(#page-ledger.active)    .bnav-item[data-page="planner"] .bnav-lbl,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-lbl {
         font-weight: 700;
     }
 
-    /* --- 6-5-1. 실시간 칸을 세운다 ------------------------------------
-       칸을 하나 더 늘린 것으로는 부족하다. 여섯 칸이 똑같이 생기면
-       이 제품이 무엇을 하는 물건인지 화면이 말해 주지 않는다.
-       관광공사가 낸 과제가 「실시간 동선 수정」이고, 그게 쓰이는 자리는
-       여행 중 휴대폰이다. 아이콘을 칠한 동그라미에 담아 하나만 세운다.
-       (밝은 바탕에 --sig 로 글씨를 쓰지 않는다 — 칠은 바탕에만,
-        글씨는 --on-sig 와 --num 을 쓴다) */
-    .bnav-live .bnav-icon {
-        display: inline-flex; align-items: center; justify-content: center;
-        position: relative;
-        width: 30px; height: 30px; border-radius: 50%;
-        background: var(--sig); color: var(--on-sig);
-        box-shadow: 0 1px 0 0 var(--glass-line);
+    .bnav-dot{ display:none }
+    .bnav-dot:not([hidden])[data-unread="true"]{
+      display:block; position:absolute; top:0; right:0;
+      width:var(--u); height:var(--u); border-radius:50%;
+      background:var(--tile); box-shadow:0 0 0 calc(var(--u)/4) var(--panel);
     }
-    .bnav-live .bnav-svg { width: 17px; height: 17px }
-    .bnav-live .bnav-lbl { color: var(--num); font-weight: 700 }
-    body:has(#page-live.active) .bnav-live .bnav-icon { transform: none }
-
-    /* 여행 중일 때만 켜지는 점. 「지금 볼 게 있다」는 뜻이라
-       평소에는 꺼 둔다 — 늘 켜져 있으면 아무 말도 아니다 */
-    .bnav-dot {
-        position: absolute; top: -1px; right: -1px;
-        width: 9px; height: 9px; border-radius: 50%;
-        background: var(--tile);
-        box-shadow: 0 0 0 2px var(--surface);
-        animation: bnav-breathe 2.2s ease-in-out infinite;
-    }
-    @keyframes bnav-breathe {
-        0%, 100% { opacity: 1 }
-        50%      { opacity: .35 }
-    }
-    @media (prefers-reduced-motion: reduce) {
-        .bnav-dot { animation: none }
-    }
-
-    /* 칸이 여섯이면 「마이페이지」가 두 줄로 접힌다. 이 칸만 줄인다 */
-    .bnav-item { padding-left: 0; padding-right: 0 }
-    .bnav-lbl  { font-size: 9.5px; letter-spacing: -.02em }
 
     /* --- 6-6. 본문이 bottom nav 뒤에 가리지 않도록 하단 여백 --- */
     .page {
@@ -619,7 +447,7 @@ table {
     body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-full { display: none; }
     body:has(#navPlannerSteps[style*="flex"]) .nav-logo .logo-symbol {
         display: block;
-        height: 30px;
+        height:var(--nav-symbol); width:auto; object-fit:contain;
     }
     body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-full  { display: none; }
     body:has(#navPlannerSteps[style*="flex"]) .nps-lbl-short { display: inline; }

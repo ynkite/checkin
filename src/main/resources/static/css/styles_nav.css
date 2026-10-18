@@ -1,59 +1,33 @@
-/*
- * 체크인 — 상단 바 (styles_nav.css)
- *
- * 고친 것
- *   1. 활성 링크가 회색 알약이었다. 지나가다 잘못 눌린 칩처럼 보인다.
- *      글자 색과 밑줄 한 줄로 바꾼다
- *   2. 링크가 12px 이라 본문(14~17px)보다 작아 눌러야 할 것으로 안 읽혔다
- *   3. 오른쪽에 버튼 두 개가 나란히 서서 어느 쪽이 주인지 알 수 없었다.
- *      로그인은 글자 링크, 「체크인 시작」만 알약 버튼
- *   4. 흰 띠가 전면 미니어처를 가로질렀다. 맨 위에서는 비워 두고
- *      스크롤하면 바탕이 생긴다 (app_home.js 가 .nav-solid 를 붙인다)
- *
- * 색은 tokens.css 변수만 쓴다. styles_main.css 뒤에 둔다.
- */
-
 nav{
   background:transparent;
   backdrop-filter:none;
   border-bottom:1px solid transparent;
-  padding:14px 26px;
-  transition:background-color .2s ease, border-color .2s ease;
+  padding:calc(var(--u)*1.75) calc(var(--u)*3.25);
+  
 }
 nav.nav-solid{
-  /* blur 를 걷었다. 이 줄은 스크롤할 때마다 켜졌다 꺼지는데(app_home.js 의 sync),
-     backdrop-filter 는 그때마다 뒤 배경을 다시 읽는다 — 데스크톱에서는 안 보이고
-     휴대폰에서는 스크롤이 끊긴다. tokens 금지 2번(SVG filter)과 같은 이유다.
-     대신 바탕을 88% -> 96% 로 올려 글자가 읽히게 했다 */
+  
   background:color-mix(in oklab, var(--page) 96%, transparent);
   border-bottom-color:var(--ui-line);
 }
 
-/* 브랜드 — 손으로 그린 로고 두 벌.
-   넓은 화면은 가로형, 좁은 화면은 정사각 마크만.
-   원본이 4096px 이라 쓰는 크기의 2배로 줄여 두었다(logo.py). */
-/* 브랜드 — 손으로 그린 로고.
-   상단 바는 좁은 화면에서도 가로형을 쓴다. 정사각(앱 아이콘)은 38px
-   에서 글자가 뭉개져 무슨 그림인지 안 보인다. 실측 — 가로형은 26px
-   에서도 「check-in」 이 읽힌다. 정사각은 파비콘·홈 화면 아이콘 자리에
-   둔다. 거기가 앱 아이콘의 본래 쓰임이다.
-   styles_responsive.css 34행이 .logo-symbol 을 (0,2,0) 으로 숨기므로
-   자리수를 그보다 높여 둔다. */
-nav .nav-logo{ display:flex; align-items:center; flex:0 1 auto; min-width:0 }
+
+
+nav .nav-logo{ display:flex; align-items:center; flex:0 0 auto; min-width:0; padding:0; border:0; background:none; cursor:pointer }
 nav .nav-logo .logo-full{
-  display:block; height:38px; width:auto;
+  display:block; height:var(--nav-logo-height); width:auto; max-width:none; object-fit:contain; flex:none;
 }
 nav .nav-logo .logo-symbol{ display:none }
 @media (max-width:760px){
-  nav .nav-logo .logo-full{ display:block; height:28px }
+  nav .nav-logo .logo-full{ display:block; height:var(--nav-logo-small) }
 }
 
-/* 링크 — 밑줄 하나로 지금 자리를 표시한다 */
+
 nav .nav-link{
   position:relative; padding:6px 2px; margin:0 11px; border-radius:0;
   background:none !important; border:0;
   font-size:14px; font-weight:500; letter-spacing:var(--tracking-tight);
-  color:var(--ink-3); transition:color .15s;
+  color:var(--ink-3);
 }
 nav .nav-link:hover{ color:var(--ink-2) }
 nav .nav-link.on{ color:var(--ink); font-weight:600 }
@@ -62,35 +36,37 @@ nav .nav-link.on::after{
   height:2px; border-radius:99px; background:var(--ink);
 }
 
-/* 오른쪽 — 주인은 하나뿐이다 */
+
 nav .nav-links{ min-width:0 }
 nav .nav-right{ display:flex; align-items:center; gap:14px; min-width:0 }
 nav .btn-nav-ghost,
 nav .nav-user{
   padding:0; border:0; background:none; cursor:pointer;
   font-family:inherit; font-size:var(--home-meta); font-weight:500; letter-spacing:var(--tracking-tight);
-  color:var(--ink-3); transition:color .15s;
+  color:var(--ink-3);
 }
 nav .btn-nav-ghost:hover{ color:var(--ink) }
 nav .btn-nav-primary{
   padding:9px 18px 10px; border:0; border-radius:99px; cursor:pointer;
   background:var(--ink); color:var(--panel);
   font-family:inherit; font-size:var(--home-meta); font-weight:700; letter-spacing:var(--tracking-tight);
-  transition:filter .15s;
 }
 nav .btn-nav-primary:hover{ background:var(--ui-d) }
 
-/* 알림 종 */
-nav #navBellBtn{ color:var(--ink-2) }
+
+nav #navBellWrapper{ position:relative; display:inline-flex; align-items:center }
+nav #navBellBtn{ min-width:var(--home-target); min-height:var(--home-target); padding:0; border:0; background:none; color:var(--ink-2); cursor:pointer }
+nav #notifBadge{ position:absolute; top:0; right:0; min-width:calc(var(--u)*2.25); height:calc(var(--u)*2.25); padding:0 calc(var(--u)/4); border:calc(var(--u)/4) solid var(--page); border-radius:var(--r-pill); background:var(--tile); color:var(--panel); font-size:var(--t-xs); font-weight:700; line-height:calc(var(--u)*1.75); text-align:center; pointer-events:none; box-sizing:border-box }
+.nav-logout-icon{ display:none }
 nav #navBellBtn:hover{ color:var(--ink) }
 
-/* 햄버거 */
+
 nav #navHamburger{
   border:0; background:none; cursor:pointer; color:var(--ink-2); padding:6px;
 }
 
 @media (max-width:900px){
-  nav{ padding:11px 18px }
+  nav{ padding:var(--u) calc(var(--u)*2) }
   nav.nav-open{
     background:var(--page); border-bottom-color:var(--ui-line); backdrop-filter:none;
   }
@@ -100,6 +76,28 @@ nav #navHamburger{
   nav .btn-nav-ghost,
   nav .btn-nav-primary,
   nav #navBellBtn{
-    min-height:44px;
+    min-height:var(--home-target);
   }
+}
+@media (max-width:768px){
+  nav{ flex-wrap:nowrap; gap:calc(var(--u)/2); padding:0 var(--u); height:var(--nav-h); min-height:var(--nav-h); }
+  nav .nav-logo{ margin-right:auto }
+  nav .nav-links, nav #navHamburger{ display:none }
+  nav .nav-right{ flex:0 0 auto; gap:0; margin-left:auto }
+  nav .nav-link, nav .btn-nav-ghost, nav .btn-nav-primary, nav .nav-user{ min-width:var(--home-target); min-height:var(--home-target) }
+  nav #navLoginBtn, nav #navSignupBtn, nav #navUserNameBtn{ display:none !important }
+  nav #navLogoutBtn{ order:1; padding:0 var(--u); font-size:var(--home-meta) }
+  nav #navBellWrapper{ order:2 }
+  body:has(#navPlannerSteps[style*="flex"]) nav .nav-logo{ margin-right:0 }
+  body:has(#navPlannerSteps[style*="flex"]) nav .logo-full{ display:none }
+  body:has(#navPlannerSteps[style*="flex"]) nav .logo-symbol{ display:block; width:auto; height:var(--nav-symbol); object-fit:contain }
+  body:has(#navPlannerSteps[style*="flex"]) nav .nav-links{ display:flex; flex:1; min-width:0; justify-content:center; overflow:visible }
+  body:has(#navPlannerSteps[style*="flex"]) nav .nav-link{ display:none }
+  nav .nav-planner-steps{ flex:1; min-width:0; padding:0; margin:0; gap:0; border:0; background:none }
+  nav .nps-btn{ flex:1; justify-content:center; min-width:var(--home-target); min-height:var(--home-target); padding:0; font-size:var(--t-xs) }
+  nav .nps-num, nav .nps-arrow, nav .nps-lbl-full{ display:none }
+  nav .nps-lbl-short{ display:inline }
+  body:has(#navPlannerSteps[style*="flex"]) nav #navLogoutBtn{ padding:0 }
+  body:has(#navPlannerSteps[style*="flex"]) nav .nav-logout-label{ display:none }
+  body:has(#navPlannerSteps[style*="flex"]) nav .nav-logout-icon{ display:block; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5); margin:auto; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round }
 }

@@ -41,6 +41,31 @@
 
   /* ── 간격 (8px 그리드) ─────────────────────────────────── */
   --u:8px;
+  --nav-h:72px;
+  --nav-logo-height:38px;
+  --nav-logo-small:28px;
+  --nav-symbol:36px;
+  --map-label-width:176px;
+  --map-label-small:144px;
+  --drive-toolbar:52px;
+  --drive-map-min:240px;
+  --drive-arrow:64px;
+  --drive-distance:clamp(32px, 7vw, 48px);
+  --drive-instruction:clamp(18px, 3vw, 26px);
+  --budget-balance:clamp(22px, 5.8vw, 30px);
+  --map-attribution-space:40px;
+  --map-height:clamp(300px, 52dvh, 460px);
+  --map-height-small:clamp(280px, 46dvh, 400px);
+  --map-pan-duration:.6s;
+  --drive-map-wide:360px;
+  --drive-map-landscape:180px;
+  --drive-sidebar:280px;
+  --drive-action:48px;
+  --drive-number:clamp(36px, 9vw, 52px);
+  --home-pin-detail:176px;
+  --budget-chart-width:760px;
+  --budget-summary-gap:24px;
+  --line:1px;
   --gap-card:12px;
   --pad-card:20px;
   --pad-page:30px;
@@ -186,6 +211,13 @@
   /* 그림자 — 청록 rgba 를 걷어냈다 */
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
+}
+
+@media (max-width:768px){
+  :root{ --nav-h:52px }
+}
+@media (prefers-reduced-motion:reduce){
+  :root{ --map-pan-duration:0s }
 }
 
 /* ══════════════════ 하늘 — 연속 보간 ══════════════════

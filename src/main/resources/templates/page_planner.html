@@ -2120,8 +2120,7 @@
             <div class="step-panel active" id="sp-1">
                 <!-- 여행지 & 날짜 -->
                 <div class="pl-card">
-                    <div class="pl-card-ttl" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-                        <span>어디로, 언제</span>
+                    <div class="pl-card-ttl pl-start-tools">
                         <div style="display:flex;align-items:center;gap:8px">
                             <div id="weather-btn-wrap" style="display:none">
                                 <button class="weather-date-btn" onclick="openWeatherPopup()">
@@ -2133,9 +2132,9 @@
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label">어디서 출발</label>
+                        <label class="form-label" for="s1-origin">어디서 출발</label>
                         <div class="loc-selector">
-                            <select class="loc-big" id="dep-prov" onchange="updateCityDep(this)">
+                            <select class="loc-big" id="dep-prov" aria-label="출발 시도" onchange="updateCityDep(this)">
                                 <option value="">도/시 선택</option>
                                 <option value="서울">서울</option>
                                 <option value="경기">경기</option>
@@ -2146,7 +2145,7 @@
                                 <option value="부산">부산</option>
                                 <option value="제주">제주</option>
                             </select>
-                            <select class="loc-big" id="dep-city"></select>
+                            <select class="loc-big" id="dep-city" aria-label="출발 시군구"></select>
                         </div>
                         <!-- 정확한 출발지. 도/시만으로는 이동시간을 잴 수 없다 -->
                         <div class="og-wrap">
@@ -2165,7 +2164,7 @@
                     <div class="form-group">
                         <label class="form-label">어디로<em class="form-hint">국내만 됩니다</em></label>
                         <div class="loc-selector">
-                            <select class="loc-big" id="dest-prov" onchange="updateCityDest(this)">
+                            <select class="loc-big" id="dest-prov" aria-label="여행 시도" onchange="updateCityDest(this)">
                                 <option value="">도/시 선택</option>
                                 <option value="서울">서울</option>
                                 <option value="경기">경기</option>
@@ -2185,7 +2184,7 @@
                                 <option value="부산">부산</option>
                                 <option value="제주">제주</option>
                             </select>
-                            <select class="loc-big" id="dest-city"></select>
+                            <select class="loc-big" id="dest-city" aria-label="여행 시군구"></select>
                         </div>
                     </div>
 
@@ -2552,7 +2551,7 @@
                 <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:10px">예보 범위를 벗어난 여행 날짜예요</div>
                 <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
                     <div style="font-size:13px;color:var(--text2);line-height:1.8">
-                        여기서는 오늘부터 <strong>7일 치</strong> 기상청 예보만 보여 드립니다.<br>
+                        여기서는 오늘부터 <strong>7일간</strong>의 기상청 예보를 보여 드립니다.<br>
                         출발일이 2주 넘게 남아 아직 보여 드릴 예보가 없습니다.<br>
                         여행이 가까워지면 다시 열어 보세요. 먼 날짜는 아래 링크에서 확인할 수 있습니다.
                     </div>
@@ -2561,7 +2560,7 @@
 
             <!-- 날씨 그리드 (데이터 있는 경우) -->
             <div id="wp-data-wrap">
-                <p class="wp-note">기상청 예보는 오늘부터 <strong>7일 치</strong>만 나옵니다.
+                        <p class="wp-note">기상청 예보는 오늘부터 <strong>7일간</strong> 보여 드립니다.
                     그보다 뒤 날짜는 아래 링크에서 확인해 주세요.</p>
                 <div class="weather-grid" id="wp-grid" style="margin-top:0"></div>
                 <div id="wp-alert" style="display:none;margin-top:11px;background:var(--tile-pale);border:1px solid var(--tile);border-radius:8px;padding:10px;font-size:12px;color:var(--tile)"></div>
