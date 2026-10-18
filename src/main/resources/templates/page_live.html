@@ -381,9 +381,8 @@
                 ? '<span class="rl-cw cw-' + esc(c.levelKey || 'mid') + '">추정 ' +
                     esc(c.levelLabel || '') + '</span>'
                 /* 예측 대상이 아닌 곳(숙소·식당)과 조회 실패가 여기로 온다.
-                   「확인되지 않음」은 우리가 손 놓았다는 말로 들려서, 다시 받아 보면
-                   될 수도 있다는 뜻이 담기게 고쳤다 */
-                : '<span class="rl-cw rl-cw-none">혼잡도 정보 갱신 필요</span>') +
+                   「갱신 필요」는 고장처럼 읽혀서 사실대로 짧게 적는다 */
+                : '<span class="rl-cw rl-cw-none">이곳은 붐빔 정보가 없어요</span>') +
               rlWeatherChip(d.weather);
           }
         }
