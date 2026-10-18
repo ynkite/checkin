@@ -121,8 +121,10 @@ final class TripContextPrompt {
             sb.append("- 여행 기간: ").append(start).append(" ~ ").append(end != null ? end : start).append('\n');
         }
         switch (phase) {
-            case BEFORE -> sb.append("- 여행 단계: 출발 전 (출발까지 ")
-                    .append(ChronoUnit.DAYS.between(today, start)).append("일)\n");
+            case BEFORE -> sb.append(start == null
+                    ? "- 여행 단계: 여행 정보 없음. 여행지와 날짜를 먼저 물으세요. 일정 생성을 권하지 마세요.\n"
+                    : "- 여행 단계: 출발 전 (출발까지 " + ChronoUnit.DAYS.between(today, start)
+                      + "일). 아직 떠나지 않았으니 '오늘 일정'·'오늘 밤'이라고 말하지 마세요.\n");
             case DURING -> sb.append("- 여행 단계: 여행 중, 오늘은 ").append(day).append("일차\n");
             case AFTER -> sb.append("- 여행 단계: 여행이 끝났음\n");
         }
@@ -184,13 +186,16 @@ final class TripContextPrompt {
                 ? "'" + r.basedOn() + "'에 다녀간 사람들이 함께 많이 간 곳 (순위순):\n"
                 : "이 지역에서 여러 관광지와 함께 가장 자주 묶인 곳:\n");
         for (RelatedSpot s : r.spots()) {
-            sb.append("  - ").append(s.toName()).append(" (").append(nz(s.category())).append(")\n");
+            sb.append("  - ").append(s.toName()).append(" (").append(nz(s.category()));
+            if (s.sigunguName() != null && !s.sigunguName().isBlank()) sb.append(", ").append(s.sigunguName());
+            sb.append(")\n");
         }
         sb.append("""
                 이 목록 사용 규칙:
                 - 주변에 갈 곳·먹을 곳을 추천할 때 이 목록을 먼저 쓰고, 관광공사 통계에서 나온 곳이라고 한 번 밝히세요.
                 - 목록 머리에 적힌 기준을 그대로 말하세요. 기준 장소가 적혀 있지 않으면 「어느 장소와 함께 간 곳」이라고 말하지 마세요.
                 - 이 목록에는 좌표와 영업시간이 없습니다. 거리·영업 여부를 지어내지 마세요.
+                - 괄호 안 시군구를 같이 말하세요. 여행지 시군구와 다르면 그렇다고 밝히세요.
                 """);
         return sb.toString();
     }

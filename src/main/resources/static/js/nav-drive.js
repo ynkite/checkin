@@ -1359,12 +1359,6 @@
     return cmd.length ? cmd : null;
   }
   // 읽어 줄 답은 한 문장만 (운전 중엔 길면 놓친다)
-  function firstSentence(text) {
-    if (!text) return '';
-    var m = text.replace(/\s+/g, ' ').trim().split(/(?<=[.?!。])\s|\n/);
-    return (m[0] || '').trim();
-  }
-
   function speak(text) {
     try {
       if (!('speechSynthesis' in window) || !text) return;
@@ -1397,11 +1391,12 @@
       render('체키에게 물어보는 중...');
       fetch('/api/chat/message', {
         method: 'POST', headers: chatHeaders(),
-        body: JSON.stringify({ sessionId: sid, message: cmd })
+        body: JSON.stringify({ sessionId: sid, message: cmd, brief: true })
       }).then(function (r) { return r.json(); })
         .then(function (j) {
-          var reply = (j && (j.data && (j.data.reply || j.data.message) || j.message)) || '';
-          var one = firstSentence(reply) || '답을 받지 못했습니다.';
+          /* brief 로 서버가 한두 문장만 주니 통째로 읽는다 */
+          var one = String((j && (j.data && (j.data.reply || j.data.message) || j.message)) || '').trim()
+            || '답을 받지 못했습니다.';
           render(one); speak(one);
         })
         .catch(function () { speak('답을 받지 못했습니다.'); });
@@ -1501,8 +1496,6 @@
     console.assert(parseCommand('체키야, 비 와?') === '비 와?', '쉼표 뒤 명령');
     console.assert(parseCommand('그냥 혼잣말') === null, '체키야 없으면 무시');
     console.assert(parseCommand('') === null, '빈 문자열 무시');
-    console.assert(firstSentence('12분 줄어듭니다. 순서를 바꿀까요') === '12분 줄어듭니다.', '한 문장만');
-    console.assert(firstSentence('짧은 답') === '짧은 답', '문장부호 없으면 통째');
     console.log('OK _voiceCheck 통과');
     return true;
   };
