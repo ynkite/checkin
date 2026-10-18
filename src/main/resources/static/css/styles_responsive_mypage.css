@@ -122,9 +122,13 @@
   padding:var(--pad-page);
 }
 
-#page-mypage .my-avatar,
+#page-mypage .my-avatar{ background:var(--slate); }
 #page-mypage .trip-card > div[style*="background:var(--sage)"]{
-  background:var(--slate) !important;
+  position:relative; background:var(--ui-plate) !important; color:transparent;
+}
+#page-mypage .trip-card > div[style*="background:var(--sage)"]::after{
+  content:""; position:absolute; inset:var(--u); background:var(--ink-2);
+  mask:var(--trip-map-icon) center / contain no-repeat;
 }
 
 #page-mypage .trip-budget{ color:var(--slate); }
@@ -235,7 +239,10 @@
     width:100%;
     min-width:0 !important;
     text-align:left !important;
+    display:flex; align-items:center; flex-wrap:wrap; gap:calc(var(--u)/2) var(--u);
   }
+  #page-mypage .trip-budget > span:last-child{ display:flex; gap:calc(var(--u)/2); font-variant-numeric:tabular-nums; }
+  #page-mypage .trip-budget br{ display:block; flex:0 0 0; }
 
   #page-mypage .trip-card .trip-route{ order:3; }
 }

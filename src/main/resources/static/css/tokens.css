@@ -45,8 +45,16 @@
   --nav-logo-height:38px;
   --nav-logo-small:28px;
   --nav-symbol:36px;
-  --map-label-width:176px;
-  --map-label-small:144px;
+  --map-label-width:128px;
+  --map-label-small:96px;
+  --map-pin-size:32px;
+  --map-pin-ring:3px;
+  --map-label-offset:36px;
+  --map-model-rail:112px;
+  --tab-line:2px;
+  --tab-line-offset:6px;
+  --live-bottom-space:32px;
+  --trip-map-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Zm6-3v15m6-12v15'/%3E%3C/svg%3E");
   --drive-toolbar:52px;
   --drive-map-min:240px;
   --drive-arrow:64px;
@@ -215,6 +223,9 @@
 
 @media (max-width:768px){
   :root{ --nav-h:52px }
+}
+@media (max-width:1000px){
+  :root{ --map-model-rail:0px }
 }
 @media (prefers-reduced-motion:reduce){
   :root{ --map-pan-duration:0s }

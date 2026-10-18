@@ -413,30 +413,27 @@
 /* ── 지도 위 — 핀 ─────────────────────────────────────────── */
 .mp-pin{ position:relative; width:0; height:0; cursor:pointer }
 .mp-pd{
-  position:absolute; left:-15px; top:-15px; width:30px; height:30px;
-  border-radius:99px; display:grid; place-items:center;
-  font-family:var(--fig); font-size:12px; font-weight:600; letter-spacing:-.02em;
-  background:var(--terra); color:var(--panel);
-  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--ui-l), var(--lift2);
+  position:absolute; left:0; top:0; width:var(--map-pin-size); height:var(--map-pin-size);
+  transform:translate(-50%,-50%);
+  border-radius:var(--r-pill); display:grid; place-items:center;
+  font-family:var(--fig); font-size:var(--t-sm); font-weight:700; line-height:1; letter-spacing:var(--tracking-num);
+  background:var(--terra); color:var(--home-on-dark);
+  box-shadow:0 0 0 var(--map-pin-ring) var(--home-on-dark), var(--lift2);
   z-index:2;
 }
 /* 종류를 바탕색으로 가른다. 전에는 테두리 색만 달라서 멀리서 보면 다 같아 보였다.
    흰 글자 대비는 전부 4.9 이상이다 (slate 5.91 · tile 4.97 · num 4.93 · terra 5.10). */
-.mp-pin-stay .mp-pd{ background:var(--slate); box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--slate), var(--lift2) }
-.mp-pin-food .mp-pd{ background:var(--tile);  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--tile),  var(--lift2) }
-.mp-pin-cafe .mp-pd{ background:var(--num);   box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--num),   var(--lift2) }
-.mp-pin-tour .mp-pd{ background:var(--terra); box-shadow:0 0 0 2.5px var(--panel), 0 0 0 4.5px var(--terra), var(--lift2) }
+.mp-pin-stay .mp-pd{ background:var(--slate) }
+.mp-pin-food .mp-pd{ background:var(--tile) }
+.mp-pin-cafe .mp-pd{ background:var(--num) }
+.mp-pin-tour .mp-pd{ background:var(--terra) }
 .mp-pl{
-  position:absolute; left:0; top:21px; transform:translateX(-50%);
-  white-space:nowrap; padding:3px 10px 4px; border-radius:99px;
-  background:var(--panel); color:var(--ink); box-shadow:var(--lift2);
-  font-size:11.5px; font-weight:600; letter-spacing:-.025em; z-index:1;
+  display:none;
 }
 .mp-pin-on .mp-pd{
   background:var(--sig-deep);
-  box-shadow:0 0 0 2.5px var(--panel), 0 0 0 5.5px var(--ink), var(--lift);
+  box-shadow:0 0 0 var(--map-pin-ring) var(--home-on-dark), 0 0 0 calc(var(--map-pin-ring)*2) var(--ink), var(--lift);
 }
-.mp-pin-on .mp-pl{ background:var(--ink); color:var(--panel) }
 
 /* 지금 여기 — 링이 번지고 그 안에 사람 */
 .mp-here{ position:relative; width:0; height:0; pointer-events:none }
@@ -735,6 +732,7 @@
 @media (prefers-reduced-motion:reduce){
   .mp-here .mp-hping{ animation:none; opacity:.5; transform:scale(1.25) }
   .place-row, .mp-ord, .weather-alert{ transition:none }
+  .mp-strip{ scroll-behavior:auto }
 }
 
 /* 빈 일정 — 안내와 함께 갈 곳을 준다 */
@@ -864,7 +862,7 @@
    (styles_massing.css). 여기서는 자리와 없을 때만 다룬다. */
 #modelView{
   position:absolute; inset:0; z-index:8; overflow:hidden;
-  background:var(--page-2);
+  background:var(--page-2); cursor:grab; touch-action:none;
 }
 /* 장면과 핀은 같은 상자 안에서 같은 변형을 받는다.
    따로 움직이면 핀이 건물에서 떨어진다. */
@@ -878,7 +876,20 @@
 }
 #modelView .ck-frame{ aspect-ratio:auto }
 #modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
-#modelView .ck-pins .ck-pin{ pointer-events:auto; width:min(var(--map-label-width), calc(100vw - var(--u)*4)); transform:translate(-50%,-50%) scale(calc(1 / var(--mv-z,1))) }
+#modelView .ck-pins .ck-pin{
+  pointer-events:auto; width:var(--map-pin-size); height:var(--map-pin-size);
+  justify-content:center; transform:translate(-50%,-50%) scale(calc(1 / var(--mv-z,1)));
+}
+#modelView .ck-no{ flex-shrink:0; width:var(--map-pin-size); height:var(--map-pin-size); font-size:var(--t-sm); font-weight:700 }
+#modelView .ck-bub{
+  position:absolute; top:var(--map-label-offset); left:0; max-width:var(--map-label-width);
+  display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  font-size:var(--home-meta); line-height:1.5; pointer-events:none; box-shadow:var(--lift);
+}
+#modelView .ck-lbl-left .ck-bub{ left:auto; right:0 }
+#modelView .ck-pin:nth-of-type(even) .ck-bub{ top:auto; bottom:var(--map-label-offset) }
+#modelView .ck-bub em, #modelView .ck-bub .ck-cw{ display:none }
+#modelView .ck-pin:hover, #modelView .ck-pin:focus-within{ z-index:4 }
 #modelView .ck-frame svg.mass{ width:100%; height:auto; display:block }
 
 /* 동선 — 정거장을 순서대로 잇는 선. 모형 위에서도 길이 보여야 한다 */
@@ -1051,13 +1062,14 @@
 }
 .mp-seg{ display:flex; gap:2px; padding:3px; border-radius:var(--r-pill) }
 .mp-seg .btn-map-act{
-  flex:0 0 auto; padding:8px 15px 9px; border-radius:var(--r-pill);
-  font-size:12.5px; font-weight:500; color:var(--ink-2);
-  background:transparent; box-shadow:none;
+  flex:0 0 auto; padding:var(--u) calc(var(--u)*2); border-radius:var(--r-pill);
+  font-size:var(--home-meta); font-weight:500; color:var(--ink-2);
+  background:transparent; box-shadow:none; transition:none;
 }
 .mp-seg .btn-map-act:hover{ color:var(--ink); background:var(--ui-plate); box-shadow:none }
 .mp-seg .btn-map-act.on{
-  background:var(--ink); color:var(--panel); font-weight:600; box-shadow:none;
+  background:var(--ink); color:var(--panel); font-weight:750; box-shadow:none;
+  text-decoration:underline; text-decoration-thickness:var(--tab-line); text-underline-offset:var(--tab-line-offset);
 }
 .mp-chip{
   padding:9px 15px 10px; border:0; border-radius:var(--r-pill); cursor:pointer;
@@ -1183,8 +1195,8 @@
   border:0; background:transparent; cursor:pointer; text-align:left;
   font-family:inherit; color:var(--ink); word-break:keep-all;
   border-radius:var(--r-panel);
-  opacity:.62;
-  transition:background .16s ease, opacity .2s ease, width .24s ease;
+  opacity:1;
+  transition:none;
 }
 .mp-nd + .mp-nd{ box-shadow:inset 1px 0 0 var(--glass-line) }
 .mp-nd:hover{ background:var(--glass-2); opacity:1 }
@@ -1301,8 +1313,6 @@
 /* 장소 이름을 경로 층(SVG)에서 그린다. 경로 SVG 가 지도 전체 위에 얹히는 층이라
    오버레이로 그린 이름은 무조건 선 아래로 깔렸다. z-index 로는 못 넘는 경계다.
    그래서 오버레이 쪽 이름은 감추고 여기서 그린다 — 늘 맨 위에 온다. */
-.mp-pl{ display:none }
-
 .mp-svg-lbl{
   font-family:var(--sans); font-size:var(--home-meta); font-weight:650; letter-spacing:normal; word-spacing:normal;
   fill:var(--ink); paint-order:stroke fill;
@@ -1316,7 +1326,7 @@
    전에는 열 때 잡아 준 자리에서 꼼짝도 못 했다. 전국 251곳을 구워 놓고
    한 자리만 보여 주는 것은 아깝다. 끌고 당기고 밀 수 있게 한다. */
 .mv-view{
-  position:absolute; right:calc(var(--u)*2); bottom:calc(var(--u)*2); z-index:7;
+  position:absolute; right:calc(var(--u)*2); bottom:calc(var(--map-model-rail) + var(--u)*2); z-index:7;
   display:flex; gap:calc(var(--u)/2); isolation:isolate;
 }
 .mv-vb{
@@ -1327,7 +1337,6 @@
 }
 .mv-vb-t{ font-size:12px; font-weight:600 }
 .mv-vb:hover{ background:var(--ui-plate) }
-#modelView{ cursor:grab; touch-action:none }
 #modelView.mv-grab{ cursor:grabbing }
 /* 단추 위에서는 끌기 손 모양이 나오면 안 된다 */
 .mv-view, .mv-vb{ cursor:default }
@@ -1339,7 +1348,7 @@
    다 보이는 것보다 지금 어디인지가 먼저다. */
 .mv-stops{
   position:absolute; left:calc(var(--u)*2); right:calc(var(--u)*2);
-  bottom:calc(var(--u)*3 + var(--home-target)); z-index:7;
+  bottom:calc(var(--map-model-rail) + var(--u)*3 + var(--home-target)); z-index:7;
   display:flex; gap:calc(var(--u)/2); overflow-x:auto; scrollbar-width:none;
   padding-bottom:calc(var(--u)/4); isolation:isolate; touch-action:pan-x;
 }
@@ -1358,6 +1367,6 @@
 .mv-st.on{ background:var(--ink); color:var(--panel) }
 .mv-st.on b{ background:var(--sig); color:var(--ink) }
 @media (max-width:760px){
-  #modelView .ck-pins .ck-pin{ width:var(--map-label-small) }
+  #modelView .ck-bub{ max-width:var(--map-label-small) }
   .mv-st{ font-size:12px; padding:0 calc(var(--u)*1.1) }
 }

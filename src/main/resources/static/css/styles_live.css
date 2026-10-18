@@ -9,7 +9,7 @@
  * 색·간격은 tokens.css 변수만 쓴다.
  */
 
-#page-live{ background:var(--page-2) }
+#page-live{ background:var(--page-2); min-height:0; padding-bottom:0 }
 body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #page-live{ padding-top:0 }
 .rl-now-hd{ display:flex; align-items:center; justify-content:space-between; gap:var(--u) }
 .rl-now-hd > p{ margin:0; font-size:var(--t-sm); font-weight:600; color:var(--ink-2) }
@@ -19,7 +19,7 @@ body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #
 }
 
 .rl-wrap{
-  max-width:760px; margin:0 auto; padding:clamp(28px, 5vw, 56px) 22px 80px;
+  max-width:760px; margin:0 auto; padding:calc(var(--u)*4) calc(var(--u)*2.75) var(--live-bottom-space);
   word-break:keep-all; overflow-wrap:break-word;
 }
 
@@ -43,7 +43,7 @@ body:has(nav[hidden], nav[style*="display:none"], nav[style*="display: none"]) #
   padding:18px 20px; border:0; cursor:pointer; text-align:left;
   border-radius:var(--r-panel); background:var(--panel);
   box-shadow:var(--lift); font-family:inherit;
-  transition:box-shadow .16s ease, transform .16s ease;
+  transition:transform .16s ease;
 }
 .rl-trip:hover{ transform:translateY(-1px); box-shadow:var(--home-shadow) }
 .rl-trip-s{
@@ -371,7 +371,10 @@ body:has(#page-live.active, #page-main.active) .lnb{ display:none }
   animation:lnb-breathe 2.2s ease-in-out infinite;
 }
 @keyframes lnb-breathe{ 0%,100%{ opacity:1 } 50%{ opacity:.4 } }
-@media (prefers-reduced-motion: reduce){ .lnb-dot{ animation:none } }
+@media (prefers-reduced-motion: reduce){
+  .lnb-dot{ animation:none }
+  .rl-trip{ transition:none }
+}
 
 .lnb-txt{ flex:1 1 auto; min-width:0; display:flex; align-items:baseline; gap:7px }
 .lnb-txt b{
@@ -526,7 +529,7 @@ body:has(#page-live.active, #page-main.active) .lnb{ display:none }
    같은 특정도라 뒤에 오는 것이 이긴다. 순서가 뒤집히면
    .rl-trip 을 360 에서 두 칸으로 고쳐 둔 것이 여기에 덮인다 */
 @media (max-width:520px){
-  .rl-wrap{ padding:var(--u) calc(var(--u)*1.75) calc(var(--u)*11.5 + env(safe-area-inset-bottom, 0px)) }
+  .rl-wrap{ padding:var(--u) calc(var(--u)*1.75) var(--live-bottom-space) }
   .rl-trip{ grid-template-columns:minmax(0,1fr); gap:7px; padding:16px }
   .rl-trip-t{ white-space:normal; overflow:visible; text-overflow:clip }
   .rl-trip-d{ white-space:normal }

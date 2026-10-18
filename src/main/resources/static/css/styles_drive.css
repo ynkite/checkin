@@ -412,3 +412,4 @@ body.dv-driving .dv-lane-why{ display:none }
 }
 .dv-ask .mp-mhint{ margin:var(--u) 0 calc(var(--u)*2.5) }
 .dv-ask-row{ display:flex; gap:var(--u) }
+.dv-ask-row .mp-mbtn{ flex:1; min-width:0; min-height:var(--home-target) }

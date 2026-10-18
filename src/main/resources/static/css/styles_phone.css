@@ -12,8 +12,8 @@
 /* 카메라가 읽게 흰 바탕 · 짙은 칸 */
 .pq-bg{ fill:var(--panel) }
 .pq-fg{ fill:var(--ink) }
-.pq-url{ margin:0; text-align:center; font-size:var(--t-xs); color:var(--ink-3); word-break:break-all }
+.pq-url{ margin:0; text-align:center; font-size:var(--t-xs); color:var(--ink-3); word-break:keep-all; overflow-wrap:anywhere }
 .pq-open{
-  padding:calc(var(--u)/2) calc(var(--u)*1.25); border:0; border-radius:var(--r-field); cursor:pointer;
+  min-height:var(--home-target); padding:calc(var(--u)/2) calc(var(--u)*1.25); border:0; border-radius:var(--r-field); cursor:pointer;
   background:var(--ink); color:var(--panel); font:inherit; font-size:var(--t-xs); font-weight:700; white-space:nowrap;
 }
