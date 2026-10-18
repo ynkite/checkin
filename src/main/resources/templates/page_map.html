@@ -1395,7 +1395,7 @@
             (quietPick ? _mpEsc(quietPick.placeName) + ' 등 ' + _mpQuiet.length + '곳'
                        : '한적한 곳 찾기') + '</span></button>' +
           '<button type="button" class="mp-opt" onclick="_mpAskRoute()">' +
-            '<b>가는 길 바꾸기</b><span>구간 보기</span></button>' +
+            '<b>가는 길 보기</b><span>지도에 구간 표시</span></button>' +
         '</div>' +
         '<p class="mp-al-note">한국관광공사 관광지 집중률 예측입니다. ' +
           '0~100 눈금에서 ' + Math.round(f.idx) + '입니다.</p>';
@@ -1469,8 +1469,8 @@
       return document.getElementById('rt-' + key);
     }
 
-    /* 가는 길 바꾸기 — 그 구간을 지도에 띄운다.
-       다른 경로 비교는 티맵 연동 뒤에 붙는다. 없는 것을 있는 척하지 않는다. */
+    /* 가는 길 보기 — 그 구간을 지도에 띄운다. 경로를 바꾸지는 않는다.
+       하지 않는 일을 버튼 이름으로 약속하지 않는다. */
     function _mpAskRoute() {
       var f = _mpWorst(MAP_ITINERARY[0] || {});
       if (!f) return;
@@ -1478,7 +1478,7 @@
       if (row && typeof selectPlaceRow === 'function') selectPlaceRow(row);
       if (typeof drawRouteLayer === 'function') drawRouteLayer();
       if (typeof toast === 'function') {
-        toast('이동 구간을 지도에 표시했습니다. 다른 경로 비교는 티맵 연동 뒤에 붙습니다.', 4200);
+        toast('이동 구간을 지도에 표시했습니다.');
       }
     }
 

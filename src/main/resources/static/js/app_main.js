@@ -3037,7 +3037,7 @@ function goPlanStep(n) {
 
     if (n === 4) {
         if (!sessionStorage.getItem('ai_generated_route')) {
-            toast('먼저 AI 챗봇에서 일정을 만들어 주세요.');
+            toast('먼저 대화로 고르기에서 일정을 만들어 주세요.');
             return;
         }
         if (_planDirty) {
