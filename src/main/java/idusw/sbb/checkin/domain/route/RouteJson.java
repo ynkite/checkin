@@ -2,6 +2,9 @@ package idusw.sbb.checkin.domain.route;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import java.util.regex.Pattern;
 
 /**
  * 동선 JSON 이 쓸 만한가.
@@ -22,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public final class RouteJson {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Pattern AMOUNT = Pattern.compile("₩([\\d,]+)(?:×(\\d+))?");
 
     private RouteJson() {}
 
@@ -46,6 +50,36 @@ public final class RouteJson {
             return false;
         } catch (Exception e) {
             return false;   /* 파싱이 안 되면 쓸 수 없는 것이다 */
+        }
+    }
+
+    /**
+     * 2일차부터 아침 첫 줄의 숙소는 「숙소에서 출발」이다. 전날 밤 숙소와 같은 곳이라
+     * 금액까지 달고 있으면 1박이 두 번 셈해진다 (2박인데 숙소 4줄 = 4박 값).
+     * 그 줄의 금액만 지운다. 저장 전에도 거치지만, 그 전에 저장된 일정이 남아 있어
+     * {@code TravelPlan} 이 읽어 줄 때마다 다시 거른다 — 가계부·예산 맞춤·지도가
+     * 모두 같은 글을 읽으므로 여기 한 곳이면 다 같이 맞는다.
+     */
+    public static String unpriceDepartureStay(String json) {
+        if (json == null || !json.contains("\"stay\"")) return json;
+        try {
+            JsonNode root = MAPPER.readTree(json);
+            if (!root.isArray()) return json;
+            boolean changed = false;
+            for (int d = 1; d < root.size(); d++) {
+                for (JsonNode p : root.get(d).path("places")) {
+                    if (p.has("transit")) continue;
+                    String sub = p.path("sub").asText("");
+                    if ("stay".equals(p.path("type").asText()) && AMOUNT.matcher(sub).find()) {
+                        ((ObjectNode) p).put("sub", AMOUNT.matcher(sub).replaceAll("출발").trim());
+                        changed = true;
+                    }
+                    break;   // 첫 장소만 본다
+                }
+            }
+            return changed ? MAPPER.writeValueAsString(root) : json;
+        } catch (Exception e) {
+            return json;
         }
     }
 }

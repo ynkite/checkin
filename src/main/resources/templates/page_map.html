@@ -1306,7 +1306,8 @@
       }
       var out = '';
       if (b.season && b.season.key !== 'off') {
-        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. 숙소와 렌터카 값이 오를 수 있습니다.</p>';
+        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. 숙소' +
+               (/렌터카/.test(String(window._mpTransportType || '')) ? '와 렌터카' : '') + ' 값이 오를 수 있습니다.</p>';
       }
       if (b.festivals && b.festivals.length) {
         out += '<p>여행 기간에 <b>' + _mpEsc(b.festivals[0].title) + '</b>' +

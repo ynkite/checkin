@@ -6,6 +6,7 @@
 
 package idusw.sbb.checkin.domain.plan.entity;
 
+import idusw.sbb.checkin.domain.route.RouteJson;
 import idusw.sbb.checkin.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
@@ -107,6 +108,11 @@ public class TravelPlan {
     //   미확정 상태로 종료/로그아웃해도 routeJson(직전 확정본)은 보존된다.
     @Column(name = "draft_route_json", columnDefinition = "MEDIUMTEXT")
     private String draftRouteJson;
+
+    /* 읽을 때 아침 출발 숙소 줄의 금액을 거른다. 그 전에 저장된 일정도 셀 때 1박이 두 번 안 들어간다.
+       필드 접근(@Id 가 필드)이라 하이버네이트는 이 getter 를 안 보고, 저장 데이터는 그대로다 */
+    public String getRouteJson() { return RouteJson.unpriceDepartureStay(routeJson); }
+    public String getDraftRouteJson() { return RouteJson.unpriceDepartureStay(draftRouteJson); }
 
 
     // 비즈니스 메서드

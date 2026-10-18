@@ -79,7 +79,11 @@ public class ExpenseService {
 
         Long budget = (plan.getForm() != null) ? plan.getForm().getBudget() : null;
 
-        List<Expense> expenses = expenseRepository.findByPlanId(planId);
+        /* 실제 지출은 DB, 예상 지출은 지금 일정에서 바로 센다 — 지도·예산 맞춤과 같은 글을 읽는다 */
+        String draft = plan.getDraftRouteJson();
+        List<Expense> expenses = new ArrayList<>(EstimatedExpenses.from(plan,
+                draft != null && !draft.isBlank() ? draft : plan.getRouteJson()));
+        expenseRepository.findByPlanId(planId).stream().filter(e -> !e.isEstimated()).forEach(expenses::add);
 
         long totalEst = 0L;
         long totalAct = 0L;
@@ -140,6 +144,7 @@ public class ExpenseService {
                 .destination(plan.getDestination())
                 .startDate(plan.getStartDate() != null ? plan.getStartDate().toString() : null)
                 .endDate(plan.getEndDate()   != null ? plan.getEndDate().toString()   : null)
+                .transportType(plan.getForm() != null ? plan.getForm().getTransportType() : null)
                 .totalEstimatedAmount(totalEst)
                 .totalActualAmount(totalAct)
                 .categoryBudgets(new ArrayList<>(categoryMap.values()))
