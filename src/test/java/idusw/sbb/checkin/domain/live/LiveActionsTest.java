@@ -119,6 +119,21 @@ class LiveActionsTest {
     }
 
     @Test
+    void 여행_전에는_시계와_상관없이_첫_일정을_말한다() {
+        여행하나(58);
+        TravelPlan p = planRepository.findById(1L).orElseThrow();
+        ReflectionTestUtils.setField(p, "startDate", LocalDate.now().plusDays(5));
+        ReflectionTestUtils.setField(p, "endDate", LocalDate.now().plusDays(6));
+
+        LiveSnapshot s = live.snapshot(1L, null, null, null);
+        assertThat(s.headline()).contains("첫 일정은 해운대 해수욕장");
+        assertThat(s.next()).containsEntry("name", "해운대 해수욕장");
+
+        /* 가상 주행이면 다음은 두 번째 곳이어도 첫 일정 문구는 그대로다 */
+        assertThat(live.snapshot(1L, null, null, null, true).headline()).contains("첫 일정은 해운대 해수욕장");
+    }
+
+    @Test
     void 가상_주행은_지금을_그날_첫_일정_시각으로_본다() {
         여행하나(88);
 

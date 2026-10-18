@@ -63,8 +63,11 @@ public class KorTourService {
         return toSpots(client.items(SERVICE, "searchKeyword2", params));
     }
 
-    /** 좌표 반경 안 (locationBasedList2), 가까운 순. 예산 맞춤이 근처 숙소를 찾을 때 쓴다. */
-    public List<Spot> nearby(double lat, double lng, int radiusM, Integer contentTypeId, int numOfRows) {
+    /** 근처 숙소 하나와 관광공사 숙소 분류(cat3 — 관광호텔 B02010100, 펜션 B02010700 등). */
+    public record Lodging(Spot spot, String cat3) {}
+
+    /** 좌표 반경 안 숙소 (locationBasedList2, 숙박 32), 가까운 순. 예산 맞춤이 바꿀 숙소를 찾을 때 쓴다. */
+    public List<Lodging> nearbyLodging(double lat, double lng, int radiusM, int numOfRows) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("mapX", String.valueOf(lng));
         params.put("mapY", String.valueOf(lat));
@@ -72,9 +75,13 @@ public class KorTourService {
         params.put("numOfRows", String.valueOf(numOfRows));
         params.put("pageNo", "1");
         params.put("arrange", "E");                      // E: 거리순
-        if (contentTypeId != null) params.put("contentTypeId", String.valueOf(contentTypeId));
+        params.put("contentTypeId", "32");
 
-        return toSpots(client.items(SERVICE, "locationBasedList2", params));
+        JsonNode items = client.items(SERVICE, "locationBasedList2", params);
+        List<Lodging> out = new ArrayList<>();
+        for (JsonNode n : items.isObject() ? List.of(items) : items)
+            out.add(new Lodging(toSpot(n), text(n, "cat3")));
+        return out;
     }
 
     private List<Spot> toSpots(JsonNode items) {
