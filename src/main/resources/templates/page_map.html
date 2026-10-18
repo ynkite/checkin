@@ -522,8 +522,9 @@
           var q = _mvProject(meta.fit, p.lat, p.lng);
           return q.x >= -4 && q.x <= 104 && q.y >= -4 && q.y <= 104;
         });
-        var need = Math.min(2, stops.length);
-        if (on.length >= need && (!pick || on.length > pick.inside.length)) {
+        /* 한 곳만 담는 장면이라도 한 곳도 못 담는 장면보다 낫다 — 많이 담는 순으로 고르니
+           두 곳 이상 담는 장면이 있으면 그쪽이 뽑힌다 */
+        if (on.length >= 1 && (!pick || on.length > pick.inside.length)) {
           pick = { sc: sc, meta: meta, inside: on };
         }
       }
@@ -555,9 +556,12 @@
                고르는 것은 아래에서 중심이 제일 가까운 장면이라, 후보가 늘어도
                엉뚱한 지역이 뽑히지 않는다. */
             if (String(s2.label || '').indexOf(token) < 0) continue;   /* 같은 지역만 */
+            /* 「제주 서귀포시」 여행이면 「제주」만 보면 제주시가 더 가까워 뽑혔다.
+               여행지 이름이 라벨에 더 많이 들어 있는 장면(시군구까지 같은 것)을 먼저 본다 */
+            var hit = dest.split(/\s+/).filter(function (w) { return String(s2.label).indexOf(w) >= 0; }).length;
             var my = (s2.bbox.s + s2.bbox.n) / 2, mx = (s2.bbox.w + s2.bbox.e) / 2;
             var gap = (my - cy) * (my - cy) + (mx - cx) * (mx - cx);
-            if (!best || gap < best.gap) best = { sc: s2, meta: s2, gap: gap };
+            if (!best || hit > best.hit || (hit === best.hit && gap < best.gap)) best = { sc: s2, meta: s2, gap: gap, hit: hit };
           }
           if (best) {
             var on2 = stops.filter(function (p) {
@@ -614,8 +618,10 @@
           '<span>건물 형상 ⓒOpenStreetMap · 사람 수는 한국관광공사 집중률에 비례합니다</span>' +
           /* 한 곳도 안 담겼을 때 「0곳만 올렸습니다」는 말이 안 된다.
              그 경우는 여행지 중심부를 대신 보여 주는 것이니 그렇게 말한다. */
-          (pick.inside.length < stops.length
-            ? '<em>이 동네에 ' + pick.inside.length + '곳이 있습니다. '
+          (!pick.inside.length
+            ? '<em>이 지역에서 많이 가는 곳 주변 모형입니다. 일정 장소는 이 모형 밖에 있습니다</em>'
+            : pick.inside.length < stops.length
+            ? '<em>이 동네에 일정 장소 ' + pick.inside.length + '곳이 있습니다. '
               + '아래에서 다른 곳을 고르면 그 동네 모형으로 갑니다</em>'
             : '');
       }

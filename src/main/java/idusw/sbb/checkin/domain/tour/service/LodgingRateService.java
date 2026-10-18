@@ -53,6 +53,11 @@ public class LodgingRateService {
         return confirmed > 0 ? LodgingRate.confirmed(confirmed, label) : regional(areaCode, checkIn);
     }
 
+    /** 공개된 1박 요금만. 없으면 0 — 예산 맞춤은 추정 요금으로 숙소를 바꾸지 않는다. */
+    public long publicNightly(String contentId, LocalDate checkIn) {
+        return minFee(rooms(contentId), feeField(isPeak(checkIn), isWeekend(checkIn)));
+    }
+
     /** 지역 평균 1박 요금. 숙소를 모를 때 쓰고, 예산 맞춤이 비교 기준으로도 쓴다. */
     public LodgingRate regional(String areaCode, LocalDate checkIn) {
         boolean peak = isPeak(checkIn);

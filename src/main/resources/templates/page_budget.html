@@ -34,7 +34,7 @@
         <div class="ledger-hero-row">
           <div>
             <button onclick="returnToLedgerSelector()" class="ledger-back-btn">← 다른 여행 선택</button>
-            <div class="ldh-label">BUDGET · EXPENSE REPORT</div>
+            <div class="ldh-label">예산 · 지출 기록</div>
             <h2 class="ldh-title">가계부</h2>
             <p id="ledger-trip-meta" class="ldh-meta"></p>
             <p id="ledger-trip-dest" class="ldh-dest"></p>
@@ -61,7 +61,7 @@
           <div id="ledger-actual" style="font-size:20px;font-weight:800;color:var(--coral)">-</div>
         </div>
         <div class="ledger-summary-card">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">잔여 / 초과</div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">예산 대비</div>
           <div id="ledger-status" style="font-size:20px;font-weight:800;color:var(--sage)">-</div>
           <div id="ledger-budget-ref" style="display:none;font-size:10px;color:var(--text3);margin-top:5px"></div>
         </div>
@@ -91,10 +91,9 @@
         <div class="ledger-chart-card" id="budget-basis-card" style="display:none;margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
             <div style="font-size:14px;font-weight:700">숙박비 근거</div>
-            <div style="font-size:11px;color:var(--ink-3)">시연용 예시</div>
           </div>
           <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
-            숙박비마다 확인한 금액과 예상 금액을 나눠 표시합니다.
+            실제 요금은 확정, 요금이 없으면 평균 기준으로 셈한 추정입니다.
           </div>
           <div class="budget-basis-key" aria-label="금액 상태 구분">
             <span data-status="confirmed">확정</span>
@@ -108,7 +107,7 @@
         <div class="ledger-chart-card" id="budget-accuracy-card" style="display:none;margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
             <div style="font-size:14px;font-weight:700">예측 정확도</div>
-            <div style="font-size:11px;color:var(--ink-3)" id="budget-accuracy-n">시연용 예시</div>
+            <div style="font-size:11px;color:var(--ink-3)" id="budget-accuracy-n"></div>
           </div>
           <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
             실제 지출을 적으면 예상 금액과 차이를 보여 줍니다.

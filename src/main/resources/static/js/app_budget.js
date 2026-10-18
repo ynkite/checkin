@@ -266,11 +266,13 @@ async function _loadExpenses(tripId) {
     if (actualEl) actualEl.textContent = _fmtWon(d.totalActualAmount);
     const statusEl = document.getElementById('ledger-status');
     if (statusEl) {
+        // 예산을 정했으면 실제 지출이 없을 때 예상 총액과 견준다 — 지출 0원이라 「남음 = 예산 전부」로 보이지 않게
         const actual = d.totalActualAmount || 0;
         const base   = d.budget || d.totalEstimatedAmount || 0;
+        const spent  = d.budget && !actual ? (d.totalEstimatedAmount || 0) : actual;
         if (base > 0) {
-            const remain = base - actual;
-            statusEl.textContent = remain >= 0 ? _fmtWon(remain) : '-' + _fmtWon(-remain);
+            const remain = base - spent;
+            statusEl.textContent = (remain >= 0 ? '남음 ' : '초과 ') + _fmtWon(Math.abs(remain));
             statusEl.style.color = remain >= 0 ? 'var(--sage)' : 'var(--coral)';
         } else {
             statusEl.textContent = '-';
@@ -280,7 +282,8 @@ async function _loadExpenses(tripId) {
     const budgetRefEl = document.getElementById('ledger-budget-ref');
     if (budgetRefEl) {
         if (d.budget) {
-            budgetRefEl.textContent = '설정 예산 ' + _fmtWon(d.budget) + ' 기준';
+            budgetRefEl.textContent = '정한 예산 ' + _fmtWon(d.budget) + ' · '
+                + (d.totalActualAmount ? '실제 지출' : '예상 총액') + ' 기준';
             budgetRefEl.style.display = 'block';
         } else {
             budgetRefEl.style.display = 'none';
@@ -514,16 +517,11 @@ async function _loadBudgetEstimate(tripId) {
         // 추정 항목이 없으면 구간 폭이 0 이다 — 의미 없는 줄은 내보내지 않는다
         + (d.low === d.high ? '' :
             '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-3)">'
-          +   '<div>예측 구간</div>'
+          +   '<div>예상 범위</div>'
           +   '<div style="font-variant-numeric:tabular-nums">' + _fmtWon(d.low) + ' ~ ' + _fmtWon(d.high) + '</div>'
           + '</div>')
-        + '<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-top:6px">'
-        +   '<div style="color:var(--ink-3)">신뢰도</div>'
-        +   '<div style="font-weight:800;color:var(--terra)">' + (d.confidence || 0) + '%</div>'
-        + '</div>'
-        // 산출식을 같이 싣는다 — 근거 없는 정확도 수치는 화면에 올리지 않는다
-        + '<div style="font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5">'
-        +   esc(d.note || '') + '</div>';
+        + (d.note ? '<div style="font-size:11px;color:var(--ink-3);margin-top:8px;line-height:1.5">'
+          +   esc(d.note) + '</div>' : '');
 
     card.style.display = '';
 }
@@ -575,7 +573,7 @@ async function _loadBudgetAccuracy() {
         + '<div style="font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.5">'
         +   esc(d.note || '') + '</div>';
 
-    if (nEl) nEl.textContent = '현재 N=' + d.n + ' · 시연';
+    if (nEl) nEl.textContent = '다녀온 여행 ' + d.n + '곳';
     card.style.display = '';
 }
 
