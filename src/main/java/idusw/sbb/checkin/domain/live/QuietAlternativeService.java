@@ -7,6 +7,7 @@ import idusw.sbb.checkin.domain.crowd.CrowdService;
 import idusw.sbb.checkin.domain.crowd.dto.CrowdForecast;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
+import idusw.sbb.checkin.domain.route.engine.GeoPoint;
 import idusw.sbb.checkin.domain.tour.dto.Spot;
 import idusw.sbb.checkin.domain.tour.dto.RelatedSpot;
 import idusw.sbb.checkin.domain.tour.service.KorTourService;
@@ -41,6 +42,8 @@ import java.util.Set;
  *   <li>그날 일정에 이미 있는 곳은 뺀다</li>
  *   <li><b>좌표를 못 찾으면 버린다.</b> 이름만 있는 곳을 일정에 넣으면
  *       지도에 찍히지 않고 이동시간도 못 잰다</li>
+ *   <li>이름으로 찾은 곳이 바꾸려는 곳에서 {@value #MAX_KM}km 넘게 떨어져 있으면 버린다.
+ *       해운대 집중률 목록의 「송정역」을 이름으로 찾으면 광주 송정역이 먼저 나온다</li>
  * </ul>
  *
  * <p>고르기만 하고 바꾸지는 않는다. 무엇으로 바꿀지는 사용자가 정한다.
@@ -60,6 +63,9 @@ public class QuietAlternativeService {
     /** 이만큼은 한적해야 권한다. 차이가 작으면 옮길 값어치가 없다 */
     public static final int MEANINGFUL_GAP = 15;
 
+    /** 이름이 같은 다른 지역 장소를 거르는 거리 */
+    public static final int MAX_KM = 30;
+
     /**
      * @param tripId 여행
      * @param dayNo  며칠째 (1부터)
@@ -78,6 +84,9 @@ public class QuietAlternativeService {
 
         Integer targetRate = target.get("crowd") instanceof Number n ? n.intValue() : null;
         String targetName = String.valueOf(target.get("name"));
+        GeoPoint near = target.get("at") instanceof GeoPoint g ? g
+                : stops.stream().map(s -> s.get("at")).filter(GeoPoint.class::isInstance)
+                        .map(GeoPoint.class::cast).findFirst().orElse(null);
 
         AreaCode.Area area = AreaCode.find(plan.getDestination());
         if (area == null || !AreaCode.hasCrowdData(area)) {
@@ -112,8 +121,8 @@ public class QuietAlternativeService {
             if (already.contains(CrowdService.norm(f.placeName()))) continue;
             if (!worthMoving(targetRate, rate)) continue;
 
-            Spot spot = findSpot(f.placeName());
-            if (spot == null) continue;          /* 좌표가 없으면 일정에 넣을 수 없다 */
+            Spot spot = findSpot(f.placeName(), near);
+            if (spot == null) continue;          /* 좌표가 없거나 다른 지역이면 일정에 넣을 수 없다 */
 
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("name", f.placeName());
@@ -202,16 +211,21 @@ public class QuietAlternativeService {
         return worst != null ? worst : stops.get(0);
     }
 
-    private Spot findSpot(String placeName) {
+    private Spot findSpot(String placeName, GeoPoint near) {
         try {
-            List<Spot> found = korTourService.searchByName(placeName, null, 3);
-            for (Spot s : found) {
-                if (s.lat() != 0 && s.lon() != 0) return s;
+            for (Spot s : korTourService.searchByName(placeName, null, 5)) {
+                if (isNear(s, near)) return s;
             }
         } catch (Exception e) {
             log.warn("[실시간] 좌표 조회 실패 {}: {}", placeName, e.getMessage());
         }
         return null;
+    }
+
+    /** 좌표가 있고, 기준점을 알면 그 근처인가 */
+    static boolean isNear(Spot s, GeoPoint near) {
+        if (s.lat() == 0 || s.lon() == 0) return false;
+        return near == null || near.distanceKmTo(new GeoPoint(s.lat(), s.lon())) <= MAX_KM;
     }
 
     private LocalDate dateOf(TravelPlan plan, int dayNo) {
@@ -236,6 +250,8 @@ public class QuietAlternativeService {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("name", nm);
                 if (p.hasNonNull("crowd")) m.put("crowd", p.path("crowd").asInt());
+                if (p.path("lat").asDouble() != 0 && p.path("lng").asDouble() != 0)
+                    m.put("at", new GeoPoint(p.path("lat").asDouble(), p.path("lng").asDouble()));
                 out.add(m);
             }
             return out;
