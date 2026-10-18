@@ -214,13 +214,33 @@ public class WeatherServiceImpl implements WeatherService {
     }
 
     private Map<String, DayWeather> safeShortDaily(String region) {
-        try { return parseShortDaily(fetchShortRaw(region)); }
-        catch (Exception e) { return Collections.emptyMap(); }
+        return cached("short:" + region, () -> parseShortDaily(fetchShortRaw(region)));
     }
 
     private Map<String, DayWeather> safeMidDaily(String region) {
-        try { return parseMidDaily(region); }
-        catch (Exception e) { return Collections.emptyMap(); }
+        return cached("mid:" + region, () -> parseMidDaily(region));
+    }
+
+    /* 일정 하나를 저장하면 날짜마다 단기·중기를 다시 받았다 — 사흘이면 아홉 번이고,
+       생성 한 번에 저장이 서너 번 돈다. 예보는 몇 시간마다 바뀌니 10분은 같은 답을 쓴다.
+       못 받은 것(빈 값)은 담지 않는다 — 다음에 다시 물어본다 */
+    static final long CACHE_MS = 10 * 60_000L;
+    private record Hit(Map<String, DayWeather> days, long at) {}
+    private final Map<String, Hit> cache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private interface Fetch { Map<String, DayWeather> get() throws Exception; }
+
+    private Map<String, DayWeather> cached(String key, Fetch f) {
+        long now = System.currentTimeMillis();
+        Hit hit = cache.get(key);
+        if (hit != null && now - hit.at() < CACHE_MS) return hit.days();
+        try {
+            Map<String, DayWeather> got = f.get();
+            if (got != null && !got.isEmpty()) cache.put(key, new Hit(got, now));
+            return got == null ? Collections.emptyMap() : got;
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
     }
 
     private String fetchShortRaw(String region) {
