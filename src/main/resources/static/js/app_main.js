@@ -3076,8 +3076,13 @@ function showDay(day, btn) {
     if (typeof _mpRail === 'function') { _MP_DAY = day; _mpRail(); }
 }
 function switchMapTab(tab, btn) {
-    document.querySelectorAll('.btn-map-act').forEach(b => b.classList.remove('on'));
-    if (btn) btn.classList.add('on');
+    /* 켜짐 표시가 한 칸 늦던 원인 — 색 전환(.18s)이 도는 사이 아래 모형·가계부 그리기가
+       메인 스레드를 잡아서, 전환이 옛 탭 색에 멈춘 채 화면에 남았다. 표시는 바로 바꾸고
+       무거운 일은 그 표시가 그려진 뒤로 미룬다 */
+    document.querySelectorAll('.btn-map-act').forEach(b => {
+        b.style.transition = 'none';
+        b.classList.toggle('on', b === btn);
+    });
     const mv = document.getElementById('mapView');
     const bv = document.getElementById('budgetView');
     const dv = document.getElementById('modelView');      // 3D 모형
@@ -3107,12 +3112,12 @@ function switchMapTab(tab, btn) {
         if (el && tab !== 'model') el.hidden = true;
     });
 
-    if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
-    if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
-    if (tab === 'map' && window._kakaoMap) {
+    requestAnimationFrame(function () { setTimeout(function () {
+        if (tab === 'budget' && typeof _loadMapBudget === 'function') _loadMapBudget();
+        if (tab === 'model' && typeof _mvOpen === 'function') _mvOpen();
         /* 숨겼다 다시 보이면 타일 크기를 다시 잡아야 한다 */
-        setTimeout(function () { window._kakaoMap.relayout(); }, 30);
-    }
+        if (tab === 'map' && window._kakaoMap) window._kakaoMap.relayout();
+    }, 30); });
 }
 
 

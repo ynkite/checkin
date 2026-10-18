@@ -471,10 +471,11 @@
                y: fit.d * lng + fit.e * lat + fit.f };
     }
 
-    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것 */
+    /* 그릴 정거장 — 좌표가 있고 이동 줄이 아닌 것. 일차를 골랐으면 그날 것만 */
     function _mvStops() {
       var out = [];
       (MAP_ITINERARY || []).forEach(function (d) {
+        if (_MP_DAY !== 'all' && String(d.day) !== String(_MP_DAY)) return;
         (d.places || []).forEach(function (p) {
           if (p.transit || !p.name) return;
           if (!isFinite(p.lat) || !isFinite(p.lng)) return;
@@ -1250,23 +1251,6 @@
       return 'CAR';
     }
 
-    /* 동선에 적힌 금액 합 — 비교용으로만 쓴다 */
-    function _mpWrittenSum() {
-      var sum = 0;
-      (MAP_ITINERARY || []).forEach(function (day) {
-        (day.places || []).forEach(function (p) {
-          if (p.sub) sum += extractAmount(p.sub);
-          if (p.transit) {
-            /* ₩ 나 「원」이 붙은 숫자만 금액이다. 표시를 빼면 「9분」의 9 를
-               9원으로 읽는다 — 실제로 하루 32원이 나왔다. */
-            var t2 = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
-            if (t2) sum += parseInt((t2[1] || t2[2]).replace(/,/g, ''), 10) || 0;
-          }
-        });
-      });
-      return sum;
-    }
-
     async function _mpLoadBudget() {
       if (!Array.isArray(MAP_ITINERARY) || !MAP_ITINERARY.length) return;
 
@@ -1304,100 +1288,31 @@
       _mpPaintBudget();
     }
 
-    var _MP_CAT_KO = { LODGING: '숙박비', FOOD: '식비', TRANSPORT: '교통비', TOUR: '입장료' };
-
+    /* 금액은 여기서 쓰지 않는다. 총액·항목·남은 금액은 동선 합계 + 숙박 추가(_mpLoadFit)
+       한 곳에서 나온다 — 예산 맞춤·가계부와 같은 계산이다. 전에는 이 산출(입장료를 식당·카페까지
+       1인 8,000원씩 세고, 식비를 끼니 수로 따로 매긴 값)이 「예상 총액」을 덮어 같은 여행에
+       금액이 두 배 넘게 다르게 떴다. 여기서는 성수기·축제 안내만 붙인다 */
     function _mpPaintBudget() {
       var b = _mpBudget;
-      if (!b) return;
-
-      /* #totalBudget 은 「전체 여행 예산」 — 동선에 적힌 금액의 합이다. 여기서 덮으면
-         같은 칸의 숫자가 예산 패널을 한 번 열었다는 이유로 바뀐다. 실제로 그렇게 보였다.
-         이 값(b.total)은 요금표·성수기를 본 별도 산출이라 「예상 총액」 칸에만 쓴다 */
-      var tot = document.getElementById('map-budget-total');
-      if (tot) tot.textContent = b.total.toLocaleString() + '원';
-      var lab = document.getElementById('map-budget-total-label');
-      if (lab) lab.textContent = '예상 총액 · 1인 ' + b.perPerson.toLocaleString() + '원';
-
-      /* 항목마다 근거를 같이 적는다. 37만원만 보여 주면 믿을지 말지 알 수 없다 */
       var box = document.getElementById('map-budget-items');
-      if (box) {
-        var max = 1;
-        b.items.forEach(function (i) { if (i.amount > max) max = i.amount; });
-        /* 확정·추정·해당없음 셋을 가른다. 전에는 「확정」만 적어서 값이 없는 항목과
-           추정한 항목이 같은 얼굴이었다 — 당일치기의 숙박비가 0원 추정처럼 보였다.
-           status 가 없는 옛 응답이면 estimated 로 떨어진다 */
-        var MARK = { CONFIRMED: ' · 확정', ESTIMATED: ' · 추정', NONE: ' · 해당없음' };
-        box.innerHTML = b.items.map(function (i) {
-          var st = i.status || (i.estimated ? 'ESTIMATED' : 'CONFIRMED');
-          var isNone = st === 'NONE';
-          return '<div class="mp-bg-row' + (i.amount === max && !isNone ? ' mp-lead' : '')
-                 + (isNone ? ' mp-bg-none' : '') + '">' +
-            '<div class="mp-bg-top"><span>' + _mpEsc(i.label) + '</span>' +
-            '<span>' + (isNone ? '—' : i.amount.toLocaleString() + '원') + '</span></div>' +
-            (isNone ? '' :
-              '<div class="mp-bg-bar"><i style="width:' +
-                Math.round(i.amount / max * 100) + '%"></i></div>') +
-            '<div class="mp-bg-why">' + _mpEsc(i.basis) + (MARK[st] || '') + '</div>' +
-          '</div>';
-        }).join('') + _mpBudgetNote(b);
+      if (!b || !box) return;
+      var note = document.getElementById('map-budget-note');
+      if (!note) {
+        note = document.createElement('div');
+        note.id = 'map-budget-note';
+        box.after(note);
       }
-
-      _mpPaintPie(b);
-    }
-
-    function _mpBudgetNote(b) {
-      var out = '<div class="mp-bg-note">';
+      var out = '';
       if (b.season && b.season.key !== 'off') {
-        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. ' +
-               (b.season.carMultiplier > 1
-                 ? '렌터카가 평시의 ' + b.season.carMultiplier.toFixed(2) + '배로 붙습니다. ' : '') +
-               '숙소도 같이 오릅니다.</p>';
+        out += '<p><b>' + _mpEsc(b.season.label) + '</b>입니다. 숙소와 렌터카 값이 오를 수 있습니다.</p>';
       }
       if (b.festivals && b.festivals.length) {
         out += '<p>여행 기간에 <b>' + _mpEsc(b.festivals[0].title) + '</b>' +
                (b.festivals.length > 1 ? ' 등 ' + b.festivals.length + '개' : '') +
                '가 열립니다. 숙소가 빨리 찹니다.</p>';
       }
-      if (b.accuracy) {
-        out += '<p class="mp-bg-acc">정확도 <b>' + _mpEsc(b.accuracy.label) + '</b> — ' +
-               _mpEsc(b.accuracy.why) + '</p>';
-      }
-      (b.notes || []).forEach(function (n) { out += '<p>' + _mpEsc(n) + '</p>'; });
-
-      var written = _mpWrittenSum();
-      if (written > 0 && Math.abs(written - b.total) > b.total * 0.15) {
-        out += '<p>동선에 적힌 금액을 다 더하면 ' + written.toLocaleString() +
-               '원입니다. 위 값은 성수기와 요금표를 본 산출입니다.</p>';
-      }
-      return out + '</div>';
-    }
-
-    function _mpPaintPie(b) {
-      var ring = document.querySelector('.pie-ring');
-      var legend = document.querySelector('.pie-legend');
-      if (!ring && !legend) return;
-
-      var tok = { LODGING: 'var(--slate)', FOOD: 'var(--terra)',
-                  TRANSPORT: 'var(--num)', TOUR: 'var(--ui-l)' };
-      var by = {};
-      b.items.forEach(function (i) { by[i.category] = (by[i.category] || 0) + i.amount; });
-      var total = b.total || 1;
-      var keys = Object.keys(by);
-
-      var acc = 0;
-      var stops = keys.map(function (k) {
-        var from = acc;
-        acc += Math.round(by[k] / total * 100);
-        return (tok[k] || 'var(--ui-l)') + ' ' + from + '% ' + acc + '%';
-      }).join(', ');
-      if (ring && stops) ring.style.background = 'conic-gradient(' + stops + ')';
-      if (legend) {
-        legend.innerHTML = keys.map(function (k) {
-          return '<div class="pie-leg-item"><span class="pie-dot" style="background:' +
-                 (tok[k] || 'var(--ui-l)') + '"></span>' + (_MP_CAT_KO[k] || k) + ' ' +
-                 Math.round(by[k] / total * 100) + '%</div>';
-        }).join('');
-      }
+      note.className = out ? 'mp-bg-note' : '';
+      note.innerHTML = out;
     }
 
     /* 이름 물어 보기 — 서버의 CrowdService.norm 과 같은 기준 */
@@ -1525,31 +1440,33 @@
       var q = _mpQuiet[i];
       var f = _mpWorst(MAP_ITINERARY[0] || {});
       if (!q || !f) return;
-      var row = _mpOpenReplaceInput(f);
-      if (!row) return;
-      var input = row.querySelector('.rp-input, input[type="text"]');
-      if (input) {
-        input.value = q.placeName;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.focus();
-      }
+      var input = _mpOpenReplaceInput(f);
+      if (!input) return;
+      input.value = q.placeName;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
       if (typeof toast === 'function') {
-        toast(q.placeName + '을 넣었습니다. 「바꾸기」를 누르면 적용됩니다.', 4000);
+        toast(q.placeName + '을 넣었습니다. 「등록」을 누르면 교체 목록에 들어갑니다.', 4000);
       }
     }
 
+    /* 교체 칸을 열고 입력칸을 돌려준다. 칸(#ri-키)은 장소 줄 안이 아니라 바로 뒤 형제라
+       전에는 줄 안에서 찾다가 못 찾아 이름이 안 들어갔다. 교체 버튼은 열고 닫기를 번갈아
+       하므로 누르지 않고 직접 연다 */
     function _mpOpenReplaceInput(f) {
       f = f || _mpWorst(MAP_ITINERARY[0] || {});
       if (!f) return null;
       var row = _mpRowOf(f.worst);
       if (!row) return null;
       row.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      var btn = row.querySelector('.btn-replace');
-      if (btn) btn.click();
-      else if (typeof toast === 'function') {
-        toast('확정된 플랜은 교체할 수 없습니다. 위의 「수정」을 먼저 누르세요.');
+      var key = row.getAttribute('data-key');
+      var area = document.getElementById('ri-' + key);
+      if (!area || row.closest('.plan-locked')) {
+        if (typeof toast === 'function') toast('확정된 플랜은 교체할 수 없습니다. 위의 「수정」을 먼저 누르세요.');
+        return null;
       }
-      return row;
+      area.style.display = 'block';
+      return document.getElementById('rt-' + key);
     }
 
     /* 가는 길 바꾸기 — 그 구간을 지도에 띄운다.
@@ -2038,13 +1955,10 @@
               }
               // 2. 이동 수단(transit) 금액 계산
               if (p.transit) {
-                /* ₩ 나 「원」이 붙은 숫자만 금액이다 (위 _mpWrittenSum 과 같은 이유) */
-                const m = p.transit.match(/₩\s*([\d,]+)|([\d,]+)\s*원/);
-                if (m) {
-                  const cost = parseInt((m[1] || m[2]).replace(/,/g,'')) || 0;
-                  catSums.transit += cost;
-                  dailySum += cost;
-                }
+                /* 서버 예산 맞춤(BudgetFitService.total)과 같은 파서 — 총액이 한 계산에서 나온다 */
+                const cost = extractAmount(p.transit);
+                catSums.transit += cost;
+                dailySum += cost;
               }
             });
           }
@@ -2059,59 +1973,8 @@
         /* 지도 위 돈 카드를 먼저 만든다 — #totalBudget 가 그 안에 있다 */
         _mpPaintMoney(realTotalBudget, catSums);
 
-        const finalBudgetStr = realTotalBudget.toLocaleString() + '원';
-        if(document.getElementById('totalBudget')) document.getElementById('totalBudget').textContent = finalBudgetStr;
-        if(document.getElementById('map-budget-total')) document.getElementById('map-budget-total').textContent = finalBudgetStr;
-
-        const catTotal = realTotalBudget || 1;
-        const pct = v => Math.round((v / catTotal) * 100);
-
-        // 항목별 — 가장 큰 항목만 앰버로 두고 나머지는 잉크. 색을 네 개 쓰지 않는다.
-        const cats = [
-          { label:'숙박비', val: catSums.stay,    tok:'var(--slate)' },
-          { label:'식비',   val: catSums.food,    tok:'var(--terra)' },
-          { label:'교통비', val: catSums.transit, tok:'var(--num)'   },
-          { label:'입장료', val: catSums.tour,    tok:'var(--ui-l)'  },
-        ];
-        const leadVal = Math.max.apply(null, cats.map(c => c.val));
-
-        const budgetItemsEl = document.getElementById('map-budget-items');
-        if (budgetItemsEl) {
-          budgetItemsEl.innerHTML = cats.map(c => `
-        <div class="mp-bg-row${(c.val === leadVal && leadVal > 0) ? ' mp-lead' : ''}">
-          <div class="mp-bg-top"><span>${c.label}</span><span>${c.val.toLocaleString()}원</span></div>
-          <div class="mp-bg-bar"><i style="width:${pct(c.val)}%"></i></div>
-        </div>`).join('');
-        }
-
-        // 비중 원 & 범례
-        const pieRing = document.querySelector('.pie-ring');
-        const pieLegend = document.querySelector('.pie-legend');
-        const pv = cats.map(c => pct(c.val));
-        let acc = 0;
-        const stops = cats.map((c, i) => {
-          const from = acc; acc += pv[i];
-          return `${c.tok} ${from}% ${acc}%`;
-        }).join(', ');
-
-        if (pieRing) pieRing.style.background = `conic-gradient(${stops})`;
-        if (pieLegend) {
-          pieLegend.innerHTML = cats.map((c, i) =>
-                  `<div class="pie-leg-item"><span class="pie-dot" style="background:${c.tok}"></span>${c.label} ${pv[i]}%</div>`
-          ).join('');
-        }
-
-        const remainEl = document.getElementById('map-budget-remaining');
-        const inputBudget = parseInt(sessionStorage.getItem('plannerDraftState')
-                ? JSON.parse(sessionStorage.getItem('plannerDraftState') || '{}')['s1-budget']?.replace(/,/g,'') || '0'
-                : '0');
-        if (remainEl && inputBudget > 0) {
-          const remain = inputBudget - realTotalBudget;
-          remainEl.textContent = remain >= 0
-                  ? `정한 예산 안쪽입니다. ${remain.toLocaleString()}원 남았습니다.`
-                  : `정한 예산보다 ${Math.abs(remain).toLocaleString()}원 많습니다.`;
-          remainEl.classList.toggle('mp-over', remain < 0);
-        }
+        _mpPaintCats(catSums);
+        _mpLoadFit(realTotalBudget, catSums);
 
         /* 레일 — 시각(작게) / 장소 이름(크게) / 메타(작게) 한 벌,
            행 사이에는 이동 연결 문구. 선택된 행만 흰 카드로 들뜬다. */
@@ -2339,6 +2202,12 @@
       }
 
       updateBoundsForDay(day);
+
+      /* 레일 · 3D 모형도 같은 날을 본다. 전에는 1일차를 골라도 모형에 다른 날 핀까지 떴다 */
+      _MP_DAY = String(day);
+      if (typeof _mpRail === 'function') _mpRail();
+      var mt = document.getElementById('mapTabModel');
+      if (mt && mt.classList.contains('on')) _mvOpen();
     }
 
     // ── 카카오맵 초기화 ──
@@ -2644,19 +2513,13 @@
 
         if (!json.success || !json.data || json.data.length === 0) return;
 
-        // 3. 여행 기간(최대 7일) 중 하루라도 악천후 조건이 충족되는지 검사
-        let hasBadWeather = false;
-
-        for (let i = 0; i < json.data.length; i++) {
-          if (i >= 7) break; // 최대 7일까지만 가드
-          const dto = json.data[i];
-
-          // 강수 형태가 있거나(pty > 0), 강수 확률이 40% 이상이거나, 구름이 많고 흐린 날(sky >= 3)
-          if (dto.pty > 0 || dto.pop >= 40 || dto.sky >= 3) {
-            hasBadWeather = true;
-            break; // 하루라도 기상 악화가 있으면 즉시 탈출하여 배너를 켭니다.
-          }
-        }
+        // 3. 여행 날짜 안의 예보만 본다. 예보 범위 밖이면 끄고, 구름만으로는 켜지 않는다
+        const day = function (d) { return String(d || '').replace(/-/g, '').slice(0, 8); };
+        const from = day(tripRes.data.startDate), to = day(tripRes.data.endDate) || from;
+        const hasBadWeather = !!from && json.data.some(function (w) {
+          const d = day(w.date);
+          return d >= from && d <= to && (w.pty > 0 || w.pop >= 60);
+        });
 
         // 4. 악천후 감지 시 2번 사진 양식의 순수 텍스트 구조로 주입 후 활성화
         if (hasBadWeather) {
@@ -3377,6 +3240,85 @@
     }
 
     /* 오늘 쓸 돈 — 총액과 항목 비중. 비중은 initMapPage 가 이미 센 값이다 */
+    /* 항목별 금액 · 비중 원. 숙박 추가 금액이 오면 _mpLoadFit 이 숙박비에 더해 다시 그린다 */
+    function _mpPaintCats(catSums) {
+      const catTotal = (catSums.stay + catSums.food + catSums.transit + catSums.tour) || 1;
+      const pct = v => Math.round((v / catTotal) * 100);
+
+      // 항목별 — 가장 큰 항목만 앰버로 두고 나머지는 잉크. 색을 네 개 쓰지 않는다.
+      const cats = [
+        { label:'숙박비', val: catSums.stay,    tok:'var(--slate)' },
+        { label:'식비',   val: catSums.food,    tok:'var(--terra)' },
+        { label:'교통비', val: catSums.transit, tok:'var(--num)'   },
+        { label:'입장료', val: catSums.tour,    tok:'var(--ui-l)'  },
+      ];
+      const leadVal = Math.max.apply(null, cats.map(c => c.val));
+
+      const budgetItemsEl = document.getElementById('map-budget-items');
+      if (budgetItemsEl) {
+        budgetItemsEl.innerHTML = cats.map(c => `
+      <div class="mp-bg-row${(c.val === leadVal && leadVal > 0) ? ' mp-lead' : ''}">
+        <div class="mp-bg-top"><span>${c.label}</span><span>${c.val.toLocaleString()}원</span></div>
+        <div class="mp-bg-bar"><i style="width:${pct(c.val)}%"></i></div>
+      </div>`).join('');
+      }
+
+      // 비중 원 & 범례
+      const pieRing = document.querySelector('.pie-ring');
+      const pieLegend = document.querySelector('.pie-legend');
+      const pv = cats.map(c => pct(c.val));
+      let acc = 0;
+      const stops = cats.map((c, i) => {
+        const from = acc; acc += pv[i];
+        return `${c.tok} ${from}% ${acc}%`;
+      }).join(', ');
+
+      if (pieRing) pieRing.style.background = `conic-gradient(${stops})`;
+      if (pieLegend) {
+        pieLegend.innerHTML = cats.map((c, i) =>
+                `<div class="pie-leg-item"><span class="pie-dot" style="background:${c.tok}"></span>${c.label} ${pv[i]}%</div>`
+        ).join('');
+      }
+    }
+
+    /* 총액 한 곳 — 동선 합계 + 숙박 추가(옵션·추가 인원). /budget-fit 의 after 와 같은 계산이다.
+       남은 금액 · 예산 대비는 이 여행에 정한 예산 기준. 전에는 세션에 남은 다른 여행의
+       플래너 예산(s1-budget)을 읽어 「정한 예산보다 82,868원 많습니다」가 떴다 */
+    async function _mpLoadFit(routeTotal, catSums) {
+      var f = null;
+      if (window._currentTripId) {
+        try {
+          var r = await api.get('/api/trips/' + window._currentTripId + '/budget-fit');
+          if (r && r.success && r.data && !r.data.fallback) f = r.data;
+        } catch (e) { /* 동선 합계만 보여 준다 */ }
+      }
+      var extra = f && f.extra > 0 ? f.extra : 0;
+      var total = routeTotal + extra;
+      if (extra) {
+        catSums = Object.assign({}, catSums, { stay: catSums.stay + extra });
+        _mpPaintCats(catSums);
+      }
+      _mpPaintMoney(total, catSums);
+      var tot = document.getElementById('map-budget-total');
+      if (tot) tot.textContent = total.toLocaleString() + '원';
+
+      var remainEl = document.getElementById('map-budget-remaining');
+      var ratioEl = document.getElementById('map-budget-ratio');
+      var limit = f ? f.limit : 0;
+      if (!limit) {
+        if (ratioEl) ratioEl.textContent = '정한 예산 없음';
+        return;
+      }
+      var remain = limit - total;
+      if (remainEl) {
+        remainEl.textContent = remain >= 0
+                ? '정한 예산 ' + limit.toLocaleString() + '원 안쪽입니다. ' + remain.toLocaleString() + '원 남았습니다.'
+                : '정한 예산 ' + limit.toLocaleString() + '원보다 ' + (-remain).toLocaleString() + '원 많습니다.';
+        remainEl.classList.toggle('mp-over', remain < 0);
+      }
+      if (ratioEl) ratioEl.textContent = Math.round(total / limit * 100) + '%';
+    }
+
     function _mpPaintMoney(total, cats) {
       var box = document.getElementById('mpMoney');
       if (!box) return;
@@ -3779,7 +3721,8 @@
     function showReplaceInput(btn, key) {
       const area = document.getElementById('ri-' + key);
       if (!area) return;
-      const isOpen = area.style.display !== 'none';
+      /* 닫힘은 CSS(display:none)가 정한다. 인라인만 보면 첫 누름에 「열려 있다」고 읽어 닫았다 */
+      const isOpen = getComputedStyle(area).display !== 'none';
       area.style.display = isOpen ? 'none' : 'block';
     }
 
