@@ -729,9 +729,15 @@ public class AiRouteService {
             JsonNode root = objectMapper.readTree(json);
             if (!root.isArray()) return json;
 
-            for (JsonNode day : root) {
+            /* 엔티티는 이 스레드에서만 읽는다. 날마다 재는 일은 서로 기다릴 일이 없어 같이 보낸다 */
+            double[] firstDepart = departureXY(plan);
+            String departName = form != null && form.getDeparture() != null ? form.getDeparture() : "출발지";
+            java.util.List<Integer> dayIdx = new java.util.ArrayList<>();
+            for (int i = 0; i < root.size(); i++) dayIdx.add(i);
+            idusw.sbb.checkin.global.util.Parallel.map(dayIdx, d -> {
+                JsonNode day = root.get(d);
                 JsonNode places = day.path("places");
-                if (!places.isArray() || places.size() < 2) continue;
+                if (!places.isArray() || places.size() < 2) return null;
 
                 /* 좌표가 있는 실제 장소만, 동선 순서대로 */
                 java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> stops = new java.util.ArrayList<>();
@@ -741,15 +747,14 @@ public class AiRouteService {
                     if (!o.hasNonNull("lat") || !o.hasNonNull("lng")) continue;
                     stops.add(o);
                 }
-                if (stops.size() < 2) continue;
+                if (stops.size() < 2) return null;
 
                 /* 첫날 첫 구간은 사용자가 정한 출발지에서 시작한다.
                    전에는 그날 첫 장소를 출발지로 삼아서, 「부산역에서 출발」이라고
                    적어 놓고 첫 이동시간이 0이 됐다. 집에서 첫 장소까지 가는 시간이
                    빠지면 「몇 시에 나가면 되는가」를 말할 수 없다.
                    내비게이션도 그 자리에서 시작해야 한다. */
-                boolean firstDay = (day == root.get(0));
-                double[] departXY = firstDay ? departureXY(plan) : null;
+                double[] departXY = d == 0 ? firstDepart : null;
 
                 com.fasterxml.jackson.databind.node.ObjectNode origin = stops.get(0);
                 int from = 1;
@@ -757,8 +762,7 @@ public class AiRouteService {
                 double originLat = origin.path("lat").asDouble();
                 double originLng = origin.path("lng").asDouble();
                 if (departXY != null) {
-                    originName = plan.getForm() != null && plan.getForm().getDeparture() != null
-                            ? plan.getForm().getDeparture() : "출발지";
+                    originName = departName;
                     originLat = departXY[0];
                     originLng = departXY[1];
                     from = 0;              /* 첫 장소도 도착지가 된다 */
@@ -782,7 +786,7 @@ public class AiRouteService {
                 if (!hasMeasuredLeg(chosen) && !"CAR".equals(primaryMode)) {
                     chosen = measure(originName, originLat, originLng, rest, "CAR");
                 }
-                if (!hasMeasuredLeg(chosen)) continue;   /* 못 쟀다 — 칸을 만들지 않는다 */
+                if (!hasMeasuredLeg(chosen)) return null;   /* 못 쟀다 — 칸을 만들지 않는다 */
 
                 for (int i = from; i < stops.size(); i++) {
                     com.fasterxml.jackson.databind.node.ObjectNode target = stops.get(i);
@@ -806,7 +810,8 @@ public class AiRouteService {
                     dayObj.put("legTotalMinutes", chosen.totalMinutes());
                     dayObj.put("legMode", chosen.mode());
                 }
-            }
+                return null;
+            });
             return objectMapper.writeValueAsString(root);
 
         } catch (Exception e) {
@@ -952,6 +957,44 @@ public class AiRouteService {
         TravelPlan plan = planRepository.findById(tripId)
                 .orElseThrow(() -> new IllegalArgumentException("플랜을 찾을 수 없습니다."));
 
+        json = enrichOnce(tripId, plan, json);
+
+        // ★미확정 종료 시 직전 확정본 보존:
+        //   - 이미 확정(FIXED)된 플랜을 다시 저장 = '수정 중' → draft에만 저장(확정본 routeJson 유지)
+        //   - 아직 확정 전(DRAFT 등) = 신규 생성 흐름 → 확정본 routeJson에 바로 저장
+        boolean isEditingConfirmed = "FIXED".equals(plan.getStatus());
+        if (isEditingConfirmed) {
+            plan.setDraftRouteJson(json);   // 확정본(routeJson)은 건드리지 않는다
+        } else {
+            plan.setRouteJson(json);
+        }
+        plan.setRouteRecalcNeeded(0);
+        planRepository.save(plan);
+
+        // 예상비용·장소 미리보기는 현재 보고 있는 일정(draft 우선) 기준으로 갱신해도 무방하다.
+        parseAndSaveEstimatedExpenses(plan, json);
+        placeService.parseAndSavePlacesFromRouteJson(plan, json);
+    }
+
+    /* 같은 동선을 잇달아 두 번 저장하는 길이 있다 — 장소 교체·실내 전환은 서비스 안에서 한 번,
+       컨트롤러가 같은 JSON 으로 또 한 번 저장한다. 그때마다 카카오·TMAP·기상청을 다시 불렀다.
+       1분 안에 같은 여행·같은 입력이면 앞에서 다듬은 결과를 그대로 쓴다. DB 저장은 그대로 한다. */
+    private record Enriched(String in, String out, long at) {}
+    private final java.util.Map<Long, Enriched> lastEnriched = new java.util.concurrent.ConcurrentHashMap<>();
+    static final long ENRICH_REUSE_MS = 60_000;
+
+    String enrichOnce(Long tripId, TravelPlan plan, String json) {
+        long now = System.currentTimeMillis();
+        Enriched e = lastEnriched.get(tripId);
+        if (e != null && e.in().equals(json) && now - e.at() < ENRICH_REUSE_MS) return e.out();
+        String out = enrich(plan, json);
+        if (lastEnriched.size() > 200) lastEnriched.clear();
+        if (json != null && out != null) lastEnriched.put(tripId, new Enriched(json, out, now));
+        return out;
+    }
+
+    /** 저장 전에 거치는 보정 전부. 외부 호출(카카오·관광공사·기상청·TMAP)이 여기 몰려 있다. */
+    String enrich(TravelPlan plan, String json) {
         // ★아침 출발 숙소 줄의 금액을 지운다 (1박 두 번 셈 방지). 하루 합계를 다시 내는 아래보다 먼저
         json = unpriceDepartureStay(json);
 
@@ -983,21 +1026,7 @@ public class AiRouteService {
             json = stripStayForDayTrip(json);
         }
 
-        // ★미확정 종료 시 직전 확정본 보존:
-        //   - 이미 확정(FIXED)된 플랜을 다시 저장 = '수정 중' → draft에만 저장(확정본 routeJson 유지)
-        //   - 아직 확정 전(DRAFT 등) = 신규 생성 흐름 → 확정본 routeJson에 바로 저장
-        boolean isEditingConfirmed = "FIXED".equals(plan.getStatus());
-        if (isEditingConfirmed) {
-            plan.setDraftRouteJson(json);   // 확정본(routeJson)은 건드리지 않는다
-        } else {
-            plan.setRouteJson(json);
-        }
-        plan.setRouteRecalcNeeded(0);
-        planRepository.save(plan);
-
-        // 예상비용·장소 미리보기는 현재 보고 있는 일정(draft 우선) 기준으로 갱신해도 무방하다.
-        parseAndSaveEstimatedExpenses(plan, json);
-        placeService.parseAndSavePlacesFromRouteJson(plan, json);
+        return json;
     }
 
     /**
@@ -2327,6 +2356,13 @@ public class AiRouteService {
             // 같은 장소명 좌표는 캐시해 중복 호출 방지(토큰·API콜 절약)
             java.util.Map<String, double[]> geoCache = new java.util.HashMap<>();
 
+            // 좌표는 장소끼리 상관이 없다 — 한꺼번에 물어 두고, 아래 반복문은 캐시만 읽는다
+            java.util.List<String> names = new java.util.ArrayList<>();
+            for (JsonNode dayNode : root)
+                for (JsonNode pl : dayNode.path("places"))
+                    if (!pl.has("transit") && pl.has("name")) names.add(withRegion(destination, pl.path("name").asText("")));
+            geoCache.putAll(idusw.sbb.checkin.global.util.Parallel.map(names, n -> geocodeCached(n, new java.util.HashMap<>())));
+
             for (JsonNode dayNode : root) {
                 JsonNode placesNode = dayNode.path("places");
                 if (!placesNode.isArray()) continue;
@@ -2352,19 +2388,30 @@ public class AiRouteService {
                         System.out.println("⚠️ [좌표 실패] " + nm);
                     }
                 }
+            }
+
+            // 길찾기도 구간끼리 상관이 없다 — 모든 날의 구간을 한꺼번에 물어 캐시에 담아 둔다
+            java.util.List<double[][]> legs = new java.util.ArrayList<>();
+            for (JsonNode dayNode : root)
+                for (int i = 0; i < dayNode.path("places").size(); i++) {
+                    double[][] ends = legEnds(dayNode.path("places"), i);
+                    if (ends != null) legs.add(ends);
+                }
+            idusw.sbb.checkin.global.util.Parallel.map(legs, l -> directions(l[0], l[1]));
+
+            for (JsonNode dayNode : root) {
+                JsonNode placesNode = dayNode.path("places");
+                if (!placesNode.isArray()) continue;
+                com.fasterxml.jackson.databind.node.ArrayNode places =
+                        (com.fasterxml.jackson.databind.node.ArrayNode) placesNode;
 
                 // 2) transit 거리/시간/비용 계산 (위에서 박은 좌표 재사용 → 추가 API 호출 없음)
                 for (int i = 0; i < places.size(); i++) {
-                    if (!places.get(i).has("transit")) continue;
-                    JsonNode prev = i > 0 ? places.get(i - 1) : null;
-                    JsonNode next = i < places.size() - 1 ? places.get(i + 1) : null;
-                    if (prev == null || next == null) continue;
-
-                    double[] from = (prev.has("lat") && prev.has("lng"))
-                            ? new double[]{ prev.path("lat").asDouble(), prev.path("lng").asDouble() } : null;
-                    double[] to = (next.has("lat") && next.has("lng"))
-                            ? new double[]{ next.path("lat").asDouble(), next.path("lng").asDouble() } : null;
-                    if (from == null || to == null) continue;
+                    double[][] ends = legEnds(places, i);
+                    if (ends == null) continue;
+                    JsonNode prev = places.get(i - 1);
+                    JsonNode next = places.get(i + 1);
+                    double[] from = ends[0], to = ends[1];
 
                     long[] r = carDirections(from, to);
                     if (r == null) {
@@ -2428,6 +2475,16 @@ public class AiRouteService {
             System.err.println("[recalcTransitWithKakao] 실패, 원본 유지: " + e.getMessage());
             return json;
         }
+    }
+
+    /** i 번째가 transit 이고 앞뒤 장소에 좌표가 있으면 [앞 좌표, 뒤 좌표]. 아니면 null. */
+    static double[][] legEnds(JsonNode places, int i) {
+        if (i <= 0 || i >= places.size() - 1 || !places.get(i).has("transit")) return null;
+        JsonNode prev = places.get(i - 1), next = places.get(i + 1);
+        if (!prev.has("lat") || !prev.has("lng") || !next.has("lat") || !next.has("lng")) return null;
+        return new double[][]{
+                { prev.path("lat").asDouble(), prev.path("lng").asDouble() },
+                { next.path("lat").asDouble(), next.path("lng").asDouble() } };
     }
 
     // 좌표 조회 결과를 호출 간 공유하는 인스턴스 캐시(중복 카카오 호출 방지)
@@ -2660,20 +2717,38 @@ public class AiRouteService {
         return false;
     }
 
-    // 좌표 → [거리(m), 시간(초), 통행료(원)] (카카오 모빌리티 자차 길찾기)
-    // 좌표쌍별 길찾기 결과 캐시(동일 구간 중복 카카오 호출 방지)
-    private final java.util.Map<String, long[]> dirCache = new java.util.concurrent.ConcurrentHashMap<>();
+    // 카카오 모빌리티 자차 길찾기 한 번의 답. 거리·시간·통행료와 도로 좌표가 같은 응답에 온다.
+    // 전에는 같은 구간을 거리용·좌표용으로 두 번 물었다. 한 번 묻고 둘 다 담아 둔다.
+    private record Dir(long[] summary, java.util.List<double[]> path) {}
 
-    private long[] carDirections(double[] from, double[] to) {
+    private final java.util.Map<String, Dir> dirCache = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private Dir directions(double[] from, double[] to) {
         String key = from[0] + "," + from[1] + "_" + to[0] + "," + to[1];
-        long[] cached = dirCache.get(key);
-        if (cached != null) return cached;
-        long[] r = carDirectionsApi(from, to);
-        if (r != null) dirCache.put(key, r);
-        return r;
+        Dir hit = dirCache.get(key);
+        if (hit != null) return hit;
+        Dir d = directionsApi(from, to);
+        if (d != null) dirCache.put(key, d);
+        return d;
     }
 
-    private long[] carDirectionsApi(double[] from, double[] to) {
+    // 좌표 → [거리(m), 시간(초), 통행료(원)]
+    long[] carDirections(double[] from, double[] to) {
+        Dir d = directions(from, to);
+        return d == null ? null : d.summary();
+    }
+
+    /**
+     * 두 좌표 사이의 '도로를 따라가는 경로 좌표'([위도,경도] 목록).
+     * 프론트가 이 좌표로 폴리라인을 그리면 바다·산을 직선으로 가로지르지 않는다.
+     * 실패 시 null → 프론트는 직선으로 폴백.
+     */
+    java.util.List<double[]> carPath(double[] from, double[] to) {
+        Dir d = directions(from, to);
+        return d == null || d.path().isEmpty() ? null : d.path();
+    }
+
+    private Dir directionsApi(double[] from, double[] to) {
         try {
             String url = String.format(
                     "https://apis-navi.kakaomobility.com/v1/directions?origin=%f,%f&destination=%f,%f",
@@ -2686,65 +2761,29 @@ public class AiRouteService {
             JsonNode routes = objectMapper.readTree(res.getBody()).path("routes");
             if (!routes.isArray() || routes.isEmpty()) return null;
             JsonNode s = routes.get(0).path("summary");
-            return new long[]{
+            long[] summary = {
                     s.path("distance").asLong(0),
                     s.path("duration").asLong(0),
                     s.path("fare").path("toll").asLong(0)
             };
+            // routes[0].sections[].roads[].vertexes : [x1,y1,x2,y2,...] (경도,위도 평탄 배열)
+            java.util.List<double[]> coords = new java.util.ArrayList<>();
+            for (JsonNode sec : routes.get(0).path("sections")) {
+                for (JsonNode road : sec.path("roads")) {
+                    JsonNode vtx = road.path("vertexes");
+                    if (!vtx.isArray()) continue;
+                    for (int k = 0; k + 1 < vtx.size(); k += 2) {
+                        coords.add(new double[]{ vtx.get(k + 1).asDouble(), vtx.get(k).asDouble() }); // [위도,경도]
+                    }
+                }
+            }
+            return new Dir(summary, coords);
         } catch (org.springframework.web.client.HttpStatusCodeException he) {
             System.err.println("[carDirections] HTTP " + he.getStatusCode() + " : "
                     + he.getResponseBodyAsString());
             return null;
         } catch (Exception e) {
             System.err.println("[carDirections] 실패: " + e.getMessage());
-            return null;
-        }
-    }
-
-    // ★도로 경로 좌표 캐시: "from_to" → [[lat,lng], [lat,lng], ...]
-    private final java.util.Map<String, java.util.List<double[]>> pathCache =
-            new java.util.concurrent.ConcurrentHashMap<>();
-
-    /**
-     * 카카오 길찾기로 두 좌표 사이의 '도로를 따라가는 경로 좌표'를 반환한다([위도,경도] 목록).
-     * 프론트가 이 좌표로 폴리라인을 그리면 바다·산을 직선으로 가로지르지 않는다.
-     * 실패 시 null → 프론트는 직선으로 폴백.
-     */
-    private java.util.List<double[]> carPath(double[] from, double[] to) {
-        String key = from[0] + "," + from[1] + "_" + to[0] + "," + to[1];
-        java.util.List<double[]> cached = pathCache.get(key);
-        if (cached != null) return cached;
-        try {
-            String url = String.format(
-                    "https://apis-navi.kakaomobility.com/v1/directions?origin=%f,%f&destination=%f,%f",
-                    from[1], from[0], to[1], to[0]); // 경도,위도
-            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-            headers.set("Authorization", "KakaoAK " + kakaoRestKey);
-            org.springframework.http.HttpEntity<Void> req = new org.springframework.http.HttpEntity<>(headers);
-            org.springframework.http.ResponseEntity<String> res = restTemplate.exchange(
-                    url, org.springframework.http.HttpMethod.GET, req, String.class);
-
-            JsonNode routes = objectMapper.readTree(res.getBody()).path("routes");
-            if (!routes.isArray() || routes.isEmpty()) return null;
-
-            java.util.List<double[]> coords = new java.util.ArrayList<>();
-            // routes[0].sections[].roads[].vertexes : [x1,y1,x2,y2,...] (경도,위도 평탄 배열)
-            for (JsonNode sec : routes.get(0).path("sections")) {
-                for (JsonNode road : sec.path("roads")) {
-                    JsonNode vtx = road.path("vertexes");
-                    if (!vtx.isArray()) continue;
-                    for (int k = 0; k + 1 < vtx.size(); k += 2) {
-                        double lng = vtx.get(k).asDouble();
-                        double lat = vtx.get(k + 1).asDouble();
-                        coords.add(new double[]{ lat, lng }); // [위도,경도]로 저장
-                    }
-                }
-            }
-            if (coords.isEmpty()) return null;
-            pathCache.put(key, coords);
-            return coords;
-        } catch (Exception e) {
-            System.err.println("[carPath] 실패: " + e.getMessage());
             return null;
         }
     }
@@ -3010,20 +3049,29 @@ public class AiRouteService {
         };
         // 검색 기준점: 숙소가 있으면 숙소 좌표, 없으면(당일치기) 위에서 잡아 둔 여행지 중심
         if (stayXY == null) stayXY = centerXY;
-        for (Cat c : cats) {
-            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> merged = result.get(c.type());
+        final String nearName = stayName;
+        final double[] nearXY = stayXY;
+        // 세 분류의 검색은 서로 상관이 없다 — 분류마다 따로 보내고 다 오면 모은다. DB 는 이 스레드에서만 읽는다
+        java.util.Map<Cat, java.util.List<com.fasterxml.jackson.databind.node.ObjectNode>> found =
+                idusw.sbb.checkin.global.util.Parallel.map(java.util.List.of(cats), c -> {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> merged = new java.util.ArrayList<>();
             // (a) "{숙소명} 주변 {카테고리}" 이름 검색
-            if (stayName != null && !stayName.isBlank()) {
-                mergeUnique(merged, kakaoSearchPlaces(stayName + " 주변 " + c.kw(), sigungu, null, 0, perType), perType);
+            if (nearName != null && !nearName.isBlank()) {
+                mergeUnique(merged, kakaoSearchPlaces(nearName + " 주변 " + c.kw(), sigungu, null, 0, perType), perType);
             }
             // (b) 숙소(또는 여행지) 좌표 반경 5km 검색
-            if (stayXY != null) {
-                mergeUnique(merged, kakaoSearchPlaces(c.kw(), sigungu, stayXY, 5000, perType), perType);
+            if (nearXY != null) {
+                mergeUnique(merged, kakaoSearchPlaces(c.kw(), sigungu, nearXY, 5000, perType), perType);
             }
             // (c) 그래도 모자라면 "{여행지} {카테고리}"로 보충
             if (merged.size() < perType) {
                 mergeUnique(merged, kakaoSearchPlaces(dest + " " + c.kw(), sigungu, null, 0, perType), perType);
             }
+            return merged;
+        });
+        for (Cat c : cats) {
+            java.util.List<com.fasterxml.jackson.databind.node.ObjectNode> merged = result.get(c.type());
+            if (found.get(c) != null) merged.addAll(found.get(c));
             // type/stars + 가격 단가(_unit: DB값 또는 -1) 저장. sub는 AI 추정 후 일괄 생성.
             for (var n : merged) {
                 if (!n.has("type")) n.put("type", c.type());
@@ -3366,6 +3414,17 @@ public class AiRouteService {
             for (var list : result.values())
                 for (var n : list) have.add(idusw.sbb.checkin.domain.crowd.CrowdService.norm(n.path("name").asText("")));
 
+            /* 찾아볼 장소마다 카카오를 한 번씩 부른다(최대 20번). 서로 상관이 없으니 먼저 한꺼번에 받아 둔다.
+               아래 반복은 받아 둔 것을 쓰고, 목록에 없으면 원래대로 그 자리에서 묻는다 */
+            String crowdSigungu = extractSigungu(plan.getDestination());
+            java.util.List<String> toLook = new java.util.ArrayList<>();
+            for (var e : ordered) {
+                if (toLook.size() >= CROWD_PLACE_LOOKUP) break;
+                if (!have.contains(idusw.sbb.checkin.domain.crowd.CrowdService.norm(e.getKey()))) toLook.add(e.getKey());
+            }
+            var pre = idusw.sbb.checkin.global.util.Parallel.map(toLook,
+                    k -> kakaoSearchPlaces(k, crowdSigungu, null, 0, 1));
+
             int marked = 0, added = 0, dropped = 0, looked = 0;
             for (var e : ordered) {
                 if (looked >= CROWD_PLACE_LOOKUP) break;
@@ -3388,7 +3447,8 @@ public class AiRouteService {
                 }
 
                 looked++;
-                var hit = kakaoSearchPlaces(e.getKey(), extractSigungu(plan.getDestination()), null, 0, 1);
+                var hit = pre.get(e.getKey()) != null ? pre.get(e.getKey())
+                        : kakaoSearchPlaces(e.getKey(), crowdSigungu, null, 0, 1);
                 if (hit.isEmpty()) { dropped++; continue; }
                 var n = hit.get(0);
                 if (!idusw.sbb.checkin.domain.crowd.CrowdService.matches(
