@@ -747,13 +747,13 @@ function _startLockCountdown(totalSeconds, warnEl) {
 }
 
 /** ─── POST /api/auth/login ─── */
-/* 테스트 계정. 심사위원이 아이디를 손으로 치다 막히지 않게 둔다.
+/* 심사용 계정(제출한 기능설명서에 적은 openapi). 심사위원이 아이디를 손으로 치다 막히지 않게 둔다.
    공개된 계정이라 꺼림칙하지만 어차피 제출 문서에 적어 내는 계정이고,
    이 계정이 만든 것만 보이므로 남의 자료가 새지 않는다. */
 function tryDemoLogin() {
   var id = document.getElementById('lid'), pw = document.getElementById('lpw');
-  if (id) id.value = 'user01';
-  if (pw) pw.value = '1234';
+  if (id) id.value = 'openapi';
+  if (pw) pw.value = '2026openapi!';
   tryLogin();
 }
 
