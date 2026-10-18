@@ -3,7 +3,6 @@ package idusw.sbb.checkin.domain.user.controller;
 import idusw.sbb.checkin.domain.auth.security.CustomUserDetails;
 import idusw.sbb.checkin.domain.post.dto.PostListResponseDto;
 import idusw.sbb.checkin.domain.post.service.PostService;
-import idusw.sbb.checkin.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.checkin.domain.user.dto.UserInfoResponseDto;
 import idusw.sbb.checkin.domain.user.service.UserService;
 import idusw.sbb.checkin.global.common.ApiResponse;
@@ -32,22 +31,6 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserInfoResponseDto>> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
         UserInfoResponseDto response = userService.getProfile(userDetails.getUserId());
         return ResponseEntity.ok(ApiResponse.success("조회 성공", response));
-    }
-
-    // 회원 프로필 조회 (GET) - 특정 유저의 상세 정보를 반환합니다.
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserInfoResponseDto> getProfile(@PathVariable Long userId) {
-        UserInfoResponseDto response = userService.getProfile(userId);
-        return ResponseEntity.ok(response);
-    }
-
-    // 닉네임 변경 (PATCH) - 유저의 name(닉네임) 필드를 수정합니다
-    @PatchMapping("/{userId}/nickname")
-    public ResponseEntity<String> updateNickname(
-            @PathVariable Long userId,
-            @RequestBody UserNicknameUpdateRequest request) {
-        userService.updateNickname(userId, request);
-        return ResponseEntity.ok("닉네임이 성공적으로 변경되었습니다.");
     }
 
     // 회원 탈퇴 (DELETE /api/users/me) - 개인정보 마스킹 + 토큰 즉시 삭제

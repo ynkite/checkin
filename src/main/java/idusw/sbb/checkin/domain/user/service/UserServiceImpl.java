@@ -15,7 +15,6 @@ import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.checkin.domain.user.dto.ScrapResponseDto;
 import idusw.sbb.checkin.domain.user.entity.Scrap;
 import idusw.sbb.checkin.domain.user.dto.UserInfoResponseDto;
-import idusw.sbb.checkin.domain.user.dto.UserNicknameUpdateRequest;
 import idusw.sbb.checkin.domain.user.entity.SecurityEventType;
 import idusw.sbb.checkin.domain.user.entity.User;
 import idusw.sbb.checkin.domain.user.entity.UserSecurityHistory;
@@ -65,14 +64,6 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
         boolean isSocial = oAuthAccountRepository.findByUserId(userId).isPresent();
         return new UserInfoResponseDto(user, isSocial);
-    }
-
-    @Override
-    @Transactional
-    public void updateNickname(Long userId, UserNicknameUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("해당 유저를 찾을 수 없습니다. ID: " + userId));
-        user.updateNickname(request.getName());
     }
 
     @Override
