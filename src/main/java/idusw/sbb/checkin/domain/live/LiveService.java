@@ -112,7 +112,7 @@ public class LiveService {
 
         /* 지금 어디쯤인가 — 시각으로 가른다. 좌표가 있으면 그걸 우선한다 */
         LocalTime now = sim ? parseTime(String.valueOf(stops.get(0).get("time")))
-                : base.equals(LocalDate.now()) ? LocalTime.now() : null;
+                : !"BEFORE".equals(ph) && base.equals(LocalDate.now()) ? LocalTime.now() : null;   // 여행 전엔 시계로 가르지 않는다
         int idx = liveIndex(stops, now, lat, lng);
         Map<String, Object> here = idx >= 0 ? stops.get(idx) : Map.of();
         Map<String, Object> next = (idx + 1) < stops.size() ? stops.get(idx + 1)
@@ -133,7 +133,7 @@ public class LiveService {
             looked++;
         }
         Map<String, Object> weather = weatherOf(plan, next, dayDate);
-        String head = headline(ph, next, crowd, weather);
+        String head = headline(ph, next, stops.get(0), crowd, weather);
 
         return new LiveSnapshot(
                 tripId,
@@ -327,12 +327,13 @@ public class LiveService {
     }
 
     /** 한 문장. 운전 중에 들어도 되는 길이로 쓴다 */
-    private String headline(String phase, Map<String, Object> next,
+    private String headline(String phase, Map<String, Object> next, Map<String, Object> first,
                             Map<String, Object> crowd, Map<String, Object> weather) {
         String name = String.valueOf(next.getOrDefault("name", ""));
         if (name.isBlank()) return "오늘 남은 일정이 없습니다.";
 
-        if ("BEFORE".equals(phase)) return "아직 여행 전입니다. 첫 일정은 " + name + "입니다.";
+        // 다음 목적지가 아니라 그날 첫 줄이다. 시계로 고른 「다음」을 쓰면 식당 같은 첫 일정을 건너뛴다
+        if ("BEFORE".equals(phase)) return "아직 여행 전입니다. 첫 일정은 " + first.get("name") + "입니다.";
         if ("AFTER".equals(phase))  return "지난 여행입니다. 기록만 볼 수 있습니다.";
 
         /* 비가 먼저다. 붐비는 건 기다리면 풀리지만 비는 안 그렇다 */

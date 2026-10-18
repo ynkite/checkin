@@ -64,10 +64,18 @@ public class LodgingRateService {
 
     /** 지역 평균 1박 요금. 숙소를 모를 때 쓰고, 예산 맞춤이 비교 기준으로도 쓴다. */
     public LodgingRate regional(String areaCode, LocalDate checkIn) {
+        return regional(areaCode, null, checkIn);
+    }
+
+    /**
+     * 숙소 분류(cat3 — 호텔·콘도·펜션·모텔·게스트하우스 등)별 지역 평균 1박 요금. cat3 가 null 이면 전체.
+     * 공개 요금이 없는 근처 숙소에 예산 맞춤이 「추정」 요금을 매길 때 쓴다.
+     */
+    public LodgingRate regional(String areaCode, String cat3, LocalDate checkIn) {
         boolean peak = isPeak(checkIn);
         boolean weekend = isWeekend(checkIn);
         String label = seasonLabel(peak, weekend);
-        Avg avg = regionalAverage(areaCode, feeField(peak, weekend));
+        Avg avg = regionalAverage(areaCode, cat3, feeField(peak, weekend));
         return avg.n() > 0 ? LodgingRate.estimated(avg.value(), avg.n(), label) : LodgingRate.none(label);
     }
 
@@ -146,8 +154,8 @@ public class LodgingRateService {
     }
 
     /** 지역 평균 — 같은 areaCode 숙소 표본에서 해당 필드 0 초과 값들의 평균. */
-    private Avg regionalAverage(String areaCode, String field) {
-        String key = areaCode + "|" + field;
+    private Avg regionalAverage(String areaCode, String cat3, String field) {
+        String key = areaCode + "|" + cat3 + "|" + field;
         Cached c = regionCache.get(key);
         if (c != null && System.currentTimeMillis() - c.at() < CACHE_TTL_MS) return c.avg();
 
@@ -158,6 +166,7 @@ public class LodgingRateService {
         p.put("arrange", "A");
         p.put("contentTypeId", "32");
         if (areaCode != null) p.put("areaCode", areaCode);
+        if (cat3 != null && !cat3.isBlank()) p.put("cat3", cat3);
 
         for (JsonNode spot : arr(client.items(SERVICE, "areaBasedList2", p))) {
             String cid = text(spot, "contentid");

@@ -1437,6 +1437,14 @@
                     }
                 });
             });
+            // 고른 숙박 옵션 — 가계부·예산 맞춤(BudgetEstimator)과 같은 값. 숙소가 있는 일정만
+            if (routeData.some(d => (d.places || []).some(p => p.type === 'stay'))) {
+                const opts = [...document.querySelectorAll('#chip-accopts .chip.on')].map(c => c.textContent.trim());
+                const pet = [...document.querySelectorAll('#chip-special .chip.on')].some(c => c.textContent.includes('반려동물'));
+                if (opts.includes('바베큐')) est += 30000;
+                if (opts.includes('레이트 체크아웃')) est += 10000;
+                if (pet) est += 20000 * Math.max(1, routeData.length - 1);
+            }
             result.budget = budget;
             result.estimated = est;
             if (budget > 0 && est > 0 && est > budget) result.budgetShort = true;

@@ -141,6 +141,20 @@ class BudgetFitTest {
     }
 
     @Test
+    void 공개_요금이_없어_평균으로_매긴_숙소는_추정이라_적는다() throws Exception {
+        BudgetFitService.Stay s = BudgetFitService.partyStay("해운대 게스트하우스", 35_000, 0, 4, 35.16, 129.16, true);
+        assertEquals(70_000, s.price(), "평균 1실 35,000 × 2실");
+        assertTrue(s.estimated());
+        assertNull(BudgetFitService.partyStay("싼 곳", 25_000, 0, 4, 35.16, 129.16, true), "1인 12,500원 — 뺀다");
+
+        var days = (com.fasterxml.jackson.databind.node.ArrayNode) OM.readTree("""
+            [{"places":[{"type":"stay","name":"바다풍경펜션","sub":"숙소 · ₩120,000"}]}]""");
+        String change = BudgetFitService.swapStay(days, s);
+        assertTrue(change.contains("1박 약 70,000원 · 추정"));
+        assertEquals("숙소 · 2실 · 추정 · ₩70,000", days.get(0).path("places").get(0).path("sub").asText());
+    }
+
+    @Test
     void 가까움은_예산_안이_먼저다() {
         assertTrue(BudgetFitService.closer(590_000, 550_000, 600_000));
         assertTrue(BudgetFitService.closer(590_000, 610_000, 600_000));
