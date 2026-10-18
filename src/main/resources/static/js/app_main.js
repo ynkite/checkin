@@ -60,6 +60,8 @@ const Token = {
  */
 async function apiCall(path, opts = {}, retry = true) {
     const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    /* 만료된 토큰으로 먼저 부르면 401 이 콘솔에 쌓인다. 끝난 토큰이면 재발급부터 한다 */
+    if (retry && _tokenExpired(Token.getAccess())) await refreshAccessToken();
     const token = Token.getAccess();
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
@@ -86,8 +88,22 @@ async function apiCall(path, opts = {}, retry = true) {
     return json;
 }
 
-/** Refresh Token으로 Access Token 재발급 */
-async function refreshAccessToken() {
+/** JWT 의 exp 가 10초 안에 끝나면 true. 읽지 못하면 false (서버 401 로 다시 판단) */
+function _tokenExpired(t) {
+    if (!t) return false;
+    try {
+        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return !!p.exp && p.exp * 1000 < Date.now() + 10000;
+    } catch (e) { return false; }
+}
+
+/** Refresh Token으로 Access Token 재발급. 여러 요청이 동시에 불러도 한 번만 한다 (전에는 두 번 했다) */
+let _refreshing = null;
+function refreshAccessToken() {
+    if (!_refreshing) _refreshing = _refreshOnce().finally(() => { _refreshing = null; });
+    return _refreshing;
+}
+async function _refreshOnce() {
     const refreshToken = Token.getRefresh();
     if (!refreshToken) return false;
     try {
@@ -3075,9 +3091,11 @@ function showDay(day, btn) {
         });
     }
     if (typeof updateBoundsForDay === 'function') updateBoundsForDay(day);
-    /* 하단 레일도 같은 날을 본다 */
-    window._MP_DAY = day;
-    if (typeof _mpRail === 'function') { _MP_DAY = day; _mpRail(); }
+    /* 하단 레일 · 3D 모형도 같은 날을 본다. 모형이 열려 있으면 그날 핀만 다시 올린다 */
+    window._MP_DAY = String(day);
+    if (typeof _mpRail === 'function') _mpRail();
+    const mt = document.getElementById('mapTabModel');
+    if (mt && mt.classList.contains('on') && typeof _mvOpen === 'function') _mvOpen();
 }
 function switchMapTab(tab, btn) {
     /* 켜짐 표시가 한 칸 늦던 원인 — 색 전환(.18s)이 도는 사이 아래 모형·가계부 그리기가

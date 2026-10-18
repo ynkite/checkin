@@ -445,9 +445,10 @@
     if (!tk) return;                       // 비로그인 — 섹션을 띄우지 않는다
     sec.classList.add('ck-on');
 
-    fetch('/api/trips', { headers: { Authorization: 'Bearer ' + tk } })
-      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    /* 공통 호출(api)을 쓴다 — 토큰이 끝났으면 재발급한 뒤에 부른다. 직접 부르면 401 이 남았다 */
+    api.get('/api/trips')
       .then(function (j) {
+        if (!j || j.success === false) return Promise.reject(j);
         var list = Array.isArray(j) ? j : (j && j.data) || [];
         renderMine(list);
       })

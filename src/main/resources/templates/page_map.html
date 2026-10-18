@@ -2162,53 +2162,8 @@
       initMapPage();
     }
 
-    // ── [기능 추가]: Day 1, 2, 3, 4 클릭 시 왼쪽 리스트 섹션 및 지도 레이어 필터링 구현 ──
-    function showDay(day, btn) {
-      if(btn) {
-        document.querySelectorAll('.day-tab').forEach(t => t.classList.remove('on'));
-        btn.classList.add('on');
-      }
-
-      // 왼쪽 일정 목록 일차별 가시성 필터링
-      document.querySelectorAll('.day-section').forEach(section => {
-        const targetDay = section.getAttribute('data-day');
-        if (day === 'all' || targetDay == day) {
-          section.style.display = 'block';
-        } else {
-          section.style.display = 'none';
-        }
-      });
-
-      // 카카오맵 커스텀 오버레이 동적 필터
-      if (window._kakaoOverlays) {
-        window._kakaoOverlays.forEach(item => {
-          if (day === 'all' || item.day == day) {
-            item.overlay.setMap(window._kakaoMap);
-          } else {
-            item.overlay.setMap(null);
-          }
-        });
-      }
-
-      // 카카오맵 동선 폴리라인 동적 필터
-      if (window._kakaoPolylines) {
-        window._kakaoPolylines.forEach(item => {
-          if (day === 'all' || item.day == day) {
-            item.line.setMap(window._kakaoMap);
-          } else {
-            item.line.setMap(null);
-          }
-        });
-      }
-
-      updateBoundsForDay(day);
-
-      /* 레일 · 3D 모형도 같은 날을 본다. 전에는 1일차를 골라도 모형에 다른 날 핀까지 떴다 */
-      _MP_DAY = String(day);
-      if (typeof _mpRail === 'function') _mpRail();
-      var mt = document.getElementById('mapTabModel');
-      if (mt && mt.classList.contains('on')) _mvOpen();
-    }
+    /* 일차 고르기(showDay)는 app_main.js 에 있다. 여기 같은 이름으로 두면 나중에 실리는
+       app_main.js 가 덮어써서 이쪽 코드는 돌지 않는다 */
 
     // ── 카카오맵 초기화 ──
     function initKakaoMap() {

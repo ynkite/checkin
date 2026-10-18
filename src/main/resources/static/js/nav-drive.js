@@ -609,8 +609,11 @@
     set('navEta', two(eta.getHours()) + ':' + two(eta.getMinutes()) + ' 도착');
     set('navTo', st.dest.name || '다음 장소');
   }
-  /* 처음 몇 초만 — 이 화면이 무엇으로 만들어졌는지 정직하게 적는다 */
+  /* 처음 한 번 5초만 — 이 화면이 무엇으로 만들어졌는지 정직하게 적는다.
+     경로를 다시 받을 때마다 불려서 「안전 안내 데이터가 없습니다」가 계속 떠 있었다 */
   function paintHelp() {
+    if (st.helped) return;
+    st.helped = true;
     var src = (st.route && st.route.alertSource) || '';
     var has = ((st.route && st.route.alerts) || []).length;
     var msg = src === '예상'   /* 티맵이 답하지 않아 직선 예상 경로로 안내 중 */
@@ -618,8 +621,7 @@
       : has
       ? '안전 안내 ' + has + '곳 · ' + (src || '출처 미표기')
       : '이 구간은 안전 안내 데이터가 없습니다. 갈림길 안내는 그대로 됩니다.';
-    nvNote(msg);
-    setTimeout(function () { if (st) nvNote(''); }, 6000);
+    nvNote(msg, 5000);
   }
 
   /* ══ 오버레이 ══════════════════════════════════════════ */
