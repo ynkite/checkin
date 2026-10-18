@@ -8,7 +8,9 @@ import idusw.sbb.checkin.domain.crowd.dto.CrowdForecast;
 import idusw.sbb.checkin.domain.plan.entity.TravelPlan;
 import idusw.sbb.checkin.domain.plan.repository.TravelPlanRepository;
 import idusw.sbb.checkin.domain.tour.dto.Spot;
+import idusw.sbb.checkin.domain.tour.dto.RelatedSpot;
 import idusw.sbb.checkin.domain.tour.service.KorTourService;
+import idusw.sbb.checkin.domain.tour.service.RelatedTourService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +34,8 @@ import java.util.Set;
  * <p>고르는 규칙 —
  * <ul>
  *   <li>같은 시군구에서 그날 한적한 곳을 받는다 (관광공사 집중률 예측)</li>
+ *   <li>바꾸려는 곳과 함께 많이 가는 곳(관광공사 연관 관광지)도 집중률을 붙여 같은 줄에 세운다.
+ *       순서는 똑같이 한적한 순이고, 아래 기준을 똑같이 거친다</li>
  *   <li>지금 가려던 곳보다 <b>뚜렷하게</b> 한적한 곳만 (기본 15 이상 차이).
  *       2~3 차이로 「여기가 더 낫다」고 하면 헛걸음이 된다</li>
  *   <li>그날 일정에 이미 있는 곳은 뺀다</li>
@@ -49,6 +54,7 @@ public class QuietAlternativeService {
     private final TravelPlanRepository planRepository;
     private final CrowdService crowdService;
     private final KorTourService korTourService;
+    private final RelatedTourService relatedTourService;
     private final ObjectMapper objectMapper;
 
     /** 이만큼은 한적해야 권한다. 차이가 작으면 옮길 값어치가 없다 */
@@ -93,8 +99,12 @@ public class QuietAlternativeService {
             already.add(CrowdService.norm(String.valueOf(s.get("name"))));
         }
 
+        List<CrowdForecast> related = related(plan.getDestination(), targetName, already, area, date);
+        Set<String> relatedNames = new LinkedHashSet<>();
+        related.forEach(f -> relatedNames.add(CrowdService.norm(f.placeName())));
+
         List<Map<String, Object>> out = new ArrayList<>();
-        for (CrowdForecast f : quiet) {
+        for (CrowdForecast f : mix(quiet, related)) {
             if (out.size() >= Math.max(1, Math.min(10, limit))) break;
             if (f.rate() == null) continue;
 
@@ -114,6 +124,7 @@ public class QuietAlternativeService {
             m.put("crowdLabel", f.levelLabel());
             m.put("crowdKey", f.levelKey());
             m.put("note", targetName + " " + targetRate + ", " + f.placeName() + " " + rate);
+            if (relatedNames.contains(CrowdService.norm(f.placeName()))) m.put("related", true);
             out.add(m);
         }
 
@@ -138,6 +149,35 @@ public class QuietAlternativeService {
     static boolean worthMoving(Integer targetRate, int candidateRate) {
         if (targetRate == null) return false;
         return targetRate - candidateRate >= MEANINGFUL_GAP;
+    }
+
+    /**
+     * 바꾸려는 곳과 함께 많이 가는 곳에 그날 집중률을 붙인다. 챗봇이 쓰는 연관 관광지 추천을 그대로 쓴다.
+     * 집중률이 없는 곳은 한적한지 알 수 없으니 뺀다. 못 받으면 빈 목록 — 한적한 곳 목록만으로 간다.
+     */
+    private List<CrowdForecast> related(String destination, String targetName, Set<String> already,
+                                        AreaCode.Area area, LocalDate date) {
+        try {
+            List<String> names = relatedTourService.suggest(destination, List.of(targetName), already, 10)
+                    .spots().stream().map(RelatedSpot::toName).toList();
+            if (names.isEmpty()) return List.of();
+            return crowdService.forecast(area.areaCd(), area.signguCd(), names, date).stream()
+                    .filter(f -> "TOUR".equals(f.source()) && f.rate() != null).toList();
+        } catch (Exception e) {
+            log.warn("[실시간] 연관 관광지 조회 실패 {}: {}", targetName, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /** 한적한 곳과 연관 관광지를 한 줄로 — 같은 곳은 한 번만, 한적한 순. */
+    static List<CrowdForecast> mix(List<CrowdForecast> quiet, List<CrowdForecast> related) {
+        Map<String, CrowdForecast> byName = new LinkedHashMap<>();
+        for (List<CrowdForecast> list : List.of(quiet, related)) {
+            for (CrowdForecast f : list) {
+                if (f.rate() != null) byName.putIfAbsent(CrowdService.norm(f.placeName()), f);
+            }
+        }
+        return byName.values().stream().sorted(Comparator.comparingDouble(CrowdForecast::rate)).toList();
     }
 
     /* 이름을 주면 그 곳, 안 주면 그날 가장 붐비는 곳 */
