@@ -1144,7 +1144,7 @@ function _renderMyInvitedTrips(trips = null, page = 1) {
                 : `window.location.href='${x.url}'`;
 
             return `
-      <div class="trip-card" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
+      <div class="trip-card" role="button" tabindex="0" onclick="${cardClickAction}" style="cursor:pointer; position:relative; display:flex; align-items:center; gap:12px;"> 
         ${window._invitedDeleteMode ? `
           <input type="checkbox" class="invited-del-chk" id="chk-invited-${x.id}" value="${x.id}" onclick="event.stopPropagation();" style="width:16px; height:16px; cursor:pointer; margin-left:4px;">
         ` : ''}
@@ -1273,7 +1273,7 @@ function _renderMyTrips(trips = null, page = 1) {
                 : `openMyTrip(${x.id || x.tripId})`;
 
             return `
-      <div class="trip-card" onclick="${cardClickAction}"
+      <div class="trip-card" role="button" tabindex="0" onclick="${cardClickAction}"
            style="cursor:pointer; position:relative; display:flex; align-items:center; gap:14px;
                   padding:14px 16px; border-radius:var(--r); border:2px solid var(--border);
                   background:var(--surface); margin-bottom:10px; transition:all .2s;">
@@ -4281,6 +4281,7 @@ function stepText(show, steps, everyMs = 15000) {
  * 25. 전역 이벤트 리스너
  * ─────────────────────────────────────────────── */
 document.addEventListener('keydown', e => {
+    if((e.key==='Enter'||e.key===' ') && e.target.matches('div[role="button"]')){ e.preventDefault(); e.target.click(); }
     if(e.key==='Escape'){
         closePrev(); closeWrite();
         document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));

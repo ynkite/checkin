@@ -24,8 +24,8 @@ async function updateLedgerList() {
     listEl.innerHTML = pageTrips.map(l => {
         const isSel = (_budgetSelectedTripId === l.id);
         return `
-        <div onclick="selLedger(${l.id});goLedger2()"
-             style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);
+        <button type="button" onclick="selLedger(${l.id});goLedger2()"
+             style="width:100%;font:inherit;color:inherit;text-align:left;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);
                     border:2px solid ${isSel ? 'var(--sage)' : 'var(--border)'};
                     background:${isSel ? 'var(--sage-pale)' : 'var(--surface)'};
                     cursor:pointer;margin-bottom:10px;transition:all .2s">
@@ -37,7 +37,7 @@ async function updateLedgerList() {
               ${l.startDate || ''} ~ ${l.endDate || ''} · ${l.destination || ''}
             </div>
           </div>
-        </div>`;
+        </button>`;
     }).join('');
 
     _drawMyLedgerPager(totalPages);
@@ -136,14 +136,14 @@ function _populateLedgerTripCards() {
     container.innerHTML = pageTrips.map(t => {
         const isSel = (_budgetSelectedTripId === t.id);
         return `
-      <div class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
+      <button type="button" class="ts-card${isSel ? ' on' : ''}" onclick="_selLedgerCard(this, ${t.id})">
         <div class="ts-thumb">지도</div>
         <div class="ts-info">
           <div class="ts-name">${t.title || '여행 일정'}</div>
           <div class="ts-meta">${t.startDate || ''} ~ ${t.endDate || ''} · ${t.destination || ''}</div>
         </div>
         <div class="ts-budget" style="font-size:13px;font-weight:700;color:var(--text2)">${t.status === 'CONFIRMED' ? '확정' : '초안'}</div>
-      </div>`;
+      </button>`;
     }).join('');
 
     _drawLedgerCardPager(totalPages);

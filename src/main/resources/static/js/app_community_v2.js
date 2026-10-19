@@ -2257,7 +2257,7 @@ window._handleWriteImageSelect = function(input) {
                 : '';
 
             div.innerHTML = `
-                <div class="post-card" onclick="openPostDetail(${postId})"
+                <button type="button" class="post-card" onclick="openPostDetail(${postId})"
                      style="${isHidden ? 'opacity:0.55;background:var(--ui-plate)' : ''}">
                     <div class="community-card-head">
                         <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(catLabel)}</span>
@@ -2272,7 +2272,7 @@ window._handleWriteImageSelect = function(input) {
                             <span class="post-stat">조회 ${views}</span>
                         </div>
                     </div>
-                </div>
+                </button>
             `;
 
             tabEl.appendChild(div);
@@ -3233,11 +3233,11 @@ window._handleWriteImageSelect = function(input) {
         const views    = post.views ?? post.viewCount ?? 0;
 
         box.innerHTML = `
-            <div class="community-ai-simple-card" onclick="openPostDetail(${post.postId})">
+            <button type="button" class="community-ai-simple-card" onclick="openPostDetail(${post.postId})">
                 <div class="community-ai-simple-cat">${escapeHtml(post.catLabel || '여행 경로')}</div>
                 <div class="community-ai-simple-title">${escapeHtml(post.title)}</div>
                 <div class="community-ai-simple-match">좋아요 ${escapeHtml(likes)} · 스크랩 ${escapeHtml(scraps)} · 조회 ${escapeHtml(views)}</div>
-            </div>
+            </button>
         `;
     }
 
@@ -4541,7 +4541,7 @@ window._handleWriteImageSelect = function(input) {
         const catClass = post.catClass || '';
 
         return `
-                <div class="post-card" data-my-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
+                <div class="post-card" role="button" tabindex="0" data-my-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
                     <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(category)}</span>
                     <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
                     <div class="post-foot">
@@ -4567,7 +4567,7 @@ window._handleWriteImageSelect = function(input) {
         const catClass = post.catClass || '';
 
         return `
-                <div class="post-card" data-my-liked-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
+                <button type="button" class="post-card" data-my-liked-post-id="${escapeHtml(postId)}" onclick="openPostDetail(${escapeHtml(postId)})">
                     <span class="post-cat ${escapeHtml(catClass)}">${escapeHtml(category)}</span>
                     <div class="post-ttl" style="margin-top:5px">${escapeHtml(title)}</div>
                     <div class="post-foot">
@@ -4576,7 +4576,7 @@ window._handleWriteImageSelect = function(input) {
                             ${views ? `<span class="post-stat">조회 ${escapeHtml(views)}</span>` : ''}
                         </div>
                     </div>
-                </div>
+                </button>
             `;
     }
 
@@ -5343,7 +5343,7 @@ window._handleWriteImageSelect = function(input) {
             : 'window.goToScrapRoute(' + postId + ')';
 
         return '' +
-            '<div class="trip-card" onclick="' + cardClickAction + '" ' +
+            '<div class="trip-card" role="button" tabindex="0" onclick="' + cardClickAction + '" ' +
             'style="cursor:pointer;position:relative;display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);border:2px solid var(--border);background:var(--surface);margin-bottom:10px;transition:all .2s;">' +
             (window._myRouteScrapDeleteMode
                 ? '<input type="checkbox" class="route-scrap-del-chk" id="chk-route-scrap-' + escapeHtml(postId) + '" value="' + escapeHtml(postId) + '" onclick="event.stopPropagation();" style="width:16px;height:16px;cursor:pointer;margin-left:4px;">'

@@ -201,7 +201,7 @@ function _renderPostList(posts, reset) {
     div.setAttribute('data-date',   date);
 
     div.innerHTML =
-        '<div class="post-card" onclick="openPostDetail(' + pid + ')">' +
+        '<div class="post-card" role="button" tabindex="0" onclick="openPostDetail(' + pid + ')">' +
         '<span class="post-cat cat-' + _commState.currentTab + '">' + label + '</span>' +
         '<div class="post-ttl" style="margin-top:5px">' + _esc(post.title) + '</div>' +
         '<div class="post-foot">' +
@@ -609,7 +609,7 @@ async function loadMyScrap(tabKey) {
 
   el.innerHTML = scraps.length
       ? scraps.map(s =>
-          '<div class="post-card" style="cursor:pointer" onclick="goToPlaceReviews(' + s.placeId + ')">' +
+          '<div class="post-card" role="button" tabindex="0" onclick="goToPlaceReviews(' + s.placeId + ')">' +
           '<span class="post-cat">' + _scrapCatIcon(tabKey) + ' ' + _catLabel(tabKey) + '</span>' +
           '<div class="post-ttl" style="margin-top:5px">' + _esc(s.placeName || '알 수 없는 장소') + '</div>' +
           '<div class="post-foot">' +
@@ -641,7 +641,7 @@ async function loadMyRouteScrap() {
 
   el.innerHTML = posts.length
       ? posts.map(p =>
-          '<div class="post-card" onclick="openPostDetail(' + p.postId + ')">' +
+          '<div class="post-card" role="button" tabindex="0" onclick="openPostDetail(' + p.postId + ')">' +
           '<span class="post-cat">' + _catLabel('route') + '</span>' +
           '<div class="post-ttl" style="margin-top:5px">' + _esc(p.title || '') + '</div>' +
           '<div class="post-foot">' +
@@ -699,14 +699,14 @@ async function loadMyReviews() {
   re.innerHTML = '<h3 class="my-sec-ttl">작성한 후기</h3>' + (
       posts.length
           ? posts.map(x =>
-              '<div class="post-card" onclick="openPostDetail(' + x.postId + ')">' +
+              '<button type="button" class="post-card" onclick="openPostDetail(' + x.postId + ')">' +
               '<span class="post-cat">' + _catLabel((x.styleTags || [])[0] || 'route') + '</span>' +
               '<div class="post-ttl" style="margin-top:5px">' + _esc(x.title || '') + '</div>' +
               '<div class="post-foot"><div class="post-stats">' +
               '<span class="post-stat">좋아요 ' + (x.likeCount || 0) + '</span>' +
               '<span class="post-stat">조회 '  + (x.viewCount || 0) + '</span>' +
               '</div></div>' +
-              '</div>'
+              '</button>'
           ).join('')
           : '<div style="color:var(--text3);font-size:13px;padding:20px 0;text-align:center">' +
           '작성한 후기가 없습니다.</div>'
