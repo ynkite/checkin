@@ -13,7 +13,7 @@
    * API
    *   GET /api/live/trips                    열 수 있는 여행 목록
    *   GET /api/live/now?tripId=&lat=&lng=    지금 상황 한 벌
-   *   POST /api/route/travel-time            자차 이동시간 (대중교통·도보는 제공하지 않는다)
+   *   POST /api/route/travel-time            자차 이동 시간 (대중교통·도보는 제공하지 않는다)
    *   GET /api/tour/visitor-trend            지역 방문자 (시도 단위 과거 실측)
    =================================================== -->
   <div class="page" id="page-live">
@@ -54,21 +54,14 @@
           <p class="rl-branch-lb" id="rlBranchLb">지금 할 수 있는 것</p>
 
           <button type="button" class="rl-br rl-br-look" id="rlCheckBtn" onclick="rlCheck()">
-            <span class="rl-br-ic">
-              <svg class="rl-br-svg" viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="6.4"></circle>
-                <path d="M15.9 15.9 21 21"></path>
-              </svg>
-            </span>
-            <span class="rl-br-tx">
-              <b>장소 확인하기</b>
-              <span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
-            </span>
-            <!-- 이 갈래는 화면을 떠나지 않는다. 결과가 바로 아래에 펼쳐지므로
-                 꺾쇠도 아래를 본다 -->
-            <span class="rl-br-cue" aria-hidden="true">
+            <i class="rl-br-ic" aria-hidden="true">
+              <svg class="rl-br-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"></circle><path d="M15.9 15.9 21 21"></path></svg>
+            </i>
+            <b>장소 확인하기</b>
+            <span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
+            <i class="rl-br-cue" aria-hidden="true">
               <svg class="rl-br-svg" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"></path></svg>
-            </span>
+            </i>
           </button>
 
           <div id="rlCheck" class="rl-check" hidden role="status" aria-live="polite"></div>
@@ -94,7 +87,7 @@
         <div class="rl-voice-bar">
           <!-- 어디서나 되는 길. 누른 것이 곧 부른 것이라 부르는 말이 필요 없다 -->
           <button type="button" class="rl-voicebtn rl-voicebtn-main" id="rlVoicePushBtn"
-                  onclick="rlVoicePush()">눌러서 말하기</button>
+                  onclick="rlVoicePush()">말로 하기</button>
           <!-- 되는 기기에서만. 아이폰은 중간에 끊길 수 있다고 미리 말해 준다 -->
           <button type="button" class="rl-voicebtn" id="rlVoiceBtn"
                   onclick="rlVoiceToggle()">계속 듣기</button>
@@ -108,13 +101,13 @@
           <div class="rv-type">
             <input id="rlVoiceText" type="text" autocomplete="off"
                    placeholder="다음 어디야 · 붐벼? · 날씨 · 길 안내"
-                   aria-label="실시간에게 물어보기" onkeydown="rlVoiceKey(event)">
+                   aria-label="말로 물어보기" onkeydown="rlVoiceKey(event)">
             <button type="button" onclick="rlVoiceSend()">묻기</button>
           </div>
         </div>
 
 
-        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측값, 이동시간은 티맵 자동차 경로입니다.</p>
+        <p class="rl-src">혼잡도는 한국관광공사 관광지 집중률 예측, 이동 시간은 티맵 자동차 경로입니다.</p>
       </section>
 
     </div>
@@ -263,7 +256,7 @@
 
         if (rlSnapAt) {
           var min = Math.floor((Date.now() - rlSnapAt) / 60000);
-          bits.push(min < 1 ? '방금 받은 값입니다' : min + '분 전에 받은 값입니다');
+          bits.push(min < 1 ? '방금 받은 정보입니다' : min + '분 전 정보입니다');
         }
         if (rlOffline) {
           bits.push('지금은 연결되지 않아 새로 받지 못하고 있습니다');
@@ -382,7 +375,7 @@
                     esc(c.levelLabel || '') + '</span>'
                 /* 예측 대상이 아닌 곳(숙소·식당)과 조회 실패가 여기로 온다.
                    「갱신 필요」는 고장처럼 읽혀서 사실대로 짧게 적는다 */
-                : '<span class="rl-cw rl-cw-none">이곳은 붐빔 정보가 없어요</span>') +
+                : '<span class="rl-cw rl-cw-none">이곳은 혼잡도 정보가 없습니다</span>') +
               rlWeatherChip(d.weather);
           }
         }
@@ -484,7 +477,7 @@
               '<div class="rl-mode"><span class="rl-mode-n">' + esc(v.areaName || '') + ' 외지인</span>' +
               '<span class="rl-mode-v"><b>' + Number(v.latest).toLocaleString() + '</b>명</span></div>' +
               '<p class="rl-modes-note">' + esc(when + (v.dayOfWeek ? '(' + v.dayOfWeek + ')' : '') + ' 실측' + cmp) + '. ' +
-              '시도 단위라 다음 장소의 붐빔과는 다른 눈금입니다.</p>';
+              '시도 전체 방문자 수이며, 다음 장소의 혼잡도와는 다릅니다.</p>';
           })
           .catch(function () {
             rlVisitKey = null;
@@ -547,7 +540,7 @@
           .catch(function () {
             rlModeKey = null;   // 다음 주기에 다시 잰다
             box.innerHTML = '<p class="rl-modes-lb">이동수단</p>' +
-                            '<p class="rl-modes-note">이동시간을 재지 못했습니다.</p>';
+                            '<p class="rl-modes-note">이동 시간을 재지 못했습니다.</p>';
           });
       }
 
@@ -703,7 +696,7 @@
           var late = f.values && f.values.lateMin > 0;
           var mark = f.status === 'OK' ? (f.issue ? '확인 · 걸림' : late ? '확인 · 조금 늦음' : '확인 · 괜찮음')
                    : f.status === 'NO_DATA' ? '자료 없음'
-                   : f.status === 'SKIPPED' ? '보지 않음' : '확인되지 않음';
+                   : f.status === 'SKIPPED' ? '확인하지 않음' : '확인되지 않음';
           html += '<div style="padding:6px 0;border-top:1px solid var(--border2)">' +
             '<b style="font-size:13px">' + esc(KIND_KO[f.kind] || f.kind) + '</b>' +
             ' <span style="' + small + '">' + esc(mark) + '</span>' +
@@ -838,7 +831,7 @@
         /* 되돌릴 수 없으면 바꾸지 않는다 */
         var before = null;
         try { before = await rlGetRoute(); } catch (e) {}
-        if (!before) { toast('지금 일정을 읽지 못해 되돌릴 수 없으므로 바꾸지 않았습니다.'); return; }
+        if (!before) { toast('지금 일정을 불러오지 못했습니다. 되돌릴 수 없어서 바꾸지 않았습니다.'); return; }
 
         if (box) box.insertAdjacentHTML('afterbegin', '<p class="rl-modes-note" id="rlApplying">바꾸는 중</p>');
         var after = null, ok = false, msg = '';
@@ -999,7 +992,7 @@
 
         var before = null;
         try { before = await rlGetRoute(); } catch (e) {}
-        if (!rlUsable(before)) { toast('지금 일정을 읽지 못해 되돌릴 수 없으므로 바꾸지 않았습니다.'); return; }
+        if (!rlUsable(before)) { toast('지금 일정을 불러오지 못했습니다. 되돌릴 수 없어서 바꾸지 않았습니다.'); return; }
 
         var ok = false, msg = '', data = null;
         try {
@@ -1206,9 +1199,9 @@
           if (rlNextStop && window.startDrive) {
             window.startDrive(rlNextStop);
           } else if (!rlNextStop) {
-            toast('다음 목적지 좌표가 없어 길 안내를 켤 수 없습니다.');
+            toast('다음 목적지 위치 정보가 없어 길 안내를 켤 수 없습니다.');
           } else {
-            toast('길 안내를 불러오지 못했습니다. 새로 고쳐 주세요.');
+            toast('길 안내를 불러오지 못했습니다. 화면을 새로고침해 주세요.');
           }
           return;
         }

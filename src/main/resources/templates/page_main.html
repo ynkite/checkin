@@ -33,7 +33,7 @@
       /* 스크랩 버튼 토글 */
       var scrapBtnId = 'pop-scrap-' + placeId + '-' + index;
       var onClickScrap = item.isMock
-              ? '(function(b){_applyMainScrapStyle(b,true)})(this);toast("스크랩했습니다.")'
+              ? '(function(b){_applyMainScrapStyle(b,true)})(this);toast("담았습니다.")'
               : 'toggleMainPlaceScrap(event,' + placeId + ',\'' + catLower + '\',\'' + scrapBtnId + '\')';
 
       /* 이미 스크랩한 장소면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 → 새로고침/재진입 시에도 유지 */
@@ -177,10 +177,10 @@
       try {
         res = await api.post('/api/places/' + placeId + '/scraps', { category: dbCat });
       } catch (err) {
-        if (typeof toast === 'function') toast('스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
+        if (typeof toast === 'function') toast('담지 못했습니다. 잠시 뒤에 다시 해 보세요.');
         return;
       }
-      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
+      if (!res || res.success === false) { if (typeof toast === 'function') toast(res && res.message ? res.message : '담지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
       const scrapped = res.data === true;
       const btn = document.getElementById(btnId);
       if (btn) {
@@ -192,7 +192,7 @@
         if (scrapped) window._scrappedPlaceIds.add(String(placeId));
         else          window._scrappedPlaceIds.delete(String(placeId));
       }
-      if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
+      if (typeof toast === 'function') toast(scrapped ? '담았습니다.' : '담기를 취소했습니다.');
     }
 
     /* ── 메인페이지 인기 경로 스크랩 토글 (이슈 3) ── */
@@ -201,7 +201,7 @@
       if (!_mainIsLoggedIn()) { if (typeof toast === 'function') toast('로그인이 필요합니다'); return; }
       const res = await api.post('/api/posts/' + postId + '/scraps?category=ROUTE', {});
       const isOk = res && res.success !== false;
-      if (!isOk) { if (typeof toast === 'function') toast('스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
+      if (!isOk) { if (typeof toast === 'function') toast('담지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
       const scrapped = res.data === true;
       if (btn) {
         _applyMainScrapStyle(btn, scrapped);
@@ -212,7 +212,7 @@
         if (scrapped) window._scrappedPostIds.add(String(postId));
         else          window._scrappedPostIds.delete(String(postId));
       }
-      if (typeof toast === 'function') toast(scrapped ? '스크랩했습니다.' : '스크랩을 취소했습니다.');
+      if (typeof toast === 'function') toast(scrapped ? '담았습니다.' : '담기를 취소했습니다.');
     }
 
     /* 큐레이션 제목·설명에 이모지가 섞여 들어온다(DB 시드).
@@ -277,7 +277,7 @@
           // 숙박일수 · 인원 · 이동수단 → subTitle
           const pref = en.preferences || {};
           const days = en.days || [];
-          const nightCount = days.length > 1 ? `${days.length - 1}박${days.length}일` : (days.length === 1 ? '당일치기' : '');
+          const nightCount = days.length > 1 ? `${days.length - 1}박 ${days.length}일` : (days.length === 1 ? '당일치기' : '');
           const companion = pref.companion || '';
           const transport = pref.transport || '';
           const subTitleParts = [nightCount, companion, transport ? transport + ' 추천' : ''].filter(Boolean);
@@ -354,7 +354,7 @@
             let e = {};
             try { e = JSON.parse(c.extra_notes || c.extraNotes || '{}'); } catch (err) {}
             const days = (e.days || []).length;
-            const meta = [days > 1 ? (days - 1) + '박' + days + '일' : (days === 1 ? '당일치기' : ''),
+            const meta = [days > 1 ? (days - 1) + '박 ' + days + '일' : (days === 1 ? '당일치기' : ''),
                           (e.preferences || {}).companion || ''].filter(Boolean).join(' · ');
             return `<li><button type="button" data-i="${i}"${i === 0 ? ' aria-current="true"' : ''}>` +
                    `<b>${_noEmo(_esc(c.title || ''))}</b>${meta ? `<i>${_esc(meta)}</i>` : ''}</button></li>`;
@@ -391,10 +391,10 @@
         box.className = 'ck-cur-empty';
         box.innerHTML = _curFailed
           ? '<p class="ck-cur-empty-t">미리 짜 둔 경로를 불러오지 못했습니다.</p>'
-            + '<p>연결이 끊겼거나 서버가 답하지 않았습니다. 없는 것이 아니라 받지 못한 것입니다.</p>'
+            + '<p>연결이 잠시 끊겨 불러오지 못했습니다. 잠시 뒤 다시 열어 보세요.</p>'
             + '<button type="button" class="ck-cur-empty-go" onclick="location.reload()">다시 시도</button>'
           : '<p class="ck-cur-empty-t">아직 미리 짜 둔 경로가 없습니다.</p>'
-            + '<p>지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>'
+            + '<p>지역과 기간만 고르면 첫날 아침부터 시간표가 짜입니다.</p>'
             + '<button type="button" class="ck-cur-empty-go" onclick="goNewPlanner()">경로 만들기</button>';
         const arrow = panelEl.querySelector('.slide-arr-wrap');
         if (arrow) panelEl.insertBefore(box, arrow); else panelEl.appendChild(box);
@@ -454,7 +454,7 @@
                   : _esc(_plain.length > 90 ? _plain.slice(0, 90) + '…' : _plain);
           /* 스크랩 토글: mock은 인라인, API는 toggleRouteScrap 사용 */
           const onClickScrap = r.isMock
-                  ? `(function(b){_applyMainScrapStyle(b,true)})(this);toast('스크랩했습니다.')`
+                  ? `(function(b){_applyMainScrapStyle(b,true)})(this);toast('담았습니다.')`
                   : `toggleRouteScrap(event, ${r.postId}, this)`;
 
           /* 이미 스크랩한 경로면 버튼을 켜진(초록 채움) 상태로 초기 렌더링 */
@@ -532,35 +532,13 @@
       <section class="ck-lv" id="ck_live" aria-labelledby="ck_lv_title">
         <div class="ck-lv-in">
           <div class="ck-lv-say">
-            <p class="ck-lv-eye"><i class="ck-lv-dot" aria-hidden="true"></i>떠난 뒤가 진짜입니다</p>
+            <p class="ck-lv-eye"><i class="ck-lv-dot" aria-hidden="true"></i>여행 중에도 바꿀 수 있습니다</p>
             <h2 class="ck-lv-t" id="ck_lv_title">실시간과 길 안내</h2>
-            <p class="ck-lv-d">붐비거나 비가 오면 그 자리에서 순서를 바꿉니다.
-              길 안내는 지도를 꽉 채워 켜집니다.</p>
+            <p class="ck-lv-d">붐비거나 비가 오면 그 자리에서 순서를 바꿔 보세요.
+              길 안내는 지도를 전체 화면으로 띄웁니다.</p>
           </div>
 
-          <div class="ck-lv-sig">
-            <p class="ck-lv-cap">여행 중에 지켜보는 것</p>
-            <ul class="ck-lv-list">
-              <li>
-                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 16v4M9.3 11v9M14.7 13.5v6.5M20 6v14"/></svg>
-                <span>혼잡</span>
-              </li>
-              <li>
-                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 15.5a3.8 3.8 0 0 0-1-7.5A5.8 5.8 0 0 0 5.2 9.6 3.4 3.4 0 0 0 6.2 15.5"/><path d="M9 17.5 8 20M13 17.5 12 20M17 17.5 16 20"/></svg>
-                <span>비</span>
-              </li>
-              <li>
-                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 20V5M7 5 4 8M7 5l3 3"/><path d="M17 4v15M17 19l-3-3M17 19l3-3"/></svg>
-                <span>순서</span>
-              </li>
-              <li>
-                <svg class="ck-lv-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.6 20.4 12 16.6l7.4 3.8z"/></svg>
-                <span>길 안내</span>
-              </li>
-            </ul>
-          </div>
-
-          <div class="ck-lv-acts">
+<div class="ck-lv-acts">
             <button type="button" class="ck-lv-go" onclick="go('live')">실시간 열기</button>
             <button type="button" class="ck-lv-sub" onclick="go('map')">동선 보기</button>
           </div>
@@ -656,7 +634,7 @@
                 <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
             </div>
             <div class="ck-cond">
-              <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람<span class="ck-n" id="ck_condn"></span></button>
+              <button type="button" class="ck-condbtn" id="ck_condbtn" aria-expanded="false" aria-controls="ck_cc">같이 가는 사람·조건<span class="ck-n" id="ck_condn"></span></button>
               <div class="ck-chips2" id="ck_cc">
                 <button type="button" aria-pressed="false">반려동물</button>
                 <button type="button" aria-pressed="false">노약자</button>
@@ -717,15 +695,15 @@
             </button>
             <div class="st-cwkey-b" id="st_cwkey_b" hidden>
               <div class="st-cwrow cw-vlow">
-                <i>0–34</i><b>매우 한적</b><span>매우 한적한 것으로 예측됩니다</span></div>
+                <i>0–34</i><b>매우 한적</b><span>매우 한적할 것으로 보입니다</span></div>
               <div class="st-cwrow cw-low">
-                <i>35–51</i><b>한적</b><span>한적한 것으로 예측됩니다</span></div>
+                <i>35–51</i><b>한적</b><span>한적할 것으로 보입니다</span></div>
               <div class="st-cwrow cw-mid">
-                <i>52–69</i><b>정상</b><span>보통 수준으로 예측됩니다</span></div>
+                <i>52–69</i><b>보통</b><span>보통 수준일 것으로 보입니다</span></div>
               <div class="st-cwrow cw-high">
-                <i>70–84</i><b>혼잡</b><span>붐빌 것으로 예측됩니다</span></div>
+                <i>70–84</i><b>혼잡</b><span>붐빌 것으로 보입니다</span></div>
               <div class="st-cwrow cw-vhigh">
-                <i>85–100</i><b>매우 혼잡</b><span>매우 붐빌 것으로 예측됩니다</span></div>
+                <i>85–100</i><b>매우 혼잡</b><span>매우 붐빌 것으로 보입니다</span></div>
               <p class="st-cwkey-n">한국관광공사 관광지 집중률 예측입니다.
                 실제 대기시간이나 현장 인원과는 다를 수 있습니다.</p>
             </div>
@@ -783,45 +761,18 @@
           <h2>예상 숙박비</h2>
         </div>
 
-        <!-- 확정 160,000 = 객실 120,000 + 인원 추가 40,000
-             추정  40,000 = 바베큐 30,000 + 늦은 퇴실 10,000
-             총액과 확정 비율(80%)은 이 둘에서 나온다. 하나를 바꾸면 셋 다 바꾼다. -->
-        <div class="ck-conf2">
-          <p class="ck-conf2-sum">
-            <b>200,000</b><span>원</span>
-            <em>부산 주말 1박 예상 금액 · 비수기 기준</em>
-          </p>
-
-          <!-- 조각 위에 값을 얹는다. 범례를 따로 두면 눈이 두 번 움직인다 -->
-          <div class="ck-conf2-bar">
-            <i class="ck-sure">
-              <b>160,000원</b><span>요금표</span>
-            </i>
-            <i class="ck-guess">
-              <b>40,000원</b><span>비슷한 숙소 평균</span>
-            </i>
-          </div>
-        </div>
+        <table class="ck-conf2">
+          <caption>부산 주말 1박 예상 금액 · 비수기 기준</caption>
+          <tbody>
+            <tr><th scope="row">요금표</th><td>160,000원</td></tr>
+            <tr><th scope="row">비슷한 숙소 평균</th><td>40,000원</td></tr>
+            <tr><th scope="row">합계</th><td>200,000원</td></tr>
+          </tbody>
+        </table>
       </section>
 
             <section class="ck-wr ck-blk" id="ck_how">
-        <div class="ck-hd" data-label="고르는 건 두 번">
-          <h2>쓰는 순서</h2>
-        </div>
-        <ol class="ck-flow">
-          <li>
-            <b>지역과 기간 고르기</b>
-            <span>시각은 알아서 채워집니다</span>
-          </li>
-          <li>
-            <b>붐비면 순서 바꾸기</b>
-            <span>대기 몇 분 줄고 얼마 더 드는지</span>
-          </li>
-          <li>
-            <b>일행과 같이 보기</b>
-            <span>한 명이 바꾸면 캘린더·알림까지</span>
-          </li>
-        </ol>
+        <p class="ck-flow">지역과 기간을 고르면 일정이 나옵니다. 여행 중에는 순서나 장소를 바꾸고 일행과 함께 볼 수 있습니다.</p>
       </section>
 
       
@@ -833,7 +784,7 @@
             <!-- 커뮤니티가 담은 것. 일정이냐 장소냐만 다르다. -->
       <section class="ck-wr ck-blk" id="ck_pop">
         <div class="ck-hd" data-label="커뮤니티" id="ckHdPop">
-          <h2>많이 담긴 여행과 장소</h2>
+          <h2>많이 담긴 일정과 장소</h2>
           <p class="ck-side"></p>
         </div>
         <div class="ck-tabs ck-tabs-top" role="tablist">

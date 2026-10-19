@@ -118,10 +118,9 @@
     min-height: 112px;
     margin: 30px auto 0;
     padding: 24px 20px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, var(--slate), var(--slate-pale));
+    border-radius: var(--r-panel);
+    background: var(--ink);
     text-align: center;
-    box-shadow: var(--sh);
 }
 
 #page-review .review-cta h2,

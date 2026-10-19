@@ -260,7 +260,7 @@
                 const top = r.status === 'OK' ? r.arr[0] : null;
                 if (top && top.lat) {
                     store({ name: q, lat: top.lat, lng: top.lng, from: 'typed', address: top.address || '' });
-                    say('가장 비슷한 곳으로 잽니다 — ' + top.name + (top.address ? ', ' + top.address : ''));
+                    say('가장 비슷한 곳 기준으로 이동 시간을 잽니다 — ' + top.name + (top.address ? ', ' + top.address : ''));
                 } else {
                     sayMiss(r.status);
                 }
@@ -330,7 +330,7 @@
                             fillArea(addr.city, addr.gu);
                         } else {
                             pick({ name: '지금 위치', lat: lat, lng: lng }, 'gps');
-                            say('주소는 못 가져왔지만 이 좌표로 잽니다');
+                            say('주소는 못 찾았지만 지금 위치로 이동 시간을 잽니다');
                         }
                     }, function (err) {
                         gps.disabled = false;
@@ -375,7 +375,7 @@
                 });
                 const json = await res.json();
                 if (!json.success || !json.data) {
-                    toast('이전 플랜 데이터가 없습니다.');
+                    toast('불러올 이전 일정이 없습니다.');
                     return;
                 }
                 const d = json.data;
@@ -665,7 +665,7 @@
                         const row = document.createElement('div');
                         row.id = 'sum-extra-' + item.label;
                         row.className = 'asc-row';
-                        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>`;
+                        row.innerHTML = `<div class="asc-label">${item.label}</div><div class="asc-val">${item.value}</div><button class="asc-del" onclick="event.stopPropagation();clearExtraRow('${item.label.replace(/'/g,"\\'")}')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>`;
                         extraContainer.appendChild(row);
                     });
 
@@ -734,10 +734,10 @@
                     if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
                     if (typeof updateNav === 'function') updateNav();
                 } else {
-                    toast(json.message || '플랜 생성에 실패했습니다.');
+                    toast(json.message || '일정을 만들지 못했습니다.');
                 }
             } catch (e) {
-                toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.');
+                toast('지금은 연결이 원활하지 않습니다. 잠시 뒤에 다시 해 보세요.');
             }
         }
 
@@ -848,7 +848,7 @@
          * ───────────────────────────────────────────────────────── */
         async function saveFormAndGoChat() {
             const tripId = window._currentTripId;
-            if (!tripId) { toast('플랜이 생성되지 않았습니다.'); return; }
+            if (!tripId) { toast('일정이 아직 없습니다. 1단계부터 다시 해 주세요.'); return; }
 
             // 1. 단일 선택값 수집
             const withOtherText = (selector, inputId) => {
@@ -930,7 +930,7 @@
                 goPlanStep(3);
                 if (typeof _savePlannerDraft === 'function') _savePlannerDraft();
             } else {
-                toast('취향 정보 저장에 실패했습니다.');
+                toast('취향을 저장하지 못했습니다. 다시 눌러 주세요.');
             }
         }
 
@@ -1097,7 +1097,7 @@
             _hideGenLoading();
             const btn = document.querySelector('#sp-3 .btn-gen');
             if (btn) { btn.innerHTML = '일정 만들기 → 동선 다듬기'; btn.disabled = false; }
-            toast('화면에서 기다리기를 멈췄습니다. 서버에서 만들던 일정은 끝까지 만들어지고, 다 되면 지도에서 볼 수 있습니다.');
+            toast('기다리기를 멈췄습니다. 만들던 일정은 끝까지 만들고, 다 되면 지도에서 볼 수 있습니다.');
         }
 
         /* 새로고침으로 기다리던 화면이 사라진 경우 — 기록이 남아 있으면 진행을 이어서 보여 준다.
@@ -1227,7 +1227,7 @@
                 }
             } catch (e) {
                 window._genInFlightTrip = null;
-                _genShowFailure('서버와 연결이 끊겼습니다. 서버에서는 계속 만들고 있을 수 있으니 잠시 뒤에 다시 열어 보세요.');
+                _genShowFailure('연결이 끊겼습니다. 일정은 계속 만들고 있을 수 있으니 잠시 뒤에 다시 열어 보세요.');
                 // 에러 발생 시 버튼 즉시 원상복구
                 btn.innerHTML = '일정 만들기 → 동선 다듬기';
                 btn.disabled = false;
@@ -1268,7 +1268,7 @@
                 const t = h ? h + '시간' + (m ? ' ' + m + '분' : '') : m + '분';
                 return '다른 일정에서 차로 약 ' + t + ' 걸립니다(도로 ' + far.km + 'km).';
             }
-            return '다른 일정에서 도로로 약 ' + far.km + 'km 떨어져 있습니다. 차로 걸리는 시간은 받지 못했습니다.';
+            return '다른 일정에서 도로로 약 ' + far.km + 'km 떨어져 있습니다. 차로 걸리는 시간은 알 수 없습니다.';
         }
 
         /* 이름으로 장소를 빼고, 앞뒤로 붕 뜬 이동 칸을 정리한다 */
@@ -1516,14 +1516,14 @@
             if (issues.missing.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
                     + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">이 장소를 지도에서 찾지 못했습니다</div>'
-                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">직접 요청하신 장소인데 카카오지도에 없습니다. <b>변경</b> 시 챗봇에게 교체를 요청합니다.</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">직접 요청하신 장소인데 카카오맵에 없습니다. <b>변경</b>을 누르면 다른 곳으로 바꿔 달라고 합니다.</div>'
             }
             if (issues.closed && issues.closed.length > 0) {
                 bodyHtml += '<div style="margin-bottom:14px">'
                     + '<div style="font-weight:800;color:var(--tile);margin-bottom:6px">해당 날짜에 이용할 수 없는 장소</div>'
-                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b> 시 챗봇이 자동으로 대체를 요청합니다.</div>'
+                    + '<div style="font-size:12px;color:var(--ink-2);margin-bottom:8px">여행 날짜에 <b>휴무·휴업</b>으로 방문이 어려울 수 있습니다. <b>변경</b>을 누르면 다른 곳으로 바꿔 달라고 합니다.</div>'
                     + '<div style="display:flex;flex-direction:column;gap:6px">'
-                    + issues.closed.map(c => '<div style="background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:var(--tile)">· ' + (c.reason || '휴무 가능') + '</span></div>').join('')
+                    + issues.closed.map(c => '<div style="background:var(--tile-pale);color:var(--tile);border:1px solid var(--tile-pale);border-radius:10px;padding:6px 10px;font-size:12px;font-weight:700">' + c.name + ' <span style="font-weight:500;color:var(--tile)">· ' + (c.reason || '쉬는 날일 수 있음') + '</span></div>').join('')
                     + '</div></div>';
             }
             if (issues.budgetShort) {
@@ -1571,11 +1571,11 @@
                     parts.push(names + ' 장소를 변경해줘. 여행 날짜에 휴무이거나 이용이 어려운 것 같아서 같은 종류의 다른 장소로 바꿔줘.');
                 }
                 if (issues.budgetShort) {
-                    parts.push('예산을 ' + won(issues.estimated) + ' 으로 변경할게. 그에 맞게 일정을 최적으로 다시 구성해줘.');
+                    parts.push('예산을 ' + won(issues.estimated) + '으로 바꿀게. 그에 맞게 일정을 다시 짜 줘.');
                 }
                 if (issues.missing.length > 0) {
                     const names = issues.missing.join(', ');
-                    parts.push(names + ' 장소를 변경해줘. 카카오지도에 없는 장소야. 같은 종류의 실존하는 인근 장소로 바꿔줘.');
+                    parts.push(names + ' 장소를 변경해줘. 카카오맵에 없는 장소야. 같은 종류의 실존하는 인근 장소로 바꿔줘.');
                 }
 
                 const autoMsg = parts.join(' ');
@@ -1820,7 +1820,7 @@
                                 if (!autoFixRequests.some(r => r.place === pin.label)) {
                                     autoFixRequests.push({
                                         place: pin.label,
-                                        req: `카카오지도에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
+                                        req: `카카오맵에 존재하지 않는 장소입니다. 해당 지역의 실존하는 유명 장소로 변경해 주세요.`
                                     });
                                 }
                             }
@@ -1864,7 +1864,7 @@
                             currentStage++;
                             sessionStorage.setItem('autoHealingRetries', currentStage.toString());
 
-                            btn.innerHTML = `정밀 보정 진행 중... (${currentStage} / 2)`;
+                            btn.innerHTML = `동선을 다듬는 중... (${currentStage} / 2)`;
                             _showGenLoading(`정밀 보정 진행 중… (${currentStage} / 2)`);
 
                             fetch(`/api/trips/${tripId}/routes/replace`, {
@@ -1925,7 +1925,7 @@
                                 return { ...d, places: tidy };
                             });
                             console.warn('2회 보정 후에도 여행지 밖 장소가 남아 해당 장소를 일정에서 제외했습니다:', [...badNames]);
-                            toast('일부 장소가 여행지를 벗어나 자동 제외되었습니다.');
+                            toast('여행지에서 너무 먼 장소 몇 곳을 뺐습니다.');
                             const cleanedReordered = _reorderRouteByProximity(cleaned, allPins, _lockedNames);
                             /* 빼고 나니 아무것도 안 남으면 빼지 않는다.
                                잘못된 장소가 남는 편이 빈 화면보다 낫다. */
@@ -2074,7 +2074,7 @@
             }
 
             if (!routeData) {
-                toast('일정 데이터를 불러오지 못했습니다.');
+                toast('일정을 불러오지 못했습니다.');
                 return;
             }
 
@@ -2106,33 +2106,31 @@
     <div class="page" id="page-planner">
         <div class="planner-wrap">
 
-            <div class="planner-hd">
-                <div class="planner-ey">계획</div>
-                <div class="planner-ttl">어디로, 언제 가세요</div>
-                <p class="planner-sub">장소와 날짜를 고르면 영업시간과 이동시간에 맞춰 하루를 짭니다.</p>
-            </div>
-
             <div class="step-bar" id="plannerStepBar" style="display:none">
-                <div class="step-item active" id="sb-1" onclick="goPlanStep(1)">
-                    <div class="step-num">1</div>
-                    <div class="step-lbl">어디로, 언제</div>
-                </div>
-                <div class="step-item" id="sb-2" onclick="goPlanStep(2)">
-                    <div class="step-num">2</div>
-                    <div class="step-lbl">뭘 좋아하세요</div>
-                </div>
-                <div class="step-item" id="sb-3" onclick="goPlanStep(3)">
-                    <div class="step-num">3</div>
-                    <div class="step-lbl">더 할 말</div>
-                </div>
-                <div class="step-item" id="sb-4" onclick="goPlanStep(4)">
-                    <div class="step-num">4</div>
-                    <div class="step-lbl">경로 만들기</div>
-                </div>
+                <button type="button" class="step-item active" id="sb-1" onclick="goPlanStep(1)">
+                    <span class="step-num">1</span>
+                    <span class="step-lbl">어디로, 언제</span>
+                </button>
+                <button type="button" class="step-item" id="sb-2" onclick="goPlanStep(2)">
+                    <span class="step-num">2</span>
+                    <span class="step-lbl">뭘 좋아하세요</span>
+                </button>
+                <button type="button" class="step-item" id="sb-3" onclick="goPlanStep(3)">
+                    <span class="step-num">3</span>
+                    <span class="step-lbl">더 할 말</span>
+                </button>
+                <button type="button" class="step-item" id="sb-4" onclick="goPlanStep(4)">
+                    <span class="step-num">4</span>
+                    <span class="step-lbl">경로 만들기</span>
+                </button>
             </div>
 
             <!-- ══════════════ STEP 1 ══════════════ -->
             <div class="step-panel active" id="sp-1">
+                <div class="planner-hd">
+                    <h2 class="planner-ttl">어디로, 언제 가세요</h2>
+                    <p class="planner-sub">장소와 날짜를 고르면 영업시간과 이동 시간에 맞춰 하루를 짭니다.</p>
+                </div>
                 <!-- 여행지 & 날짜 -->
                 <div class="pl-card">
                     <div class="pl-card-ttl pl-start-tools">
@@ -2337,6 +2335,10 @@
 
             <!-- ══════════════ STEP 2 ══════════════ -->
             <div class="step-panel" id="sp-2">
+                <div class="planner-hd">
+                    <h2 class="planner-ttl">어떤 여행을 좋아하세요</h2>
+                    <p class="planner-sub">먹는 것과 머물 곳, 하루에 얼마나 돌아볼지 골라 주세요.</p>
+                </div>
 
                 <!-- 다섯 판이 각각 제목 하나와 알약 한 줄만 담고 있었다.
                      한 판 안의 다섯 줄로 묶는다. 1단계와 같은 구조다. -->
@@ -2413,14 +2415,14 @@
 
             <!-- ══════════════ STEP 3 ══════════════ -->
             <div class="step-panel" id="sp-3">
+                <div class="planner-hd">
+                    <h2 class="planner-ttl">일정에 더할 말을 적어 주세요</h2>
+                    <p class="planner-sub">예산을 바꾸거나 빼고 싶은 장소를 이야기해 주세요.</p>
+                </div>
                 <div class="chat-layout">
                     <div class="chat-box">
                         <div class="chat-hd">
-                            <div class="chat-bot-av" id="inj-c-av">AI</div>
-                            <div>
-                                <div style="font-size:13px;font-weight:700">체크인 AI</div>
-                                <div style="font-size:10px;color:var(--sage)">● 온라인</div>
-                            </div>
+                            <span id="inj-c-av" hidden aria-hidden="true"></span>
                             <div style="margin-left:auto;font-size:10px;color:var(--text3)">국내 여행 · 예산 0~1,000만원</div>
                         </div>
 
@@ -2438,7 +2440,7 @@
 
                     <div class="asc">
                         <div class="asc-hd">
-                            <div class="asc-ttl">입력 정보 요약</div>
+                            <div class="asc-ttl">적어 주신 내용</div>
                             <div class="asc-sub">대화에서 바꾼 내용</div>
                         </div>
 
@@ -2446,7 +2448,7 @@
                         <div class="asc-tabs">
                             <button class="asc-tab on" data-tab="tab-basic" onclick="switchSumTab('tab-basic')">기본 정보</button>
                             <button class="asc-tab" data-tab="tab-pref"  onclick="switchSumTab('tab-pref')">여행 취향</button>
-                            <button class="asc-tab" data-tab="tab-extra" onclick="switchSumTab('tab-extra')">추가사항<span id="extra-badge"></span></button>
+                            <button class="asc-tab" data-tab="tab-extra" onclick="switchSumTab('tab-extra')">추가 사항<span id="extra-badge"></span></button>
                         </div>
 
                         <div id="sum-rows-container">
@@ -2456,42 +2458,42 @@
                                 <div class="asc-row">
                                     <div class="asc-label">출발지</div>
                                     <div class="asc-val" id="sum-dep">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dep')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dep')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">여행지</div>
                                     <div class="asc-val" id="sum-dest">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dest')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('dest')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">날짜</div>
                                     <div class="asc-val" id="sum-date">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('date')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('date')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">인원</div>
                                     <div class="asc-val" id="sum-people">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('people')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('people')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">동행자</div>
                                     <div class="asc-val" id="sum-comp">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('comp')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('comp')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">예산</div>
                                     <div class="asc-val" id="sum-budget">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('budget')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('budget')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">이동</div>
                                     <div class="asc-val" id="sum-trans">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('trans')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('trans')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">숙소</div>
                                     <div class="asc-val" id="sum-acc">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('acc')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('acc')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                             </div>
 
@@ -2500,32 +2502,32 @@
                                 <div class="asc-row">
                                     <div class="asc-label">숙소 옵션</div>
                                     <div class="asc-val" id="sum-accopts">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('accopts')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('accopts')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">여행 스타일</div>
                                     <div class="asc-val" id="sum-style">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('style')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('style')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
-                                    <div class="asc-label">식이 정보</div>
+                                    <div class="asc-label">먹는 것</div>
                                     <div class="asc-val" id="sum-food">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('food')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('food')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
-                                    <div class="asc-label">일정 밀도</div>
+                                    <div class="asc-label">하루 밀도</div>
                                     <div class="asc-val" id="sum-density">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('density')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('density')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">반려동물</div>
                                     <div class="asc-val missing" id="sum-pet">— 미입력</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('pet')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('pet')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                                 <div class="asc-row">
                                     <div class="asc-label">특수 조건</div>
                                     <div class="asc-val" id="sum-special">—</div>
-                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('special')" aria-label="닫기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+                                    <button class="asc-del" onclick="event.stopPropagation();clearSumField('special')" aria-label="지우기"><svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
                                 </div>
                             </div>
 
@@ -2567,7 +2569,7 @@
                 <div style="background:var(--cream);border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:4px">
                     <div style="font-size:13px;color:var(--text2);line-height:1.8">
                         여기서는 오늘부터 <strong>7일간</strong>의 기상청 예보를 보여 드립니다.<br>
-                        출발일이 2주 넘게 남아 아직 보여 드릴 예보가 없습니다.<br>
+                        출발일이 7일 넘게 남아 아직 보여 드릴 예보가 없습니다.<br>
                         여행이 가까워지면 다시 열어 보세요. 먼 날짜는 아래 링크에서 확인할 수 있습니다.
                     </div>
                 </div>
@@ -2697,7 +2699,7 @@
             document.getElementById('weatherPopup').classList.add('open');
 
             const grid = document.getElementById('wp-grid');
-            grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
+            grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">불러오는 중...</div>';
 
             try {
                 const res  = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
@@ -2755,14 +2757,14 @@
 
                 if (clipped) {
                     grid.innerHTML += `<div style="grid-column:1/-1;font-size:11px;color:var(--text3);text-align:center;padding:8px 0;border-top:1px dashed var(--border)">
-          이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 예보 범위 초과로 표시되지 않습니다
+          이후 ${allDays.length - WEATHER_PREVIEW_DAYS}일(${fmt(allDays[WEATHER_PREVIEW_DAYS])} ~ ${fmt(allDays[allDays.length-1])})은 아직 예보가 없어 보여 드리지 못합니다
         </div>`;
                 }
 
                 const alertEl = document.getElementById('wp-alert');
                 if (warnDays.length) {
                     alertEl.style.display = 'block';
-                    alertEl.textContent = `${warnDays.join(', ')} 악천후 감지 — 실내 장소 우선 배치를 권장합니다`;
+                    alertEl.textContent = `${warnDays.join(', ')} 날씨가 나쁠 수 있습니다 — 실내 장소를 먼저 넣는 게 좋습니다`;
                 } else {
                     alertEl.style.display = 'none';
                 }

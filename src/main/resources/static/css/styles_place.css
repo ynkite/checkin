@@ -208,7 +208,7 @@
 
 .pl-when {
   margin-left: auto;
-  font-family: var(--fig);
+  font-family: var(--sans);
   font-size: 11px;
   color: var(--ink-3);
   white-space: nowrap;

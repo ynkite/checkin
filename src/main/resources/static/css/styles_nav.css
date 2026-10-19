@@ -1,5 +1,5 @@
 nav{
-  background:transparent;
+  background:var(--page);
   backdrop-filter:none;
   border-bottom:1px solid transparent;
   padding:calc(var(--u)*1.75) calc(var(--u)*3.25);
@@ -7,7 +7,7 @@ nav{
 }
 nav.nav-solid{
   
-  background:color-mix(in oklab, var(--page) 96%, transparent);
+  background:var(--page);
   border-bottom-color:var(--ui-line);
 }
 
@@ -27,7 +27,7 @@ nav .nav-link{
   position:relative; padding:6px 2px; margin:0 11px; border-radius:0;
   background:none !important; border:0;
   font-size:14px; font-weight:500; letter-spacing:var(--tracking-tight);
-  color:var(--ink-3);
+  color:var(--ink-2);
 }
 nav .nav-link:hover{ color:var(--ink-2) }
 nav .nav-link.on{ color:var(--ink); font-weight:600 }
@@ -43,7 +43,7 @@ nav .btn-nav-ghost,
 nav .nav-user{
   padding:0; border:0; background:none; cursor:pointer;
   font-family:inherit; font-size:var(--home-meta); font-weight:500; letter-spacing:var(--tracking-tight);
-  color:var(--ink-3);
+  color:var(--ink-2);
 }
 nav .btn-nav-ghost:hover{ color:var(--ink) }
 nav .btn-nav-primary{

@@ -1,27 +1,15 @@
-/* ── 요약 카드 ── */
-.ledger-summary-card {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: var(--r);
-  padding: calc(var(--u) * 2);
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  align-content: start;
-}
-
-.ledger-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--gap-card);
-  margin-bottom: calc(var(--u) * 3);
-}
+/* 예상 금액과 쓴 돈을 한 문장에서 읽는다. */
+.ledger-summary-grid{ margin-bottom:calc(var(--u)*3) }
+.ledger-summary-card{ margin:0; font-size:var(--t-body); line-height:1.8; color:var(--ink); word-break:keep-all }
+.ledger-summary-card strong{ font-weight:600; font-variant-numeric:tabular-nums }
+.ledger-summary-card > span{ display:inline-block; margin-left:var(--u); color:var(--ink-2) }
+#ledger-budget-ref{ margin:var(--u) 0 0; font-size:var(--t-sm); color:var(--ink-2) }
 
 /*가계부 배경*/
 #page-ledger {
     /* 위쪽에 아주 옅은 기운만. 전에는 크림(--terra-pale)이라 이 화면만
        따뜻했다 — 팔레트는 쿨로 옮겨 놨는데 여기만 남아 있었다. */
-    background: linear-gradient(160deg, var(--slate-pale) 0%, var(--page-2) 340px);
-    background-attachment: fixed;
+    background: var(--page);
 }
 
 /* ── 여행 선택 래퍼 ── */
@@ -52,7 +40,7 @@
     letter-spacing: .2px; transition: background .15s;
 }
 .ledger-back-btn:hover { background: rgba(var(--w-rgb),.28); }
-.ldh-label { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: rgba(var(--w-rgb),.65); margin-bottom: 6px; }
+.ldh-label { font-size: 10px; font-weight: 700; letter-spacing: normal; color: rgba(var(--w-rgb),.65); margin-bottom: 6px; }
 .ldh-title { font-size: 30px; font-weight: 900; color: var(--panel); margin: 0 0 4px; }
 .ldh-meta  { font-size: 13px; font-weight: 600; color: rgba(var(--w-rgb),.92); margin: 0; }
 .ldh-dest  { font-size: 11px; color: rgba(var(--w-rgb),.65); margin: 3px 0 0; }
@@ -125,7 +113,7 @@
   #ledger-act-table tbody td:nth-child(4),
   .bi-amount,
   .total-amount
-) { font-family: var(--fig); }
+) { font-family: var(--sans); }
 
 /* 확정은 채운 표식, 추정은 빈 표식, 해당없음은 가로선으로 구분한다. */
 .budget-basis-key {
@@ -255,9 +243,9 @@
 /* 예산 맞춤 — 예산의 N% 와 조정 전 → 후 */
 .budget-fit{ margin-bottom:16px; word-break:keep-all }
 .budget-fit-pct{ margin:0; font-size:13px; color:var(--ink-3) }
-.budget-fit-pct b{ font-family:var(--fig); font-size:20px; font-weight:800; color:var(--ink) }
+.budget-fit-pct b{ font-family:var(--fig); font-size:var(--t-body); font-weight:600; color:var(--ink) }
 .budget-fit[data-over] .budget-fit-pct b{ color:var(--terra) }
-.budget-fit-line{ margin:6px 0 0; font-family:var(--fig); font-size:14px; color:var(--ink-2) }
+.budget-fit-line{ margin:6px 0 0; font-family:var(--sans); font-size:14px; color:var(--ink-2) }
 .budget-fit-list{ margin:8px 0 0; padding-left:18px; font-size:12.5px; line-height:1.6; color:var(--ink-2) }
 .budget-fit-list:empty{ display:none }
 .budget-fit-note{ margin:8px 0 0; font-size:12px; line-height:1.6; color:var(--ink-3) }

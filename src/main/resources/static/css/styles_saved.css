@@ -43,7 +43,7 @@
 /* 숫자 — 자리를 맞춰 세로로 읽히게 */
 .ck-sv-m{ min-width:46px; text-align:right; line-height:1.25 }
 .ck-sv-m b{
-  display:block; font-family:var(--fig); font-size:14px; font-weight:600;
+  display:block; font-family:var(--sans); font-size:14px; font-weight:600;
   color:var(--ink); font-variant-numeric:tabular-nums;
 }
 .ck-sv-m i{ font-style:normal; font-size:10.5px; color:var(--ink-3) }

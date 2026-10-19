@@ -167,7 +167,7 @@
     // 9. 설정 및 안내 문구 텍스트
     const MOCK_MYPAGE_TEXTS = {
       infoPwWarn: "보안을 위해 현재 비밀번호를 먼저 확인합니다.",
-      withdrawWarn: "탈퇴 즉시 username·email 마스킹 / status → DELETED<br>REFRESH_TOKENS 즉시 삭제 · 작성 후기는 '탈퇴한 사용자'로 표시"
+      withdrawWarn: "탈퇴하면 아이디와 이메일은 바로 가려지고, 모든 기기에서 로그아웃됩니다. 작성한 후기는 '탈퇴한 사용자'로 표시됩니다."
     };
     /* ============================================================ */
 
@@ -193,7 +193,7 @@
             '경로를 끝까지 만들어 저장하면 여기에 올라옵니다.' +
             '<button type="button" class="btn-f my-none-go" onclick="goResumePlanner()">만들던 곳으로</button></p>'
           : '<p class="my-none"><b>아직 저장한 여행이 없습니다.</b>' +
-            '지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.' +
+            '지역과 기간만 고르면 첫날 아침부터 시간표가 짜입니다.' +
             '<button type="button" class="btn-f my-none-go" onclick="goNewPlanner()">경로 만들기</button></p>';
       }
       /* 여행이 있으면 건드리지 않는다 — _renderMyTrips() 가 그린다 */
@@ -235,7 +235,7 @@
         invitedContainer.innerHTML = invited.map(t => {
           // 백엔드에서 저장해 준 초대 url이 있으면 사용하고, 없으면 MOCK 액션 사용
           const targetAction = t.inviteUrl ? `window.location.href='${t.inviteUrl}'` : t.action;
-          const metaInfo = t.meta || "공유받은 편집자 일정";
+          const metaInfo = t.meta || "함께 편집하는 일정";
 
           return `
         <div class="ts-card" onclick="${targetAction}" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--r);background:var(--surface);border:1px solid var(--border2);cursor:pointer;margin-bottom:12px;" onmouseover="this.style.borderColor='var(--slate)';" onmouseout="this.style.borderColor='var(--border2)';">
@@ -412,11 +412,11 @@
           <button class="my-menu" onclick="showMySection('invited',this)">초대받은 일정</button>
           <button class="my-menu" onclick="showMySection('reviews',this)">작성한 후기</button>
           <button class="my-menu" onclick="showMySection('likes',this)">좋아요한 후기</button>
-          <button class="my-menu" onclick="showMySection('scrap-stay',this)">스크랩한 숙소</button>
-          <button class="my-menu" onclick="showMySection('scrap-food',this)">스크랩한 맛집</button>
-          <button class="my-menu" onclick="showMySection('scrap-tour',this)">스크랩한 관광지</button>
-          <button class="my-menu" onclick="showMySection('scrap-cafe',this)">스크랩한 카페</button>
-          <button class="my-menu" onclick="showMySection('scrap-route',this)">스크랩한 여행 경로</button>
+          <button class="my-menu" onclick="showMySection('scrap-stay',this)">담은 숙소</button>
+          <button class="my-menu" onclick="showMySection('scrap-food',this)">담은 맛집</button>
+          <button class="my-menu" onclick="showMySection('scrap-tour',this)">담은 관광지</button>
+          <button class="my-menu" onclick="showMySection('scrap-cafe',this)">담은 카페</button>
+          <button class="my-menu" onclick="showMySection('scrap-route',this)">담은 여행 경로</button>
           <button class="my-menu" onclick="showMySection('ledger',this)">가계부</button>
           <div class="my-menu-sep my-menu-settings">설정</div>
           <button class="my-menu" onclick="showMySection('notify',this); myNotifyLoad()">알림·캘린더</button>
@@ -485,7 +485,7 @@
               <button type="button" class="my-btn my-btn-ghost" onclick="myIcsRevoke()">주소 없애기</button>
             </div>
             <p class="my-card-hint">이 주소를 아는 사람은 일정을 볼 수 있습니다.
-              남에게 넘어갔다면 새로 만들면 옛 주소는 막힙니다.</p>
+              남에게 넘어갔다면 주소를 새로 만드세요. 옛 주소는 막힙니다.</p>
           </div>
         </div>
 
@@ -504,27 +504,27 @@
         </div>
 
         <div id="my-scrap-stay" style="display:none">
-          <h3 class="my-sec-ttl">스크랩한 숙소</h3>
+          <h3 class="my-sec-ttl">담은 숙소</h3>
           <div id="my-scrap-stay-list"></div>
         </div>
 
         <div id="my-scrap-food" style="display:none">
-          <h3 class="my-sec-ttl">스크랩한 맛집</h3>
+          <h3 class="my-sec-ttl">담은 맛집</h3>
           <div id="my-scrap-food-list"></div>
         </div>
         <div id="my-scrap-tour" style="display:none">
-          <h3 class="my-sec-ttl">스크랩한 관광지</h3>
+          <h3 class="my-sec-ttl">담은 관광지</h3>
           <div id="my-scrap-tour-list"></div>
         </div>
 
         <div id="my-scrap-cafe" style="display:none">
-          <h3 class="my-sec-ttl">스크랩한 카페</h3>
+          <h3 class="my-sec-ttl">담은 카페</h3>
           <div id="my-scrap-cafe-list"></div>
         </div>
 
         <div id="my-scrap-route" style="display:none">
           <div class="my-sec-hd" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3 class="my-sec-ttl" style="margin:0;">스크랩한 여행 경로</h3>
+            <h3 class="my-sec-ttl" style="margin:0;">담은 여행 경로</h3>
             <div id="my-scrap-route-actions" style="display:flex;gap:8px;margin-left:auto;"></div>
           </div>
           <div id="my-scrap-route-list"></div>
@@ -576,8 +576,7 @@
 
           <div id="withdraw-social-box" style="display:none" class="form-group">
             <div style="background:var(--cream2);border:1px solid var(--border);border-radius:9px;padding:12px 14px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">
-              카카오 또는 구글 계정으로 가입한 회원은 체크인 탈퇴 후, <br>
-              각 소셜 서비스의 계정 관리 화면에서 연결된 서비스 해제까지 진행해야 탈퇴가 완료됩니다.
+              체크인에서 탈퇴한 뒤, 카카오·구글 계정 설정에서 체크인 연결도 끊어야 탈퇴가 끝납니다.
             </div>
             <label class="form-label">탈퇴 확인</label>
             <input class="form-input" type="text" id="withdrawSocialInput" placeholder="탈퇴하겠습니다"

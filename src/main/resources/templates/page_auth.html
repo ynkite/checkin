@@ -23,7 +23,7 @@
     loginTitle:    '로그인',
     loginSub:      '저장한 일정과 가계부를 불러옵니다',
     kakaoTitle:    '카카오 계정으로 가입',
-    kakaoSub:      '카카오 계정이 연결되었습니다',
+    kakaoSub:      '카카오 계정을 연결했습니다',
     kakaoNotice:   '카카오 계정을 연결했습니다. 로그인 정보는 카카오에서 관리합니다.',
   };
 
@@ -41,15 +41,15 @@
 
   // ── MBTI 차원 정의 ──
   const MBTI_DIMS = [
-    { key: 'ei', label: '에너지', pairs: [{ val:'E', label:'E (외향)' }, { val:'I', label:'I (내향)' }], default: 'E' },
-    { key: 'sn', label: '인식',   pairs: [{ val:'S', label:'S (감각)' }, { val:'N', label:'N (직관)' }], default: 'S' },
-    { key: 'tf', label: '판단',   pairs: [{ val:'T', label:'T (사고)' }, { val:'F', label:'F (감정)' }], default: 'T' },
-    { key: 'jp', label: '생활',   pairs: [{ val:'J', label:'J (계획)' }, { val:'P', label:'P (즉흥)' }], default: 'P' },
+    { key: 'ei', label: '에너지', pairs: [{ val:'E', label:'외향 E' }, { val:'I', label:'내향 I' }], default: 'E' },
+    { key: 'sn', label: '인식',   pairs: [{ val:'S', label:'감각 S' }, { val:'N', label:'직관 N' }], default: 'S' },
+    { key: 'tf', label: '판단',   pairs: [{ val:'T', label:'사고 T' }, { val:'F', label:'감정 F' }], default: 'T' },
+    { key: 'jp', label: '생활',   pairs: [{ val:'J', label:'계획 J' }, { val:'P', label:'즉흥 P' }], default: 'P' },
   ];
 
   // ── 비밀번호 정규식 ──
   const PW_PATTERN = /^(?=.*[0-9])(?=.*[a-zA-Z])(?=.*\W)(?=\S+$).{8,16}$/;
-  const PW_PATTERN_MSG = '비밀번호는 8~16자 영문 대 소문자, 숫자, 특수문자를 포함해야 합니다.';
+  const PW_PATTERN_MSG = '비밀번호는 영문 대·소문자, 숫자, 특수문자를 섞어 8~16자로 만들어 주세요.';
 
   // ── 유효성 검사 메시지 ──
   const AUTH_VALID_MSG = {
@@ -62,7 +62,7 @@
     emailSending:  '메일을 발송 중입니다. 잠시만 기다려 주세요.',
     emailSent:     '인증 메일을 보냈습니다. 메일함을 봐 주세요.',
     verifyOk:      '이메일을 확인했습니다.',
-    verifyFail:    '인증번호가 틀렸거나 만료되었습니다.',
+    verifyFail:    '인증번호가 틀렸거나 만료됐습니다.',
     nameEmpty:     '이름을 적어 주세요.',
     emailEmptyForm:'이메일을 적어 주세요.',
     emailNotVerify:'이메일부터 확인해 주세요.',
@@ -334,7 +334,7 @@
         prSetMsg('pr-code-msg', '인증번호를 확인했습니다.', true);
         setTimeout(() => prShowStep(3), 800);
       } else {
-        prSetMsg('pr-code-msg', '인증번호가 틀렸거나 만료되었습니다. 새 인증번호를 받아 입력해 주세요.', false);
+        prSetMsg('pr-code-msg', '인증번호가 틀렸거나 만료됐습니다. 새 인증번호를 받아 입력해 주세요.', false);
       }
     }).catch(() => prSetMsg('pr-code-msg', '연결이 끊겼습니다. 잠시 뒤에 다시 해 보세요.', false));
   }
@@ -411,7 +411,7 @@
       <div class="form-group" id="verify-area">
         <div style="display:flex; gap:8px;">
           <input class="form-input" type="text" id="authCode" placeholder="메일로 받은 6자리 숫자" style="flex:1;">
-          <button class="btn-f" style="width:auto; padding:0 12px; font-size:12px; background:gray;" onclick="verifyAuthCode()">인증 확인</button>
+          <button class="btn-f" style="width:auto; padding:0 var(--gap-card); font-size:var(--home-meta); background:var(--ink-3);" onclick="verifyAuthCode()">인증 확인</button>
         </div>
       </div>
       <div class="form-group">
@@ -469,7 +469,7 @@
         <button class="btn-social" onclick="tryKakaoLogin()">카카오로 가입</button>
       </div>
       <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text3)">
-        계정 있으신가요? <button class="auth-link" onclick="go('login')">로그인</button>
+        계정이 있으신가요? <button class="auth-link" onclick="go('login')">로그인</button>
       </div>
     </div>
   </div>
@@ -571,7 +571,7 @@
       <button class="btn-f auth-submit" onclick="tryLogin()">로그인</button>
       <!-- 심사위원이 가입부터 하느라 막히지 않게. 아이디를 손으로 치면 오타가 난다 -->
       <button class="btn-demo" type="button" onclick="tryDemoLogin()">
-        시연 계정으로 둘러보기
+        테스트 계정으로 로그인
         <span>(한국관광공사 전용)</span>
       </button>
       <div class="auth-secondary-action">
@@ -585,7 +585,7 @@
         <button class="btn-social" onclick="tryKakaoLogin()">카카오</button>
       </div>
       <div class="auth-switch">
-        계정 없으신가요? <button class="auth-link" onclick="go('signup')">회원가입</button>
+        계정이 없으신가요? <button class="auth-link" onclick="go('signup')">회원가입</button>
       </div>
     </div>
   </div>
@@ -668,9 +668,9 @@
 <!-- 비밀번호 90일 변경 권장 모달 -->
 <div class="auth-modal" id="pw-change-recommend-modal" onclick="if(event.target===this)closePwChangeRecommendModal()">
   <div class="auth-dialog auth-dialog-center">
-    <div class="pr-title auth-dialog-title">비밀번호 변경을 권장합니다</div>
+    <div class="pr-title auth-dialog-title">비밀번호를 바꿀 때가 됐습니다</div>
     <p class="pr-sub auth-dialog-copy">
-      마지막 비밀번호 변경 후 <strong>90일</strong>이 경과했습니다.<br>
+      비밀번호를 바꾼 지 <strong>90일</strong>이 지났습니다.<br>
       보안을 위해 비밀번호를 변경해 주세요.
     </p>
     <div class="auth-dialog-actions">
