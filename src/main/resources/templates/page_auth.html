@@ -238,9 +238,8 @@
         document.getElementById('signupSuccessModal').style.display = 'flex';
       } else {
         const errData = await response.json().catch(() => null);
-        const msg = errData?.errors?.[0]?.defaultMessage
-                || AUTH_VALID_MSG.signupFail.split(': ')[1];
-        toast('가입 정보를 저장하지 못했습니다. ' + msg);
+        const msg = errData?.errors?.[0]?.defaultMessage;
+        toast(msg ? '가입 정보를 저장하지 못했습니다. ' + msg : AUTH_VALID_MSG.signupFail);
       }
     });
   }

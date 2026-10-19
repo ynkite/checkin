@@ -578,7 +578,7 @@ async function _loadBudgetAccuracy() {
         +   '<div style="font-size:18px;font-weight:800;color:var(--terra);font-variant-numeric:tabular-nums">'
         +     d.avgErrorPct.toFixed(1) + '%</div>'
         + '</div>'
-        // 산출식과 「시연」 표기를 같이 싣는다 — 근거 없는 정확도 수치는 화면에 올리지 않는다
+        // 산출 근거(note)를 수치 아래 같이 싣는다
         + '<div style="font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.5">'
         +   esc(d.note || '') + '</div>';
 
