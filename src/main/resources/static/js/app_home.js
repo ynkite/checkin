@@ -612,9 +612,21 @@
   }
 
 
+  /* 무대는 보일 때 받는다. 모형 SVG 가 7장 1.1MB 라, 실시간·커뮤니티로 들어왔을 때나
+     홈 맨 위에 머물 때까지는 한 장도 내려받지 않는다 */
+  function heroWhenSeen() {
+    var hero = $('ck_hero');
+    if (!('IntersectionObserver' in window)) { initHero(); return; }
+    var io = new IntersectionObserver(function (es) {
+      if (!es.some(function (e) { return e.isIntersecting; })) return;
+      io.disconnect(); initHero();
+    }, { rootMargin: '200px' });
+    io.observe(hero);
+  }
+
   function start() {
     initNav(); if (!$('ck_hero')) return;
-    initForm(); initMine(); initQuiet(); initSky(); initCwKey(); initHero();
+    initForm(); initMine(); initQuiet(); initSky(); initCwKey(); heroWhenSeen();
     liveWeather().then(function (w) {
       window.__ckWx=w;
       if (!$('ck_hero').classList.contains('ck-intro')) setWx(w.kind);

@@ -321,26 +321,37 @@ async function goHomeRefresh() {
     }
 }
 
-// 지정한 페이지로 "새로고침하며" 진입한다.
+/* 데이터를 새로 받으며 진입한다. 전에는 location.reload() 였다 — 느린 4G 에서
+   홈 묶음 2.3MB 를 다시 받느라 9.6~10초 걸렸다. 화면은 go() 로 바꾸고
+   그 화면의 목록만 다시 부른다. 실시간은 go() 가 initLivePage 를 부른다 */
+const _reloaders = {
+    community: () => typeof initCommunityPage === 'function' && initCommunityPage(),
+    mypage:    () => updateMyPageUI(),
+    weather:   () => typeof wxReload === 'function' && wxReload()
+};
 async function goRefresh(id) {
-    const prevPage = sessionStorage.getItem('currentPage');
-    if (prevPage === 'map') {
-        const canLeave = await checkUnsavedChangesAndSave();
-        if (!canLeave) {
-            if (typeof updateNav === 'function') updateNav();
-            return;
-        }
-    }
-    try {
-        sessionStorage.setItem('currentPage', id);
-        sessionStorage.removeItem('map_refresh_lock');
-    } catch (e) {}
     if (location.pathname !== '/') {
+        try { sessionStorage.setItem('currentPage', id); } catch (e) {}
         location.href = '/';
-    } else {
-        location.reload();
+        return;
     }
+    await go(id);
+    if (sessionStorage.getItem('currentPage') !== id) return;   // 지도에서 못 떠났다
+    try { sessionStorage.removeItem('map_refresh_lock'); } catch (e) {}
+    if (_reloaders[id]) _reloaders[id]();
 }
+
+/* 닫힌 모달은 Tab 과 스크린리더에서도 빠져야 한다. CSS 는 opacity:0 만 하고 있어서
+   Tab 60번 중 26~41번이 보이지 않는 창으로 들어갔다. 여는 곳이 30곳이라 각각 고치지
+   않고 .overlay 의 class 변화를 한 곳에서 보고 inert 를 맞춘다 */
+(function () {
+    const sync = el => { el.inert = !el.classList.contains('open'); };
+    new MutationObserver(recs => recs.forEach(r => {
+        if (r.target.classList && r.target.classList.contains('overlay')) sync(r.target);
+    })).observe(document.documentElement, { attributes: true, attributeFilter: ['class'], subtree: true });
+    const all = () => document.querySelectorAll('.overlay').forEach(sync);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', all); else all();
+})();
 
 // 관리자 하위 섹션으로 새로고침하며 진입한다.
 async function goAdminRefresh(sec) {
@@ -612,8 +623,7 @@ function _liveDayLabel(t) {
 /**
  * 진행 중인 여행을 바로 연다. 실시간 화면이 목록을 그린 뒤 이 번호를 집는다.
  *
- * sessionStorage 에 둔다. goRefresh 는 location.reload() 를 하기 때문에
- * window 에 담아 두면 그 자리에서 날아간다 — 처음에 그렇게 짰다가 눌러 보고 알았다.
+ * sessionStorage 에 둔다. 실시간 화면이 그 자리에서 읽고 지운다.
  */
 function openLiveNow() {
     try {

@@ -16,8 +16,10 @@ class StaticCacheFilterTest {
     private final StaticCacheFilter filter = new StaticCacheFilter();
 
     private MockHttpServletResponse through(String uri) throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest("GET", uri);
-        req.setRequestURI(uri);
+        String[] parts = uri.split("\\?", 2);
+        MockHttpServletRequest req = new MockHttpServletRequest("GET", parts[0]);
+        req.setRequestURI(parts[0]);
+        if (parts.length > 1) req.setQueryString(parts[1]);
         MockHttpServletResponse res = new MockHttpServletResponse();
         /* 시큐리티가 붙이는 기본 머리말을 흉내 낸다 */
         res.setHeader("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
@@ -33,9 +35,25 @@ class StaticCacheFilterTest {
     }
 
     @Test
-    void 정적_파일은_사본을_남기게_둔다() throws Exception {
-        for (String uri : new String[]{"/css/styles_map.css", "/js/live-voice.js",
-                                       "/img/mass_haeundae.svg", "/fonts/a.woff2", "/uploads/posts/1.png"}) {
+    void 표가_붙은_파일은_1년_잡아_둔다() throws Exception {
+        for (String uri : new String[]{"/css/styles_map.css?v=20261019a", "/js/app_main.js?v=1",
+                                       "/img/logo-wide.png?v=2"}) {
+            String cc = through(uri).getHeader("Cache-Control");
+            assertThat(cc).as(uri).isEqualTo("public, max-age=31536000, immutable");
+        }
+    }
+
+    @Test
+    void 표가_없는_그림과_글씨는_하루() throws Exception {
+        for (String uri : new String[]{"/img/mass_haeundae.svg", "/fonts/a.woff2", "/uploads/posts/1.png"}) {
+            String cc = through(uri).getHeader("Cache-Control");
+            assertThat(cc).as(uri).isEqualTo("public, max-age=86400");
+        }
+    }
+
+    @Test
+    void 표가_없는_css_js_는_확인만_한다() throws Exception {
+        for (String uri : new String[]{"/css/styles_budget.css", "/js/live-voice.js"}) {
             String cc = through(uri).getHeader("Cache-Control");
             /* no-store 가 남아 있으면 브라우저가 사본을 못 남겨 매번 다시 받는다 */
             assertThat(cc).as(uri).isEqualTo("no-cache");
@@ -51,9 +69,8 @@ class StaticCacheFilterTest {
     }
 
     @Test
-    void 오래_잡아_두지는_않는다() throws Exception {
-        /* max-age 를 걸면 버전 표가 안 바뀐 파일이 낡은 채로 남는다.
-           실제로 app_main.js 를 고치고도 ?v= 는 그대로였다. */
+    void 표가_없는_스크립트는_오래_잡아_두지_않는다() throws Exception {
+        /* 표 없이 max-age 를 걸면 고친 파일이 낡은 채로 남는다 */
         assertThat(through("/js/app_main.js").getHeader("Cache-Control")).doesNotContain("max-age");
     }
 }
