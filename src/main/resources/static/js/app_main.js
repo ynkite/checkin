@@ -752,7 +752,7 @@ function updateNav() {
         const viewingFixed = (window._planConfirmed === true || _editingSavedTrip()) &&
             document.getElementById('page-map')?.classList.contains('active');
         if (_loggedIn && _hasPlannerDraft() && !viewingFixed) {
-            plannerBtn.textContent = '작성 중인 플랜';
+            plannerBtn.textContent = '작성 중인 일정';
         } else {
             plannerBtn.textContent = '플랜';
         }
@@ -2002,8 +2002,7 @@ async function startChatWithSummary() {
     }
 
     addBubble(
-        '입력 정보를 정리해드릴게요<br><br>'
-        + '<strong>현재 여행 계획에 반영된 값</strong><br>'
+        '적어 주신 내용은 이렇습니다<br><br>'
         + currentHtml
         + sourceHtml
         + '<br><br>이 내용으로 하루를 채워 보겠습니다.',
@@ -2307,9 +2306,10 @@ function reSyncChipFromUpdate(field, value) {
     if (field === 'DIET') {
         document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
         value.split(',').map(s => s.trim()).forEach(v => {
-            if (v.startsWith('알러지(')) {
-                const chip = [...document.querySelectorAll('#chip-food .chip')].find(c => c.textContent.trim() === '알러지 있음');
-                if (chip) { chip.classList.add('on'); const el = document.getElementById('other-allergy'); if(el){el.value=v.slice(4,-1);el.classList.add('show');} }
+            v = v.replace(/^알러지/, '알레르기');
+            if (v.startsWith('알레르기(')) {
+                const chip = [...document.querySelectorAll('#chip-food .chip')].find(c => c.textContent.trim() === '알레르기 있음');
+                if (chip) { chip.classList.add('on'); const el = document.getElementById('other-allergy'); if(el){el.value=v.slice(5,-1);el.classList.add('show');} }
                 return;
             }
             const isOther = v.startsWith('기타('), label = isOther ? '기타' : v;
@@ -2880,7 +2880,7 @@ function _validatePlanStep2() {
         }
     }
     const foodChips = document.querySelectorAll('#chip-food .chip.on');
-    if ([...foodChips].some(c => c.textContent.includes('알러지'))) {
+    if ([...foodChips].some(c => c.textContent.includes('알레르기'))) {
         if (!document.getElementById('other-allergy')?.value.trim()) {
             toast('못 먹는 것을 적어 주세요.'); return false;
         }
@@ -3296,7 +3296,8 @@ function _fmtRoutePair(delta) {
     if (has(delta.minutes)) parts.push(sign(delta.minutes) + Math.abs(delta.minutes) + '분');
     if (has(delta.won))     parts.push(sign(delta.won) + Math.abs(delta.won).toLocaleString() + '원');
     // 기준을 여기서 붙인다 — 호출부 네 곳이 접두사가 제각각이라 각자 붙이면 또 갈린다
-    return '원래보다 ' + parts.join(' / ');
+    // 토스트는 textContent 라 요소로 못 감싼다. 띄어쓰기를 안 끊기는 공백으로 둬 한 줄로 남긴다
+    return '원래보다 ' + parts.join(' / ');
 }
 
 /** POST /api/trips/{tripId}/routes/replace */
@@ -3773,7 +3774,7 @@ function goNewPlanner() {
 function goResumePlanner() {
     if (!_loggedIn) { toast('로그인이 필요합니다.'); go('login'); return; }
     if (!_hasPlannerDraft()) {
-        toast('작성 중인 플랜이 없습니다.');
+        toast('작성 중인 일정이 없습니다.');
         goNewPlanner();
         return;
     }

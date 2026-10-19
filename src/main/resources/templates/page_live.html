@@ -140,6 +140,12 @@
         var t = rlToken();
         return t ? { Authorization: 'Bearer ' + t } : {};
       }
+      /* 이름 뒤 「으로/로」 — 받침 없거나 ㄹ 받침이면 「로」 */
+      function rlRo(s) {
+        var t = String(s || '').trim(), c = t ? t.charCodeAt(t.length - 1) : 0;
+        var jong = (c >= 0xAC00 && c <= 0xD7A3) ? (c - 0xAC00) % 28 : 0;
+        return t + (jong && jong !== 8 ? '으로' : '로');
+      }
 
       function esc(s) {
         return String(s == null ? '' : s)
@@ -1120,7 +1126,7 @@
       window.rlAltPick = async function (i) {
         var c = rlAltList[i];
         if (!c || !rlTrip) return;
-        if (!(await askYes(c.name + '(으)로 바꿀까요?', '바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
+        if (!(await askYes(rlRo(c.name) + ' 바꿀까요?', '바꾼 뒤에 되돌릴 수 있습니다.', '바꾸기'))) return;
 
         var route = null;
         try { route = await rlGetRoute(); } catch (e) {}
@@ -1155,7 +1161,7 @@
         rlUndoSet({ label: '다른 곳으로', route: before, at: Date.now() });
         /* 안내 중이었으면 바꾼 곳이 곧 목적지다 — 새 곳으로 길을 다시 받는다 */
         rlAltKeep(rlAltDrive ? { lat: c.lat, lng: c.lng, name: c.name } : null);
-        toast(c.name + '(으)로 바꿨습니다. 되돌릴 수 있습니다.');
+        toast(rlRo(c.name) + ' 바꿨습니다. 되돌릴 수 있습니다.');
         rlRefresh();
       };
 

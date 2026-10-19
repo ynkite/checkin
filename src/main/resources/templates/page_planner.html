@@ -235,7 +235,7 @@
             function sayMiss(status) {
                 say(status === 'NONE'
                     ? '맞는 곳을 찾지 못했습니다. 역·건물 이름이나 도로명 주소로 다시 찾아보세요'
-                    : '지금은 장소 검색이 되지 않습니다. 적은 이름은 남기고 이동시간은 도/시 기준으로 잽니다');
+                    : '지금은 장소 검색이 되지 않습니다. 적은 이름은 남기고 이동 시간은 도/시 기준으로 잽니다');
             }
 
             async function search(q) {
@@ -550,15 +550,16 @@
                 try { foods = JSON.parse(d.dietaryInfo); } catch(e) {}
                 document.querySelectorAll('#chip-food .chip').forEach(c => c.classList.remove('on'));
                 foods.forEach(f => {
-                    const isAllergy = f.startsWith('알러지(') || f === '알러지 있음';
+                    f = f.replace(/^알러지/, '알레르기');
+                    const isAllergy = f.startsWith('알레르기(') || f === '알레르기 있음';
                     if (isAllergy) {
                         const chip = [...document.querySelectorAll('#chip-food .chip')]
-                            .find(c => c.textContent.trim() === '알러지 있음');
+                            .find(c => c.textContent.trim() === '알레르기 있음');
                         if (chip) {
                             chip.classList.add('on');
                             const otherEl = document.getElementById('other-allergy');
-                            if (otherEl && f.startsWith('알러지(')) {
-                                otherEl.value = f.slice(4, -1);
+                            if (otherEl && f.startsWith('알레르기(')) {
+                                otherEl.value = f.slice(5, -1);
                                 otherEl.classList.add('show');
                                 otherEl.style.display = '';
                             }
@@ -785,9 +786,9 @@
 
             const foodText = [...document.querySelectorAll('#chip-food .chip.on')].map(c => {
                 const t = c.textContent.trim();
-                if (t === '알러지 있음') {
+                if (t === '알레르기 있음') {
                     const v = document.getElementById('other-allergy')?.value.trim();
-                    return v ? `알러지(${v})` : '알러지 있음';
+                    return v ? `알레르기(${v})` : '알레르기 있음';
                 }
                 if (t === '기타') {
                     const v = document.getElementById('other-food')?.value.trim();
@@ -875,8 +876,8 @@
             const foodChips = [...document.querySelectorAll('#chip-food .chip.on')].map(c => c.textContent.trim());
             const allergyText = document.getElementById('other-allergy')?.value.trim();
             if (allergyText) {
-                const idx = foodChips.indexOf('알러지 있음');
-                if (idx !== -1) foodChips[idx] = `알러지(${allergyText})`;
+                const idx = foodChips.indexOf('알레르기 있음');
+                if (idx !== -1) foodChips[idx] = `알레르기(${allergyText})`;
             }
             const foodOtherText = document.getElementById('other-food')?.value.trim();
             if (foodOtherText) {
@@ -2363,7 +2364,7 @@
                     <div class="pl-row-bd"><div class="chip-row" id="chip-food">
                         <button data-multi class="chip" onclick="tog(this)">비건</button>
                         <button data-multi class="chip" onclick="tog(this)">해산물 선호</button>
-                        <button data-multi class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알러지 있음</button>
+                        <button data-multi class="chip" onclick="tog(this);showOtherInput('other-allergy',this,false)">알레르기 있음</button>
                         <button data-multi class="chip" onclick="tog(this)">무관</button>
                         <button data-multi class="chip" onclick="tog(this);showOtherInput('other-food',this,false)">기타</button>
                         <span class="pl-empty-choice">아직 고르지 않았습니다</span>
