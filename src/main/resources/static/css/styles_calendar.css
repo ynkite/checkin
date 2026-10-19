@@ -144,11 +144,11 @@
 }
 
 .cal-f-val b {
-    font-family: var(--fig);
+    font-family: var(--sans);
     font-size: 1.03em;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    letter-spacing: var(--tracking-num);
+    letter-spacing:normal;
 }
 
 .cal-f-val .cal-f-w {

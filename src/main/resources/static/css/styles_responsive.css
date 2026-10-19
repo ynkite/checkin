@@ -311,8 +311,9 @@ table {
     body:has(#page-weather.active)   .bnav-item[data-page="weather"],
     body:has(#page-live.active)      .bnav-item[data-page="live"],
     body:has(#page-planner.active)   .bnav-item[data-page="planner"],
-    body:has(#page-map.active)       .bnav-item[data-page="planner"],
+    body:not(.plan-fixed):has(#page-map.active) .bnav-item[data-page="planner"],
     body:has(#page-ledger.active)    .bnav-item[data-page="planner"],
+    body.plan-fixed:has(#page-map.active) .bnav-item[data-page="mypage"],
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] {
         color:var(--ink);
         background:var(--ui-plate);
@@ -322,8 +323,9 @@ table {
     body:has(#page-weather.active)   .bnav-item[data-page="weather"]::before,
     body:has(#page-live.active)      .bnav-item[data-page="live"]::before,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"]::before,
-    body:has(#page-map.active)       .bnav-item[data-page="planner"]::before,
+    body:not(.plan-fixed):has(#page-map.active) .bnav-item[data-page="planner"]::before,
     body:has(#page-ledger.active)    .bnav-item[data-page="planner"]::before,
+    body.plan-fixed:has(#page-map.active) .bnav-item[data-page="mypage"]::before,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"]::before {
         background: var(--ink);
     }
@@ -332,8 +334,9 @@ table {
     body:has(#page-weather.active)   .bnav-item[data-page="weather"] .bnav-icon,
     body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-icon,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-icon,
-    body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-icon,
+    body:not(.plan-fixed):has(#page-map.active) .bnav-item[data-page="planner"] .bnav-icon,
     body:has(#page-ledger.active)    .bnav-item[data-page="planner"] .bnav-icon,
+    body.plan-fixed:has(#page-map.active) .bnav-item[data-page="mypage"] .bnav-icon,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-icon {
         transform:none;
     }
@@ -342,8 +345,9 @@ table {
     body:has(#page-weather.active)   .bnav-item[data-page="weather"] .bnav-lbl,
     body:has(#page-live.active)      .bnav-item[data-page="live"] .bnav-lbl,
     body:has(#page-planner.active)   .bnav-item[data-page="planner"] .bnav-lbl,
-    body:has(#page-map.active)       .bnav-item[data-page="planner"] .bnav-lbl,
+    body:not(.plan-fixed):has(#page-map.active) .bnav-item[data-page="planner"] .bnav-lbl,
     body:has(#page-ledger.active)    .bnav-item[data-page="planner"] .bnav-lbl,
+    body.plan-fixed:has(#page-map.active) .bnav-item[data-page="mypage"] .bnav-lbl,
     body:has(#page-mypage.active)    .bnav-item[data-page="mypage"] .bnav-lbl {
         font-weight: 700;
     }

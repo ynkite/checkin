@@ -156,10 +156,10 @@
 }
 
 .wx-d-lab {
-  font-family: var(--fig);
+  font-family: var(--sans);
   font-size: 11px;
   color: var(--ink-3);
-  letter-spacing: var(--tracking-num);
+  letter-spacing:normal;
 }
 
 .wx-d.on .wx-d-lab {
@@ -200,7 +200,7 @@
 
 .wx-d-pop {
   margin-top: 3px;
-  font-family: var(--fig);
+  font-family: var(--sans);
   font-size: 11px;
   color: var(--ink-3);
 }
@@ -297,11 +297,11 @@
 
 .wx-o-f b {
   display: block;
-  font-family: var(--fig);
+  font-family: var(--sans);
   font-size: 17px;
   font-weight: 400;
   color: var(--ink);
-  letter-spacing: var(--tracking-num);
+  letter-spacing:normal;
 }
 
 /* 예보가 없는 날 — 숫자를 앞에 두지 않는다 */
@@ -329,7 +329,7 @@
 }
 
 .wx-o-normal b {
-  font-family: var(--fig);
+  font-family: var(--sans);
   font-weight: 400;
   color: var(--ink);
 }

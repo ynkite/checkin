@@ -127,7 +127,7 @@
                     title.textContent = region + ' 예보';
                     box.innerHTML = failed
                         ? '<p class="wx-o-none"><b>예보를 불러오지 못했습니다.</b>' +
-                          '연결이 끊겼거나 기상청이 답하지 않았습니다. 없는 것이 아니라 받지 못한 것입니다.' +
+                          '연결이 끊겼거나 기상청이 답하지 않았습니다. 잠시 뒤에 다시 열어 보세요.' +
                           '<button type="button" class="btn-o wx-retry" onclick="wxReload()">다시 시도</button></p>'
                         : '<p class="wx-o-none"><b>' + region + ' 예보가 아직 없습니다.</b>' +
                           '기상청이 이 지역 예보를 내지 않았습니다. 다른 지역을 골라 보세요.</p>';
@@ -192,7 +192,7 @@
                         '<div class="wx-o-none"><b>아직 예보가 나오지 않았습니다.</b>' +
                         '기상청 예보는 열흘 뒤까지만 나옵니다. 그 뒤 날짜는 여행이 가까워지면 채워집니다.' +
                         (d && d.tempMin != null
-                            ? '<div class="wx-o-normal">이 달 평년 기온은 <b>' + d.tempMin +
+                            ? '<div class="wx-o-normal">이달 평년 기온은 <b>' + d.tempMin +
                               '°~' + d.tempMax + '°</b>쯤입니다. 예보가 아니라 2011~2020년 월평균을 어림한 값입니다.</div>'
                             : '') +
                         '</div>' +

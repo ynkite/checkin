@@ -275,7 +275,7 @@
           let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
           let roleCell='<span style="font-size:11px;color:var(--text3)">탈퇴</span>';
           if(u.status!=='DELETED'){
-            if(u.role!=='ADMIN') suspCell=u.status==='ACTIVE'?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal(${_admJs(u.username)},'${u.userId}')">정지</button>`:`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+            if(u.role!=='ADMIN') suspCell=u.status==='ACTIVE'?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal(${_admJs(u.username)},'${u.userId}')">정지</button>`:`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지 해제</button>`;
             else suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
             if(u.role==='USER') roleCell=u.status==='SUSPENDED'?`<button class="btn-o" style="padding:4px 12px;font-size:12px;opacity:.45;cursor:not-allowed" disabled>관리자 전환</button>`:`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('promote','${u.userId}',${_admJs(u.username)})">관리자 전환</button>`;
             else roleCell=`<button class="btn-o" style="padding:4px 12px;font-size:12px" onclick="changeRole('demote','${u.userId}',${_admJs(u.username)})">일반 회원 전환</button>`;
@@ -309,7 +309,7 @@
           const pName=r.processedByName?`[${_admEsc(r.processedByName)}]`:'';
           let rStatusBadge;
           if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
-          else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
+          else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">처리 완료${pName}</span>`;
           else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
           else rStatusBadge=`<span class="badge">${_admEsc(r.status)}</span>`;
           return`<tr><td>#${r.reportId}</td><td><span style="cursor:pointer;color:var(--sage-d);text-decoration:underline;font-weight:600" onclick="openAdminPostDetail(${r.postId})">${_admEsc(r.postTitle||('#'+r.postId))}</span></td><td>${_admEsc(r.reporterName||'-')}</td><td style="white-space:nowrap"><span style="font-size:12px;color:var(--text2);margin-right:6px;font-weight:500">${(r.commentId && r.commentId > 0) ? _admEsc(r.commentAuthorName||'-') : _admEsc(r.postAuthorName||'-')}</span><button class="btn-o" style="padding:2px 8px;font-size:11px" onclick="findReportedAuthor(${r.postId},${_admJs(r.commentAuthorName||'')})">보기</button></td><td>${_admEsc(r.reason)}</td><td>${rStatusBadge}</td><td style="white-space:nowrap">${actionCell}</td></tr>`;
@@ -363,7 +363,7 @@
                 if(res.__failed){
                   const statsEl=document.querySelector('.stats-grid');
                   if(statsEl) statsEl.innerHTML='<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text3);line-height:1.7">'
-                    + '<b style="color:var(--text2)">수치를 불러오지 못했습니다.</b><br>연결이 끊겼거나 서버가 답하지 않았습니다. 0 이 아니라 받지 못한 것입니다.'
+                    + '<b style="color:var(--text2)">수치를 불러오지 못했습니다.</b><br>연결이 잠시 끊겨 불러오지 못했습니다. 잠시 뒤 다시 열어 보세요.'
                     + '<br><button type="button" class="btn-o" style="margin-top:12px;min-height:44px;min-width:44px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center" onclick="renderDynamicMockData()">다시 시도</button></div>';
                   return;
                 }
@@ -399,7 +399,7 @@
                           renderDonut('신고 처리 현황',[
                             {label:'미처리',   value:reportStatus.pending,  color:'var(--coral)'},
                             {label:'반려',     value:reportStatus.rejected, color:'var(--text3)'},
-                            {label:'처리완료', value:reportStatus.resolved, color:'var(--sage)'},
+                            {label:'처리 완료', value:reportStatus.resolved, color:'var(--sage)'},
                           ]);
                 }
 
@@ -507,7 +507,7 @@
               .then(res=>{
                 const tbody=document.getElementById('adminUserTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
-                  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3)">불러오지 못했습니다. 잠시 뒤에 다시 해 보세요.</td></tr>';
                   renderAdminPagination('admin-user-pagination', 0, 0, '_goUserPage');
                   return;
                 }
@@ -527,7 +527,7 @@
                   else if(u.status==='DELETED')   badge='<span class="badge" style="background:var(--ui-plate);color:var(--ink-3);border:1px solid var(--ink-3);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600">탈퇴</span>';
                   else badge=`<span class="badge badge-a">${_admEsc(u.status)}</span>`;
 
-                  // 관리 열: 정지/정지해제만
+                  // 관리 열: 정지/정지 해제만
                   let suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
                   // 전환 열: 역할 변경만
                   let roleCell='<span style="font-size:11px;color:var(--text3)">탈퇴</span>';
@@ -535,7 +535,7 @@
                     if(u.role!=='ADMIN'){
                       suspCell=u.status==='ACTIVE'
                               ?`<button class="btn-o" style="color:var(--coral);border-color:var(--coral);padding:4px 12px;font-size:12px" onclick="openSuspendModal(${_admJs(u.username)},'${u.userId}')">정지</button>`
-                              :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지해제</button>`;
+                              :`<button class="btn-o" style="color:var(--sage-d);border-color:var(--sage-d);padding:4px 12px;font-size:12px" onclick="unsuspendUser(${u.userId})">정지 해제</button>`;
                     } else {
                       suspCell='<span style="font-size:11px;color:var(--text3)">-</span>';
                     }
@@ -576,7 +576,7 @@
     async function unsuspendUser(userId){
       if(!confirm('정지를 해제하시겠습니까?')) return;
       const res=await api.patch('/api/admin/users/'+userId+'/unsuspend',{});
-      toast(res.success?'정지 해제 완료 · 알림 전송됨':'정지 해제에 실패했습니다.');
+      toast(res.success?'정지를 풀었습니다. 회원에게 알렸습니다.':'정지를 풀지 못했습니다.');
       if(res.success) loadAdminUsers();
     }
 
@@ -685,7 +685,7 @@
               .then(res=>{
                 const tbody=document.getElementById('adminReportTable'); if(!tbody) return;
                 if(!res.data||!res.data.content){
-                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">불러오기에 실패했습니다</td></tr>';
+                  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3)">불러오지 못했습니다. 잠시 뒤에 다시 해 보세요.</td></tr>';
                   return;
                 }
                 const list=res.data.content||[];
@@ -703,7 +703,7 @@
                   const pName=r.processedByName?`[${_admEsc(r.processedByName)}]`:'';
                   let rStatusBadge;
                   if(r.status==='PENDING') rStatusBadge='<span class="badge" style="background:var(--tile-pale);color:var(--coral);border:1px solid var(--tile);padding:3px 8px;border-radius:12px;font-size:11px">미처리</span>';
-                  else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">신고${pName}</span>`;
+                  else if(r.status==='RESOLVED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">처리 완료${pName}</span>`;
                   else if(r.status==='REJECTED') rStatusBadge=`<span class="badge" style="background:var(--slate-pale);color:var(--slate);border:1px solid var(--slate);padding:3px 8px;border-radius:12px;font-size:11px">반려${pName}</span>`;
                   else rStatusBadge=`<span class="badge">${_admEsc(r.status)}</span>`;
                   return`<tr>
@@ -936,9 +936,9 @@
       else           res=await api.post('/api/admin/curations',payload);
 
       if(res&&res.success){
-        toast(_curEditId?'큐레이션이 수정되었습니다.':'큐레이션을 올렸습니다.');
+        toast(_curEditId?'큐레이션을 수정했습니다.':'큐레이션을 올렸습니다.');
         resetCurationForm(); loadAdminCurations();
-      } else toast('저장에 실패했습니다.');
+      } else toast('저장하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     }
 
     function resetCurationForm(){
@@ -1034,8 +1034,8 @@
     async function deleteCuration(id){
       if(!confirm('큐레이션을 삭제하시겠습니까?')) return;
       const res=await api.del('/api/admin/curations/'+id);
-      if(res&&res.success){toast('삭제되었습니다.');loadAdminCurations();}
-      else toast('삭제에 실패했습니다.');
+      if(res&&res.success){toast('삭제했습니다.');loadAdminCurations();}
+      else toast('삭제하지 못했습니다. 잠시 뒤에 다시 해 보세요.');
     }
 
     (function() {
@@ -1131,7 +1131,7 @@
               </div>
             </div>
             <div style="margin-top:18px">
-              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">일자별 추이 (신규가입자 · 신규일정 · 조회수)</div>
+              <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">일자별 추이 (신규 가입자 · 신규 일정 · 조회수)</div>
               <svg id="stat-trend-svg" viewBox="0 0 640 200" style="width:100%;height:200px;overflow:visible"></svg>
               <div id="stat-trend-legend" style="display:flex;gap:16px;font-size:11px;color:var(--text3);margin-top:6px"></div>
             </div>
@@ -1178,7 +1178,7 @@
                     style="width:auto"
                     onchange="loadAdminReports(this.value)">
               <option value="PENDING">미처리</option>
-              <option value="RESOLVED">처리완료</option>
+              <option value="RESOLVED">처리 완료</option>
               <option value="REJECTED">반려됨</option>
               <option value="">전체</option>
             </select>
@@ -1381,16 +1381,16 @@
         </div>
         <div class="sus-notif">
           <div class="sus-n-ttl">정지 알림 메시지</div>
-          <div class="sus-n-sub">로그인 시 해당 회원에게 표시될 메시지입니다</div>
+          <div class="sus-n-sub">해당 회원이 로그인하면 볼 안내입니다</div>
           <textarea class="sus-n-ta" id="su-notify-msg" rows="2"
-                    placeholder="귀하의 계정은 운영 정책 위반으로 인해 정지되었습니다.(커뮤니티, 댓글 기능 이용불가능)"></textarea>
+                    placeholder="운영 정책을 어겨 계정이 정지됐습니다. (커뮤니티 글과 댓글을 쓸 수 없습니다)"></textarea>
         </div>
         <div class="sus-guide">
           정지하면 그 계정은 바로 로그아웃되고, 다시 들어올 때 정지 안내를 봅니다.<br>
-          정지 계정은 로그아웃 및 마이페이지 내 정보 관리만 가능합니다.
+          정지된 계정은 로그아웃과 마이페이지 내 정보 관리만 할 수 있습니다.
         </div>
         <div class="sus-foot">
-          <button class="btn-sus-ok" onclick="confirmSuspend()">정지 완료</button>
+          <button class="btn-sus-ok" onclick="confirmSuspend()">정지하기</button>
           <button class="btn-sus-cl" onclick="closeSuspendModal()">취소</button>
         </div>
       </div>

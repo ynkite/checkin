@@ -47,7 +47,7 @@
   --nav-symbol:36px;
   --map-label-width:128px;
   --map-label-small:96px;
-  --map-label-font:13px;
+  --map-label-font:12px;
   --map-pin-size:32px;
   --map-pin-ring:3px;
   --map-label-offset:36px;
@@ -135,7 +135,7 @@
   --home-pin-size:28px;
   --home-radius:24px;
   --home-cut:rgba(255,158,18,.16);
-  --home-shadow:0 2px 0 rgba(16,22,32,.10),0 6px 0 rgba(16,22,32,.04);
+  --home-shadow:none;
   --home-ease:cubic-bezier(.2,.75,.25,1);
 
   /* ── 모서리 · 그림자 ───────────────────────────────────── */
@@ -172,7 +172,7 @@
      3.64 였고, --page 위에서 3.47, --page-2 위에서 3.36 이었다.
      본문 크기 글자에 쓰려면 4.5 가 필요하다. 색조를 유지하고 어둡게 잡았다.
      지금 값: 흰 4.93 · --page 4.71 · --page-2 4.55 */
-  --ink-3:#687180;
+   --ink-3:#5A6372;
   --hair:rgba(16,22,32,.16);
 
   /* ── 신호색: 하나만 쓴다 ───────────────────────────────
@@ -180,7 +180,7 @@
      밝은 배경 위 글자에는 --sig 가 아니라 --num 을 쓴다(대비 확보). */
   --sig:#FF9E12;
   --sig-deep:#8A5000;
-  --num:#AB5C00;
+  --num:#985000;
 
   /* ── UI 크롬 ────────────────────────────────────────────
      주 버튼은 잉크다. 데모가 그랬고, 미니어처가 주황을 다 갖고 있어
@@ -196,7 +196,7 @@
 
   /* 강조 — 테라코타는 버튼 색이 아니라 「혼잡」 단계 전용으로 내린다.
      세 값 모두 흰 배경 위 글자와 흰 글자 배경 양쪽으로 대비 4.5:1 이상. */
-  --terra:#B64F18;       /* 혼잡 · 보조 강조 */
+  --terra:#8F3D10;       /* 혼잡 · 보조 강조 */
   --terra-pale:#FDF1E3;
   --tile:#C8402A;        /* 매우 혼잡 · 오류 */
   --tile-pale:#FCEBE7;
@@ -207,7 +207,7 @@
      --sig 는 밝은 앰버라 흰 글자가 안 읽힌다. 짙은 갈색을 쓴다.
      대비 --on-sig 9.5 · --on-sig-2 5.6 (--sig 배경 기준) */
   --on-sig:#331C00;
-  --on-sig-2:#6B3C00;
+  --on-sig-2:#5B3200;
 
   /* 페이지 바닥 — 풍경(--void)과 분리한다. 읽는 면은 시간과 무관해야 한다 */
   --page:#F8FAFC;
@@ -229,7 +229,7 @@
   :root{ --map-model-rail:0px }
 }
 @media (max-width:760px){
-  :root{ --map-label-font:12px }
+  :root{ --map-label-font:11px }
 }
 @media (prefers-reduced-motion:reduce){
   :root{ --map-pan-duration:0s }
@@ -358,7 +358,7 @@
   --pc5:#3C4756;
   --onmap:#151C28;
   --halo:rgba(255,255,255,.94);
-  --num:#AB5C00;
+  --num:#985000;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -373,7 +373,7 @@
   --ui-line-2:#E9EDF2;
   --ui-plate:#F4F6F9;
   --ui-plate-2:#E6EAEF;
-  --terra:#B64F18;
+  --terra:#8F3D10;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -382,7 +382,7 @@
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
-  --on-sig-2:#6B3C00;
+  --on-sig-2:#5B3200;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
@@ -468,7 +468,7 @@
   --pc5:#7F675C;
   --onmap:#151C28;
   --halo:rgba(255,255,255,.94);
-  --num:#AB5C00;
+  --num:#985000;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -483,7 +483,7 @@
   --ui-line-2:#E9EDF2;
   --ui-plate:#F4F6F9;
   --ui-plate-2:#E6EAEF;
-  --terra:#B64F18;
+  --terra:#8F3D10;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -492,7 +492,7 @@
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
-  --on-sig-2:#6B3C00;
+  --on-sig-2:#5B3200;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
@@ -500,7 +500,7 @@
 [data-sky="night"]{
   /* 23:00 — 푸른 어둠. 도로가 땅보다 밝다(가로등). 창문만 노랗다 */
   --void:#0F1A30;
-  --plate:#60626B;
+  --plate:#293543;
   --water:#4B5660;
   --beach:#5D5D61;
   --green:#585C61;
@@ -511,33 +511,33 @@
   --rd3:#8C909C;
   --rdpv:#84858E;
   --lane:#F8D470;
-  --w1:#636369;
-  --w2:#5A5A60;
-  --w2c:#585961;
-  --w2w:#5A5A5F;
-  --a0:#52545F;
-  --a1:#484B57;
+  --w1:#A3AFBC;
+  --w2:#7E8D9E;
+  --w2c:#788A9F;
+  --w2w:#918E90;
+  --a0:#BDC8D4;
+  --a1:#8F9DAE;
   --a2:#3E424F;
-  --b0:#444956;
-  --b1:#3B404F;
+  --b0:#92A8C0;
+  --b1:#71879F;
   --b2:#323848;
-  --c0:#5C5E65;
-  --c1:#54555D;
+  --c0:#C6C6C4;
+  --c1:#989DA5;
   --c2:#494A54;
-  --d0:#3B3340;
-  --d1:#332D3C;
+  --d0:#B37F6C;
+  --d1:#916556;
   --d2:#2B2839;
-  --e0:#545761;
-  --e1:#4A4D59;
+  --e0:#B0BDCA;
+  --e1:#8798AA;
   --e2:#3F4350;
-  --f0:#56565B;
-  --f1:#4D4C53;
+  --f0:#C8B38C;
+  --f1:#A08F73;
   --f2:#42424B;
-  --g0:#393F51;
-  --g1:#31384B;
+  --g0:#899DBE;
+  --g1:#6E819E;
   --g2:#2A3144;
-  --h0:#3A3E4C;
-  --h1:#323747;
+  --h0:#A2ADBB;
+  --h1:#7D8A9C;
   --h2:#2B3042;
   --m0:#FFD379;
   --m1:#F3C673;
@@ -577,8 +577,8 @@
   --pc4:#9A763F;
   --pc5:#2C3343;
   --onmap:#F2F5FA;
-  --halo:rgba(18,26,46,0.94);
-  --num:#AB5C00;
+  --halo:rgba(255,255,255,.94);
+  --num:#985000;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -593,7 +593,7 @@
   --ui-line-2:#E9EDF2;
   --ui-plate:#F4F6F9;
   --ui-plate-2:#E6EAEF;
-  --terra:#B64F18;
+  --terra:#8F3D10;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -602,7 +602,7 @@
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
-  --on-sig-2:#6B3C00;
+  --on-sig-2:#5B3200;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }
@@ -610,7 +610,7 @@
 [data-sky="dawn"]{
   /* 06:00 — 차고 옅다. 채도도 대비도 낮다 */
   --void:#BDBFC5;
-  --plate:#C4C4CA;
+  --plate:#B8BEC7;
   --water:#A1B0BE;
   --beach:#C2BBB5;
   --green:#B7BBB8;
@@ -621,10 +621,10 @@
   --rd3:#CECFD5;
   --rdpv:#C6C1BE;
   --lane:#E3CC95;
-  --w1:#C5C2C2;
-  --w2:#B7B3B2;
-  --w2c:#B4B2B4;
-  --w2w:#B8B2B0;
+  --w1:#E2E5E9;
+  --w2:#CDD3DA;
+  --w2c:#C8D0DA;
+  --w2w:#D1CFCA;
   --a0:#B1B2BA;
   --a1:#A2A4AD;
   --a2:#93959F;
@@ -687,8 +687,8 @@
   --pc4:#C9A67E;
   --pc5:#6F707B;
   --onmap:#AEAEB4;
-  --halo:rgba(18,26,46,0.94);
-  --num:#AB5C00;
+  --halo:rgba(255,255,255,.94);
+  --num:#985000;
   --panel:#FFFFFF;
   --panel-2:#E6EAEF;
   --ink:#101620;
@@ -703,7 +703,7 @@
   --ui-line-2:#E9EDF2;
   --ui-plate:#F4F6F9;
   --ui-plate-2:#E6EAEF;
-  --terra:#B64F18;
+  --terra:#8F3D10;
   --terra-pale:#FDF1E3;
   --tile:#C8402A;
   --tile-pale:#FCEBE7;
@@ -712,7 +712,7 @@
   --void-veil:rgba(255,255,255,.86);
   --void-veil-2:rgba(255,255,255,.97);
   --on-sig:#331C00;
-  --on-sig-2:#6B3C00;
+  --on-sig-2:#5B3200;
   --sh-ui:0 2px 16px rgba(40,30,22,.07);
   --sh-ui-h:0 10px 34px -8px rgba(40,30,22,.20);
 }

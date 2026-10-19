@@ -113,32 +113,32 @@
       window.ckSky();
     })();
   </script>
-  <link rel="stylesheet" th:href="@{/css/tokens.css(v=20261019a)}">
+  <link rel="stylesheet" th:href="@{/css/tokens.css(v=20261019h)}">
   <link rel="stylesheet" th:href="@{/css/styles_massing.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_main.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_budget.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_place.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_weather.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20261019a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_community.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_calendar.css(v=20260917e)}">
+  <link rel="stylesheet" th:href="@{/css/styles_main.css(v=20261019i)}">
+  <link rel="stylesheet" th:href="@{/css/styles_budget.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_place.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_weather.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_live.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_community.css(v=20261019i)}">
+  <link rel="stylesheet" th:href="@{/css/styles_calendar.css(v=20261019h)}">
   <link rel="stylesheet" th:href="@{/css/styles_float.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_home.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_hero.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_stage.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_sections.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_saved.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_map.css(v=20261019a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_planner.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_responsive.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_home.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_hero.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_stage.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_sections.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_saved.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_map.css(v=20261019i)}">
+  <link rel="stylesheet" th:href="@{/css/styles_planner.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_responsive.css(v=20261019h)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_main.css(v=20260917e)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_mypage.css(v=20261019a)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_map.css(v=20261018a)}">
   <link rel="stylesheet" th:href="@{/css/styles_responsive_budget.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_footer.css(v=20260917e)}">
-  <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20261018a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_drive.css(v=20261019a)}">
-  <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20261018a)}">
+  <link rel="stylesheet" th:href="@{/css/styles_footer.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_nav.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_drive.css(v=20261019h)}">
+  <link rel="stylesheet" th:href="@{/css/styles_focus.css(v=20261019h)}">
   <link rel="stylesheet" th:href="@{/css/styles_phone.css(v=20261018b)}">
   <link rel="stylesheet" th:href="@{/css/styles_explore.css(v=20261018a)}">
   <script th:src="'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + ${kakaoMapKey} + '&autoload=false&libraries=services'"></script>
@@ -358,7 +358,7 @@
       <img class="foot-logo" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
       <p class="foot-slogan">붐비면 다음 동선을 바꿉니다</p>
       <p class="foot-desc">
-        경로와 예산과 날씨를 한 화면에서 보고,<br>
+        경로·예산·날씨를 한 화면에서 보고,<br>
         어긋나면 그 자리에서 바꿉니다.
       </p>
     </div>
@@ -408,7 +408,7 @@
     <p class="lv-bd">고친 내용이 남아 있습니다. 저장하고 넘어갈까요?</p>
     <div class="lv-acts">
       <button type="button" class="lv-go" onclick="confirmLeaveAndSave()">저장하고 넘어가기</button>
-      <button type="button" class="lv-no" onclick="closeUnsavedChangesModal()">여기 있기</button>
+      <button type="button" class="lv-no" onclick="closeUnsavedChangesModal()">계속 고치기</button>
     </div>
   </div>
 </div>

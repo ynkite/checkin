@@ -88,6 +88,10 @@ html {
     scroll-behavior: smooth
 }
 
+@media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+}
+
 body {
     font-family: var(--sans);
     background: var(--cream);
@@ -246,6 +250,8 @@ nav {
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%) translateY(80px);
+    opacity: 0;
+    visibility: hidden;
     background: var(--text);
     color: var(--panel);
     padding: 11px 22px;
@@ -253,15 +259,18 @@ nav {
     font-size: 13px;
     font-weight: 500;
     z-index: 9999;
-    transition: transform .3s;
+    transition: transform .3s, opacity .3s;
     max-width: 90vw;
     text-align: center;
     pointer-events: none;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: keep-all;
 }
 
 .toast.show {
-    transform: translateX(-50%) translateY(0)
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    visibility: visible;
 }
 
 /* OVERLAY / MODAL */
@@ -274,13 +283,16 @@ nav {
     align-items: center;
     justify-content: center;
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transition: opacity .25s;
+    transition: opacity .25s, visibility 0s .25s;
     padding: 20px
 }
 
 .overlay.open {
     opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
     pointer-events: all
 }
 
@@ -303,6 +315,15 @@ nav {
 .overlay.open .modal {
     transform: none
 }
+
+.dv-ask .modal{
+  width:calc(var(--u)*47); padding:calc(var(--u)*3.5) calc(var(--u)*3) calc(var(--u)*3);
+  word-break:keep-all;
+}
+.dv-ask .mp-mhint{ margin:var(--u) 0 calc(var(--u)*2.5) }
+.dv-ask-row{ display:flex; gap:var(--u) }
+.dv-ask-row .mp-mbtn{ flex:1; min-width:0; min-height:var(--home-target) }
+.dv-ask-row .mp-mbtn:first-child{ background:var(--panel); color:var(--ink-2); border-color:var(--ui-line) }
 
 .modal-hd {
     display: flex;
@@ -3750,6 +3771,10 @@ nav {
     display: flex;
     align-items: center;
     gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: inherit;
     font-size: 12px;
     color: var(--sage);
     font-weight: 700;
@@ -4516,7 +4541,7 @@ nav {
 .ck-lv{ border-bottom:1px solid var(--ui-line-2) }
 .ck-lv-in{
   display:grid;
-  grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-columns:minmax(0,1fr) auto;
   align-items:center;
   gap:calc(var(--u)*2) calc(var(--u)*5);
   max-width:var(--home-width);
@@ -4541,20 +4566,6 @@ nav {
 .ck-lv-d{ margin-top:var(--u); font-size:var(--t-sm); line-height:1.75; color:var(--ink-2) }
 
 /* 무엇이 실시간으로 바뀌는지 넷. 이 넷이 이 블록의 근거다 */
-.ck-lv-sig{ min-width:0 }
-.ck-lv-cap{ margin-bottom:calc(var(--u)*1.5); font-size:var(--t-xs); line-height:1.5; color:var(--ink-3) }
-.ck-lv-list{ display:flex; flex-wrap:wrap; gap:var(--u); margin:0; padding:0; list-style:none }
-.ck-lv-list li{
-  display:flex; align-items:center; gap:calc(var(--u)*.75);
-  min-height:calc(var(--u)*4); padding:calc(var(--u)*.75) calc(var(--u)*1.5);
-  border-radius:var(--r-pill); background:var(--ui-plate);
-  font-size:var(--home-meta); line-height:1.4; color:var(--ink); white-space:nowrap;
-}
-.ck-lv-i{
-  flex:0 0 auto; width:calc(var(--u)*2); height:calc(var(--u)*2);
-  fill:none; stroke:var(--ink-2); stroke-width:1.7;
-  stroke-linecap:round; stroke-linejoin:round;
-}
 
 .ck-lv-acts{ display:flex; flex-wrap:wrap; gap:var(--u) }
 .ck-lv-go, .ck-lv-sub{
@@ -4563,7 +4574,7 @@ nav {
   border-radius:var(--r-pill);
   font-family:inherit; font-size:var(--t-sm); font-weight:700; line-height:1.4;
   word-break:keep-all;
-  transition:background-color .18s var(--home-ease), color .18s var(--home-ease);
+  transition:transform .18s var(--home-ease);
 }
 .ck-lv-go{ background:var(--ink); color:var(--panel) }
 .ck-lv-go:hover{ background:var(--home-dark-hover) }
@@ -4574,8 +4585,7 @@ nav {
    글 + 칩 넷 + 단추 둘이 한 줄에 들어가려면 1240 은 있어야 한다 */
 @media (max-width:1240px){
   .ck-lv-in{ grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:calc(var(--u)*2.5) calc(var(--u)*4) }
-  .ck-lv-say{ grid-column:1 / -1; max-width:64ch }
-  .ck-lv-sig{ grid-column:1 }
+  .ck-lv-say{ max-width:64ch }
   .ck-lv-acts{ grid-column:2; justify-content:flex-end }
 }
 @media (max-width:600px){
@@ -4583,6 +4593,4 @@ nav {
   .ck-lv-say{ max-width:none }
   .ck-lv-acts{ grid-column:1 }
   .ck-lv-go, .ck-lv-sub{ flex:1 1 calc(var(--u)*18); padding-inline:calc(var(--u)*2) }
-  .ck-lv-list{ gap:calc(var(--u)*.75) }
-  .ck-lv-list li{ padding-inline:calc(var(--u)*1.25) }
 }

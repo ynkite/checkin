@@ -67,6 +67,6 @@
   transition:transform .15s;
 }
 
-.ck-skip:focus{
+.ck-skip:focus-visible{
   transform:translateY(0);
 }

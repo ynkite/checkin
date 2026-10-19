@@ -241,7 +241,7 @@
         '야영장 정보가 확인되지 않았습니다.');
       html += spots(data.trails, '걷는 길·자전거 길',
         '두루누비에 이 지역 코스가 올라와 있지 않습니다.',
-        '둘레길 정보가 확인되지 않았습니다.');
+        '걷는 길 정보가 확인되지 않았습니다.');
 
       /* 평소 하루 몇 명이 오는가. 집중률 74 가 몇 명인지 이 줄이 말해 준다.
          데이터랩은 과거 실측이고 두어 달 늦게 올라온다 — 받은 날짜를 그대로 적는다.
@@ -251,7 +251,7 @@
         const man = n => n >= 10000 ? (Math.round(n / 1000) / 10) + '만 명' : Math.round(n).toLocaleString() + '명';
         const ymd = t => t ? Number(t.slice(4, 6)) + '/' + Number(t.slice(6, 8)) : '';
         html += `<div style="${small};margin:8px 0 0;line-height:1.6">
-          ${_mpEsc(v.areaName)}에는 하루 평균 <b style="color:var(--num)">${man(v.outsidersPerDay)}</b>이 밖에서 옵니다
+          ${_mpEsc(v.areaName)}에는 하루 평균 <b style="color:var(--num)">${man(v.outsidersPerDay)}</b>이 다른 지역에서 옵니다
           <span style="opacity:.8">(${ymd(v.fromYmd)}~${ymd(v.toYmd)} 실측 · 현지인 ${man(v.localsPerDay)})</span></div>`;
       } else if (data.visitors && data.visitors.status === 'UNAVAILABLE') {
         html += `<div style="${small};margin:8px 0 0">이 지역 방문자 수가 확인되지 않았습니다.</div>`;
@@ -281,7 +281,7 @@
     /* 받아 둔 예측. 이름 -> { rate, levelKey, levelLabel } */
     var _mpCrowd = {};
     var _mpCrowdWhy = '';        /* 자료가 없을 때 그 이유 한 줄 */
-    var _mpQuiet = [];           /* 그 날 한적한 곳 */
+    var _mpQuiet = [];           /* 그날 한적한 곳 */
     var _mpTimeline = null;      /* 가장 붐비는 곳의 날짜별 흐름 */
 
     /* 이 여행이 어느 지역인가.
@@ -495,7 +495,7 @@
 
       var stops = _mvStops();
       if (!stops.length) {
-        _mvSayNone('이 경로에는 좌표가 있는 장소가 없습니다.');
+        _mvSayNone('이 경로에는 지도에 위치가 잡힌 장소가 없습니다.');
         return;
       }
 
@@ -1137,7 +1137,7 @@
       if (!plan.ready) {
         box.hidden = false;
         box.innerHTML = '<p class="mp-dp-1">' + _mpEsc(plan.originName) + '에서 출발</p>' +
-          '<p class="mp-dp-2">이동시간을 불러오지 못했습니다. 경로를 다시 확인해 주세요.</p>';
+          '<p class="mp-dp-2">이동 시간을 불러오지 못했습니다. 잠시 뒤에 다시 열어 보세요.</p>';
         return;
       }
       if (!leg || leg.minutes == null) {
@@ -1299,7 +1299,7 @@
       if (b.festivals && b.festivals.length) {
         out += '<p>여행 기간에 <b>' + _mpEsc(b.festivals[0].title) + '</b>' +
                (b.festivals.length > 1 ? ' 등 ' + b.festivals.length + '개' : '') +
-               '가 열립니다. 숙소가 빨리 찹니다.</p>';
+               '가 열립니다. 숙소 예약이 빨리 찰 수 있습니다.</p>';
       }
       note.className = out ? 'mp-bg-note' : '';
       note.innerHTML = out;
@@ -1392,7 +1392,7 @@
       box.hidden = false;
       box.innerHTML =
         '<p class="mp-al-1">' + _mpEsc(a) + _mpJosa(a, '이', '가') +
-          ' 그 날 <em>' + _mpEsc(grade) + '</em>합니다</p>' +
+          ' 그날 <em>' + _mpEsc(grade) + '</em>합니다</p>' +
         '<p class="mp-al-2">' + when +
           _mpEsc(a) + _mpJosa(a, '과', '와') + ' ' + _mpEsc(b) +
           _mpJosa(b, '의', '의') + ' 순서를 바꾸면 붐비는 시간을 비껴갑니다.</p>' +
@@ -1410,7 +1410,7 @@
           '0~100 눈금에서 ' + Math.round(f.idx) + '입니다.</p>';
     }
 
-    /* 다른 곳으로 — 그 날 실제로 한적한 곳을 보여 주고 고르게 한다.
+    /* 다른 곳으로 — 그날 실제로 한적한 곳을 보여 주고 고르게 한다.
        전에는 빈 입력만 열어 놓고 사용자가 알아서 찾게 했다. */
     function _mpAskReplace() {
       var f = _mpWorst(MAP_ITINERARY[0] || {});
@@ -1425,7 +1425,7 @@
 
       box.innerHTML =
         '<p class="mp-al-1">' + _mpEsc(f.worst.name) + ' 대신 갈 만한 곳</p>' +
-        '<p class="mp-al-2">같은 지역에서 그 날 한적한 곳입니다. ' +
+        '<p class="mp-al-2">같은 지역에서 그날 한적한 곳입니다. ' +
           '고르면 그 자리에 넣습니다.</p>' +
         '<div class="mp-quiet">' +
         _mpQuiet.slice(0, 6).map(function (q, i) {
@@ -1563,7 +1563,7 @@
         var pair = typeof _fmtRoutePair === 'function' ? _fmtRoutePair(res.delta) : '';
         toast(pair ? '저장했습니다 · ' + pair : '저장했습니다.', pair ? 4200 : 2800);
         initMapPage();                      /* 보정된 일정을 다시 읽는다. _mpUndo 도 여기서 비운다 */
-      }).catch(function () { toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.'); });
+      }).catch(function () { toast('지금은 연결이 원활하지 않습니다. 잠시 뒤에 다시 해 보세요.'); });
     }
 
     function _mpUndoOrder() {
@@ -1702,14 +1702,14 @@
     // 확정 ↔ 수정 토글 버튼 핸들러
     async function togglePlanConfirm() {
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
-      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+      if (!tripId) { toast('일정이 없습니다.'); return; }
 
       // 현재 수정 중 → '확정'으로 전환 / 현재 확정 → '수정'으로 전환
       const nextStatus = window._planConfirmed ? 'DRAFT' : 'FIXED';
 
       try {
         const res = await api.patch(`/api/trips/${tripId}/status`, { status: nextStatus });
-        if (!res.success) { toast(res.message || '상태 변경에 실패했습니다.'); return; }
+        if (!res.success) { toast(res.message || '확정 상태를 바꾸지 못했습니다.'); return; }
 
         /* 저장된 여행을 고치는 중 — 머리글이 새 플랜 단계로 바뀌지 않게 표시해 둔다 */
         if (nextStatus === 'FIXED') sessionStorage.removeItem('editingSavedTrip');
@@ -1735,10 +1735,10 @@
             modal.classList.add('open');
           }
         } else {
-          toast('수정 모드로 전환되었습니다.');
+          toast('이제 일정을 고칠 수 있습니다.');
         }
       } catch (e) {
-        toast('서버에 문제가 있습니다. 잠시 뒤에 다시 해 보세요.');
+        toast('지금은 연결이 원활하지 않습니다. 잠시 뒤에 다시 해 보세요.');
       }
     }
 
@@ -2195,9 +2195,9 @@
           '<div class="mp-empty">' +
           (_hasDraft
             ? '<p>이 플랜에는 아직 경로가 없습니다.</p>' +
-              '<p class="mp-empty-sub">3단계에서 일정 생성을 끝내면 여기에 시각별로 들어옵니다.</p>' +
+              '<p class="mp-empty-sub">3단계에서 일정을 다 만들면 여기에 시간대별로 들어옵니다.</p>' +
               '<button type="button" class="mp-empty-go" onclick="goResumePlanner()">만들던 곳으로</button>'
-            : '<p>아직 만들어진 일정이 없습니다.</p>' +
+            : '<p>아직 만든 일정이 없습니다.</p>' +
               '<p class="mp-empty-sub">지역과 기간만 고르면 첫날 아침부터 시각이 잡힙니다.</p>' +
               '<button type="button" class="mp-empty-go" onclick="goNewPlanner()">경로 만들기</button>') +
           '</div>';
@@ -2659,7 +2659,7 @@
                   ? Math.floor(min / 60) + '시간' + (min % 60 ? ' ' + (min % 60) + '분' : '')
                   : min + '분'))
                     : (km + 'km');
-      var title = min ? (km + 'km · 차로 ' + min + '분') : (km + 'km · 주행 시간을 받지 못했습니다');
+      var title = min ? (km + 'km · 차로 ' + min + '분') : (km + 'km · 차로 걸리는 시간은 알 수 없습니다');
       return '<b class="mp-fartag" title="' + _mpEsc(title) + '">' + _mpEsc(txt) + '</b>';
     }
 
@@ -3362,16 +3362,16 @@
       cats = window._mpMoneyCats || {};
 
       var rows = [
-        { k: 'stay',    label: '숙박' },
-        { k: 'food',    label: '먹는 곳' },
-        { k: 'tour',    label: '볼거리' },
-        { k: 'transit', label: '이동' }
+        { k: 'stay',    label: '숙박비' },
+        { k: 'food',    label: '식비' },
+        { k: 'tour',    label: '입장료' },
+        { k: 'transit', label: '교통비' }
       ].filter(function (r) { return (cats[r.k] || 0) > 0; });
       var sum = rows.reduce(function (a, r) { return a + cats[r.k]; }, 0);
 
       box.hidden = false;
       box.innerHTML =
-        '<div class="mp-mo-hd">전체 여행 예산</div>' +
+        '<div class="mp-mo-hd">여행 총비용</div>' +
         '<div class="mp-mo-n" id="totalBudget">' + total.toLocaleString() + '원</div>' +
         (sum > 0
           ? '<div class="mp-mo-bar">' + rows.map(function (r) {
@@ -3722,7 +3722,7 @@
           naviEl.innerHTML = '<button class="mp-navi" onclick="openKakaoNavi(\'' + _mpQ(realName) + '\',' + pin.lat + ',' + pin.lng + ')">'
                   + '카카오맵에서 길찾기</button>';
         } else {
-          naviEl.innerHTML = '<div class="mp-nocoord">이 장소의 좌표를 카카오 지도에서 찾지 못했습니다.</div>';
+          naviEl.innerHTML = '<div class="mp-nocoord">카카오맵에서 이 장소 위치를 찾지 못했습니다.</div>';
         }
       }
 
@@ -3818,11 +3818,11 @@
     /* ── 지도 화면 전용: 날씨 팝업 열기 ── */
     async function openMapWeatherPopup() {
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
-      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+      if (!tripId) { toast('일정이 없습니다.'); return; }
 
       // 1. DB에서 현재 플랜의 날짜와 여행지 조회
       const r = await api.get(`/api/trips/${tripId}`);
-      if (!r.success || !r.data) { toast('플랜 정보를 불러올 수 없습니다.'); return; }
+      if (!r.success || !r.data) { toast('일정을 불러오지 못했습니다. 잠시 뒤에 다시 해 보세요.'); return; }
       const t = r.data;
       const s = t.startDate;
       const e = t.endDate;
@@ -3851,7 +3851,7 @@
       document.getElementById('mapWeatherPopup').classList.add('open');
 
       const grid = document.getElementById('mwp-grid');
-      grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">로딩 중...</div>';
+      grid.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:16px 0">불러오는 중</div>';
 
       try {
         const res = await fetch('/api/maps/weather?region=' + encodeURIComponent(locStr));
@@ -3938,7 +3938,7 @@
       }
 
       const tripId = window._currentTripId || sessionStorage.getItem('plannerDraftId');
-      if (!tripId) { toast('플랜 정보가 없습니다.'); return; }
+      if (!tripId) { toast('일정이 없습니다.'); return; }
 
       // 기다리는 동안 단계 문구를 토스트로 넘긴다 (시각으로 짐작한 단계)
       const stopSteps = stepText(s => toast(s, 30000), [
@@ -4119,7 +4119,7 @@
       } else if (topVal > 0) {
         finalVal = topVal;
       } else {
-        toast('금액 미입력 — AI 예상 비용으로 유지됩니다.');
+        toast('금액을 적지 않아 예상 금액을 그대로 씁니다.');
         closePriceModal();
         return;
       }
@@ -4127,7 +4127,7 @@
       const oldName = found.place.name;   // 이름 변경 전 기준으로 동일 숙소를 찾기 위해 보관
 
       found.place.name = finalName;
-      /* ₩ 를 빼면 extractAmount 가 못 읽어 그 날 예산에서 숙박비가 통째로 빠진다 */
+      /* ₩ 를 빼면 extractAmount 가 못 읽어 그날 예산에서 숙박비가 통째로 빠진다 */
       found.place.sub = `숙소 · ₩${finalVal.toLocaleString()}`;
       found.place.actualPrice = finalVal;
       recalcDayBudget(found.day);
@@ -4160,7 +4160,7 @@
         if (typeof initMapPage === 'function') initMapPage();
         window._mapEdited = true;
       } catch (e) {
-        toast('저장 실패: ' + e.message);
+        toast('저장하지 못했습니다. 잠시 뒤에 다시 해 보세요. ' + e.message);
       }
     }
   </script>
@@ -4170,7 +4170,7 @@
       <div class="map-left">
         <div class="ml-hd">
           <div class="mp-eyebrow">여행 동선</div>
-          <div class="ml-plan-ttl" id="mapPlanTitle">여행 플랜</div>
+          <div class="ml-plan-ttl" id="mapPlanTitle">여행 일정</div>
           <div class="ml-plan-meta" id="mapPlanMeta"></div>
           <div class="mp-state">
             <div id="planStatusBadge">수정 중</div>
@@ -4193,7 +4193,10 @@
         <!-- 일정 목록: JS initMapPage() 로 동적 주입 -->
         <div class="map-list" id="mapDayList"></div>
         <!-- 이 지역 여행 정보 — 관광공사 거점 관광지 · 반려동물 동반 · 무장애. _mpLoadAreaInfo() 가 채운다 -->
-        <div id="mpAreaInfo" hidden style="padding:14px 16px;border-top:1px solid var(--border2);word-break:keep-all"></div>
+        <details class="mp-area">
+          <summary>지역 여행 정보</summary>
+          <div id="mpAreaInfo" hidden></div>
+        </details>
       </div>
       <!-- MAP RIGHT -->
       <div class="map-right" id="mapRightArea">
@@ -4213,7 +4216,7 @@
           <div class="mv-view" id="mv_view">
             <button type="button" class="mv-vb" id="mv_in" aria-label="확대">+</button>
             <button type="button" class="mv-vb" id="mv_out" aria-label="축소">−</button>
-            <button type="button" class="mv-vb mv-vb-t" id="mv_reset">시점 초기화</button>
+            <button type="button" class="mv-vb mv-vb-t" id="mv_reset">처음 시점으로</button>
           </div>
         </div>
 
@@ -4270,11 +4273,11 @@
         </div>
 
         <div class="mp-float mp-float-r">
-          <div class="weather-alert" onclick="openMapWeatherPopup()">
-            <div class="wa-ttl">여행 기간에 비 소식이 있습니다</div>
-            <div class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</div>
-            <div class="wa-cta">대체 일정 보기</div>
-          </div>
+          <button type="button" class="weather-alert" onclick="openMapWeatherPopup()">
+            <span class="wa-ttl">여행 기간에 비 소식이 있습니다</span>
+            <span class="wa-body">그날 야외 일정을 실내로 바꿔 볼 수 있습니다.</span>
+            <span class="wa-cta">대체 일정 보기</span>
+          </button>
           <!-- 지금 상황 — 붐비는 곳이 있을 때만 _mpCrowdPanel() 이 채운다 -->
           <div class="mp-alert" id="mpAlert" hidden></div>
           <!-- 30일 예상 혼잡도. 「언제 가면 되는가」가 한눈에 보여야 한다.
@@ -4362,7 +4365,7 @@
             <div id="share-post" style="display:none">
               <div class="mp-mnote">링크를 받은 사람은 보기만 합니다.</div>
               <div class="mp-mrow">
-                <input class="mp-minp" id="share-link-val" readonly placeholder="플랜을 먼저 만들어 주세요">
+                <input class="mp-minp" id="share-link-val" readonly placeholder="일정을 먼저 만들어 주세요">
                 <button class="mp-mbtn" onclick="copyShareLink()">복사</button>
               </div>
 
@@ -4436,7 +4439,7 @@
         <div class="mp-mttl">금액은 예약 사이트에서</div>
         <div id="staySiteName" class="mp-sheet-sub"></div>
         <p class="mp-mhint" style="margin:0 0 16px">
-          표시된 금액은 예상값입니다. 숙박 날짜와 인원에 맞는 금액을 확인해 주세요.
+          표시된 금액은 예상 금액입니다. 숙박 날짜와 인원에 맞는 금액을 확인해 주세요.
         </p>
         <div class="mp-sheet-row">
           <button onclick="gotoSite('yeogi')" class="site-btn">여기어때</button>
@@ -4463,7 +4466,7 @@
           <span id="otherStayArrow">▸</span> 다른 숙소로 잡았다면
         </button>
         <div id="otherStayBox" class="mp-subbox" style="display:none">
-          <p class="mp-mhint" style="margin:0 0 12px">여기에 적으면 위쪽 금액 대신 이 값이 들어갑니다.</p>
+          <p class="mp-mhint" style="margin:0 0 12px">여기에 적은 금액으로 숙박비를 계산합니다.</p>
           <label class="mp-flab" for="otherStayName">숙소 이름</label>
           <input id="otherStayName" class="mp-finp" type="text" placeholder="해운대 그랜드호텔"
                  oninput="onOtherStayInput()">

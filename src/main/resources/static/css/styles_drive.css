@@ -76,9 +76,9 @@ body.dv-open{ overflow:hidden }
 }
 .dv-turn-t{ min-width:0; flex:1 1 auto }
 .dv-dist{
-  display:block; font-family:var(--fig); font-weight:700;
+  display:block; font-family:var(--sans); font-weight:700;
   font-size:var(--drive-distance); line-height:1.05;
-  letter-spacing:var(--tracking-num); color:var(--home-on-dark);
+  letter-spacing:normal; color:var(--home-on-dark);
 }
 .dv-dist:empty{ display:none }
 .dv-what{
@@ -202,8 +202,8 @@ body.dv-open{ overflow:hidden }
 .dv-alert-tunnel,.dv-alert-bridge,.dv-alert-underpass,.dv-alert-overpass{ background:var(--slate) }
 .dv-alert-k{ font-size:var(--t-body); font-weight:700; letter-spacing:var(--tracking-tight) }
 .dv-alert-d{
-  font-family:var(--fig); font-size:var(--t-h3); font-weight:700;
-  letter-spacing:var(--tracking-num);
+  font-family:var(--sans); font-size:var(--t-h3); font-weight:700;
+  letter-spacing:normal;
 }
 .dv-alert-n{
   min-width:0; flex:1 1 auto; font-size:var(--home-meta); opacity:.9;
@@ -287,8 +287,8 @@ body.dv-open{ overflow:hidden }
   word-break:keep-all;
 }
 .dv-meta b{
-  font-family:var(--fig); font-size:var(--t-h3); font-weight:700;
-  color:var(--home-on-dark); letter-spacing:var(--tracking-num);
+  font-family:var(--sans); font-size:var(--t-h3); font-weight:700;
+  color:var(--home-on-dark); letter-spacing:normal;
 }
 .dv-meta i{ width:3px; height:3px; border-radius:var(--r-pill); background:var(--home-dark-line) }
 .dv-acts{
@@ -405,11 +405,3 @@ body.dv-driving .dv-lane-why{ display:none }
 .dv-sug-x{ grid-column:1 / -1; background:transparent; color:var(--panel); opacity:.72; font-weight:600 }
 .dv-sug-x:hover{ opacity:1 }
 
-/* ── 시작 확인 창 — 몸체는 styles_main.css .overlay/.modal ── */
-.dv-ask .modal{
-  width:calc(var(--u)*47); padding:calc(var(--u)*3.5) calc(var(--u)*3) calc(var(--u)*3);
-  word-break:keep-all;
-}
-.dv-ask .mp-mhint{ margin:var(--u) 0 calc(var(--u)*2.5) }
-.dv-ask-row{ display:flex; gap:var(--u) }
-.dv-ask-row .mp-mbtn{ flex:1; min-width:0; min-height:var(--home-target) }

@@ -50,21 +50,10 @@
     <!-- 본문 -->
     <div class="ledger-body">
 
-      <!-- 요약 3카드 -->
-      <div class="ledger-summary-grid">
-        <div class="ledger-summary-card">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">예상 총액</div>
-          <div id="ledger-total" style="font-size:20px;font-weight:800;color:var(--text)">-</div>
-        </div>
-        <div class="ledger-summary-card">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">실제 지출</div>
-          <div id="ledger-actual" style="font-size:20px;font-weight:800;color:var(--coral)">-</div>
-        </div>
-        <div class="ledger-summary-card">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">예산 대비</div>
-          <div id="ledger-status" style="font-size:20px;font-weight:800;color:var(--sage)">-</div>
-          <div id="ledger-budget-ref" style="display:none;font-size:10px;color:var(--text3);margin-top:5px"></div>
-        </div>
+      <div class="ledger-summary-grid" aria-label="여행 지출 요약">
+        <p class="ledger-summary-card">예상 <strong id="ledger-total">-</strong> 중 <strong id="ledger-actual">-</strong> 썼습니다.
+          <span>예산 대비 <strong id="ledger-status">-</strong></span></p>
+        <p id="ledger-budget-ref" style="display:none"></p>
       </div>
 
       <!-- 예산 맞춤 — 정한 예산 대비 몇 %, 넘었으면 무엇을 줄였는지 -->
@@ -93,12 +82,12 @@
             <div style="font-size:14px;font-weight:700">숙박비 근거</div>
           </div>
           <div style="font-size:11px;color:var(--ink-3);margin-bottom:12px">
-            실제 요금은 확정, 요금이 없으면 평균 기준으로 셈한 추정입니다.
+            실제 요금이 있으면 확정, 없으면 평균으로 셈한 추정입니다.
           </div>
           <div class="budget-basis-key" aria-label="금액 상태 구분">
             <span data-status="confirmed">확정</span>
             <span data-status="estimated">추정</span>
-            <span data-status="none">해당없음</span>
+            <span data-status="none">해당 없음</span>
           </div>
           <div id="budget-basis-rows"></div>
         </div>
@@ -133,7 +122,7 @@
             <div class="pie-wrap">
               <div id="pie-actual" class="pie-ring" style="background:var(--ui-line-2)"></div>
               <div id="pie-act-legend" class="pie-legend">
-                <div class="pie-leg-item" style="color:var(--text3)">실제 지출 없음</div>
+                <div class="pie-leg-item" style="color:var(--text3)">아직 적은 지출이 없습니다.</div>
               </div>
             </div>
           </div>
@@ -143,7 +132,7 @@
         <!-- 카테고리별 막대 비교 -->
         <div class="ledger-chart-card" style="margin-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-            <div style="font-size:13px;font-weight:700;color:var(--text)">카테고리별 예상 대비 실제</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">항목별 예상 금액과 실제 지출</div>
             <div style="display:flex;align-items:center;gap:14px;font-size:11px;color:var(--text3)">
               <div style="display:flex;align-items:center;gap:5px">
                 <div style="width:22px;height:7px;border-radius:3px;background:var(--text3);opacity:.35"></div>예상
@@ -168,7 +157,7 @@
         <div class="ledger-add-panel" id="ledger-add-panel">
           <div id="ledger-not-started" style="display:none;padding:12px 14px;background:var(--slate-pale);border:1px solid var(--slate);border-radius:8px;margin-bottom:12px;font-size:13px;font-weight:600;color:var(--slate)"></div>
           <div id="ledger-add-form">
-            <div class="ledger-section-ttl">실제 지출 추가 입력</div>
+            <div class="ledger-section-ttl">실제 지출 적기</div>
             <div class="ledger-add" style="margin-top:0">
               <select id="ledger-exp-cat"></select>
               <input type="date" id="ledger-exp-date" style="flex:0 0 auto;padding:8px 8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none;background:var(--surface);color:var(--text)">
@@ -184,12 +173,12 @@
         <div class="ledger-table-panel">
           <div class="ledger-section-ttl">지출 내역</div>
           <div id="ledger-act-table">
-            <div style="color:var(--text3);font-size:12px;padding:12px 0">아직 입력된 실제 지출이 없습니다.</div>
+            <div style="color:var(--text3);font-size:12px;padding:12px 0">아직 적은 지출이 없습니다.</div>
           </div>
           <div id="ledger-pagination"></div>
           <div id="ledger-warning" style="display:none;margin-top:14px;background:var(--terra-pale);border-left:4px solid var(--sig);border-radius:0 8px 8px 0;padding:12px 16px">
             <div style="font-size:12px;font-weight:700;color:var(--num);margin-bottom:3px">아직 지출을 적지 않은 항목이 있습니다</div>
-            <div style="font-size:12px;color:var(--num)">미입력: <strong id="ledger-warn-cats"></strong></div>
+            <div style="font-size:12px;color:var(--num)">아직 안 적은 항목: <strong id="ledger-warn-cats"></strong></div>
           </div>
         </div>
 

@@ -14,14 +14,14 @@
 .ck-paused > i.ck-on b{ transition:none }
 .st-line{ font-size:var(--t-h3); font-weight:650; line-height:1.45 }
 .st-note .fl-tx{ font-size:var(--home-meta); color:var(--ink-2); line-height:1.75; margin-top:var(--u) }
-.ck-opts{ display:flex; flex-direction:column; align-items:stretch; gap:calc(var(--u)/2); margin-top:calc(var(--u)*2) }
+.ck-opts{ display:flex; flex-direction:column; align-items:stretch; gap:var(--u); margin-top:calc(var(--u)*2) }
 .ck-opt{ display:flex; align-items:center; gap:var(--u); min-height:var(--home-target); padding:var(--u); font-size:var(--t-sm); text-align:left; color:var(--ink-2); border-radius:var(--r-field); transition:transform .2s var(--home-ease) }
 .ck-opt b{ font-family:var(--fig); font-size:var(--home-meta); font-weight:500 }
 .ck-opt[aria-pressed="true"]{ background:var(--ui-plate); color:var(--ink); font-weight:650 }
 .ck-opt:hover{ transform:translateX(calc(var(--u)/2)) }
 .ck-fix{ align-self:start; min-width:0; padding:calc(var(--u)*2.5); border-radius:var(--r-panel); background:var(--home-dark); color:var(--home-on-dark) }
 .ck-fix-heading{ display:flex; align-items:center; flex-wrap:wrap; gap:var(--u); margin-bottom:calc(var(--u)*2) }
-.ck-fix-step{ color:var(--home-muted-dark); font-family:var(--fig); font-size:var(--home-meta); margin-right:auto }
+.ck-fix-step{ color:var(--home-muted-dark); font-family:var(--sans); font-size:var(--home-meta); margin-right:auto }
 .ck-reason{ width:calc(var(--u)*3); height:calc(var(--u)*3); fill:none; stroke:var(--sig); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round }
 .ck-home .ck-fix h3{ font-size:var(--t-sm); font-weight:600; color:inherit }
 .ck-comparison{ display:grid; grid-template-columns:minmax(0,1fr) calc(var(--u)*3) minmax(0,1fr); align-items:center; gap:var(--u) }
@@ -166,7 +166,7 @@
    무엇인지 안 보인다. 조금 스크롤하는 편이 낫다고 보고 두었다. */
 @media (min-width:1101px){
   /* 갈래 셋은 나란히 놓는다. 세로로 쌓으면 140px 인데 44px 이면 된다 */
-  .ck-opts{ flex-direction:row; flex-wrap:wrap; gap:calc(var(--u)/2); margin-top:var(--u) }
+  .ck-opts{ flex-direction:row; flex-wrap:wrap; gap:var(--u); margin-top:var(--u) }
   .ck-opts > *{ flex:1 1 0; min-width:0 }
 }
 @media (min-width:1101px) and (min-height:600px){

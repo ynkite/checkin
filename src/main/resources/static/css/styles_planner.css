@@ -304,10 +304,7 @@
   padding:16px 18px; background:var(--panel); border-bottom:1px solid var(--ui-line);
 }
 #page-planner .chat-bot-av,
-#page-planner .cav.bot{
-  background:var(--ink); color:var(--panel); border-radius:8px;
-  font-family:var(--fig); font-weight:600;
-}
+#page-planner .cav.bot{ display:none }
 #page-planner .cav.user{ background:var(--num); color:var(--panel) }
 #page-planner .chat-info-bar{
   padding:10px 18px; background:var(--ui-plate); color:var(--ink-2);

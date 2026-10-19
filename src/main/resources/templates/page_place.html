@@ -28,7 +28,7 @@
          ===================================================== -->
     <div class="page" id="page-review">
         <div class="review-wrap">
-            <div class="review-back" onclick="go('community')">← 커뮤니티로 돌아가기</div>
+            <button type="button" class="review-back" onclick="go('community')">← 커뮤니티로 돌아가기</button>
 
             <div style="margin-bottom:10px">
                 <span class="post-cat cat-route" id="pr-cat"></span>&nbsp;
@@ -77,18 +77,18 @@
          ===================================================== -->
     <div class="page" id="page-edit-review">
         <div class="review-wrap">
-            <div class="review-back" onclick="go('review')">← 후기로 돌아가기</div>
+            <button type="button" class="review-back" onclick="go('review')">← 후기로 돌아가기</button>
             <h2 style="font-size:22px;font-weight:800;margin-bottom:18px">후기 수정</h2>
             <div class="bcard write-form">
 
                 <div class="form-group">
                     <label class="form-label">제목</label>
-                    <input class="form-input" id="editReviewTitle" placeholder="후기 제목을 입력하세요">
+                    <input class="form-input" id="editReviewTitle" placeholder="후기 제목을 적어 주세요">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">내용
-                        <small style="color:var(--text3);font-weight:400">(이미지 Ctrl+V · 드래그&드롭 지원)</small>
+                        <small style="color:var(--text3);font-weight:400">(이미지는 Ctrl+V로 붙여 넣거나 끌어다 놓으면 됩니다)</small>
                     </label>
                     <div style="border:1.5px solid var(--border2);border-radius:var(--r-sm);overflow:hidden">
                         <div style="display:flex;gap:4px;padding:7px 10px;background:var(--cream);border-bottom:1px solid var(--border2)">
@@ -184,15 +184,15 @@
                 <div class="prev-map-box">
                     <div id="prevKakaoMap" style="width:100%;height:100%"></div>
                 </div>
-                <div class="prev-section-ttl">숙소 스냅샷</div>
+                <div class="prev-section-ttl">숙소 정보</div>
                 <div class="prev-stay-list" id="prevStay"></div>
                 <div class="prev-section-ttl">맛집 목록</div>
                 <div id="prevFoodList"></div>
                 <div class="prev-acts">
                     <button class="btn-prev-plan" onclick="closePrev();go('planner')">
-                        → 해당 경로로 여행 계획하기
+                        이 경로로 일정 만들기
                     </button>
-                    <button class="btn-prev-scrap" onclick="doPreviewScrap()">스크랩</button>
+                    <button class="btn-prev-scrap" onclick="doPreviewScrap()">담기</button>
                 </div>
             </div>
         </div>
@@ -248,7 +248,7 @@
 
             <div id="share-members">
                 <div style="display:flex; gap:8px; margin-bottom:24px;">
-                    <input type="email" id="share-email-inp" placeholder="함께 고칠 사람 초대" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
+                    <input type="email" id="share-email-inp" placeholder="함께 고칠 사람의 이메일" style="flex:1; background:var(--cream); border:none; border-radius:6px; padding:12px 14px; font-size:13px; outline:none;">
                     <button onclick="inviteShareMember()" style="background:var(--sage); color:var(--panel); border:none; border-radius:6px; padding:0 20px; font-weight:700; font-size:13px; cursor:pointer;">초대</button>
                 </div>
 
@@ -477,7 +477,7 @@
             toast('댓글을 올렸습니다.');
             await loadComments(postId);
         } else {
-            toast(res.message || '댓글 등록에 실패했습니다.');
+            toast(res.message || '댓글을 올리지 못했습니다. 다시 눌러 주세요.');
         }
     }
 
@@ -498,7 +498,7 @@
         const postId = window._currentPostId;
         if (!Token.getAccess()) { toast('로그인이 필요합니다.'); go('login'); return; }
         const res = await api.post(`/api/posts/${postId}/scraps`, {});
-        toast(res.success ? '담았습니다.' : (res.message || '스크랩 처리 실패'));
+        toast(res.success ? '담았습니다.' : (res.message || '담지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -569,7 +569,7 @@
                             </div>
                             <input class="one-line edit-plr-comment"
                                    value="${esc(r.comment || '')}"
-                                   placeholder="한줄평 (선택)" maxlength="200">
+                                   placeholder="한 줄 후기 (선택)" maxlength="200">
                         </div>`).join('')}
                     </div>`;
         } catch (e) {
@@ -593,7 +593,7 @@
         // 1. 게시글 수정
         const res = await api.patch(`/api/posts/${postId}`, { title, content, isPublic });
         if (!res || res.success === false) {
-            toast(res?.message || '수정에 실패했습니다.');
+            toast(res?.message || '고치지 못했습니다. 다시 눌러 주세요.');
             return;
         }
 
@@ -782,8 +782,8 @@
         const res = await api.post(`/api/places/${placeId}/scraps`, { category });
         const scrapped = res?.data === true;
         toast(res?.success === false
-            ? (res?.message || '스크랩하지 못했습니다. 잠시 뒤에 다시 해 보세요.')
-            : (scrapped ? '담았습니다.' : '스크랩을 취소했습니다.'));
+            ? (res?.message || '담지 못했습니다. 잠시 뒤에 다시 해 보세요.')
+            : (scrapped ? '담았습니다.' : '담기를 취소했습니다.'));
     }
 
     /* ────────────────────────────────────────────────
@@ -793,9 +793,9 @@
         const postId = window._currentPostId;
         if (postId) {
             const res = await api.post(`/api/posts/${postId}/scraps`, {});
-            toast(res.success ? '스크랩했습니다.' : (res.message || '스크랩 처리 실패'));
+            toast(res.success ? '담았습니다.' : (res.message || '담지 못했습니다. 잠시 뒤에 다시 해 보세요.'));
         } else {
-            toast('스크랩했습니다.');
+            toast('담았습니다.');
         }
         closePrev();
     }

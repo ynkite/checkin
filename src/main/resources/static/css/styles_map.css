@@ -29,6 +29,10 @@
   display:flex; flex-direction:column; min-height:0; overflow:hidden;
   background:var(--page); border-right:1px solid var(--ui-line);
 }
+.mp-area{ flex:0 0 auto; max-height:40%; overflow:auto; border-top:1px solid var(--ui-line); word-break:keep-all }
+.mp-area:has(#mpAreaInfo[hidden]){ display:none }
+.mp-area summary{ padding:var(--u) calc(var(--u)*2); color:var(--ink); font-size:var(--t-sm); cursor:pointer }
+#mpAreaInfo{ padding:var(--u) calc(var(--u)*2) calc(var(--u)*2) }
 .map-right{
   position:relative; overflow:hidden; background:var(--ui-plate);
   display:block;
@@ -50,8 +54,8 @@
   color:var(--ink); margin-bottom:5px;
 }
 .ml-plan-meta{
-  font-family:var(--fig); font-size:12px; line-height:1.55;
-  color:var(--ink-2); letter-spacing:-.01em;
+  font-family:var(--sans); font-size:12px; line-height:1.55;
+  color:var(--ink-2); letter-spacing:normal;
 }
 .mp-state{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:13px }
 #planStatusBadge{
@@ -124,13 +128,9 @@
   font-size:13px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink); white-space:nowrap;
 }
 .day-tab .dt-an{
-  font-size:11px; color:var(--ink-3); letter-spacing:-.01em;
-  max-width:100%; word-break:keep-all; line-height:1.45;
-  /* 「산청강마을어탕국수」처럼 띄어쓰기가 없는 이름은 keep-all 이 끊지 못해
-     탭 밖으로 삐져나왔다. 끊을 자리가 아예 없을 때만 글자 사이에서 끊는다. */
-  overflow-wrap:anywhere;
-  /* 두 줄까지 보여 주고 그 아래는 말줄임. 탭 높이가 들쭉날쭉해지지 않는다 */
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  display:block; width:100%; min-width:0; max-width:100%;
+  font-size:var(--t-xs); color:var(--ink-3); line-height:1.45;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .day-tab:hover{ box-shadow:inset 0 0 0 1px var(--ink-3) }
 .day-tab.on{ background:var(--ink); box-shadow:none }
@@ -141,7 +141,7 @@
 .map-list{
   /* min-height 를 210 -> 120 으로. 안내판이 여름 때 목록과 둘이
      701px 를 나눠 갖는다. 210 을 고지하면 안내판이 눌렸다. */
-  flex:1 1 auto; min-height:120px; overflow-y:auto; overflow-x:hidden;
+  flex:1 1 auto; min-height:calc(var(--home-target)*6); overflow-y:auto; overflow-x:hidden;
   padding:0 16px 22px; scrollbar-width:thin;
 }
 .day-section + .day-section{ margin-top:6px }
@@ -156,17 +156,17 @@
   font-size:13px; font-weight:700; letter-spacing:var(--tracking-tight); color:var(--ink);
 }
 .ds-label .ds-date{
-  font-family:var(--fig); font-size:11px; font-weight:500;
-  letter-spacing:0; color:var(--ink-3);
+  font-family:var(--sans); font-size:11px; font-weight:500;
+  letter-spacing:normal; color:var(--ink-3);
 }
 .ds-budget{
-  font-family:var(--fig); font-size:13px; font-weight:600;
-  letter-spacing:-.02em; color:var(--ink-2);
+  font-family:var(--sans); font-size:13px; font-weight:600;
+  letter-spacing:normal; color:var(--ink-2);
 }
 
 /* 하루 합계 — 값이 없으면 JS 가 아예 만들지 않는다 */
 .mp-sum{
-  font-family:var(--fig); font-size:11.5px; letter-spacing:-.01em;
+  font-family:var(--sans); font-size:11.5px; letter-spacing:normal;
   color:var(--ink-3); padding:9px 6px 4px;
 }
 
@@ -203,7 +203,7 @@
 .pr-sub{
   font-size:12.5px; line-height:1.5; color:var(--ink-2); margin-top:3px;
 }
-.pr-stars{ font-size:11.5px; color:var(--num); margin-top:3px; font-family:var(--fig) }
+.pr-stars{ font-size:11.5px; color:var(--num); margin-top:3px; font-family:var(--sans) }
 .mp-nowtag{
   display:inline-flex; align-items:center; margin-left:7px; vertical-align:2px;
   padding:2px 8px 3px; border-radius:99px; background:var(--sig); color:var(--on-sig);
@@ -253,8 +253,8 @@
 }
 .transit-map-row b{ font-weight:600; font-size:12.5px; color:var(--ink-2) }
 .transit-map-row i{
-  font-style:normal; font-family:var(--fig); font-size:11px;
-  letter-spacing:-.01em; color:var(--ink-3);
+  font-style:normal; font-family:var(--sans); font-size:11px;
+  letter-spacing:normal; color:var(--ink-3);
 }
 .transit-map-row.mp-tr-live b{ color:var(--num) }
 .transit-map-row.mp-tr-live::after{ background:var(--sig); box-shadow:inset 0 0 0 2px var(--sig) }
@@ -356,8 +356,8 @@
   margin-bottom:4px;
 }
 .mbb-amount{
-  font-family:var(--fig); font-size:23px; font-weight:600;
-  letter-spacing:-.045em; color:var(--ink);
+  font-family:var(--sans); font-size:23px; font-weight:600;
+  letter-spacing:normal; color:var(--ink);
 }
 .map-acts{
   flex-shrink:0; display:flex; gap:7px; padding:0 22px 18px; align-items:center;
@@ -465,15 +465,15 @@
   position:absolute; right:16px; bottom:16px; max-width:264px;
   padding:15px 17px 16px; border-radius:14px; border:0;
   background:var(--panel); box-shadow:var(--lift); cursor:pointer;
-  word-break:keep-all;
+  word-break:keep-all; font:inherit; text-align:left;
 }
 .weather-alert:hover{ transform:translateY(-2px); transition:transform .18s }
 .wa-ttl{
   display:block; font-size:14px; font-weight:700; letter-spacing:var(--tracking-tight);
   color:var(--ink); margin-bottom:4px;
 }
-.wa-body{ font-size:12.5px; line-height:1.55; color:var(--ink-2) }
-.wa-cta{ font-size:12.5px; font-weight:600; color:var(--num); margin-top:8px }
+.wa-body{ display:block; font-size:12.5px; line-height:1.55; color:var(--ink-2) }
+.wa-cta{ display:block; font-size:12.5px; font-weight:600; color:var(--num); margin-top:8px }
 
 /* ── 예산 뷰 ───────────────────────────────────────────────── */
 #budgetView{ position:absolute; inset:0; overflow-y:auto; z-index:8; background:var(--page); padding:calc(var(--u)*10) calc(var(--u)*3.5) calc(var(--u)*4) }
@@ -498,8 +498,8 @@
 }
 .mp-bg-top span:first-child{ font-size:13.5px; font-weight:600; color:var(--ink) }
 .mp-bg-top span:last-child{
-  font-family:var(--fig); font-size:13.5px; font-weight:600;
-  letter-spacing:-.02em; color:var(--ink-2);
+  font-family:var(--sans); font-size:13.5px; font-weight:600;
+  letter-spacing:normal; color:var(--ink-2);
 }
 .mp-bg-bar{ height:5px; border-radius:99px; background:var(--ui-pale); overflow:hidden }
 .mp-bg-bar i{ display:block; height:100%; border-radius:var(--r-pill); background:var(--ink-3) }
@@ -514,8 +514,8 @@
 }
 #map-budget-total-label{ font-size:15px; font-weight:700; letter-spacing:var(--tracking-tight) }
 #map-budget-total{
-  font-family:var(--fig); font-size:25px; font-weight:600;
-  letter-spacing:-.05em; color:var(--ink);
+  font-family:var(--sans); font-size:25px; font-weight:600;
+  letter-spacing:normal; color:var(--ink);
 }
 #map-budget-remaining{
   margin:0; font-family:var(--sans); font-size:var(--budget-balance); font-weight:700;
@@ -527,12 +527,12 @@
 }
 .mp-bg-summary{ margin-bottom:var(--budget-summary-gap); padding-bottom:calc(var(--u)*2); border-bottom:var(--line) solid var(--ui-line) }
 .mp-bg-ratio{ display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--u); margin:var(--u) 0 0; color:var(--ink-2); font-size:var(--t-sm) }
-.mp-bg-ratio strong{ font-family:var(--fig); font-size:var(--budget-balance); font-weight:600; color:var(--ink) }
+.mp-bg-ratio strong{ font-family:var(--sans); font-size:var(--budget-balance); font-weight:600; color:var(--ink) }
 .pie-ring{ border-radius:99px; flex-shrink:0 }
 .pie-legend{ display:flex; flex-direction:column; gap:7px }
 .pie-leg-item{
   display:flex; align-items:center; gap:8px;
-  font-family:var(--fig); font-size:12px; color:var(--ink-2);
+  font-family:var(--sans); font-size:12px; color:var(--ink-2);
 }
 .pie-dot{ width:8px; height:8px; border-radius:99px; flex-shrink:0 }
 .mp-ledger{
@@ -614,7 +614,7 @@
 }
 .mp-finp:focus, .mp-minp:focus{ border-bottom-color:var(--ink) }
 .mp-fmoney{ display:flex; align-items:baseline; gap:7px; margin-bottom:4px }
-.mp-fmoney span{ font-family:var(--fig); font-size:16px; font-weight:600; color:var(--ink-3) }
+.mp-fmoney span{ font-family:var(--sans); font-size:16px; font-weight:600; color:var(--ink-3) }
 .mp-fmoney input{
   flex:1; min-width:0; padding:9px 2px 10px; background:transparent; border:0;
   border-bottom:1.5px solid var(--ui-line); border-radius:0;
@@ -688,13 +688,13 @@
   padding:13px 8px 14px; text-align:center; min-width:0;
 }
 #mapWeatherPopup .w-item.w-warn{ background:var(--sig); border-color:transparent }
-#mapWeatherPopup .w-day{ font-family:var(--fig); font-size:11px; color:var(--ink-3); margin-bottom:6px }
+#mapWeatherPopup .w-day{ font-family:var(--sans); font-size:11px; color:var(--ink-3); margin-bottom:6px }
 #mapWeatherPopup .w-temp{
   font-family:var(--fig); font-size:20px; font-weight:600;
   letter-spacing:-.04em; color:var(--ink);
 }
 #mapWeatherPopup .w-desc{ font-size:12px; color:var(--ink-2); margin-top:3px }
-#mapWeatherPopup .w-pop{ font-family:var(--fig); font-size:10.5px; color:var(--ink-3); margin-top:4px }
+#mapWeatherPopup .w-pop{ font-family:var(--sans); font-size:10.5px; color:var(--ink-3); margin-top:4px }
 #mapWeatherPopup .w-warn .w-day,
 #mapWeatherPopup .w-warn .w-pop{ color:var(--on-sig-2) }
 #mapWeatherPopup .w-warn .w-temp,
@@ -765,7 +765,7 @@
   margin:0; font-size:15px; font-weight:800; line-height:1.4;
   letter-spacing:var(--tracking-tight); color:var(--ink);
 }
-.mp-al-1 em{ font-style:normal; color:var(--terra) }
+.mp-al-1 em{ font-style:normal; color:var(--num) }
 .mp-al-2{
   margin:6px 0 0; font-size:12.5px; line-height:1.66; color:var(--ink-2);
 }
@@ -796,7 +796,7 @@
 }
 .mp-cw i{
   font-style:normal; font-family:var(--fig); font-size:10px; font-weight:500;
-  opacity:.75; font-variant-numeric:tabular-nums;
+  font-variant-numeric:tabular-nums;
 }
 .mp-cw.cw-vhigh{ background:var(--tile-pale);  color:var(--tile) }
 .mp-cw.cw-high { background:var(--terra-pale); color:var(--terra) }
@@ -851,11 +851,11 @@
   letter-spacing:var(--tracking-tight);
 }
 .mp-dp-1 em{
-  font-style:normal; font-family:var(--fig); font-weight:500;
-  color:var(--num); letter-spacing:var(--tracking-num);
+  font-style:normal; font-family:var(--sans); font-weight:500;
+  color:var(--num); letter-spacing:normal;
 }
 .mp-dp-2{ margin:5px 0 0; font-size:11.5px; line-height:1.55; color:var(--ink-2) }
-.mp-dp-2 b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+.mp-dp-2 b{ font-family:var(--sans); font-weight:600; color:var(--ink) }
 
 /* ── 3D 모형 보기 ───────────────────────────────────────────
    같은 동선을 미니어처 위에. 장면·색·사람 수 규칙은 메인과 같은 것을 쓴다
@@ -872,9 +872,11 @@
   transform:translate(calc(-50% + var(--mv-x, 0px)), calc(-50% + var(--mv-y, 0px)))
             scale(var(--mv-z, 1));
   transform-origin:50% 50%;
-  transition:transform var(--map-pan-duration) cubic-bezier(.22,.61,.36,1);
+  transition:none;
 }
-#modelView .ck-frame{ aspect-ratio:auto }
+#modelView:not(.mv-grab) .ck-frame,
+#modelView:not(.mv-grab) .ck-pins{ transition:transform var(--map-pan-duration) cubic-bezier(.22,.61,.36,1) }
+#modelView .ck-frame{ aspect-ratio:auto; will-change:transform }
 #modelView .ck-pins{ height:100%; z-index:3; pointer-events:none }
 #modelView .ck-pins .ck-pin{
   pointer-events:auto; width:0; height:0; transform:none; z-index:auto;
@@ -890,7 +892,8 @@
   left:calc(var(--map-pin-size) / -2 / var(--mv-z,1)); max-width:var(--map-label-width);
   transform:scale(calc(1 / var(--mv-z,1))); transform-origin:top left;
   display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
-  font-size:var(--map-label-font); line-height:1.4; pointer-events:none; box-shadow:var(--lift);
+  font-size:var(--map-label-font); line-height:1.4; pointer-events:none;
+  padding:calc(var(--u)/4) calc(var(--u)/2); background:var(--panel); color:var(--ink); box-shadow:none;
 }
 #modelView .ck-lbl-left .ck-bub{
   left:auto; right:calc(var(--map-pin-size) / -2 / var(--mv-z,1)); transform-origin:top right;
@@ -994,7 +997,7 @@
 .mv-fc-note{
   margin:10px 0 0; font-size:11.5px; line-height:1.6; color:var(--ink-2);
 }
-.mv-fc-note b{ font-family:var(--fig); font-weight:600; color:var(--ink) }
+.mv-fc-note b{ font-family:var(--sans); font-weight:600; color:var(--ink) }
 
 @media (max-width:900px){
   .mv-fc{ padding:11px 13px }
@@ -1099,8 +1102,8 @@
   font-size:11px; font-weight:600; letter-spacing:.05em; color:var(--ink-3);
 }
 .mp-mo-n{
-  margin-top:3px; font-family:var(--fig); font-size:27px; font-weight:600;
-  letter-spacing:-.045em; color:var(--ink);
+  margin-top:3px; font-family:var(--sans); font-size:27px; font-weight:600;
+  letter-spacing:normal; color:var(--ink);
 }
 .mp-mo-bar{
   display:flex; gap:2px; height:7px; margin-top:12px;
@@ -1217,8 +1220,8 @@
 .mp-nd.mp-on .mp-nd-n,
 .mp-nd-now .mp-nd-n{ font-size:16px }
 .mp-nd-t{
-  display:block; font-family:var(--fig); font-size:11px; font-weight:500;
-  letter-spacing:var(--tracking-num); color:var(--ink-3);
+  display:block; font-family:var(--sans); font-size:11px; font-weight:500;
+  letter-spacing:normal; color:var(--ink-3);
 }
 .mp-nd-n{
   display:block; margin-top:3px; font-size:13.5px; font-weight:600;
@@ -1248,7 +1251,7 @@
   padding:5px 6px; border-radius:var(--r-pill);
 }
 .mp-pg-d{
-  padding:0 8px 0 6px; font-family:var(--fig); font-size:11.5px;
+  padding:0 8px 0 6px; font-family:var(--sans); font-size:11.5px;
   color:var(--ink-3); white-space:nowrap;
 }
 .mp-pg{
@@ -1300,8 +1303,8 @@
 .mp-mode:hover{ background:var(--ui-plate-2) }
 .mp-mode b{ font-size:11.5px; font-weight:500; color:var(--ink-2) }
 .mp-mode span{
-  font-family:var(--fig); font-size:14px; font-weight:600; color:var(--ink);
-  letter-spacing:var(--tracking-num); font-variant-numeric:tabular-nums;
+  font-family:var(--sans); font-size:14px; font-weight:600; color:var(--ink);
+  letter-spacing:normal; font-variant-numeric:tabular-nums;
 }
 .mp-mode.on{ background:var(--ink) }
 /* 흰 글자를 옅게 쓰는 자리다. rgba 로 적으면 CSS 에 색을 직접 적는 것이 된다 —
@@ -1326,8 +1329,7 @@
    그래서 오버레이 쪽 이름은 감추고 여기서 그린다 — 늘 맨 위에 온다. */
 .mp-svg-lbl{
   font-family:var(--sans); font-size:var(--home-meta); font-weight:650; letter-spacing:normal; word-spacing:normal;
-  fill:var(--ink); paint-order:stroke fill;
-  stroke:var(--halo); stroke-width:3.5; stroke-linejoin:round;
+  fill:var(--ink); stroke:none;
   dominant-baseline:middle;
 }
 #mapRouteLayer g[data-day="1"] .mp-svg-lbl,
