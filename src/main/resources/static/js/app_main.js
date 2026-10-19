@@ -329,6 +329,9 @@ const _reloaders = {
     mypage:    () => updateMyPageUI(),
     weather:   () => typeof wxReload === 'function' && wxReload()
 };
+/* 가상 주행(?sim=1)은 주소로 켠다. 화면을 옮겨도 주소에서 떨어지지 않게 */
+function _homeUrl() { return /[?&]sim=1\b/.test(location.search) ? '/?sim=1' : '/'; }
+
 async function goRefresh(id) {
     if (location.pathname !== '/') {
         try { sessionStorage.setItem('currentPage', id); } catch (e) {}
@@ -393,7 +396,7 @@ async function go(id, addToHistory) {
     }
 
     sessionStorage.setItem('currentPage', id);
-    if (addToHistory !== false) history.pushState({page: id}, '', '/');
+    if (addToHistory !== false) history.pushState({page: id}, '', _homeUrl());
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const pg = document.getElementById('page-' + id);
     if (pg) pg.classList.add('active');
@@ -1350,6 +1353,8 @@ function openMyTrip(tripId) {
     // 클릭한 카드의 진짜 tripId로 브라우저 기억을 강제로 덮어씌웁니다.
     window._currentTripId = tripId;
     sessionStorage.setItem('plannerDraftId', tripId);
+    /* 저장된 여행을 여는 것이다 — 새 플랜 단계 머리글을 띄우지 않는다 */
+    sessionStorage.setItem('editingSavedTrip', tripId);
 
     // 내 여행 기록에서 진입 → 1·2·3 단계 폼/대화를 백엔드 기준으로 다시 채워야 함을 표시.
     window._planHydrateTripId = tripId;
@@ -3115,7 +3120,7 @@ function goPlanStep(n) {
     _syncNavStepHighlight();
 
     if(n===3) startChatWithSummary();
-    history.pushState({ page: 'planner', step: n }, '', '/');
+    history.pushState({ page: 'planner', step: n }, '', _homeUrl());
     if (window._currentTripId) _savePlannerDraft();
 }
 
@@ -3800,7 +3805,7 @@ function goResumePlanner() {
         if (savedStep === 3 && typeof startChatWithSummary === 'function') {
             setTimeout(() => startChatWithSummary(), 100);
         }
-        history.pushState({ page: 'planner', step: savedStep }, '', '/');
+        history.pushState({ page: 'planner', step: savedStep }, '', _homeUrl());
     }
 }
 function _hasPlannerDraft() {
@@ -4290,14 +4295,15 @@ document.addEventListener('keydown', e => {
 });
 
 window.addEventListener('popstate', async e => {
-    const p = e.state?.page || 'main';
+    /* 상태가 없는 항목(밖에서 replaceState 한 주소)은 떠나던 화면으로 친다. 홈으로 떨어지면 안 된다 */
+    const p = e.state?.page || sessionStorage.getItem('currentPage') || 'main';
     const step = e.state?.step;
 
     // [뒤로가기 가드]: 이전 페이지가 지도였고, 현재 수정 중인 상태(확정하지 않은 상태)라면 뒤로가기 가드 실행
     const prevPage = sessionStorage.getItem('currentPage');
     if (prevPage === 'map' && p !== 'map' && mapDirty()) {
         // 이미 히스토리는 넘어갔으므로 제자리 유지를 위해 히스토리를 임시로 map 상태로 강제 복구
-        history.pushState({ page: 'map' }, '', '/');
+        history.pushState({ page: 'map' }, '', _homeUrl());
 
         const canLeave = await checkUnsavedChangesAndSave();
         if (!canLeave) {

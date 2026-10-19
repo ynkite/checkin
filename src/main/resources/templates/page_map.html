@@ -904,6 +904,12 @@
          동선이 구석에 몰려 작게 보인다. */
       var frame = document.getElementById('mv_frame');
       var box = document.getElementById('modelView');
+      if (frame && box) {
+        var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
+        var bw = box.clientWidth, bh = box.clientHeight;
+        /* 모형이 상자를 다 덮는 최소 배율. 그 밑으로 밀면 바닥색이 드러난다 */
+        _mvZMin = Math.max(1, bw / fw, bh / fh);
+      }
       if (frame && box && pts.length) {
         var xs = pts.map(function (q) { return q.x; });
         var ys = pts.map(function (q) { return q.y; });
@@ -915,23 +921,35 @@
            보이는 자리는 상자 전체가 아니다 — 아래 정거장 띠·확대 단추, 위 도구 막대를 뺀 곳이다.
            좁은 화면에서 모형(가로가 상자 폭)은 상자보다 납작해서 상자 가운데에 맞추면
            동선이 띠 밑에 깔렸다(여행 43, 390px). */
-        var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
         var free = _mvFree(box);
-        var z = Math.min(2.2, Math.max(1.12, Math.min(free.w / fw * 100 / w, free.h / fh * 100 / h)));
+        var z = Math.max(_mvZMin, Math.min(2.2, Math.max(1.12, Math.min(free.w / fw * 100 / w, free.h / fh * 100 / h))));
 
         var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         /* 보이는 자리의 가운데가 상자 가운데에서 얼마나 비켜 있는지(모형 폭 기준 %) */
-        var ox = (free.x + free.w / 2 - box.clientWidth / 2) / fw * 100;
-        var oy = (free.y + free.h / 2 - box.clientHeight / 2) / fh * 100;
-        /* 끌기 한도(_mvLimit)로 자르지 않는다. 정거장이 모형 구석에 있으면(해운대, x 82~98%)
-           한도에 걸려 동선이 띠 밑에 남았다. 끌기 한도가 이 자리까지 넓어진다 */
-        _mvHome = _mvSet(z, (50 - cx) * z + ox, (50 - cy) * z + oy);
+        var ox = (free.x + free.w / 2 - bw / 2) / fw * 100;
+        var oy = (free.y + free.h / 2 - bh / 2) / fh * 100;
+        /* 동선 가운데로 가되 모형 가장자리가 상자 안으로 들어오면 안 된다 — 끌기 한도에서 자른다.
+           잘려서 정거장이 띠·도구 막대 밑에 남으면(해운대, x 82~98%) 더 당긴다.
+           당길수록 모형 안에서 옮길 자리가 넓어진다. 정거장이 보이는 자리에 안 들어갈 만큼은 안 당긴다 */
+        var px, py;
+        for (;;) {
+          var lim = _mvLimit(frame, box, z);
+          px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
+          py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
+          var l = bw / 2 + (px + (x0 - 50) * z) * fw / 100, r = bw / 2 + (px + (x1 - 50) * z) * fw / 100;
+          var t = bh / 2 + (py + (y0 - 50) * z) * fh / 100, b = bh / 2 + (py + (y1 - 50) * z) * fh / 100;
+          var seen = l >= free.x && r <= free.x + free.w && t >= free.y && b <= free.y + free.h;
+          var room = (x1 - x0) * fw * z * 1.15 / 100 <= free.w && (y1 - y0) * fh * z * 1.15 / 100 <= free.h;
+          if (seen || !room || z * 1.15 > 2.6) break;
+          z *= 1.15;
+        }
+        _mvHome = _mvSet(z, px, py);
       } else if (frame && box) {
         /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
            그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
            가운데를 적당히 당긴다. 갈 곳을 가리키지는 못해도 그 도시가
            어떻게 생겼는지는 보여야 한다. */
-        _mvHome = _mvSet(1.5, 0, 0);
+        _mvHome = _mvSet(Math.max(1.5, _mvZMin), 0, 0);
       }
 
       /* 열 때 잡아 준 자리가 _mvHome 이다. 「시점 초기화」가 여기로 돌아온다 */
@@ -2957,6 +2975,7 @@
        더 밀면 모형이 끝나고 바닥색이 드러난다. */
     var _mvHome = { z: 1.5, x: 0, y: 0 };
     var _mvCam  = { z: 1.5, x: 0, y: 0 };
+    var _mvZMin = 1;   // 모형이 상자를 덮는 최소 배율. 열 때 잰다
     var _mvRaf  = 0, _mvDims = null;   // 끌기 중에는 크기를 한 번만 잰다
 
     /* 변형은 여기 한 곳에서. 모형(.ck-frame)에는 transform 을 바로 쓴다 —
@@ -2977,9 +2996,8 @@
        상자보다 작으면(좁은 화면의 세로) 모형이 상자 밖으로 안 나가는 만큼 */
     function _mvLimit(frame, box, z) {
       var m = _mvDims || _mvMeasure(frame, box);
-      /* 열 때 맞춘 자리(_mvHome)는 한도 밖이라도 갈 수 있어야 「시점 초기화」가 거기로 돌아온다 */
-      return { x: Math.max(Math.abs(m.fw * z - m.bw) / 2 / m.fw * 100, Math.abs(_mvHome.x)),
-               y: Math.max(Math.abs(m.fh * z - m.bh) / 2 / m.fh * 100, Math.abs(_mvHome.y)) };
+      return { x: Math.abs(m.fw * z - m.bw) / 2 / m.fw * 100,
+               y: Math.abs(m.fh * z - m.bh) / 2 / m.fh * 100 };
     }
     /* 상자 안에서 다른 것에 안 가리는 자리. 위는 도구 막대 밑, 아래는 정거장 띠·단추 위 */
     function _mvFree(box) {
@@ -3004,8 +3022,8 @@
       _mvSet(_mvCam.z, _mvCam.x, _mvCam.y);
     }
     function _mvZoom(mul) {
-      /* 1 보다 작게는 안 민다. 그 밑은 모형보다 바닥색이 더 넓어진다 */
-      _mvCam.z = Math.max(1, Math.min(4, _mvCam.z * mul));
+      /* 모형이 상자를 덮는 배율보다 작게는 안 민다. 그 밑은 바닥색이 드러난다 */
+      _mvCam.z = Math.max(_mvZMin, Math.min(4, _mvCam.z * mul));
       _mvApply();
     }
     function _mvInitView() {
