@@ -28,10 +28,13 @@ public class PlaceController {
             @RequestParam(defaultValue = "food") String category,
             @RequestParam(defaultValue = "3")    int size
     ) {
-        PlaceCategory cat = toCategory(category);
-        List<PlaceCardDto> result = placeReviewRepository
-                .findPlaceCardsByCategoryOrderBySaved(cat, PageRequest.of(0, size))
-                .stream()
+        // all 이면 네 종류를 한 응답에 담는다. 홈이 종류마다 한 번씩 4번 부르던 것을 1번으로
+        List<PlaceCategory> cats = "all".equalsIgnoreCase(category)
+                ? List.of(PlaceCategory.values())
+                : List.of(toCategory(category));
+        List<PlaceCardDto> result = cats.stream()
+                .flatMap(cat -> placeReviewRepository
+                        .findPlaceCardsByCategoryOrderBySaved(cat, PageRequest.of(0, size)).stream())
                 .map(PlaceCardDto::from)
                 .toList();
         return ResponseEntity.ok(ApiResponse.success("인기 장소 조회 성공", result));

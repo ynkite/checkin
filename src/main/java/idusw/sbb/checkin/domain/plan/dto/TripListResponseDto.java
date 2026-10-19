@@ -22,6 +22,7 @@ public class TripListResponseDto {
     private String meta;        // "2026.06.14~06.17 · 2인"
     private String budget;      // "₩404,000"
     private String status;      // "UPCOMING" 또는 "PAST"
+    private boolean hasRoute;   // 경로가 있는지. 마이페이지가 여행마다 상세를 다시 묻지 않게
 
 
     private String startDate;

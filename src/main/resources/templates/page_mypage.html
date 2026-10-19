@@ -290,12 +290,15 @@
     /* ── 내 여행 기록 → 경로 수정 ─────────────────────────────
        카드는 app_main.js 의 _renderMyTrips() 가 그린다. 그쪽은 건드리지 않고
        다 그려진 뒤에 각 줄에 버튼만 붙인다.
-       목록 응답에는 경로가 있는지가 없어서 여행마다 한 번 물어보고 기억해 둔다.
+       목록 응답(hasRoute · status)으로 판단한다. 목록에 없는 여행만 한 번 물어본다 —
+       전에는 여행마다 상세를 다시 불러 홈에서만 /api/trips/{id} 가 5번 나갔다.
        경로가 없는 여행에는 버튼을 달지 않는다. 눌러도 빈 지도만 나온다. */
     const _tripRouteInfo = {};          // id -> Promise<{ hasRoute, fixed }>
 
     function _tripInfo(id) {
       if (!_tripRouteInfo[id]) {
+        const t = (typeof _myTrips !== 'undefined' ? _myTrips : []).find(function (x) { return x.id === id; });
+        if (t && 'hasRoute' in t) return (_tripRouteInfo[id] = Promise.resolve({ hasRoute: !!t.hasRoute, fixed: t.status === 'FIXED' }));
         _tripRouteInfo[id] = (typeof api !== 'undefined' ? api.get('/api/trips/' + id) : Promise.reject())
           .then(function (r) {
             const d = (r && r.success && r.data) || {};

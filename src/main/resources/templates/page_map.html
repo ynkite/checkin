@@ -927,31 +927,16 @@
         var px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
         var py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
 
-        [frame, document.getElementById('mv_pins')].forEach(function (el) {
-          if (!el) return;
-          el.style.setProperty('--mv-z', z.toFixed(3));
-          el.style.setProperty('--mv-x', px.toFixed(2) + '%');
-          el.style.setProperty('--mv-y', py.toFixed(2) + '%');
-        });
+        _mvHome = _mvSet(z, px, py);
       } else if (frame && box) {
         /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
            그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
            가운데를 적당히 당긴다. 갈 곳을 가리키지는 못해도 그 도시가
            어떻게 생겼는지는 보여야 한다. */
-        [frame, document.getElementById('mv_pins')].forEach(function (el) {
-          if (!el) return;
-          el.style.setProperty('--mv-z', '1.5');
-          el.style.setProperty('--mv-x', '0%');
-          el.style.setProperty('--mv-y', '0%');
-        });
+        _mvHome = _mvSet(1.5, 0, 0);
       }
 
-      /* 열 때 잡아 준 자리를 기억해 둔다. 「시점 초기화」가 여기로 돌아온다 */
-      _mvHome = {
-        z: parseFloat(frame && frame.style.getPropertyValue('--mv-z')) || 1.5,
-        x: parseFloat(frame && frame.style.getPropertyValue('--mv-x')) || 0,
-        y: parseFloat(frame && frame.style.getPropertyValue('--mv-y')) || 0
-      };
+      /* 열 때 잡아 준 자리가 _mvHome 이다. 「시점 초기화」가 여기로 돌아온다 */
       _mvCam = { z: _mvHome.z, x: _mvHome.x, y: _mvHome.y };
       _mvInitView();
 
@@ -2974,13 +2959,28 @@
        더 밀면 모형이 끝나고 바닥색이 드러난다. */
     var _mvHome = { z: 1.5, x: 0, y: 0 };
     var _mvCam  = { z: 1.5, x: 0, y: 0 };
+    var _mvRaf  = 0, _mvDims = null;   // 끌기 중에는 크기를 한 번만 잰다
 
+    /* 변형은 여기 한 곳에서. 모형(.ck-frame)에는 transform 을 바로 쓴다 —
+       커스텀 속성(--mv-*)으로 주면 SVG 안 path 수천 개가 그 값을 물려받아
+       매 프레임 스타일을 다시 계산했다(휴대폰 회전 37fps · p95 188ms).
+       핀 층은 글자 역배율에 --mv-z 가 필요하니 그대로 둔다 */
+    function _mvSet(z, x, y) {
+      var frame = document.getElementById('mv_frame'), pins = document.getElementById('mv_pins');
+      var X = x.toFixed(2) + '%', Y = y.toFixed(2) + '%', Z = z.toFixed(3);
+      if (frame) frame.style.transform = 'translate(calc(-50% + ' + X + '), calc(-50% + ' + Y + ')) scale(' + Z + ')';
+      if (pins) { pins.style.setProperty('--mv-z', Z); pins.style.setProperty('--mv-x', X); pins.style.setProperty('--mv-y', Y); }
+      return { z: z, x: x, y: y };
+    }
+    function _mvMeasure(frame, box) {
+      return { fw: frame.clientWidth || 1, fh: frame.clientHeight || 1, bw: box.clientWidth, bh: box.clientHeight };
+    }
     /* 얼마나 밀 수 있나(모형 폭 기준 %). 모형이 상자보다 크면 바닥색이 안 보이는 만큼,
        상자보다 작으면(좁은 화면의 세로) 모형이 상자 밖으로 안 나가는 만큼 */
     function _mvLimit(frame, box, z) {
-      var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
-      return { x: Math.abs(fw * z - box.clientWidth) / 2 / fw * 100,
-               y: Math.abs(fh * z - box.clientHeight) / 2 / fh * 100 };
+      var m = _mvDims || _mvMeasure(frame, box);
+      return { x: Math.abs(m.fw * z - m.bw) / 2 / m.fw * 100,
+               y: Math.abs(m.fh * z - m.bh) / 2 / m.fh * 100 };
     }
     /* 상자 안에서 다른 것에 안 가리는 자리. 위는 도구 막대 밑, 아래는 정거장 띠·단추 위 */
     function _mvFree(box) {
@@ -3002,12 +3002,7 @@
       var lim = _mvLimit(frame, box, _mvCam.z);
       _mvCam.x = Math.max(-lim.x, Math.min(lim.x, _mvCam.x));
       _mvCam.y = Math.max(-lim.y, Math.min(lim.y, _mvCam.y));
-      [frame, document.getElementById('mv_pins')].forEach(function (el) {
-        if (!el) return;
-        el.style.setProperty('--mv-z', _mvCam.z.toFixed(3));
-        el.style.setProperty('--mv-x', _mvCam.x.toFixed(2) + '%');
-        el.style.setProperty('--mv-y', _mvCam.y.toFixed(2) + '%');
-      });
+      _mvSet(_mvCam.z, _mvCam.x, _mvCam.y);
     }
     function _mvZoom(mul) {
       /* 1 보다 작게는 안 민다. 그 밑은 모형보다 바닥색이 더 넓어진다 */
@@ -3028,17 +3023,19 @@
       box.addEventListener('pointerdown', function (e) {
         if (e.target.closest('button') || e.target.closest('.mv-legend')) return;
         drag = { x: e.clientX, y: e.clientY, cx: _mvCam.x, cy: _mvCam.y };
+        var frame = document.getElementById('mv_frame');
+        _mvDims = frame ? _mvMeasure(frame, box) : null;
         box.setPointerCapture(e.pointerId); box.classList.add('mv-grab');
       });
+      /* 움직임은 프레임당 한 번만 그린다. 손가락 이벤트는 프레임보다 잦다 */
       box.addEventListener('pointermove', function (e) {
-        if (!drag) return;
-        var fw = box.clientWidth || 1, fh = box.clientHeight || 1;
-        _mvCam.x = drag.cx + (e.clientX - drag.x) / fw * 100;
-        _mvCam.y = drag.cy + (e.clientY - drag.y) / fh * 100;
-        _mvApply();
+        if (!drag || !_mvDims) return;
+        _mvCam.x = drag.cx + (e.clientX - drag.x) / _mvDims.bw * 100;
+        _mvCam.y = drag.cy + (e.clientY - drag.y) / _mvDims.bh * 100;
+        if (!_mvRaf) _mvRaf = requestAnimationFrame(function () { _mvRaf = 0; _mvApply(); });
       });
       ['pointerup','pointercancel','pointerleave'].forEach(function (t) {
-        box.addEventListener(t, function () { drag = null; box.classList.remove('mv-grab'); });
+        box.addEventListener(t, function () { drag = null; _mvDims = null; box.classList.remove('mv-grab'); });
       });
       box.addEventListener('wheel', function (e) {
         e.preventDefault(); _mvZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12);

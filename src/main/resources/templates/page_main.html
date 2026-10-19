@@ -478,13 +478,18 @@
         }).join('') : '<div class="no-data">아직 올라온 일정이 없습니다.</div>';
       }
 
-      // 4. 인기 명소 TOP 3 로드 (MOCK 배열이 있으면 쓰고, 삭제되었으면 api 통신)
+      // 4. 인기 명소 TOP 3 — 네 종류를 한 번에 받는다 (전에는 종류마다 한 번씩 4번)
       const categories = [
-        { id: 'popular-food-grid', code: 'FOOD' },
-        { id: 'popular-stay-grid', code: 'STAY' },
-        { id: 'popular-tour-grid', code: 'TOUR' },
-        { id: 'popular-cafe-grid', code: 'CAFE' }
+        { id: 'popular-food-grid', code: 'FOOD', cat: 'restaurant' },
+        { id: 'popular-stay-grid', code: 'STAY', cat: 'accommodation' },
+        { id: 'popular-tour-grid', code: 'TOUR', cat: 'attraction' },
+        { id: 'popular-cafe-grid', code: 'CAFE', cat: 'cafe' }
       ];
+      let popular = null;
+      if (typeof MOCK_FOOD === 'undefined' && typeof api !== 'undefined') {
+        const resPlace = await api.get('/api/places/popular?category=all&size=3');
+        popular = resPlace.success ? (resPlace.data || []) : [];
+      }
 
       for (const cat of categories) {
         const gridEl = document.getElementById(cat.id);
@@ -498,10 +503,7 @@
           if (cat.code === 'CAFE') places = MOCK_CAFE;
         }
 
-        if (!places && typeof api !== 'undefined') {
-          const resPlace = await api.get(`/api/places/popular?category=${cat.code}&size=3`);
-          places = resPlace.success ? (resPlace.data || []) : [];
-        }
+        if (!places && popular) places = popular.filter(p => p.category === cat.cat);
 
         if (places) {
           gridEl.innerHTML = places.length

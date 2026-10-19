@@ -126,6 +126,7 @@ public class TravelPlanServiceImpl implements TravelPlanService {
                             .meta(metaString)
                             .budget(budgetString)
                             .status(plan.getStatus())
+                            .hasRoute(plan.getRouteJson() != null && !plan.getRouteJson().isBlank())
                             .startDate(plan.getStartDate() != null ? plan.getStartDate().toString() : "")
                             .endDate(plan.getEndDate() != null ? plan.getEndDate().toString() : "")
                             .destination(plan.getDestination())
