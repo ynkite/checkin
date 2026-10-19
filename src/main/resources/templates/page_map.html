@@ -901,59 +901,9 @@
       }).join('');
 
       /* 정거장이 모인 자리로 카메라를 옮긴다. 장면 전체를 그대로 두면
-         동선이 구석에 몰려 작게 보인다. */
-      var frame = document.getElementById('mv_frame');
-      var box = document.getElementById('modelView');
-      if (frame && box) {
-        var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
-        var bw = box.clientWidth, bh = box.clientHeight;
-        /* 모형이 상자를 다 덮는 최소 배율. 그 밑으로 밀면 바닥색이 드러난다 */
-        _mvZMin = Math.max(1, bw / fw, bh / fh);
-      }
-      if (frame && box && pts.length) {
-        var xs = pts.map(function (q) { return q.x; });
-        var ys = pts.map(function (q) { return q.y; });
-        var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
-        var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-        var pad = 12;
-        var w = Math.max(16, x1 - x0 + pad * 2), h = Math.max(16, y1 - y0 + pad * 2);
-        /* 정거장이 보이는 자리의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다.
-           보이는 자리는 상자 전체가 아니다 — 아래 정거장 띠·확대 단추, 위 도구 막대를 뺀 곳이다.
-           좁은 화면에서 모형(가로가 상자 폭)은 상자보다 납작해서 상자 가운데에 맞추면
-           동선이 띠 밑에 깔렸다(여행 43, 390px). */
-        var free = _mvFree(box);
-        /* 핀 자리는 핀 층(상자 높이) 기준이다. 모형(fh)과 높이가 다르다 */
-        var ph = layer.clientHeight || fh;
-        /* 정거장이 여백까지 빈 자리에 다 들어가는 배율. 이보다 당기면 핀이 잘린다 */
-        var zFit = Math.min(free.w / fw * 100 / w, free.h / ph * 100 / h);
-        var z = Math.max(1, Math.min(2.2, zFit));
-        /* 덮을 수 있으면 덮는다. 정거장이 장면 가장자리라 둘이 어긋나면 핀이 우선 —
-           바닥색이 조금 보이는 것이 핀이 잘리는 것보다 낫다(정선 48 · 서귀포 49) */
-        if (_mvZMin <= zFit) z = Math.max(z, _mvZMin);
-
-        var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-        /* 보이는 자리의 가운데가 상자 가운데에서 얼마나 비켜 있는지(층 폭·높이 기준 %) */
-        var ox = (free.x + free.w / 2 - bw / 2) / fw * 100;
-        var oy = (free.y + free.h / 2 - bh / 2) / ph * 100;
-        /* 동선 가운데로 가되 끌기 한도 안에서. 그래도 핀이 빈 자리 밖이면 핀이 들어오는 데까지 민다 */
-        var lim = _mvLimit(frame, box, z);
-        var px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
-        var py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
-        var mx = 20 / fw * 100, my = 20 / ph * 100;   /* 번호 동그라미가 가장자리에 걸리지 않을 만큼 */
-        px = Math.max((free.x + mx - bw / 2) * 100 / fw - (x0 - 50) * z,
-             Math.min((free.x + free.w - mx - bw / 2) * 100 / fw - (x1 - 50) * z, px));
-        py = Math.max((free.y + my - bh / 2) * 100 / ph - (y0 - 50) * z,
-             Math.min((free.y + free.h - my - bh / 2) * 100 / ph - (y1 - 50) * z, py));
-        _mvHome = _mvSet(z, px, py);
-      } else if (frame && box) {
-        /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
-           그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
-           가운데를 적당히 당긴다. 갈 곳을 가리키지는 못해도 그 도시가
-           어떻게 생겼는지는 보여야 한다. */
-        _mvHome = _mvSet(Math.max(1.5, _mvZMin), 0, 0);
-      }
-
-      /* 열 때 잡아 준 자리가 _mvHome 이다. 「시점 초기화」가 여기로 돌아온다 */
+         동선이 구석에 몰려 작게 보인다. 열 때 잡아 준 자리가 _mvHome 이다 —
+         「시점 초기화」가 여기로 돌아온다 */
+      _mvHome = _mvFit(pts);
       _mvCam = { z: _mvHome.z, x: _mvHome.x, y: _mvHome.y };
       _mvInitView();
 
@@ -3010,7 +2960,67 @@
         if (el && !el.hidden && el.offsetHeight) bottom = Math.min(bottom, el.offsetTop);
       });
       var h = Math.max(120, bottom - top);
-      return { x: 0, y: top, w: box.clientWidth, h: h };
+      /* 왼쪽에 떠 있는 총비용 카드·범례 기둥. 상자 위에 겹쳐 있으면 그 오른쪽부터가 빈 자리다
+         (정선 48 의 3·4 가 카드 밑에 깔렸다). 휴대폰은 기둥이 상자 밖에 있어 안 겹친다 */
+      var left = 0, col = document.querySelector('#mapRightArea .mp-float-l');
+      if (col && col.offsetHeight) {
+        var b = box.getBoundingClientRect(), c = col.getBoundingClientRect();
+        if (c.bottom > b.top + top && c.top < b.top + top + h) left = Math.max(0, c.right - b.left);
+      }
+      return { x: left, y: top, w: Math.max(120, box.clientWidth - left), h: h };
+    }
+
+    /* 열 때의 자리. pts 는 핀 자리(핀 층 폭·높이 기준 %).
+       정거장이 보이는 자리의 대부분을 차지하게. 너무 당기면 어디인지 알 수 없다.
+       보이는 자리는 상자 전체가 아니다 — 아래 정거장 띠·확대 단추, 위 도구 막대를 뺀 곳이다(_mvFree).
+       좁은 화면에서 모형(가로가 상자 폭)은 상자보다 납작해서 상자 가운데에 맞추면
+       동선이 띠 밑에 깔렸다(여행 43, 390px). */
+    function _mvFit(pts) {
+      var frame = document.getElementById('mv_frame');
+      var box = document.getElementById('modelView');
+      var layer = document.getElementById('mv_pins');
+      if (!frame || !box) return _mvHome;
+      var fw = frame.clientWidth || 1, fh = frame.clientHeight || 1;
+      var bw = box.clientWidth, bh = box.clientHeight;
+      /* 모형이 상자를 다 덮는 최소 배율. 그 밑으로 밀면 바닥색이 드러난다 */
+      _mvZMin = Math.max(1, bw / fw, bh / fh);
+      if (!pts.length) {
+        /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
+           그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
+           가운데를 적당히 당긴다. 갈 곳을 가리키지는 못해도 그 도시가
+           어떻게 생겼는지는 보여야 한다. */
+        return _mvSet(Math.max(1.5, _mvZMin), 0, 0);
+      }
+      var xs = pts.map(function (q) { return q.x; });
+      var ys = pts.map(function (q) { return q.y; });
+      var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+      var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+      var pad = 12;
+      var w = Math.max(16, x1 - x0 + pad * 2), h = Math.max(16, y1 - y0 + pad * 2);
+      var free = _mvFree(box);
+      /* 핀 자리는 핀 층(상자 높이) 기준이다. 모형(fh)과 높이가 다르다 */
+      var ph = (layer && layer.clientHeight) || fh;
+      /* 정거장이 여백까지 빈 자리에 다 들어가는 배율. 이보다 당기면 핀이 잘린다 */
+      var zFit = Math.min(free.w / fw * 100 / w, free.h / ph * 100 / h);
+      var z = Math.max(1, Math.min(2.2, zFit));
+      /* 덮을 수 있으면 덮는다. 정거장이 장면 가장자리라 둘이 어긋나면 핀이 우선 —
+         바닥색이 조금 보이는 것이 핀이 잘리는 것보다 낫다(정선 48 · 서귀포 49) */
+      if (_mvZMin <= zFit) z = Math.max(z, _mvZMin);
+
+      var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      /* 보이는 자리의 가운데가 상자 가운데에서 얼마나 비켜 있는지(층 폭·높이 기준 %) */
+      var ox = (free.x + free.w / 2 - bw / 2) / fw * 100;
+      var oy = (free.y + free.h / 2 - bh / 2) / ph * 100;
+      /* 동선 가운데로 가되 끌기 한도 안에서. 그래도 핀이 빈 자리 밖이면 핀이 들어오는 데까지 민다 */
+      var lim = _mvLimit(frame, box, z);
+      var px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
+      var py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
+      var m = 24;   /* 번호 동그라미(32px)가 가장자리에 걸리지 않을 만큼, px */
+      px = Math.max((free.x + m - bw / 2) * 100 / fw - (x0 - 50) * z,
+           Math.min((free.x + free.w - m - bw / 2) * 100 / fw - (x1 - 50) * z, px));
+      py = Math.max((free.y + m - bh / 2) * 100 / ph - (y0 - 50) * z,
+           Math.min((free.y + free.h - m - bh / 2) * 100 / ph - (y1 - 50) * z, py));
+      return _mvSet(z, px, py);
     }
 
     function _mvApply() {
