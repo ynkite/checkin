@@ -1202,7 +1202,7 @@
                     const _proceed = () => {
                         if (window._genCancelled) return;
                         btn.innerHTML = '일정을 만드는 중입니다…';
-                        _showGenLoading('일정을 만드는 중입니다…');
+                        _showGenLoading('다 됐습니다. 동선을 다듬는 중입니다');
                         sessionStorage.setItem('autoHealingRetries', '0');
                         validateAndHealingRoute(tripId, draftRoute, btn);
                     };
@@ -1388,7 +1388,7 @@
                         toast('가까운 곳으로 바꾸지 못해 그 장소는 그대로 둡니다.');
                     }
                 }
-                _showGenLoading('일정을 만드는 중입니다');
+                _showGenLoading('다 됐습니다. 동선을 다듬는 중입니다');
                 sessionStorage.setItem('autoHealingRetries', '0');
                 validateAndHealingRoute(tripId, route, btn);
             };

@@ -2873,7 +2873,7 @@ function _validatePlanStep1() {
 
 function _validatePlanStep2() {
     const styleChips = document.querySelectorAll('#chip-style .chip.on');
-    if (styleChips.length === 0) { toast('여행 스타일을 1개 이상 골라 주세요.'); return false; }
+    if (styleChips.length === 0) { toast('「어떤 여행」에서 1개 이상 골라 주세요.'); return false; }
     if ([...styleChips].some(c => c.textContent.includes('기타'))) {
         if (!document.getElementById('other-style')?.value.trim()) {
             toast('어떤 여행을 바라는지 적어 주세요.'); return false;
@@ -4383,6 +4383,9 @@ window.addEventListener('popstate', async e => {
 
     // 서버가 발급한 공유 링크(/trip/{토큰}) — 토큰으로 여행 번호를 서버에 묻는다
     if (_shareToken()) {
+        /* 같은 창에서 전에 본 일정이 세션에 남아 있으면 닫힌 링크에서도 그 일정이 고치기 단추까지 달고 떴다 */
+        ['ai_generated_route', 'plannerDraftId', 'plannerDraftState', 'map_fallback_queue', 'currentPage']
+            .forEach(k => sessionStorage.removeItem(k));
         const r = await api.get('/api/trips/shared');
         if (r && r.success && r.data) sharedId = String(r.data.tripId);
         else setTimeout(() => toast('비공개 여행입니다. 만든 사람이 공유를 닫았거나 링크가 바뀌었습니다.', 5000), 300);
@@ -4407,12 +4410,14 @@ window.addEventListener('popstate', async e => {
     }
 
     // 복원된 고유 ID로 기존 지도 연동 시스템 매핑 체결
-    if (sharedId) {
-        window._currentTripId = parseInt(sharedId);
-        sessionStorage.setItem('plannerDraftId', sharedId);
-        sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
+    if (sharedId || _isReadOnlyShare()) {
+        if (sharedId) {
+            window._currentTripId = parseInt(sharedId);
+            sessionStorage.setItem('plannerDraftId', sharedId);
+            sessionStorage.setItem('currentPage', 'map'); // 무조건 지도 화면으로 이동
+        }
 
-        // 읽기 전용 주소(/plan/view · /trip/{토큰})로 들어왔을 때의 강력한 차단 로직
+        // 읽기 전용 주소(/plan/view · /trip/{토큰})로 들어왔을 때의 강력한 차단 로직. 닫힌 링크여도 고치기 단추는 숨긴다
         if (_isReadOnlyShare()) {
 
             // 1. CSS로 수정 버튼, 공유 버튼, 그리고 [교체 요청 바]까지 싹 다 숨김

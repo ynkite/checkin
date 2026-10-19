@@ -919,15 +919,13 @@
         var free = _mvFree(box);
         var z = Math.min(2.2, Math.max(1.12, Math.min(free.w / fw * 100 / w, free.h / fh * 100 / h)));
 
-        var lim = _mvLimit(frame, box, z);
         var cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
         /* 보이는 자리의 가운데가 상자 가운데에서 얼마나 비켜 있는지(모형 폭 기준 %) */
         var ox = (free.x + free.w / 2 - box.clientWidth / 2) / fw * 100;
         var oy = (free.y + free.h / 2 - box.clientHeight / 2) / fh * 100;
-        var px = Math.max(-lim.x, Math.min(lim.x, (50 - cx) * z + ox));
-        var py = Math.max(-lim.y, Math.min(lim.y, (50 - cy) * z + oy));
-
-        _mvHome = _mvSet(z, px, py);
+        /* 끌기 한도(_mvLimit)로 자르지 않는다. 정거장이 모형 구석에 있으면(해운대, x 82~98%)
+           한도에 걸려 동선이 띠 밑에 남았다. 끌기 한도가 이 자리까지 넓어진다 */
+        _mvHome = _mvSet(z, (50 - cx) * z + ox, (50 - cy) * z + oy);
       } else if (frame && box) {
         /* 정거장이 하나도 안 담긴 경우다 — 여행지 중심부를 대신 보여 주는 때다.
            그냥 두면 장면 전체가 멀리서 보는 도면처럼 작게 뜬다. 대전이 그랬다.
@@ -2979,8 +2977,9 @@
        상자보다 작으면(좁은 화면의 세로) 모형이 상자 밖으로 안 나가는 만큼 */
     function _mvLimit(frame, box, z) {
       var m = _mvDims || _mvMeasure(frame, box);
-      return { x: Math.abs(m.fw * z - m.bw) / 2 / m.fw * 100,
-               y: Math.abs(m.fh * z - m.bh) / 2 / m.fh * 100 };
+      /* 열 때 맞춘 자리(_mvHome)는 한도 밖이라도 갈 수 있어야 「시점 초기화」가 거기로 돌아온다 */
+      return { x: Math.max(Math.abs(m.fw * z - m.bw) / 2 / m.fw * 100, Math.abs(_mvHome.x)),
+               y: Math.max(Math.abs(m.fh * z - m.bh) / 2 / m.fh * 100, Math.abs(_mvHome.y)) };
     }
     /* 상자 안에서 다른 것에 안 가리는 자리. 위는 도구 막대 밑, 아래는 정거장 띠·단추 위 */
     function _mvFree(box) {
