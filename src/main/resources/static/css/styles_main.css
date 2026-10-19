@@ -4363,10 +4363,12 @@ nav {
 .typing-dot:nth-child(2) { animation-delay: -0.16s; }
 .typing-dot:nth-child(3) { animation-delay: 0s; }
 
+/* 점은 늘 보인다. 크기 0 으로 숨기던 때는 답이 올 때까지 빈 말풍선으로 보였다 */
 @keyframes typingBounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1); }
+    0%, 80%, 100% { opacity: .3; }
+    40% { opacity: 1; }
 }
+@media (prefers-reduced-motion: reduce) { .typing-dot { animation: none; } }
 
 .nav-planner-steps {
     display: flex;
