@@ -234,28 +234,35 @@
             /* 「다시 시도」 단추가 부른다. 화면 조각 안에 있는 함수라 창에 붙여 둔다 */
             window.wxReload = function () { loadWeek(); };
 
+            /* 마지막으로 부른 요청만 그린다. 새로고침 진입은 서울 loadWeek 과 여행지 loadWeek 을
+               거의 동시에 불러서, 늦게 온 서울 응답이 부산 카드를 덮은 일이 있었다 */
+            var weekSeq = 0, oneSeq = 0;
             async function loadWeek() {
+                var my = ++weekSeq;
                 var today = new Date();
                 var to = new Date(today);
                 to.setDate(today.getDate() + DAYS - 1);
+                var r = region;
                 try {
                     var list = await get('/api/maps/weather/range?region=' +
-                        encodeURIComponent(region) + '&from=' + iso(today) + '&to=' + iso(to));
-                    drawWeek(region, list || [], false);
+                        encodeURIComponent(r) + '&from=' + iso(today) + '&to=' + iso(to));
+                    if (my === weekSeq) drawWeek(r, list || [], false);
                 } catch (e) {
-                    drawWeek(region, [], true);
+                    if (my === weekSeq) drawWeek(r, [], true);
                     console.warn('[날씨] 7일 예보 실패:', e);
                 }
             }
 
             async function loadOne(dateStr) {
+                var my = ++oneSeq;
                 var asked = new Date(dateStr + 'T00:00:00');
+                var r = region;
                 try {
                     var d = await get('/api/maps/weather/day?region=' +
-                        encodeURIComponent(region) + '&date=' + dateStr);
-                    drawOne(region, d, asked);
+                        encodeURIComponent(r) + '&date=' + dateStr);
+                    if (my === oneSeq) drawOne(r, d, asked);
                 } catch (e) {
-                    drawOne(region, null, asked);
+                    if (my === oneSeq) drawOne(r, null, asked);
                     console.warn('[날씨] 날짜 조회 실패:', e);
                 }
             }
