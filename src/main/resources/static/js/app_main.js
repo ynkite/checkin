@@ -4471,7 +4471,7 @@ window.addEventListener('popstate', async e => {
             // 3. 자바스크립트 라이브러리(SortableJS 등)의 드래그 기능 무력화
             setTimeout(() => {
                 document.querySelectorAll('[draggable="true"]').forEach(el => el.setAttribute('draggable', 'false'));
-                toast('읽기 전용으로 플랜을 열람합니다.');
+                if (sharedId) toast('읽기 전용으로 플랜을 열람합니다.');   // 닫힌 링크면 '비공개' 안내를 덮지 않는다
             }, 800);
         }else {
             // [신규] 읽기 전용이 아닌 '수정 권한' 링크로 접근한 경우, 초대된 일정 뷰어임을 명시
