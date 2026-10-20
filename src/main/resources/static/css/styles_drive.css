@@ -274,8 +274,8 @@ body.dv-open{ overflow:hidden }
   box-shadow:0 1px 0 rgba(var(--sh-rgb),.12),0 3px 0 rgba(var(--sh-rgb),.06);
 }
 .dv-alert:not([hidden]) ~ .dv-note,
-.dv-sug:not([hidden]) ~ .dv-alert,
-.dv-sug:not([hidden]) ~ .dv-note{ margin-top:var(--u) }
+.dv-sug:not([hidden]) ~ .dv-alert{ margin-top:var(--u) }
+.dv-sug:not([hidden]) ~ .dv-note{ display:none }
 
 /* ── 아래 — 남은 것과 손대는 것 ───────────────────────── */
 .dv-bottom{
