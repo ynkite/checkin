@@ -29,7 +29,7 @@ public final class PlaceCheck {
 
     public enum Kind { CROWD, RAIN, TRAFFIC }
 
-    private static final Map<Kind, String> KIND_KO = Map.of(Kind.CROWD, "붐빔", Kind.RAIN, "비", Kind.TRAFFIC, "길");
+    private static final Map<Kind, String> KIND_KO = Map.of(Kind.CROWD, "혼잡", Kind.RAIN, "비", Kind.TRAFFIC, "길");
 
     /**
      * 확인한 것 하나.
@@ -71,16 +71,16 @@ public final class PlaceCheck {
             switch (f.kind()) {
                 case RAIN -> {
                     problems.add(today ? "비 소식이 있습니다" : "그날 비 예보가 있습니다");
-                    add(opts, fromLive(liveActions, "indoor", "실내로 바꾸기", "그날 야외 일정을 실내로 다시 짭니다"));
+                    add(opts, fromLive(liveActions, "indoor", "실내로 바꾸기", "그날 야외 일정을 실내로 바꿉니다"));
                 }
                 case CROWD -> {
                     /* 실측과 예측을 같은 말로 쓰지 않는다. 당일이어도 실측을 못 받았으면 예측이다 */
-                    problems.add("SK_LIVE".equals(f.source()) ? "지금 붐빕니다"
-                            : today ? "오늘 붐빌 것으로 예측됩니다" : "그날 붐빌 것 같습니다");
-                    add(opts, fromLive(liveActions, "swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다"));
+                    problems.add("SK_LIVE".equals(f.source()) ? "지금 사람이 많습니다"
+                            : today ? "오늘 사람이 많을 것으로 예측됩니다" : "그날 사람이 많을 것 같습니다");
+                    add(opts, fromLive(liveActions, "swap", "순서 바꾸기", "사람이 몰리는 곳을 뒤로 미룹니다"));
                     Map<String, Object> q = liveActions.get("quiet");
                     add(opts, new Option("quiet", "한적한 다른 곳",
-                            "그 시각에 덜 붐비는 곳을 보여 드립니다. 바꿀지는 고르시면 됩니다",
+                            "그 시각에 사람이 적은 곳을 보여 드립니다. 바꿀지는 고르시면 됩니다",
                             "GET", q != null ? String.valueOf(q.getOrDefault("quietEndpoint", "")) : "", false));
                 }
                 case TRAFFIC -> {

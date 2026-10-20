@@ -1534,7 +1534,7 @@
                     + '입력하신 예산은 <b>' + won(issues.budget) + '</b>인데, '
                     + '이 일정의 예상 최소 비용은 약 <b style="color:var(--num)">' + won(issues.estimated) + '</b>입니다.<br>'
                     + '예산을 올리지 않으면 <b style="color:var(--tile)">일정이 제대로 안 나올 수 있습니다.</b><br>'
-                    + '<span style="color:var(--ink-3);font-size:11px">변경하면 예산에 맞춰 일정을 다시 짭니다. 그대로 만들려면 무시하고 생성을 눌러 주세요.</span>'
+                    + '<span style="color:var(--ink-3);font-size:11px">변경하면 예산에 맞춰 일정을 바꿉니다. 그대로 만들려면 무시하고 생성을 눌러 주세요.</span>'
                     + '</div></div>';
             }
 
@@ -1572,7 +1572,7 @@
                     parts.push(names + ' 장소를 변경해줘. 여행 날짜에 휴무이거나 이용이 어려운 것 같아서 같은 종류의 다른 장소로 바꿔줘.');
                 }
                 if (issues.budgetShort) {
-                    parts.push('예산을 ' + won(issues.estimated) + '으로 바꿀게. 그에 맞게 일정을 다시 짜 줘.');
+                    parts.push('예산을 ' + won(issues.estimated) + '으로 바꿀게. 그에 맞게 일정을 바꿔 줘.');
                 }
                 if (issues.missing.length > 0) {
                     const names = issues.missing.join(', ');

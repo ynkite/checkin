@@ -370,7 +370,7 @@ public class LiveService {
 
         /* 비 오는 날 야외 — 서버가 그날을 실내로 다시 짠다. 한 번으로 끝난다 */
         if (Boolean.TRUE.equals(weather.get("outdoorRisk"))) {
-            Map<String, Object> a = act("indoor", "실내로 바꾸기", "그날 야외 일정을 실내로 다시 짭니다");
+            Map<String, Object> a = act("indoor", "실내로 바꾸기", "그날 야외 일정을 실내로 바꿉니다");
             a.put("method", "POST");
             a.put("endpoint", base + "/indoor-replace?day=" + dayNo);
             a.put("oneClick", true);
@@ -391,7 +391,7 @@ public class LiveService {
         boolean busy = rate instanceof Number r && r.intValue() >= 70;
 
         Map<String, Object> swap = busy
-                ? act("swap", "순서 바꾸기", "붐비는 곳을 뒤로 미룹니다")
+                ? act("swap", "순서 바꾸기", "사람이 몰리는 곳을 뒤로 미룹니다")
                 : act("swap", "순서 바꾸기", "들르는 순서를 바꿉니다");
         swap.put("method", "POST");
         swap.put("endpoint", base + "/reorder");

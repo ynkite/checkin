@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>체크인 — 붐비지 않게 짜는 여행</title>
+  <title>체크인 — 사람 많은 곳을 피하는 여행</title>
   <!-- Pretendard·Gmarket Sans 는 Google Fonts 에 없다. 기존 링크는 400 을 받아
        웹폰트가 하나도 로드되지 않았다. 실제로 서비스되는 조합으로 바꿨다. -->
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +11,9 @@
        IBM Plex Sans KR 보다 촘촘해 같은 크기에서 더 또렷하다.
        가변 폰트 + 동적 서브셋이라 쓰는 글자만 받는다.
        숫자·시각은 IBM Plex Mono 를 그대로 쓴다 — 자릿수가 맞아야 한다. -->
-  <meta name="description" content="붐비는 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
-  <meta property="og:title" content="체크인 — 붐비지 않게 짜는 여행">
-  <meta property="og:description" content="붐비는 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
+  <meta name="description" content="사람 많은 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
+  <meta property="og:title" content="체크인 — 사람 많은 곳을 피하는 여행">
+  <meta property="og:description" content="사람 많은 곳과 비 오는 시간을 피해 다음 동선을 고릅니다.">
   <meta property="og:type" content="website">
   <!-- og:image 와 og:url 은 도메인이 정해진 뒤에 넣는다.
        둘 다 절대 주소여야 하고, 카카오·페이스북은 svg 를 안 받는다.
@@ -230,12 +230,12 @@
 <!-- ===== JS ===== -->
 <script th:src="@{/js/crowd.js(v=20260917e)}"></script>
 <script th:src="@{/js/app_main.js(v=20261019j)}"></script>
-  <script th:src="@{/js/app_home.js(v=20261019c)}"></script>
+  <script th:src="@{/js/app_home.js(v=20261020a)}"></script>
 <script th:src="@{/js/app_stage.js(v=20261019b)}"></script>
-<script th:src="@{/js/app_budget.js(v=20261019g)}"></script>
+<script th:src="@{/js/app_budget.js(v=20261020a)}"></script>
 <script th:src="@{/js/app_community.js(v=20261019a)}"></script>
 <script th:src="@{/js/app_community_v2.js(v=20261019a)}"></script>
-<script th:src="@{/js/nav-drive.js(v=20261019d)}"></script>
+<script th:src="@{/js/nav-drive.js(v=20261020a)}"></script>
 <script th:src="@{/js/phone-qr.js(v=20261019a)}"></script>
 <script th:src="@{/js/explore.js(v=20261018a)}"></script>
 <!-- 말로 하기 — 실시간 화면에서만 쓴다. rlVoiceToggle() 이 창구다 -->
@@ -356,7 +356,7 @@
     <!-- 브랜드 -->
     <div class="foot-brand">
       <img class="foot-logo" src="/img/logo-wide.png" alt="체크인" width="415" height="112" decoding="async">
-      <p class="foot-slogan">붐비면 다음 동선을 바꿉니다</p>
+      <p class="foot-slogan">사람이 몰리면 다음 동선을 바꿉니다</p>
       <p class="foot-desc">
         경로·예산·날씨를 한 화면에서 보고,<br>
         어긋나면 그 자리에서 바꿉니다.

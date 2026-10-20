@@ -58,7 +58,7 @@
               <svg class="rl-br-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.4"></circle><path d="M15.9 15.9 21 21"></path></svg>
             </i>
             <b>장소 확인하기</b>
-            <span>다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다</span>
+            <span>다음 장소에 사람이 많은지, 비가 오는지, 늦지 않는지 봅니다</span>
             <i class="rl-br-cue" aria-hidden="true">
               <svg class="rl-br-svg" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"></path></svg>
             </i>
@@ -100,7 +100,7 @@
                해석하는 곳은 하나다 — 규칙이 두 벌이면 한쪽만 고쳐진다 -->
           <div class="rv-type">
             <input id="rlVoiceText" type="text" autocomplete="off"
-                   placeholder="다음 어디야 · 붐벼? · 날씨 · 길 안내"
+                   placeholder="다음 어디야 · 사람 많아? · 날씨 · 길 안내"
                    aria-label="말로 물어보기" onkeydown="rlVoiceKey(event)">
             <button type="button" onclick="rlVoiceSend()">묻기</button>
           </div>
@@ -593,7 +593,7 @@
        * 당일이면 실측(SK 실시간 인원·TMAP 실시간 교통), 아니면 예측(관광공사·기상청).
        * 무엇을 근거로 한 말인지 줄마다 적는다. 문제가 있으면 갈래를 주고 고르게 한다 —
        * 아무 문제가 없어도 「그대로 가도 됩니다」라고 말한다. */
-      var KIND_KO = { CROWD: '붐빔', RAIN: '비', TRAFFIC: '길' };
+      var KIND_KO = { CROWD: '혼잡', RAIN: '비', TRAFFIC: '길' };
       var rlChecking = false;
 
       function rlCheckBox() { return document.getElementById('rlCheck'); }
@@ -634,7 +634,7 @@
         if (!sub) return;
         if (n) {
           sub.textContent = Number(n[1]) > 0
-            ? '다음 장소가 붐비는지, 비가 오는지, 늦지 않는지 봅니다 · 오늘 ' + n[1] + '번 남음'
+            ? '다음 장소에 사람이 많은지, 비가 오는지, 늦지 않는지 봅니다 · 오늘 ' + n[1] + '번 남음'
             : '오늘 확인을 다 썼습니다. 내일 다시 확인할 수 있습니다';
           btn.disabled = Number(n[1]) <= 0 ? false : false;   /* 막지 않는다. 눌러도 이유를 말해 준다 */
         }
@@ -803,7 +803,7 @@
         var bc = rlFind(beforeCheck, 'CROWD'), ac = rlFind(afterCheck, 'CROWD');
         var br = bc && bc.values && bc.values.rate, ar = ac && ac.values && ac.values.rate;
         if (typeof br === 'number' && typeof ar === 'number' && br !== ar) {
-          lines.push('붐빔 ' + br + ' → ' + ar + ' (' + (ac.sourceLabel || '') + ')');
+          lines.push('혼잡도 ' + br + ' → ' + ar + ' (' + (ac.sourceLabel || '') + ')');
         }
         var bw = rlFind(beforeCheck, 'RAIN'), aw = rlFind(afterCheck, 'RAIN');
         if (bw && aw && bw.issue && !aw.issue) lines.push('비 맞는 야외 일정이 없어졌습니다.');
@@ -1214,7 +1214,7 @@
         if (key === 'swap') {
           rlApplyLive({
             label: '순서 바꾸기',
-            note: '붐비는 곳을 남은 구간의 뒤로 미룹니다',
+            note: '사람이 몰리는 곳을 남은 구간의 뒤로 미룹니다',
             endpoint: '/api/trips/' + rlTrip + '/routes/swap-crowded?day=' + rlDayNo,
             preview: window.rlSwapPair,
             drive: arguments[1]
@@ -1224,7 +1224,7 @@
         if (key === 'indoor') {
           rlApplyLive({
             label: '실내로 바꾸기',
-            note: '비 예보라 그날 야외 일정을 실내로 다시 짭니다',
+            note: '비 예보라 그날 야외 일정을 실내로 바꿉니다',
             endpoint: '/api/trips/' + rlTrip + '/routes/indoor-replace?day=' + rlDayNo,
             done: '실내 일정으로 바꿨습니다. 되돌릴 수 있습니다.'
           });
