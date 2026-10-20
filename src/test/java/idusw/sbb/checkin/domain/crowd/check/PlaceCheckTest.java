@@ -47,7 +47,7 @@ class PlaceCheckTest {
     void 조사는_받침에_맞춘다() {
         assertThat(PlaceCheck.topic("길")).isEqualTo("길은");
         assertThat(PlaceCheck.topic("비")).isEqualTo("비는");
-        assertThat(PlaceCheck.topic("붐빔·비")).isEqualTo("붐빔·비는");
+        assertThat(PlaceCheck.topic("혼잡·비")).isEqualTo("혼잡·비는");
     }
 
     @Test
@@ -76,8 +76,8 @@ class PlaceCheckTest {
         PlaceCheck.Result later = PlaceCheck.decide("FORECAST", "9월 25일 예측", "d", "t", PLACE,
                 List.of(ok(Kind.CROWD, true, "TOUR_FORECAST")), ACTIONS, null);
         assertThat(keys(today)).containsExactly("swap", "quiet", "keep");
-        assertThat(today.verdict().text()).contains("지금 붐빕니다");
-        assertThat(later.verdict().text()).contains("그날 붐빌 것 같습니다").doesNotContain("지금");
+        assertThat(today.verdict().text()).contains("지금 사람이 많습니다");
+        assertThat(later.verdict().text()).contains("그날 사람이 많을 것 같습니다").doesNotContain("지금");
         assertThat(today.options().get(1).endpoint()).startsWith("/api/live/quiet");
     }
 
@@ -85,7 +85,7 @@ class PlaceCheckTest {
     void 당일이라도_실측을_못_받았으면_지금_붐빈다고_하지_않는다() {
         PlaceCheck.Result r = PlaceCheck.decide("LIVE", "지금 상황", "d", "t", PLACE,
                 List.of(ok(Kind.CROWD, true, "TOUR_FORECAST")), ACTIONS, null);
-        assertThat(r.verdict().text()).contains("오늘 붐빌 것으로 예측됩니다").doesNotContain("지금 붐빕니다");
+        assertThat(r.verdict().text()).contains("오늘 사람이 많을 것으로 예측됩니다").doesNotContain("지금 사람이 많습니다");
     }
 
     @Test

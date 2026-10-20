@@ -151,7 +151,7 @@ public class PlaceCheckService {
                     CrowdLevel lv = CrowdLevel.of(l.asRate());
                     boolean busy = l.asRate() >= BUSY;
                     return new Finding(Kind.CROWD, Status.OK, busy, "SK_LIVE", "SK 실시간 인원(지금 측정)",
-                            (lv != null ? lv.label() : "붐빔 정도 " + Math.round(l.asRate())) + " — 지금 측정한 값입니다.",
+                            (lv != null ? lv.label() : "혼잡도 " + Math.round(l.asRate())) + " — 지금 측정한 값입니다.",
                             PlaceCheck.values("rate", Math.round(l.asRate()), "level", lv == null ? null : lv.label(),
                                     "headcount", l.headcount()));
                 }
@@ -167,7 +167,7 @@ public class PlaceCheckService {
                         "이 장소는 혼잡도 예측이 없습니다.", Map.of());
             }
             boolean busy = f.rate() >= BUSY;
-            String level = f.levelLabel() != null ? f.levelLabel() : "붐빔 정도 " + Math.round(f.rate());
+            String level = f.levelLabel() != null ? f.levelLabel() : "혼잡도 " + Math.round(f.rate());
             String summary = (live ? "오늘" : "그날") + " 예측은 「" + level + "」입니다.";
             if (liveMiss != null) summary = liveMiss + " 예측으로 봅니다. " + summary;
             return new Finding(Kind.CROWD, Status.OK, busy, "TOUR_FORECAST", label, summary,

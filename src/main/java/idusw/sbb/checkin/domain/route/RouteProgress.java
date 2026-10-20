@@ -28,7 +28,7 @@ public class RouteProgress {
     public enum Phase {
         QUEUED("기다리는 중입니다", 5),
         COLLECTING("갈 만한 곳을 찾는 중입니다", 15),
-        CONDITIONS("조건에 맞는 곳과 붐빔을 보는 중입니다", 25),
+        CONDITIONS("조건에 맞는 곳과 혼잡도를 보는 중입니다", 25),
         PRICING("가격을 어림하는 중입니다", 35),
         ASSEMBLING("하루 순서를 짜는 중입니다", 50),
         SAVING("일정을 저장하는 중입니다", 70),

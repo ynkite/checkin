@@ -71,7 +71,7 @@
       if (f.key === 'crowd') {
         var a = route[f.at], b = f.to;
         metric = (a.crowd == null ? '—' : a.crowd) + ' → ' + (b.crowd == null ? '—' : b.crowd);
-        source = a.crowdLive && b.crowdLive ? '한국관광공사 집중률 예측 · 붐빌 때의 변경 예시' : '혼잡도 예시 · 실제 상황이 아닙니다';
+        source = a.crowdLive && b.crowdLive ? '한국관광공사 집중률 예측 · 사람이 몰릴 때의 변경 예시' : '혼잡도 예시 · 실제 상황이 아닙니다';
       }
       caption(f.label, f.why);
       cap.hidden = false;
@@ -211,7 +211,7 @@
           var nm = cands[i].placeName;
           f.to = { name: nm, note: a.note, cat: (hit.category_name || '').split(' > ').pop() || '관광지',
                    lat: +hit.y, lng: +hit.x, crowd: Math.round(cands[i].rate), crowdLive: true };
-          f.how = '붐비는 해변 대신 ' + nm + '부터 갑니다';
+          f.how = '사람이 몰리는 해변 대신 ' + nm + '부터 갑니다';
           return;
         }
       } catch (e) {}

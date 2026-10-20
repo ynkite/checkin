@@ -282,7 +282,7 @@ async function _loadExpenses(tripId) {
     const budgetRefEl = document.getElementById('ledger-budget-ref');
     if (budgetRefEl) {
         if (d.budget) {
-            budgetRefEl.textContent = '정한 예산 ' + _fmtWon(d.budget) + ' · '
+            budgetRefEl.textContent = '예산 ' + _fmtWon(d.budget) + ' · '
                 + (d.totalActualAmount ? '실제 지출' : '예상 총액') + ' 기준';
             budgetRefEl.style.display = 'block';
         } else {
@@ -453,7 +453,7 @@ async function _loadBudgetFit(tripId, report) {
     };
 
     set('budget-fit-pct', '예산의 ' + pct + '%');
-    set('budget-fit-ref', '정한 예산 ' + _fmtWon(limit) + ' 기준');
+    set('budget-fit-ref', '예산 ' + _fmtWon(limit) + ' 기준');
     set('budget-fit-line', f && f.before !== f.after
         ? '조정 전 ' + _fmtWon(f.before) + ' → 조정 후 ' + _fmtWon(f.after) : '');
     document.getElementById('budget-fit-list').replaceChildren(...(f ? f.changes : []).map(c => {
@@ -768,7 +768,7 @@ async function _loadMapBudget() {
     const base  = d.budget || 0;
     const spent = hasAct ? totalAct : totalEst;
     const ratioEl = document.getElementById('map-budget-ratio');
-    if (ratioEl) ratioEl.textContent = base > 0 ? Math.round(spent / base * 100) + '%' : '정한 예산 없음';
+    if (ratioEl) ratioEl.textContent = base > 0 ? Math.round(spent / base * 100) + '%' : '예산 없음';
     if (remainEl) {
         if (base > 0) {
             const remain = base - spent;

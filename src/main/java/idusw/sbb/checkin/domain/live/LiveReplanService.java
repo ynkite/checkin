@@ -119,12 +119,12 @@ public class LiveReplanService {
            미리 재 본 뒤 바로 바꿔도 외부 호출은 한 번이다 */
         String next = route.toString();
         RouteDelta delta = RouteDelta.between(json, aiRouteService.previewEnriched(tripId, next));
-        if (preview) return withDelta(result(true, "붐비는 곳을 뒤로 미룹니다.", moved), delta);
+        if (preview) return withDelta(result(true, "사람이 몰리는 곳을 뒤로 미룹니다.", moved), delta);
 
         aiRouteService.saveAiRouteToDb(tripId, next);
         log.info("[실시간] 붐비는 곳을 뒤로 미뤘습니다 trip={} day={} moved={}", tripId, dayNo, moved);
 
-        return withDelta(result(true, "붐비는 곳을 뒤로 미뤘습니다.", moved), delta);
+        return withDelta(result(true, "사람이 몰리는 곳을 뒤로 미뤘습니다.", moved), delta);
     }
 
     /* 못 잰 쪽만 있으면 싣지 않는다 — 화면은 delta 가 없으면 그 줄을 숨긴다 */

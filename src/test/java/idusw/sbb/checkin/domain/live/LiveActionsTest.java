@@ -97,7 +97,7 @@ class LiveActionsTest {
 
         assertThat(갈래("swap").get("suggested")).isEqualTo(false);
         /* 한적한데 「붐비는 곳을 뒤로」라고 쓰면 거짓말이다 */
-        assertThat(String.valueOf(갈래("swap").get("note"))).doesNotContain("붐비는");
+        assertThat(String.valueOf(갈래("swap").get("note"))).doesNotContain("몰리는");
     }
 
     @Test
@@ -105,7 +105,7 @@ class LiveActionsTest {
         여행하나(88);
 
         assertThat(갈래("swap").get("suggested")).isEqualTo(true);
-        assertThat(String.valueOf(갈래("swap").get("note"))).contains("붐비는");
+        assertThat(String.valueOf(갈래("swap").get("note"))).contains("몰리는");
         assertThat(String.valueOf(갈래("quiet").get("note"))).contains("한적한");
     }
 

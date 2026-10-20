@@ -1364,7 +1364,7 @@
           ' 그날 <em>' + _mpEsc(grade) + '</em>' + (grade === '정상' ? '입니다' : '합니다') + '</p>' +
         '<p class="mp-al-2">' + when +
           _mpEsc(a) + _mpJosa(a, '과', '와') + ' ' + _mpEsc(b) +
-          _mpJosa(b, '의', '의') + ' 순서를 바꾸면 붐비는 시간을 비껴갑니다.</p>' +
+          _mpJosa(b, '의', '의') + ' 순서를 바꾸면 사람이 몰리는 시간을 비껴갑니다.</p>' +
         '<div class="mp-opts">' +
           '<button type="button" class="mp-opt" onclick="_mpSwapOrder()">' +
             '<b>순서 바꾸기</b><span>' + _mpEsc(b) + ' 먼저</span></button>' +
@@ -3370,14 +3370,14 @@
       var ratioEl = document.getElementById('map-budget-ratio');
       var limit = f ? f.limit : 0;
       if (!limit) {
-        if (ratioEl) ratioEl.textContent = '정한 예산 없음';
+        if (ratioEl) ratioEl.textContent = '예산 없음';
         return;
       }
       var remain = limit - total;
       if (remainEl) {
         remainEl.textContent = remain >= 0
-                ? '정한 예산 ' + limit.toLocaleString() + '원 안쪽입니다. ' + remain.toLocaleString() + '원 남았습니다.'
-                : '정한 예산 ' + limit.toLocaleString() + '원보다 ' + (-remain).toLocaleString() + '원 많습니다.';
+                ? '예산 ' + limit.toLocaleString() + '원 안쪽입니다. ' + remain.toLocaleString() + '원 남았습니다.'
+                : '예산 ' + limit.toLocaleString() + '원보다 ' + (-remain).toLocaleString() + '원 많습니다.';
         remainEl.classList.toggle('mp-over', remain < 0);
       }
       if (ratioEl) ratioEl.textContent = Math.round(total / limit * 100) + '%';
@@ -3972,10 +3972,10 @@
 
       // 기다리는 동안 단계 문구를 토스트로 넘긴다 (시각으로 짐작한 단계)
       const stopSteps = stepText(s => toast(s, 30000), [
-        `${dayNum}일차를 실내 일정으로 다시 짜는 중입니다.`,
+        `${dayNum}일차를 실내 일정으로 바꾸는 중입니다.`,
         `${dayNum}일차에 넣을 실내 장소를 고르는 중입니다.`,
         '바뀐 곳까지 길과 이동 시간을 재는 중입니다.',
-        '날씨와 붐빔 정보를 붙이는 중입니다.',
+        '날씨와 혼잡도 정보를 붙이는 중입니다.',
         '거의 다 됐습니다.'
       ], 20000);
 
