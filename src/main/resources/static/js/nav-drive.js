@@ -811,7 +811,7 @@
     var kind = null, say = null;
     if (c.rate != null && Number(c.rate) >= SUG_BUSY) {
       kind = 'busy';
-      say = (c.placeName || name) + ' 에 사람이 많습니다. 순서를 바꾸거나 가까운 다른 곳을 찾을 수 있습니다.';
+      say = (c.placeName || name) + '에 사람이 많습니다. 순서를 바꾸거나 가까운 다른 곳을 찾을 수 있습니다.';
     } else if (String(w.label || w.summary || w.text || '').indexOf('비') >= 0) {
       kind = 'rain';
       say = name + ' 에 비 소식이 있습니다. 실내로 바꾸거나 순서를 미룰 수 있습니다.';
