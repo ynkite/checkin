@@ -8,7 +8,7 @@
 .ck-home :is(button,input,select):focus-visible{ outline:2px solid var(--sig-deep); outline-offset:calc(var(--u)/2) }
 .ck-home button:active{ transform:translateY(calc(var(--u)/4)) }
 .ck-home [hidden]{ display:none }
-.ck-wr{ max-width:var(--home-reading); margin:auto; padding-inline:var(--home-inset) }
+.ck-wr{ width:100%; max-width:var(--home-reading); margin:auto; padding-inline:var(--home-inset) }
 .ck-fig{ font-family:var(--sans); font-variant-numeric:tabular-nums; letter-spacing:normal}
 .ck-home .ck-empty,.ck-home .no-data{ padding:calc(var(--u)*3) 0; color:var(--ink-2); font-size:var(--t-sm); line-height:1.7 }
 .ck-mine{ display:none }

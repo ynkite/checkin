@@ -273,7 +273,9 @@ body.dv-open{ overflow:hidden }
   font-size:var(--home-meta); line-height:1.5; word-break:keep-all;
   box-shadow:0 1px 0 rgba(var(--sh-rgb),.12),0 3px 0 rgba(var(--sh-rgb),.06);
 }
-.dv-alert:not([hidden]) ~ .dv-note{ margin-top:var(--u) }
+.dv-alert:not([hidden]) ~ .dv-note,
+.dv-sug:not([hidden]) ~ .dv-alert,
+.dv-sug:not([hidden]) ~ .dv-note{ margin-top:var(--u) }
 
 /* ── 아래 — 남은 것과 손대는 것 ───────────────────────── */
 .dv-bottom{
@@ -382,26 +384,44 @@ body.dv-driving .dv-lane-why{ display:none }
 }
 .dv-recenter:hover{ opacity:.92 }
 
-/* 주행 중 자동 제안 — 지도 아래쪽에 떠서 먼저 말을 건다.
-   운전 중이라 글자를 크게 두고, 누르는 자리는 48px 보다 크게 잡았다.
-   「그대로 간다」를 같이 둔 것은, 제안이 항상 옳지는 않기 때문이다. */
+/* 주행 중 자동 제안 — 지도 맨 위 얇은 띠 두 줄. 지도 한가운데(내 위치)와 경로선은 비워 둔다.
+   윗줄 「장소 · 사람 많음」 + 「말로: …」, 아랫줄 작은 단추 셋 + 마이크.
+   읽는 동안은 스피커, 듣는 동안은 마이크가 주황으로 — 영상엔 소리가 없어 화면이 보여 줘야 한다.
+   안전 안내·알림과 같은 흐름에 둔다. 셋이 함께 뜨면 차례로 아래에 선다. */
 .dv-sug{
-  position:absolute; left:var(--u); right:var(--u); bottom:var(--map-attribution-space); z-index:5;
-  padding:13px 14px 14px; border-radius:var(--r-panel);
-  background:var(--ink); color:var(--panel);
-  box-shadow:0 1px 2px rgba(var(--sh-rgb),.20), 0 6px 18px rgba(var(--sh-rgb),.22);
-}
-.dv-sug-t{
-  margin:0 0 11px; font-size:15px; font-weight:700; line-height:1.45;
-  color:var(--panel); word-break:keep-all;
-}
-.dv-sug-b{ display:grid; grid-template-columns:1fr 1fr; gap:8px }
-.dv-sug-go, .dv-sug-x{
-  min-height:48px; padding:0 12px; border:0; border-radius:var(--r-field);
-  font-family:inherit; font-size:14px; font-weight:700; cursor:pointer;
+  position:relative; z-index:6; margin:calc(var(--drive-toolbar) + var(--u)) var(--u) 0;
+  display:flex; flex-wrap:wrap; align-items:center; gap:calc(var(--u)*.75) var(--u);
+  padding:var(--u) var(--u) var(--u) calc(var(--u)*1.5); border-radius:var(--r-field);
+  background:var(--home-dark); color:var(--home-on-dark);
+  box-shadow:0 2px 0 rgba(var(--sh-rgb),.20),0 6px 0 rgba(var(--sh-rgb),.08);
   word-break:keep-all;
 }
-.dv-sug-go{ background:var(--sig); color:var(--ink) }
-.dv-sug-x{ grid-column:1 / -1; background:transparent; color:var(--panel); opacity:.72; font-weight:600 }
-.dv-sug-x:hover{ opacity:1 }
+.dv-sug-t{
+  flex:1 1 0; min-width:0; margin:0; font-size:var(--t-sm); font-weight:700; line-height:1.3;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.dv-sug-v{ font-size:var(--t-xs); color:var(--home-muted-dark); white-space:nowrap }
+.dv-sug-spk{ display:none; width:calc(var(--u)*2.25); height:calc(var(--u)*2.25); color:var(--sig) }
+body.dv-speaking .dv-sug-spk{ display:block }
+.dv-sug-spk svg,.dv-sug-mic svg{
+  width:100%; height:100%; fill:none; stroke:currentColor; stroke-width:1.9;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+.dv-sug-b{ flex:1 1 100%; display:flex; align-items:center; gap:calc(var(--u)*.75) }
+.dv-sug-go,.dv-sug-x{
+  min-height:var(--home-target); padding:0 calc(var(--u)*1.5); border:0; border-radius:var(--r-pill);
+  font-family:inherit; font-size:var(--home-meta); font-weight:700; cursor:pointer; white-space:nowrap;
+  background:var(--home-dark-hover); color:var(--home-on-dark);
+}
+.dv-sug-go:first-child{ background:var(--sig); color:var(--on-sig) }
+.dv-sug-mic{
+  flex:0 0 auto; margin-left:auto; width:var(--home-target); height:var(--home-target); padding:calc(var(--u)*1.25);
+  border:0; border-radius:var(--r-pill); cursor:pointer;
+  background:var(--home-dark-hover); color:var(--home-on-dark);
+}
+body.dv-listening .dv-sug-mic,
+body.dv-listening .dv-b-say{ background:var(--sig); color:var(--on-sig) }
+.dv-sug-mic.dv-ask{ animation:dv-ask .9s ease-in-out infinite alternate }
+@keyframes dv-ask{ from{ transform:scale(1); opacity:.7 } to{ transform:scale(1.12); opacity:1 } }
+@media (prefers-reduced-motion:reduce){ .dv-sug-mic.dv-ask{ animation:none; outline:2px solid var(--sig) } }
 
