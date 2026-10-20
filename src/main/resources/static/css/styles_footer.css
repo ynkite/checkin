@@ -152,17 +152,19 @@
    하단 고정 bottomNav에 가리지 않도록 여백 확보
    ========================================================= */
 @media (max-width: 768px) {
-    .site-footer { margin-top: 0; }   /* .page 가 탭 막대 몫으로 68px 을 이미 비운다 */
+    .site-footer { margin-top: 0; }
     .foot-top {
         flex-direction: column;
-        gap: 28px;
-        padding: 32px 20px 22px;
+        gap: 20px;
+        padding: 24px 20px 12px;
         text-align: center;
         align-items: center;
     }
-    .foot-brand { text-align: center; }
+    .foot-brand { display: none; }
     .foot-col { min-width: 0; width: 100%; }
-    .foot-col ul { align-items: center; }
+    .foot-col h4 { margin-bottom: 4px; }
+    .foot-col ul { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 0 16px; }
+    .foot-col li { min-height: var(--home-target); display: flex; align-items: center; }
     .foot-bottom-inner {
         flex-direction: column;
         text-align: center;
@@ -177,9 +179,7 @@
    소형: 480px 이하
    ========================================================= */
 @media (max-width: 480px) {
-    .foot-top { padding: 28px 16px 20px; }
-    .foot-slogan { font-size: 13px; }
-    .foot-desc { font-size: 12px; }
+    .foot-top { padding-inline: 16px; }
     .foot-bottom-inner { padding-left: 16px; padding-right: 16px; }
 }
 

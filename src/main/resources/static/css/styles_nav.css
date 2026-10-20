@@ -57,7 +57,6 @@ nav .btn-nav-primary:hover{ background:var(--ui-d) }
 nav #navBellWrapper{ position:relative; display:inline-flex; align-items:center }
 nav #navBellBtn{ min-width:var(--home-target); min-height:var(--home-target); padding:0; border:0; background:none; color:var(--ink-2); cursor:pointer }
 nav #notifBadge{ position:absolute; top:0; right:0; min-width:calc(var(--u)*2.25); height:calc(var(--u)*2.25); padding:0 calc(var(--u)/4); border:calc(var(--u)/4) solid var(--page); border-radius:var(--r-pill); background:var(--tile); color:var(--panel); font-size:var(--t-xs); font-weight:700; line-height:calc(var(--u)*1.75); text-align:center; pointer-events:none; box-sizing:border-box }
-.nav-logout-icon{ display:none }
 nav #navBellBtn:hover{ color:var(--ink) }
 
 
@@ -85,8 +84,7 @@ nav #navHamburger{
   nav .nav-links, nav #navHamburger{ display:none }
   nav .nav-right{ flex:0 0 auto; gap:0; margin-left:auto }
   nav .nav-link, nav .btn-nav-ghost, nav .btn-nav-primary, nav .nav-user{ min-width:var(--home-target); min-height:var(--home-target) }
-  nav #navLoginBtn, nav #navSignupBtn, nav #navUserNameBtn{ display:none !important }
-  nav #navLogoutBtn{ order:1; padding:0 var(--u); font-size:var(--home-meta) }
+  nav #navLoginBtn, nav #navSignupBtn, nav #navUserNameBtn, nav #navLogoutBtn{ display:none !important }
   nav #navBellWrapper{ order:2 }
   body:has(#navPlannerSteps[style*="flex"]) nav .nav-logo{ margin-right:0 }
   body:has(#navPlannerSteps[style*="flex"]) nav .logo-full{ display:none }
@@ -97,7 +95,4 @@ nav #navHamburger{
   nav .nps-btn{ flex:1; justify-content:center; min-width:var(--home-target); min-height:var(--home-target); padding:0; font-size:var(--t-xs) }
   nav .nps-num, nav .nps-arrow, nav .nps-lbl-full{ display:none }
   nav .nps-lbl-short{ display:inline }
-  body:has(#navPlannerSteps[style*="flex"]) nav #navLogoutBtn{ padding:0 }
-  body:has(#navPlannerSteps[style*="flex"]) nav .nav-logout-label{ display:none }
-  body:has(#navPlannerSteps[style*="flex"]) nav .nav-logout-icon{ display:block; width:calc(var(--u)*2.5); height:calc(var(--u)*2.5); margin:auto; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round }
 }

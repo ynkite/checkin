@@ -2681,6 +2681,19 @@ function goSlide(i) {
     });
     _si = i;
 }
+// 추천 경로 판은 손가락으로 밀어서 넘긴다. 좁은 화면에서는 화살표를 감춘다
+(function () {
+    let x0 = null, y0 = 0;
+    document.addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        x0 = e.target.closest('.ck-home .curation-panel') ? t.clientX : null; y0 = t.clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+        if (x0 === null) return;
+        const t = e.changedTouches[0], dx = t.clientX - x0; x0 = null;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(t.clientY - y0) * 1.5) changeSlide(dx < 0 ? 1 : -1);
+    }, { passive: true });
+})();
 
 /* ───────────────────────────────────────────────
  * 16. AI 플래너 입력폼 + 일정 생성
