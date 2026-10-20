@@ -27,7 +27,7 @@
 
   var OFF_METERS = 50;              // 경로선에서 이 이상 벗어나면
   var OFF_STREAK = 3;               // 이만큼 연속이면 이탈 (GPS 튐 방지)
-  var SPEAK_AT = [500, 300, 100];   // 갈림길까지 이 거리에서 한 번씩 읽는다
+  var SPEAK_AT = [500, 300, 100, 40];   // 갈림길까지 이 거리에서 한 번씩 읽는다. 40 은 「잠시 후」
   var ALERT_SPEAK_AT = [300, 100];  // 안전 지점은 이 거리에서
   var ALERT_SHOW = 700;             // 이 거리 안에 들면 화면에 띄운다
   var ARRIVE_M = 35;                // 남은 거리가 이 아래면 도착
@@ -213,12 +213,15 @@
 
   /* ══ 말하기 ════════════════════════════════════════════
      운전 중에 말이 겹치면 둘 다 못 알아듣는다. 급한 것(갈림길)이 오면
-     덜 급한 것(안전 안내)을 끊는다. */
-  function speak(text, urgent) {
+     덜 급한 것(안전 안내)을 끊는다. 소리는 nav-voice.js 가 낸다 —
+     미리 만든 파일이 있으면 그걸, 없으면 기기 목소리. */
+  function speak(text, urgent, done) {
+    if (!text) return;
+    if (window.navVoice) { window.navVoice.say(text, urgent, done); return; }
     try {
-      if (!('speechSynthesis' in window) || !text) return;
+      if (!('speechSynthesis' in window)) return;
       if (urgent) window.speechSynthesis.cancel();
-      var u = new SpeechSynthesisUtterance(text);
+      var u = new SpeechSynthesisUtterance(Array.isArray(text) ? text.join(', ') : text);
       u.lang = 'ko-KR'; u.rate = 1.05;
       window.speechSynthesis.speak(u);
     } catch (e) { /* 소리가 안 되면 화면 글자로만 간다 */ }
@@ -308,7 +311,8 @@
         } else {
           setTurn('depart', null, headLine(d), st.dest.name || '');
         }
-        speak(headSpeech(d), true);
+        /* 남은 시간·거리는 화면 아래에 있다. 소리는 짧게 — 숫자가 든 문장은 파일로 못 만든다 */
+        speak('안내를 시작합니다.', true);
         paintHelp();
         if (cb) cb();
       })
@@ -316,10 +320,6 @@
   }
   function headLine(d) {
     return Math.round(d.totalSeconds / 60) + '분 · ' + (d.totalMeters / 1000).toFixed(1) + 'km';
-  }
-  function headSpeech(d) {
-    return Math.round(d.totalSeconds / 60) + '분, ' + (d.totalMeters / 1000).toFixed(1)
-         + '킬로미터 남았습니다. 안내를 시작합니다.';
   }
 
   /* ══ 위치가 올 때마다 ═══════════════════════════════════ */
@@ -391,8 +391,8 @@
       /* 소리 */
       var th = nearStep(SPEAK_AT, gd, st.spoken, st.guideIdx);
       if (th) {
-        var msg = speechFor(g, th);
-        if (lane && lane.side !== 'center' && th <= 300) msg += '. ' + lane.text + '으로 가세요';
+        var msg = speechParts(kind, th);
+        if (lane && lane.side !== 'center' && th <= 300 && th > 40) msg.push(lane.text + '으로 가세요');
         speak(msg, true);
       }
       return;
@@ -435,18 +435,15 @@
     var m = String((g && g.description) || '').match(/([^\s]+)[을를] 따라/);
     return m ? m[1] : '';
   }
-  /* 받침이 있으면 「을」, 없으면 「를」. 소리로 읽을 때 어색하지 않게 */
-  function eul(w) {
-    var c = String(w || '').charCodeAt(String(w || '').length - 1);
-    if (!(c >= 0xAC00 && c <= 0xD7A3)) return '을';
-    return ((c - 0xAC00) % 28) === 0 ? '를' : '을';
-  }
-  function speechFor(g, meters) {
-    var what = turnText(g), road = roadOf(g);
-    if (what === '직진') {
-      return meters + '미터 앞, ' + (road ? road + eul(road) + ' 따라 ' : '') + '직진하세요';
-    }
-    return meters + '미터 앞, ' + what;
+  /* 소리는 조각으로 — 「300미터 앞」 + 「우회전」. 조각마다 미리 만든 파일이 있다.
+     교차로 이름은 화면에 있다. 읽으면 길어지고 파일로도 못 만든다 */
+  var KIND_KO = {
+    straight: '직진', left: '좌회전', right: '우회전', slightL: '10시 방향 좌회전', slightR: '2시 방향 우회전',
+    sharpL: '급좌회전', sharpR: '급우회전', uturn: '유턴', round: '회전교차로 진입',
+    exit: '진출', ramp: '진입', depart: '직진', arrive: '목적지'
+  };
+  function speechParts(kind, meters) {
+    return [meters <= 40 ? '잠시 후' : meters + '미터 앞', KIND_KO[kind] || KIND_KO.straight];
   }
 
   /* ══ 안전 안내 ═════════════════════════════════════════
@@ -665,6 +662,23 @@
           '<div class="dv-model-frame" id="navModelFrame"></div>' +
           '<div class="dv-model-layer" id="navModelLayer"></div>' +
         '</div>' +
+        /* 주행 중 자동 제안 — 안내판 바로 아래 얇은 띠. 먼저 말해 주되, 바꾸는 것은 사람이 누르거나 말한다.
+           경로선·내 위치·다음 회전은 가리지 않는다 */
+        '<div class="dv-sug" id="navSug" hidden role="status" aria-live="polite">' +
+          '<p class="dv-sug-t" id="navSugT"></p>' +
+          '<span class="dv-sug-spk" aria-label="읽는 중">' +
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5v5h3.5L12 19V5L7.5 9.5H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>' +
+          '</span>' +
+          '<span class="dv-sug-v">말로: “다른 곳으로”</span>' +
+          '<div class="dv-sug-b">' +
+            '<button type="button" class="dv-sug-go" id="navSugQuiet">다른 곳으로</button>' +
+            '<button type="button" class="dv-sug-go" id="navSugSwap">순서 바꾸기</button>' +
+            '<button type="button" class="dv-sug-x" id="navSugNo">그대로</button>' +
+            '<button type="button" class="dv-sug-mic" id="navSugMic" aria-label="말로 답하기">' +
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M9 21h6"/></svg>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
         '<div class="dv-alert" id="navAlert" hidden></div>' +
         '<div class="dv-speed" id="navSpeed">' +
           '<b id="navKmh">0</b><span>km/h</span>' +
@@ -677,15 +691,6 @@
         '<button type="button" class="dv-traffic on" id="navTraffic">실시간 교통</button>' +
         /* 지도를 손으로 밀면 따라가기를 멈춘다. 다시 붙고 싶을 때 누른다 */
         '<button type="button" class="dv-recenter" id="navRecenter" hidden>현재 위치</button>' +
-        /* 주행 중 자동 제안 — 먼저 말해 주되, 바꾸는 것은 사람이 누른다 */
-        '<div class="dv-sug" id="navSug" hidden role="status" aria-live="polite">' +
-          '<p class="dv-sug-t" id="navSugT"></p>' +
-          '<div class="dv-sug-b">' +
-            '<button type="button" class="dv-sug-go" id="navSugSwap">순서 바꾸기</button>' +
-            '<button type="button" class="dv-sug-go" id="navSugQuiet">다른 곳으로</button>' +
-            '<button type="button" class="dv-sug-x" id="navSugNo">그대로 간다</button>' +
-          '</div>' +
-        '</div>' +
         '<p class="dv-note" id="navNote" hidden></p>' +
       '</div>' +
       '<div class="dv-bottom">' +
@@ -718,14 +723,13 @@
        이 제품의 주장이다. 안내 화면에서 못 하면 주장이 아니라 말뿐이다 */
     on('navSwap',  function () { if (window.rlDo) window.rlDo('swap', st && st.dest); else if (window.go) window.go('map'); });
     on('navQuiet', nvQuiet);
-    on('navSay',   function () {
-      if (window.rlVoiceToggle) window.rlVoiceToggle();
-      else if (window.startVoice) window.startVoice();
-    });
+    /* 한 번 누르고 한 마디 — 아이폰에서도 되는 길. 계속 듣기는 끊긴다 */
+    on('navSay',    nvListen);
+    on('navSugMic', nvListen);
     on('navRecenter', function () { nvFollowOn(); });
-    on('navSugSwap',  function () { nvSugHide(); if (window.rlDo) window.rlDo('swap', st && st.dest); });
-    on('navSugQuiet', function () { nvSugHide(); nvQuiet(); });
-    on('navSugNo',    function () { nvSugHide(); });
+    on('navSugSwap',  function () { nvAnswer('swap'); });
+    on('navSugQuiet', function () { nvAnswer('quiet'); });
+    on('navSugNo',    function () { nvAnswer('stay'); });
     on('navV2',    function () { nvMode('2d'); });
     on('navV3',    function () { nvMode('3d'); });
     on('navTraffic', function () {
@@ -788,16 +792,68 @@
     closeDrive();
     window.rlDo('quiet', dest);
   }
+  var SUG_HOLD = 15000;       /* 답이 없으면 이만큼 뒤에 접는다. 운전 중 화면을 계속 차지하면 안 된다 */
   function nvSugHide() {
     var b = document.getElementById('navSug');
     if (b) b.hidden = true;
+    if (st) { clearTimeout(st.sugHide); st.sugUp = false; }
   }
-  function nvSugShow(text) {
+  function nvSugShow(text, say) {
     var b = document.getElementById('navSug'), t = document.getElementById('navSugT');
     if (!b || !t) return;
     t.textContent = text;
     b.hidden = false;
+    st.sugUp = true;
+    clearTimeout(st.sugHide);
+    st.sugHide = setTimeout(nvSugHide, SUG_HOLD);
+    /* 다 읽고 나서 듣는다. 읽는 중에 마이크를 열면 제 목소리의 「다른 곳으로」를 알아듣는다 */
+    speak(say, false, function () { if (st && st.sugUp) nvAutoListen(); });
   }
+  /* 말로 답하기 — 단추를 누르든 말로 하든 여기로 온다.
+     다른 곳으로 = 후보 보기, 순서 바꾸기 = 서버가 미리보기를 한 번 더 — 잘못 들어도 되돌릴 수 있다 */
+  function nvAnswer(what) {
+    nvSugHide();
+    if (what === 'quiet') { speak('다른 곳을 찾아볼게요.', true); st.bye = true; nvQuiet(); return; }   /* 닫히면서 이 말까지 끊지 않게 */
+    var msg = what === 'swap' ? '순서를 바꿀지 보여 드릴게요.' : '그대로 갑니다.';
+    speak(msg, true);
+    nvNote(msg, 3000);   /* 소리를 못 들어도 답한 것이 보이게 */
+    if (what === 'swap' && window.rlDo) window.rlDo('swap', st && st.dest);
+  }
+  /* live-voice.js 가 들은 말을 먼저 여기에 묻는다. 처리했으면 true */
+  function nvVoiceAnswer(cmd) {
+    if (!st) return false;
+    var c = String(cmd || '');
+    if (/순서|미뤄|나중/.test(c)) { nvAnswer('swap'); return true; }   /* 「순서 바꿔」가 「바꿔」보다 먼저 */
+    if (/다른|딴 데|딴데|바꿔/.test(c)) { nvAnswer('quiet'); return true; }
+    if (st.sugUp && /그대로|아니|괜찮|계속|됐어/.test(c)) { nvAnswer('stay'); return true; }
+    return false;
+  }
+  function nvListen() {
+    if (window.navVoice) window.navVoice.stop();   /* 제 소리를 듣지 않게 */
+    if (window.rlVoicePush) window.rlVoicePush();
+    else if (window.startVoice) window.startVoice();
+  }
+  /* 카드가 뜨면 듣기를 한 번 저절로 켜 본다. 마이크 권한을 이미 준 기기에서만 —
+     아니면 마이크 단추를 깜빡여 「눌러서 말하기」로 */
+  function nvAutoListen() {
+    var mic = document.getElementById('navSugMic');
+    var ask = function () { if (mic) mic.classList.add('dv-ask'); };
+    try {
+      navigator.permissions.query({ name: 'microphone' }).then(function (p) {
+        if (p.state === 'granted' && st && st.sugUp) nvListen(); else ask();
+      }).catch(ask);
+    } catch (e) { ask(); }
+  }
+  /* live-voice.js 가 마이크 상태를 알려 준다 — 단추 글자와 깜빡임이 여기서 바뀐다 */
+  function nvVoiceMic(on, text) {
+    document.body.classList.toggle('dv-listening', !!on);
+    var b = document.getElementById('navSay'), mic = document.getElementById('navSugMic');
+    if (b) b.textContent = on ? text || '듣는 중' : '말로 하기';
+    if (mic && on) mic.classList.remove('dv-ask');
+    if (!on && /못 들었/.test(text || '')) nvNote(text, 3000);
+  }
+  /* 안내 화면이 덮고 있어 실시간 화면의 답은 안 보인다. 여기에 적는다 */
+  function nvVoiceNote(text) { nvNote(text, 6000); }
   function nvSuggestTick() {
     if (!st) return;
     var snap = (typeof window.rlSnapshot === 'function') ? window.rlSnapshot() : null;
@@ -808,25 +864,26 @@
       c = st.crowdFor === name ? (st.crowd || {}) : {};
       if (st.crowdFor !== name) nvCrowdOnce(snap);
     }
-    var kind = null, say = null;
+    var kind = null, say = null, line = null;
     if (c.rate != null && Number(c.rate) >= SUG_BUSY) {
       kind = 'busy';
-      say = (c.placeName || name) + '에 사람이 많습니다. 순서를 바꾸거나 가까운 다른 곳을 찾을 수 있습니다.';
+      line = (c.placeName || name) + ' · 사람 많음';
+      say = (c.placeName || name) + '에 사람이 많습니다. 다른 곳으로 갈까요, 그대로 갈까요?';
     } else if (String(w.label || w.summary || w.text || '').indexOf('비') >= 0) {
       kind = 'rain';
-      say = name + ' 에 비 소식이 있습니다. 실내로 바꾸거나 순서를 미룰 수 있습니다.';
+      line = name + ' · 비 소식';
+      say = name + '에 비 소식이 있습니다. 실내로 바꾸거나 순서를 미룰 수 있습니다.';
     }
     if (!kind) { nvSugHide(); return; }
     var key = kind + ':' + (c.placeName || name);
     st.suggested = st.suggested || {};
     if (st.suggested[key]) return;      /* 같은 말을 두 번 하지 않는다 */
     st.suggested[key] = true;
-    nvSugShow(say);
-    speak(say);
+    nvSugShow(line, say);
     /* 순서를 바꾸면 이동 시간·비용이 얼마나 달라지는지 — 서버가 잰 값이 오면 글로만 붙인다. 못 재면 안 붙인다 */
     if (kind === 'busy' && window.rlSwapPair) window.rlSwapPair().then(function (p) {
       var t = document.getElementById('navSugT');
-      if (p && t && t.textContent === say) t.textContent = say + ' 사람이 몰리는 곳을 남은 일정 뒤로 미루면 ' + p + '.';
+      if (p && t && t.textContent === line) t.textContent = line + ' · 뒤로 미루면 ' + p;
     });
   }
   /* 일정에 혼잡도가 안 붙은 다음 목적지 — 그 장소로 한 번만 받아 온다 (관광공사 집중률 · 실측이 있으면 실측).
@@ -1208,6 +1265,10 @@
     window.addEventListener('popstate', onPop);
     setTurn('depart', null, '현재 위치를 잡는 중', '');
     speak('운전 중에는 화면을 보지 마세요. 소리로 안내합니다.', true);
+    /* 말로 하기(live-voice.js)가 안내 화면에 먼저 묻고, 답을 여기에 적는다 */
+    window.navVoiceAnswer = nvVoiceAnswer;
+    window.navVoiceNote = nvVoiceNote;
+    window.navVoiceMic = nvVoiceMic;
     acquireWake();
     document.addEventListener('visibilitychange', onVisible);
     nvSuggestStart();
@@ -1242,8 +1303,10 @@
     if (st.wake) { try { st.wake.release(); } catch (e) {} }
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('popstate', onPop);
-    try { window.speechSynthesis.cancel(); } catch (e) {}
-    document.body.classList.remove('dv-driving');
+    if (!st.bye) { if (window.navVoice) window.navVoice.stop(); else { try { window.speechSynthesis.cancel(); } catch (e) {} } }
+    clearTimeout(st.sugHide);
+    window.navVoiceAnswer = window.navVoiceNote = window.navVoiceMic = null;
+    document.body.classList.remove('dv-driving', 'dv-listening', 'dv-speaking');
     var el = document.getElementById('navDrive');
     if (el) el.remove();
     document.body.classList.remove('dv-open');
@@ -1310,9 +1373,9 @@
     console.assert(turnText({ description:'교차로에서 좌회전 후 일반도로를 따라 22m 이동' }) === '교차로에서 좌회전', '회전은 그대로');
     console.assert(roadOf({ description:'우회전 후 해운대해변로298번길을 따라 199m 이동' }) === '해운대해변로298번길', '올라탈 길 이름');
     console.assert(roadOf({ nextRoadName:'센텀4로', description:'아무말' }) === '센텀4로', '서버가 주면 그걸 쓴다');
-    console.assert(eul('해운대해변로') === '를', '받침 없으면 를');
-    console.assert(eul('해운대해변로298번길') === '을', '받침 있으면 을');
-    console.assert(speechFor({ description:'일반도로를 따라 79m 이동' }, 300) === '300미터 앞, 일반도로를 따라 직진하세요', '직진 문장: ' + speechFor({ description:'일반도로를 따라 79m 이동' }, 300));
+    console.assert(speechParts('right', 300).join() === '300미터 앞,우회전', '소리 조각: ' + speechParts('right', 300).join());
+    console.assert(speechParts('left', 40).join() === '잠시 후,좌회전', '40m 안은 잠시 후: ' + speechParts('left', 40).join());
+    console.assert(speechParts('depart', 500)[1] === '직진', '출발은 직진으로 읽는다');
 
     /* 차선 추천 */
     console.assert(laneAdvice('right', null, null).side === 'right', '우회전이면 오른쪽');

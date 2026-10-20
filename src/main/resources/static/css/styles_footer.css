@@ -152,7 +152,7 @@
    하단 고정 bottomNav에 가리지 않도록 여백 확보
    ========================================================= */
 @media (max-width: 768px) {
-    .site-footer { margin-top: 40px; }
+    .site-footer { margin-top: 0; }   /* .page 가 탭 막대 몫으로 68px 을 이미 비운다 */
     .foot-top {
         flex-direction: column;
         gap: 28px;

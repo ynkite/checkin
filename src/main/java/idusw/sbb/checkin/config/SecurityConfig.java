@@ -59,7 +59,7 @@ public class SecurityConfig {
                         // 정적 리소스 전체 허용.
                         // 디렉터리로 잡는다 — 확장자 패턴만 쓰면 하위 경로가 빠진다.
                         // (기존에 "/**.svg" 만 있어서 /img/*.svg 가 302 로 튕겼다)
-                        .requestMatchers("/css/**", "/js/**", "/img/**", "/font/**", "/fonts/**").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/img/**", "/font/**", "/fonts/**", "/audio/**").permitAll()
                         .requestMatchers("/**/*.css", "/**/*.js", "/**/*.svg", "/**/*.png", "/**/*.jpg",
                                          "/**/*.jpeg", "/**/*.gif", "/**/*.webp", "/**/*.ico",
                                          "/**/*.woff", "/**/*.woff2", "/**/*.ttf", "/**/*.map").permitAll()

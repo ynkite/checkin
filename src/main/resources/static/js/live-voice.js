@@ -66,6 +66,8 @@
   function box() { return document.getElementById('rlVoiceLog'); }
 
   function say(who, text, kind) {
+    /* 길 안내가 덮고 있으면 이 칸은 안 보인다. 안내 화면에도 적는다 */
+    if (window.navVoiceNote) window.navVoiceNote(who === 'me' ? '「' + text + '」' : text);
     var b = box();
     if (!b) return;
     b.hidden = false;
@@ -80,6 +82,7 @@
   /* 소리와 글자를 같이 낸다. 하나가 빠져도 뜻이 전해져야 한다 */
   function reply(text, kind) {
     say('bot', text, kind);
+    if (window.navVoice) { window.navVoice.say(text, true); return; }   /* 파일 목소리·자연 음성 고르기는 거기서 */
     try {
       if (!('speechSynthesis' in window)) return;
       window.speechSynthesis.cancel();
@@ -90,6 +93,7 @@
   }
 
   function badge(text, live) {
+    if (window.navVoiceMic) window.navVoiceMic(live, text);
     var el = document.getElementById('rlVoiceState');
     if (!el) return;
     el.textContent = text;
@@ -263,6 +267,8 @@
   function run(cmd) {
     say('me', cmd);
     st.awakeUntil = Date.now() + LISTEN_MS;
+    /* 길 안내가 켜져 있으면 거기서 먼저 받는다 — 제안 카드에 말로 답하는 길 */
+    if (window.navVoiceAnswer && window.navVoiceAnswer(cmd)) return;
     if (!local(cmd)) ask(cmd);
     setTimeout(function () { if (Date.now() > st.awakeUntil) sleep(); }, LISTEN_MS + 200);
   }
