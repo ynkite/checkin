@@ -73,7 +73,7 @@
 .ck-conf2 tr:last-child th{ font-weight:600 }
 .ck-flow{ max-width:65ch; font-size:var(--t-body); line-height:1.8; color:var(--ink-2) }
 .ck-tabs{ display:flex; gap:calc(var(--u)*3); flex-wrap:wrap; margin:calc(var(--u)*2) 0 }
-.ck-tabs button{ min-width:var(--home-target); min-height:var(--home-target); padding:var(--u) 0; font-size:var(--t-sm); color:var(--ink-2); border-bottom:2px solid transparent }
+.ck-tabs button{ min-width:var(--home-target); min-height:var(--home-target); padding:var(--u) 0; font-size:var(--t-sm); color:var(--ink-2); background:none; border-bottom:2px solid transparent }
 .ck-tabs button[aria-selected="true"]{ color:var(--ink); border-bottom-color:var(--ink); font-weight:700 }
 .ck-tabs-top button{ font-size:var(--t-h3) }
 .ck-attr{ display:flex; flex-direction:column; gap:var(--u); padding:calc(var(--u)*3) 0 var(--home-section); border-top:1px solid var(--ui-line); font-size:var(--home-meta); color:var(--ink-2); line-height:1.8 }
@@ -84,6 +84,8 @@
   .ck-home .ck-sl-hd h3{ font-size:var(--home-story-size) }
   .ck-sl-rows > div{ grid-template-columns:minmax(0,1fr); gap:var(--u) }
   .ck-sl-acts > button{ flex:1 }
+  .ck-home .slide-arr-wrap{ display:none }
+  .ck-attr > span:not(:nth-child(2)){ display:none }
 }
 @media (prefers-reduced-motion:reduce){
   .ck-home button,.ck-trip{ transition:none }

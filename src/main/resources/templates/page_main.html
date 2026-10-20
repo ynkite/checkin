@@ -622,14 +622,14 @@
         </div>
         <div class="st-form">
           <h2>내 여행 시작하기</h2><p class="st-form-lead">지역과 날짜부터 골라 주세요.</p>
-          <form class="ck-bar" id="ck_mk" onsubmit="return false">
+          <form class="ck-bar" id="ck_mk" onsubmit="return false" novalidate>
             <div class="ck-fr">
               <div class="ck-fld"><label for="ck_f1">어디로</label>
                 <select id="ck_f1"><option>부산</option><option>서울</option><option>제주</option><option>강릉</option><option>경주</option></select></div>
               <div class="ck-fld"><label for="ck_f2">며칠</label>
                 <select id="ck_f2"><option>2박 3일</option><option>1박 2일</option><option>3박 4일</option><option>당일</option></select></div>
               <div class="ck-fld"><label for="ck_f3">언제부터</label>
-                <input id="ck_f3" type="date"></div>
+                <input id="ck_f3" type="date" required><span class="ck-date-ph" aria-hidden="true">날짜 고르기</span></div>
               <div class="ck-fld"><label for="ck_f4">몇 명</label>
                 <select id="ck_f4"><option>4명</option><option>1명</option><option>2명</option><option>3명</option><option>5명 이상</option></select></div>
             </div>

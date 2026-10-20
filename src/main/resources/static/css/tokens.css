@@ -86,7 +86,7 @@
   --home-scene:clamp(300px, 47dvh, 480px);
   --home-scene-small:300px;
   --home-title:clamp(36px, 3.4vw, 50px);
-  --home-section:clamp(48px, 5.6vw, 80px);
+  --home-section:clamp(32px, 5.6vw, 80px);
   --home-caption:22px;
   --home-caption-width:430px;
   --home-pin:21px;
