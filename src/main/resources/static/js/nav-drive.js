@@ -1140,6 +1140,18 @@
     }
     nv.meDeg = deg;
     if (nv.follow) nv.map.setCenter(ll);
+    nvSpeedClear();
+  }
+  /* 갈림길 화살표가 왼쪽 아래 속도 표시 밑으로 들어가면 속도 표시를 흐리게 해서 화살표가 보이게 한다 */
+  function nvSpeedClear() {
+    var sp = document.getElementById('navSpeed'), mk = document.querySelector('.dv-turnmark');
+    if (!sp) return;
+    var hit = false;
+    if (mk && nv.turn) {
+      var a = sp.getBoundingClientRect(), b = mk.getBoundingClientRect();
+      hit = b.left < a.right && b.right > a.left && b.top < a.bottom && b.bottom > a.top;
+    }
+    sp.style.opacity = hit ? '0.35' : '';
   }
 
   /* ── 3D 모형 ──────────────────────────────────────────── */
