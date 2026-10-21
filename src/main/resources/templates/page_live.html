@@ -311,7 +311,7 @@
         return {
           tripId: rlTrip, next: rlLast.next, crowd: rlLast.crowd,
           weather: rlLast.weather, headline: rlLast.headline, dayNo: rlLast.dayNo,
-          destination: rlLast.destination
+          destination: rlLast.destination, stops: rlLast.stops
         };
       };
       window.rlPosition = function () { return rlPos ? [+rlPos[0], +rlPos[1]] : null; };

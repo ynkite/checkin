@@ -117,14 +117,23 @@
     }
     return line[line.length - 1];
   }
+  /* ?sim=1&off=1 — 20초쯤 달린 뒤 경로 옆 80m 로 한 번 빠진다. 이탈 → 다시 찾기를 실내에서 본다 */
+  var SIM_OFF = SIM && /[?&]off=1\b/.test(location.search);
+  function simAside(q) {
+    var h = ((st.heading || 0) + 90) * Math.PI / 180;
+    return [q[0] + 80 * Math.cos(h) / 111320, q[1] + 80 * Math.sin(h) / (111320 * Math.cos(q[0] * Math.PI / 180))];
+  }
   function simTick() {
     if (!st || !SIM) return;
     if (st.route && !st.arrived) {
       var from = st.simM || 0;
       st.simM = Math.min(from + SIM_MS, st.route.totalMeters || st.acc[st.acc.length - 1]);
       var q = simPoint(st.route.line, st.acc, st.simM);
+      st.simN = (st.simN || 0) + 1;
+      var aside = SIM_OFF && !st.simBack && st.simN > 20;   /* 새 경로를 받을 때까지 옆에 있는다 */
+      if (aside) q = simAside(q);
       onPos({ coords: { latitude: q[0], longitude: q[1], speed: SIM_MS } });
-      simGlide(from, st.simM);
+      if (!aside) simGlide(from, st.simM);
     }
     st.simTimer = setTimeout(simTick, 1000);
   }
@@ -300,6 +309,7 @@
         st.acc = cumulative(d.line);
         st.guideIdx = 0; st.spoken = {}; st.alerted = {}; st.overSpoken = {};
         st.arrived = false; st.meter = 0; st.sectionIdx = -1;
+        st.simM = 0; if (st.simOffDone) st.simBack = true;   /* 가상 주행은 새 경로의 처음부터 */
         nv.drawn = false;
         nvOnPos();
         renderMeta();
@@ -311,8 +321,9 @@
         } else {
           setTurn('depart', null, headLine(d), st.dest.name || '');
         }
-        /* 남은 시간·거리는 화면 아래에 있다. 소리는 짧게 — 숫자가 든 문장은 파일로 못 만든다 */
-        speak('안내를 시작합니다.', true);
+        /* 남은 시간·거리는 화면 아래에 있다. 소리는 짧게 — 숫자가 든 문장은 파일로 못 만든다.
+           다시 찾은 경로에서는 말하지 않는다 — 방금 읽은 「잠시 후 우회전」을 끊는다 */
+        if (!st.helped) speak('안내를 시작합니다.', true);
         paintHelp();
         if (cb) cb();
       })
@@ -335,7 +346,11 @@
     var line = st.route.line;
     var here = snap(st.pos.lat, st.pos.lng, line, st.acc);
     st.meter = here.meter;
-    if (line[here.seg + 1]) {
+    /* 화살표 방향 — 달리는 중이고 GPS 가 방향을 주면 그 값. 경로를 벗어나도 실제로 가는 쪽을 가리킨다.
+       서 있거나 방향이 없으면 경로선 방향 */
+    var gh = p.coords.heading;
+    if (driving && gh != null && !isNaN(gh)) st.heading = gh;
+    else if (line[here.seg + 1]) {
       st.heading = bearing(line[here.seg][0], line[here.seg][1],
                            line[here.seg + 1][0], line[here.seg + 1][1]);
     }
@@ -345,8 +360,10 @@
     st.offStreak = r.streak;
     if (r.off) {
       st.offStreak = 0;
+      st.simOffDone = true;
       speak('경로를 벗어나 다시 안내합니다.', true);
       setTurn('straight', null, '경로를 다시 찾는 중', '');
+      setThen(null, null, null); paintLane(null);   /* 옛 경로의 다음 갈림길을 남겨 두지 않는다 */
       loadRoute();
       return;
     }
@@ -355,9 +372,14 @@
     var leftM = Math.max(0, st.route.totalMeters - st.meter);
     if (!st.arrived && leftM <= ARRIVE_M) {
       st.arrived = true;
+      document.body.classList.remove('dv-driving');   /* 섰다 — 단추를 다시 편다 */
+      st.speedKmh = 0; paintSpeed();
       setTurn('arrive', null, '도착했습니다', st.dest.name || '');
-      speak((st.dest.name || '목적지') + '에 도착했습니다.', true);
+      setThen(null, null, null);
       paintAlert(null); paintLane(null);
+      st.after = stopAfter(st.dest);
+      speak([(st.dest.name || '목적지') + '에 도착했습니다.', st.after ? '다음 장소로 안내할까요?' : ''], true);
+      paintNext();
       renderMeta();
       return;
     }
@@ -377,20 +399,21 @@
       var gd = haversine(st.pos.lat, st.pos.lng, g.lat, g.lng);
       if (gd <= 18) { st.guideIdx++; continue; }
       var kind = turnKind(g.description, g.turnType);
-      setTurn(kind, gd, turnText(g), roadOf(g));
+      setTurn(kind, gd, turnText(g), placeOf(g));
 
-      /* 그다음 갈림길 미리보기 */
+      /* 그다음 갈림길 미리보기 — 이번 갈림길에서 거기까지 몇 m 인지 같이 */
       var nx = guides[st.guideIdx + 1];
       var nxKind = nx ? turnKind(nx.description, nx.turnType) : null;
-      setThen(nx, nxKind, gd);
+      var gap = nx ? haversine(g.lat, g.lng, nx.lat, nx.lng) : null;
+      setThen(nx, nxKind, gap);
 
       /* 차선 */
-      var lane = laneAdvice(kind, nxKind, nx ? haversine(g.lat, g.lng, nx.lat, nx.lng) : null);
+      var lane = laneAdvice(kind, nxKind, gap);
       paintLane(lane);
 
       /* 소리 */
       var th = nearStep(SPEAK_AT, gd, st.spoken, st.guideIdx);
-      if (th) {
+      if (th && kind !== 'depart') {   /* 출발점은 지금 서 있는 자리다. 「잠시 후 직진」은 군말 */
         var msg = speechParts(kind, th);
         if (lane && lane.side !== 'center' && th <= 300 && th > 40) msg.push(lane.text + '으로 가세요');
         speak(msg, true);
@@ -399,7 +422,7 @@
     }
     /* 남은 갈림길이 없다 — 목적지까지 직진 */
     setTurn('arrive', Math.max(0, st.route.totalMeters - st.meter), '목적지까지', st.dest.name || '');
-    setThen(null, null, 0);
+    setThen(null, null, null);
     paintLane(null);
   }
 
@@ -426,9 +449,18 @@
   /* 화면에는 「무엇을 하나」와 「어느 길로」를 갈라 놓는다.
      「일반도로를 따라 74m 이동」을 그대로 띄우면 뭘 하라는 건지 안 읽힌다 —
      하는 일은 직진이고, 일반도로는 올라탈 길 이름이다. */
+  var TEXT_MAX = 18;   /* 이보다 길면 두 줄이 된다. 운전 중엔 한 줄만 읽힌다 */
   function turnText(g) {
     var t = shortDesc(g && g.description);
-    return /회전|유턴|진입|진출|출구|합류|도착|방면|나가/.test(t) ? t : '직진';
+    if (!/회전|유턴|진입|진출|출구|합류|도착|방면|나가/.test(t)) return '직진';
+    /* 「부산대후문 사거리에서 부곡동 방면으로 좌회전」 → 「부곡동 방면 좌회전」. 교차로 이름은 아래 작은 줄로 */
+    return t.length > TEXT_MAX ? t.replace(/^.*?에서\s+/, '').replace(/방면으로/, '방면') : t;
+  }
+  /* 안내판 아래 작은 줄 — 문구에서 뺀 교차로 이름과 올라탈 길 */
+  function placeOf(g) {
+    var t = shortDesc(g && g.description), at = '';
+    if (t.length > TEXT_MAX) at = (g && g.name) || ((t.match(/^(.*?)에서\s/) || [])[1] || '');
+    return [at, roadOf(g)].filter(Boolean).join(' · ');
   }
   function roadOf(g) {
     if (g && g.nextRoadName) return g.nextRoadName;
@@ -541,13 +573,14 @@
     var r = document.getElementById('navRoad');
     if (r) { r.textContent = road || ''; r.hidden = !road; }
   }
-  function setThen(nx, nxKind, gdNow) {
+  function setThen(nx, nxKind, gap) {
     var box = document.getElementById('navThen');
     if (!box) return;
     if (!nx) { box.hidden = true; return; }
     box.hidden = false;
     box.innerHTML = '<span class="dv-then-l">이어서</span>' +
       '<span class="dv-then-i">' + turnSvg(nxKind) + '</span>' +
+      (gap != null ? '<span class="dv-then-d">' + fmtM(gap) + '</span>' : '') +
       '<b>' + nvEsc(turnText(nx)) + '</b>' +
       (roadOf(nx) ? '<span class="dv-then-r">' + nvEsc(roadOf(nx)) + '</span>' : '');
   }
@@ -605,11 +638,42 @@
     var eta = new Date(Date.now() + leftS * 1000);
     var two = function (n) { return (n < 10 ? '0' : '') + n; };
     var set = function (id, t) { var e = document.getElementById(id); if (e) e.textContent = t; };
-    set('navLeft', Math.max(1, Math.round(leftS / 60)) + '분');
-    set('navDistLeft', (leftM / 1000).toFixed(1) + 'km');
-    set('navEta', two(eta.getHours()) + ':' + two(eta.getMinutes()) + ' 도착');
+    /* 도착한 뒤에 「1분 0.0km」로 남아 있으면 아직 가는 중처럼 읽힌다 */
+    set('navLeft', st.arrived ? '도착' : Math.max(1, Math.round(leftS / 60)) + '분');
+    set('navDistLeft', st.arrived ? '' : (leftM / 1000).toFixed(1) + 'km');
+    set('navEta', two(eta.getHours()) + ':' + two(eta.getMinutes()) + (st.arrived ? '' : ' 도착'));
     set('navTo', st.dest.name || '다음 장소');
   }
+  /* 도착 뒤 — 그날 일정에서 이 목적지 다음 장소. 이름이 같거나 50m 안이면 같은 곳으로 본다 */
+  function stopAfter(dest) {
+    var snap = (typeof window.rlSnapshot === 'function') ? window.rlSnapshot() : null;
+    var stops = (snap && snap.stops) || [];
+    for (var i = 0; i < stops.length - 1; i++) {
+      var s = stops[i];
+      var same = s.name === dest.name ||
+        (s.lat != null && haversine(s.lat, s.lng, dest.lat, dest.lng) < 50);
+      if (!same) continue;
+      for (var j = i + 1; j < stops.length; j++) {
+        if (stops[j].lat != null && stops[j].lng != null) return stops[j];
+      }
+      return null;
+    }
+    return null;
+  }
+  function paintNext() {
+    var b = document.getElementById('navNext');
+    if (!b) return;
+    b.hidden = !st.after;
+    if (st.after) b.textContent = '다음 ' + st.after.name + '까지 안내';
+  }
+  /* 다음 장소로 이어서 — 위치 고지는 이미 받았다. 히스토리 칸도 쓰던 것을 그대로 쓴다 */
+  function nvGoNext() {
+    if (!st || !st.after) return;
+    var to = st.after, pushed = st.pushed;
+    stopDrive(true);
+    beginDrive(to, lastPos, pushed);
+  }
+
   /* 처음 한 번 4초만 — 이 화면이 무엇으로 만들어졌는지 정직하게 적는다.
      경로를 다시 받을 때마다 불려서 「안전 안내 데이터가 없습니다」가 계속 떠 있었다 */
   function paintHelp() {
@@ -701,6 +765,7 @@
           '<span id="navTo"></span>' +
         '</div>' +
         '<div class="dv-acts">' +
+          '<button type="button" class="dv-b dv-b-next" id="navNext" hidden></button>' +
           '<button type="button" class="dv-b dv-b-say" id="navSay">말로 하기</button>' +
           '<button type="button" class="dv-b" id="navSwap">순서 바꾸기</button>' +
           '<button type="button" class="dv-b" id="navQuiet">다른 곳으로</button>' +
@@ -727,6 +792,7 @@
     on('navSay',    nvListen);
     on('navSugMic', nvListen);
     on('navRecenter', function () { nvFollowOn(); });
+    on('navNext', nvGoNext);
     on('navSugSwap',  function () { nvAnswer('swap'); });
     on('navSugQuiet', function () { nvAnswer('quiet'); });
     on('navSugNo',    function () { nvAnswer('stay'); });
@@ -823,6 +889,7 @@
   function nvVoiceAnswer(cmd) {
     if (!st) return false;
     var c = String(cmd || '');
+    if (st.arrived && st.after && /다음|가자|안내|응|네/.test(c)) { nvGoNext(); return true; }
     if (/순서|미뤄|나중/.test(c)) { nvAnswer('swap'); return true; }   /* 「순서 바꿔」가 「바꿔」보다 먼저 */
     if (/다른|딴 데|딴데|바꿔/.test(c)) { nvAnswer('quiet'); return true; }
     if (st.sugUp && /그대로|아니|괜찮|계속|됐어/.test(c)) { nvAnswer('stay'); return true; }
@@ -1253,7 +1320,7 @@
       '시작', function () { beginDrive(dest); });
   }
 
-  function beginDrive(dest, from) {
+  function beginDrive(dest, from, pushed) {
     wakeAudio();   /* 아이폰은 누른 그 순간에 한 번 울려 둬야 뒤 안내가 나온다 */
 
     st = { dest: dest, pos: null, route: null, acc: [], offStreak: 0, guideIdx: 0,
@@ -1261,7 +1328,7 @@
            meter: 0, speedKmh: 0, heading: null, arrived: false, pushed: false, clock: null,
            from: from || null };
     ensureOverlay();
-    pushHistory();
+    if (pushed) st.pushed = true; else pushHistory();
     window.addEventListener('popstate', onPop);
     setTurn('depart', null, '현재 위치를 잡는 중', '');
     speak('운전 중에는 화면을 보지 마세요. 소리로 안내합니다.', true);
@@ -1373,6 +1440,10 @@
     console.assert(turnText({ description:'교차로에서 좌회전 후 일반도로를 따라 22m 이동' }) === '교차로에서 좌회전', '회전은 그대로');
     console.assert(roadOf({ description:'우회전 후 해운대해변로298번길을 따라 199m 이동' }) === '해운대해변로298번길', '올라탈 길 이름');
     console.assert(roadOf({ nextRoadName:'센텀4로', description:'아무말' }) === '센텀4로', '서버가 주면 그걸 쓴다');
+    var lg = { description:'부산대후문 사거리에서 부곡동 방면으로 좌회전 후 일반도로를 따라 90m 이동' };
+    console.assert(turnText(lg) === '부곡동 방면 좌회전', '긴 문구는 방면·동작만: ' + turnText(lg));
+    console.assert(placeOf(lg) === '부산대후문 사거리 · 일반도로', '뺀 교차로 이름은 작은 줄로: ' + placeOf(lg));
+    console.assert(placeOf({ description:'교차로에서 좌회전' }) === '', '짧으면 작은 줄을 늘리지 않는다');
     console.assert(speechParts('right', 300).join() === '300미터 앞,우회전', '소리 조각: ' + speechParts('right', 300).join());
     console.assert(speechParts('left', 40).join() === '잠시 후,좌회전', '40m 안은 잠시 후: ' + speechParts('left', 40).join());
     console.assert(speechParts('depart', 500)[1] === '직진', '출발은 직진으로 읽는다');
