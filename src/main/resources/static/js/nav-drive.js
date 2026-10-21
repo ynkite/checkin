@@ -397,9 +397,17 @@
     while (st.guideIdx < guides.length) {
       var g = guides[st.guideIdx];
       var gd = haversine(st.pos.lat, st.pos.lng, g.lat, g.lng);
-      if (gd <= 18) { st.guideIdx++; continue; }
       var kind = turnKind(g.description, g.turnType);
+      if (gd <= 18) {
+        /* 넘어가기 직전 한 번 「지금 우회전」. 직진·출발은 군말이라 뺀다 */
+        if (!/^(straight|depart|arrive)$/.test(kind) && !st.spoken[st.guideIdx + ':now']) {
+          st.spoken[st.guideIdx + ':now'] = true;
+          speak(['지금', KIND_KO[kind]], true);
+        }
+        st.guideIdx++; continue;
+      }
       setTurn(kind, gd, turnText(g), placeOf(g));
+      nvTurnMark(g, kind);
 
       /* 그다음 갈림길 미리보기 — 이번 갈림길에서 거기까지 몇 m 인지 같이 */
       var nx = guides[st.guideIdx + 1];
@@ -421,6 +429,7 @@
       return;
     }
     /* 남은 갈림길이 없다 — 목적지까지 직진 */
+    nvTurnMark(null);
     setTurn('arrive', Math.max(0, st.route.totalMeters - st.meter), '목적지까지', st.dest.name || '');
     setThen(null, null, null);
     paintLane(null);
@@ -1081,6 +1090,20 @@
       nv.marks.push(ov);
     });
   }
+  /* 다음 갈림길 자리에 큰 화살표 하나. 다가가는 방향으로 돌려 둔다(지도는 북쪽이 위).
+     갈림길이 바뀔 때만 다시 그린다 — 이 함수는 위치가 올 때마다 불린다 */
+  function nvTurnMark(g, kind) {
+    if (!nv.map || nv.turnG === g) return;
+    nv.turnG = g;
+    if (nv.turn) { nv.turn.setMap(null); nv.turn = null; }
+    if (!g || kind === 'depart' || kind === 'straight') return;
+    var deg = bearing(st.pos.lat, st.pos.lng, g.lat, g.lng).toFixed(0);
+    nv.turn = new kakao.maps.CustomOverlay({
+      position: new kakao.maps.LatLng(g.lat, g.lng), xAnchor: 0.5, yAnchor: 0.5, zIndex: 5,
+      content: '<div class="dv-turnmark" style="transform:rotate(' + deg + 'deg)">' + turnSvg(kind) + '</div>'
+    });
+    nv.turn.setMap(nv.map);
+  }
   /* 지금 있는 자리로 지도를 옮긴다. 운전 중에는 손으로 끌 일이 없다 */
   /* 따라가기 — 실제 내비처럼 갈수록 화면이 같이 간다.
      다만 손으로 지도를 밀면 그 자리에 두어야 한다. 밀어 놓고 봤는데
@@ -1293,7 +1316,7 @@
     }
   }
   function nvReset() {
-    (nv.marks || []).forEach(function (m) { try { m.setMap(null); } catch (e) {} });
+    (nv.marks || []).concat(nv.turn || []).forEach(function (m) { try { m.setMap(null); } catch (e) {} });
     nv = { follow: true, map: null, line: null, halo: null, me: null, dest: null, marks: [],
            mode: '2d', traffic: true, idx: nv.idx, scene: null, meta: null, drawn: false };
   }

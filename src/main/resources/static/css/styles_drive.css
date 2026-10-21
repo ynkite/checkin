@@ -187,6 +187,21 @@ body.dv-open{ overflow:hidden }
 .dv-mk-school,.dv-mk-silver,.dv-mk-camera{ background:var(--tile) }
 .dv-mk-tunnel,.dv-mk-bridge,.dv-mk-underpass,.dv-mk-overpass{ background:var(--slate) }
 
+/* 지도 위 다음 갈림길 — 돌리는 각도는 JS 가 transform 으로 준다 */
+.dv-turnmark{
+  display:grid; place-items:center;
+  width:var(--drive-arrow); height:var(--drive-arrow); border-radius:var(--r-pill);
+  background:var(--sig); box-shadow:0 0 0 3px var(--panel);
+  animation:dv-turnmark .3s ease-out;
+}
+.dv-turnmark svg{
+  width:70%; height:70%;
+  fill:none; stroke:var(--on-sig); stroke-width:2.4;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+@keyframes dv-turnmark{ from{ opacity:0 } }
+@media (prefers-reduced-motion:reduce){ .dv-turnmark{ animation:none } }
+
 /* ── 안전 안내 ─────────────────────────────────────────
    어린이보호구역·과속방지턱·단속카메라. 소리로도 읽지만
    소리를 못 듣는 상황(음소거·동승자 대화)이 있어 화면에도 띄운다. */
